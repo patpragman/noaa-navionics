@@ -54,6 +54,14 @@ keep_display_awake() {
   return 0
 }
 
+opencpn_running() {
+  if command -v pgrep >/dev/null 2>&1; then
+    pgrep -u "$(id -u)" -x opencpn >/dev/null 2>&1
+  else
+    return 1
+  fi
+}
+
 show_preflight_warning() {
   if [[ "$warning_seconds" -eq 0 ]]; then
     echo "Readiness warning timeout is 0 seconds; continuing immediately."
@@ -163,6 +171,11 @@ fi
 if ! command -v opencpn >/dev/null 2>&1; then
   echo "OpenCPN is not installed or not on PATH; install opencpn before launching chartplotter." >&2
   exit 127
+fi
+
+if opencpn_running; then
+  echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
+  exit 0
 fi
 
 echo "Launching OpenCPN with ENC processing."

@@ -60,6 +60,9 @@ grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
+grep -q 'opencpn_running' scripts/start_chartplotter.sh
+grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
+grep -q 'OpenCPN is already running' scripts/start_chartplotter.sh
 grep -q 'show_preflight_warning' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' scripts/start_chartplotter.sh
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
@@ -150,6 +153,7 @@ grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scrip
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness warning' scripts/verify_pi.sh
+grep -q 'chartplotter launcher duplicate guard' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
@@ -484,8 +488,9 @@ mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$la
 printf 'NOAA_NAVIONICS_GPS_SECONDS=17\n' >"$launcher_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nprintf "noaa-navionics %%s\\n" "$*" >>"$HOME/.cache/noaa-navionics/noaa.log"\nexit 0\n' >"$launcher_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\nprintf "xset %%s\\n" "$*" >>"$HOME/.cache/noaa-navionics/xset.log"\n' >"$tmpdir/xset"
-chmod +x "$launcher_home/.local/bin/noaa-navionics" "$tmpdir/opencpn" "$tmpdir/xset"
+chmod +x "$launcher_home/.local/bin/noaa-navionics" "$tmpdir/opencpn" "$tmpdir/pgrep" "$tmpdir/xset"
 head -c 1048577 /dev/zero >"$launcher_home/.cache/noaa-navionics/chartplotter.log"
 HOME="$launcher_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log.1"
@@ -512,5 +517,14 @@ chmod +x "$launcher_fail_home/.local/bin/noaa-navionics" "$tmpdir/xset"
 HOME="$launcher_fail_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 grep -q 'Display session found, but 3 xset command(s) failed' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_duplicate_home="$tmpdir/launcher-duplicate-home"
+mkdir -p "$launcher_duplicate_home/.local/bin" "$launcher_duplicate_home/.cache/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_duplicate_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$tmpdir/pgrep"
+printf '#!/usr/bin/env bash\necho "opencpn should not be launched" >&2\nexit 9\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_duplicate_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+HOME="$launcher_duplicate_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+grep -q 'OpenCPN is already running' "$launcher_duplicate_home/.cache/noaa-navionics/chartplotter.log"
 
 echo "All checks passed."
