@@ -844,6 +844,11 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
     if not _stable_gps_device_path(expected_device):
         return CheckResult("GPSD Config", False, f"expected GPSD device is not a safe stable path: {expected_device}")
     path = Path(config_path).expanduser()
+    if path.is_symlink():
+        return CheckResult("GPSD Config", False, f"GPSD config path is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        return CheckResult("GPSD Config", False, f"GPSD config directory is a symlink: {symlink_component}")
     try:
         values = _read_gpsd_default_config(path)
     except OSError as exc:

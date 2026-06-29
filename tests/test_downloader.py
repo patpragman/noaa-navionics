@@ -6424,6 +6424,58 @@ class GpsTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("immediate polling", result.detail)
 
+    def test_check_gpsd_startup_config_rejects_symlinked_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_config = root / "gpsd.real"
+            real_config.write_text(
+                'START_DAEMON="true"\n'
+                'USBAUTO="false"\n'
+                'DEVICES="/dev/serial/by-id/mock-gps"\n'
+                'GPSD_OPTIONS="-n"\n',
+                encoding="utf-8",
+            )
+            config = root / "gpsd"
+            try:
+                config.symlink_to(real_config)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPSD config path is a symlink", result.detail)
+            self.assertIn(str(config), result.detail)
+
+    def test_check_gpsd_startup_config_rejects_symlinked_config_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_root = root / "real-root"
+            config_dir = real_root / "default"
+            config_dir.mkdir(parents=True)
+            config = config_dir / "gpsd"
+            config.write_text(
+                'START_DAEMON="true"\n'
+                'USBAUTO="false"\n'
+                'DEVICES="/dev/serial/by-id/mock-gps"\n'
+                'GPSD_OPTIONS="-n"\n',
+                encoding="utf-8",
+            )
+            link_root = root / "link-root"
+            try:
+                link_root.symlink_to(real_root, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_gpsd_startup_config(
+                "/dev/serial/by-id/mock-gps",
+                config_path=link_root / "default" / "gpsd",
+            )
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPSD config directory is a symlink", result.detail)
+            self.assertIn(str(link_root), result.detail)
+
     def test_check_gpsd_startup_config_rejects_unsafe_expected_device(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "gpsd"
