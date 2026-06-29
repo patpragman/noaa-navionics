@@ -21,10 +21,15 @@ import sys
 synced_dirs = set()
 for arg in sys.argv[1:]:
     path = Path(arg).expanduser()
+    if path.is_dir():
+        synced_dirs.add(path)
+        synced_dirs.add(path.parent)
+        continue
     try:
         with path.open("rb") as handle:
             os.fsync(handle.fileno())
     except OSError:
+        synced_dirs.add(path.parent)
         continue
     synced_dirs.add(path.parent)
 for directory in synced_dirs:
@@ -105,6 +110,7 @@ release_launcher_lock() {
   if [[ "$lock_acquired" -eq 1 ]]; then
     rm -f "${launcher_lock_dir}/pid"
     rmdir "$launcher_lock_dir" 2>/dev/null || true
+    sync_paths "$launcher_lock_dir" || true
     lock_acquired=0
   fi
 }
@@ -113,6 +119,7 @@ acquire_launcher_lock() {
   local owner_pid=""
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
     printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
+    sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir" || true
     lock_acquired=1
     trap release_launcher_lock EXIT
     return 0
@@ -133,8 +140,10 @@ acquire_launcher_lock() {
   fi
   echo "Removing stale chartplotter launcher lock."
   rm -rf "$launcher_lock_dir"
+  sync_paths "$launcher_lock_dir" || true
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
     printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
+    sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir" || true
     lock_acquired=1
     trap release_launcher_lock EXIT
     return 0

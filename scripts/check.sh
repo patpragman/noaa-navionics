@@ -69,6 +69,8 @@ grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
 grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
+grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir"' scripts/start_chartplotter.sh
+grep -Fq 'sync_paths "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
