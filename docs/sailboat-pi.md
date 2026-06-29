@@ -114,7 +114,7 @@ output = ~/charts/noaa-enc
 retention_days = 90
 ```
 
-Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `chart`, or `all`; packages other than `all` need `charts.value`; chart and track output paths cannot be blank and must be absolute or start with `~`; `charts.max_age_days` must be at least `1`; GPSD hosts cannot be blank or contain spaces, semicolons, or pipes, and `gpsd` mode requires a local host of `127.0.0.1`, `localhost`, or `::1`; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; `gpsd` and serial modes both require `gps.device` to be a stable path such as `/dev/serial/by-id/...`, `/dev/serial0`, `/dev/serial1`, or `/dev/gps`; and track retention must be `0` or greater.
+Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `chart`, or `all`; packages other than `all` need `charts.value`; chart and track output paths cannot be blank and must be absolute or start with `~`; `charts.max_age_days` must be at least `1`; GPSD hosts cannot be blank or contain spaces, semicolons, or pipes, and `gpsd` mode requires a local host of `127.0.0.1`, `localhost`, or `::1`; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; `gpsd` and serial modes both require `gps.device` to be a stable path such as one `/dev/serial/by-id/...` symlink name, `/dev/serial0`, `/dev/serial1`, or `/dev/gps`; and track retention must be `0` or greater.
 `gps.mode` must be `gpsd` or `serial`. Use `gpsd` for onboard production so OpenCPN and this tool can share the receiver.
 
 ## GPSD Setup
@@ -132,7 +132,7 @@ scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 The script requires an absolute `/dev/...` path without whitespace or quotes, backs up `/etc/default/gpsd`, writes and syncs the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
-Config validation, GPSD setup, and readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, and reject unrecognized device paths; use `/dev/serial/by-id/...` for USB GPS receivers, `/dev/serial0` or `/dev/serial1` for Raspberry Pi UART GPS hardware, or `/dev/gps` for a managed stable alias.
+Config validation, GPSD setup, and readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, reject nested by-id paths, and reject unrecognized device paths; use one `/dev/serial/by-id/...` symlink name for USB GPS receivers, `/dev/serial0` or `/dev/serial1` for Raspberry Pi UART GPS hardware, or `/dev/gps` for a managed stable alias.
 
 Configure chrony to use GPSD as a local time source:
 

@@ -121,11 +121,11 @@ device = parser.get("gps", "device", fallback="").strip()
 if not device or device == "/dev/serial/by-id/YOUR_GPS_DEVICE":
     raise SystemExit("gps.device must name the already configured GPS receiver when --skip-gpsd is used")
 by_id_prefix = "/dev/serial/by-id/"
-stable = (device.startswith(by_id_prefix) and device != by_id_prefix) or device in {
-    "/dev/serial0",
-    "/dev/serial1",
-    "/dev/gps",
-}
+if device.startswith(by_id_prefix):
+    suffix = device[len(by_id_prefix):]
+    stable = bool(suffix) and "/" not in suffix and suffix not in {".", ".."}
+else:
+    stable = device in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 name = Path(device).name
 if name.startswith(("ttyUSB", "ttyACM")):
     raise SystemExit("gps.device uses a volatile USB name; use /dev/serial/by-id/... instead")

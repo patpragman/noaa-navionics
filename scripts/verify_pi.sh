@@ -419,10 +419,12 @@ PY
 
 stable_gps_device_path() {
   case "$1" in
-    /dev/serial/by-id/)
-      return 1
+    /dev/serial/by-id/*)
+      local suffix="${1#/dev/serial/by-id/}"
+      [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." ]]
+      return
       ;;
-    /dev/serial/by-id/*|/dev/serial0|/dev/serial1|/dev/gps)
+    /dev/serial0|/dev/serial1|/dev/gps)
       return 0
       ;;
     *)

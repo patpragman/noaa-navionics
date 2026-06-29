@@ -721,7 +721,10 @@ def _split_shell_words(value: str) -> list[str]:
 
 def _stable_gps_device_path(path: str) -> bool:
     by_id_prefix = "/dev/serial/by-id/"
-    return (path.startswith(by_id_prefix) and path != by_id_prefix) or path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+    if path.startswith(by_id_prefix):
+        suffix = path[len(by_id_prefix) :]
+        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."}
+    return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
 def _volatile_usb_device_path(path: str) -> bool:

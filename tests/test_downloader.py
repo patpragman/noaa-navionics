@@ -254,6 +254,8 @@ class ConfigTests(unittest.TestCase):
             ("[gps]\nmode = gpsd\ndevice = /dev/ttyUSB0\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice = /dev/ttyAMA0\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/../ttyS0\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/mock/extra\n", "gps.device"),
             ("[gps]\nbaud = 12345\n", "gps.baud"),
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
             ("[gps]\nmode = gpsd\ngpsd_host = 192.168.1.10\n", "gps.gpsd_host"),
@@ -2586,6 +2588,10 @@ class GpsTests(unittest.TestCase):
 
     def test_stable_gps_device_path_rejects_bare_by_id_directory(self):
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/"))
+
+    def test_stable_gps_device_path_rejects_nested_by_id_path(self):
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/mock/extra"))
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/../ttyS0"))
 
     def test_check_gps_device_path_rejects_volatile_usb_name(self):
         with tempfile.TemporaryDirectory() as tmpdir:

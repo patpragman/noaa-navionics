@@ -235,7 +235,8 @@ grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
-grep -q '/dev/serial/by-id/)' scripts/verify_pi.sh
+grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh
+grep -Fq '"$suffix" != */*' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
 grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
@@ -249,7 +250,8 @@ grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
-grep -q '/dev/serial/by-id/)' scripts/configure_gpsd.sh
+grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
+grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -258,6 +260,7 @@ grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
@@ -348,6 +351,8 @@ grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
 grep -q 'gps.device is required when gps.mode is' src/noaa_navionics/config.py
 grep -q 'STABLE_GPS_DEVICE_PATHS' src/noaa_navionics/config.py
 grep -q 'def _stable_gps_device_path' src/noaa_navionics/config.py
+grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/config.py
+grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/health.py
 grep -q 'volatile USB name' src/noaa_navionics/config.py
 grep -q 'gps.device must be /dev/serial/by-id/' src/noaa_navionics/config.py
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
@@ -639,6 +644,26 @@ set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
   echo "expected configure_gpsd.sh to reject bare GPS by-id directory paths with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device /dev/serial/by-id/../ttyS0 >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject nested GPS by-id parent paths with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device /dev/serial/by-id/mock/extra >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject nested GPS by-id paths with exit 2" >&2
   exit 1
 fi
 
