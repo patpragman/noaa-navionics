@@ -116,6 +116,7 @@ grep -q 'noaa-navionics-configure-gps-time' scripts/install_raspberry_pi.sh
 ! grep -q 'systemctl --user enable noaa-navionics.timer' scripts/install_raspberry_pi.sh
 ! grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/install_raspberry_pi.sh
 ! grep -q 'systemctl --user enable noaa-navionics-track.service' scripts/install_raspberry_pi.sh
+! grep -q 'systemctl --user daemon-reload' scripts/install_raspberry_pi.sh
 ! grep -q 'loginctl enable-linger' scripts/install_raspberry_pi.sh
 grep -q 'User systemd unit files were installed but not enabled' scripts/install_raspberry_pi.sh
 grep -q 'Desktop autologin and chartplotter autostart are also configured by provisioning' scripts/install_raspberry_pi.sh

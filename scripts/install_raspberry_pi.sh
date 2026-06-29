@@ -159,8 +159,6 @@ sync_paths \
   "${systemd_user_dir}/noaa-navionics-track.service" \
   "${systemd_user_dir}/noaa-navionics-preflight.service"
 
-systemctl --user daemon-reload
-
 cat <<EOF
 Installed NOAA Navionics.
 
