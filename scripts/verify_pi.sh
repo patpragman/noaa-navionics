@@ -209,6 +209,15 @@ if expected_config_path:
         )
     if manifest.get("exists") is not True:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
+    for key in ("created_at", "package", "url", "sha256"):
+        if not str(manifest.get(key, "")).strip():
+            raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
+    try:
+        enc_cell_count = int(manifest.get("enc_cell_count", 0))
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"status report manifest ENC cell count invalid: {expected_manifest_path}") from exc
+    if enc_cell_count <= 0:
+        raise SystemExit(f"status report manifest has no ENC cells: {expected_manifest_path}")
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {

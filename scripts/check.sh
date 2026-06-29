@@ -118,6 +118,9 @@ grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
+grep -q 'status report manifest missing' scripts/verify_pi.sh
+grep -q 'status report manifest ENC cell count invalid' scripts/verify_pi.sh
+grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
 grep -q '"Time Sync"' scripts/verify_pi.sh
