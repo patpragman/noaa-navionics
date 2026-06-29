@@ -20,4 +20,4 @@ else
   sleep 8
 fi
 
-exec opencpn -D
+exec opencpn -parse_all_enc

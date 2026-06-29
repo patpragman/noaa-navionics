@@ -139,7 +139,7 @@ Register the chart directory in OpenCPN:
 noaa-navionics configure-opencpn
 ```
 
-This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, and leaves OpenCPN closed. The chartplotter launcher starts OpenCPN with `-D` so OpenCPN rescans the chart directories and rebuilds the chart database.
+This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, and leaves OpenCPN closed. The chartplotter launcher starts OpenCPN with `-parse_all_enc` so OpenCPN processes available S-57 ENC charts on start.
 
 ## Pre-Departure Check
 

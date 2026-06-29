@@ -228,7 +228,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"OpenCPN config: {result.config_path}")
             if result.backup_path:
                 print(f"Backup: {result.backup_path}")
-            print("Start OpenCPN with database rebuild: opencpn -D")
+            print("Start OpenCPN with ENC processing: opencpn -parse_all_enc")
             return 0
 
         if args.command == "preflight":
