@@ -579,8 +579,12 @@ grep -q 'not math.isfinite(seconds)' src/noaa_navionics/gps.py
 grep -q 'isinstance(time_value, str)' src/noaa_navionics/gps.py
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' README.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
+grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
+grep -q 'Skipping untimestamped track fix' src/noaa_navionics/cli.py
+grep -q 'skips invalid coordinates, untimestamped fixes, and weak satellite/HDOP fixes' README.md
+grep -q 'skips invalid coordinates, untimestamped fixes, and weak satellite/HDOP fixes' docs/sailboat-pi.md
 grep -q 'pending_without_quality' src/noaa_navionics/cli.py
 grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py

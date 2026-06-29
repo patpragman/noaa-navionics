@@ -339,13 +339,14 @@ class GPXTrackLogger:
             raise RuntimeError("GPXTrackLogger must be opened with a context manager")
         if fix.latitude is None or fix.longitude is None:
             return
+        if fix.timestamp is None:
+            return
         if gps_fix_quality_failure(fix):
             return
         self.file.write(f'    <trkpt lat="{fix.latitude:.8f}" lon="{fix.longitude:.8f}">\n')
         if fix.altitude_m is not None:
             self.file.write(f"      <ele>{fix.altitude_m:.2f}</ele>\n")
-        if fix.timestamp:
-            self.file.write(f"      <time>{fix.timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}</time>\n")
+        self.file.write(f"      <time>{fix.timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}</time>\n")
         self.file.write("    </trkpt>\n")
         self.file.flush()
         self._sync_to_disk()

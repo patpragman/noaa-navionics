@@ -540,6 +540,15 @@ def _trackable_fixes(fixes):
                 print(f"Skipping weak track fix: {quality_detail}", file=sys.stderr)
                 last_skip_detail = quality_detail
             continue
+        if fix.timestamp is None:
+            if pending_without_quality is not None:
+                yield pending_without_quality
+                pending_without_quality = None
+            detail = "fix has no timestamp; cannot write reliable GPX trackpoint"
+            if detail != last_skip_detail:
+                print(f"Skipping untimestamped track fix: {detail}", file=sys.stderr)
+                last_skip_detail = detail
+            continue
         last_skip_detail = ""
         if not gps_fix_has_quality_fields(fix):
             if pending_without_quality is not None:

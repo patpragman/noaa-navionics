@@ -3280,6 +3280,16 @@ class GpsTests(unittest.TestCase):
             self.assertNotIn("<trkpt", text)
             self.assertNotIn("nan", text)
 
+    def test_gpx_logger_skips_untimestamped_direct_fix(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "track.gpx"
+            with GPXTrackLogger(path, name="Test") as logger:
+                logger.append(fix)
+
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("<trkpt", text)
+
     def test_gpx_logger_syncs_track_file_and_directory_to_disk(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
         calls = []
@@ -3415,6 +3425,27 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fixes, [good])
         self.assertIn("Skipping weak track fix", stderr.getvalue())
 
+    def test_trackable_fixes_skip_untimestamped_quality_fix(self):
+        untimestamped = GPSFix(
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        timestamped = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 1, tzinfo=timezone.utc),
+            latitude=3.0,
+            longitude=4.0,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        with redirect_stderr(StringIO()) as stderr:
+            fixes = list(_trackable_fixes(iter([untimestamped, timestamped])))
+
+        self.assertEqual(fixes, [timestamped])
+        self.assertIn("Skipping untimestamped track fix", stderr.getvalue())
+
     def test_trackable_fixes_keep_position_only_fix(self):
         position_only = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
@@ -3456,6 +3487,32 @@ class GpsTests(unittest.TestCase):
             fixes = list(_trackable_fixes(iter([position_only, weak])))
 
         self.assertEqual(fixes, [])
+
+    def test_trackable_fixes_drop_untimestamped_position_only_fix(self):
+        untimestamped = GPSFix(latitude=1.0, longitude=2.0)
+        timestamped = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 1, tzinfo=timezone.utc),
+            latitude=3.0,
+            longitude=4.0,
+        )
+
+        with redirect_stderr(StringIO()):
+            fixes = list(_trackable_fixes(iter([untimestamped, timestamped])))
+
+        self.assertEqual(fixes, [timestamped])
+
+    def test_trackable_fixes_keep_pending_timestamped_fix_before_untimestamped_fix(self):
+        timestamped = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+        )
+        untimestamped = GPSFix(latitude=3.0, longitude=4.0)
+
+        with redirect_stderr(StringIO()):
+            fixes = list(_trackable_fixes(iter([timestamped, untimestamped])))
+
+        self.assertEqual(fixes, [timestamped])
 
     def test_shared_gps_quality_rejects_high_hdop(self):
         fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=9.9)
