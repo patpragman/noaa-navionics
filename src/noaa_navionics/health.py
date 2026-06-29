@@ -12,7 +12,7 @@ import tempfile
 import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream
-from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest
+from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest, sha256_file
 from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
 
 
@@ -239,7 +239,43 @@ def check_chart_manifest(
                 False,
                 f"manifest package {actual_detail} does not match configured {expected_filename}",
             )
+    archive_check = _check_manifest_archive(path, manifest)
+    if archive_check is not None:
+        return archive_check
     return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
+
+
+def _check_manifest_archive(chart_dir: Path, manifest: dict[str, object]) -> Optional[CheckResult]:
+    download = manifest.get("download", {})
+    if not isinstance(download, dict):
+        return CheckResult("Manifest", False, "manifest has no download section")
+    archive_path_text = str(download.get("path", "")).strip()
+    if not archive_path_text:
+        return None
+    archive_path = Path(archive_path_text).expanduser()
+    try:
+        archive_path.resolve().relative_to(chart_dir.resolve())
+    except ValueError:
+        return CheckResult("Manifest", False, f"manifest download path is outside chart directory: {archive_path}")
+    if not archive_path.exists():
+        return None
+    try:
+        expected_bytes = int(download.get("bytes", 0))
+    except (TypeError, ValueError):
+        return CheckResult("Manifest", False, "manifest has invalid download byte count")
+    actual_bytes = archive_path.stat().st_size
+    if expected_bytes > 0 and actual_bytes != expected_bytes:
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest recorded {expected_bytes} downloaded bytes but {archive_path} has {actual_bytes}",
+        )
+    expected_sha256 = str(download.get("sha256", "")).strip().lower()
+    if expected_sha256:
+        actual_sha256 = sha256_file(archive_path)
+        if actual_sha256.lower() != expected_sha256:
+            return CheckResult("Manifest", False, f"manifest SHA-256 does not match {archive_path}")
+    return None
 
 
 def _expected_manifest_filename(package: str, value: str = "") -> str:
