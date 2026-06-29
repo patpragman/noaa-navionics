@@ -1239,6 +1239,31 @@ class GpsTests(unittest.TestCase):
             self.assertIn('lat="1.00000000"', text)
             self.assertTrue(text.endswith("</gpx>\n"))
 
+    def test_log_single_track_does_not_create_file_without_fixes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "track.gpx"
+            with redirect_stdout(StringIO()):
+                count = _log_single_track(iter([]), output, deadline=None, sample=True)
+
+            self.assertEqual(count, 0)
+            self.assertFalse(output.exists())
+
+    def test_log_single_track_does_not_create_file_for_only_weak_fixes(self):
+        weak = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=3,
+            hdop=1.2,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "track.gpx"
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                count = _log_single_track(_trackable_fixes(iter([weak])), output, deadline=None, sample=True)
+
+            self.assertEqual(count, 0)
+            self.assertFalse(output.exists())
+
     def test_trackable_fixes_skip_reported_weak_quality(self):
         weak = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),

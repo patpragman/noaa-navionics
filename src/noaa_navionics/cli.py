@@ -488,8 +488,12 @@ def _raise_track_logger_stop(signum, frame) -> None:
 
 def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:
     count = 0
-    with GPXTrackLogger(output) as logger:
+    logger: Optional[GPXTrackLogger] = None
+    try:
         for fix in fixes:
+            if logger is None:
+                logger = GPXTrackLogger(output)
+                logger.__enter__()
             logger.append(fix)
             count += 1
             print(_format_fix(fix))
@@ -497,6 +501,9 @@ def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample:
                 break
             if sample:
                 continue
+    finally:
+        if logger is not None:
+            logger.__exit__(None, None, None)
     return count
 
 
