@@ -1337,6 +1337,23 @@ class ManifestTests(unittest.TestCase):
 
             self.assertEqual(lock.read_text(encoding="ascii"), "new owner\n")
 
+    def test_download_lock_syncs_create_and_cleanup(self):
+        calls = []
+        original_fsync = downloader_module.os.fsync
+        downloader_module.os.fsync = lambda fd: calls.append(fd)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                lock = root / DOWNLOAD_LOCK_NAME
+
+                with downloader_module._chart_update_lock(root):
+                    self.assertTrue(lock.exists())
+                self.assertFalse(lock.exists())
+        finally:
+            downloader_module.os.fsync = original_fsync
+
+        self.assertGreaterEqual(len(calls), 3)
+
     def test_stale_manifest_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -430,11 +430,14 @@ def _chart_update_lock(output_path: Path):
         try:
             lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
             os.write(lock_fd, lock_text.encode("ascii"))
+            os.fsync(lock_fd)
+            _fsync_directory(output_path)
             break
         except FileExistsError as exc:
             if _lock_is_stale(lock_path):
                 try:
                     lock_path.unlink()
+                    _fsync_directory(output_path)
                 except FileNotFoundError:
                     continue
                 except OSError:
@@ -449,6 +452,7 @@ def _chart_update_lock(output_path: Path):
         try:
             if lock_path.read_text(encoding="ascii", errors="ignore") == lock_text:
                 lock_path.unlink()
+                _fsync_directory(output_path)
         except FileNotFoundError:
             pass
 
