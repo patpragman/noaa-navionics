@@ -197,6 +197,8 @@ Expected checks:
 - OpenCPN configured with the chart directory
 - OpenCPN configured with the GPSD network connection
 - At least 2 GB free disk space
+- No active Raspberry Pi under-voltage or throttling
+- Raspberry Pi temperature below the hard limit
 - Valid GPSD fix
 
 If any check fails, treat the Pi as not ready.

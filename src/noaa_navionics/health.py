@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 import importlib.util
 import shutil
+import subprocess
 import sys
 import time
 
@@ -40,6 +41,8 @@ def run_preflight(
         check_chart_manifest(chart_dir, max_age_days=max_chart_age_days),
         check_opencpn_chart_config(chart_dir),
         check_disk_space(chart_dir),
+        check_pi_throttling(),
+        check_pi_temperature(),
     ]
     if gpsd:
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
@@ -154,6 +157,53 @@ def check_disk_space(chart_dir: Path) -> CheckResult:
     return CheckResult("Disk", ok, f"{free_gb:.1f} GB free at {existing}")
 
 
+def check_pi_throttling() -> CheckResult:
+    vcgencmd = shutil.which("vcgencmd")
+    if vcgencmd is None:
+        return CheckResult("Pi Power", True, "vcgencmd not found; skipping Raspberry Pi throttling check")
+    try:
+        completed = subprocess.run(
+            [vcgencmd, "get_throttled"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception as exc:
+        return CheckResult("Pi Power", False, f"vcgencmd get_throttled failed: {exc}")
+    output = completed.stdout.strip() or completed.stderr.strip()
+    if completed.returncode != 0:
+        return CheckResult("Pi Power", False, f"vcgencmd get_throttled failed: {output}")
+    value = _parse_throttled_value(output)
+    if value is None:
+        return CheckResult("Pi Power", False, f"unexpected throttling output: {output}")
+    active = []
+    historical = []
+    for bit, label in _THROTTLE_BITS.items():
+        if value & (1 << bit):
+            if bit < 16:
+                active.append(label)
+            else:
+                historical.append(label)
+    if active:
+        return CheckResult("Pi Power", False, "active throttling: " + ", ".join(active))
+    if historical:
+        return CheckResult("Pi Power", True, "healthy now; historical events: " + ", ".join(historical))
+    return CheckResult("Pi Power", True, "no under-voltage or throttling reported")
+
+
+def check_pi_temperature(*, warn_c: float = 70.0, fail_c: float = 80.0) -> CheckResult:
+    temperature = _read_pi_temperature()
+    if temperature is None:
+        return CheckResult("Pi Thermal", True, "temperature sensor not found; skipping Raspberry Pi thermal check")
+    if temperature >= fail_c:
+        return CheckResult("Pi Thermal", False, f"{temperature:.1f} C; above {fail_c:.0f} C limit")
+    if temperature >= warn_c:
+        return CheckResult("Pi Thermal", True, f"{temperature:.1f} C; warm, check airflow and enclosure")
+    return CheckResult("Pi Thermal", True, f"{temperature:.1f} C")
+
+
 def check_gps_sample(sample: Path) -> CheckResult:
     path = Path(sample).expanduser()
     if not path.exists():
@@ -224,5 +274,39 @@ def _parse_manifest_time(value: str) -> Optional[datetime]:
         return None
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+_THROTTLE_BITS = {
+    0: "under-voltage",
+    1: "frequency capped",
+    2: "currently throttled",
+    3: "soft temperature limit active",
+    16: "under-voltage occurred",
+    17: "frequency cap occurred",
+    18: "throttling occurred",
+    19: "soft temperature limit occurred",
+}
+
+
+def _parse_throttled_value(output: str) -> Optional[int]:
+    if "=" not in output:
+        return None
+    value = output.split("=", 1)[1].strip()
+    try:
+        return int(value, 16 if value.lower().startswith("0x") else 10)
+    except ValueError:
+        return None
+
+
+def _read_pi_temperature() -> Optional[float]:
+    path = Path("/sys/class/thermal/thermal_zone0/temp")
+    try:
+        raw = path.read_text(encoding="ascii").strip()
+    except OSError:
+        return None
+    try:
+        return float(raw) / 1000
     except ValueError:
         return None

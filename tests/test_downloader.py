@@ -5,6 +5,7 @@ import tempfile
 import textwrap
 import unittest
 import zipfile
+import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -25,6 +26,8 @@ from noaa_navionics.health import (
     check_gps_sample,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
+    check_pi_throttling,
+    _parse_throttled_value,
 )
 from noaa_navionics.opencpn import (
     chart_directory_configured,
@@ -452,6 +455,43 @@ class GpsTests(unittest.TestCase):
             cell.write_text("", encoding="ascii")
             extracted_result = check_chart_dir(root)
             self.assertTrue(extracted_result.ok)
+
+
+class PiHealthTests(unittest.TestCase):
+    def test_parse_throttled_value(self):
+        self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)
+        self.assertEqual(_parse_throttled_value("throttled=3"), 3)
+        self.assertIsNone(_parse_throttled_value("not-throttled"))
+
+    def test_check_pi_throttling_reports_active_under_voltage(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "vcgencmd"
+            fake.write_text("#!/bin/sh\necho throttled=0x1\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                result = check_pi_throttling()
+            finally:
+                os.environ["PATH"] = original_path
+            self.assertFalse(result.ok)
+            self.assertIn("under-voltage", result.detail)
+
+    def test_check_pi_throttling_allows_historical_events(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "vcgencmd"
+            fake.write_text("#!/bin/sh\necho throttled=0x50000\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                result = check_pi_throttling()
+            finally:
+                os.environ["PATH"] = original_path
+            self.assertTrue(result.ok)
+            self.assertIn("historical", result.detail)
 
 
 if __name__ == "__main__":
