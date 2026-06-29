@@ -72,7 +72,7 @@ def run_preflight(
         if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
             results.append(check_gps_device_path(gps_device))
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
-        results.append(check_chrony_gps_time_source())
+        results.append(check_chrony_gps_time_source(seconds=gps_seconds))
         results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
@@ -162,12 +162,24 @@ def check_display_power_tool() -> CheckResult:
     )
 
 
-def check_chrony_gps_time_source() -> CheckResult:
+def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float = 1.0) -> CheckResult:
     if not _is_raspberry_pi():
         return CheckResult("GPS Time Source", True, "not a Raspberry Pi; skipping chrony GPS source check")
     chronyc = shutil.which("chronyc")
     if chronyc is None:
         return CheckResult("GPS Time Source", False, "chronyc not found; install chrony")
+    deadline = time.monotonic() + max(0.0, seconds)
+    result = _check_chrony_gps_time_source_once(chronyc)
+    while not result.ok and time.monotonic() < deadline:
+        remaining = max(0.0, deadline - time.monotonic())
+        time.sleep(min(max(0.01, poll_interval), remaining))
+        result = _check_chrony_gps_time_source_once(chronyc)
+    if not result.ok and seconds > 0:
+        return CheckResult(result.name, False, f"{result.detail} within {seconds:.0f}s")
+    return result
+
+
+def _check_chrony_gps_time_source_once(chronyc: str) -> CheckResult:
     try:
         completed = subprocess.run(
             [chronyc, "sources", "-n"],

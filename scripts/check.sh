@@ -63,6 +63,7 @@ grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
+grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
@@ -112,6 +113,7 @@ grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
+grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/health.py
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py

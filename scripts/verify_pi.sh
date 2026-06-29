@@ -286,6 +286,22 @@ wait_for_chartplotter_started() {
   done
 }
 
+wait_for_chrony_gps_source() {
+  local deadline=$((SECONDS + gps_seconds))
+  local output=""
+  while true; do
+    output="$(chronyc sources -n 2>&1 || true)"
+    if printf '%s\n' "$output" | grep -Eq '^#[*+-].*GPS'; then
+      return 0
+    fi
+    if [[ "$SECONDS" -ge "$deadline" ]]; then
+      printf '%s\n' "${output:-chrony did not report a usable GPS source}" >&2
+      return 1
+    fi
+    sleep 1
+  done
+}
+
 arch="$(uname -m)"
 case "$arch" in
   armv7l|aarch64)
@@ -348,7 +364,7 @@ check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
 check "Chrony GPSD time source" grep -Fq 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' /etc/chrony/chrony.conf
-check "Chrony usable GPS source" sh -c "chronyc sources -n 2>/dev/null | grep -Eq '^#[*+-].*GPS'"
+check "Chrony usable GPS source" wait_for_chrony_gps_source
 check "GPSD command" command -v gpsd
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD config" test -f /etc/default/gpsd

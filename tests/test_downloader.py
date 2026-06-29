@@ -1965,7 +1965,7 @@ class PiHealthTests(unittest.TestCase):
             try:
                 os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
-                result = check_chrony_gps_time_source()
+                result = check_chrony_gps_time_source(seconds=0)
             finally:
                 os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
@@ -1992,6 +1992,44 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("not usable", result.detail)
 
+    def test_check_chrony_gps_time_source_waits_for_later_usable_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            counter = root / "count"
+            fake = bin_dir / "chronyc"
+            fake.write_text(
+                "#!/bin/sh\n"
+                f"count_file='{counter}'\n"
+                'if [ -f "$count_file" ]; then\n'
+                '  IFS= read -r count <"$count_file"\n'
+                "else\n"
+                "  count=0\n"
+                "fi\n"
+                'count=$((count + 1))\n'
+                'echo "$count" >"$count_file"\n'
+                'if [ "$count" -lt 2 ]; then\n'
+                "  echo '#? GPS 0 4 0 - +0ns[ +0ns] +/- 0ns'\n"
+                "else\n"
+                "  echo '#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms'\n"
+                "fi\n",
+                encoding="ascii",
+            )
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_source(seconds=1, poll_interval=0.01)
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertEqual(counter.read_text(encoding="ascii").strip(), "2")
+
     def test_check_chrony_gps_time_source_reports_missing_gps_refclock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             bin_dir = Path(tmpdir)
@@ -2003,7 +2041,7 @@ class PiHealthTests(unittest.TestCase):
             try:
                 os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
-                result = check_chrony_gps_time_source()
+                result = check_chrony_gps_time_source(seconds=0)
             finally:
                 os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
