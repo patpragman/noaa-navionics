@@ -1991,6 +1991,26 @@ class ManifestTests(unittest.TestCase):
 
             self.assertTrue(lock.exists())
 
+    def test_download_lock_rejects_symlinked_lock_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "lock-target"
+            target.write_text("stale\n", encoding="ascii")
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(target, (old_time, old_time))
+            lock = root / DOWNLOAD_LOCK_NAME
+            try:
+                lock.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            package = Package("Locked test", "https://example.invalid/chart.zip", "chart.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart update lock path is a symlink"):
+                download_package(package, root)
+
+            self.assertTrue(lock.is_symlink())
+            self.assertEqual(target.read_text(encoding="ascii"), "stale\n")
+
     def test_stale_download_lock_is_replaced(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

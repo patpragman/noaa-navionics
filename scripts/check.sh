@@ -828,6 +828,8 @@ grep -q 'boot_id' src/noaa_navionics/report.py
 grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
+grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
+grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
 grep -q 'partial download already exists; remove interrupted chart update debris' src/noaa_navionics/downloader.py
 grep -q 'chart archive path is a symlink' src/noaa_navionics/downloader.py

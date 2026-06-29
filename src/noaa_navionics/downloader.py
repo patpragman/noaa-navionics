@@ -451,6 +451,8 @@ def _chart_update_lock(output_path: Path):
             _fsync_directory(output_path)
             break
         except FileExistsError as exc:
+            if lock_path.is_symlink():
+                raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
             if _lock_is_stale(lock_path):
                 try:
                     lock_path.unlink()
@@ -467,6 +469,8 @@ def _chart_update_lock(output_path: Path):
         if lock_fd is not None:
             os.close(lock_fd)
         try:
+            if lock_path.is_symlink():
+                return
             if lock_path.read_text(encoding="ascii", errors="ignore") == lock_text:
                 lock_path.unlink()
                 _fsync_directory(output_path)
