@@ -112,6 +112,8 @@ grep -q 'tracking.output' scripts/verify_pi.sh
 grep -q '<trkpt\\b' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
+grep -q 'launcher log does not contain OpenCPN launch or duplicate marker' scripts/verify_pi.sh
+grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh

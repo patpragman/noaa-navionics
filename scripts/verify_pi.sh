@@ -347,13 +347,13 @@ if not path.exists():
 text = path.read_text(encoding="utf-8", errors="replace")
 startup_marker = "Starting NOAA Navionics chartplotter launcher"
 launch_marker = "Launching OpenCPN with ENC processing."
+duplicate_marker = "OpenCPN is already running; leaving the existing chartplotter instance in place."
 startup_index = text.rfind(startup_marker)
-launch_index = text.rfind(launch_marker)
 if startup_index < 0:
     raise SystemExit("launcher log does not contain startup marker")
-if launch_index < startup_index:
-    raise SystemExit("launcher log does not contain OpenCPN launch marker")
 latest_startup = text[startup_index:]
+if launch_marker not in latest_startup and duplicate_marker not in latest_startup:
+    raise SystemExit("launcher log does not contain OpenCPN launch or duplicate marker")
 if "xset command(s) failed" in latest_startup:
     raise SystemExit("launcher failed to disable one or more display power settings")
 if "xset is unavailable" in latest_startup:
@@ -383,7 +383,7 @@ PY
 }
 
 opencpn_running() {
-  pgrep -x opencpn >/dev/null
+  pgrep -u "$(id -u)" -x opencpn >/dev/null
 }
 
 wait_for_chartplotter_started() {
