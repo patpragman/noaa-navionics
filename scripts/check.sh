@@ -140,6 +140,7 @@ grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q 'write_remote_source_revision' scripts/deploy_to_pi.sh
 grep -q 'Refusing source revision write because {label} has permissions' scripts/deploy_to_pi.sh
 grep -q 'Refusing to replace symlink source revision file' scripts/deploy_to_pi.sh
+grep -q 'Refusing source revision write under symlinked deployment path' scripts/deploy_to_pi.sh
 grep -q 'Deployment directory is not ready for source revision write' scripts/deploy_to_pi.sh
 grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
@@ -158,6 +159,7 @@ grep -q 'remote_previous_dir="${remote_dir_trimmed}.previous"' scripts/deploy_to
 grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
+grep -q 'Refusing deployment path under symlink' scripts/deploy_to_pi.sh
 grep -q 'expected no group/other write bits' scripts/deploy_to_pi.sh
 grep -q 'Deployment staging directory is not ready' scripts/deploy_to_pi.sh
 grep -q 'Refusing to promote deployment staging outside deployment parent' scripts/deploy_to_pi.sh

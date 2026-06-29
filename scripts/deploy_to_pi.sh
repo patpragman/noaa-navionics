@@ -354,12 +354,23 @@ import tempfile
 repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
 revision = os.environ['NOAA_NAVIONICS_SOURCE_REVISION'].strip() or 'unknown'
 expected_uid = os.getuid()
+
+def first_symlink_ancestor(path):
+    current = path.expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
 if repo.is_symlink():
     raise SystemExit(f'Refusing to write source revision through symlink deployment directory: {repo}')
 if not repo.exists() or not repo.is_dir():
     raise SystemExit(f'Deployment directory is not ready for source revision write: {repo}')
 if repo.parent.is_symlink():
     raise SystemExit(f'Refusing source revision write under symlink parent: {repo.parent}')
+symlink_component = first_symlink_ancestor(repo.parent)
+if symlink_component is not None:
+    raise SystemExit(f'Refusing source revision write under symlinked deployment path: {symlink_component}')
 for path, label in ((repo.parent, 'deployment parent'), (repo, 'deployment directory')):
     stat_result = path.stat()
     mode = stat_result.st_mode & 0o777
@@ -439,6 +450,14 @@ repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
 staging = Path(os.environ['NOAA_NAVIONICS_STAGING_DIR']).expanduser()
 previous = Path(os.environ['NOAA_NAVIONICS_PREVIOUS_DIR']).expanduser()
 name = repo.name
+
+def first_symlink_ancestor(path):
+    current = path.expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
 valid_name = (
     name == 'noaa-navionics'
     or name.startswith('noaa-navionics-')
@@ -465,6 +484,9 @@ def validate_deployment_parent() -> None:
     parent = repo.parent
     if parent.is_symlink():
         raise SystemExit(f'Refusing deployment parent symlink: {parent}')
+    symlink_component = first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise SystemExit(f'Refusing deployment path under symlink: {symlink_component}')
     if not parent.exists():
         parent.mkdir(parents=True, exist_ok=True)
     if not parent.is_dir():
@@ -528,10 +550,20 @@ repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
 staging = Path(os.environ['NOAA_NAVIONICS_STAGING_DIR']).expanduser()
 previous = Path(os.environ['NOAA_NAVIONICS_PREVIOUS_DIR']).expanduser()
 
+def first_symlink_ancestor(path):
+    current = path.expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
 def validate_deployment_parent() -> None:
     parent = repo.parent
     if parent.is_symlink():
         raise SystemExit(f'Refusing deployment parent symlink: {parent}')
+    symlink_component = first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise SystemExit(f'Refusing deployment path under symlink: {symlink_component}')
     if not parent.exists() or not parent.is_dir():
         raise SystemExit(f'Deployment parent is not ready: {parent}')
     stat_result = parent.stat()
