@@ -378,6 +378,8 @@ run() {
 
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
+autostart_dir="${HOME}/.config/autostart"
+autostart_entry="${autostart_dir}/noaa-navionics-chartplotter.desktop"
 systemd_user_dir="${HOME}/.config/systemd/user"
 chart_service="${systemd_user_dir}/noaa-navionics.service"
 chart_timer="${systemd_user_dir}/noaa-navionics.timer"
@@ -431,6 +433,9 @@ fi
 run "$bin" configure-opencpn --config "$config"
 
 if [[ "$skip_autologin" -eq 0 ]]; then
+  run mkdir -p "$autostart_dir"
+  run install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
+  run sync_paths "$autostart_entry"
   desktop_args=(--user "$USER")
   if [[ "$allow_non_pi" -eq 1 ]]; then
     desktop_args+=(--allow-non-pi)

@@ -4,15 +4,12 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 config_dir="${HOME}/.config/noaa-navionics"
 systemd_user_dir="${HOME}/.config/systemd/user"
-autostart_dir="${HOME}/.config/autostart"
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 data_dir="${HOME}/.local/share/noaa-navionics"
 revision_file="${data_dir}/source-revision"
 
 skip_apt=0
-enable_services=1
 allow_non_pi=0
-configure_autologin=1
 
 sync_paths() {
   python3 - "$@" <<'PY'
@@ -79,11 +76,9 @@ for arg in "$@"; do
     --skip-apt)
       skip_apt=1
       ;;
-    --no-services)
-      enable_services=0
-      ;;
-    --skip-autologin)
-      configure_autologin=0
+    --no-services|--skip-autologin)
+      # Accepted for deploy-script compatibility. Unattended startup is
+      # configured only by provisioning after GPSD and charts are commissioned.
       ;;
     --allow-non-pi)
       allow_non_pi=1
@@ -94,14 +89,6 @@ for arg in "$@"; do
       ;;
   esac
 done
-
-if [[ "$enable_services" -eq 0 && "$configure_autologin" -eq 1 ]]; then
-  cat >&2 <<'EOF'
---no-services requires --skip-autologin.
-Skipping only user services can leave desktop chartplotter autostart enabled without the readiness and track-logging services.
-EOF
-  exit 2
-fi
 
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
@@ -155,7 +142,7 @@ else
 fi
 sync_paths "$revision_file"
 
-mkdir -p "$config_dir" "$systemd_user_dir" "$autostart_dir"
+mkdir -p "$config_dir" "$systemd_user_dir"
 if [[ ! -f "${config_dir}/config.ini" ]]; then
   "${HOME}/.local/bin/noaa-navionics" init-config --config "${config_dir}/config.ini"
 fi
@@ -166,21 +153,11 @@ cp "${repo_root}/systemd/noaa-navionics.service" \
    "${repo_root}/systemd/noaa-navionics-preflight.service" \
    "$systemd_user_dir/"
 
-install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
 sync_paths \
   "${systemd_user_dir}/noaa-navionics.service" \
   "${systemd_user_dir}/noaa-navionics.timer" \
   "${systemd_user_dir}/noaa-navionics-track.service" \
-  "${systemd_user_dir}/noaa-navionics-preflight.service" \
-  "${autostart_dir}/noaa-navionics-chartplotter.desktop"
-
-if [[ "$configure_autologin" -eq 1 ]]; then
-  autologin_args=()
-  if [[ "$allow_non_pi" -eq 1 ]]; then
-    autologin_args+=(--allow-non-pi)
-  fi
-  "${repo_root}/scripts/configure_desktop_autologin.sh" --user "$USER" "${autologin_args[@]}"
-fi
+  "${systemd_user_dir}/noaa-navionics-preflight.service"
 
 systemctl --user daemon-reload
 
@@ -189,6 +166,8 @@ Installed NOAA Navionics.
 
 User systemd unit files were installed but not enabled. Provisioning enables
 them after GPSD, charts, and the onboard config are commissioned.
+Desktop autologin and chartplotter autostart are also configured by provisioning
+after commissioning succeeds.
 
 Next steps:
 1. Edit ${config_dir}/config.ini for your cruising area and GPS.

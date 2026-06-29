@@ -33,7 +33,7 @@ scripts/install_raspberry_pi.sh
 
 For headless use, `python3-tk` is optional.
 For chartplotter use, use Raspberry Pi OS with Desktop/LightDM so OpenCPN can launch on the attached display after power-up.
-The Raspberry Pi installer installs OpenCPN, GPSD, chrony, LightDM, and X11 display-power utilities on the Pi with noninteractive apt calls, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, configures graphical autologin for the installing user, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
+The Raspberry Pi installer installs OpenCPN, GPSD, chrony, LightDM, and X11 display-power utilities on the Pi with noninteractive apt calls, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm. Provisioning configures graphical autologin only after GPSD, charts, and the onboard config are commissioned.
 
 ## Tkinter GUI
 
@@ -152,7 +152,7 @@ scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 Use a single `/dev/serial/by-id/...` symlink name when possible; config validation, GPSD setup, and verification fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, reject nested by-id paths, require the configured path to be a character device when device checks are enabled, and reject unrecognized device paths that are not one of the documented stable aliases.
-The installer syncs installed command symlinks, launchers, source revision, desktop autostart, and user systemd unit files to disk. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement. `scripts/configure_gps_time.sh` backs up and syncs `/etc/chrony/chrony.conf`, adds a managed GPSD `SHM 0` refclock block, restarts chrony, then restarts GPSD so the daemons reconnect in the right order.
+The installer syncs installed command symlinks, launchers, source revision, and user systemd unit files to disk. Provisioning syncs the desktop autostart entry after commissioning succeeds. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement. `scripts/configure_gps_time.sh` backs up and syncs `/etc/chrony/chrony.conf`, adds a managed GPSD `SHM 0` refclock block, restarts chrony, then restarts GPSD so the daemons reconnect in the right order.
 
 On the Pi, `status-report` writes a JSON readiness artifact:
 
@@ -181,7 +181,7 @@ When an X desktop session is present, the launcher also asks the display server 
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
 If readiness fails in a desktop session, the launcher shows a Tkinter warning listing failed checks and the status report path before starting OpenCPN anyway.
 If those display power commands fail during chartplotter autostart, or if the current-boot launcher log shows OpenCPN already exited, the strict Pi startup verifier fails the dock test.
-The installer and provisioning script configure LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Use `--skip-autologin` only for deliberate headless or development deployments.
+The provisioning script configures LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 Create the onboard config:
 
@@ -238,7 +238,7 @@ The track logger service uses a generous start-limit window so delayed GPSD or G
 
 A user-level systemd timer is included in `systemd/`.
 The installer copies the chart refresh timer and track logger unit files but leaves them disabled. The Pi provisioning script enables user lingering, reloads refreshed unit files, clears stale failed states for the track logger and boot readiness service, starts the chart refresh timer, restarts the track logger after GPSD setup, and starts the boot readiness service immediately so updated service settings are applied only after the onboard config, charts, and GPSD are commissioned. The timer, readiness service, and track logger can then run after reboot without an interactive login.
-The installer and provisioning script also configure the Pi to boot to `graphical.target` and autologin through LightDM as the deployed user, so the desktop autostart entry can bring up OpenCPN after a power cycle.
+The provisioning script also configures the Pi to boot to `graphical.target` and autologin through LightDM as the deployed user, so the desktop autostart entry can bring up OpenCPN after a power cycle.
 The included chart sync service retries transient network failures, allows up to two hours for slow NOAA downloads, and asks systemd for delayed retry attempts if the whole run still fails.
 
 ```bash
