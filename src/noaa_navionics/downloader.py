@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+from http.client import HTTPException, IncompleteRead
 from pathlib import Path
 from typing import Callable, Iterable, Optional, Union
 from urllib.error import HTTPError, URLError
@@ -298,7 +299,7 @@ def _download_package_unlocked(
                     os.fsync(target.fileno())
                 if total is not None and written != total:
                     raise URLError(f"incomplete download: received {written} of {total} bytes")
-        except (HTTPError, URLError, TimeoutError) as exc:
+        except (HTTPError, URLError, TimeoutError, ConnectionError, HTTPException, OSError) as exc:
             if tmp_path.exists():
                 tmp_path.unlink()
             if attempt < retries and _retryable_download_error(exc):
@@ -753,6 +754,8 @@ def _content_length(response: object) -> Optional[int]:
 def _retryable_download_error(exc: BaseException) -> bool:
     if isinstance(exc, HTTPError):
         return exc.code in {408, 429, 500, 502, 503, 504}
+    if isinstance(exc, (ConnectionError, IncompleteRead, HTTPException)):
+        return True
     return isinstance(exc, (URLError, TimeoutError))
 
 

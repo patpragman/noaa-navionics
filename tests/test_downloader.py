@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import redirect_stderr, redirect_stdout
+from http.client import IncompleteRead
 from io import BytesIO, StringIO
 from urllib.error import URLError
 import json
@@ -1345,6 +1346,41 @@ class ManifestTests(unittest.TestCase):
                 result = download_package(package, Path(tmpdir), retries=2, retry_delay=0)
                 self.assertEqual(result.path.read_bytes(), b"chart")
                 self.assertEqual(result.bytes_written, 5)
+        finally:
+            downloader_module.urlopen = original
+
+        self.assertEqual(calls["count"], 2)
+
+    def test_download_retries_read_level_incomplete_response_and_cleans_partial(self):
+        calls = {"count": 0}
+        original = downloader_module.urlopen
+
+        class BrokenReadResponse:
+            headers = {"Content-Length": "5"}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def read(self, size=-1):
+                raise IncompleteRead(b"cha", 5)
+
+        def fake_urlopen(request, timeout=60):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return BrokenReadResponse()
+            return self.FakeResponse(b"chart")
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                package = Package("Retry test", "https://example.invalid/chart.zip", "chart.zip")
+                result = download_package(package, root, retries=2, retry_delay=0)
+                self.assertEqual(result.path.read_bytes(), b"chart")
+                self.assertFalse((root / "chart.zip.part").exists())
         finally:
             downloader_module.urlopen = original
 
