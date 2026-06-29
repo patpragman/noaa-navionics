@@ -162,9 +162,13 @@ required_checks = {
 }
 required_service_checks = {
     "Chart Sync",
+    "Chart Sync Settings",
     "Chart Timer",
+    "Chart Timer Settings",
     "Track Logger",
+    "Track Logger Settings",
     "Boot Readiness",
+    "Boot Readiness Settings",
     "GPSD Service",
     "Chrony Service",
 }

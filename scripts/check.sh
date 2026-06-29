@@ -80,6 +80,10 @@ grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
+grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
+grep -q '"Chart Timer Settings"' scripts/verify_pi.sh
+grep -q '"Track Logger Settings"' scripts/verify_pi.sh
+grep -q '"Boot Readiness Settings"' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
