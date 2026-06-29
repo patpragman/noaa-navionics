@@ -1029,6 +1029,15 @@ if not session_file.is_file():
 PY
 }
 
+check_tkinter_available() {
+  python3 - <<'PY'
+try:
+    import tkinter  # noqa: F401
+except Exception as exc:
+    raise SystemExit(f"Tkinter import failed: {exc}") from exc
+PY
+}
+
 check_chrony_gps_time_config() {
   python3 - <<'PY'
 from pathlib import Path
@@ -1692,6 +1701,7 @@ if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "
 fi
 check "OpenCPN command" command -v opencpn
 check "display power command" command -v xset
+check "Tkinter readiness warning support" check_tkinter_available
 check "process lookup command" command -v pgrep
 check "Pi power command" command -v vcgencmd
 check "Chrony command" command -v chronyc

@@ -71,6 +71,9 @@ grep -q 'prepare_private_cache_dir' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
+grep -q 'check_tkinter_available' scripts/verify_pi.sh
+grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
+grep -q 'python3-tk' scripts/install_raspberry_pi.sh
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
