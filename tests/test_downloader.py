@@ -546,9 +546,10 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue((output / MANIFEST_NAME).exists())
             manifest = read_manifest(output)
             self.assertEqual(manifest["package"]["label"], "Test package")
+            self.assertEqual(manifest["package"]["url"], source_zip.as_uri())
             self.assertEqual(manifest["download"]["sha256"], result.sha256)
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
-            self.assertTrue(check_chart_manifest(output, expected_package="state", expected_value="AK").ok)
+            self.assertTrue(check_chart_manifest(output).ok)
 
     def test_existing_zip_extract_respects_no_keep_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -782,7 +783,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (root / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 '"download":{"sha256":"abc"},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -792,6 +794,28 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("does not match configured CA_ENCs.zip", result.detail)
+
+    def test_manifest_package_url_mismatch_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip","url":"https://example.invalid/AK_ENCs.zip"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest package URL", result.detail)
+            self.assertIn("https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", result.detail)
 
     def test_manifest_fails_when_other_extracted_enc_directory_remains(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -807,7 +831,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (root / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 '"download":{"sha256":"abc"},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -831,7 +856,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (root / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 f'"download":{{"path":"{archive}","bytes":7,"sha256":"abc"}},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -855,7 +881,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (root / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 f'"download":{{"path":"{archive}","bytes":99,"sha256":"{digest}"}},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -879,7 +906,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (root / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 f'"download":{{"path":"{archive}","bytes":0,"sha256":"{digest}"}},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -902,7 +930,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (root / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 f'"download":{{"path":"{archive}","bytes":{archive.stat().st_size},"sha256":""}},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -928,7 +957,8 @@ class ManifestTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (charts / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 f'"download":{{"path":"{outside}","bytes":5,"sha256":"{digest}"}},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -2342,7 +2372,8 @@ class GpsTests(unittest.TestCase):
                 now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
                 (chart_dir / MANIFEST_NAME).write_text(
                     '{"created_at":"' + now + '",'
-                    '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                    '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                    '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                     '"download":{"path":"","bytes":0,"sha256":""},'
                     f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                     encoding="utf-8",
@@ -2382,7 +2413,8 @@ class GpsTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             (chart_dir / MANIFEST_NAME).write_text(
                 '{"created_at":"' + now + '",'
-                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
                 '"download":{"path":"","bytes":0,"sha256":""},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",

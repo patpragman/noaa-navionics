@@ -377,7 +377,7 @@ def check_chart_manifest(
         )
     package = manifest.get("package", {})
     label = package.get("label", "unknown package") if isinstance(package, dict) else "unknown package"
-    expected_filename = _expected_manifest_filename(expected_package, expected_value)
+    expected_filename, expected_url = _expected_manifest_package(expected_package, expected_value)
     if expected_filename:
         actual_filename = package.get("filename", "") if isinstance(package, dict) else ""
         if actual_filename != expected_filename:
@@ -386,6 +386,15 @@ def check_chart_manifest(
                 "Manifest",
                 False,
                 f"manifest package {actual_detail} does not match configured {expected_filename}",
+            )
+    if expected_url:
+        actual_url = package.get("url", "") if isinstance(package, dict) else ""
+        if actual_url != expected_url:
+            actual_detail = actual_url or label
+            return CheckResult(
+                "Manifest",
+                False,
+                f"manifest package URL {actual_detail} does not match configured {expected_url}",
             )
     archive_check = _check_manifest_archive(path, manifest)
     if archive_check is not None:
@@ -429,11 +438,11 @@ def _check_manifest_archive(chart_dir: Path, manifest: dict[str, object]) -> Opt
     return None
 
 
-def _expected_manifest_filename(package: str, value: str = "") -> str:
+def _expected_manifest_package(package: str, value: str = "") -> tuple[str, str]:
     package = package.strip().lower()
     value = value.strip()
     if not package:
-        return ""
+        return "", ""
     kwargs: dict[str, object]
     if package == "state":
         kwargs = {"state": value}
@@ -450,11 +459,12 @@ def _expected_manifest_filename(package: str, value: str = "") -> str:
     elif package == "catalog":
         kwargs = {"catalog": True}
     else:
-        return ""
+        return "", ""
     try:
-        return package_for(**kwargs).filename
+        expected = package_for(**kwargs)
+        return expected.filename, expected.url
     except ValueError:
-        return ""
+        return "", ""
 
 
 def _unexpected_enc_dirs(chart_dir: Path, extract_path: Path) -> list[Path]:
