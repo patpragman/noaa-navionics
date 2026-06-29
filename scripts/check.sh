@@ -581,6 +581,9 @@ grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'mktemp "${launcher_env_dir}/launcher.env.XXXXXX"' scripts/provision_sailboat_pi.sh
+grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
+grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
 grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh

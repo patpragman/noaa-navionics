@@ -428,11 +428,30 @@ track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 
 write_launcher_env() {
+  local launcher_env_dir
+  local launcher_env_tmp
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q\n' "$launcher_env" "$gps_seconds"
   else
-    mkdir -p "$(dirname "$launcher_env")"
-    printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\n' "$gps_seconds" >"$launcher_env"
+    launcher_env_dir="$(dirname "$launcher_env")"
+    mkdir -p "$launcher_env_dir"
+    launcher_env_tmp="$(mktemp "${launcher_env_dir}/launcher.env.XXXXXX")"
+    if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\n' "$gps_seconds" >"$launcher_env_tmp"; then
+      rm -f "$launcher_env_tmp"
+      return 1
+    fi
+    if ! chmod 0644 "$launcher_env_tmp"; then
+      rm -f "$launcher_env_tmp"
+      return 1
+    fi
+    if ! sync_paths "$launcher_env_tmp"; then
+      rm -f "$launcher_env_tmp"
+      return 1
+    fi
+    if ! mv -f "$launcher_env_tmp" "$launcher_env"; then
+      rm -f "$launcher_env_tmp"
+      return 1
+    fi
     sync_paths "$launcher_env"
   fi
 }
