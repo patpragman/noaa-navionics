@@ -63,6 +63,9 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     tracking = parser["tracking"] if parser.has_section("tracking") else {}
 
     chart_output = Path(charts.get("output", str(defaults.chart_output))).expanduser()
+    gps_mode = gps.get("mode", defaults.gps_mode).strip().lower()
+    if gps_mode not in {"gpsd", "serial"}:
+        raise ValueError("gps.mode must be either gpsd or serial")
     return AppConfig(
         chart_package=charts.get("package", defaults.chart_package).strip().lower(),
         chart_value=charts.get("value", defaults.chart_value).strip(),
@@ -71,7 +74,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         keep_zip=_get_bool(charts, "keep_zip", defaults.keep_zip),
         force=_get_bool(charts, "force", defaults.force),
         max_chart_age_days=int(charts.get("max_age_days", str(defaults.max_chart_age_days))),
-        gps_mode=gps.get("mode", defaults.gps_mode).strip().lower(),
+        gps_mode=gps_mode,
         gps_device=gps.get("device", defaults.gps_device).strip(),
         gps_baud=int(gps.get("baud", str(defaults.gps_baud))),
         gpsd_host=gps.get("gpsd_host", defaults.gpsd_host).strip(),

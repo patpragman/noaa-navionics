@@ -176,6 +176,14 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
 
+    def test_invalid_gps_mode_fails_config_read(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            path.write_text("[gps]\nmode = bluetooth\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "gps.mode"):
+                read_config(path)
+
 
 class OpenCPNConfigTests(unittest.TestCase):
     def test_configure_chart_directory_creates_config(self):

@@ -100,6 +100,8 @@ output = ~/charts/noaa-enc
 retention_days = 90
 ```
 
+`gps.mode` must be `gpsd` or `serial`. Use `gpsd` for onboard production so OpenCPN and this tool can share the receiver.
+
 ## GPSD Setup
 
 For a USB GPS, check the device name:

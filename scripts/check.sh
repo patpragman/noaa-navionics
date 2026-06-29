@@ -37,6 +37,7 @@ grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'no fresh GPSD fix' src/noaa_navionics/health.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
+grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
