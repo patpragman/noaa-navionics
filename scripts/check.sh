@@ -138,6 +138,9 @@ grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
 grep -q 'status report manifest missing' scripts/verify_pi.sh
+grep -q 'status report manifest missing created_at_source' scripts/verify_pi.sh
+grep -q 'status report manifest created_at_source' scripts/verify_pi.sh
+grep -q 'status report manifest download_skipped' scripts/verify_pi.sh
 grep -q 'expected_package_filename' scripts/verify_pi.sh
 grep -q 'expected_package_url' scripts/verify_pi.sh
 grep -q 'status report manifest package filename' scripts/verify_pi.sh
@@ -256,6 +259,7 @@ grep -q 'invalid GPS fix: 0.000000, 0.000000 coordinates' src/noaa_navionics/gps
 grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
+grep -q 'unverified-cache' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'unexpected ENC chart directories' src/noaa_navionics/health.py
 grep -q 'manifest package URL' src/noaa_navionics/health.py

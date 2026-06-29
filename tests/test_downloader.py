@@ -1278,9 +1278,10 @@ class StatusReportTests(unittest.TestCase):
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             manifest.write_text(
                 '{"created_at":"' + now + '",'
+                '"created_at_source":"download",'
                 '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
                 f'"download":{{"path":"{charts / "AK_ENCs.zip"}","url":"file:///test.zip",'
-                '"bytes":123,"sha256":"abc"},'
+                '"bytes":123,"sha256":"abc","skipped":false},'
                 f'"extract":{{"path":"{cell.parent}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
             )
@@ -1333,11 +1334,13 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["created_at"], now)
+            self.assertEqual(report["manifest"]["created_at_source"], "download")
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertEqual(report["manifest"]["package_filename"], "AK_ENCs.zip")
             self.assertEqual(report["manifest"]["url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_path"], str(charts / "AK_ENCs.zip"))
             self.assertEqual(report["manifest"]["download_url"], "file:///test.zip")
+            self.assertEqual(report["manifest"]["download_skipped"], False)
             self.assertEqual(report["manifest"]["download_bytes"], 123)
             self.assertEqual(report["manifest"]["sha256"], "abc")
             self.assertEqual(report["manifest"]["extract_path"], str(cell.parent))
@@ -1347,9 +1350,11 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Ready: no", text)
             self.assertIn("Boot ID: boot-abc", text)
             self.assertIn("revision abc123", text)
+            self.assertIn("created_at_source: download", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)
             self.assertIn("download_url: file:///test.zip", text)
+            self.assertIn("download_skipped: False", text)
             self.assertIn("download_bytes: 123", text)
             self.assertIn(f"extract_path: {cell.parent}", text)
             self.assertIn("Service Checks:", text)

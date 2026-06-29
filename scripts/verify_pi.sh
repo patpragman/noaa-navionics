@@ -248,6 +248,29 @@ if expected_config_path:
     for key in ("created_at", "package", "package_filename", "url", "download_path", "download_url", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
+    manifest_created_at_source = str(manifest.get("created_at_source", "")).strip()
+    if not manifest_created_at_source:
+        raise SystemExit(f"status report manifest missing created_at_source: {expected_manifest_path}")
+    if manifest_created_at_source not in {"download", "previous-manifest"}:
+        raise SystemExit(
+            f"status report manifest created_at_source {manifest_created_at_source} is not verified"
+        )
+    with Path(expected_manifest_path).open(encoding="utf-8") as manifest_handle:
+        manifest_file = json.load(manifest_handle)
+    download_section = manifest_file.get("download", {})
+    manifest_file_created_at_source = str(manifest_file.get("created_at_source", "")).strip()
+    if manifest_file_created_at_source != manifest_created_at_source:
+        raise SystemExit(
+            f"status report manifest created_at_source {manifest_created_at_source} "
+            f"does not match manifest file {manifest_file_created_at_source}"
+        )
+    manifest_download_skipped = bool(manifest.get("download_skipped", False))
+    manifest_file_download_skipped = bool(download_section.get("skipped", False)) if isinstance(download_section, dict) else False
+    if manifest_download_skipped != manifest_file_download_skipped:
+        raise SystemExit(
+            f"status report manifest download_skipped {manifest_download_skipped} "
+            f"does not match manifest file {manifest_file_download_skipped}"
+        )
     manifest_package_filename = str(manifest.get("package_filename", "")).strip()
     if expected_package_zip and manifest_package_filename != expected_package_zip:
         raise SystemExit(
