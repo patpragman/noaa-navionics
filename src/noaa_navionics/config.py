@@ -12,6 +12,7 @@ DEFAULT_CONFIG_PATH = Path("~/.config/noaa-navionics/config.ini")
 CHART_PACKAGES = {"state", "cgd", "region", "chart", "all"}
 CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "chart"}
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
+GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,8 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     gpsd_host = _get_required_text(gps, "gpsd_host", defaults.gpsd_host, label="gps.gpsd_host")
     if any(separator in gpsd_host for separator in (";", "|")) or any(char.isspace() for char in gpsd_host):
         raise ValueError("gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")
+    if gps_mode == "gpsd" and gpsd_host.lower() not in GPSD_LOCAL_HOSTS:
+        raise ValueError("gps.gpsd_host must be local for onboard gpsd mode: 127.0.0.1, localhost, or ::1")
     gpsd_port = _get_int(gps, "gpsd_port", defaults.gpsd_port, label="gps.gpsd_port", minimum=1, maximum=65535)
     track_output_text = _get_required_text(tracking, "output", str(chart_output), label="tracking.output")
     track_output = Path(track_output_text).expanduser()

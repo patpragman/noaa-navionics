@@ -250,6 +250,7 @@ class ConfigTests(unittest.TestCase):
             ("[gps]\nmode = serial\ndevice =\n", "gps.device"),
             ("[gps]\nbaud = 12345\n", "gps.baud"),
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
+            ("[gps]\nmode = gpsd\ngpsd_host = 192.168.1.10\n", "gps.gpsd_host"),
             ("[gps]\ngpsd_port = 70000\n", "gps.gpsd_port"),
             ("[tracking]\noutput =\n", "tracking.output"),
             ("[tracking]\noutput = tracks\n", "tracking.output"),

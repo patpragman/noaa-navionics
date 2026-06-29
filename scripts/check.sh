@@ -321,6 +321,8 @@ grep -q 'package can be: state, cgd, region, chart, all' examples/noaa-navionics
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' src/noaa_navionics/config.py
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' examples/noaa-navionics.ini
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
+grep -q 'gps.gpsd_host must be local for onboard gpsd mode' src/noaa_navionics/config.py
+grep -q 'GPSD_LOCAL_HOSTS' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
 grep -q 'uSat' src/noaa_navionics/gps.py
