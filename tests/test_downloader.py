@@ -19,6 +19,7 @@ from noaa_navionics import health as health_module
 from noaa_navionics import downloader as downloader_module
 from noaa_navionics import gps as gps_module
 from noaa_navionics import cli as cli_module
+from noaa_navionics import opencpn as opencpn_module
 from noaa_navionics.downloader import (
     DOWNLOAD_LOCK_NAME,
     MANIFEST_NAME,
@@ -258,6 +259,26 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("ChartDir4=/old\n", text)
             self.assertIn(f"ChartDir5={charts.resolve()}\n", text)
 
+    def test_configure_chart_directory_uses_unique_synced_temp_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            config.write_text("[Settings]\nShowStatusBar=1\n", encoding="utf-8")
+            fixed_part = root / "opencpn.conf.part"
+            fixed_part.write_text("other writer\n", encoding="utf-8")
+            calls = []
+            original_fsync = opencpn_module.os.fsync
+            opencpn_module.os.fsync = lambda fd: calls.append(fd)
+            try:
+                result = configure_chart_directory(root / "charts", config_path=config)
+            finally:
+                opencpn_module.os.fsync = original_fsync
+
+            self.assertTrue(result.changed)
+            self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
+            self.assertFalse(list(root.glob(".opencpn.conf.*.part")))
+            self.assertGreaterEqual(len(calls), 3)
+
     def test_check_opencpn_chart_config_reports_missing_and_configured(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -306,6 +327,25 @@ class OpenCPNConfigTests(unittest.TestCase):
             connections = read_data_connections(config)
             self.assertEqual(connections[0], existing)
             self.assertEqual(len(connections), 2)
+
+    def test_configure_gpsd_connection_uses_unique_synced_temp_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            fixed_part = root / "opencpn.conf.part"
+            fixed_part.write_text("other writer\n", encoding="utf-8")
+            calls = []
+            original_fsync = opencpn_module.os.fsync
+            opencpn_module.os.fsync = lambda fd: calls.append(fd)
+            try:
+                result = configure_gpsd_connection(config_path=config)
+            finally:
+                opencpn_module.os.fsync = original_fsync
+
+            self.assertTrue(result.changed)
+            self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
+            self.assertFalse(list(root.glob(".opencpn.conf.*.part")))
+            self.assertGreaterEqual(len(calls), 2)
 
     def test_check_opencpn_gpsd_config_reports_missing_and_configured(self):
         with tempfile.TemporaryDirectory() as tmpdir:

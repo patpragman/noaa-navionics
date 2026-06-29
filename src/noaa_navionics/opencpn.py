@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 import os
 import re
+import tempfile
 
 
 DEFAULT_OPENCPN_CONFIG_PATH = Path("~/.opencpn/opencpn.conf")
@@ -103,12 +104,8 @@ def configure_chart_directory(
     if changed and not dry_run:
         target.parent.mkdir(parents=True, exist_ok=True)
         if backup and target.exists():
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            backup_path = target.with_name(f"{target.name}.noaa-navionics.{stamp}.bak")
-            backup_path.write_bytes(target.read_bytes())
-        tmp = target.with_suffix(target.suffix + ".part")
-        tmp.write_text(updated, encoding="utf-8")
-        os.replace(tmp, target)
+            backup_path = _write_backup(target)
+        _write_text_atomic(target, updated)
 
     return OpenCPNConfigResult(
         config_path=target,
@@ -136,12 +133,8 @@ def configure_gpsd_connection(
     if changed and not dry_run:
         target.parent.mkdir(parents=True, exist_ok=True)
         if backup and target.exists():
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            backup_path = target.with_name(f"{target.name}.noaa-navionics.{stamp}.bak")
-            backup_path.write_bytes(target.read_bytes())
-        tmp = target.with_suffix(target.suffix + ".part")
-        tmp.write_text(updated, encoding="utf-8")
-        os.replace(tmp, target)
+            backup_path = _write_backup(target)
+        _write_text_atomic(target, updated)
 
     return OpenCPNGPSDConfigResult(
         config_path=target,
@@ -164,6 +157,62 @@ def opencpn_running() -> bool:
         except OSError:
             continue
     return False
+
+
+def _write_backup(target: Path) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_path = target.with_name(f"{target.name}.noaa-navionics.{stamp}.bak")
+    backup_path.write_bytes(target.read_bytes())
+    _fsync_file(backup_path)
+    _fsync_directory(backup_path.parent)
+    return backup_path
+
+
+def _write_text_atomic(target: Path, text: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".part",
+            delete=False,
+        ) as handle:
+            tmp_path = Path(handle.name)
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, target)
+        _fsync_directory(target.parent)
+    finally:
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _fsync_file(path: Path) -> None:
+    try:
+        with Path(path).open("rb") as handle:
+            os.fsync(handle.fileno())
+    except OSError:
+        pass
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        fd = os.open(Path(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 def _set_chart_directory(text: str, chart_dir: Path) -> tuple[str, bool, str]:

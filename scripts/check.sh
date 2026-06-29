@@ -56,6 +56,9 @@ grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
+grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
+grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
+grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
