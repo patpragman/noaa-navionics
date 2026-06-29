@@ -421,7 +421,10 @@ grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
 grep -q '/usr/share/xsessions' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
+grep -q 'chart service network wait command' scripts/verify_pi.sh
+grep -q 'chart service loaded network wait command' scripts/verify_pi.sh
 grep -q 'chart service loaded fragment path' scripts/verify_pi.sh
+grep -q 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service
 grep -q 'chart service loaded sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
 grep -q 'chart service loaded restart' scripts/verify_pi.sh
@@ -788,7 +791,11 @@ grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py
 grep -q 'section != "Install"' src/noaa_navionics/report.py
 grep -q 'wanted_by' src/noaa_navionics/report.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
+grep -q 'wait-network' src/noaa_navionics/cli.py
+grep -q 'socket.create_connection' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
+grep -q 'noaa-navionics wait-network' src/noaa_navionics/report.py
+grep -q '"ExecStartPre"' src/noaa_navionics/report.py
 grep -q 'noaa-navionics log-track' src/noaa_navionics/report.py
 grep -q 'noaa-navionics status-report' src/noaa_navionics/report.py
 grep -q '"Type": "oneshot"' src/noaa_navionics/report.py
@@ -810,6 +817,7 @@ grep -q '"extract_path": extract.get("path", "")' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
+grep -q 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service
 grep -q 'RandomizedDelaySec=30min' systemd/noaa-navionics.timer
 grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service

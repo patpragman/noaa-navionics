@@ -1186,6 +1186,46 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["sync-charts", "--retries", "0"])
         self.assert_parse_error(["sync-charts", "--retry-delay", "-1"])
 
+    def test_wait_network_rejects_invalid_values(self):
+        self.assert_parse_error(["wait-network", "--port", "0"])
+        self.assert_parse_error(["wait-network", "--seconds", "-1"])
+        self.assert_parse_error(["wait-network", "--interval", "0"])
+        self.assert_parse_error(["wait-network", "--timeout", "nan"])
+
+    def test_wait_network_uses_bounded_tcp_probe(self):
+        calls = []
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        original = cli_module.socket.create_connection
+        try:
+            cli_module.socket.create_connection = lambda address, timeout: calls.append((address, timeout)) or FakeConnection()
+            with redirect_stdout(StringIO()) as output:
+                code = cli_module.main(
+                    [
+                        "wait-network",
+                        "--host",
+                        "example.invalid",
+                        "--port",
+                        "443",
+                        "--seconds",
+                        "0",
+                        "--timeout",
+                        "1",
+                    ]
+                )
+        finally:
+            cli_module.socket.create_connection = original
+
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [(("example.invalid", 443), 1.0)])
+        self.assertIn("Network reachable: example.invalid:443", output.getvalue())
+
     def test_sync_rejects_incomplete_onboard_chart_packages(self):
         cases = [
             ("updates", "ten-days"),
@@ -2705,6 +2745,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.service",
+                    "ExecStartPre": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
@@ -2795,6 +2836,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "FragmentPath": "/tmp/noaa-navionics.service",
+                    "ExecStartPre": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
@@ -2997,6 +3039,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "static",
                 "active": "inactive",
                 "properties": {
+                    "ExecStartPre": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
@@ -3360,6 +3403,8 @@ class StatusReportTests(unittest.TestCase):
         chart_settings = next(check for check in checks if check.name == "Chart Sync Settings")
 
         self.assertFalse(chart_settings.ok)
+        self.assertIn("ExecStartPre=<missing>", chart_settings.detail)
+        self.assertIn("missing noaa-navionics wait-network", chart_settings.detail)
         self.assertIn("missing --config", chart_settings.detail)
         self.assertIn("missing --retries 5", chart_settings.detail)
 

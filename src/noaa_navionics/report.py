@@ -30,6 +30,7 @@ BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
         "FragmentPath",
+        "ExecStartPre",
         "ExecStart",
         "Type",
         "TimeoutStartUSec",
@@ -785,6 +786,13 @@ def _service_readiness_checks(
                         "noaa-navionics.service",
                     ),
                     contains={
+                        "ExecStartPre": [
+                            "noaa-navionics wait-network",
+                            "--host",
+                            "www.charts.noaa.gov",
+                            "--port 443",
+                            "--seconds 300",
+                        ],
                         "ExecStart": [
                             "noaa-navionics sync-charts",
                             "--config",

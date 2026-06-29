@@ -5,6 +5,7 @@ StartLimitBurst=3
 
 [Service]
 Type=oneshot
+ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300
 ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30
 TimeoutStartSec=2h
 Restart=on-failure

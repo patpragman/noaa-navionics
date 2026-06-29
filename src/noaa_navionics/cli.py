@@ -8,6 +8,7 @@ import json
 import math
 import os
 import signal
+import socket
 import time
 import sys
 
@@ -99,6 +100,13 @@ def build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--force", action="store_true", help="override config and force redownload")
     sync.add_argument("--retries", type=_positive_int, default=3, help="download attempts before failing")
     sync.add_argument("--retry-delay", type=_non_negative_float, default=10.0, help="seconds between retryable failures")
+
+    wait_network = subparsers.add_parser("wait-network", help="wait for bounded TCP connectivity")
+    wait_network.add_argument("--host", default="www.charts.noaa.gov", help="host to probe")
+    wait_network.add_argument("--port", type=_positive_int, default=443, help="TCP port to probe")
+    wait_network.add_argument("--seconds", type=_non_negative_float, default=300.0, help="maximum seconds to wait")
+    wait_network.add_argument("--interval", type=_positive_float, default=5.0, help="seconds between probes")
+    wait_network.add_argument("--timeout", type=_positive_float, default=5.0, help="per-probe TCP timeout")
 
     catalog = subparsers.add_parser("catalog", help="download NOAA's XML product catalog")
     catalog.add_argument("--output", "-o", default="~/charts/noaa-enc", help="download directory")
@@ -251,6 +259,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"Downloaded: {result.path}" if not result.skipped else f"Already exists: {result.path}")
             if result.extracted_to:
                 print(f"Extracted to: {result.extracted_to}")
+            return 0
+
+        if args.command == "wait-network":
+            _wait_for_network(args.host, args.port, args.seconds, interval=args.interval, timeout=args.timeout)
+            print(f"Network reachable: {args.host}:{args.port}")
             return 0
 
         if args.command == "search-catalog":
@@ -527,6 +540,28 @@ def _read_nmea_lines_until(stream, deadline: float):
             buffer = b""
             if line:
                 yield line
+
+
+def _wait_for_network(
+    host: str,
+    port: int,
+    seconds: float,
+    *,
+    interval: float = 5.0,
+    timeout: float = 5.0,
+) -> None:
+    deadline = time.monotonic() + seconds
+    last_error = ""
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return
+        except OSError as exc:
+            last_error = str(exc)
+        if time.monotonic() >= deadline:
+            detail = f": {last_error}" if last_error else ""
+            raise RuntimeError(f"network not reachable at {host}:{port} within {seconds:g}s{detail}")
+        time.sleep(min(interval, max(0.1, deadline - time.monotonic())))
 
 
 def _trackable_fixes(

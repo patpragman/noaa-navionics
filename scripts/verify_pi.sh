@@ -1483,6 +1483,8 @@ check "chart service file" test -f "$chart_service"
 check "chart service loaded fragment path" sh -c 'systemctl --user show noaa-navionics.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_service"
 check "chart service type" grep -Fxq 'Type=oneshot' "$chart_service"
 check "chart service loaded type" sh -c 'systemctl --user show noaa-navionics.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
+check "chart service network wait command" grep -Fq 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$chart_service"
+check "chart service loaded network wait command" sh -c 'loaded="$(systemctl --user show noaa-navionics.service -p ExecStartPre 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics wait-network" && printf "%s\n" "$loaded" | grep -Fq -- "--host www.charts.noaa.gov" && printf "%s\n" "$loaded" | grep -Fq -- "--port 443" && printf "%s\n" "$loaded" | grep -Fq -- "--seconds 300"'
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
 check "chart service loaded sync command" sh -c 'loaded="$(systemctl --user show noaa-navionics.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics sync-charts" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--retries 5" && printf "%s\n" "$loaded" | grep -Fq -- "--retry-delay 30"'
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
