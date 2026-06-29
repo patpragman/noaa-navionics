@@ -8,7 +8,15 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from noaa_navionics.downloader import MANIFEST_NAME, Package, download_package, package_for, read_manifest, search_catalog
+from noaa_navionics.downloader import (
+    MANIFEST_NAME,
+    Package,
+    download_package,
+    extract_zip,
+    package_for,
+    read_manifest,
+    search_catalog,
+)
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
 from noaa_navionics.health import check_chart_dir, check_chart_manifest, check_gps_sample
@@ -167,6 +175,43 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_manifest(root, max_age_days=1)
             self.assertFalse(result.ok)
             self.assertIn("days old", result.detail)
+
+    def test_extract_zip_replaces_existing_directory_after_success(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            destination = root / "AK_ENCs"
+            old_cell = destination / "OLD" / "OLD.000"
+            old_cell.parent.mkdir(parents=True)
+            old_cell.write_text("old", encoding="ascii")
+
+            extracted = extract_zip(archive, destination)
+
+            self.assertEqual(extracted, destination)
+            self.assertFalse(old_cell.exists())
+            self.assertEqual((destination / "US5AK3CM" / "US5AK3CM.000").read_text(encoding="ascii"), "new")
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+            self.assertFalse((root / ".AK_ENCs.previous").exists())
+
+    def test_extract_zip_failure_preserves_existing_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "bad.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("../evil.000", "bad")
+            destination = root / "AK_ENCs"
+            old_cell = destination / "US5AK3CM" / "US5AK3CM.000"
+            old_cell.parent.mkdir(parents=True)
+            old_cell.write_text("old", encoding="ascii")
+
+            with self.assertRaises(RuntimeError):
+                extract_zip(archive, destination)
+
+            self.assertEqual(old_cell.read_text(encoding="ascii"), "old")
+            self.assertFalse((root / "evil.000").exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
 
 class StatusReportTests(unittest.TestCase):

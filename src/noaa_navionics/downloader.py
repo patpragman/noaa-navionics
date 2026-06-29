@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import shutil
+import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -211,14 +213,40 @@ def download_package(
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:
-    destination.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(zip_path) as archive:
-        for member in archive.infolist():
-            target = destination / member.filename
-            resolved = target.resolve()
-            if not str(resolved).startswith(str(destination.resolve())):
-                raise RuntimeError(f"unsafe ZIP member path: {member.filename}")
-        archive.extractall(destination)
+    destination = Path(destination).expanduser()
+    parent = destination.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", suffix=".extracting", dir=parent))
+    previous = parent / f".{destination.name}.previous"
+    try:
+        staging_root = staging.resolve()
+        with zipfile.ZipFile(zip_path) as archive:
+            for member in archive.infolist():
+                target = staging / member.filename
+                try:
+                    target.resolve().relative_to(staging_root)
+                except ValueError as exc:
+                    raise RuntimeError(f"unsafe ZIP member path: {member.filename}") from exc
+            archive.extractall(staging)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    try:
+        if previous.exists() or previous.is_symlink():
+            _remove_path(previous)
+        if destination.exists():
+            destination.rename(previous)
+        staging.rename(destination)
+    except Exception:
+        if destination.exists():
+            _remove_path(destination)
+        if previous.exists() and not destination.exists():
+            previous.rename(destination)
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    else:
+        _remove_path(previous, missing_ok=True)
     return destination
 
 
@@ -231,6 +259,17 @@ def sha256_file(path: Path) -> str:
                 break
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def _remove_path(path: Path, *, missing_ok: bool = False) -> None:
+    try:
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
 
 
 def write_manifest(output_dir: Union[Path, str], package: Package, result: DownloadResult) -> Path:
