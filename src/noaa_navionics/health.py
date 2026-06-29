@@ -239,18 +239,21 @@ def check_chart_package(package: str, value: str = "") -> CheckResult:
 
 def check_opencpn_chart_config(chart_dir: Path, config_path: Optional[Path] = None) -> CheckResult:
     config_path = opencpn_config_path(config_path)
+    chart_path = Path(chart_dir).expanduser()
     if not config_path.exists():
         return CheckResult(
             "OpenCPN Charts",
             False,
             f"missing {config_path}; run noaa-navionics configure-opencpn after chart sync",
         )
+    if not chart_path.exists():
+        return CheckResult("OpenCPN Charts", False, f"chart directory does not exist: {chart_path}")
     if chart_directory_configured(chart_dir, config_path):
-        return CheckResult("OpenCPN Charts", True, f"{Path(chart_dir).expanduser()} listed in {config_path}")
+        return CheckResult("OpenCPN Charts", True, f"{chart_path} listed in {config_path}")
     return CheckResult(
         "OpenCPN Charts",
         False,
-        f"{Path(chart_dir).expanduser()} not listed in {config_path}; run noaa-navionics configure-opencpn",
+        f"{chart_path} not listed in {config_path}; run noaa-navionics configure-opencpn",
     )
 
 

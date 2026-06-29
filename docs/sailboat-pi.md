@@ -203,7 +203,7 @@ Register the chart directory and GPSD connection in OpenCPN:
 noaa-navionics configure-opencpn
 ```
 
-This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, adds a GPSD network connection under `[Settings/NMEADataSource]` only when `[gps] mode = gpsd`, and leaves OpenCPN closed. Backups and replacement config files are synced to disk, and replacement writes use unique temporary files. The chartplotter launcher starts OpenCPN with `-parse_all_enc` so OpenCPN processes available S-57 ENC charts on start.
+This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, adds a GPSD network connection under `[Settings/NMEADataSource]` only when `[gps] mode = gpsd`, and leaves OpenCPN closed. Backups and replacement config files are synced to disk, and replacement writes use unique temporary files. Preflight requires OpenCPN's configured chart directory to exist so stale paths or missing chart storage do not pass readiness. The chartplotter launcher starts OpenCPN with `-parse_all_enc` so OpenCPN processes available S-57 ENC charts on start.
 
 ## Pre-Departure Check
 

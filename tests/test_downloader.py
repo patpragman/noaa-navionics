@@ -324,9 +324,22 @@ class OpenCPNConfigTests(unittest.TestCase):
             missing = check_opencpn_chart_config(charts, config)
             self.assertFalse(missing.ok)
 
+            charts.mkdir()
             configure_chart_directory(charts, config_path=config)
             configured = check_opencpn_chart_config(charts, config)
             self.assertTrue(configured.ok)
+
+    def test_check_opencpn_chart_config_rejects_missing_configured_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "missing-charts"
+            configure_chart_directory(charts, config_path=config)
+
+            configured = check_opencpn_chart_config(charts, config)
+
+            self.assertFalse(configured.ok)
+            self.assertIn("chart directory does not exist", configured.detail)
 
     def test_configure_gpsd_connection_creates_nmea_data_source(self):
         with tempfile.TemporaryDirectory() as tmpdir:
