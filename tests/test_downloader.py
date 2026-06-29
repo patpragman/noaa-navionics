@@ -1166,6 +1166,26 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(boot_check.ok)
         self.assertIn("failed", boot_check.detail)
 
+    def test_service_readiness_checks_fail_inactive_track_logger(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "inactive"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        track_check = next(check for check in checks if check.name == "Track Logger")
+
+        self.assertFalse(track_check.ok)
+        self.assertIn("inactive", track_check.detail)
+
     def test_service_readiness_checks_fail_disabled_gpsd_service(self):
         services = {
             "available": True,

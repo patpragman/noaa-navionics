@@ -420,6 +420,7 @@ check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_se
 check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
 check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
+check "track service active" systemctl --user is-active --quiet noaa-navionics-track.service
 check "preflight service enabled" systemctl --user is-enabled --quiet noaa-navionics-preflight.service
 check "chart timer active" systemctl --user is-active --quiet noaa-navionics.timer
 
