@@ -2771,6 +2771,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["launcher_settings"]["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "10")
             self.assertEqual(report["opencpn_config"]["path"], str(opencpn_config))
             self.assertEqual(report["opencpn_config"]["exists"], True)
+            self.assertEqual(report["opencpn_config"]["is_symlink"], False)
             self.assertEqual(report["opencpn_config"]["chart_directories"], [str(charts.resolve())])
             self.assertTrue(report["opencpn_config"]["data_connections"])
             self.assertEqual(report["desktop"]["autostart"]["path"], str(autostart))
@@ -2807,6 +2808,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("source_revision_path_is_symlink=False", text)
             self.assertIn("OpenCPN Config:", text)
             self.assertIn(f"path={opencpn_config}", text)
+            self.assertIn("is_symlink=False", text)
             self.assertIn("Desktop Startup:", text)
             self.assertIn(f"autostart={autostart}", text)
             self.assertIn("is_symlink=False", text)
@@ -2896,6 +2898,28 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["is_symlink"], True)
             self.assertIn("key-value file path is a symlink", summary["error"])
             self.assertNotIn("values", summary)
+
+    def test_opencpn_config_summary_rejects_symlinked_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            real_config = root / "real-opencpn.conf"
+            configure_chart_directory(charts, config_path=real_config)
+            link_config = root / "opencpn.conf"
+            try:
+                link_config.symlink_to(real_config)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = report_module._opencpn_config_summary(link_config)
+
+            self.assertEqual(summary["path"], str(link_config))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], True)
+            self.assertIn("OpenCPN config path is a symlink", summary["error"])
+            self.assertNotIn("chart_directories", summary)
+            self.assertNotIn("data_connections", summary)
 
     def test_manifest_summary_rejects_symlinked_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:

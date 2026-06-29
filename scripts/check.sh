@@ -982,6 +982,7 @@ grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
+grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart path is a symlink' src/noaa_navionics/report.py
@@ -996,6 +997,7 @@ grep -q 'test_launcher_settings_check_fails_invalid_opencpn_restart_values' test
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_file' tests/test_downloader.py
+grep -q 'test_opencpn_config_summary_rejects_symlinked_config' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_files' tests/test_downloader.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
 grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
