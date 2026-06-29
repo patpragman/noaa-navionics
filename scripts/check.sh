@@ -127,6 +127,8 @@ grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/start_chartplotter.sh
+grep -q 'Malformed launcher environment line' scripts/start_chartplotter.sh
+grep -q 'Unknown launcher environment key' scripts/start_chartplotter.sh
 grep -q 'run_opencpn_supervised' scripts/start_chartplotter.sh
 grep -q 'Restarting OpenCPN after nonzero exit status' scripts/start_chartplotter.sh
 grep -q 'OpenCPN exited cleanly; not restarting' scripts/start_chartplotter.sh
@@ -2775,6 +2777,44 @@ if [[ "$launcher_public_env_code" -eq 0 ]]; then
 fi
 grep -q 'NOAA Navionics launcher environment has permissions 644, expected private 0600' "$launcher_public_env_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_public_env_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_unknown_env_home="$tmpdir/launcher-unknown-env-home"
+mkdir -p "$launcher_unknown_env_home/.local/bin" "$launcher_unknown_env_home/.cache/noaa-navionics" "$launcher_unknown_env_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=17\nNOAA_NAVIONICS_EXTRA=1\n' >"$launcher_unknown_env_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_unknown_env_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_unknown_env_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_unknown_env_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_unknown_env_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_unknown_env_code=$?
+set -e
+if [[ "$launcher_unknown_env_code" -eq 0 ]]; then
+  cat "$launcher_unknown_env_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject an unknown launcher environment key" >&2
+  exit 1
+fi
+grep -q 'Unknown launcher environment key' "$launcher_unknown_env_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'NOAA_NAVIONICS_EXTRA' "$launcher_unknown_env_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_unknown_env_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_malformed_env_home="$tmpdir/launcher-malformed-env-home"
+mkdir -p "$launcher_malformed_env_home/.local/bin" "$launcher_malformed_env_home/.cache/noaa-navionics" "$launcher_malformed_env_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS 17\n' >"$launcher_malformed_env_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_malformed_env_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_malformed_env_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_malformed_env_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_malformed_env_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_malformed_env_code=$?
+set -e
+if [[ "$launcher_malformed_env_code" -eq 0 ]]; then
+  cat "$launcher_malformed_env_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a malformed launcher environment line" >&2
+  exit 1
+fi
+grep -q 'Malformed launcher environment line' "$launcher_malformed_env_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'NOAA_NAVIONICS_GPS_SECONDS 17' "$launcher_malformed_env_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_malformed_env_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_preflight_fail_home="$tmpdir/launcher-preflight-fail-home"
 mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics"

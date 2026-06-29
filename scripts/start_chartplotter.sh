@@ -106,10 +106,27 @@ prepare_private_log_file() {
 
 load_launcher_settings() {
   local key
+  local raw_line
+  local trimmed
   local value
   local start_on_failed_text
   if [[ -r "$launcher_env" ]]; then
-    while IFS='=' read -r key value; do
+    while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
+      trimmed="${raw_line#"${raw_line%%[![:space:]]*}"}"
+      trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+      if [[ -z "$trimmed" || "$trimmed" == \#* ]]; then
+        continue
+      fi
+      if [[ "$trimmed" != *=* ]]; then
+        echo "Malformed launcher environment line in $launcher_env: $raw_line" >&2
+        return 1
+      fi
+      key="${trimmed%%=*}"
+      value="${trimmed#*=}"
+      key="${key#"${key%%[![:space:]]*}"}"
+      key="${key%"${key##*[![:space:]]}"}"
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
       case "$key" in
         NOAA_NAVIONICS_GPS_SECONDS)
           gps_seconds="$value"
@@ -131,6 +148,10 @@ load_launcher_settings() {
           ;;
         NOAA_NAVIONICS_OPENCPN_RESTART_DELAY)
           opencpn_restart_delay="$value"
+          ;;
+        *)
+          echo "Unknown launcher environment key in $launcher_env: $key" >&2
+          return 1
           ;;
       esac
     done <"$launcher_env"
