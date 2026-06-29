@@ -34,6 +34,8 @@ saw_provision_option=0
 allow_dirty=0
 skip_services=0
 skip_autologin=0
+ssh_batch_options=(-o BatchMode=yes)
+ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10)
 
 validate_ssh_target() {
   local value="$1"
@@ -146,7 +148,7 @@ remote_command_exists() {
       return 2
       ;;
   esac
-  ssh -o ConnectTimeout=10 "$target" "command -v ${command_name} >/dev/null 2>&1"
+  ssh "${ssh_connect_options[@]}" "$target" "command -v ${command_name} >/dev/null 2>&1"
 }
 
 require_remote_command_available() {
@@ -346,7 +348,7 @@ write_remote_source_revision() {
   local revision_env
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   revision_env="$(printf '%q' "$revision_value")"
-  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
+  ssh "${ssh_batch_options[@]}" "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import tempfile
@@ -441,7 +443,7 @@ prepare_remote_deploy_staging() {
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   staging_dir_env="$(printf '%q' "$staging_dir_value")"
   previous_dir_env="$(printf '%q' "$previous_dir_value")"
-  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+  ssh "${ssh_batch_options[@]}" "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import shutil
@@ -541,7 +543,7 @@ promote_remote_deploy_staging() {
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   staging_dir_env="$(printf '%q' "$staging_dir_value")"
   previous_dir_env="$(printf '%q' "$previous_dir_value")"
-  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+  ssh "${ssh_batch_options[@]}" "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import shutil
@@ -627,7 +629,7 @@ PY"
 
 deploy_with_rsync() {
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
-  rsync -az --delete \
+  rsync -az --delete -e "ssh -o BatchMode=yes" \
     --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
@@ -675,7 +677,7 @@ deploy_with_tar() {
       --exclude='*.zip' \
       --exclude='ENCProdCat_19115.xml' \
       -czf - .
-  ) | ssh "$target" "tar -xzf - -C ${remote_staging_dir_quoted}"
+  ) | ssh "${ssh_batch_options[@]}" "$target" "tar -xzf - -C ${remote_staging_dir_quoted}"
   promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
 
@@ -712,7 +714,7 @@ remote_install_args=()
 for arg in "${install_args[@]}"; do
   remote_install_args+=("$(printf '%q' "$arg")")
 done
-ssh -T "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
+ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
 
 if [[ "$provision" -eq 1 ]]; then
   remote_args=()
@@ -720,5 +722,5 @@ if [[ "$provision" -eq 1 ]]; then
     [[ "$arg" == "--provision" ]] && continue
     remote_args+=("$(printf '%q' "$arg")")
   done
-  ssh -T "$target" "cd ${remote_dir_quoted} && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
+  ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
 fi
