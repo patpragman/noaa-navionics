@@ -115,6 +115,12 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
     revision_path = path or _source_revision_path()
     if revision_path.is_symlink():
         return CheckResult("Source Revision", False, f"deployed source revision path is a symlink: {revision_path}")
+    if revision_path.parent.is_symlink():
+        return CheckResult(
+            "Source Revision",
+            False,
+            f"deployed source revision directory is a symlink: {revision_path.parent}",
+        )
     try:
         revision = revision_path.read_text(encoding="utf-8").strip()
     except OSError as exc:

@@ -1101,9 +1101,16 @@ if source_revision_path != str(Path("~/.local/share/noaa-navionics/source-revisi
     )
 if app.get("source_revision_path_is_symlink") is True:
     raise SystemExit(f"status report source revision path is a symlink: {source_revision_path}")
+if app.get("source_revision_directory_is_symlink") is not False:
+    raise SystemExit(
+        "status report source revision directory is a symlink or missing symlink status: "
+        f"{Path(source_revision_path).expanduser().parent}"
+    )
 source_revision_file = Path(source_revision_path).expanduser()
 if source_revision_file.is_symlink():
     raise SystemExit(f"status report source revision path is a symlink: {source_revision_file}")
+if source_revision_file.parent.is_symlink():
+    raise SystemExit(f"status report source revision directory is a symlink: {source_revision_file.parent}")
 actual_revision = str(app.get("source_revision", "unknown"))
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")

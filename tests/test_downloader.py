@@ -2806,6 +2806,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["app"]["source_revision_path"], str(revision))
             self.assertEqual(report["app"]["source_revision_path_is_symlink"], False)
+            self.assertEqual(report["app"]["source_revision_directory_is_symlink"], False)
             self.assertEqual(report["config"]["extract"], True)
             self.assertEqual(report["config"]["keep_zip"], True)
             self.assertEqual(report["config"]["force"], True)
@@ -2854,6 +2855,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Boot ID: boot-abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("source_revision_path_is_symlink=False", text)
+            self.assertIn("source_revision_directory_is_symlink=False", text)
             self.assertIn("OpenCPN Config:", text)
             self.assertIn(f"path={opencpn_config}", text)
             self.assertIn("is_symlink=False", text)
@@ -2910,7 +2912,38 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["source_revision"], "unknown")
             self.assertEqual(summary["source_revision_path"], str(link_revision))
             self.assertEqual(summary["source_revision_path_is_symlink"], True)
+            self.assertEqual(summary["source_revision_directory_is_symlink"], False)
             self.assertIn("source revision path is a symlink", summary["source_revision_error"])
+
+    def test_app_summary_rejects_symlinked_source_revision_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_dir = root / "real-source"
+            real_dir.mkdir()
+            real_revision = real_dir / "source-revision"
+            real_revision.write_text("unexpected\n", encoding="utf-8")
+            link_dir = root / "source-link"
+            try:
+                link_dir.symlink_to(real_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            link_revision = link_dir / "source-revision"
+
+            original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+            os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(link_revision)
+            try:
+                summary = report_module._app_summary()
+            finally:
+                if original_revision_path is None:
+                    os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
+                else:
+                    os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = original_revision_path
+
+            self.assertEqual(summary["source_revision"], "unknown")
+            self.assertEqual(summary["source_revision_path"], str(link_revision))
+            self.assertEqual(summary["source_revision_path_is_symlink"], False)
+            self.assertEqual(summary["source_revision_directory_is_symlink"], True)
+            self.assertIn("source revision directory is a symlink", summary["source_revision_error"])
 
     def test_launcher_settings_summary_rejects_symlinked_environment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -5914,6 +5947,29 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("deployed source revision path is a symlink", result.detail)
+
+    def test_check_source_revision_rejects_symlinked_revision_directory_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_dir = root / "real-source"
+            real_dir.mkdir()
+            real_revision = real_dir / "source-revision"
+            real_revision.write_text("abc123\n", encoding="utf-8")
+            link_dir = root / "source-link"
+            try:
+                link_dir.symlink_to(real_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            revision = link_dir / "source-revision"
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("deployed source revision directory is a symlink", result.detail)
 
     def test_check_source_revision_rejects_unknown_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:

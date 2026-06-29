@@ -388,6 +388,7 @@ grep -q 'boot status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
+grep -q 'status report source revision directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config path is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.sh
@@ -1044,6 +1045,11 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' docs/s
 grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_path_is_symlink"' src/noaa_navionics/report.py
+grep -q '"source_revision_directory_is_symlink"' src/noaa_navionics/report.py
+grep -q 'source revision directory is a symlink' src/noaa_navionics/report.py
+grep -q 'deployed source revision directory is a symlink' src/noaa_navionics/health.py
+grep -q 'test_app_summary_rejects_symlinked_source_revision_directory' tests/test_downloader.py
+grep -q 'test_check_source_revision_rejects_symlinked_revision_directory_on_pi' tests/test_downloader.py
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
