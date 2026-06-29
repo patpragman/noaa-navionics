@@ -67,6 +67,14 @@ if [[ -z "$target" ]]; then
   exit 2
 fi
 
+if [[ "$target" == root@* ]]; then
+  cat >&2 <<'EOF'
+Do not verify root@.
+Verify the Pi desktop user so autologin, user services, charts, and tracks are checked for the real helm account.
+EOF
+  exit 2
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
@@ -121,6 +129,10 @@ check_output() {
     printf 'FAIL %s\n' "$name"
     failures=$((failures + 1))
   fi
+}
+
+check_not_root_user() {
+  [[ "$(id -u)" -ne 0 && "$USER" != "root" ]]
 }
 
 check_status_report_json() {
@@ -653,6 +665,7 @@ case "$arch" in
     ;;
 esac
 
+check "verification user is not root" check_not_root_user
 check "noaa-navionics command" test -x "$bin"
 check "chartplotter launcher" test -x "$launcher"
 check "desktop autologin helper" test -x "$desktop_autologin"

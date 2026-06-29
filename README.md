@@ -34,7 +34,7 @@ scripts/install_raspberry_pi.sh
 For headless use, `python3-tk` is optional.
 For chartplotter use, use Raspberry Pi OS with Desktop/LightDM so OpenCPN can launch on the attached display after power-up.
 The Raspberry Pi installer installs OpenCPN, GPSD, chrony, LightDM, and X11 display-power utilities on the Pi with noninteractive apt calls, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm. Provisioning configures graphical autologin only after GPSD, charts, and the onboard config are commissioned.
-Run install, deployment, provisioning, and dock tests as the normal Pi desktop user, not `root`; the scripts use `sudo` only for the specific system changes they need.
+Run install, deployment, provisioning, verification, and dock tests as the normal Pi desktop user, not `root`; the scripts use `sudo` only for the specific system changes they need.
 The optional SSH deploy directory must be a dedicated `noaa-navionics` directory because deployment uses `rsync --delete` to keep the Pi copy exact.
 
 ## Tkinter GUI

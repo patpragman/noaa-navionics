@@ -132,6 +132,8 @@ grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
+grep -q 'Do not verify root@' scripts/verify_pi.sh
+grep -q 'verification user is not root' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock clear' scripts/verify_pi.sh
@@ -503,6 +505,17 @@ if [[ "$verify_code" -ne 2 ]]; then
   echo "expected verify_pi.sh to reject unknown options with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/verify_pi.sh root@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject root SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not verify root@' "$verify_output"
 
 set +e
 scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1
