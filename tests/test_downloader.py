@@ -1900,6 +1900,26 @@ class ManifestTests(unittest.TestCase):
 
             self.assertTrue(partial.is_symlink())
 
+    def test_download_creates_private_archive_with_permissive_umask(self):
+        original = downloader_module.urlopen
+        old_umask = os.umask(0)
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(b"chart")
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("Private archive test", "https://example.invalid/chart.zip", "chart.zip")
+
+                result = download_package(package, output)
+
+                self.assertEqual(result.path.stat().st_mode & 0o777, 0o600)
+        finally:
+            os.umask(old_umask)
+            downloader_module.urlopen = original
+
     def test_download_retries_transient_network_failure(self):
         calls = {"count": 0}
         original = downloader_module.urlopen

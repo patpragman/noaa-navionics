@@ -295,7 +295,7 @@ def _download_package_unlocked(
             with urlopen(request, timeout=timeout) as response:
                 download_url = _response_url(response, package.url)
                 total = _content_length(response)
-                with tmp_path.open("wb") as target:
+                with _open_exclusive_private_binary(tmp_path) as target:
                     while True:
                         chunk = response.read(1024 * 256)
                         if not chunk:
@@ -390,6 +390,17 @@ def sha256_file(path: Path) -> str:
                 break
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def _open_exclusive_private_binary(path: Path):
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        return os.fdopen(fd, "wb")
+    except Exception:
+        os.close(fd)
+        raise
 
 
 def _remove_path(path: Path, *, missing_ok: bool = False) -> None:
