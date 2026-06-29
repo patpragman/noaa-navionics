@@ -55,6 +55,7 @@ from noaa_navionics.gps import (
 from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
+    check_chart_update_debris,
     check_disk_space,
     check_chart_package,
     check_gps_device,
@@ -856,6 +857,27 @@ class ManifestTests(unittest.TestCase):
     def test_chart_package_accepts_state_bundle(self):
         result = check_chart_package("state", "AK")
         self.assertTrue(result.ok)
+
+    def test_chart_update_debris_fails_for_interrupted_sync_paths(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / ".AK_ENCs.previous").mkdir()
+            (root / ".CA_ENCs.abcd.extracting").mkdir()
+
+            result = check_chart_update_debris(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn(".AK_ENCs.previous", result.detail)
+            self.assertIn(".CA_ENCs.abcd.extracting", result.detail)
+
+    def test_chart_update_debris_ignores_download_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / DOWNLOAD_LOCK_NAME).write_text("locked\n", encoding="ascii")
+
+            result = check_chart_update_debris(root)
+
+            self.assertTrue(result.ok)
 
     def test_extract_zip_replaces_existing_directory_after_success(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -53,6 +53,7 @@ def run_preflight(
         check_display_power_tool(),
         check_chart_package(chart_package, chart_value),
         check_chart_dir(chart_dir),
+        check_chart_update_debris(chart_dir),
         check_chart_manifest(
             chart_dir,
             max_age_days=max_chart_age_days,
@@ -200,6 +201,29 @@ def check_chart_dir(chart_dir: Path) -> CheckResult:
     if zips:
         return CheckResult("Charts", False, f"found ENC ZIP files under {path}; run download with --extract")
     return CheckResult("Charts", False, f"no ENC .000 cells or ZIPs found under {path}")
+
+
+def check_chart_update_debris(chart_dir: Path) -> CheckResult:
+    path = Path(chart_dir).expanduser()
+    if not path.exists():
+        return CheckResult("Chart Update Debris", True, f"not checked; {path} does not exist")
+    try:
+        debris = sorted(
+            child
+            for child in path.iterdir()
+            if child.name.startswith(".") and (child.name.endswith(".extracting") or child.name.endswith(".previous"))
+        )
+    except OSError as exc:
+        return CheckResult("Chart Update Debris", False, f"cannot inspect chart directory: {exc}")
+    if debris:
+        names = ", ".join(child.name for child in debris[:5])
+        suffix = "" if len(debris) <= 5 else f", and {len(debris) - 5} more"
+        return CheckResult(
+            "Chart Update Debris",
+            False,
+            f"remove stale chart update debris before departure: {names}{suffix}",
+        )
+    return CheckResult("Chart Update Debris", True, "no interrupted chart updates found")
 
 
 def check_chart_manifest(
