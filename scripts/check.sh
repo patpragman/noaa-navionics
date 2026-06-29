@@ -406,9 +406,11 @@ grep -q 'def _non_negative_float' src/noaa_navionics/cli.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
+grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
+grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py

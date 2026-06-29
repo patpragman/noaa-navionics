@@ -718,6 +718,49 @@ class GuiTests(unittest.TestCase):
 
         self.assertEqual(calls, [])
 
+    def test_configured_gui_sync_rejects_low_disk_before_download(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app_config = AppConfig(
+                chart_package="state",
+                chart_value="AK",
+                chart_output=Path(tmpdir) / "charts" / "noaa",
+                extract=True,
+                keep_zip=True,
+                force=True,
+                max_chart_age_days=12,
+                min_free_gb=2.0,
+                gps_mode="gpsd",
+                gps_device="/dev/serial/by-id/mock-gps",
+                gps_baud=9600,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                track_output=Path("/tracks/noaa"),
+                track_retention_days=90,
+            )
+            calls = []
+            original_download = gui_module.download_package
+            original_disk_check = gui_module.check_disk_space
+
+            def fake_download_package(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise AssertionError("download_package should not be called")
+
+            try:
+                gui_module.download_package = fake_download_package
+                gui_module.check_disk_space = lambda *args, **kwargs: health_module.CheckResult(
+                    "Disk",
+                    False,
+                    "0.1 GB free at /charts; minimum 2.0 GB",
+                )
+
+                with self.assertRaisesRegex(RuntimeError, "enough free space"):
+                    gui_module.sync_configured_charts(app_config)
+            finally:
+                gui_module.download_package = original_download
+                gui_module.check_disk_space = original_disk_check
+
+            self.assertEqual(calls, [])
+
 
 class CLIValidationTests(unittest.TestCase):
     def assert_parse_error(self, args):
@@ -762,6 +805,44 @@ class CLIValidationTests(unittest.TestCase):
 
                     self.assertEqual(code, 2)
                     self.assertIn("charts.package must be one of: state, cgd, region, chart, all", stderr.getvalue())
+
+    def test_sync_rejects_low_disk_before_download(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "config.ini"
+            config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {root / 'charts'}\n"
+                "min_free_gb = 2.0\n",
+                encoding="utf-8",
+            )
+            calls = []
+            original_download = cli_module.download_package
+            original_disk_check = cli_module.check_disk_space
+
+            def fake_download_package(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise AssertionError("download_package should not be called")
+
+            try:
+                cli_module.download_package = fake_download_package
+                cli_module.check_disk_space = lambda *args, **kwargs: health_module.CheckResult(
+                    "Disk",
+                    False,
+                    "0.1 GB free at chart storage; minimum 2.0 GB",
+                )
+                stderr = StringIO()
+                with redirect_stderr(stderr):
+                    code = cli_module.main(["sync-charts", "--config", str(config)])
+            finally:
+                cli_module.download_package = original_download
+                cli_module.check_disk_space = original_disk_check
+
+            self.assertEqual(code, 2)
+            self.assertIn("enough free space", stderr.getvalue())
+            self.assertEqual(calls, [])
 
     def test_gps_waits_reject_negative_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])

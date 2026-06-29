@@ -30,7 +30,7 @@ from .gps import (
     open_nmea_stream,
     read_nmea_lines,
 )
-from .health import check_chart_package, run_preflight
+from .health import check_chart_package, check_disk_space, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
 
@@ -229,6 +229,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             package_check = check_chart_package(app_config.chart_package, app_config.chart_value)
             if not package_check.ok:
                 raise ValueError(f"sync-charts requires a complete onboard chart package: {package_check.detail}")
+            app_config.chart_output.mkdir(parents=True, exist_ok=True)
+            disk_check = check_disk_space(app_config.chart_output, min_free_gb=app_config.min_free_gb)
+            if not disk_check.ok:
+                raise RuntimeError(f"sync-charts requires writable chart storage with enough free space: {disk_check.detail}")
             package = package_for(**package_kwargs(app_config))
             result = download_package(
                 package,
