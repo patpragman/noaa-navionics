@@ -369,6 +369,9 @@ grep -q 'chartplotter launcher readiness retries' scripts/verify_pi.sh
 grep -q 'chartplotter launcher fail-closed default' scripts/verify_pi.sh
 grep -q 'chartplotter launcher explicit fail-open override' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness warning' scripts/verify_pi.sh
+grep -q 'chartplotter launcher fail-closed warning label' scripts/verify_pi.sh
+grep -q 'chartplotter launcher fail-open warning label' scripts/verify_pi.sh
+grep -q 'chartplotter launcher dynamic warning button' scripts/verify_pi.sh
 grep -q 'launcher reported failed readiness before OpenCPN startup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher duplicate guard' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock' scripts/verify_pi.sh
