@@ -40,6 +40,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
         "NoNewPrivileges",
         "PrivateTmp",
+        "UMask",
     ],
     "noaa-navionics.timer": [
         "FragmentPath",
@@ -827,6 +828,7 @@ def _service_readiness_checks(
                             "StartLimitBurst": "60",
                             "NoNewPrivileges": "yes",
                             "PrivateTmp": "yes",
+                            "UMask": "0077",
                         },
                         unit_files,
                         "noaa-navionics-track.service",

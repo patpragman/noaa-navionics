@@ -2781,6 +2781,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "UMask": "0077",
                 },
             },
             "noaa-navionics-preflight.service": {
@@ -3092,6 +3093,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "UMask": "0077",
                 },
             },
             "noaa-navionics-preflight.service": {

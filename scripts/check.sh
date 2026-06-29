@@ -873,6 +873,7 @@ grep -q 'NoNewPrivileges=true' systemd/noaa-navionics.service
 grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
+grep -q 'UMask.*0077' src/noaa_navionics/report.py
 grep -q 'FragmentPath' src/noaa_navionics/report.py
 grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
 grep -q 'loaded no new privileges' scripts/verify_pi.sh
