@@ -36,6 +36,24 @@ GPSD, chart sync, OpenCPN config, services, and final readiness report.
 EOF
 }
 
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "$name must be a positive integer" >&2
+    exit 2
+  fi
+}
+
+require_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -113,6 +131,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+require_positive_integer "--gps-seconds" "$gps_seconds"
+require_positive_integer "--sync-retries" "$sync_retries"
+require_non_negative_integer "--sync-retry-delay" "$sync_retry_delay"
 
 if [[ "$skip_gpsd" -eq 0 && -z "$device" ]]; then
   echo "--device is required unless --skip-gpsd is used" >&2

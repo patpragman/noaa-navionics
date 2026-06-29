@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime, timezone
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import BytesIO, StringIO
 from urllib.error import URLError
 import json
@@ -455,6 +455,33 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             self.assertEqual(code, 0)
             self.assertIn("Would add GPSD: 127.0.0.1:2947", output.getvalue())
+
+
+class CLIValidationTests(unittest.TestCase):
+    def assert_parse_error(self, args):
+        parser = cli_module.build_parser()
+        with redirect_stderr(StringIO()):
+            with self.assertRaises(SystemExit) as raised:
+                parser.parse_args(args)
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_download_rejects_invalid_timing_values(self):
+        self.assert_parse_error(["download", "--state", "AK", "--timeout", "0"])
+        self.assert_parse_error(["download", "--state", "AK", "--timeout", "nan"])
+        self.assert_parse_error(["download", "--state", "AK", "--retries", "0"])
+        self.assert_parse_error(["download", "--state", "AK", "--retry-delay", "inf"])
+        self.assert_parse_error(["download", "--state", "AK", "--retry-delay", "-1"])
+
+    def test_sync_rejects_invalid_retry_values(self):
+        self.assert_parse_error(["sync-charts", "--retries", "0"])
+        self.assert_parse_error(["sync-charts", "--retry-delay", "-1"])
+
+    def test_gps_waits_reject_negative_seconds(self):
+        self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
+        self.assert_parse_error(["status-report", "--gps-seconds", "-1"])
+
+    def test_track_logger_rejects_non_positive_duration(self):
+        self.assert_parse_error(["log-track", "--seconds", "0"])
 
 
 class ManifestTests(unittest.TestCase):

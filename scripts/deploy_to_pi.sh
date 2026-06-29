@@ -21,6 +21,24 @@ provision_args=()
 saw_provision_option=0
 allow_dirty=0
 
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "$name must be a positive integer" >&2
+    exit 2
+  fi
+}
+
+require_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
 if [[ $# -gt 0 && "$1" != --* ]]; then
   remote_dir="$1"
   shift
@@ -38,12 +56,32 @@ while [[ $# -gt 0 ]]; do
       allow_dirty=1
       shift
       ;;
-    --device|--config|--gps-seconds|--sync-retries|--sync-retry-delay)
+    --device|--config)
       saw_provision_option=1
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
         exit 2
       fi
+      provision_args+=("$1" "${2:-}")
+      shift 2
+      ;;
+    --gps-seconds|--sync-retries)
+      saw_provision_option=1
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_positive_integer "$1" "${2:-}"
+      provision_args+=("$1" "${2:-}")
+      shift 2
+      ;;
+    --sync-retry-delay)
+      saw_provision_option=1
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_non_negative_integer "$1" "${2:-}"
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;

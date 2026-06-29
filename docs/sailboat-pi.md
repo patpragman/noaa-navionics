@@ -35,6 +35,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by
 ```
 
 Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
+The deploy, provisioning, and dock-test scripts validate retry counts, retry delays, GPS wait time, and reboot wait timeout before starting remote work.
 
 Verify the Raspberry Pi after deployment:
 

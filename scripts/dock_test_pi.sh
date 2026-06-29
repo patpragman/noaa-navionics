@@ -41,6 +41,24 @@ timeout=180
 deploy_args=()
 provision_args=()
 
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "$name must be a positive integer" >&2
+    exit 2
+  fi
+}
+
+require_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
 if [[ $# -gt 0 && "$1" != --* ]]; then
   remote_dir="$1"
   shift
@@ -57,11 +75,21 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("--device" "$device")
       shift 2
       ;;
-    --sync-retries|--sync-retry-delay)
+    --sync-retries)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
         exit 2
       fi
+      require_positive_integer "$1" "${2:-}"
+      provision_args+=("$1" "${2:-}")
+      shift 2
+      ;;
+    --sync-retry-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_non_negative_integer "$1" "${2:-}"
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
@@ -82,6 +110,7 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
+      require_positive_integer "$1" "${2:-}"
       timeout="$2"
       shift 2
       ;;
@@ -95,6 +124,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+require_positive_integer "--timeout" "$timeout"
 
 if [[ "$skip_deploy" -eq 0 && -z "$device" ]]; then
   echo "--device is required unless --skip-deploy is used" >&2

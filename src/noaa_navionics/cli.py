@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 import argparse
 import json
+import math
 import signal
 import time
 import sys
@@ -24,6 +25,36 @@ from .opencpn import configure_chart_directory, configure_gpsd_connection, openc
 from .report import build_status_report, format_status_text, write_status_report
 
 
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed
+
+
+def _positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
+def _non_negative_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if not math.isfinite(parsed) or parsed < 0:
+        raise argparse.ArgumentTypeError("must be 0 or greater")
+    return parsed
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="noaa-navionics",
@@ -37,16 +68,16 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--extract", action="store_true", help="extract ZIP after download")
     download.add_argument("--no-keep-zip", action="store_true", help="remove ZIP after successful extraction")
     download.add_argument("--force", action="store_true", help="overwrite an existing local file")
-    download.add_argument("--timeout", type=float, default=60, help="network timeout in seconds")
-    download.add_argument("--retries", type=int, default=1, help="download attempts before failing")
-    download.add_argument("--retry-delay", type=float, default=2.0, help="seconds between retryable failures")
+    download.add_argument("--timeout", type=_positive_float, default=60.0, help="network timeout in seconds")
+    download.add_argument("--retries", type=_positive_int, default=1, help="download attempts before failing")
+    download.add_argument("--retry-delay", type=_non_negative_float, default=2.0, help="seconds between retryable failures")
     download.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
 
     sync = subparsers.add_parser("sync-charts", help="download the chart package from the config file")
     sync.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     sync.add_argument("--force", action="store_true", help="override config and force redownload")
-    sync.add_argument("--retries", type=int, default=3, help="download attempts before failing")
-    sync.add_argument("--retry-delay", type=float, default=10.0, help="seconds between retryable failures")
+    sync.add_argument("--retries", type=_positive_int, default=3, help="download attempts before failing")
+    sync.add_argument("--retry-delay", type=_non_negative_float, default=10.0, help="seconds between retryable failures")
 
     catalog = subparsers.add_parser("catalog", help="download NOAA's XML product catalog")
     catalog.add_argument("--output", "-o", default="~/charts/noaa-enc", help="download directory")
@@ -88,12 +119,12 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/ttyUSB0")
     preflight.add_argument("--gps-baud", type=int, help="NMEA serial baud rate")
     preflight.add_argument("--gps-sample", help="NMEA sample file for testing")
-    preflight.add_argument("--gps-seconds", type=float, default=5.0, help="seconds to wait for a GPS fix")
+    preflight.add_argument("--gps-seconds", type=_non_negative_float, default=5.0, help="seconds to wait for a GPS fix")
 
     status = subparsers.add_parser("status-report", help="write an onboard readiness status report")
     status.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     status.add_argument("--gps-sample", help="NMEA sample file for testing")
-    status.add_argument("--gps-seconds", type=float, default=5.0, help="seconds to wait for a GPS fix")
+    status.add_argument("--gps-seconds", type=_non_negative_float, default=5.0, help="seconds to wait for a GPS fix")
     status.add_argument("--output", help="write JSON report to this file")
     status.add_argument("--json", action="store_true", help="print JSON instead of text")
 
@@ -113,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--output", "-o", default="~/charts/noaa-enc", help="base output directory")
     track.add_argument("--file", help="explicit GPX output file")
     track.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
-    track.add_argument("--seconds", type=float, help="stop after this many seconds")
+    track.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
     track.add_argument("--rotate-daily", action="store_true", help="write one GPX file per UTC day")
     track.add_argument(
         "--retention-days",

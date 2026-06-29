@@ -58,6 +58,7 @@ noaa-navionics download --state AK --output ~/charts/noaa-enc --extract
 ```
 
 For unreliable marina or hotspot networks, `download` and `sync-charts` accept `--retries` and `--retry-delay`.
+Retries must be at least `1`; retry delays must be `0` seconds or greater.
 
 Download the 10-day update bundle:
 
@@ -110,6 +111,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by
 ```
 
 Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` if the initial commissioning download needs a longer retry window.
+The deploy, provisioning, and dock-test scripts reject invalid retry, delay, GPS wait, and reboot timeout values before starting remote work.
 
 Verify the Raspberry Pi after deployment:
 

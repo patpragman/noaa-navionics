@@ -57,6 +57,8 @@ grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
+grep -q 'def _positive_float' src/noaa_navionics/cli.py
+grep -q 'def _non_negative_float' src/noaa_navionics/cli.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
@@ -70,11 +72,16 @@ grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
+grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
+grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
+grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
 gpsd_output="$(mktemp)"
-trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output"' EXIT
+deploy_output="$(mktemp)"
+dock_output="$(mktemp)"
+trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output"' EXIT
 
 set +e
 scripts/install_raspberry_pi.sh --skip-apt --no-services >"$install_output" 2>&1
@@ -93,6 +100,36 @@ set -e
 if [[ "$provision_code" -ne 2 ]]; then
   cat "$provision_output" >&2
   echo "expected provision_sailboat_pi.sh to refuse non-Pi architecture with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --gps-seconds nope >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject invalid --gps-seconds with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --sync-retries 0 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject invalid --sync-retries with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout nope >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject invalid --timeout with exit 2" >&2
   exit 1
 fi
 
