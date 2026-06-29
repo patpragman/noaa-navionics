@@ -206,6 +206,12 @@ def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckRes
     actual_cell_count = count_enc_cells(extract_path)
     if actual_cell_count <= 0:
         return CheckResult("Manifest", False, f"no ENC cells found at manifest extract path: {extract_path}")
+    if actual_cell_count < manifest_cell_count:
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest recorded {manifest_cell_count} ENC cells but only {actual_cell_count} remain at {extract_path}",
+        )
     package = manifest.get("package", {})
     label = package.get("label", "unknown package") if isinstance(package, dict) else "unknown package"
     return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
