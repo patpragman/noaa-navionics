@@ -160,7 +160,7 @@ def build_status_report(
 
 def write_status_report(report: dict[str, object], output: Path) -> Path:
     target = Path(output).expanduser()
-    target.parent.mkdir(parents=True, exist_ok=True)
+    _prepare_private_status_parent(target.parent)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -172,6 +172,7 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
             delete=False,
         ) as handle:
             tmp_path = Path(handle.name)
+            os.chmod(tmp_path, 0o600)
             handle.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -184,6 +185,22 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
             except FileNotFoundError:
                 pass
     return target
+
+
+def _prepare_private_status_parent(path: Path) -> None:
+    path = Path(path).expanduser()
+    if path.is_symlink():
+        raise RuntimeError(f"status report directory {path} is a symlink")
+    path.mkdir(parents=True, mode=0o700, exist_ok=True)
+    stat_result = path.stat()
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"status report directory {path} is owned by uid {stat_result.st_uid}, "
+            f"expected {os.getuid()}"
+        )
+    os.chmod(path, 0o700)
+    _fsync_directory(path)
+    _fsync_directory(path.parent)
 
 
 def _fsync_directory(path: Path) -> None:

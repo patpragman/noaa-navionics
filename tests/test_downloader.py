@@ -7,6 +7,7 @@ from urllib.error import URLError
 import json
 import math
 import shutil
+import stat
 import sys
 import signal
 import tempfile
@@ -2584,6 +2585,8 @@ class StatusReportTests(unittest.TestCase):
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
+            self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
     def test_track_log_summary_accepts_recent_valid_trackpoint(self):
         timestamp = datetime.now(timezone.utc)
@@ -2726,6 +2729,17 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
             self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["ok"], True)
             self.assertFalse(list(root.glob(".status.json.*.part")))
+
+    def test_write_status_report_tightens_public_output_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            root.chmod(0o755)
+            output = root / "status.json"
+
+            write_status_report({"ok": True}, output)
+
+            self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
     def test_write_status_report_syncs_file_and_directory(self):
         calls = []

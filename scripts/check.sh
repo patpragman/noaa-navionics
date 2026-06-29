@@ -67,6 +67,10 @@ grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-
 grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
+grep -q 'prepare_private_cache_dir' scripts/start_chartplotter.sh
+grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
+grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
+grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
@@ -716,6 +720,13 @@ grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
 grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
+grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
+grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
+grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
+grep -q 'status report cache directory' scripts/verify_pi.sh
+grep -q 'expected private 0600' scripts/verify_pi.sh
+grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock pid file has permissions' scripts/verify_pi.sh
 grep -q 'def _fsync_directory' src/noaa_navionics/cli.py
 grep -q '_fsync_directory(tracks_dir)' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
@@ -1876,6 +1887,9 @@ HOME="$launcher_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotte
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log.1"
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log"
 test "$(wc -c <"$launcher_home/.cache/noaa-navionics/chartplotter.log.1")" -eq 1048577
+test "$(stat -c '%a' "$launcher_home/.cache/noaa-navionics")" = 700
+test "$(stat -c '%a' "$launcher_home/.cache/noaa-navionics/chartplotter.log")" = 600
+test "$(stat -c '%a' "$launcher_home/.cache/noaa-navionics/chartplotter.log.1")" = 600
 test ! -e "$launcher_home/.cache/noaa-navionics/chartplotter.launch.lock"
 grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
@@ -2046,6 +2060,10 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id"
+test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics")" = 700
+test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock")" = 700
+test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid")" = 600
+test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id")" = 600
 if [[ -r /proc/sys/kernel/random/boot_id ]]; then
   test "$(cat "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id")" = "$(cat /proc/sys/kernel/random/boot_id)"
 fi

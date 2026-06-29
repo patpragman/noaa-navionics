@@ -381,7 +381,43 @@ require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
 expected_launcher_env_path = sys.argv[4]
 require_track_disk_check = False
-with open(path, encoding="utf-8") as handle:
+status_path = Path(path).expanduser()
+if status_path.is_symlink():
+    raise SystemExit(f"status report is a symlink: {status_path}")
+if not status_path.is_file():
+    raise SystemExit(f"status report is not a regular file: {status_path}")
+try:
+    status_stat = status_path.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect status report {status_path}: {exc}") from exc
+if status_stat.st_uid != os.getuid():
+    raise SystemExit(
+        f"status report {status_path} is owned by uid {status_stat.st_uid}, expected {os.getuid()}"
+    )
+status_mode = status_stat.st_mode & 0o777
+if status_mode != 0o600:
+    raise SystemExit(
+        f"status report {status_path} has permissions {status_mode:04o}, expected private 0600"
+    )
+cache_dir = status_path.parent
+if cache_dir.is_symlink():
+    raise SystemExit(f"status report cache directory is a symlink: {cache_dir}")
+if not cache_dir.is_dir():
+    raise SystemExit(f"status report cache directory is not a directory: {cache_dir}")
+try:
+    cache_stat = cache_dir.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect status report cache directory {cache_dir}: {exc}") from exc
+if cache_stat.st_uid != os.getuid():
+    raise SystemExit(
+        f"status report cache directory {cache_dir} is owned by uid {cache_stat.st_uid}, expected {os.getuid()}"
+    )
+cache_mode = cache_stat.st_mode & 0o777
+if cache_mode != 0o700:
+    raise SystemExit(
+        f"status report cache directory {cache_dir} has permissions {cache_mode:04o}, expected private 0700"
+    )
+with status_path.open(encoding="utf-8") as handle:
     report = json.load(handle)
 if report.get("ok") is not True:
     raise SystemExit("status report ok is not true")
@@ -1272,12 +1308,32 @@ check_opencpn_stable() {
 }
 
 check_launcher_lock_live() {
+  local cache_dir
+  local cache_mode
+  local lock_mode
+  local pid_mode
+  local boot_id_mode
   local owner_pid=""
   local cmdline=""
   local current_boot_id=""
   local lock_boot_id=""
+  cache_dir="$(dirname "$launcher_lock")"
+  if [[ -L "$cache_dir" || -L "$launcher_lock" || -L "${launcher_lock}/pid" || -L "${launcher_lock}/boot_id" ]]; then
+    printf 'chartplotter launcher lock path contains a symlink: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  cache_mode="$(stat -c '%a' "$cache_dir" 2>/dev/null || true)"
+  if [[ "$cache_mode" != "700" ]]; then
+    printf 'chartplotter launcher cache directory has permissions %s, expected 700: %s\n' "${cache_mode:-<missing>}" "$cache_dir" >&2
+    return 1
+  fi
   if [[ ! -e "$launcher_lock" ]]; then
     printf 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  lock_mode="$(stat -c '%a' "$launcher_lock" 2>/dev/null || true)"
+  if [[ "$lock_mode" != "700" ]]; then
+    printf 'chartplotter launcher lock directory has permissions %s, expected 700: %s\n' "${lock_mode:-<missing>}" "$launcher_lock" >&2
     return 1
   fi
   if [[ ! -r "${launcher_lock}/pid" ]]; then
@@ -1286,6 +1342,16 @@ check_launcher_lock_live() {
   fi
   if [[ ! -r "${launcher_lock}/boot_id" ]]; then
     printf 'chartplotter launcher lock exists without a readable boot ID file: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  pid_mode="$(stat -c '%a' "${launcher_lock}/pid" 2>/dev/null || true)"
+  if [[ "$pid_mode" != "600" ]]; then
+    printf 'chartplotter launcher lock pid file has permissions %s, expected 600: %s\n' "${pid_mode:-<missing>}" "${launcher_lock}/pid" >&2
+    return 1
+  fi
+  boot_id_mode="$(stat -c '%a' "${launcher_lock}/boot_id" 2>/dev/null || true)"
+  if [[ "$boot_id_mode" != "600" ]]; then
+    printf 'chartplotter launcher lock boot ID file has permissions %s, expected 600: %s\n' "${boot_id_mode:-<missing>}" "${launcher_lock}/boot_id" >&2
     return 1
   fi
   current_boot_id="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"

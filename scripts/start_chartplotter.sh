@@ -6,6 +6,7 @@ launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 launcher_lock_dir="${HOME}/.cache/noaa-navionics/chartplotter.launch.lock"
+cache_dir="$(dirname "$status_report")"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 gps_seconds=60
@@ -47,6 +48,26 @@ for directory in synced_dirs:
     finally:
         os.close(fd)
 PY
+}
+
+prepare_private_cache_dir() {
+  if [[ -L "$cache_dir" ]]; then
+    echo "NOAA Navionics cache directory is a symlink: $cache_dir" >&2
+    exit 1
+  fi
+  mkdir -p "$cache_dir"
+  chmod 0700 "$cache_dir"
+  sync_paths "$cache_dir" || true
+}
+
+prepare_private_log_file() {
+  if [[ -L "$log_file" ]]; then
+    echo "NOAA Navionics launcher log is a symlink: $log_file" >&2
+    exit 1
+  fi
+  : >>"$log_file"
+  chmod 0600 "$log_file"
+  sync_paths "$log_file" || true
 }
 
 load_launcher_settings() {
@@ -197,9 +218,11 @@ launcher_lock_from_current_boot() {
 write_launcher_lock_files() {
   local boot_id
   printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
+  chmod 0600 "${launcher_lock_dir}/pid"
   boot_id="$(current_boot_id)"
   if [[ -n "$boot_id" ]]; then
     printf '%s\n' "$boot_id" >"${launcher_lock_dir}/boot_id"
+    chmod 0600 "${launcher_lock_dir}/boot_id"
   else
     rm -f "${launcher_lock_dir}/boot_id"
   fi
@@ -218,6 +241,7 @@ release_launcher_lock() {
 acquire_launcher_lock() {
   local owner_pid=""
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
+    chmod 0700 "$launcher_lock_dir"
     write_launcher_lock_files
     lock_acquired=1
     trap release_launcher_lock EXIT
@@ -245,6 +269,7 @@ acquire_launcher_lock() {
   rm -rf "$launcher_lock_dir"
   sync_paths "$launcher_lock_dir" || true
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
+    chmod 0700 "$launcher_lock_dir"
     write_launcher_lock_files
     lock_acquired=1
     trap release_launcher_lock EXIT
@@ -408,14 +433,20 @@ if [[ ! -x "$bin" ]]; then
   exit 127
 fi
 
-mkdir -p "$(dirname "$status_report")"
+prepare_private_cache_dir
+if [[ -L "$log_file" ]]; then
+  echo "NOAA Navionics launcher log is a symlink: $log_file" >&2
+  exit 1
+fi
 if [[ -f "$log_file" ]]; then
   log_bytes="$(wc -c <"$log_file" 2>/dev/null || printf '0')"
   if [[ "$log_bytes" -gt "$max_log_bytes" ]]; then
     mv -f "$log_file" "${log_file}.1"
+    chmod 0600 "${log_file}.1"
     sync_paths "${log_file}.1" || true
   fi
 fi
+prepare_private_log_file
 exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
