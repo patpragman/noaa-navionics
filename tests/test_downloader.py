@@ -16,10 +16,12 @@ import os
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from noaa_navionics import health as health_module
+from noaa_navionics import config as config_module
 from noaa_navionics import downloader as downloader_module
 from noaa_navionics import gps as gps_module
 from noaa_navionics import cli as cli_module
 from noaa_navionics import opencpn as opencpn_module
+from noaa_navionics import report as report_module
 from noaa_navionics.downloader import (
     DOWNLOAD_LOCK_NAME,
     MANIFEST_NAME,
@@ -157,6 +159,24 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.max_chart_age_days, 30)
             self.assertEqual(config.track_retention_days, 90)
             self.assertTrue(config.extract)
+
+    def test_write_default_config_uses_unique_synced_temp_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            path = root / "config.ini"
+            fixed_part = root / "config.ini.part"
+            fixed_part.write_text("other writer\n", encoding="utf-8")
+            calls = []
+            original_fsync = config_module.os.fsync
+            config_module.os.fsync = lambda fd: calls.append(fd)
+            try:
+                write_default_config(path)
+            finally:
+                config_module.os.fsync = original_fsync
+
+            self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
+            self.assertFalse(list(root.glob(".config.ini.*.part")))
+            self.assertGreaterEqual(len(calls), 2)
 
     def test_custom_config_package_kwargs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -855,6 +875,19 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
             self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["ok"], True)
             self.assertFalse(list(root.glob(".status.json.*.part")))
+
+    def test_write_status_report_syncs_file_and_directory(self):
+        calls = []
+        original_fsync = report_module.os.fsync
+        report_module.os.fsync = lambda fd: calls.append(fd)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir) / "status.json"
+                write_status_report({"ok": True}, output)
+        finally:
+            report_module.os.fsync = original_fsync
+
+        self.assertGreaterEqual(len(calls), 2)
 
     def test_service_readiness_checks_accept_expected_onboard_units(self):
         services = {

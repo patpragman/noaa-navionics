@@ -55,6 +55,8 @@ grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
+grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
+grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
@@ -62,6 +64,7 @@ grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
+grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh

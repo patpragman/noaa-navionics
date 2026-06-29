@@ -89,6 +89,7 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp_path, target)
+        _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
             try:
@@ -96,6 +97,19 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
             except FileNotFoundError:
                 pass
     return target
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        fd = os.open(Path(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 def format_status_text(report: dict[str, object]) -> str:

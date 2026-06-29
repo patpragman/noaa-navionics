@@ -4,6 +4,8 @@ from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+import os
+import tempfile
 
 
 DEFAULT_CONFIG_PATH = Path("~/.config/noaa-navionics/config.ini")
@@ -124,7 +126,7 @@ def write_default_config(path: Optional[Path] = None, *, overwrite: bool = False
     if target.exists() and not overwrite:
         raise FileExistsError(f"config already exists: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(default_config_text(), encoding="utf-8")
+    _write_text_atomic(target, default_config_text())
     return target
 
 
@@ -174,6 +176,44 @@ def package_kwargs(app_config: AppConfig) -> dict[str, object]:
     if package == "catalog":
         return {"catalog": True}
     raise ValueError("charts.package must be one of: state, cgd, region, updates, chart, all, catalog")
+
+
+def _write_text_atomic(target: Path, text: str) -> None:
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".part",
+            delete=False,
+        ) as handle:
+            tmp_path = Path(handle.name)
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, target)
+        _fsync_directory(target.parent)
+    finally:
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        fd = os.open(Path(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 def _get_bool(section: object, key: str, default: bool, *, label: Optional[str] = None) -> bool:
