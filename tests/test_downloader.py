@@ -17,7 +17,9 @@ import zipfile
 import os
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+TEST_TMP_PARENT = Path(__file__).resolve().parents[1]
+
+sys.path.insert(0, str(TEST_TMP_PARENT / "src"))
 
 from noaa_navionics import health as health_module
 from noaa_navionics import config as config_module
@@ -249,6 +251,23 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
 
+    def test_config_allows_run_media_storage_paths(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            path.write_text(
+                "[charts]\n"
+                "output = /run/media/pi/NOAA/charts\n"
+                "\n"
+                "[tracking]\n"
+                "output = /run/media/pi/NOAA/tracks\n",
+                encoding="utf-8",
+            )
+
+            config = read_config(path)
+
+            self.assertEqual(config.chart_output, Path("/run/media/pi/NOAA/charts"))
+            self.assertEqual(config.track_output, Path("/run/media/pi/NOAA/tracks"))
+
     def test_invalid_gps_mode_fails_config_read(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "config.ini"
@@ -269,6 +288,9 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\noutput = ~\n", "charts.output"),
             ("[charts]\noutput = ~/.config\n", "charts.output"),
             ("[charts]\noutput = /etc\n", "charts.output"),
+            ("[charts]\noutput = /etc/noaa-navionics\n", "charts.output"),
+            ("[charts]\noutput = /tmp/noaa-navionics\n", "charts.output"),
+            ("[charts]\noutput = /usr/local/noaa-navionics\n", "charts.output"),
             ("[charts]\npackage = state\nvalue = ZZ\n", "charts.value"),
             ("[charts]\npackage = cgd\nvalue = 99\n", "charts.value"),
             ("[charts]\npackage = region\nvalue = 99\n", "charts.value"),
@@ -295,6 +317,8 @@ class ConfigTests(unittest.TestCase):
             ("[tracking]\noutput = ~\n", "tracking.output"),
             ("[tracking]\noutput = ~/.cache\n", "tracking.output"),
             ("[tracking]\noutput = /var\n", "tracking.output"),
+            ("[tracking]\noutput = /var/tmp/noaa-navionics\n", "tracking.output"),
+            ("[tracking]\noutput = /run/noaa-navionics\n", "tracking.output"),
             ("[tracking]\nretention_days = -1\n", "tracking.retention_days"),
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -480,7 +504,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertTrue(configured.ok)
 
     def test_cli_configure_opencpn_skips_gpsd_for_serial_mode(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             app_config = root / "config.ini"
             opencpn_config = root / "opencpn.conf"
@@ -519,7 +543,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertNotIn("Added GPSD", output.getvalue())
 
     def test_cli_configure_opencpn_adds_gpsd_for_gpsd_mode(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             app_config = root / "config.ini"
             opencpn_config = root / "opencpn.conf"
@@ -558,7 +582,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("Would add GPSD: 127.0.0.1:2947", output.getvalue())
 
     def test_cli_log_track_uses_configured_output_and_gpsd_when_omitted(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             app_config = root / "config.ini"
             chart_output = root / "charts"
@@ -619,7 +643,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             app_config = root / "config.ini"
             track_output = root / "configured-tracks"
@@ -672,7 +696,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
 
     def test_cli_log_track_explicit_device_and_output_override_config(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             app_config = root / "config.ini"
             configured_output = root / "configured-tracks"
@@ -829,7 +853,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIsNotNone(calls[0][4])
 
     def test_cli_log_track_seconds_fails_when_no_usable_fix_is_written(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             app_config = root / "config.ini"
             track_output = root / "tracks-out"
@@ -1177,7 +1201,7 @@ class CLIValidationTests(unittest.TestCase):
                     self.assertIn("charts.package must be one of: state, cgd, region, chart, all", stderr.getvalue())
 
     def test_sync_rejects_low_disk_before_download(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             config = root / "config.ini"
             config.write_text(
@@ -1215,7 +1239,7 @@ class CLIValidationTests(unittest.TestCase):
             self.assertEqual(calls, [])
 
     def test_sync_rejects_missing_chart_storage_before_creating_directory(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             chart_output = root / "missing-storage" / "charts"
             config = root / "config.ini"
@@ -1248,7 +1272,7 @@ class CLIValidationTests(unittest.TestCase):
             self.assertEqual(calls, [])
 
     def test_preflight_explicit_default_chart_path_overrides_config(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             config = root / "config.ini"
             configured_charts = root / "configured-charts"
@@ -2157,7 +2181,7 @@ class ManifestTests(unittest.TestCase):
 
 class StatusReportTests(unittest.TestCase):
     def test_build_and_write_status_report(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
             charts = root / "charts"
             cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"

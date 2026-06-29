@@ -35,6 +35,20 @@ UNSAFE_STORAGE_NAMES = {
     "usr",
     "var",
 }
+FORBIDDEN_STORAGE_ROOTS = (
+    Path("/boot"),
+    Path("/dev"),
+    Path("/etc"),
+    Path("/opt"),
+    Path("/proc"),
+    Path("/root"),
+    Path("/run"),
+    Path("/sys"),
+    Path("/tmp"),
+    Path("/usr"),
+    Path("/var"),
+)
+ALLOWED_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
 
 
 @dataclass(frozen=True)
@@ -320,6 +334,12 @@ def _require_safe_storage_path(path: Path, *, label: str) -> None:
         raise ValueError(
             f"{label} must be a dedicated storage directory, not a broad system or home directory"
         )
+    resolved = expanded.resolve(strict=False)
+    for root in FORBIDDEN_STORAGE_ROOTS:
+        if _path_is_relative_to(resolved, root) and not any(
+            _path_is_relative_to(resolved, allowed) for allowed in ALLOWED_STORAGE_ROOTS
+        ):
+            raise ValueError(f"{label} must not be under volatile or system directory {root}")
 
 
 def _stable_gps_device_path(path: str) -> bool:
@@ -337,6 +357,14 @@ def _safe_gps_by_id_suffix(suffix: str) -> bool:
 def _volatile_usb_device_path(path: str) -> bool:
     name = Path(path).name
     return name.startswith("ttyUSB") or name.startswith("ttyACM")
+
+
+def _path_is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
 
 
 def _get_int(

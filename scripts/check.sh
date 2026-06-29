@@ -584,9 +584,14 @@ grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' src/noaa_navionics/config.py
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' examples/noaa-navionics.ini
 grep -q 'min_free_gb = 2.0' examples/noaa-navionics.ini
 grep -q 'UNSAFE_STORAGE_NAMES' src/noaa_navionics/config.py
+grep -q 'FORBIDDEN_STORAGE_ROOTS' src/noaa_navionics/config.py
+grep -q 'ALLOWED_STORAGE_ROOTS' src/noaa_navionics/config.py
 grep -q 'must be a dedicated storage directory' src/noaa_navionics/config.py
-grep -q 'broad system or home directories' README.md
-grep -q 'broad system or home directories' docs/sailboat-pi.md
+grep -q 'must not be under volatile or system directory' src/noaa_navionics/config.py
+grep -q 'broad system, volatile, or home directories' README.md
+grep -q 'broad system, volatile, or home directories' docs/sailboat-pi.md
+grep -q 'mounted storage under `/mnt`, `/media`, or `/run/media`' README.md
+grep -q 'mounted storage under `/mnt`, `/media`, or `/run/media`' docs/sailboat-pi.md
 grep -q 'charts.min_free_gb' src/noaa_navionics/config.py
 grep -q 'def _get_float' src/noaa_navionics/config.py
 grep -q 'def _validate_chart_package_value' src/noaa_navionics/config.py
