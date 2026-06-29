@@ -116,6 +116,7 @@ grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
+grep -q 'def config_bool' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
 grep -q '"Time Sync"' scripts/verify_pi.sh
 grep -q '"Display Power"' scripts/verify_pi.sh
@@ -220,6 +221,9 @@ grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
 grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
+grep -q '"extract": app_config.extract' src/noaa_navionics/report.py
+grep -q '"keep_zip": app_config.keep_zip' src/noaa_navionics/report.py
+grep -q '"force": app_config.force' src/noaa_navionics/report.py
 grep -q 'boot_id' src/noaa_navionics/report.py
 grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py

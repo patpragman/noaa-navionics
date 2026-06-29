@@ -133,6 +133,14 @@ import json
 import os
 import sys
 
+def config_bool(parser, section, key, fallback):
+    value = parser.get(section, key, fallback=fallback).strip().lower()
+    if value in {"1", "yes", "true", "on"}:
+        return True
+    if value in {"0", "no", "false", "off"}:
+        return False
+    raise SystemExit(f"{section}.{key} is not a boolean value: {value}")
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -168,6 +176,9 @@ if expected_config_path:
         "chart_package": parser.get("charts", "package", fallback="state").strip().lower(),
         "chart_value": parser.get("charts", "value", fallback="AK").strip(),
         "chart_output": str(chart_output),
+        "extract": config_bool(parser, "charts", "extract", "yes"),
+        "keep_zip": config_bool(parser, "charts", "keep_zip", "yes"),
+        "force": config_bool(parser, "charts", "force", "yes"),
         "max_chart_age_days": int(parser.get("charts", "max_age_days", fallback="30").strip()),
         "gps_mode": parser.get("gps", "mode", fallback="gpsd").strip().lower(),
         "gps_device": parser.get("gps", "device", fallback="/dev/serial/by-id/YOUR_GPS_DEVICE").strip(),
