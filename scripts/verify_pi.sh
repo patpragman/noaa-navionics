@@ -623,7 +623,10 @@ if [[ -r /etc/default/gpsd ]]; then
   check "GPSD USB auto disabled" grep -Eq '^USBAUTO="false"' /etc/default/gpsd
   check "GPSD immediate polling" grep -Eq '^GPSD_OPTIONS="[^"]*-n[^"]*"' /etc/default/gpsd
   check "GPSD device configured" grep -Eq '^DEVICES="[^"]+"' /etc/default/gpsd
-  gpsd_device="$(sed -n 's/^DEVICES="\([^"]*\)".*/\1/p' /etc/default/gpsd | awk '{print $1}')"
+  gpsd_devices="$(sed -n 's/^DEVICES="\([^"]*\)".*/\1/p' /etc/default/gpsd)"
+  gpsd_device_count="$(awk '{print NF}' <<<"$gpsd_devices")"
+  check "GPSD single device" test "$gpsd_device_count" -eq 1
+  gpsd_device="$(awk '{print $1}' <<<"$gpsd_devices")"
   if [[ -n "$gpsd_device" ]]; then
     check "GPSD device exists" test -e "$gpsd_device"
     check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"

@@ -200,9 +200,11 @@ grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
+grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
 grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
+grep -q 'must contain exactly' src/noaa_navionics/health.py
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh

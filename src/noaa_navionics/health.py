@@ -585,9 +585,9 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
         failures.append("USBAUTO is not false")
     if "-n" not in options:
         failures.append("GPSD_OPTIONS does not include -n")
-    if expected_device not in devices:
+    if devices != [expected_device]:
         configured = " ".join(devices) if devices else "<empty>"
-        failures.append(f"DEVICES {configured} does not include {expected_device}")
+        failures.append(f"DEVICES {configured} must contain exactly {expected_device}")
     if failures:
         return CheckResult("GPSD Config", False, f"{path}: " + "; ".join(failures))
     return CheckResult("GPSD Config", True, f"{path} uses {expected_device} with immediate polling")

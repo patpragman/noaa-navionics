@@ -2209,6 +2209,23 @@ class GpsTests(unittest.TestCase):
             self.assertIn("does not include -n", result.detail)
             self.assertIn("/dev/serial/by-id/mock-gps", result.detail)
 
+    def test_check_gpsd_startup_config_rejects_extra_devices(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "gpsd"
+            config.write_text(
+                'START_DAEMON="true"\n'
+                'USBAUTO="false"\n'
+                'DEVICES="/dev/serial/by-id/mock-gps /dev/serial/by-id/old-gps"\n'
+                'GPSD_OPTIONS="-n"\n',
+                encoding="utf-8",
+            )
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+
+            self.assertFalse(result.ok)
+            self.assertIn("must contain exactly", result.detail)
+            self.assertIn("/dev/serial/by-id/old-gps", result.detail)
+
     def test_chart_check_requires_extracted_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
