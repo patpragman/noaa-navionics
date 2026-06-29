@@ -240,6 +240,8 @@ class ConfigTests(unittest.TestCase):
     def test_invalid_config_values_fail_fast(self):
         cases = [
             ("[charts]\npackage = potato\n", "charts.package"),
+            ("[charts]\npackage = updates\nvalue = ten-days\n", "charts.package"),
+            ("[charts]\npackage = catalog\n", "charts.package"),
             ("[charts]\npackage = state\nvalue =\n", "charts.value"),
             ("[charts]\noutput =\n", "charts.output"),
             ("[charts]\noutput = charts/noaa-enc\n", "charts.output"),
@@ -700,12 +702,12 @@ class CLIValidationTests(unittest.TestCase):
 
     def test_sync_rejects_incomplete_onboard_chart_packages(self):
         cases = [
-            ("updates", "ten-days", "not a complete chart set"),
-            ("catalog", "", "metadata only"),
+            ("updates", "ten-days"),
+            ("catalog", ""),
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            for index, (package, value, expected) in enumerate(cases):
+            for index, (package, value) in enumerate(cases):
                 with self.subTest(package=package):
                     config = root / f"config-{index}.ini"
                     config.write_text(
@@ -721,8 +723,7 @@ class CLIValidationTests(unittest.TestCase):
                         code = cli_module.main(["sync-charts", "--config", str(config)])
 
                     self.assertEqual(code, 2)
-                    self.assertIn("sync-charts requires a complete onboard chart package", stderr.getvalue())
-                    self.assertIn(expected, stderr.getvalue())
+                    self.assertIn("charts.package must be one of: state, cgd, region, chart, all", stderr.getvalue())
 
     def test_gps_waits_reject_negative_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])

@@ -235,7 +235,7 @@ class DownloaderApp(tk.Tk):
         try:
             app_config = read_config(self._config_path())
             if app_config.chart_package not in PACKAGE_KINDS:
-                raise ValueError("charts.package must be one of: state, updates, cgd, region, chart, all, catalog")
+                raise ValueError("charts.package must be one of: state, cgd, region, chart, all")
         except Exception as exc:
             messagebox.showerror("Config failed", str(exc))
             return

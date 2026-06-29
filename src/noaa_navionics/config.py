@@ -9,8 +9,8 @@ import tempfile
 
 
 DEFAULT_CONFIG_PATH = Path("~/.config/noaa-navionics/config.ini")
-CHART_PACKAGES = {"state", "cgd", "region", "updates", "chart", "all", "catalog"}
-CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "updates", "chart"}
+CHART_PACKAGES = {"state", "cgd", "region", "chart", "all"}
+CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "chart"}
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 
 
@@ -69,7 +69,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
 
     chart_package = charts.get("package", defaults.chart_package).strip().lower()
     if chart_package not in CHART_PACKAGES:
-        raise ValueError("charts.package must be one of: state, cgd, region, updates, chart, all, catalog")
+        raise ValueError("charts.package must be one of: state, cgd, region, chart, all")
     chart_value = charts.get("value", defaults.chart_value).strip()
     if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
         raise ValueError(f"charts.value is required when charts.package is {chart_package}")
@@ -137,7 +137,7 @@ def default_config_text() -> str:
     defaults = default_config()
     return (
         "[charts]\n"
-        "# package can be: state, cgd, region, updates, chart, all, catalog\n"
+        "# package can be: state, cgd, region, chart, all\n"
         f"package = {defaults.chart_package}\n"
         f"value = {defaults.chart_value}\n"
         "# Use an absolute path or a path starting with ~ for unattended systemd services.\n"
@@ -172,15 +172,11 @@ def package_kwargs(app_config: AppConfig) -> dict[str, object]:
         return {"cgd": value}
     if package == "region":
         return {"region": value}
-    if package == "updates":
-        return {"updates": value}
     if package == "chart":
         return {"chart": value}
     if package == "all":
         return {"all_charts": True}
-    if package == "catalog":
-        return {"catalog": True}
-    raise ValueError("charts.package must be one of: state, cgd, region, updates, chart, all, catalog")
+    raise ValueError("charts.package must be one of: state, cgd, region, chart, all")
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
