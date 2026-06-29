@@ -258,13 +258,16 @@ class GPXTrackLogger:
         self._last_fsync_monotonic: Optional[float] = None
 
     def __enter__(self) -> "GPXTrackLogger":
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        parent = self.path.parent
+        parent.mkdir(parents=True, exist_ok=True)
         self.file = self.path.open("x", encoding="utf-8")
         self.file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         self.file.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')
         self.file.write(f"  <trk><name>{escape(self.name)}</name><trkseg>\n")
         self.file.flush()
         self._sync_to_disk(force=True)
+        _fsync_directory(parent)
+        _fsync_directory(parent.parent)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -302,6 +305,19 @@ class GPXTrackLogger:
                 return
         os.fsync(self.file.fileno())
         self._last_fsync_monotonic = current
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        fd = os.open(Path(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 def default_track_path(base_dir: Path) -> Path:

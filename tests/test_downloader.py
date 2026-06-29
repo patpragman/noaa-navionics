@@ -1272,7 +1272,7 @@ class GpsTests(unittest.TestCase):
             self.assertIn("<trkpt lat=\"48.11730000\" lon=\"11.51666667\">", text)
             self.assertIn("<ele>545.40</ele>", text)
 
-    def test_gpx_logger_syncs_track_file_to_disk(self):
+    def test_gpx_logger_syncs_track_file_and_directory_to_disk(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
         calls = []
         original_fsync = gps_module.os.fsync
@@ -1285,7 +1285,7 @@ class GpsTests(unittest.TestCase):
         finally:
             gps_module.os.fsync = original_fsync
 
-        self.assertGreaterEqual(len(calls), 3)
+        self.assertGreaterEqual(len(calls), 5)
 
     def test_gpx_logger_does_not_overwrite_existing_file(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
