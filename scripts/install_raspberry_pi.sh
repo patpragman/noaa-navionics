@@ -522,7 +522,7 @@ fi
 mkdir -p "${HOME}/.local/bin" "$data_dir"
 reset_private_venv
 python3 -m venv "$venv_dir"
-"${venv_dir}/bin/python" -m pip install --no-build-isolation --no-use-pep517 "${repo_root}"
+"${venv_dir}/bin/python" -m pip install --disable-pip-version-check --no-index --no-build-isolation --no-use-pep517 "${repo_root}"
 sync_tree "$venv_dir"
 link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"

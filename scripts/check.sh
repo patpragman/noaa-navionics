@@ -298,6 +298,8 @@ grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
 grep -q 'python3 python3-venv python3-tk rsync opencpn' scripts/install_raspberry_pi.sh
 grep -q 'python3-setuptools' scripts/install_raspberry_pi.sh
+grep -q -- '--disable-pip-version-check' scripts/install_raspberry_pi.sh
+grep -q -- '--no-index' scripts/install_raspberry_pi.sh
 grep -q -- '--no-build-isolation' scripts/install_raspberry_pi.sh
 grep -q -- '--no-use-pep517' scripts/install_raspberry_pi.sh
 grep -q 'opencpn gpsd chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
