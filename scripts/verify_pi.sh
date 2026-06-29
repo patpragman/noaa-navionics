@@ -807,6 +807,8 @@ if expected_config_path:
         )
     if manifest.get("exists") is not True:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
+    if manifest.get("is_symlink") is True:
+        raise SystemExit(f"status report manifest path is a symlink: {expected_manifest_path}")
     for key in ("created_at", "package", "package_filename", "url", "download_path", "download_url", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
@@ -817,7 +819,10 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest created_at_source {manifest_created_at_source} is not verified"
         )
-    with Path(expected_manifest_path).open(encoding="utf-8") as manifest_handle:
+    manifest_file_path = Path(expected_manifest_path).expanduser()
+    if manifest_file_path.is_symlink():
+        raise SystemExit(f"status report manifest path is a symlink: {manifest_file_path}")
+    with manifest_file_path.open(encoding="utf-8") as manifest_handle:
         manifest_file = json.load(manifest_handle)
     package_section = manifest_file.get("package", {})
     download_section = manifest_file.get("download", {})
@@ -916,6 +921,8 @@ if expected_config_path:
             f"does not match configured package filename from {expected_package_source_url} or uses a non-HTTPS redirect"
         )
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
+    if manifest.get("download_path_is_symlink") is True or download_path.is_symlink():
+        raise SystemExit(f"status report manifest download path is a symlink: {download_path}")
     if download_path.name != manifest_package_filename:
         raise SystemExit(
             f"status report manifest download path {download_path} does not end with {manifest_package_filename}"
@@ -929,6 +936,8 @@ if expected_config_path:
     if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
     extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
+    if manifest.get("extract_path_is_symlink") is True or extract_path.is_symlink():
+        raise SystemExit(f"status report manifest extract path is a symlink: {extract_path}")
     try:
         extract_path.resolve().relative_to(chart_output.resolve())
     except ValueError as exc:

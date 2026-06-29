@@ -401,6 +401,7 @@ grep -q '"min_free_gb": float' scripts/verify_pi.sh
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
+grep -q 'status report manifest path is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
 grep -q 'status report manifest missing' scripts/verify_pi.sh
 grep -q 'status report manifest missing created_at_source' scripts/verify_pi.sh
@@ -416,12 +417,14 @@ grep -q 'status report manifest package filename' scripts/verify_pi.sh
 grep -q 'status report manifest package URL' scripts/verify_pi.sh
 grep -q 'status report manifest download URL' scripts/verify_pi.sh
 grep -q 'status report manifest download path' scripts/verify_pi.sh
+grep -q 'status report manifest download path is a symlink' scripts/verify_pi.sh
 grep -q 'def parse_manifest_int' scripts/verify_pi.sh
 grep -q 'status report manifest {field} is invalid in {source}' scripts/verify_pi.sh
 grep -q '"download_bytes"' scripts/verify_pi.sh
 grep -q '"download bytes"' scripts/verify_pi.sh
 grep -q 'status report manifest download byte count is not positive' scripts/verify_pi.sh
 grep -q 'status report manifest extract path' scripts/verify_pi.sh
+grep -q 'status report manifest extract path is a symlink' scripts/verify_pi.sh
 grep -q '"ENC cell count"' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
@@ -999,9 +1002,12 @@ grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navioni
 grep -q 'missing or disabled chart-refresh service still fails readiness' README.md
 grep -q 'missing or disabled chart-refresh service still fails readiness' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
+grep -q '"is_symlink"' src/noaa_navionics/report.py
 grep -q '"download_bytes"' src/noaa_navionics/report.py
+grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
+grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"min_free_gb": app_config.min_free_gb' src/noaa_navionics/report.py
-grep -q '"extract_path": extract.get("path", "")' src/noaa_navionics/report.py
+grep -q '"extract_path": extract_path' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service

@@ -249,15 +249,18 @@ def format_status_text(report: dict[str, object]) -> str:
         for key in (
             "created_at",
             "created_at_source",
+            "is_symlink",
             "package",
             "package_filename",
             "url",
             "download_path",
+            "download_path_is_symlink",
             "download_url",
             "download_skipped",
             "download_bytes",
             "sha256",
             "extract_path",
+            "extract_path_is_symlink",
             "enc_cell_count",
         ):
             if key in manifest:
@@ -606,31 +609,45 @@ def _track_log_readiness_check(track_log: dict[str, object]) -> CheckResult:
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:
     manifest_path = Path(chart_output).expanduser() / MANIFEST_NAME
+    summary: dict[str, object] = {
+        "path": str(manifest_path),
+        "exists": manifest_path.exists(),
+        "is_symlink": manifest_path.is_symlink(),
+    }
+    if manifest_path.is_symlink():
+        summary["error"] = f"manifest path is a symlink: {manifest_path}"
+        return summary
     if not manifest_path.exists():
-        return {"path": str(manifest_path), "exists": False}
+        return summary
     try:
         manifest = read_manifest(chart_output)
     except Exception as exc:
-        return {"path": str(manifest_path), "exists": True, "error": str(exc)}
+        summary["error"] = str(exc)
+        return summary
     package = manifest.get("package", {})
     download = manifest.get("download", {})
     extract = manifest.get("extract", {})
-    return {
-        "path": str(manifest_path),
-        "exists": True,
-        "created_at": manifest.get("created_at", ""),
-        "created_at_source": manifest.get("created_at_source", ""),
-        "package": package.get("label", "") if isinstance(package, dict) else "",
-        "package_filename": package.get("filename", "") if isinstance(package, dict) else "",
-        "url": package.get("url", "") if isinstance(package, dict) else "",
-        "download_path": download.get("path", "") if isinstance(download, dict) else "",
-        "download_url": download.get("url", "") if isinstance(download, dict) else "",
-        "download_skipped": download.get("skipped", False) if isinstance(download, dict) else False,
-        "download_bytes": download.get("bytes", 0) if isinstance(download, dict) else 0,
-        "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
-        "extract_path": extract.get("path", "") if isinstance(extract, dict) else "",
-        "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
-    }
+    download_path = str(download.get("path", "")).strip() if isinstance(download, dict) else ""
+    extract_path = str(extract.get("path", "")).strip() if isinstance(extract, dict) else ""
+    summary.update(
+        {
+            "created_at": manifest.get("created_at", ""),
+            "created_at_source": manifest.get("created_at_source", ""),
+            "package": package.get("label", "") if isinstance(package, dict) else "",
+            "package_filename": package.get("filename", "") if isinstance(package, dict) else "",
+            "url": package.get("url", "") if isinstance(package, dict) else "",
+            "download_path": download_path,
+            "download_path_is_symlink": Path(download_path).expanduser().is_symlink() if download_path else False,
+            "download_url": download.get("url", "") if isinstance(download, dict) else "",
+            "download_skipped": download.get("skipped", False) if isinstance(download, dict) else False,
+            "download_bytes": download.get("bytes", 0) if isinstance(download, dict) else 0,
+            "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
+            "extract_path": extract_path,
+            "extract_path_is_symlink": Path(extract_path).expanduser().is_symlink() if extract_path else False,
+            "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
+        }
+    )
+    return summary
 
 
 def _service_summary() -> dict[str, object]:

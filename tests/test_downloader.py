@@ -2776,17 +2776,20 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["track_log"]["tracks_dir"], str(charts / "tracks"))
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
+            self.assertEqual(report["manifest"]["is_symlink"], False)
             self.assertEqual(report["manifest"]["created_at"], now)
             self.assertEqual(report["manifest"]["created_at_source"], "download")
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertEqual(report["manifest"]["package_filename"], "AK_ENCs.zip")
             self.assertEqual(report["manifest"]["url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_path"], str(charts / "AK_ENCs.zip"))
+            self.assertEqual(report["manifest"]["download_path_is_symlink"], False)
             self.assertEqual(report["manifest"]["download_url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_skipped"], False)
             self.assertEqual(report["manifest"]["download_bytes"], 123)
             self.assertEqual(report["manifest"]["sha256"], "abc")
             self.assertEqual(report["manifest"]["extract_path"], str(cell.parent))
+            self.assertEqual(report["manifest"]["extract_path_is_symlink"], False)
             self.assertEqual(report["manifest"]["enc_cell_count"], 1)
             self.assertFalse(report["ok"])
             text = format_status_text(report)
@@ -2798,12 +2801,15 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Desktop Startup:", text)
             self.assertIn(f"autostart={autostart}", text)
             self.assertIn("created_at_source: download", text)
+            self.assertIn("is_symlink: False", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)
+            self.assertIn("download_path_is_symlink: False", text)
             self.assertIn("download_url: file:///test.zip", text)
             self.assertIn("download_skipped: False", text)
             self.assertIn("download_bytes: 123", text)
             self.assertIn(f"extract_path: {cell.parent}", text)
+            self.assertIn("extract_path_is_symlink: False", text)
             self.assertIn("Service Checks:", text)
             self.assertIn("System Services:", text)
             self.assertIn("User:", text)
@@ -2815,6 +2821,68 @@ class StatusReportTests(unittest.TestCase):
             self.assertTrue(output.exists())
             self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
+
+    def test_manifest_summary_rejects_symlinked_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            real_manifest = root / "real-manifest.json"
+            real_manifest.write_text(
+                '{"created_at":"2000-01-01T00:00:00Z","package":{"label":"Old"},"download":{},"extract":{}}\n',
+                encoding="utf-8",
+            )
+            manifest = charts / MANIFEST_NAME
+            try:
+                manifest.symlink_to(real_manifest)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = report_module._manifest_summary(charts)
+
+            self.assertEqual(summary["path"], str(manifest))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], True)
+            self.assertIn("manifest path is a symlink", summary["error"])
+            self.assertNotIn("created_at", summary)
+
+    def test_manifest_summary_marks_symlinked_recorded_paths(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            real_archive = root / "real-AK-ENCs.zip"
+            real_archive.write_bytes(b"chart")
+            archive_link = charts / "AK_ENCs.zip"
+            real_extract = root / "real-AK-ENCs"
+            cell = real_extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            extract_link = charts / "AK_ENCs"
+            try:
+                archive_link.symlink_to(real_archive)
+                extract_link.symlink_to(real_extract, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (charts / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"created_at_source":"download",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive_link}","url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",'
+                '"bytes":5,"sha256":"abc","skipped":false},'
+                f'"extract":{{"path":"{extract_link}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            summary = report_module._manifest_summary(charts)
+
+            self.assertEqual(summary["is_symlink"], False)
+            self.assertEqual(summary["download_path"], str(archive_link))
+            self.assertEqual(summary["download_path_is_symlink"], True)
+            self.assertEqual(summary["extract_path"], str(extract_link))
+            self.assertEqual(summary["extract_path_is_symlink"], True)
 
     def test_track_log_summary_accepts_recent_valid_trackpoint(self):
         timestamp = datetime.now(timezone.utc)
