@@ -623,7 +623,10 @@ grep -q 'install_root_file_atomic "$tmp" /etc/default/gpsd 0644' scripts/configu
 grep -q 'systemctl daemon-reload' scripts/configure_gpsd.sh
 grep -q 'systemctl enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
 grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
-grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
+grep -q 'backup_root_file_private /etc/default/gpsd "$backup"' scripts/configure_gpsd.sh
+grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
+grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
+! grep -q 'sudo cp -a /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
@@ -675,6 +678,10 @@ grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_
 grep -q 'unterminated NOAA Navionics GPS time block' scripts/configure_gps_time.sh
 grep -q 'END marker without BEGIN' scripts/configure_gps_time.sh
 grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_gps_time.sh
+grep -q 'backup_root_file_private "$chrony_conf" "$backup"' scripts/configure_gps_time.sh
+grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gps_time.sh
+grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gps_time.sh
+! grep -q 'sudo cp -a "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
 grep -q 'Source Revision' src/noaa_navionics/health.py

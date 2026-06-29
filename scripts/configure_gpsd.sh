@@ -44,6 +44,99 @@ if fd is not None:
 PY
 }
 
+backup_root_file_private() {
+  local source="$1"
+  local backup="$2"
+  sudo python3 - "$source" "$backup" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+source = Path(sys.argv[1])
+backup = Path(sys.argv[2])
+parent = backup.parent
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+if source.is_symlink():
+    raise SystemExit(f"root config source is a symlink: {source}")
+if parent.is_symlink():
+    raise SystemExit(f"root config backup directory is a symlink: {parent}")
+if not parent.exists() or not parent.is_dir():
+    raise SystemExit(f"root config backup parent is not a directory: {parent}")
+parent_stat = parent.stat()
+parent_mode = parent_stat.st_mode & 0o777
+if parent_stat.st_uid != 0:
+    raise SystemExit(f"root config backup directory {parent} is owned by uid {parent_stat.st_uid}, expected root")
+if parent_mode & 0o022:
+    raise SystemExit(
+        f"root config backup directory {parent} has permissions {parent_mode:04o}, "
+        "expected no group/other write bits"
+    )
+if backup.exists() or backup.is_symlink():
+    raise SystemExit(f"root config backup already exists: {backup}")
+
+src_fd = None
+dst_fd = None
+created = False
+completed = False
+try:
+    src_fd = os.open(source, os.O_RDONLY | nofollow)
+    source_stat = os.fstat(src_fd)
+    source_mode = source_stat.st_mode & 0o777
+    if not stat.S_ISREG(source_stat.st_mode):
+        raise SystemExit(f"root config source is not a regular file: {source}")
+    if source_stat.st_uid != 0:
+        raise SystemExit(f"root config source {source} is owned by uid {source_stat.st_uid}, expected root")
+    if source_mode & 0o022:
+        raise SystemExit(
+            f"root config source {source} has permissions {source_mode:04o}, "
+            "expected no group/other write bits"
+        )
+
+    dst_fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600)
+    created = True
+    os.fchmod(dst_fd, 0o600)
+    while True:
+        chunk = os.read(src_fd, 1024 * 1024)
+        if not chunk:
+            break
+        offset = 0
+        while offset < len(chunk):
+            offset += os.write(dst_fd, chunk[offset:])
+    os.fsync(dst_fd)
+    completed = True
+finally:
+    if dst_fd is not None:
+        os.close(dst_fd)
+    if src_fd is not None:
+        os.close(src_fd)
+    if created and not completed:
+        try:
+            backup.unlink()
+        except FileNotFoundError:
+            pass
+
+try:
+    parent_fd = os.open(parent, os.O_RDONLY)
+except OSError:
+    parent_fd = None
+if parent_fd is not None:
+    try:
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+
+backup_stat = backup.stat()
+backup_mode = backup_stat.st_mode & 0o777
+if backup_stat.st_uid != 0 or backup_mode != 0o600:
+    try:
+        backup.unlink()
+    finally:
+        raise SystemExit(f"root config backup was not created as root-owned 0600: {backup}")
+PY
+}
+
 install_root_file_atomic() {
   local source="$1"
   local target="$2"
@@ -303,8 +396,7 @@ fi
 if [[ -e /etc/default/gpsd ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
   backup="/etc/default/gpsd.noaa-navionics.${stamp}.bak"
-  sudo cp -a /etc/default/gpsd "$backup"
-  sync_path "$backup"
+  backup_root_file_private /etc/default/gpsd "$backup"
 fi
 
 install_root_file_atomic "$tmp" /etc/default/gpsd 0644
