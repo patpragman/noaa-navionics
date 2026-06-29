@@ -349,6 +349,8 @@ grep -q 'status report config values do not match current config' scripts/verify
 grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
 grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
+grep -q 'expected private 0600' scripts/verify_pi.sh
+grep -q 'status report track_log latest_mode' scripts/verify_pi.sh
 grep -q '"min_free_gb": float' scripts/verify_pi.sh
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
@@ -675,7 +677,7 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_tree' src/noaa_navionics/downloader.py
-grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py
+grep -q 'os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'def _fsync_directory' src/noaa_navionics/gps.py
 grep -q 'fix_quality is not None and self.fix_quality != 0' src/noaa_navionics/gps.py
@@ -907,8 +909,14 @@ grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'UMask=0077' systemd/noaa-navionics-track.service
 grep -q 'track service private track files' scripts/verify_pi.sh
 grep -q 'track service loaded private track files' scripts/verify_pi.sh
-grep -q 'service-created track files use a private `0077` umask' README.md
-grep -q 'service-created track files use a private `0077` umask' docs/sailboat-pi.md
+grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL' src/noaa_navionics/gps.py
+grep -q '0o600' src/noaa_navionics/gps.py
+grep -q 'latest_mode' src/noaa_navionics/report.py
+grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
+grep -q 'private `0600` permissions' README.md
+grep -q 'private `0600` permissions' docs/sailboat-pi.md
+grep -q 'service-created track files also use a private `0077` umask' README.md
+grep -q 'service-created track files also use a private `0077` umask' docs/sailboat-pi.md
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh

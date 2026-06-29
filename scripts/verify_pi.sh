@@ -544,6 +544,18 @@ if expected_config_path:
             f"status report track_log latest_path {latest_track_path} is owned by uid "
             f"{latest_track_stat.st_uid}, expected {os.getuid()}"
         )
+    latest_track_mode = latest_track_stat.st_mode & 0o777
+    if latest_track_mode & 0o077:
+        raise SystemExit(
+            f"status report track_log latest_path {latest_track_path} has permissions "
+            f"{latest_track_mode:04o}, expected private 0600"
+        )
+    status_latest_mode = str(track_log.get("latest_mode", "")).strip()
+    if status_latest_mode != f"{latest_track_mode:04o}":
+        raise SystemExit(
+            f"status report track_log latest_mode {status_latest_mode or '<missing>'} "
+            f"does not match file permissions {latest_track_mode:04o}"
+        )
     opencpn_config = report.get("opencpn_config")
     if not isinstance(opencpn_config, dict):
         raise SystemExit("status report has no opencpn_config section")
@@ -1422,6 +1434,10 @@ while True:
                     continue
                 if stat.st_uid != os.getuid():
                     last_detail = f"{path} is owned by uid {stat.st_uid}, expected {os.getuid()}"
+                    continue
+                mode = stat.st_mode & 0o777
+                if mode & 0o077:
+                    last_detail = f"{path} permissions are {mode:04o}, expected private 0600"
                     continue
                 candidates.append((stat.st_mtime, path, stat))
         candidates.sort(reverse=True)

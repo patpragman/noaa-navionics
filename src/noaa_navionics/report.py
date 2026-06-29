@@ -319,7 +319,8 @@ def format_status_text(report: dict[str, object]) -> str:
             coordinates = f" {track_log.get('latest_latitude')},{track_log.get('latest_longitude')}"
         lines.append(
             f"tracks_dir={track_log.get('tracks_dir', '')} ok={track_log.get('ok', '')} "
-            f"latest={latest}{coordinates} detail={track_log.get('detail', '')}".rstrip()
+            f"latest={latest}{coordinates} mode={track_log.get('latest_mode', '')} "
+            f"detail={track_log.get('detail', '')}".rstrip()
         )
     return "\n".join(lines)
 
@@ -457,6 +458,10 @@ def _track_log_summary_once(
         if stat.st_uid != expected_owner:
             last_detail = f"{path} is owned by uid {stat.st_uid}, expected {expected_owner}"
             continue
+        mode = stat.st_mode & 0o777
+        if mode & 0o077:
+            last_detail = f"{path} permissions are {mode:04o}, expected private 0600"
+            continue
         candidates.append((stat.st_mtime, path, stat))
     candidates.sort(reverse=True)
     for _mtime, path, stat in candidates:
@@ -515,6 +520,7 @@ def _track_log_summary_once(
                 "latest_latitude": latitude,
                 "latest_longitude": longitude,
                 "age_seconds": age,
+                "latest_mode": f"{stat.st_mode & 0o777:04o}",
                 "detail": f"{path} {latitude:.6f},{longitude:.6f}",
             }
         )

@@ -315,7 +315,12 @@ class GPXTrackLogger:
     def __enter__(self) -> "GPXTrackLogger":
         parent = self.path.parent
         parent.mkdir(parents=True, exist_ok=True)
-        self.file = self.path.open("x", encoding="utf-8")
+        fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            self.file = os.fdopen(fd, "w", encoding="utf-8")
+        except Exception:
+            os.close(fd)
+            raise
         self.file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         self.file.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')
         self.file.write(f"  <trk><name>{escape(self.name)}</name><trkseg>\n")
