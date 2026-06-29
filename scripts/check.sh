@@ -1185,6 +1185,10 @@ grep -q 'Status reports and Pi verification also reject symlinked desktop autost
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
+grep -q 'def _prepare_output_dir' src/noaa_navionics/downloader.py
+grep -q 'chart output path contains a symlink' src/noaa_navionics/downloader.py
+grep -q 'test_download_rejects_symlinked_output_ancestor' tests/test_downloader.py
+grep -q 'test_write_manifest_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q '"min_free_gb": app_config.min_free_gb' src/noaa_navionics/report.py
 grep -q '"extract_path": extract_path' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py

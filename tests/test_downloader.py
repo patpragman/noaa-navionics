@@ -1722,6 +1722,24 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(archive_link.is_symlink())
             self.assertFalse((output / "AK_ENCs").exists())
 
+    def test_download_rejects_symlinked_output_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_storage = root / "real-storage"
+            real_storage.mkdir()
+            storage_link = root / "storage-link"
+            try:
+                storage_link.symlink_to(real_storage, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            output = storage_link / "charts"
+            package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart output path contains a symlink"):
+                download_package(package, output)
+
+            self.assertFalse((real_storage / "charts").exists())
+
     def test_existing_zip_mismatched_previous_manifest_fails_before_extracting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1819,6 +1837,25 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
             self.assertEqual(read_manifest(output)["package"]["filename"], "AK_ENCs.zip")
             self.assertFalse(list(output.glob(".noaa-navionics-manifest.json.*.part")))
+
+    def test_write_manifest_rejects_symlinked_output_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_storage = root / "real-storage"
+            real_storage.mkdir()
+            storage_link = root / "storage-link"
+            try:
+                storage_link.symlink_to(real_storage, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            output = storage_link / "charts"
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+
+            with self.assertRaisesRegex(RuntimeError, "chart output path contains a symlink"):
+                downloader_module.write_manifest(output, package, result)
+
+            self.assertFalse((real_storage / "charts").exists())
 
     def test_write_manifest_syncs_file_and_directory(self):
         calls = []

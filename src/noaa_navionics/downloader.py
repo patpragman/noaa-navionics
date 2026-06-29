@@ -229,7 +229,7 @@ def download_package(
     progress: Optional[ProgressCallback] = None,
 ) -> DownloadResult:
     output_path = Path(output_dir).expanduser()
-    output_path.mkdir(parents=True, exist_ok=True)
+    _prepare_output_dir(output_path)
     with _chart_update_lock(output_path):
         return _download_package_unlocked(
             package,
@@ -523,7 +523,7 @@ def _pid_is_running(pid: int) -> bool:
 
 def write_manifest(output_dir: Union[Path, str], package: Package, result: DownloadResult) -> Path:
     output_path = Path(output_dir).expanduser()
-    output_path.mkdir(parents=True, exist_ok=True)
+    _prepare_output_dir(output_path)
     digest = result.sha256
     if not digest and result.path.exists():
         digest = sha256_file(result.path)
@@ -573,6 +573,26 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
             except FileNotFoundError:
                 pass
     return target
+
+
+def _prepare_output_dir(output_path: Path) -> None:
+    symlink_component = _first_symlink_ancestor(output_path)
+    if symlink_component is not None:
+        raise RuntimeError(f"chart output path contains a symlink: {symlink_component}")
+    output_path.mkdir(parents=True, exist_ok=True)
+    symlink_component = _first_symlink_ancestor(output_path)
+    if symlink_component is not None:
+        raise RuntimeError(f"chart output path contains a symlink: {symlink_component}")
+    if not output_path.is_dir():
+        raise RuntimeError(f"chart output path is not a directory: {output_path}")
+
+
+def _first_symlink_ancestor(path: Path) -> Optional[Path]:
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
 
 
 def _manifest_created_at(
