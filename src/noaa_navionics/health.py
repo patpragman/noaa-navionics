@@ -51,6 +51,7 @@ def run_preflight(
     gps_seconds: float = 5.0,
     max_chart_age_days: int = 30,
     min_free_gb: float = 2.0,
+    keep_zip: bool = True,
     track_output: Optional[Path] = None,
 ) -> list[CheckResult]:
     results = [
@@ -69,6 +70,7 @@ def run_preflight(
             max_age_days=max_chart_age_days,
             expected_package=chart_package,
             expected_value=chart_value,
+            require_archive=keep_zip,
         ),
         check_opencpn_chart_config(chart_dir),
         check_disk_space(chart_dir, min_free_gb=min_free_gb),
@@ -360,6 +362,7 @@ def check_chart_manifest(
     max_age_days: int = 30,
     expected_package: str = "",
     expected_value: str = "",
+    require_archive: bool = False,
 ) -> CheckResult:
     path = Path(chart_dir).expanduser()
     manifest_path = path / MANIFEST_NAME
@@ -441,7 +444,7 @@ def check_chart_manifest(
                 False,
                 f"manifest package URL {actual_detail} does not match configured {expected_url}",
             )
-    archive_check = _check_manifest_archive(path, manifest)
+    archive_check = _check_manifest_archive(path, manifest, required=require_archive)
     if archive_check is not None:
         return archive_check
     download_url_check = _check_manifest_download_url(manifest)
@@ -468,12 +471,19 @@ def _check_manifest_download_url(manifest: dict[str, object]) -> Optional[CheckR
     return None
 
 
-def _check_manifest_archive(chart_dir: Path, manifest: dict[str, object]) -> Optional[CheckResult]:
+def _check_manifest_archive(
+    chart_dir: Path,
+    manifest: dict[str, object],
+    *,
+    required: bool = False,
+) -> Optional[CheckResult]:
     download = manifest.get("download", {})
     if not isinstance(download, dict):
         return CheckResult("Manifest", False, "manifest has no download section")
     archive_path_text = str(download.get("path", "")).strip()
     if not archive_path_text:
+        if required:
+            return CheckResult("Manifest", False, "manifest does not record a retained download path")
         return None
     archive_path = Path(archive_path_text).expanduser()
     try:
@@ -481,6 +491,8 @@ def _check_manifest_archive(chart_dir: Path, manifest: dict[str, object]) -> Opt
     except ValueError:
         return CheckResult("Manifest", False, f"manifest download path is outside chart directory: {archive_path}")
     if not archive_path.exists():
+        if required:
+            return CheckResult("Manifest", False, f"manifest retained download path is missing: {archive_path}")
         return None
     try:
         expected_bytes = int(download.get("bytes", 0))

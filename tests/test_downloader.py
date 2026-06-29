@@ -909,6 +909,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(calls[0]["gps_seconds"], 10.0)
         self.assertEqual(calls[0]["max_chart_age_days"], 12)
         self.assertEqual(calls[0]["min_free_gb"], 4.5)
+        self.assertEqual(calls[0]["keep_zip"], True)
         self.assertEqual(calls[0]["track_output"], Path("/tracks/noaa"))
 
     def test_configured_gui_sync_rejects_incomplete_onboard_chart_packages(self):
@@ -1643,6 +1644,51 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("download SHA-256", result.detail)
+
+    def test_manifest_archive_required_fails_when_zip_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":5,"sha256":"abc"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("retained download path is missing", result.detail)
+
+    def test_manifest_archive_required_fails_without_download_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                '"download":{"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip","bytes":5,"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("does not record a retained download path", result.detail)
 
     def test_manifest_archive_path_outside_chart_dir_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:

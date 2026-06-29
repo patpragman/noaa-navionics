@@ -218,6 +218,7 @@ checks = [
         max_age_days=app_config.max_chart_age_days,
         expected_package=app_config.chart_package,
         expected_value=app_config.chart_value,
+        require_archive=app_config.keep_zip,
     ),
 ]
 failures = [f"{check.name}: {check.detail}" for check in checks if not check.ok]
