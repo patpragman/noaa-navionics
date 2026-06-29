@@ -2366,14 +2366,42 @@ class StatusReportTests(unittest.TestCase):
             opencpn_config = root / "opencpn.conf"
             configure_chart_directory(charts, config_path=opencpn_config)
             configure_gpsd_connection(config_path=opencpn_config)
+            autostart = root / "noaa-navionics-chartplotter.desktop"
+            autostart.write_text(
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                "Name=NOAA Navionics Chartplotter\n"
+                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"\n"
+                "Terminal=false\n"
+                "X-GNOME-Autostart-enabled=true\n",
+                encoding="utf-8",
+            )
+            lightdm_autologin = root / "50-noaa-navionics-autologin.conf"
+            lightdm_autologin.write_text(
+                "[Seat:*]\n"
+                f"autologin-user={os.environ.get('USER', '')}\n"
+                "autologin-user-timeout=0\n"
+                "autologin-session=missing-test-session\n",
+                encoding="utf-8",
+            )
             original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
             original_boot_id_path = report_module.BOOT_ID_PATH
             original_launcher_env_path = report_module.DEFAULT_LAUNCHER_ENV_PATH
             original_opencpn_config_path = opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH
             original_flatpak_opencpn_config_path = opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH
+            original_autostart_path = report_module.DEFAULT_AUTOSTART_PATH
+            original_lightdm_autologin_path = report_module.DEFAULT_LIGHTDM_AUTOLOGIN_PATH
+            original_systemctl_system = report_module._systemctl_system
             os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
             report_module.BOOT_ID_PATH = boot_id
             report_module.DEFAULT_LAUNCHER_ENV_PATH = launcher_env
+            report_module.DEFAULT_AUTOSTART_PATH = autostart
+            report_module.DEFAULT_LIGHTDM_AUTOLOGIN_PATH = lightdm_autologin
+            report_module._systemctl_system = lambda args: {
+                ("get-default",): "graphical.target",
+                ("is-enabled", "lightdm.service"): "enabled",
+                ("is-active", "lightdm.service"): "inactive",
+            }.get(tuple(args), "unknown")
             opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = opencpn_config
             opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH = root / "missing-flatpak-opencpn.conf"
             try:
@@ -2381,6 +2409,9 @@ class StatusReportTests(unittest.TestCase):
             finally:
                 report_module.BOOT_ID_PATH = original_boot_id_path
                 report_module.DEFAULT_LAUNCHER_ENV_PATH = original_launcher_env_path
+                report_module.DEFAULT_AUTOSTART_PATH = original_autostart_path
+                report_module.DEFAULT_LIGHTDM_AUTOLOGIN_PATH = original_lightdm_autologin_path
+                report_module._systemctl_system = original_systemctl_system
                 opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = original_opencpn_config_path
                 opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH = original_flatpak_opencpn_config_path
                 if original_revision_path is None:
@@ -2393,6 +2424,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("unit_files", report)
             self.assertIn("launcher_settings", report)
             self.assertIn("opencpn_config", report)
+            self.assertIn("desktop", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["config"]["extract"], True)
@@ -2406,6 +2438,12 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["opencpn_config"]["exists"], True)
             self.assertEqual(report["opencpn_config"]["chart_directories"], [str(charts.resolve())])
             self.assertTrue(report["opencpn_config"]["data_connections"])
+            self.assertEqual(report["desktop"]["autostart"]["path"], str(autostart))
+            self.assertEqual(report["desktop"]["autostart"]["values"]["Exec"], 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"')
+            self.assertEqual(report["desktop"]["lightdm_autologin"]["path"], str(lightdm_autologin))
+            self.assertEqual(report["desktop"]["lightdm_autologin"]["values"]["autologin-user-timeout"], "0")
+            self.assertEqual(report["desktop"]["graphical_target"], "graphical.target")
+            self.assertEqual(report["desktop"]["lightdm_enabled"], "enabled")
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["created_at"], now)
@@ -2427,6 +2465,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("revision abc123", text)
             self.assertIn("OpenCPN Config:", text)
             self.assertIn(f"path={opencpn_config}", text)
+            self.assertIn("Desktop Startup:", text)
+            self.assertIn(f"autostart={autostart}", text)
             self.assertIn("created_at_source: download", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)
@@ -2741,6 +2781,39 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(launcher_check.ok)
         self.assertIn("START_ON_FAILED_READINESS is enabled", launcher_check.detail)
+
+    def test_service_readiness_checks_include_desktop_startup(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(
+            services,
+            system_services,
+            desktop={
+                "autostart": {"path": "/home/pi/.config/autostart/noaa-navionics-chartplotter.desktop", "exists": False},
+                "lightdm_autologin": {"path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf", "exists": False},
+                "graphical_target": "multi-user.target",
+                "lightdm_enabled": "disabled",
+            },
+            gps_mode="gpsd",
+        )
+        desktop_check = next(check for check in checks if check.name == "Desktop Startup")
+
+        self.assertFalse(desktop_check.ok)
+        self.assertIn("desktop autostart missing", desktop_check.detail)
+        self.assertIn("systemd default target is multi-user.target", desktop_check.detail)
+        self.assertIn("lightdm.service is disabled", desktop_check.detail)
 
     def test_service_readiness_checks_fail_stale_unit_file_install_target(self):
         services = {

@@ -22,6 +22,8 @@ from . import __version__
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
+DEFAULT_AUTOSTART_PATH = Path("~/.config/autostart/noaa-navionics-chartplotter.desktop")
+DEFAULT_LIGHTDM_AUTOLOGIN_PATH = Path("/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
@@ -109,11 +111,13 @@ def build_status_report(
     unit_files = _user_unit_file_summary()
     launcher_settings = _launcher_settings_summary()
     opencpn_config = _opencpn_config_summary()
+    desktop = _desktop_summary()
     service_checks = _service_readiness_checks(
         services,
         system_services,
         unit_files=unit_files,
         launcher_settings=launcher_settings,
+        desktop=desktop,
         gps_mode=gps_mode,
     )
     return {
@@ -135,6 +139,7 @@ def build_status_report(
         "unit_files": unit_files,
         "launcher_settings": launcher_settings,
         "opencpn_config": opencpn_config,
+        "desktop": desktop,
         "service_checks": [asdict(check) for check in service_checks],
         "checks": check_rows,
     }
@@ -274,6 +279,23 @@ def format_status_text(report: dict[str, object]) -> str:
         lines.append(
             f"path={opencpn_config.get('path', '')} exists={opencpn_config.get('exists', '')} "
             f"chart_directories={chart_dir_text} data_connections={connection_count}".rstrip()
+        )
+    desktop = report.get("desktop", {})
+    if isinstance(desktop, dict) and desktop:
+        lines.extend(["", "Desktop Startup:"])
+        autostart = desktop.get("autostart", {})
+        lightdm = desktop.get("lightdm_autologin", {})
+        if isinstance(autostart, dict):
+            lines.append(
+                f"autostart={autostart.get('path', '')} exists={autostart.get('exists', '')}"
+            )
+        if isinstance(lightdm, dict):
+            lines.append(
+                f"lightdm_autologin={lightdm.get('path', '')} exists={lightdm.get('exists', '')}"
+            )
+        lines.append(
+            f"graphical_target={desktop.get('graphical_target', '')} "
+            f"lightdm_enabled={desktop.get('lightdm_enabled', '')}"
         )
     return "\n".join(lines)
 
@@ -440,6 +462,55 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
     return summary
 
 
+def _desktop_summary(
+    *,
+    autostart_path: Optional[Path] = None,
+    lightdm_autologin_path: Optional[Path] = None,
+) -> dict[str, object]:
+    autostart = _key_value_file_summary(
+        Path(autostart_path or DEFAULT_AUTOSTART_PATH).expanduser(),
+        comment_prefixes=("#",),
+    )
+    lightdm_autologin = _key_value_file_summary(
+        Path(lightdm_autologin_path or DEFAULT_LIGHTDM_AUTOLOGIN_PATH),
+        comment_prefixes=("#", ";"),
+    )
+    return {
+        "autostart": autostart,
+        "lightdm_autologin": lightdm_autologin,
+        "graphical_target": _systemctl_system(["get-default"]),
+        "lightdm_enabled": _systemctl_system(["is-enabled", "lightdm.service"]),
+        "lightdm_active": _systemctl_system(["is-active", "lightdm.service"]),
+    }
+
+
+def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) -> dict[str, object]:
+    summary: dict[str, object] = {"path": str(path), "exists": path.is_file()}
+    if not path.exists():
+        return summary
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        summary["error"] = str(exc)
+        return summary
+    values: dict[str, str] = {}
+    sections: list[str] = []
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith(comment_prefixes):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            sections.append(line[1:-1].strip())
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip()
+    summary["sections"] = sections
+    summary["values"] = values
+    return summary
+
+
 def _install_wanted_by_targets(lines: list[str]) -> list[str]:
     targets: list[str] = []
     section = ""
@@ -462,6 +533,7 @@ def _service_readiness_checks(
     *,
     unit_files: Optional[dict[str, object]] = None,
     launcher_settings: Optional[dict[str, object]] = None,
+    desktop: Optional[dict[str, object]] = None,
     gps_mode: str,
 ) -> list[CheckResult]:
     checks = [
@@ -624,6 +696,8 @@ def _service_readiness_checks(
         )
     if launcher_settings is not None:
         checks.append(_launcher_settings_check(launcher_settings))
+    if desktop is not None:
+        checks.append(_desktop_startup_check(desktop))
     if gps_mode == "gpsd":
         checks.append(
             _unit_check(
@@ -684,6 +758,84 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     if failures:
         return CheckResult("Launcher Settings", False, f"{path}: " + "; ".join(failures))
     return CheckResult("Launcher Settings", True, f"{path} keeps chartplotter startup fail-closed")
+
+
+def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
+    failures = []
+    autostart = summary.get("autostart")
+    if not isinstance(autostart, dict):
+        failures.append("desktop autostart summary missing")
+    else:
+        path = str(autostart.get("path", DEFAULT_AUTOSTART_PATH.expanduser()))
+        if autostart.get("exists") is not True:
+            failures.append(f"desktop autostart missing at {path}")
+        if str(autostart.get("error", "")):
+            failures.append(f"desktop autostart unreadable at {path}: {autostart.get('error')}")
+        values = autostart.get("values")
+        if not isinstance(values, dict):
+            failures.append(f"desktop autostart values were not parsed at {path}")
+        else:
+            expected_values = {
+                "Type": "Application",
+                "Name": "NOAA Navionics Chartplotter",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                "Terminal": "false",
+                "X-GNOME-Autostart-enabled": "true",
+            }
+            for key, expected in expected_values.items():
+                actual = str(values.get(key, "")).strip()
+                if actual != expected:
+                    failures.append(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
+            hidden = str(values.get("Hidden", "")).strip().lower()
+            if hidden == "true":
+                failures.append("desktop autostart Hidden=true disables chartplotter startup")
+
+    graphical_target = str(summary.get("graphical_target", "")).strip()
+    if graphical_target != "graphical.target":
+        failures.append(f"systemd default target is {graphical_target or '<missing>'}, expected graphical.target")
+    lightdm_enabled = str(summary.get("lightdm_enabled", "")).strip()
+    if lightdm_enabled != "enabled":
+        failures.append(f"lightdm.service is {lightdm_enabled or '<missing>'}, expected enabled")
+
+    lightdm = summary.get("lightdm_autologin")
+    if not isinstance(lightdm, dict):
+        failures.append("LightDM autologin summary missing")
+    else:
+        path = str(lightdm.get("path", DEFAULT_LIGHTDM_AUTOLOGIN_PATH))
+        if lightdm.get("exists") is not True:
+            failures.append(f"LightDM autologin config missing at {path}")
+        if str(lightdm.get("error", "")):
+            failures.append(f"LightDM autologin config unreadable at {path}: {lightdm.get('error')}")
+        sections = {str(section) for section in lightdm.get("sections", [])} if isinstance(lightdm.get("sections"), list) else set()
+        if "Seat:*" not in sections:
+            failures.append("LightDM autologin config missing [Seat:*] section")
+        values = lightdm.get("values")
+        if not isinstance(values, dict):
+            failures.append(f"LightDM autologin values were not parsed at {path}")
+        else:
+            expected_user = os.environ.get("USER", "")
+            actual_user = str(values.get("autologin-user", "")).strip()
+            if expected_user and actual_user != expected_user:
+                failures.append(f"LightDM autologin-user={actual_user or '<missing>'} expected {expected_user}")
+            timeout = str(values.get("autologin-user-timeout", "")).strip()
+            if timeout != "0":
+                failures.append(f"LightDM autologin-user-timeout={timeout or '<missing>'} expected 0")
+            session = str(values.get("autologin-session", "")).strip()
+            if not session:
+                failures.append("LightDM autologin-session is missing")
+            elif not _safe_xsession_name(session):
+                failures.append(f"LightDM autologin-session is unsafe: {session}")
+            elif not (Path("/usr/share/xsessions") / f"{session}.desktop").is_file():
+                failures.append(f"LightDM autologin-session is not installed: {session}")
+
+    if failures:
+        return CheckResult("Desktop Startup", False, "; ".join(failures))
+    active = str(summary.get("lightdm_active", "")).strip() or "<unknown>"
+    return CheckResult("Desktop Startup", True, f"desktop autostart and LightDM autologin are configured; lightdm active={active}")
+
+
+def _safe_xsession_name(value: str) -> bool:
+    return bool(value) and all(char.isalnum() or char in "._+-" for char in value)
 
 
 def _unit_file_install_target_check(

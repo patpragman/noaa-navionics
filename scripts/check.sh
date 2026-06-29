@@ -343,6 +343,7 @@ grep -q '"Track Logger Install"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Settings"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Run"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Install"' scripts/verify_pi.sh
+grep -q '"Desktop Startup"' scripts/verify_pi.sh
 grep -q '"Launcher Settings"' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
@@ -381,6 +382,9 @@ grep -q 'status report launcher GPS wait' scripts/verify_pi.sh
 grep -q 'status report OpenCPN chart directories' scripts/verify_pi.sh
 grep -q 'do not match live OpenCPN config' scripts/verify_pi.sh
 grep -q 'does not contain enabled GPSD connection' scripts/verify_pi.sh
+grep -q 'status report has no desktop section' scripts/verify_pi.sh
+grep -q 'status report desktop autostart values do not match live desktop file' scripts/verify_pi.sh
+grep -q 'status report LightDM autologin values do not match live LightDM config' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
@@ -728,6 +732,9 @@ grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Install' src/noaa_navionics/report.py
+grep -q 'Desktop Startup' src/noaa_navionics/report.py
+grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
+grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
@@ -818,8 +825,8 @@ from pathlib import Path
 text = Path("scripts/provision_sailboat_pi.sh").read_text(encoding="utf-8")
 status_index = text.index('run "$bin" status-report')
 autologin_index = text.index('configure_desktop_autologin.sh" "${desktop_args[@]}"')
-if autologin_index < status_index:
-    raise SystemExit("desktop autologin must be configured after final status-report succeeds")
+if status_index < autologin_index:
+    raise SystemExit("final status-report must run after desktop autologin is configured")
 PY
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'Do not deploy to root@' scripts/deploy_to_pi.sh

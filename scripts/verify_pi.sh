@@ -322,6 +322,26 @@ def gpsd_connection_present(data_connections, host, port):
             return True
     return False
 
+def parse_key_value_file(path, comment_prefixes):
+    try:
+        text = Path(path).expanduser().read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"could not read {path}: {exc}") from exc
+    sections = []
+    values = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(comment_prefixes):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            sections.append(line[1:-1].strip())
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip()
+    return sections, values
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -481,6 +501,65 @@ if expected_config_path:
             f"OpenCPN config {opencpn_config_path} does not contain enabled GPSD connection "
             f"{expected_config['gpsd_host']}:{expected_config['gpsd_port']}"
         )
+    desktop = report.get("desktop")
+    if not isinstance(desktop, dict):
+        raise SystemExit("status report has no desktop section")
+    autostart = desktop.get("autostart")
+    if not isinstance(autostart, dict):
+        raise SystemExit("status report has no desktop autostart section")
+    autostart_path = str(autostart.get("path", "")).strip()
+    if autostart.get("exists") is not True:
+        raise SystemExit(f"status report desktop autostart does not exist: {autostart_path}")
+    autostart_values = autostart.get("values")
+    if not isinstance(autostart_values, dict):
+        raise SystemExit(f"status report desktop autostart values were not parsed: {autostart_path}")
+    _autostart_sections, live_autostart_values = parse_key_value_file(autostart_path, ("#",))
+    if autostart_values != live_autostart_values:
+        raise SystemExit("status report desktop autostart values do not match live desktop file")
+    expected_autostart = {
+        "Type": "Application",
+        "Name": "NOAA Navionics Chartplotter",
+        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+        "Terminal": "false",
+        "X-GNOME-Autostart-enabled": "true",
+    }
+    for key, expected in expected_autostart.items():
+        actual = str(autostart_values.get(key, "")).strip()
+        if actual != expected:
+            raise SystemExit(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
+    if str(autostart_values.get("Hidden", "")).strip().lower() == "true":
+        raise SystemExit("desktop autostart is hidden")
+    lightdm = desktop.get("lightdm_autologin")
+    if not isinstance(lightdm, dict):
+        raise SystemExit("status report has no LightDM autologin section")
+    lightdm_path = str(lightdm.get("path", "")).strip()
+    if lightdm.get("exists") is not True:
+        raise SystemExit(f"status report LightDM autologin config does not exist: {lightdm_path}")
+    lightdm_values = lightdm.get("values")
+    lightdm_sections = lightdm.get("sections")
+    if not isinstance(lightdm_values, dict) or not isinstance(lightdm_sections, list):
+        raise SystemExit(f"status report LightDM autologin values were not parsed: {lightdm_path}")
+    live_lightdm_sections, live_lightdm_values = parse_key_value_file(lightdm_path, ("#", ";"))
+    if lightdm_values != live_lightdm_values or [str(value) for value in lightdm_sections] != live_lightdm_sections:
+        raise SystemExit("status report LightDM autologin values do not match live LightDM config")
+    if "Seat:*" not in {str(value) for value in lightdm_sections}:
+        raise SystemExit("LightDM autologin config missing [Seat:*] section")
+    if str(lightdm_values.get("autologin-user", "")).strip() != os.environ.get("USER", ""):
+        raise SystemExit(
+            f"LightDM autologin-user {lightdm_values.get('autologin-user', '<missing>')} "
+            f"does not match {os.environ.get('USER', '')}"
+        )
+    if str(lightdm_values.get("autologin-user-timeout", "")).strip() != "0":
+        raise SystemExit("LightDM autologin-user-timeout is not 0")
+    session = str(lightdm_values.get("autologin-session", "")).strip()
+    if not re.fullmatch(r"[A-Za-z0-9._+-]+", session):
+        raise SystemExit(f"LightDM autologin-session is unsafe or missing: {session or '<missing>'}")
+    if not (Path("/usr/share/xsessions") / f"{session}.desktop").is_file():
+        raise SystemExit(f"LightDM autologin-session is not installed: {session}")
+    if str(desktop.get("graphical_target", "")).strip() != "graphical.target":
+        raise SystemExit(f"status report graphical target is {desktop.get('graphical_target', '<missing>')}")
+    if str(desktop.get("lightdm_enabled", "")).strip() != "enabled":
+        raise SystemExit(f"status report LightDM enabled state is {desktop.get('lightdm_enabled', '<missing>')}")
     manifest = report.get("manifest")
     if not isinstance(manifest, dict):
         raise SystemExit("status report has no manifest section")
@@ -661,6 +740,7 @@ required_service_checks = {
     "Boot Readiness Install",
     "Boot Readiness Settings",
     "Boot Readiness Run",
+    "Desktop Startup",
     "Launcher Settings",
     "GPSD Socket",
     "GPSD Service",

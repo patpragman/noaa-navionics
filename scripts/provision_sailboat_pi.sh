@@ -542,10 +542,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   run systemctl --user enable --now noaa-navionics-track.service
   run systemctl --user restart noaa-navionics-track.service
   run systemctl --user enable noaa-navionics-preflight.service
-  run systemctl --user restart noaa-navionics-preflight.service
 fi
-
-run "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"
 
 if [[ "$skip_autologin" -eq 0 ]]; then
   run mkdir -p "$autostart_dir"
@@ -559,6 +556,12 @@ if [[ "$skip_autologin" -eq 0 ]]; then
   fi
   run "${repo_root}/scripts/configure_desktop_autologin.sh" "${desktop_args[@]}"
 fi
+
+if [[ "$skip_services" -eq 0 ]]; then
+  run systemctl --user restart noaa-navionics-preflight.service
+fi
+
+run "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"
 
 if [[ "$dry_run" -eq 1 ]]; then
   result_label="Dry run complete; no changes were made."
