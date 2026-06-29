@@ -38,6 +38,32 @@ for directory in synced_dirs:
 PY
 }
 
+reset_private_venv() {
+  python3 - "$venv_dir" "$data_dir" <<'PY'
+from pathlib import Path
+import shutil
+import sys
+
+venv = Path(sys.argv[1]).expanduser()
+data = Path(sys.argv[2]).expanduser()
+try:
+    venv_resolved = venv.resolve(strict=False)
+    data_resolved = data.resolve(strict=False)
+except OSError as exc:
+    raise SystemExit(f"could not resolve private venv path: {exc}") from exc
+if venv_resolved.name != "venv" or data_resolved.name != "noaa-navionics":
+    raise SystemExit(f"refusing to remove unexpected venv path: {venv}")
+try:
+    venv_resolved.relative_to(data_resolved)
+except ValueError as exc:
+    raise SystemExit(f"refusing to remove venv outside data directory: {venv}") from exc
+if venv.exists() or venv.is_symlink():
+    if venv.is_symlink() or not venv.is_dir():
+        raise SystemExit(f"refusing to remove non-directory private venv path: {venv}")
+    shutil.rmtree(venv)
+PY
+}
+
 apt_update() {
   sudo env DEBIAN_FRONTEND=noninteractive apt-get update
 }
@@ -127,6 +153,7 @@ if [[ "$skip_apt" -eq 0 ]]; then
 fi
 
 mkdir -p "${HOME}/.local/bin" "$data_dir"
+reset_private_venv
 python3 -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install --no-build-isolation --no-use-pep517 "${repo_root}"
 ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"

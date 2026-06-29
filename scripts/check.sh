@@ -133,6 +133,11 @@ grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
+grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
+grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
+grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
+grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
+grep -q 'shutil.rmtree(venv)' scripts/install_raspberry_pi.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
@@ -547,7 +552,16 @@ gpsd_output="$(mktemp)"
 deploy_output="$(mktemp)"
 dock_output="$(mktemp)"
 verify_output="$(mktemp)"
+tmpdir="$(mktemp -d)"
 trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
+
+install_smoke_home="$tmpdir/install-smoke-home"
+mkdir -p "$install_smoke_home"
+HOME="$install_smoke_home" scripts/install_raspberry_pi.sh --skip-apt --allow-non-pi >"$install_output"
+test -x "$install_smoke_home/.local/bin/noaa-navionics"
+"$install_smoke_home/.local/bin/noaa-navionics" list-packages >/dev/null
+test -f "$install_smoke_home/.config/noaa-navionics/config.ini"
+test -d "$install_smoke_home/.local/share/noaa-navionics/venv"
 
 set +e
 scripts/verify_pi.sh --bad-option pi@example.invalid >"$verify_output" 2>&1
@@ -966,7 +980,6 @@ if [[ "$gpsd_code" -ne 2 ]]; then
 fi
 grep -q 'GPS device path is not a recognized stable path' "$gpsd_output"
 
-tmpdir="$(mktemp -d)"
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
