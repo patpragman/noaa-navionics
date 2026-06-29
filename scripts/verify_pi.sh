@@ -26,6 +26,8 @@ launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
+status_attempts=3
+status_retry_delay=30
 
 check() {
   local name="$1"
@@ -111,10 +113,20 @@ check "preflight service enabled" systemctl --user is-enabled --quiet noaa-navio
 check "chart timer active" systemctl --user is-active --quiet noaa-navionics.timer
 
 printf '\n[preflight]\n'
-if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
-  printf 'OK   preflight\n'
-  printf 'OK   status report %s\n' "$status_report"
-else
+preflight_ok=0
+for attempt in $(seq 1 "$status_attempts"); do
+  if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
+    printf 'OK   preflight\n'
+    printf 'OK   status report %s\n' "$status_report"
+    preflight_ok=1
+    break
+  fi
+  if [[ "$attempt" -lt "$status_attempts" ]]; then
+    printf 'WARN preflight attempt %s/%s failed; retrying in %ss\n' "$attempt" "$status_attempts" "$status_retry_delay"
+    sleep "$status_retry_delay"
+  fi
+done
+if [[ "$preflight_ok" -eq 0 ]]; then
   printf 'FAIL preflight\n'
   printf 'FAIL status report %s\n' "$status_report"
   failures=$((failures + 1))
