@@ -26,6 +26,8 @@ def build_status_report(
     gps_mode = app_config.gps_mode
     checks = run_preflight(
         chart_dir=app_config.chart_output,
+        chart_package=app_config.chart_package,
+        chart_value=app_config.chart_value,
         gpsd=gps_mode == "gpsd" and gps_sample is None,
         gpsd_host=app_config.gpsd_host,
         gpsd_port=app_config.gpsd_port,

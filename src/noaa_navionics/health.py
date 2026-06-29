@@ -25,6 +25,8 @@ class CheckResult:
 def run_preflight(
     *,
     chart_dir: Path,
+    chart_package: str = "",
+    chart_value: str = "",
     gpsd: bool = False,
     gpsd_host: str = "127.0.0.1",
     gpsd_port: int = 2947,
@@ -38,6 +40,7 @@ def run_preflight(
         check_python(),
         check_tkinter(),
         check_opencpn(),
+        check_chart_package(chart_package, chart_value),
         check_chart_dir(chart_dir),
         check_chart_manifest(chart_dir, max_age_days=max_chart_age_days),
         check_opencpn_chart_config(chart_dir),
@@ -73,6 +76,34 @@ def check_tkinter() -> CheckResult:
 def check_opencpn() -> CheckResult:
     path = shutil.which("opencpn")
     return CheckResult("OpenCPN", path is not None, path or "missing; install opencpn for chart display")
+
+
+def check_chart_package(package: str, value: str = "") -> CheckResult:
+    package = package.strip().lower()
+    value = value.strip()
+    if not package:
+        return CheckResult("Chart Package", True, "not checked")
+    if package == "updates":
+        detail = f"updates {value}" if value else "updates"
+        return CheckResult(
+            "Chart Package",
+            False,
+            f"{detail} is not a complete chart set; use state, cgd, region, chart, or all",
+        )
+    if package == "catalog":
+        return CheckResult(
+            "Chart Package",
+            False,
+            "catalog is metadata only; use state, cgd, region, chart, or all",
+        )
+    if package in {"state", "cgd", "region", "chart", "all"}:
+        label = f"{package} {value}".strip()
+        return CheckResult("Chart Package", True, label)
+    return CheckResult(
+        "Chart Package",
+        False,
+        "unknown package; use state, cgd, region, chart, or all",
+    )
 
 
 def check_opencpn_chart_config(chart_dir: Path, config_path: Optional[Path] = None) -> CheckResult:

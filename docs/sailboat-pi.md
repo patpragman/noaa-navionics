@@ -168,6 +168,8 @@ For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--
 noaa-navionics search-catalog "Cook Inlet"
 ```
 
+Do not use a NOAA `updates` bundle as the primary onboard chart package. Update bundles only contain recently changed cells, so preflight treats them as incomplete for navigation readiness.
+
 Register the chart directory and GPSD connection in OpenCPN:
 
 ```bash
@@ -201,6 +203,7 @@ Expected checks:
 - Python 3.9+
 - Tkinter available for the GUI
 - OpenCPN installed
+- Configured chart package is a complete chart source, not an updates-only bundle
 - Extracted ENC chart cells present
 - Current chart manifest present
 - OpenCPN configured with the chart directory

@@ -292,6 +292,8 @@ class DownloaderApp(tk.Tk):
         try:
             results = run_preflight(
                 chart_dir=Path(self.output.get()),
+                chart_package=self.kind.get(),
+                chart_value=self.value.get(),
                 gpsd=self.use_gpsd.get(),
                 gpsd_host="127.0.0.1",
                 gpsd_port=2947,

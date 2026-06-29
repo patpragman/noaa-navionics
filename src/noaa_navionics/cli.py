@@ -258,6 +258,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             gps_mode = app_config.gps_mode
             results = run_preflight(
                 chart_dir=Path(args.charts) if args.charts != "~/charts/noaa-enc" else app_config.chart_output,
+                chart_package=app_config.chart_package,
+                chart_value=app_config.chart_value,
                 gpsd=args.gpsd or (gps_mode == "gpsd" and not args.gps_device and not args.gps_sample),
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,

@@ -62,6 +62,8 @@ Download the 10-day update bundle:
 noaa-navionics download --updates ten-days --output ~/charts/noaa-enc
 ```
 
+Update bundles are useful for manual maintenance but are not complete chart sets. For the onboard Pi config, use a complete package such as `state`, `cgd`, `region`, `chart`, or `all`.
+
 Download Coast Guard District 17:
 
 ```bash

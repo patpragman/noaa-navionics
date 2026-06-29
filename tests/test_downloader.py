@@ -27,6 +27,7 @@ from noaa_navionics.gps import GPSFix, GPXTrackLogger, daily_track_path, iter_fi
 from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
+    check_chart_package,
     check_gps_device,
     check_gps_device_path,
     check_gps_sample,
@@ -294,6 +295,15 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_manifest(root, max_age_days=1)
             self.assertFalse(result.ok)
             self.assertIn("days old", result.detail)
+
+    def test_chart_package_rejects_update_bundle_as_primary_charts(self):
+        result = check_chart_package("updates", "ten-days")
+        self.assertFalse(result.ok)
+        self.assertIn("not a complete chart set", result.detail)
+
+    def test_chart_package_accepts_state_bundle(self):
+        result = check_chart_package("state", "AK")
+        self.assertTrue(result.ok)
 
     def test_extract_zip_replaces_existing_directory_after_success(self):
         with tempfile.TemporaryDirectory() as tmpdir:
