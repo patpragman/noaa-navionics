@@ -323,6 +323,8 @@ def check_opencpn_gpsd_config(
 
 def check_chart_dir(chart_dir: Path) -> CheckResult:
     path = Path(chart_dir).expanduser()
+    if path.is_symlink():
+        return CheckResult("Charts", False, f"chart directory is a symlink: {path}")
     if not path.exists():
         return CheckResult("Charts", False, f"{path} does not exist")
     enc_cells = _limited_find(path, suffix=".000", limit=5)
@@ -386,6 +388,8 @@ def check_chart_manifest(
 ) -> CheckResult:
     path = Path(chart_dir).expanduser()
     manifest_path = path / MANIFEST_NAME
+    if manifest_path.is_symlink():
+        return CheckResult("Manifest", False, f"manifest path is a symlink: {manifest_path}")
     if not manifest_path.exists():
         return CheckResult("Manifest", False, f"missing {manifest_path}")
     try:
@@ -413,6 +417,8 @@ def check_chart_manifest(
     if not extract_path_text:
         return CheckResult("Manifest", False, "manifest does not record an extracted chart path")
     extract_path = Path(extract_path_text).expanduser()
+    if extract_path.is_symlink():
+        return CheckResult("Manifest", False, f"manifest extract path is a symlink: {extract_path}")
     if not extract_path.exists():
         return CheckResult("Manifest", False, f"manifest extract path does not exist: {extract_path}")
     try:
@@ -518,6 +524,8 @@ def _check_manifest_archive(
             return CheckResult("Manifest", False, "manifest does not record a retained download path")
         return None
     archive_path = Path(archive_path_text).expanduser()
+    if archive_path.is_symlink():
+        return CheckResult("Manifest", False, f"manifest download path is a symlink: {archive_path}")
     try:
         archive_path.resolve().relative_to(chart_dir.resolve())
     except ValueError:

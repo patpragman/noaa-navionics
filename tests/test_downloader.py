@@ -1920,6 +1920,25 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("days old", result.detail)
 
+    def test_manifest_symlink_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_manifest = root / "real-manifest.json"
+            real_manifest.write_text(
+                '{"created_at":"2000-01-01T00:00:00Z","package":{"label":"Old"},"download":{},"extract":{}}\n',
+                encoding="utf-8",
+            )
+            manifest = root / MANIFEST_NAME
+            try:
+                manifest.symlink_to(real_manifest)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_chart_manifest(root, max_age_days=1)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest path is a symlink", result.detail)
+
     def test_manifest_without_extracted_cells_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1957,6 +1976,32 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("extract path does not exist", result.detail)
+
+    def test_manifest_extract_symlink_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_extract = root / "real-AK-ENCs"
+            cell = real_extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            extract_link = root / "AK_ENCs"
+            try:
+                extract_link.symlink_to(real_extract, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract_link}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest extract path is a symlink", result.detail)
 
     def test_manifest_with_missing_recorded_cells_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2379,6 +2424,36 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("download path is outside chart directory", result.detail)
+
+    def test_manifest_archive_symlink_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_archive = root / "real-AK-ENCs.zip"
+            real_archive.write_bytes(b"chart")
+            archive_link = root / "AK_ENCs.zip"
+            try:
+                archive_link.symlink_to(real_archive)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            digest = downloader_module.sha256_file(real_archive)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive_link}","bytes":5,"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download path is a symlink", result.detail)
 
     def test_chart_package_rejects_update_bundle_as_primary_charts(self):
         result = check_chart_package("updates", "ten-days")
@@ -5209,6 +5284,24 @@ class GpsTests(unittest.TestCase):
             cell.write_text("", encoding="ascii")
             extracted_result = check_chart_dir(root)
             self.assertTrue(extracted_result.ok)
+
+    def test_chart_check_rejects_symlinked_chart_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_charts = root / "real-charts"
+            cell = real_charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("", encoding="ascii")
+            chart_link = root / "charts"
+            try:
+                chart_link.symlink_to(real_charts, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_chart_dir(chart_link)
+
+            self.assertFalse(result.ok)
+            self.assertIn("chart directory is a symlink", result.detail)
 
     def test_disk_check_requires_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
