@@ -109,6 +109,8 @@ grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
 grep -q 'noaa-navionics-chartplotter.desktop' scripts/install_raspberry_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/install_raspberry_pi.sh
 grep -q 'noaa-navionics-configure-gps-time' scripts/install_raspberry_pi.sh
+grep -q 'systemctl --user enable noaa-navionics.timer' scripts/install_raspberry_pi.sh
+! grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/install_raspberry_pi.sh
 grep -q 'systemctl --user enable noaa-navionics-track.service' scripts/install_raspberry_pi.sh
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
@@ -388,6 +390,7 @@ grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user reset-failed noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user start noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh

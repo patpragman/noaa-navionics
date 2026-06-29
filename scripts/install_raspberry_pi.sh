@@ -177,7 +177,7 @@ fi
 systemctl --user daemon-reload
 if [[ "$enable_services" -eq 1 ]]; then
   sudo loginctl enable-linger "$USER"
-  systemctl --user enable --now noaa-navionics.timer
+  systemctl --user enable noaa-navionics.timer
   systemctl --user enable noaa-navionics-track.service
 fi
 
