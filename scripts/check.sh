@@ -160,8 +160,10 @@ grep -q 'validate_ssh_target' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/verify_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
+grep -q 'validate_gps_device_path_arg' scripts/verify_pi.sh
 grep -q 'GPS device path is volatile' scripts/deploy_to_pi.sh
 grep -q 'GPS device path is volatile' scripts/dock_test_pi.sh
+grep -q 'GPS device path is volatile' scripts/verify_pi.sh
 grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
@@ -1074,6 +1076,17 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--expected-gps-device requires a value' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --expected-gps-device /dev/ttyUSB0 pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject volatile expected GPS device paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPS device path is volatile' "$verify_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --gps-seconds nope >"$dock_output" 2>&1
