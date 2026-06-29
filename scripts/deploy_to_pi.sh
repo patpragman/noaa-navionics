@@ -24,6 +24,14 @@ allow_dirty=0
 skip_services=0
 skip_autologin=0
 
+if [[ "$target" == root@* ]]; then
+  cat >&2 <<'EOF'
+Do not deploy to root@.
+Deploy to the Pi desktop user; remote scripts use sudo only where system changes are required.
+EOF
+  exit 2
+fi
+
 require_positive_integer() {
   local name="$1"
   local value="$2"

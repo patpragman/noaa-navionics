@@ -46,6 +46,14 @@ deploy_args=()
 provision_args=()
 verify_args=()
 
+if [[ "$target" == root@* ]]; then
+  cat >&2 <<'EOF'
+Do not run the dock test as root@.
+Use the Pi desktop user so autologin, user services, charts, and tracks are verified for the real helm account.
+EOF
+  exit 2
+fi
+
 require_positive_integer() {
   local name="$1"
   local value="$2"

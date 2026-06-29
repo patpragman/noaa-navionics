@@ -87,6 +87,11 @@ if [[ ! "$autologin_user" =~ ^[a-z_][a-z0-9_-]*\$?$ ]]; then
   exit 2
 fi
 
+if [[ "$autologin_user" == "root" ]]; then
+  echo "Refusing to configure graphical autologin for root." >&2
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF

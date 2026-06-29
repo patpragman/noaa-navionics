@@ -296,6 +296,14 @@ require_positive_integer "--gps-seconds" "$gps_seconds"
 require_positive_integer "--sync-retries" "$sync_retries"
 require_non_negative_integer "--sync-retry-delay" "$sync_retry_delay"
 
+if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+Do not run sailboat Pi provisioning as root.
+Run it as the Pi desktop user; the script uses sudo only for system changes.
+EOF
+  exit 2
+fi
+
 if [[ "$skip_gpsd" -eq 0 && -z "$device" ]]; then
   echo "--device is required unless --skip-gpsd is used" >&2
   usage

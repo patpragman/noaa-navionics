@@ -90,6 +90,14 @@ for arg in "$@"; do
   esac
 done
 
+if [[ "$(id -u)" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+Do not run the Raspberry Pi installer as root.
+Run it as the Pi desktop user; the script uses sudo only for system package changes.
+EOF
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF

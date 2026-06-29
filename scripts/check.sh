@@ -109,6 +109,7 @@ grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
+grep -q 'Do not run the Raspberry Pi installer as root' scripts/install_raspberry_pi.sh
 ! grep -q 'noaa-navionics-chartplotter.desktop' scripts/install_raspberry_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/install_raspberry_pi.sh
 ! grep -q '"${repo_root}/scripts/configure_desktop_autologin.sh" --user' scripts/install_raspberry_pi.sh
@@ -251,6 +252,7 @@ grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
 grep -q 'must contain exactly' src/noaa_navionics/health.py
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
+grep -q 'Refusing to configure graphical autologin for root' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
@@ -437,6 +439,7 @@ grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
+grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
 grep -q -- '--skip-services requires --skip-autologin' scripts/provision_sailboat_pi.sh
 grep -q 'configure_gps_time.sh' scripts/provision_sailboat_pi.sh
@@ -463,7 +466,9 @@ if autologin_index < status_index:
     raise SystemExit("desktop autologin must be configured after final status-report succeeds")
 PY
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
+grep -q 'Do not deploy to root@' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
+grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'request_reboot' scripts/dock_test_pi.sh
 grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
@@ -502,6 +507,17 @@ if [[ "$desktop_code" -ne 2 ]]; then
 fi
 
 set +e
+scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user root >"$install_output" 2>&1
+desktop_code=$?
+set -e
+if [[ "$desktop_code" -ne 2 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh to reject root autologin with exit 2" >&2
+  exit 1
+fi
+grep -q 'Refusing to configure graphical autologin for root' "$install_output"
+
+set +e
 scripts/install_raspberry_pi.sh --bad-option >"$install_output" 2>&1
 install_code=$?
 set -e
@@ -511,6 +527,28 @@ if [[ "$install_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Unknown argument: --bad-option' "$install_output"
+
+set +e
+scripts/deploy_to_pi.sh root@example.invalid --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject root SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not deploy to root@' "$deploy_output"
+
+set +e
+scripts/dock_test_pi.sh root@example.invalid --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject root SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not run the dock test as root@' "$dock_output"
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --skip-services >"$deploy_output" 2>&1

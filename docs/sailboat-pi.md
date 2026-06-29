@@ -12,6 +12,8 @@ This project is the chart-data, GPS-check, and operations wrapper for a Raspberr
 - Keyboard/mouse or touchscreen available for maintenance
 - Raspberry Pi OS with Desktop/LightDM for unattended OpenCPN startup
 
+Run the install, deploy, provisioning, and dock-test scripts as the Pi desktop user, not `root`. The scripts reject root-owned deployments so user services, charts, GPX tracks, and LightDM autologin are tied to the real helm account.
+
 ## Install Packages
 
 Fast path from a cloned repo:
