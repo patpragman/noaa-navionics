@@ -72,6 +72,31 @@ require_non_negative_integer() {
   fi
 }
 
+validate_remote_dir() {
+  local value="$1"
+  local trimmed
+  local basename
+
+  trimmed="${value%/}"
+  if [[ -z "$trimmed" || "$trimmed" == "." || "$trimmed" == ".." || "$trimmed" == "/" || "$trimmed" == "~" || "$trimmed" == "/home" || "$trimmed" == "/root" ]]; then
+    echo "Remote deployment directory must be a dedicated noaa-navionics directory, not: $value" >&2
+    exit 2
+  fi
+  if [[ ! "$value" =~ ^((~)?/)?[A-Za-z0-9._/-]+$ ]]; then
+    echo "Remote deployment directory contains unsafe characters: $value" >&2
+    exit 2
+  fi
+  basename="${trimmed##*/}"
+  case "$basename" in
+    noaa-navionics|noaa-navionics-*|noaa-navionics_*|noaa-navionics.*)
+      ;;
+    *)
+      echo "Remote deployment directory must end in noaa-navionics or a noaa-navionics-* variant: $value" >&2
+      exit 2
+      ;;
+  esac
+}
+
 if [[ $# -gt 0 && "$1" != --* ]]; then
   remote_dir="$1"
   shift
@@ -170,6 +195,10 @@ if [[ "$skip_autologin" -eq 1 && "$no_reboot" -eq 0 ]]; then
 Use --no-reboot for a pre-reboot smoke check, or let provisioning configure desktop autologin so chartplotter autostart can be proven after reboot.
 EOF
   exit 2
+fi
+
+if [[ "$skip_deploy" -eq 0 ]]; then
+  validate_remote_dir "$remote_dir"
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
