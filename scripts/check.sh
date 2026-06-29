@@ -70,6 +70,7 @@ grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
 grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
+grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
@@ -1146,6 +1147,7 @@ head -c 1048577 /dev/zero >"$launcher_home/.cache/noaa-navionics/chartplotter.lo
 HOME="$launcher_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log.1"
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log"
+test "$(wc -c <"$launcher_home/.cache/noaa-navionics/chartplotter.log.1")" -eq 1048577
 test ! -e "$launcher_home/.cache/noaa-navionics/chartplotter.launch.lock"
 grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"

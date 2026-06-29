@@ -175,7 +175,7 @@ noaa-navionics-start-chartplotter
 ```
 
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`, including OpenCPN's exit status if the chartplotter process stops.
-The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
+The launcher rotates that log once it exceeds 1 MB and syncs the rotated file and directory entry so repeated unattended boots do not grow the cache indefinitely.
 It reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
 If OpenCPN is already running for the same user, a repeated launcher invocation leaves the existing chartplotter instance in place instead of starting a second one.
 The launcher also uses a cache-directory lock so overlapping desktop startup attempts cannot race each other before OpenCPN is visible; if an old lock points at an unrelated reused PID, it clears the stale lock and continues startup.

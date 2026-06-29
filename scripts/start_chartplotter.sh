@@ -12,6 +12,33 @@ gps_seconds=10
 warning_seconds=8
 lock_acquired=0
 
+sync_paths() {
+  python3 - "$@" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+synced_dirs = set()
+for arg in sys.argv[1:]:
+    path = Path(arg).expanduser()
+    try:
+        with path.open("rb") as handle:
+            os.fsync(handle.fileno())
+    except OSError:
+        continue
+    synced_dirs.add(path.parent)
+for directory in synced_dirs:
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        continue
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+PY
+}
+
 load_launcher_settings() {
   local key
   local value
@@ -206,6 +233,7 @@ if [[ -f "$log_file" ]]; then
   log_bytes="$(wc -c <"$log_file" 2>/dev/null || printf '0')"
   if [[ "$log_bytes" -gt "$max_log_bytes" ]]; then
     mv -f "$log_file" "${log_file}.1"
+    sync_paths "${log_file}.1" || true
   fi
 fi
 exec > >(tee -a "$log_file") 2>&1
