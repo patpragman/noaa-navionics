@@ -251,6 +251,10 @@ grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
+grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
+grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
@@ -614,6 +618,24 @@ scripts/provision_sailboat_pi.sh \
   --sync-retry-delay 15 >"$provision_output"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
+
+skip_gpsd_home="$tmpdir/skip-gpsd-home"
+mkdir -p "$skip_gpsd_home"
+set +e
+HOME="$skip_gpsd_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --skip-services >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-gpsd without an existing unattended GPS config" >&2
+  exit 1
+fi
+grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' "$provision_output"
 
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony.conf" >"$gpsd_output"
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' "$gpsd_output"

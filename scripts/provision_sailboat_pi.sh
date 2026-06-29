@@ -97,6 +97,50 @@ raise SystemExit(0 if left == right else 1)
 PY
 }
 
+validate_existing_gps_config() {
+  if ! python3 - "$config" "$check_device" <<'PY'
+from configparser import ConfigParser
+from pathlib import Path
+import sys
+
+config_path = Path(sys.argv[1]).expanduser()
+check_device = sys.argv[2] == "1"
+if not config_path.exists():
+    raise SystemExit("Existing config is required when --skip-gpsd is used with unattended startup")
+parser = ConfigParser()
+if not parser.read(config_path):
+    raise SystemExit(f"could not read config: {config_path}")
+mode = parser.get("gps", "mode", fallback="").strip().lower()
+if mode != "gpsd":
+    raise SystemExit(f"gps.mode must be gpsd when --skip-gpsd is used with unattended startup, not {mode or '<empty>'}")
+host = parser.get("gps", "gpsd_host", fallback="").strip().lower()
+if host not in {"127.0.0.1", "localhost", "::1"}:
+    raise SystemExit("gps.gpsd_host must be local when --skip-gpsd is used with unattended startup")
+device = parser.get("gps", "device", fallback="").strip()
+if not device or device == "/dev/serial/by-id/YOUR_GPS_DEVICE":
+    raise SystemExit("gps.device must name the already configured GPS receiver when --skip-gpsd is used")
+by_id_prefix = "/dev/serial/by-id/"
+stable = (device.startswith(by_id_prefix) and device != by_id_prefix) or device in {
+    "/dev/serial0",
+    "/dev/serial1",
+    "/dev/gps",
+}
+name = Path(device).name
+if name.startswith(("ttyUSB", "ttyACM")):
+    raise SystemExit("gps.device uses a volatile USB name; use /dev/serial/by-id/... instead")
+if not stable:
+    raise SystemExit("gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+path = Path(device).expanduser()
+if check_device and not path.exists():
+    raise SystemExit(f"GPS device does not exist: {path}")
+if check_device and path.is_dir():
+    raise SystemExit(f"GPS device path is a directory, not a GPS device: {path}")
+PY
+  then
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -217,6 +261,10 @@ Installed systemd services and desktop autostart use: $default_config
 Use the default config for production provisioning, or pass both --skip-services and --skip-autologin for manual testing.
 EOF
   exit 2
+fi
+
+if [[ "$skip_gpsd" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
+  validate_existing_gps_config
 fi
 
 bin="${HOME}/.local/bin/noaa-navionics"

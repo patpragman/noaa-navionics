@@ -38,6 +38,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by
 Provisioning runs GPSD setup, chrony GPS time setup, chart sync, OpenCPN chart/GPSD registration, desktop graphical autologin setup, launcher GPS wait persistence, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
 The deploy, provisioning, and dock-test scripts validate retry counts, retry delays, GPS wait time, and reboot wait timeout before starting remote work.
 When deployment is combined with provisioning, `--skip-services` and `--skip-autologin` are applied during both install and provisioning so deliberate headless or manual-test deployments do not leave partially enabled unattended startup.
+Use `--skip-gpsd` only when GPSD and the onboard config are already commissioned. If unattended services or desktop autostart are still enabled, provisioning rejects missing config, placeholder GPS devices, non-local GPSD hosts, volatile device names, and nonexistent GPS paths before it enables startup behavior.
 
 Verify the Raspberry Pi after deployment:
 
