@@ -1380,14 +1380,16 @@ grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
+grep -q 'remote_reboot_command' scripts/dock_test_pi.sh
 grep -q 'sudo -n -l' scripts/dock_test_pi.sh
+grep -q "sudo -n '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
+! grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'ssh -T "${ssh_batch_options\[@\]}" "$target"' scripts/verify_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/deploy_to_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/verify_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/dock_test_pi.sh
 grep -q 'reboot sudo preflight' scripts/dock_test_pi.sh
 grep -q 'request_reboot' scripts/dock_test_pi.sh
-grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh

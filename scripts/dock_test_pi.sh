@@ -47,6 +47,7 @@ timeout=180
 deploy_args=()
 provision_args=()
 verify_args=()
+remote_reboot_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 
@@ -324,7 +325,7 @@ remote_boot_id() {
   ssh "${ssh_batch_options[@]}" "$target" "cat /proc/sys/kernel/random/boot_id"
 }
 
-check_remote_noninteractive_reboot_available() {
+remote_reboot_command() {
   local reboot_cmd
 
   if ! reboot_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
@@ -335,21 +336,32 @@ check_remote_noninteractive_reboot_available() {
     echo "Remote reboot command path is unsafe: $reboot_cmd" >&2
     return 1
   fi
+  printf '%s\n' "$reboot_cmd"
+}
 
-  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n -l '$reboot_cmd'" >/dev/null 2>&1; then
-    printf 'OK   noninteractive sudo can run %s\n' "$reboot_cmd"
+check_remote_noninteractive_reboot_available() {
+  if ! remote_reboot_cmd="$(remote_reboot_command)"; then
+    return 1
+  fi
+
+  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
+    printf 'OK   noninteractive sudo can run %s\n' "$remote_reboot_cmd"
     return 0
   fi
 
   echo "Failed to preflight passwordless sudo reboot on $target." >&2
   echo "The dock test requires the SSH user to run reboot without a password prompt." >&2
-  echo "Allow passwordless sudo for: $reboot_cmd" >&2
+  echo "Allow passwordless sudo for: $remote_reboot_cmd" >&2
   echo "Use --no-reboot only for a weaker pre-reboot smoke check." >&2
   return 1
 }
 
 request_reboot() {
-  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n reboot" >/dev/null 2>&1; then
+  if [[ -z "$remote_reboot_cmd" ]]; then
+    remote_reboot_cmd="$(remote_reboot_command)"
+  fi
+
+  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
     return 0
   fi
 
@@ -362,7 +374,7 @@ request_reboot() {
   done
 
   echo "Failed to request reboot with passwordless sudo on $target." >&2
-  echo "The dock test requires the SSH user to run: sudo -n reboot" >&2
+  echo "The dock test requires the SSH user to run: sudo -n $remote_reboot_cmd" >&2
   return 1
 }
 
