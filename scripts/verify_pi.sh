@@ -440,6 +440,26 @@ if not isinstance(service_checks, list) or not service_checks:
 actual_config_path = str(report.get("config_path", "")).strip()
 if expected_config_path and actual_config_path != expected_config_path:
     raise SystemExit(f"status report config path {actual_config_path} does not match {expected_config_path}")
+if expected_config_path:
+    config_file = Path(expected_config_path).expanduser()
+    if config_file.is_symlink():
+        raise SystemExit(f"status report config path is a symlink: {config_file}")
+    if not config_file.is_file():
+        raise SystemExit(f"status report config path is not a regular file: {config_file}")
+    try:
+        config_stat = config_file.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report config path {config_file}: {exc}") from exc
+    if config_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report config path {config_file} is owned by uid {config_stat.st_uid}, expected {os.getuid()}"
+        )
+    config_mode = config_stat.st_mode & 0o777
+    if config_mode & 0o022:
+        raise SystemExit(
+            f"status report config path {config_file} has permissions {config_mode:04o}, "
+            "expected no group/other write bits"
+        )
 if expected_launcher_env_path:
     launcher_settings = report.get("launcher_settings")
     if not isinstance(launcher_settings, dict):
@@ -646,6 +666,26 @@ if expected_config_path:
         raise SystemExit(f"status report OpenCPN chart directories were not parsed: {opencpn_config_path}")
     if not isinstance(status_data_connections, list):
         raise SystemExit(f"status report OpenCPN data connections were not parsed: {opencpn_config_path}")
+    opencpn_config_file = Path(opencpn_config_path).expanduser()
+    if opencpn_config_file.is_symlink():
+        raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_file}")
+    if not opencpn_config_file.is_file():
+        raise SystemExit(f"status report OpenCPN config is not a regular file: {opencpn_config_file}")
+    try:
+        opencpn_stat = opencpn_config_file.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report OpenCPN config {opencpn_config_file}: {exc}") from exc
+    if opencpn_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report OpenCPN config {opencpn_config_file} is owned by uid "
+            f"{opencpn_stat.st_uid}, expected {os.getuid()}"
+        )
+    opencpn_mode = opencpn_stat.st_mode & 0o777
+    if opencpn_mode & 0o022:
+        raise SystemExit(
+            f"status report OpenCPN config {opencpn_config_file} has permissions {opencpn_mode:04o}, "
+            "expected no group/other write bits"
+        )
     live_chart_directories, live_data_connections = parse_opencpn_config(opencpn_config_path)
     normalized_status_chart_directories = [normalize_path(str(value)) for value in status_chart_directories]
     normalized_status_data_connections = [str(value) for value in status_data_connections]
@@ -1860,7 +1900,13 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config" "$launcher_env"
 fi
 check "config file" test -f "$config"
+if [[ -f "$config" ]]; then
+  check "config file integrity" check_user_regular_file_integrity "$config" "NOAA Navionics config"
+fi
 check "source revision recorded" test -s "$revision_file"
+if [[ -s "$revision_file" ]]; then
+  check "source revision file integrity" check_user_regular_file_integrity "$revision_file" "source revision file"
+fi
 if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "unknown" ]]; then
   installed_revision="$(tr -d '[:space:]' <"$revision_file")"
   check "source revision matches" test "$installed_revision" = "$NOAA_NAVIONICS_EXPECTED_REVISION"
@@ -1873,6 +1919,7 @@ check "Pi power command" command -v vcgencmd
 check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
+check "Chrony config file integrity" check_root_regular_file_integrity /etc/chrony/chrony.conf "chrony config"
 check "Chrony GPSD time source" check_chrony_gps_time_config
 check "Chrony usable GPS source" wait_for_chrony_gps_source
 check "GPSD command" command -v gpsd
@@ -1882,6 +1929,9 @@ check "GPSD socket active" systemctl is-active --quiet gpsd.socket
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD service active" systemctl is-active --quiet gpsd
 check "GPSD config" test -f /etc/default/gpsd
+if [[ -f /etc/default/gpsd ]]; then
+  check "GPSD config file integrity" check_root_regular_file_integrity /etc/default/gpsd "GPSD config"
+fi
 if [[ -r /etc/default/gpsd ]]; then
   check "GPSD daemon enabled" grep -Eq '^START_DAEMON="true"' /etc/default/gpsd
   check "GPSD USB auto disabled" grep -Eq '^USBAUTO="false"' /etc/default/gpsd

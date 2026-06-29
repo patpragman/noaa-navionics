@@ -357,6 +357,12 @@ grep -q 'boot status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
+grep -q 'status report config path is a symlink' scripts/verify_pi.sh
+grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
+grep -q 'config file integrity' scripts/verify_pi.sh
+grep -q 'source revision file integrity' scripts/verify_pi.sh
+grep -q 'Chrony config file integrity' scripts/verify_pi.sh
+grep -q 'GPSD config file integrity' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
 grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
 grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
