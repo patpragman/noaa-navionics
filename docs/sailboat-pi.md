@@ -86,6 +86,7 @@ Default config:
 [charts]
 package = state
 value = AK
+# Use an absolute path or a path starting with ~ for unattended systemd services.
 output = ~/charts/noaa-enc
 extract = yes
 keep_zip = yes
@@ -100,12 +101,13 @@ gpsd_host = 127.0.0.1
 gpsd_port = 2947
 
 [tracking]
+# Use an absolute path or a path starting with ~ for unattended systemd services.
 output = ~/charts/noaa-enc
 # Keep this many days of rotated GPX track logs; 0 disables pruning.
 retention_days = 90
 ```
 
-Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `updates`, `chart`, `all`, or `catalog`; packages other than `all` and `catalog` need `charts.value`; chart and track output paths cannot be blank; `charts.max_age_days` must be at least `1`; GPSD hosts cannot be blank or contain spaces, semicolons, or pipes; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; serial mode requires `gps.device`; and track retention must be `0` or greater.
+Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `updates`, `chart`, `all`, or `catalog`; packages other than `all` and `catalog` need `charts.value`; chart and track output paths cannot be blank and must be absolute or start with `~`; `charts.max_age_days` must be at least `1`; GPSD hosts cannot be blank or contain spaces, semicolons, or pipes; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; serial mode requires `gps.device`; and track retention must be `0` or greater.
 `gps.mode` must be `gpsd` or `serial`. Use `gpsd` for onboard production so OpenCPN and this tool can share the receiver.
 
 ## GPSD Setup

@@ -75,6 +75,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         raise ValueError(f"charts.value is required when charts.package is {chart_package}")
     chart_output_text = _get_required_text(charts, "output", str(defaults.chart_output), label="charts.output")
     chart_output = Path(chart_output_text).expanduser()
+    _require_absolute_path(chart_output, label="charts.output")
     max_chart_age_days = _get_int(
         charts,
         "max_age_days",
@@ -96,6 +97,8 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         raise ValueError("gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")
     gpsd_port = _get_int(gps, "gpsd_port", defaults.gpsd_port, label="gps.gpsd_port", minimum=1, maximum=65535)
     track_output_text = _get_required_text(tracking, "output", str(chart_output), label="tracking.output")
+    track_output = Path(track_output_text).expanduser()
+    _require_absolute_path(track_output, label="tracking.output")
     track_retention_days = _get_int(
         tracking,
         "retention_days",
@@ -116,7 +119,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         gps_baud=gps_baud,
         gpsd_host=gpsd_host,
         gpsd_port=gpsd_port,
-        track_output=Path(track_output_text).expanduser(),
+        track_output=track_output,
         track_retention_days=track_retention_days,
     )
 
@@ -137,6 +140,7 @@ def default_config_text() -> str:
         "# package can be: state, cgd, region, updates, chart, all, catalog\n"
         f"package = {defaults.chart_package}\n"
         f"value = {defaults.chart_value}\n"
+        "# Use an absolute path or a path starting with ~ for unattended systemd services.\n"
         f"output = {defaults.chart_output}\n"
         "extract = yes\n"
         "keep_zip = yes\n"
@@ -152,6 +156,7 @@ def default_config_text() -> str:
         f"gpsd_port = {defaults.gpsd_port}\n"
         "\n"
         "[tracking]\n"
+        "# Use an absolute path or a path starting with ~ for unattended systemd services.\n"
         f"output = {defaults.track_output}\n"
         "# Keep this many days of rotated GPX track logs; 0 disables pruning.\n"
         f"retention_days = {defaults.track_retention_days}\n"
@@ -240,6 +245,11 @@ def _get_required_text(section: object, key: str, default: str, *, label: Option
     if not text:
         raise ValueError(f"{label or key} must not be empty")
     return text
+
+
+def _require_absolute_path(path: Path, *, label: str) -> None:
+    if not path.is_absolute():
+        raise ValueError(f"{label} must be an absolute path or start with ~")
 
 
 def _get_int(

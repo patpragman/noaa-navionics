@@ -242,6 +242,7 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\npackage = potato\n", "charts.package"),
             ("[charts]\npackage = state\nvalue =\n", "charts.value"),
             ("[charts]\noutput =\n", "charts.output"),
+            ("[charts]\noutput = charts/noaa-enc\n", "charts.output"),
             ("[charts]\nmax_age_days = 0\n", "charts.max_age_days"),
             ("[charts]\nextract = maybe\n", "charts.extract"),
             ("[gps]\nmode = serial\ndevice =\n", "gps.device"),
@@ -249,6 +250,7 @@ class ConfigTests(unittest.TestCase):
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
             ("[gps]\ngpsd_port = 70000\n", "gps.gpsd_port"),
             ("[tracking]\noutput =\n", "tracking.output"),
+            ("[tracking]\noutput = tracks\n", "tracking.output"),
             ("[tracking]\nretention_days = -1\n", "tracking.retention_days"),
         ]
         with tempfile.TemporaryDirectory() as tmpdir:

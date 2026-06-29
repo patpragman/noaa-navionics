@@ -115,6 +115,7 @@ Provisioning runs the first chart sync with retry settings suited to unreliable 
 The deploy, provisioning, and dock-test scripts reject invalid retry, delay, GPS wait, and reboot timeout values before starting remote work.
 Provisioning persists the chosen GPS wait in `~/.config/noaa-navionics/launcher.env` so the boot readiness service and desktop chartplotter launcher use the same cold-start window after reboot.
 Provisioning also configures chrony to use GPSD's message-based `SHM 0` time source so a Pi without an RTC can synchronize its clock from the GPS when network time is unavailable. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present.
+Onboard config chart and track output paths must be absolute or start with `~` so unattended systemd services never depend on a process working directory.
 
 Verify the Raspberry Pi after deployment:
 
