@@ -41,6 +41,14 @@ for directory in synced_dirs:
 PY
 }
 
+apt_update() {
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get update
+}
+
+apt_install() {
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+}
+
 ensure_vcgencmd() {
   if command -v vcgencmd >/dev/null 2>&1; then
     return 0
@@ -48,7 +56,7 @@ ensure_vcgencmd() {
 
   # raspi-utils is current on Raspberry Pi OS Bookworm; libraspberrypi-bin
   # covers older images that still package vcgencmd there.
-  if sudo apt install -y raspi-utils; then
+  if apt_install raspi-utils; then
     if command -v vcgencmd >/dev/null 2>&1; then
       return 0
     fi
@@ -56,7 +64,7 @@ ensure_vcgencmd() {
     echo "raspi-utils install did not complete; trying legacy Raspberry Pi utilities package." >&2
   fi
 
-  if sudo apt install -y libraspberrypi-bin; then
+  if apt_install libraspberrypi-bin; then
     if command -v vcgencmd >/dev/null 2>&1; then
       return 0
     fi
@@ -98,7 +106,7 @@ EOF
 fi
 
 if [[ "$skip_apt" -eq 0 ]]; then
-  sudo apt update
+  apt_update
   os_codename=""
   if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
@@ -107,11 +115,11 @@ if [[ "$skip_apt" -eq 0 ]]; then
   fi
   if [[ "$os_codename" == "bookworm" ]] && ! grep -Rqs '^deb .*bookworm-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
     echo 'deb https://deb.debian.org/debian bookworm-backports main' | sudo tee -a /etc/apt/sources.list >/dev/null
-    sudo apt update
+    apt_update
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
-  sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils
+  apt_install python3 python3-venv python3-tk opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils
   ensure_vcgencmd
 fi
 
