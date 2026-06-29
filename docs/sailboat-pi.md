@@ -58,6 +58,7 @@ output = ~/charts/noaa-enc
 extract = yes
 keep_zip = yes
 force = yes
+max_age_days = 30
 
 [gps]
 mode = gpsd
@@ -106,6 +107,8 @@ Download Alaska charts:
 noaa-navionics sync-charts
 ```
 
+Each sync writes `noaa-navionics-manifest.json` next to the chart data. The manifest records the NOAA package URL, download size, SHA-256, extraction path, ENC cell count, and UTC sync time. Preflight requires this manifest and fails if it is older than `max_age_days`.
+
 For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--chart` downloads. Use the catalog search to identify specific cells:
 
 ```bash
@@ -134,6 +137,7 @@ Expected checks:
 - Tkinter available for the GUI
 - OpenCPN installed
 - Extracted ENC chart cells present
+- Current chart manifest present
 - At least 2 GB free disk space
 - Valid GPSD fix
 

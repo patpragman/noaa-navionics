@@ -201,6 +201,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gps_device=args.gps_device or (app_config.gps_device if gps_mode == "serial" else None),
                 gps_sample=Path(args.gps_sample) if args.gps_sample else None,
                 gps_seconds=args.gps_seconds,
+                max_chart_age_days=app_config.max_chart_age_days,
             )
             for result in results:
                 mark = "OK" if result.ok else "FAIL"

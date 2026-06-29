@@ -3,13 +3,14 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from noaa_navionics.downloader import package_for, search_catalog
+from noaa_navionics.downloader import MANIFEST_NAME, Package, download_package, package_for, read_manifest, search_catalog
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
-from noaa_navionics.health import check_chart_dir, check_gps_sample
+from noaa_navionics.health import check_chart_dir, check_chart_manifest, check_gps_sample
 
 
 class PackageForTests(unittest.TestCase):
@@ -99,6 +100,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.chart_package, "state")
             self.assertEqual(config.chart_value, "AK")
             self.assertEqual(config.gps_mode, "gpsd")
+            self.assertEqual(config.max_chart_age_days, 30)
             self.assertTrue(config.extract)
 
     def test_custom_config_package_kwargs(self):
@@ -112,6 +114,7 @@ class ConfigTests(unittest.TestCase):
                 "extract = true\n"
                 "keep_zip = false\n"
                 "force = false\n"
+                "max_age_days = 14\n"
                 "\n"
                 "[gps]\n"
                 "mode = serial\n"
@@ -126,8 +129,42 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.gps_mode, "serial")
             self.assertEqual(config.gps_device, "/dev/ttyACM0")
             self.assertEqual(config.gps_baud, 9600)
+            self.assertEqual(config.max_chart_age_days, 14)
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
+
+
+class ManifestTests(unittest.TestCase):
+    def test_download_writes_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("Test package", source_zip.as_uri(), "AK_ENCs.zip")
+
+            result = download_package(package, output, extract=True)
+
+            self.assertTrue(result.sha256)
+            self.assertTrue((output / MANIFEST_NAME).exists())
+            manifest = read_manifest(output)
+            self.assertEqual(manifest["package"]["label"], "Test package")
+            self.assertEqual(manifest["download"]["sha256"], result.sha256)
+            self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
+            self.assertTrue(check_chart_manifest(output).ok)
+
+    def test_stale_manifest_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = root / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"2000-01-01T00:00:00Z","package":{"label":"Old"},"download":{},"extract":{}}\n',
+                encoding="utf-8",
+            )
+            result = check_chart_manifest(root, max_age_days=1)
+            self.assertFalse(result.ok)
+            self.assertIn("days old", result.detail)
 
 
 class GpsTests(unittest.TestCase):

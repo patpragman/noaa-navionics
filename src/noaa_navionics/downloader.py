@@ -6,6 +6,9 @@ from typing import Callable, Iterable, Optional, Union
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
+from datetime import datetime, timezone
+import hashlib
+import json
 import os
 import xml.etree.ElementTree as ET
 import zipfile
@@ -13,6 +16,7 @@ import zipfile
 
 BASE_URL = "https://www.charts.noaa.gov/ENCs/"
 CATALOG_NAME = "ENCProdCat_19115.xml"
+MANIFEST_NAME = "noaa-navionics-manifest.json"
 USER_AGENT = "noaa-navionics/0.1 (+https://www.charts.noaa.gov/ENCs/ENCs.shtml)"
 
 UPDATE_PACKAGES = {
@@ -37,6 +41,7 @@ class DownloadResult:
     bytes_written: int
     skipped: bool = False
     extracted_to: Optional[Path] = None
+    sha256: str = ""
 
 
 @dataclass(frozen=True)
@@ -162,14 +167,17 @@ def download_package(
     destination = output_path / package.filename
 
     if destination.exists() and not force:
-        result = DownloadResult(destination, package.url, destination.stat().st_size, skipped=True)
+        digest = sha256_file(destination)
+        result = DownloadResult(destination, package.url, destination.stat().st_size, skipped=True, sha256=digest)
         if extract and destination.suffix.lower() == ".zip":
             extracted_to = extract_zip(destination, output_path / destination.stem)
-            result = DownloadResult(destination, package.url, destination.stat().st_size, True, extracted_to)
+            result = DownloadResult(destination, package.url, destination.stat().st_size, True, extracted_to, digest)
+            write_manifest(output_path, package, result)
         return result
 
     tmp_path = destination.with_suffix(destination.suffix + ".part")
     request = Request(package.url, headers={"User-Agent": USER_AGENT})
+    hasher = hashlib.sha256()
     try:
         with urlopen(request, timeout=timeout) as response:
             total = _content_length(response)
@@ -180,6 +188,7 @@ def download_package(
                     if not chunk:
                         break
                     target.write(chunk)
+                    hasher.update(chunk)
                     written += len(chunk)
                     if progress:
                         progress(written, total)
@@ -189,13 +198,16 @@ def download_package(
         raise RuntimeError(f"download failed for {package.url}: {exc}") from exc
 
     os.replace(tmp_path, destination)
+    digest = hasher.hexdigest()
     extracted_to = None
     if extract and destination.suffix.lower() == ".zip":
         extracted_to = extract_zip(destination, output_path / destination.stem)
         if not keep_zip:
             destination.unlink()
 
-    return DownloadResult(destination, package.url, written, False, extracted_to)
+    result = DownloadResult(destination, package.url, written, False, extracted_to, digest)
+    write_manifest(output_path, package, result)
+    return result
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:
@@ -208,6 +220,59 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
                 raise RuntimeError(f"unsafe ZIP member path: {member.filename}")
         archive.extractall(destination)
     return destination
+
+
+def sha256_file(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def write_manifest(output_dir: Union[Path, str], package: Package, result: DownloadResult) -> Path:
+    output_path = Path(output_dir).expanduser()
+    digest = result.sha256
+    if not digest and result.path.exists():
+        digest = sha256_file(result.path)
+    manifest = {
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "package": {
+            "label": package.label,
+            "url": package.url,
+            "filename": package.filename,
+        },
+        "download": {
+            "path": str(result.path),
+            "bytes": result.bytes_written,
+            "sha256": digest,
+            "skipped": result.skipped,
+        },
+        "extract": {
+            "path": str(result.extracted_to) if result.extracted_to else "",
+            "enc_cell_count": count_enc_cells(result.extracted_to) if result.extracted_to else 0,
+        },
+    }
+    target = output_path / MANIFEST_NAME
+    tmp = target.with_suffix(".json.part")
+    tmp.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, target)
+    return target
+
+
+def read_manifest(output_dir: Union[Path, str]) -> dict[str, object]:
+    path = Path(output_dir).expanduser() / MANIFEST_NAME
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def count_enc_cells(root: Optional[Path]) -> int:
+    if root is None or not Path(root).exists():
+        return 0
+    return sum(1 for _ in Path(root).rglob("*.000"))
 
 
 def download_catalog(output_dir: Union[Path, str], **kwargs: object) -> DownloadResult:

@@ -17,6 +17,7 @@ class AppConfig:
     extract: bool
     keep_zip: bool
     force: bool
+    max_chart_age_days: int
     gps_mode: str
     gps_device: str
     gps_baud: int
@@ -34,6 +35,7 @@ def default_config() -> AppConfig:
         extract=True,
         keep_zip=True,
         force=True,
+        max_chart_age_days=30,
         gps_mode="gpsd",
         gps_device="/dev/ttyUSB0",
         gps_baud=4800,
@@ -66,6 +68,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         extract=_get_bool(charts, "extract", defaults.extract),
         keep_zip=_get_bool(charts, "keep_zip", defaults.keep_zip),
         force=_get_bool(charts, "force", defaults.force),
+        max_chart_age_days=int(charts.get("max_age_days", str(defaults.max_chart_age_days))),
         gps_mode=gps.get("mode", defaults.gps_mode).strip().lower(),
         gps_device=gps.get("device", defaults.gps_device).strip(),
         gps_baud=int(gps.get("baud", str(defaults.gps_baud))),
@@ -95,6 +98,7 @@ def default_config_text() -> str:
         "extract = yes\n"
         "keep_zip = yes\n"
         "force = yes\n"
+        f"max_age_days = {defaults.max_chart_age_days}\n"
         "\n"
         "[gps]\n"
         "# mode can be gpsd or serial. Use gpsd for onboard production so OpenCPN can share the GPS.\n"

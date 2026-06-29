@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 import importlib.util
@@ -9,6 +10,7 @@ import sys
 import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
+from .downloader import MANIFEST_NAME, read_manifest
 
 
 @dataclass(frozen=True)
@@ -27,12 +29,14 @@ def run_preflight(
     gps_device: Optional[str] = None,
     gps_sample: Optional[Path] = None,
     gps_seconds: float = 5.0,
+    max_chart_age_days: int = 30,
 ) -> list[CheckResult]:
     results = [
         check_python(),
         check_tkinter(),
         check_opencpn(),
         check_chart_dir(chart_dir),
+        check_chart_manifest(chart_dir, max_age_days=max_chart_age_days),
         check_disk_space(chart_dir),
     ]
     if gpsd:
@@ -73,6 +77,26 @@ def check_chart_dir(chart_dir: Path) -> CheckResult:
     if zips:
         return CheckResult("Charts", False, f"found ENC ZIP files under {path}; run download with --extract")
     return CheckResult("Charts", False, f"no ENC .000 cells or ZIPs found under {path}")
+
+
+def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckResult:
+    path = Path(chart_dir).expanduser()
+    manifest_path = path / MANIFEST_NAME
+    if not manifest_path.exists():
+        return CheckResult("Manifest", False, f"missing {manifest_path}")
+    try:
+        manifest = read_manifest(path)
+        created = _parse_manifest_time(str(manifest.get("created_at", "")))
+    except Exception as exc:
+        return CheckResult("Manifest", False, f"invalid {manifest_path}: {exc}")
+    if created is None:
+        return CheckResult("Manifest", False, f"manifest has no valid created_at: {manifest_path}")
+    age_days = (datetime.now(timezone.utc) - created).total_seconds() / 86400
+    if age_days > max_age_days:
+        return CheckResult("Manifest", False, f"chart manifest is {age_days:.1f} days old; max is {max_age_days}")
+    package = manifest.get("package", {})
+    label = package.get("label", "unknown package") if isinstance(package, dict) else "unknown package"
+    return CheckResult("Manifest", True, f"{label}; updated {age_days:.1f} days ago")
 
 
 def check_disk_space(chart_dir: Path) -> CheckResult:
@@ -149,3 +173,12 @@ def _fix_detail(fix: GPSFix) -> str:
     if fix.hdop is not None:
         pieces.append(f"HDOP {fix.hdop}")
     return "; ".join(pieces)
+
+
+def _parse_manifest_time(value: str) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None

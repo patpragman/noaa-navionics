@@ -107,6 +107,8 @@ Download the configured chart package:
 noaa-navionics sync-charts
 ```
 
+`sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, extraction path, and sync time. `preflight` checks that manifest before the boat leaves the dock.
+
 Preflight check:
 
 ```bash
