@@ -1443,6 +1443,7 @@ if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "
 fi
 check "OpenCPN command" command -v opencpn
 check "display power command" command -v xset
+check "process lookup command" command -v pgrep
 check "Pi power command" command -v vcgencmd
 check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony

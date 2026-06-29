@@ -234,6 +234,7 @@ grep -q 'noaa-navionics=noaa_navionics.cli:main' setup.py
 grep -q 'noaa-navionics-gui=noaa_navionics.gui:main' setup.py
 ! grep -q '^build-backend' pyproject.toml
 grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
+grep -q 'python3-setuptools procps' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic' scripts/install_raspberry_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/install_raspberry_pi.sh
@@ -376,6 +377,7 @@ grep -q '"Launcher Settings"' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
+grep -q 'process lookup command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'GPSD service active' scripts/verify_pi.sh
@@ -620,6 +622,8 @@ grep -q 'is a directory, not a GPS device' src/noaa_navionics/health.py
 grep -q 'is not a character device' src/noaa_navionics/health.py
 grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
+grep -q 'procps' README.md
+grep -q 'procps' docs/sailboat-pi.md
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
 grep -q '"extract": app_config.extract' src/noaa_navionics/report.py
 grep -q '"keep_zip": app_config.keep_zip' src/noaa_navionics/report.py
