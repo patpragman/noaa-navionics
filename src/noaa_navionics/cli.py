@@ -135,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     preflight = subparsers.add_parser("preflight", help="check Pi navigation readiness")
     preflight.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
-    preflight.add_argument("--charts", default="~/charts/noaa-enc", help="chart directory")
+    preflight.add_argument("--charts", help="chart directory; defaults to [charts].output")
     preflight.add_argument("--gpsd", action="store_true", help="check GPSD at localhost:2947")
     preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/serial/by-id/YOUR_GPS_DEVICE")
     preflight.add_argument("--gps-baud", type=int, help="NMEA serial baud rate")
@@ -334,8 +334,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.command == "preflight":
             app_config = read_config(Path(args.config))
             gps_mode = app_config.gps_mode
+            chart_dir = Path(args.charts).expanduser() if args.charts else app_config.chart_output
             results = run_preflight(
-                chart_dir=Path(args.charts) if args.charts != "~/charts/noaa-enc" else app_config.chart_output,
+                chart_dir=chart_dir,
                 chart_package=app_config.chart_package,
                 chart_value=app_config.chart_value,
                 gpsd=args.gpsd or (gps_mode == "gpsd" and not args.gps_device and not args.gps_sample),

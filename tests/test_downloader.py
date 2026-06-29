@@ -1157,6 +1157,49 @@ class CLIValidationTests(unittest.TestCase):
             self.assertFalse(chart_output.exists())
             self.assertEqual(calls, [])
 
+    def test_preflight_explicit_default_chart_path_overrides_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "config.ini"
+            configured_charts = root / "configured-charts"
+            config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {configured_charts}\n"
+                "\n"
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            calls = []
+            original = cli_module.run_preflight
+
+            def fake_run_preflight(**kwargs):
+                calls.append(kwargs)
+                return [health_module.CheckResult("Test", True, "ok")]
+
+            try:
+                cli_module.run_preflight = fake_run_preflight
+                with redirect_stdout(StringIO()):
+                    code = cli_module.main(
+                        [
+                            "preflight",
+                            "--config",
+                            str(config),
+                            "--charts",
+                            "~/charts/noaa-enc",
+                        ]
+                    )
+            finally:
+                cli_module.run_preflight = original
+
+            self.assertEqual(code, 0)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["chart_dir"], Path("~/charts/noaa-enc").expanduser())
+            self.assertNotEqual(calls[0]["chart_dir"], configured_charts)
+
     def test_gps_waits_reject_negative_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])

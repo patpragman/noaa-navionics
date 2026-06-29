@@ -612,6 +612,8 @@ grep -q 'max_duration=max_duration' src/noaa_navionics/cli.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
 grep -q 'def _non_negative_int' src/noaa_navionics/cli.py
 grep -q 'def _non_negative_float' src/noaa_navionics/cli.py
+grep -q 'chart_dir = Path(args.charts).expanduser() if args.charts else app_config.chart_output' src/noaa_navionics/cli.py
+grep -q 'pass `--charts PATH` to check a different mounted chart directory explicitly' README.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
