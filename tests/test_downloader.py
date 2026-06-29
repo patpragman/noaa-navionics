@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from contextlib import redirect_stdout
 from io import BytesIO, StringIO
 from urllib.error import URLError
+import json
 import sys
 import signal
 import tempfile
@@ -732,6 +733,19 @@ class StatusReportTests(unittest.TestCase):
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
+
+    def test_write_status_report_does_not_reuse_fixed_part_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "status.json"
+            fixed_part = root / "status.json.part"
+            fixed_part.write_text("other writer\n", encoding="utf-8")
+
+            write_status_report({"ok": True}, output)
+
+            self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["ok"], True)
+            self.assertFalse(list(root.glob(".status.json.*.part")))
 
     def test_service_readiness_checks_accept_expected_onboard_units(self):
         services = {

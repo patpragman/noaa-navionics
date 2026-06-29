@@ -141,6 +141,7 @@ On the Pi, `status-report` writes a JSON readiness artifact:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
+Status reports are written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The installed boot-time readiness service writes the same status report after login and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed or unqueryable units, and checks GPSD service state in addition to recording raw service diagnostics.
 Deploy/install records the source revision so status reports show which code is running on the Pi.
 

@@ -11,6 +11,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
@@ -73,9 +74,27 @@ def build_status_report(
 def write_status_report(report: dict[str, object], output: Path) -> Path:
     target = Path(output).expanduser()
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".part")
-    tmp.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    tmp.replace(target)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".part",
+            delete=False,
+        ) as handle:
+            tmp_path = Path(handle.name)
+            handle.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, target)
+    finally:
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
     return target
 
 

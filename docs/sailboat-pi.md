@@ -208,6 +208,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
 The status report includes readiness checks, NOAA Navionics user unit checks, and GPSD service state checks.
+It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 It also records the installed source revision so you can confirm the Pi is running the expected deployment.
 
 Expected checks:
