@@ -1084,6 +1084,39 @@ class CLIValidationTests(unittest.TestCase):
             self.assertIn("enough free space", stderr.getvalue())
             self.assertEqual(calls, [])
 
+    def test_sync_rejects_missing_chart_storage_before_creating_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            chart_output = root / "missing-storage" / "charts"
+            config = root / "config.ini"
+            config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {chart_output}\n"
+                "min_free_gb = 0.1\n",
+                encoding="utf-8",
+            )
+            calls = []
+            original_download = cli_module.download_package
+
+            def fake_download_package(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise AssertionError("download_package should not be called")
+
+            try:
+                cli_module.download_package = fake_download_package
+                stderr = StringIO()
+                with redirect_stderr(stderr):
+                    code = cli_module.main(["sync-charts", "--config", str(config)])
+            finally:
+                cli_module.download_package = original_download
+
+            self.assertEqual(code, 2)
+            self.assertIn("create or mount the configured storage path", stderr.getvalue())
+            self.assertFalse(chart_output.exists())
+            self.assertEqual(calls, [])
+
     def test_gps_waits_reject_negative_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])

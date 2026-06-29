@@ -527,6 +527,18 @@ grep -q 'yielded_fix = True' src/noaa_navionics/cli.py
 grep -q 'or yielded_fix' src/noaa_navionics/cli.py
 grep -q 'GPSD unavailable at' src/noaa_navionics/cli.py
 grep -q 'retrying in' src/noaa_navionics/cli.py
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("src/noaa_navionics/cli.py").read_text(encoding="utf-8")
+sync_start = text.index('if args.command == "sync-charts":')
+sync_end = text.index('if args.command == "search-catalog":')
+sync_block = text[sync_start:sync_end]
+disk_index = sync_block.index("disk_check = check_disk_space")
+mkdir_index = sync_block.index("app_config.chart_output.mkdir")
+if mkdir_index < disk_index:
+    raise SystemExit("sync-charts must check chart storage before creating chart output")
+PY
 grep -q 'PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")' src/noaa_navionics/gui.py
 grep -q 'values=PACKAGE_KIND_OPTIONS' src/noaa_navionics/gui.py
 grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
