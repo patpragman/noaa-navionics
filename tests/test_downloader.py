@@ -1493,6 +1493,59 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("weak GPS fix", result.detail)
 
+    def test_check_gpsd_waits_for_quality_after_initial_position(self):
+        original = health_module.iter_gpsd_fixes
+        position_only = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+        )
+        weak = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+            satellites=3,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([position_only, weak])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("weak GPS fix", result.detail)
+
+    def test_check_gpsd_accepts_later_quality_fix(self):
+        original = health_module.iter_gpsd_fixes
+        position_only = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+        )
+        good = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.1,
+            longitude=-149.1,
+            fix_quality=3,
+            satellites=6,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([position_only, good])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertTrue(result.ok)
+        self.assertIn("6 satellites", result.detail)
+        self.assertIn("61.100000", result.detail)
+
     def test_check_gpsd_accepts_fresh_timestamped_fix(self):
         original = health_module.iter_gpsd_fixes
         fresh = GPSFix(

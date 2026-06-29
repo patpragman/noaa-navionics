@@ -96,6 +96,8 @@ grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
 grep -q 'weak GPS fix' src/noaa_navionics/health.py
+grep -q 'pending_without_quality' src/noaa_navionics/health.py
+grep -q 'def _fix_has_quality_fields' src/noaa_navionics/health.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'does not match configured' src/noaa_navionics/health.py

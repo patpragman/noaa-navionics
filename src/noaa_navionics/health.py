@@ -494,6 +494,7 @@ def check_gpsd(
     deadline = time.monotonic() + seconds
     stale_detail = ""
     quality_detail = ""
+    pending_without_quality: Optional[GPSFix] = None
     try:
         for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds):
             if time.monotonic() > deadline:
@@ -504,10 +505,18 @@ def check_gpsd(
                 continue
             quality_detail = _fix_quality_failure(fix)
             if quality_detail:
+                pending_without_quality = None
+                continue
+            if not _fix_has_quality_fields(fix):
+                pending_without_quality = fix
                 continue
             return CheckResult("GPSD", True, _fix_detail(fix))
     except Exception as exc:
+        if pending_without_quality is not None:
+            return CheckResult("GPSD", True, _fix_detail(pending_without_quality))
         return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}")
+    if pending_without_quality is not None:
+        return CheckResult("GPSD", True, _fix_detail(pending_without_quality))
     fix_detail = stale_detail or (f"; {quality_detail}" if quality_detail else "")
     return CheckResult("GPSD", False, f"no fresh navigation-quality GPSD fix within {seconds:.0f}s{fix_detail}")
 
@@ -588,6 +597,10 @@ def _fix_quality_failure(
     if fix.hdop is not None and fix.hdop > max_hdop:
         return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
     return ""
+
+
+def _fix_has_quality_fields(fix: GPSFix) -> bool:
+    return fix.satellites is not None or fix.hdop is not None
 
 
 def _parse_manifest_time(value: str) -> Optional[datetime]:
