@@ -873,9 +873,12 @@ grep -q 'boot_id' src/noaa_navionics/report.py
 grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'def _validate_downloaded_zip' src/noaa_navionics/downloader.py
+grep -q 'def _zip_member_path_is_unsafe' src/noaa_navionics/downloader.py
+grep -q 'downloaded ZIP has unsafe member path' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP is not a valid archive' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'test_forced_download_rejects_bad_zip_before_replacing_archive' tests/test_downloader.py
+grep -q 'test_forced_download_rejects_unsafe_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive' tests/test_downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py

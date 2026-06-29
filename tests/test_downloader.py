@@ -1666,6 +1666,33 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((output / "AK_ENCs.zip.part").exists())
             self.assertTrue(first.sha256)
 
+    def test_forced_download_rejects_unsafe_zip_before_replacing_archive(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            good_zip = root / "good.zip"
+            with zipfile.ZipFile(good_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", good_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
+            archive_path = output / "AK_ENCs.zip"
+            original_archive_bytes = archive_path.read_bytes()
+            original_manifest = read_manifest(output)
+            unsafe_zip = root / "unsafe.zip"
+            with zipfile.ZipFile(unsafe_zip, "w") as archive:
+                archive.writestr("../evil.000", "bad")
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            unsafe_package = Package("State AK", unsafe_zip.as_uri(), "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "downloaded ZIP has unsafe member path"):
+                download_package(unsafe_package, output, extract=True, keep_zip=True, force=True)
+
+            self.assertEqual(archive_path.read_bytes(), original_archive_bytes)
+            self.assertEqual(read_manifest(output), original_manifest)
+            self.assertEqual((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").read_text(encoding="ascii"), "cell")
+            self.assertFalse((output / "AK_ENCs.zip.part").exists())
+            self.assertFalse((root / "evil.000").exists())
+
     def test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

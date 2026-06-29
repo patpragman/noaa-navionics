@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from http.client import HTTPException, IncompleteRead
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, Optional, Union
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
@@ -356,6 +356,8 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         staging_root = staging.resolve()
         with zipfile.ZipFile(zip_path) as archive:
             for member in archive.infolist():
+                if _zip_member_path_is_unsafe(member.filename):
+                    raise RuntimeError(f"unsafe ZIP member path: {member.filename}")
                 target = staging / member.filename
                 try:
                     target.resolve().relative_to(staging_root)
@@ -390,9 +392,29 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
     return destination
 
 
+def _zip_member_path_is_unsafe(filename: str) -> bool:
+    if not filename or "\\" in filename:
+        return True
+    member_path = PurePosixPath(filename)
+    if member_path.is_absolute():
+        return True
+    stripped = filename.rstrip("/")
+    if not stripped:
+        return True
+    parts = stripped.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        return True
+    if ":" in parts[0]:
+        return True
+    return False
+
+
 def _validate_downloaded_zip(zip_path: Path) -> None:
     try:
         with zipfile.ZipFile(zip_path) as archive:
+            for member in archive.infolist():
+                if _zip_member_path_is_unsafe(member.filename):
+                    raise RuntimeError(f"downloaded ZIP has unsafe member path: {member.filename}")
             bad_member = archive.testzip()
             if bad_member is not None:
                 raise RuntimeError(f"downloaded ZIP has a failed CRC member: {bad_member}")
