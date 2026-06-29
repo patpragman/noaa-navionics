@@ -57,6 +57,7 @@ grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
 grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-preflight.service
+grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
@@ -214,6 +215,7 @@ grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart' scripts/verify_pi.sh
 grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
 grep -q 'preflight service loaded status report' scripts/verify_pi.sh
+grep -q 'preflight service loaded timeout' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
@@ -350,6 +352,7 @@ grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
+grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py
 grep -q 'Type=simple' systemd/noaa-navionics-track.service
 grep -q 'chart service loaded type' scripts/verify_pi.sh
 grep -q 'track service loaded type' scripts/verify_pi.sh

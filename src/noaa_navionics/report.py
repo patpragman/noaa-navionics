@@ -48,6 +48,7 @@ USER_UNIT_PROPERTIES = {
         "ExecStart",
         "Type",
         "EnvironmentFiles",
+        "TimeoutStartUSec",
         "Restart",
         "RestartUSec",
         "StartLimitIntervalUSec",
@@ -409,6 +410,7 @@ def _service_readiness_checks(
                     "Boot Readiness Settings",
                     exact={
                         "Type": "oneshot",
+                        "TimeoutStartUSec": "infinity",
                         "Restart": "on-failure",
                         "RestartUSec": "30s",
                         "StartLimitIntervalUSec": "5min",

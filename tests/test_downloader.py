@@ -1501,6 +1501,7 @@ class StatusReportTests(unittest.TestCase):
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "TimeoutStartUSec": "infinity",
                     "Restart": "on-failure",
                     "RestartUSec": "30s",
                     "StartLimitIntervalUSec": "5min",
@@ -1564,6 +1565,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "Type": "simple",
+                    "TimeoutStartUSec": "90s",
                     "Restart": "no",
                     "RestartUSec": "30s",
                     "StartLimitIntervalUSec": "5min",
@@ -1582,6 +1584,7 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(boot_settings.ok)
         self.assertIn("Type=simple", boot_settings.detail)
+        self.assertIn("TimeoutStartUSec=90s", boot_settings.detail)
         self.assertIn("Restart=no", boot_settings.detail)
 
     def test_service_readiness_checks_fail_loaded_command_missing_args(self):
