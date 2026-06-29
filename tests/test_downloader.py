@@ -2864,6 +2864,25 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("not usable", result.detail)
 
+    def test_check_chrony_gps_time_source_rejects_excluded_gps_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "chronyc"
+            fake.write_text("#!/bin/sh\necho '#- GPS 0 4 377 8 +12us[ +20us] +/- 100ms'\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_source(seconds=0)
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("not usable", result.detail)
+
     def test_check_chrony_gps_time_source_waits_for_later_usable_refclock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

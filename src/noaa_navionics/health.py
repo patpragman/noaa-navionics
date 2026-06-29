@@ -224,7 +224,7 @@ def _check_chrony_gps_time_source_once(chronyc: str) -> CheckResult:
         for line in completed.stdout.splitlines()
         if line.startswith("#") and "GPS" in line.upper()
     ]
-    usable = [line for line in gps_lines if len(line) > 1 and line[1] in "*+-"]
+    usable = [line for line in gps_lines if len(line) > 1 and line[1] in "*+"]
     if usable:
         return CheckResult("GPS Time Source", True, "chrony GPS source: " + usable[0])
     if gps_lines:

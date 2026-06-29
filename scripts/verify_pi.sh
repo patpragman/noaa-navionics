@@ -532,7 +532,7 @@ wait_for_chrony_gps_source() {
   local output=""
   while true; do
     output="$(chronyc sources -n 2>&1 || true)"
-    if printf '%s\n' "$output" | grep -Eq '^#[*+-].*GPS'; then
+    if printf '%s\n' "$output" | grep -Eq '^#[*+].*GPS'; then
       return 0
     fi
     if [[ "$SECONDS" -ge "$deadline" ]]; then

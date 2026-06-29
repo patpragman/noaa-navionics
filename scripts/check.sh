@@ -247,6 +247,8 @@ grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/health.py
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
+grep -Fq 'line[1] in "*+"' src/noaa_navionics/health.py
+grep -Fq '^#[*+].*GPS' scripts/verify_pi.sh
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
