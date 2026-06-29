@@ -15,7 +15,8 @@ from .report import build_status_report, format_status_text, write_status_report
 
 
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
-PACKAGE_KINDS = {"state", "updates", "cgd", "region", "chart", "all", "catalog"}
+PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")
+PACKAGE_KINDS = set(PACKAGE_KIND_OPTIONS)
 
 
 def run_configured_preflight(
@@ -99,7 +100,7 @@ class DownloaderApp(tk.Tk):
         kind = ttk.Combobox(
             root,
             textvariable=self.kind,
-            values=("state", "updates", "cgd", "region", "chart", "all", "catalog"),
+            values=PACKAGE_KIND_OPTIONS,
             state="readonly",
             width=14,
         )
@@ -191,16 +192,14 @@ class DownloaderApp(tk.Tk):
     def _kind_changed(self, event: Optional[object] = None) -> None:
         hints = {
             "state": ("AK", "Example: AK"),
-            "updates": ("ten-days", "one-day, two-days, one-week, ten-days"),
             "cgd": ("17", "Example: 17"),
             "region": ("30", "Example: 30"),
             "chart": ("US5AK3CM", "Example: US5AK3CM"),
             "all": ("", "No value needed"),
-            "catalog": ("", "No value needed"),
         }
         current = self.kind.get()
         default, hint = hints[current]
-        if current in {"all", "catalog"}:
+        if current == "all":
             self.value_entry.configure(state=tk.DISABLED)
             self.value.set("")
         else:
@@ -289,12 +288,10 @@ class DownloaderApp(tk.Tk):
         value = self.value.get().strip()
         return package_for(
             state=value if kind == "state" else None,
-            updates=value if kind == "updates" else None,
             cgd=value if kind == "cgd" else None,
             region=value if kind == "region" else None,
             chart=value if kind == "chart" else None,
             all_charts=kind == "all",
-            catalog=kind == "catalog",
         )
 
     def _download_worker(self, package) -> None:

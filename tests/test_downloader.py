@@ -692,6 +692,11 @@ class OpenCPNConfigTests(unittest.TestCase):
 
 
 class GuiTests(unittest.TestCase):
+    def test_gui_package_options_are_complete_onboard_chart_sources(self):
+        self.assertEqual(set(gui_module.PACKAGE_KIND_OPTIONS), config_module.CHART_PACKAGES)
+        self.assertNotIn("updates", gui_module.PACKAGE_KIND_OPTIONS)
+        self.assertNotIn("catalog", gui_module.PACKAGE_KIND_OPTIONS)
+
     def test_configured_preflight_uses_onboard_config_values(self):
         app_config = AppConfig(
             chart_package="state",

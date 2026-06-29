@@ -458,6 +458,8 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
+grep -q 'PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")' src/noaa_navionics/gui.py
+grep -q 'values=PACKAGE_KIND_OPTIONS' src/noaa_navionics/gui.py
 grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
