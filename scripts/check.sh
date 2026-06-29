@@ -130,6 +130,10 @@ grep -q 'launcher.env' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds "$gps_seconds"' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q 'write_remote_source_revision' scripts/deploy_to_pi.sh
+grep -q 'Refusing source revision write because {label} has permissions' scripts/deploy_to_pi.sh
+grep -q 'Refusing to replace symlink source revision file' scripts/deploy_to_pi.sh
+grep -q 'Deployment directory is not ready for source revision write' scripts/deploy_to_pi.sh
+grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
 grep -q 'local_command_exists rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_exists rsync' scripts/deploy_to_pi.sh
@@ -160,6 +164,10 @@ restore_index = text.index("Restored previous deployment after interrupted promo
 cleanup_index = text.index("for sibling in (staging, previous):", restore_index)
 if cleanup_index < restore_index:
     raise SystemExit("deploy staging cleanup must not run before interrupted promotion recovery")
+promote_index = text.index('promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"')
+revision_index = text.index('write_remote_source_revision "$remote_dir" "$source_revision"')
+if revision_index < promote_index:
+    raise SystemExit("deploy source revision must be written only after staging promotion")
 PY
 grep -q -- "--exclude='./.git'" scripts/deploy_to_pi.sh
 grep -Fq -- "--exclude '*.egg-info/'" scripts/deploy_to_pi.sh

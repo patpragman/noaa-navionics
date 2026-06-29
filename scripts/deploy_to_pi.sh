@@ -353,8 +353,44 @@ import tempfile
 
 repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
 revision = os.environ['NOAA_NAVIONICS_SOURCE_REVISION'].strip() or 'unknown'
-repo.mkdir(parents=True, exist_ok=True)
+expected_uid = os.getuid()
+if repo.is_symlink():
+    raise SystemExit(f'Refusing to write source revision through symlink deployment directory: {repo}')
+if not repo.exists() or not repo.is_dir():
+    raise SystemExit(f'Deployment directory is not ready for source revision write: {repo}')
+if repo.parent.is_symlink():
+    raise SystemExit(f'Refusing source revision write under symlink parent: {repo.parent}')
+for path, label in ((repo.parent, 'deployment parent'), (repo, 'deployment directory')):
+    stat_result = path.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Refusing source revision write because {label} is owned by uid '
+            f'{stat_result.st_uid}, expected {expected_uid}: {path}'
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f'Refusing source revision write because {label} has permissions '
+            f'{mode:04o}, expected no group/other write bits: {path}'
+        )
 target = repo / '.source-revision'
+if target.is_symlink():
+    raise SystemExit(f'Refusing to replace symlink source revision file: {target}')
+if target.exists() and not target.is_file():
+    raise SystemExit(f'Refusing to replace non-file source revision path: {target}')
+if target.exists():
+    stat_result = target.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Refusing to replace source revision owned by uid {stat_result.st_uid}, '
+            f'expected {expected_uid}: {target}'
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f'Refusing to replace source revision with permissions {mode:04o}, '
+            f'expected no group/other write bits: {target}'
+        )
 tmp_path = None
 try:
     with tempfile.NamedTemporaryFile(
@@ -468,6 +504,7 @@ for sibling in (staging, previous):
         else:
             sibling.unlink()
 staging.mkdir(parents=True)
+os.chmod(staging, 0o755)
 fsync_parent()
 PY"
 }
