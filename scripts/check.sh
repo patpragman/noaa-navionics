@@ -38,6 +38,9 @@ grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
+grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
+grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
+grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
@@ -102,13 +105,25 @@ grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/pro
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
+grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
 gpsd_output="$(mktemp)"
 deploy_output="$(mktemp)"
 dock_output="$(mktemp)"
-trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output"' EXIT
+verify_output="$(mktemp)"
+trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
+
+set +e
+scripts/verify_pi.sh --bad-option pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject unknown options with exit 2" >&2
+  exit 1
+fi
 
 set +e
 scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1

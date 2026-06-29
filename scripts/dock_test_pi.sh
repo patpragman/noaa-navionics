@@ -180,6 +180,6 @@ wait_for_ssh_down
 wait_for_ssh_up
 
 printf '\n[verify after reboot]\n'
-"${repo_root}/scripts/verify_pi.sh" "$target"
+"${repo_root}/scripts/verify_pi.sh" --require-chartplotter-started "$target"
 
 printf '\nDock test passed after reboot.\n'

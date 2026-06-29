@@ -1,17 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 1 || $# -gt 1 ]]; then
+usage() {
   cat >&2 <<'EOF'
-Usage: scripts/verify_pi.sh user@raspberrypi.local
+Usage: scripts/verify_pi.sh [--require-chartplotter-started] user@raspberrypi.local
 
 Runs onboard verification on the Raspberry Pi over SSH.
+With --require-chartplotter-started, also requires a post-boot launcher log
+and a running OpenCPN process.
 Nothing is installed or enabled on the local computer.
 EOF
+}
+
+target=""
+require_chartplotter_started=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --require-chartplotter-started)
+      require_chartplotter_started=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+    *)
+      if [[ -n "$target" ]]; then
+        echo "Unexpected extra argument: $1" >&2
+        usage
+        exit 2
+      fi
+      target="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$target" ]]; then
+  usage
   exit 2
 fi
 
-target="$1"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
@@ -19,8 +54,9 @@ if [[ "$expected_revision" != "unknown" && -n "$worktree_status" ]]; then
   expected_revision="${expected_revision}-dirty"
 fi
 expected_revision_quoted="$(printf '%q' "$expected_revision")"
+require_chartplotter_started_quoted="$(printf '%q' "$require_chartplotter_started")"
 
-ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} bash -s" <<'REMOTE'
+ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
@@ -31,9 +67,11 @@ desktop_autologin="${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin
 autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
+log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 status_attempts=3
 status_retry_delay=30
+require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
 
 check() {
   local name="$1"
@@ -125,6 +163,50 @@ if configured_device != gpsd_device:
 PY
 }
 
+check_chartplotter_log_after_boot() {
+  local path="$1"
+  python3 - "$path" <<'PY'
+from pathlib import Path
+from datetime import datetime, timezone
+import sys
+import time
+
+path = Path(sys.argv[1]).expanduser()
+if not path.exists():
+    raise SystemExit(f"missing launcher log: {path}")
+text = path.read_text(encoding="utf-8", errors="replace")
+startup_marker = "Starting NOAA Navionics chartplotter launcher"
+launch_marker = "Launching OpenCPN with ENC processing."
+startup_index = text.rfind(startup_marker)
+launch_index = text.rfind(launch_marker)
+if startup_index < 0:
+    raise SystemExit("launcher log does not contain startup marker")
+if launch_index < startup_index:
+    raise SystemExit("launcher log does not contain OpenCPN launch marker")
+try:
+    uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
+except Exception as exc:
+    raise SystemExit(f"could not read /proc/uptime: {exc}") from exc
+boot_epoch = time.time() - uptime_seconds
+line_start = text.rfind("\n", 0, startup_index) + 1
+line_prefix = text[line_start:startup_index]
+if not line_prefix.startswith("[") or "]" not in line_prefix:
+    raise SystemExit("launcher startup marker has no timestamp")
+timestamp_text = line_prefix[1:line_prefix.index("]")]
+try:
+    startup_time = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")).astimezone(timezone.utc)
+except ValueError as exc:
+    raise SystemExit(f"invalid launcher startup timestamp: {timestamp_text}") from exc
+if startup_time.timestamp() + 5 < boot_epoch:
+    age = boot_epoch - startup_time.timestamp()
+    raise SystemExit(f"launcher startup marker is older than current boot by {age:.0f}s")
+mtime = path.stat().st_mtime
+if mtime + 5 < boot_epoch:
+    age = boot_epoch - mtime
+    raise SystemExit(f"launcher log is older than current boot by {age:.0f}s")
+PY
+}
+
 arch="$(uname -m)"
 case "$arch" in
   armv7l|aarch64)
@@ -159,6 +241,11 @@ if [[ -f "$lightdm_autologin" ]]; then
   check "LightDM autologin seat" grep -Fxq '[Seat:*]' "$lightdm_autologin"
   check "LightDM autologin user" grep -Fxq "autologin-user=${USER}" "$lightdm_autologin"
   check "LightDM autologin timeout" grep -Fxq 'autologin-user-timeout=0' "$lightdm_autologin"
+fi
+if [[ "$require_chartplotter_started" -eq 1 ]]; then
+  printf '\n[chartplotter startup]\n'
+  check "chartplotter log after boot" check_chartplotter_log_after_boot "$log_file"
+  check "OpenCPN running" sh -c 'pgrep -x opencpn >/dev/null'
 fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "$revision_file"

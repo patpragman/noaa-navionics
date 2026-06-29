@@ -53,7 +53,7 @@ Run the dock acceptance test before relying on the Pi underway:
 scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The dock test deploys and provisions the Pi, verifies readiness, reboots it, waits for SSH to return, and verifies readiness again. Use `--skip-deploy` to test an already-provisioned Pi.
+The dock test deploys and provisions the Pi, verifies readiness, reboots it, waits for SSH to return, and verifies readiness again. After reboot, it uses the stricter verify mode that requires a fresh chartplotter launcher log from the current boot and a running `opencpn` process, proving the desktop autostart path actually launched OpenCPN. Use `--skip-deploy` to test an already-provisioned Pi.
 For deliberate test deployments from a dirty worktree, pass `--allow-dirty` to the dock test as well.
 
 Manual install:
@@ -234,6 +234,7 @@ Expected checks:
 - Raspberry Pi temperature below the hard limit
 - Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode
 - Chart refresh timer, track logger, boot readiness service, and GPSD service are in the expected state
+- During the dock test after reboot, the chartplotter launcher ran during the current boot and OpenCPN is running
 
 If any check fails, treat the Pi as not ready.
 
