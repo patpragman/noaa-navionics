@@ -183,14 +183,12 @@ if [[ "$configure_autologin" -eq 1 ]]; then
 fi
 
 systemctl --user daemon-reload
-if [[ "$enable_services" -eq 1 ]]; then
-  sudo loginctl enable-linger "$USER"
-  systemctl --user enable noaa-navionics.timer
-  systemctl --user enable noaa-navionics-track.service
-fi
 
 cat <<EOF
 Installed NOAA Navionics.
+
+User systemd unit files were installed but not enabled. Provisioning enables
+them after GPSD, charts, and the onboard config are commissioned.
 
 Next steps:
 1. Edit ${config_dir}/config.ini for your cruising area and GPS.
