@@ -212,6 +212,11 @@ grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/b
 grep -q 'install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" 0755' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time" 0755' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics.service" "${systemd_user_dir}/noaa-navionics.service" 0644' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "${systemd_user_dir}/noaa-navionics.timer" 0644' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "${systemd_user_dir}/noaa-navionics-track.service" 0644' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "${systemd_user_dir}/noaa-navionics-preflight.service" 0644' scripts/install_raspberry_pi.sh
+! grep -q 'cp "${repo_root}/systemd' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
 grep -q 'Do not run the Raspberry Pi installer as root' scripts/install_raspberry_pi.sh

@@ -304,17 +304,10 @@ if [[ ! -f "${config_dir}/config.ini" ]]; then
   "${HOME}/.local/bin/noaa-navionics" init-config --config "${config_dir}/config.ini"
 fi
 
-cp "${repo_root}/systemd/noaa-navionics.service" \
-   "${repo_root}/systemd/noaa-navionics.timer" \
-   "${repo_root}/systemd/noaa-navionics-track.service" \
-   "${repo_root}/systemd/noaa-navionics-preflight.service" \
-   "$systemd_user_dir/"
-
-sync_paths \
-  "${systemd_user_dir}/noaa-navionics.service" \
-  "${systemd_user_dir}/noaa-navionics.timer" \
-  "${systemd_user_dir}/noaa-navionics-track.service" \
-  "${systemd_user_dir}/noaa-navionics-preflight.service"
+install_user_file_atomic "${repo_root}/systemd/noaa-navionics.service" "${systemd_user_dir}/noaa-navionics.service" 0644
+install_user_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "${systemd_user_dir}/noaa-navionics.timer" 0644
+install_user_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "${systemd_user_dir}/noaa-navionics-track.service" 0644
+install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "${systemd_user_dir}/noaa-navionics-preflight.service" 0644
 
 cat <<EOF
 Installed NOAA Navionics.
