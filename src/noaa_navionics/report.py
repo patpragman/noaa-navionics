@@ -78,6 +78,7 @@ def build_status_report(
         gps_sample=gps_sample,
         gps_seconds=gps_seconds,
         max_chart_age_days=app_config.max_chart_age_days,
+        min_free_gb=app_config.min_free_gb,
         track_output=app_config.track_output,
     )
     check_rows = [asdict(check) for check in checks]
@@ -217,6 +218,7 @@ def _config_summary(app_config: AppConfig) -> dict[str, object]:
         "keep_zip": app_config.keep_zip,
         "force": app_config.force,
         "max_chart_age_days": app_config.max_chart_age_days,
+        "min_free_gb": app_config.min_free_gb,
         "gps_mode": app_config.gps_mode,
         "gps_device": app_config.gps_device,
         "gps_baud": app_config.gps_baud,

@@ -48,6 +48,7 @@ def run_preflight(
     gps_sample: Optional[Path] = None,
     gps_seconds: float = 5.0,
     max_chart_age_days: int = 30,
+    min_free_gb: float = 2.0,
     track_output: Optional[Path] = None,
 ) -> list[CheckResult]:
     results = [
@@ -68,12 +69,12 @@ def run_preflight(
             expected_value=chart_value,
         ),
         check_opencpn_chart_config(chart_dir),
-        check_disk_space(chart_dir),
+        check_disk_space(chart_dir, min_free_gb=min_free_gb),
         check_pi_throttling(),
         check_pi_temperature(),
     ]
     if track_output is not None and not _same_path(chart_dir, track_output):
-        results.append(check_disk_space(track_output, name="Track Disk"))
+        results.append(check_disk_space(track_output, name="Track Disk", min_free_gb=min_free_gb))
     if gpsd:
         if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
             results.append(check_gps_device_path(gps_device))
@@ -547,7 +548,7 @@ def _unexpected_enc_dirs(chart_dir: Path, extract_path: Path) -> list[Path]:
     return unexpected
 
 
-def check_disk_space(chart_dir: Path, *, name: str = "Disk") -> CheckResult:
+def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float = 2.0) -> CheckResult:
     path = Path(chart_dir).expanduser()
     existing = path if path.exists() else path.parent
     if not existing.exists():
@@ -557,8 +558,8 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk") -> CheckResult:
     usage = shutil.disk_usage(existing)
     free_gb = usage.free / (1024 ** 3)
     writable = _directory_writable(existing)
-    ok = free_gb >= 2.0 and writable
-    detail = f"{free_gb:.1f} GB free at {existing}"
+    ok = free_gb >= min_free_gb and writable
+    detail = f"{free_gb:.1f} GB free at {existing}; minimum {min_free_gb:.1f} GB"
     if not writable:
         detail += "; not writable"
     return CheckResult(name, ok, detail)

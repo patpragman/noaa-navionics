@@ -146,6 +146,7 @@ grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
+grep -q '"min_free_gb": float' scripts/verify_pi.sh
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
@@ -348,6 +349,9 @@ grep -q 'package can be: state, cgd, region, chart, all' src/noaa_navionics/conf
 grep -q 'package can be: state, cgd, region, chart, all' examples/noaa-navionics.ini
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' src/noaa_navionics/config.py
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' examples/noaa-navionics.ini
+grep -q 'min_free_gb = 2.0' examples/noaa-navionics.ini
+grep -q 'charts.min_free_gb' src/noaa_navionics/config.py
+grep -q 'def _get_float' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be local for onboard gpsd mode' src/noaa_navionics/config.py
 grep -q 'GPSD_LOCAL_HOSTS' src/noaa_navionics/config.py
@@ -374,6 +378,7 @@ grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py
+grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/gui.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
@@ -399,6 +404,7 @@ grep -q 'loaded settings match expected values' src/noaa_navionics/report.py
 grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navionics/report.py
 grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"download_bytes"' src/noaa_navionics/report.py
+grep -q '"min_free_gb": app_config.min_free_gb' src/noaa_navionics/report.py
 grep -q '"extract_path": extract.get("path", "")' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py

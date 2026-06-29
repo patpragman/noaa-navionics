@@ -38,6 +38,7 @@ def run_configured_preflight(
         gps_baud=app_config.gps_baud,
         gps_seconds=gps_seconds,
         max_chart_age_days=app_config.max_chart_age_days,
+        min_free_gb=app_config.min_free_gb,
         track_output=app_config.track_output,
     )
 

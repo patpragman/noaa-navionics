@@ -338,6 +338,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gps_sample=Path(args.gps_sample) if args.gps_sample else None,
                 gps_seconds=args.gps_seconds,
                 max_chart_age_days=app_config.max_chart_age_days,
+                min_free_gb=app_config.min_free_gb,
                 track_output=app_config.track_output,
             )
             for result in results:

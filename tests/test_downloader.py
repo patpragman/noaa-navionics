@@ -5,6 +5,7 @@ from io import BytesIO, StringIO
 from urllib.error import URLError
 import json
 import math
+import shutil
 import sys
 import signal
 import tempfile
@@ -176,6 +177,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.gps_mode, "gpsd")
             self.assertEqual(config.gps_device, "/dev/serial/by-id/YOUR_GPS_DEVICE")
             self.assertEqual(config.max_chart_age_days, 30)
+            self.assertEqual(config.min_free_gb, 2.0)
             self.assertEqual(config.track_retention_days, 90)
             self.assertTrue(config.extract)
 
@@ -209,6 +211,7 @@ class ConfigTests(unittest.TestCase):
                 "keep_zip = false\n"
                 "force = false\n"
                 "max_age_days = 14\n"
+                "min_free_gb = 4.5\n"
                 "\n"
                 "[gps]\n"
                 "mode = serial\n"
@@ -226,6 +229,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.gps_device, "/dev/serial/by-id/mock-gps")
             self.assertEqual(config.gps_baud, 9600)
             self.assertEqual(config.max_chart_age_days, 14)
+            self.assertEqual(config.min_free_gb, 4.5)
             self.assertEqual(config.track_retention_days, 14)
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
@@ -247,6 +251,8 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\noutput =\n", "charts.output"),
             ("[charts]\noutput = charts/noaa-enc\n", "charts.output"),
             ("[charts]\nmax_age_days = 0\n", "charts.max_age_days"),
+            ("[charts]\nmin_free_gb = 0\n", "charts.min_free_gb"),
+            ("[charts]\nmin_free_gb = nan\n", "charts.min_free_gb"),
             ("[charts]\nextract = maybe\n", "charts.extract"),
             ("[gps]\nmode = serial\ndevice =\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice =\n", "gps.device"),
@@ -615,6 +621,7 @@ class GuiTests(unittest.TestCase):
             keep_zip=True,
             force=True,
             max_chart_age_days=12,
+            min_free_gb=4.5,
             gps_mode="gpsd",
             gps_device="/dev/serial/by-id/mock-gps",
             gps_baud=9600,
@@ -648,6 +655,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(calls[0]["gps_baud"], 9600)
         self.assertEqual(calls[0]["gps_seconds"], 10.0)
         self.assertEqual(calls[0]["max_chart_age_days"], 12)
+        self.assertEqual(calls[0]["min_free_gb"], 4.5)
         self.assertEqual(calls[0]["track_output"], Path("/tracks/noaa"))
 
     def test_configured_gui_sync_rejects_incomplete_onboard_chart_packages(self):
@@ -673,6 +681,7 @@ class GuiTests(unittest.TestCase):
                         keep_zip=True,
                         force=True,
                         max_chart_age_days=12,
+                        min_free_gb=2.0,
                         gps_mode="gpsd",
                         gps_device="/dev/serial/by-id/mock-gps",
                         gps_baud=9600,
@@ -1421,6 +1430,7 @@ class StatusReportTests(unittest.TestCase):
                 "value = AK\n"
                 f"output = {charts}\n"
                 "max_age_days = 30\n"
+                "min_free_gb = 3.5\n"
                 "\n"
                 "[gps]\n"
                 "mode = gpsd\n"
@@ -1454,6 +1464,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["config"]["extract"], True)
             self.assertEqual(report["config"]["keep_zip"], True)
             self.assertEqual(report["config"]["force"], True)
+            self.assertEqual(report["config"]["min_free_gb"], 3.5)
             self.assertEqual(report["host"]["boot_id"], "boot-abc")
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
@@ -2715,6 +2726,16 @@ class GpsTests(unittest.TestCase):
             self.assertIn("not writable", result.detail)
         finally:
             health_module._directory_writable = original
+
+    def test_disk_check_uses_configured_free_space_floor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            usage = shutil.disk_usage(tmpdir)
+            min_free_gb = (usage.free / (1024 ** 3)) + 1.0
+
+            result = check_disk_space(Path(tmpdir), min_free_gb=min_free_gb)
+
+            self.assertFalse(result.ok)
+            self.assertIn("minimum", result.detail)
 
     def test_preflight_checks_separate_track_storage(self):
         original = health_module._directory_writable

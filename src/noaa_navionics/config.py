@@ -25,6 +25,7 @@ class AppConfig:
     keep_zip: bool
     force: bool
     max_chart_age_days: int
+    min_free_gb: float
     gps_mode: str
     gps_device: str
     gps_baud: int
@@ -44,6 +45,7 @@ def default_config() -> AppConfig:
         keep_zip=True,
         force=True,
         max_chart_age_days=30,
+        min_free_gb=2.0,
         gps_mode="gpsd",
         gps_device="/dev/serial/by-id/YOUR_GPS_DEVICE",
         gps_baud=4800,
@@ -85,6 +87,13 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         label="charts.max_age_days",
         minimum=1,
     )
+    min_free_gb = _get_float(
+        charts,
+        "min_free_gb",
+        defaults.min_free_gb,
+        label="charts.min_free_gb",
+        minimum=0.1,
+    )
     gps_mode = gps.get("mode", defaults.gps_mode).strip().lower()
     if gps_mode not in {"gpsd", "serial"}:
         raise ValueError("gps.mode must be either gpsd or serial")
@@ -122,6 +131,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         keep_zip=_get_bool(charts, "keep_zip", defaults.keep_zip, label="charts.keep_zip"),
         force=_get_bool(charts, "force", defaults.force, label="charts.force"),
         max_chart_age_days=max_chart_age_days,
+        min_free_gb=min_free_gb,
         gps_mode=gps_mode,
         gps_device=gps_device,
         gps_baud=gps_baud,
@@ -154,6 +164,7 @@ def default_config_text() -> str:
         "keep_zip = yes\n"
         "force = yes\n"
         f"max_age_days = {defaults.max_chart_age_days}\n"
+        f"min_free_gb = {defaults.min_free_gb:.1f}\n"
         "\n"
         "[gps]\n"
         "# mode can be gpsd or serial. Use gpsd for onboard production so OpenCPN can share the GPS.\n"
@@ -297,3 +308,35 @@ def _parse_int(key: str, value: object) -> int:
         return int(str(value).strip())
     except ValueError as exc:
         raise ValueError(f"{key} must be an integer") from exc
+
+
+def _get_float(
+    section: object,
+    key: str,
+    default: float,
+    *,
+    label: Optional[str] = None,
+    minimum: Optional[float] = None,
+    maximum: Optional[float] = None,
+) -> float:
+    field = label or key
+    if not hasattr(section, "get"):
+        value = default
+    else:
+        raw = section.get(key)
+        value = default if raw is None else _parse_float(field, raw)
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{field} must be at least {minimum:g}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{field} must be at most {maximum:g}")
+    return value
+
+
+def _parse_float(key: str, value: object) -> float:
+    try:
+        parsed = float(str(value).strip())
+    except ValueError as exc:
+        raise ValueError(f"{key} must be a number") from exc
+    if parsed != parsed or parsed in {float("inf"), float("-inf")}:
+        raise ValueError(f"{key} must be a finite number")
+    return parsed

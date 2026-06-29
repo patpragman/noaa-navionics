@@ -99,6 +99,7 @@ extract = yes
 keep_zip = yes
 force = yes
 max_age_days = 30
+min_free_gb = 2.0
 
 [gps]
 mode = gpsd
@@ -114,7 +115,7 @@ output = ~/charts/noaa-enc
 retention_days = 90
 ```
 
-Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `chart`, or `all`; packages other than `all` need `charts.value`; chart and track output paths cannot be blank and must be absolute or start with `~`; `charts.max_age_days` must be at least `1`; GPSD hosts cannot be blank or contain spaces, semicolons, or pipes, and `gpsd` mode requires a local host of `127.0.0.1`, `localhost`, or `::1`; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; `gpsd` and serial modes both require `gps.device` to be a stable path such as one `/dev/serial/by-id/...` symlink name, `/dev/serial0`, `/dev/serial1`, or `/dev/gps`; and track retention must be `0` or greater.
+Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `chart`, or `all`; packages other than `all` need `charts.value`; chart and track output paths cannot be blank and must be absolute or start with `~`; `charts.max_age_days` must be at least `1`; `charts.min_free_gb` must be at least `0.1`; GPSD hosts cannot be blank or contain spaces, semicolons, or pipes, and `gpsd` mode requires a local host of `127.0.0.1`, `localhost`, or `::1`; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; `gpsd` and serial modes both require `gps.device` to be a stable path such as one `/dev/serial/by-id/...` symlink name, `/dev/serial0`, `/dev/serial1`, or `/dev/gps`; and track retention must be `0` or greater.
 `gps.mode` must be `gpsd` or `serial`. Use `gpsd` for onboard production so OpenCPN and this tool can share the receiver.
 
 ## GPSD Setup
@@ -260,7 +261,7 @@ Expected checks:
 - Chrony enabled, active, configured to use GPSD time, and reporting a usable GPS refclock source
 - Graphical boot and LightDM autologin configured for unattended startup
 - Configured local GPS device path exists when GPSD is using a local receiver
-- At least 2 GB free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path
+- At least `[charts] min_free_gb` free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path
 - No active Raspberry Pi under-voltage or throttling
 - Raspberry Pi temperature below the hard limit
 - Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode

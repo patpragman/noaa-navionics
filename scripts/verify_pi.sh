@@ -205,6 +205,7 @@ if expected_config_path:
         "keep_zip": config_bool(parser, "charts", "keep_zip", "yes"),
         "force": config_bool(parser, "charts", "force", "yes"),
         "max_chart_age_days": int(parser.get("charts", "max_age_days", fallback="30").strip()),
+        "min_free_gb": float(parser.get("charts", "min_free_gb", fallback="2.0").strip()),
         "gps_mode": parser.get("gps", "mode", fallback="gpsd").strip().lower(),
         "gps_device": parser.get("gps", "device", fallback="/dev/serial/by-id/YOUR_GPS_DEVICE").strip(),
         "gps_baud": int(parser.get("gps", "baud", fallback="4800").strip()),
