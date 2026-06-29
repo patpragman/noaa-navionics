@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
+from urllib.parse import urlparse
 import importlib.util
 import os
 import re
@@ -481,13 +482,25 @@ def _check_manifest_download_url(manifest: dict[str, object]) -> Optional[CheckR
     download_url = str(download.get("url", "")).strip()
     if not download_url:
         return CheckResult("Manifest", False, "manifest does not record a download URL")
-    if package_url and download_url != package_url:
+    if package_url and not _download_url_matches_package(download_url, package_url):
         return CheckResult(
             "Manifest",
             False,
-            f"manifest download URL {download_url} does not match package URL {package_url}",
+            f"manifest download URL {download_url} does not match package filename from {package_url}",
         )
     return None
+
+
+def _download_url_matches_package(download_url: str, package_url: str) -> bool:
+    if download_url == package_url:
+        return True
+    parsed_download = urlparse(download_url)
+    parsed_package = urlparse(package_url)
+    if parsed_download.scheme.lower() not in {"http", "https"}:
+        return False
+    download_filename = Path(parsed_download.path).name
+    package_filename = Path(parsed_package.path).name
+    return bool(download_filename and package_filename and download_filename == package_filename)
 
 
 def _check_manifest_archive(

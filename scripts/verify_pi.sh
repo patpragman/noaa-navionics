@@ -223,6 +223,7 @@ check_status_report_json() {
 from pathlib import Path
 from configparser import ConfigParser
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 import json
 import os
 import sys
@@ -255,6 +256,17 @@ def expected_package_filename(package, value):
 def expected_package_url(package, value):
     filename = expected_package_filename(package, value)
     return f"https://www.charts.noaa.gov/ENCs/{filename}" if filename else ""
+
+def download_url_matches_package(download_url, package_url):
+    if download_url == package_url:
+        return True
+    parsed_download = urlparse(download_url)
+    parsed_package = urlparse(package_url)
+    if parsed_download.scheme.lower() not in {"http", "https"}:
+        return False
+    download_filename = Path(parsed_download.path).name
+    package_filename = Path(parsed_package.path).name
+    return bool(download_filename and package_filename and download_filename == package_filename)
 
 def parse_manifest_int(value, field, source):
     try:
@@ -444,10 +456,13 @@ if expected_config_path:
             f"does not match configured {expected_package_source_url}"
         )
     manifest_download_url = str(manifest.get("download_url", "")).strip()
-    if expected_package_source_url and manifest_download_url != expected_package_source_url:
+    if expected_package_source_url and not download_url_matches_package(
+        manifest_download_url,
+        expected_package_source_url,
+    ):
         raise SystemExit(
             f"status report manifest download URL {manifest_download_url} "
-            f"does not match configured {expected_package_source_url}"
+            f"does not match configured package filename from {expected_package_source_url}"
         )
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
     if download_path.name != manifest_package_filename:

@@ -1330,9 +1330,10 @@ class CLIValidationTests(unittest.TestCase):
 
 class ManifestTests(unittest.TestCase):
     class FakeResponse:
-        def __init__(self, payload, content_length: str = "5"):
+        def __init__(self, payload, content_length: str = "5", url: str = ""):
             self.headers = {"Content-Length": content_length}
             self.payload = BytesIO(payload)
+            self.url = url
 
         def __enter__(self):
             return self
@@ -1342,6 +1343,9 @@ class ManifestTests(unittest.TestCase):
 
         def read(self, size=-1):
             return self.payload.read(size)
+
+        def geturl(self):
+            return self.url
 
     def test_download_writes_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1364,6 +1368,31 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["download"]["sha256"], result.sha256)
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
             self.assertTrue(check_chart_manifest(output).ok)
+
+    def test_download_manifest_records_final_response_url(self):
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            self.assertEqual(request.full_url, "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip")
+            return self.FakeResponse(
+                b"chart",
+                url="https://downloads.charts.noaa.gov/cache/AK_ENCs.zip",
+            )
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("State AK", "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", "AK_ENCs.zip")
+
+                result = download_package(package, output)
+
+                manifest = read_manifest(output)
+                self.assertEqual(result.url, "https://downloads.charts.noaa.gov/cache/AK_ENCs.zip")
+                self.assertEqual(manifest["package"]["url"], package.url)
+                self.assertEqual(manifest["download"]["url"], result.url)
+        finally:
+            downloader_module.urlopen = original
 
     def test_existing_zip_extract_respects_no_keep_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1424,6 +1453,29 @@ class ManifestTests(unittest.TestCase):
             check = check_chart_manifest(output, max_age_days=1)
             self.assertFalse(check.ok)
             self.assertIn("days old", check.detail)
+
+    def test_existing_zip_preserves_previous_manifest_download_url(self):
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(
+                b"chart",
+                url="https://downloads.charts.noaa.gov/cache/AK_ENCs.zip",
+            )
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("State AK", "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", "AK_ENCs.zip")
+                first = download_package(package, output, force=True)
+
+                second = download_package(package, output, force=False)
+
+                self.assertTrue(second.skipped)
+                self.assertEqual(read_manifest(output)["download"]["url"], first.url)
+        finally:
+            downloader_module.urlopen = original
 
     def test_write_manifest_does_not_reuse_fixed_part_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1778,7 +1830,7 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("manifest package URL", result.detail)
             self.assertIn("https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", result.detail)
 
-    def test_manifest_download_url_mismatch_fails(self):
+    def test_manifest_download_url_redirect_with_matching_filename_passes(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             extract = root / "AK_ENCs"
@@ -1790,7 +1842,28 @@ class ManifestTests(unittest.TestCase):
                 '{"created_at":"' + now + '",'
                 '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
                 '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
-                '"download":{"url":"https://example.invalid/AK_ENCs.zip","sha256":"abc"},'
+                '"download":{"url":"https://downloads.charts.noaa.gov/cache/AK_ENCs.zip","sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertTrue(result.ok)
+
+    def test_manifest_download_url_mismatched_filename_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                '"download":{"url":"https://example.invalid/CA_ENCs.zip","sha256":"abc"},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
             )
@@ -1799,7 +1872,7 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("manifest download URL", result.detail)
-            self.assertIn("does not match package URL", result.detail)
+            self.assertIn("does not match package filename", result.detail)
 
     def test_manifest_missing_download_url_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:

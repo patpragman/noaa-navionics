@@ -279,11 +279,13 @@ def _download_package_unlocked(
     request = Request(package.url, headers={"User-Agent": USER_AGENT})
     written = 0
     digest = ""
+    download_url = package.url
     for attempt in range(1, retries + 1):
         hasher = hashlib.sha256()
         written = 0
         try:
             with urlopen(request, timeout=timeout) as response:
+                download_url = _response_url(response, package.url)
                 total = _content_length(response)
                 with tmp_path.open("wb") as target:
                     while True:
@@ -318,7 +320,7 @@ def _download_package_unlocked(
             destination.unlink()
             _fsync_directory(output_path)
 
-    result = DownloadResult(destination, package.url, written, False, extracted_to, digest)
+    result = DownloadResult(destination, download_url, written, False, extracted_to, digest)
     write_manifest(output_path, package, result)
     return result
 
@@ -516,6 +518,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
     if not digest and result.path.exists():
         digest = sha256_file(result.path)
     created_at, created_at_source = _manifest_created_at(output_path, package, result, digest)
+    download_url = _manifest_download_url(output_path, package, result, digest)
     manifest = {
         "created_at": created_at,
         "created_at_source": created_at_source,
@@ -526,7 +529,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
         },
         "download": {
             "path": str(result.path),
-            "url": result.url,
+            "url": download_url,
             "bytes": result.bytes_written,
             "sha256": digest,
             "skipped": result.skipped,
@@ -582,31 +585,73 @@ def _matching_previous_manifest_created_at(
     result: DownloadResult,
     digest: str,
 ) -> str:
+    manifest = _matching_previous_manifest(output_path, package, result, digest)
+    if manifest is None:
+        return ""
+    return str(manifest.get("created_at", "")).strip()
+
+
+def _manifest_download_url(
+    output_path: Path,
+    package: Package,
+    result: DownloadResult,
+    digest: str,
+) -> str:
+    if not result.skipped:
+        return result.url
+    manifest = _matching_previous_manifest(output_path, package, result, digest)
+    if manifest is None:
+        return result.url
+    download = manifest.get("download", {})
+    if not isinstance(download, dict):
+        return result.url
+    previous_url = str(download.get("url", "")).strip()
+    return previous_url or result.url
+
+
+def _matching_previous_manifest(
+    output_path: Path,
+    package: Package,
+    result: DownloadResult,
+    digest: str,
+) -> Optional[dict[str, object]]:
     manifest_path = output_path / MANIFEST_NAME
     if not manifest_path.exists():
-        return ""
+        return None
     try:
         manifest = read_manifest(output_path)
     except Exception:
-        return ""
+        return None
     created_at = str(manifest.get("created_at", "")).strip()
     package_section = manifest.get("package", {})
     download = manifest.get("download", {})
     if not created_at or not isinstance(package_section, dict) or not isinstance(download, dict):
-        return ""
+        return None
     if package_section.get("filename") != package.filename or package_section.get("url") != package.url:
-        return ""
+        return None
     previous_path = Path(str(download.get("path", ""))).expanduser()
     if previous_path.name != result.path.name:
-        return ""
+        return None
     try:
         previous_bytes = int(download.get("bytes", 0))
     except (TypeError, ValueError):
-        return ""
+        return None
     previous_digest = str(download.get("sha256", "")).strip().lower()
     if previous_bytes != result.bytes_written or previous_digest != digest.lower():
-        return ""
-    return created_at
+        return None
+    return manifest
+
+
+def _response_url(response: object, fallback: str) -> str:
+    geturl = getattr(response, "geturl", None)
+    if callable(geturl):
+        try:
+            value = str(geturl()).strip()
+        except Exception:
+            value = ""
+        if value:
+            return value
+    return fallback
 
 
 def _archive_mtime_text(path: Path) -> str:
