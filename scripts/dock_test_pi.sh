@@ -10,6 +10,9 @@ Options:
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
   --no-reboot         Do not reboot; run only the pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
+  --sync-retries N    Chart download attempts during provisioning
+  --sync-retry-delay N
+                     Seconds between chart download retry attempts
 
 Runs a dock acceptance test over SSH:
 deploy/provision, verify, reboot, wait for the Pi, and verify again.
@@ -34,6 +37,7 @@ device=""
 skip_deploy=0
 no_reboot=0
 timeout=180
+provision_args=()
 
 if [[ $# -gt 0 && "$1" != --* ]]; then
   remote_dir="$1"
@@ -48,6 +52,15 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       device="$2"
+      provision_args+=("--device" "$device")
+      shift 2
+      ;;
+    --sync-retries|--sync-retry-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      provision_args+=("$1" "${2:-}")
       shift 2
       ;;
     --skip-deploy)
@@ -108,7 +121,7 @@ wait_for_ssh_up() {
 }
 
 if [[ "$skip_deploy" -eq 0 ]]; then
-  "${repo_root}/scripts/deploy_to_pi.sh" "$target" "$remote_dir" --provision --device "$device"
+  "${repo_root}/scripts/deploy_to_pi.sh" "$target" "$remote_dir" --provision "${provision_args[@]}"
 fi
 
 printf '\n[verify before reboot]\n'

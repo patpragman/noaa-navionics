@@ -11,6 +11,8 @@ skip_gpsd=0
 skip_sync=0
 skip_services=0
 gps_seconds=10
+sync_retries=5
+sync_retry_delay=30
 
 usage() {
   cat >&2 <<'EOF'
@@ -19,6 +21,9 @@ Usage: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS [opt
 Options:
   --config PATH       NOAA Navionics config path
   --gps-seconds N     Seconds to wait for a GPS fix during final status report
+  --sync-retries N    Chart download attempts during initial commissioning
+  --sync-retry-delay N
+                     Seconds between chart download retry attempts
   --dry-run           Print commands without changing the Pi
   --skip-gpsd         Do not configure GPSD
   --skip-sync         Do not download charts
@@ -55,6 +60,22 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       gps_seconds="${2:-}"
+      shift 2
+      ;;
+    --sync-retries)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      sync_retries="${2:-}"
+      shift 2
+      ;;
+    --sync-retry-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      sync_retry_delay="${2:-}"
       shift 2
       ;;
     --dry-run)
@@ -159,7 +180,7 @@ if [[ "$skip_gpsd" -eq 0 ]]; then
 fi
 
 if [[ "$skip_sync" -eq 0 ]]; then
-  run "$bin" sync-charts --config "$config"
+  run "$bin" sync-charts --config "$config" --retries "$sync_retries" --retry-delay "$sync_retry_delay"
 fi
 
 run "$bin" configure-opencpn --config "$config"

@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1")
       shift
       ;;
-    --device|--config|--gps-seconds)
+    --device|--config|--gps-seconds|--sync-retries|--sync-retry-delay)
       saw_provision_option=1
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2

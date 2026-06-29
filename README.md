@@ -106,6 +106,8 @@ Deploy and run the onboard provisioning sequence:
 scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
+Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` if the initial commissioning download needs a longer retry window.
+
 Verify the Raspberry Pi after deployment:
 
 ```bash

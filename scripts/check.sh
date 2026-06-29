@@ -25,6 +25,7 @@ grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
+grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
@@ -57,6 +58,7 @@ scripts/provision_sailboat_pi.sh \
   --no-device-check \
   --device /dev/ttyUSB0 \
   --config "$tmpdir/config.ini" \
-  --skip-sync >/dev/null
+  --sync-retries 7 \
+  --sync-retry-delay 15 >/dev/null
 
 echo "All checks passed."

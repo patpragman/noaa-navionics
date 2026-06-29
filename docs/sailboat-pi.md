@@ -133,6 +133,7 @@ scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
+The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network.
 
 ## Startup
 
