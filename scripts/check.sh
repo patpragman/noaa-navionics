@@ -871,7 +871,8 @@ grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navioni
 grep -q 'OpenCPN config directory .* has permissions' src/noaa_navionics/opencpn.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
-grep -q 'backup_path.open("xb")' src/noaa_navionics/opencpn.py
+grep -q 'os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)' src/noaa_navionics/opencpn.py
+grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py

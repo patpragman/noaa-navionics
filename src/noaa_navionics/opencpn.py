@@ -177,7 +177,8 @@ def _write_backup(target: Path) -> Path:
     _prepare_config_parent(target)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = _available_backup_path(target, stamp)
-    with backup_path.open("xb") as handle:
+    fd = os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as handle:
         handle.write(target.read_bytes())
         handle.flush()
         os.fsync(handle.fileno())
@@ -211,6 +212,7 @@ def _write_text_atomic(target: Path, text: str) -> None:
             tmp_path = Path(handle.name)
             handle.write(text)
             handle.flush()
+            os.chmod(tmp_path, 0o600)
             os.fsync(handle.fileno())
         os.replace(tmp_path, target)
         _fsync_directory(target.parent)

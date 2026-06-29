@@ -352,6 +352,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(result.key, "ChartDir1")
             self.assertTrue(config.exists())
             self.assertEqual(config.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(config.stat().st_mode & 0o777, 0o600)
             self.assertEqual(read_chart_directories(config), [charts.resolve()])
             self.assertTrue(chart_directory_configured(charts, config))
 
@@ -425,6 +426,31 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(second.read_text(encoding="utf-8"), "second\n")
             self.assertEqual(first.name, "opencpn.conf.noaa-navionics.20260629T120000Z.bak")
             self.assertEqual(second.name, "opencpn.conf.noaa-navionics.20260629T120000Z.1.bak")
+
+    def test_opencpn_backup_is_private_with_permissive_umask(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.write_text("original\n", encoding="utf-8")
+            original_umask = os.umask(0)
+            try:
+                backup = opencpn_module._write_backup(config)
+            finally:
+                os.umask(original_umask)
+
+            self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(backup.read_text(encoding="utf-8"), "original\n")
+
+    def test_configure_chart_directory_writes_private_config_with_permissive_umask(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / ".opencpn" / "opencpn.conf"
+            original_umask = os.umask(0)
+            try:
+                configure_chart_directory(root / "charts", config_path=config)
+            finally:
+                os.umask(original_umask)
+
+            self.assertEqual(config.stat().st_mode & 0o777, 0o600)
 
     def test_configure_chart_directory_uses_unique_synced_temp_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
