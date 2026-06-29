@@ -112,6 +112,8 @@ grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh

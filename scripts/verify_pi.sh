@@ -538,6 +538,8 @@ check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS
 check "preflight service GPS wait config" grep -Fxq 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' "$preflight_service"
 check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS} --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
 check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
+check "preflight service loaded GPS wait config" sh -c 'systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fq "noaa-navionics/launcher.env"'
+check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
 check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
 check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
