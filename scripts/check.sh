@@ -441,6 +441,7 @@ grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'does not match requested --device' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service gpsd.service GPSD --skip-gpsd' scripts/provision_sailboat_pi.sh
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
@@ -1300,6 +1301,46 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' "$provision_output"
+
+skip_gpsd_mismatch_home="$tmpdir/skip-gpsd-mismatch-home"
+mkdir -p "$skip_gpsd_mismatch_home/.config/noaa-navionics"
+cat >"$skip_gpsd_mismatch_home/.config/noaa-navionics/config.ini" <<EOF
+[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = yes
+force = yes
+max_age_days = 30
+min_free_gb = 2.0
+
+[gps]
+mode = gpsd
+device = /dev/serial/by-id/other-gps
+baud = 4800
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+
+[tracking]
+output = ~/charts/noaa-enc
+retention_days = 90
+EOF
+set +e
+HOME="$skip_gpsd_mismatch_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-autologin >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-gpsd when existing config uses a different requested GPS device" >&2
+  exit 1
+fi
+grep -q 'does not match requested --device' "$provision_output"
 
 skip_gps_time_home="$tmpdir/skip-gps-time-home"
 mkdir -p "$skip_gps_time_home/.local/bin"

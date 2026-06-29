@@ -99,13 +99,14 @@ PY
 }
 
 validate_existing_gps_config() {
-  if ! python3 - "$config" "$check_device" <<'PY'
+  if ! python3 - "$config" "$check_device" "$device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
 import sys
 
 config_path = Path(sys.argv[1]).expanduser()
 check_device = sys.argv[2] == "1"
+expected_device = sys.argv[3].strip()
 if not config_path.exists():
     raise SystemExit("Existing config is required when --skip-gpsd is used with unattended startup")
 parser = ConfigParser()
@@ -120,6 +121,10 @@ if host not in {"127.0.0.1", "localhost", "::1"}:
 device = parser.get("gps", "device", fallback="").strip()
 if not device or device == "/dev/serial/by-id/YOUR_GPS_DEVICE":
     raise SystemExit("gps.device must name the already configured GPS receiver when --skip-gpsd is used")
+if expected_device and device != expected_device:
+    raise SystemExit(
+        f"gps.device {device} does not match requested --device {expected_device} when --skip-gpsd is used"
+    )
 by_id_prefix = "/dev/serial/by-id/"
 safe_by_id_chars = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 if device.startswith(by_id_prefix):
