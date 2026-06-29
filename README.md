@@ -95,6 +95,12 @@ Deploy to a Raspberry Pi over SSH:
 scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
+Verify the Raspberry Pi after deployment:
+
+```bash
+scripts/verify_pi.sh pi@raspberrypi.local
+```
+
 Create the onboard config:
 
 ```bash

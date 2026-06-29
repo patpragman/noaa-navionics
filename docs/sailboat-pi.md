@@ -27,6 +27,14 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local
 
 The deploy script copies this repo to the Raspberry Pi and runs the installer on the Pi. It does not install or enable services on the computer you run it from.
 
+Verify the Raspberry Pi after deployment:
+
+```bash
+scripts/verify_pi.sh pi@raspberrypi.local
+```
+
+The verify script runs checks on the Pi over SSH, including architecture, installed commands, user units, config, and `noaa-navionics preflight`.
+
 Manual install:
 
 ```bash

@@ -14,8 +14,9 @@ fi
 target="$1"
 remote_dir="${2:-~/noaa-navionics}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+remote_dir_quoted="$(printf '%q' "$remote_dir")"
 
-ssh "$target" "mkdir -p ${remote_dir}"
+ssh "$target" "mkdir -p ${remote_dir_quoted}"
 rsync -az --delete \
   --exclude '.git/' \
   --exclude '__pycache__/' \
@@ -24,4 +25,4 @@ rsync -az --delete \
   --exclude 'charts/' \
   "${repo_root}/" "${target}:${remote_dir}/"
 
-ssh -t "$target" "cd ${remote_dir} && scripts/install_raspberry_pi.sh"
+ssh -t "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh"
