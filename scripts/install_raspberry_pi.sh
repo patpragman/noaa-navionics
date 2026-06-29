@@ -251,12 +251,22 @@ mode = int(sys.argv[2], 8)
 text = sys.argv[3]
 parent = target.parent
 
+def first_symlink_ancestor(path: Path):
+    current = path.expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
 if target.is_symlink():
     raise SystemExit(f"root text target is a symlink: {target}")
 if target.exists() and not target.is_file():
     raise SystemExit(f"root text target is not a regular file: {target}")
 if parent.is_symlink():
     raise SystemExit(f"root text target directory is a symlink: {parent}")
+symlink_component = first_symlink_ancestor(parent)
+if symlink_component is not None:
+    raise SystemExit(f"root text target directory path contains a symlink: {symlink_component}")
 
 if parent.exists():
     if not parent.is_dir():
@@ -272,8 +282,6 @@ if parent.exists():
         )
 else:
     ancestor = parent.parent
-    if ancestor.is_symlink():
-        raise SystemExit(f"root text target parent directory is below a symlink: {ancestor}")
     if not ancestor.exists() or not ancestor.is_dir():
         raise SystemExit(f"root text target parent ancestor is not a directory: {ancestor}")
     ancestor_stat = ancestor.stat()

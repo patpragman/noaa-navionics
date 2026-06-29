@@ -248,6 +248,7 @@ grep -q 'install_root_text_atomic' scripts/install_raspberry_pi.sh
 grep -q 'sudo python3 - "$target" "$mode" "$text"' scripts/install_raspberry_pi.sh
 grep -q 'noaa-navionics-bookworm-backports.list' scripts/install_raspberry_pi.sh
 grep -q 'root text target is a symlink' scripts/install_raspberry_pi.sh
+grep -q 'root text target directory path contains a symlink' scripts/install_raspberry_pi.sh
 grep -q 'root text target directory .* has permissions' scripts/install_raspberry_pi.sh
 grep -q 'root text target .* is owned by uid' scripts/install_raspberry_pi.sh
 ! grep -q 'sudo tee -a /etc/apt/sources.list' scripts/install_raspberry_pi.sh
