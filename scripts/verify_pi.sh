@@ -1039,6 +1039,39 @@ if missing_checks:
 missing_service_checks = sorted(required_service_checks - service_check_names)
 if missing_service_checks:
     raise SystemExit("status report missing service checks: " + ", ".join(missing_service_checks))
+unit_files = report.get("unit_files")
+if not isinstance(unit_files, dict):
+    raise SystemExit("status report has no unit_files section")
+expected_unit_files = {
+    "noaa-navionics.service": "",
+    "noaa-navionics.timer": "timers.target",
+    "noaa-navionics-track.service": "default.target",
+    "noaa-navionics-preflight.service": "default.target",
+}
+expected_unit_dir = Path.home() / ".config/systemd/user"
+for unit, expected_target in expected_unit_files.items():
+    state = unit_files.get(unit)
+    if not isinstance(state, dict):
+        raise SystemExit(f"status report has no unit file entry for {unit}")
+    expected_unit_path = expected_unit_dir / unit
+    unit_path = str(state.get("path", "")).strip()
+    if unit_path != str(expected_unit_path):
+        raise SystemExit(f"status report {unit} path {unit_path} does not match {expected_unit_path}")
+    if state.get("exists") is not True:
+        raise SystemExit(f"status report {unit} does not exist: {expected_unit_path}")
+    if state.get("is_symlink") is True:
+        raise SystemExit(f"status report {unit} path is a symlink: {expected_unit_path}")
+    if expected_unit_path.is_symlink():
+        raise SystemExit(f"status report {unit} path is a symlink: {expected_unit_path}")
+    if expected_target:
+        wanted_by = state.get("wanted_by")
+        if not isinstance(wanted_by, list):
+            raise SystemExit(f"status report {unit} install targets were not parsed: {expected_unit_path}")
+        if expected_target not in {str(value) for value in wanted_by}:
+            raise SystemExit(
+                f"status report {unit} WantedBy={','.join(str(value) for value in wanted_by) or '<missing>'} "
+                f"expected {expected_target}"
+            )
 expected_revision = os.environ.get("NOAA_NAVIONICS_EXPECTED_REVISION", "unknown")
 app = report.get("app")
 if not isinstance(app, dict):

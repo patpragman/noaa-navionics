@@ -293,7 +293,10 @@ def format_status_text(report: dict[str, object]) -> str:
                     wanted_by_text = ",".join(str(value) for value in wanted_by)
                 else:
                     wanted_by_text = str(wanted_by)
-                lines.append(f"{name}: exists={state.get('exists', '')} wanted_by={wanted_by_text}")
+                lines.append(
+                    f"{name}: exists={state.get('exists', '')} "
+                    f"is_symlink={state.get('is_symlink', '')} wanted_by={wanted_by_text}"
+                )
     launcher_settings = report.get("launcher_settings", {})
     if isinstance(launcher_settings, dict) and launcher_settings:
         lines.extend(["", "Launcher Settings:"])
@@ -725,7 +728,15 @@ def _user_unit_file_summary() -> dict[str, object]:
     summary: dict[str, object] = {"directory": str(unit_dir)}
     for unit in USER_UNIT_PROPERTIES:
         path = unit_dir / unit
-        state: dict[str, object] = {"path": str(path), "exists": path.is_file()}
+        state: dict[str, object] = {
+            "path": str(path),
+            "exists": path.is_file(),
+            "is_symlink": path.is_symlink(),
+        }
+        if path.is_symlink():
+            state["error"] = f"user unit file path is a symlink: {path}"
+            summary[unit] = state
+            continue
         if path.is_file():
             try:
                 lines = path.read_text(encoding="utf-8").splitlines()
@@ -1211,6 +1222,8 @@ def _unit_file_install_target_check(
     path = str(state.get("path", unit))
     if state.get("exists") is not True:
         return CheckResult(name, False, f"{unit} unit file is missing at {path}")
+    if state.get("is_symlink") is True:
+        return CheckResult(name, False, f"{unit} unit file path is a symlink: {path}")
     error = str(state.get("error", ""))
     if error:
         return CheckResult(name, False, f"{unit} unit file unreadable at {path}: {error}")

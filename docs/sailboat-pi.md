@@ -240,7 +240,7 @@ Save a status report for troubleshooting:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
-The status report includes readiness checks, NOAA Navionics user unit checks, parsed user unit-file `[Install]` targets, loaded user unit fragment-path and setting checks when systemd reports them, a recent valid current-boot GPX trackpoint check with a brief post-GPS wait for the logger to flush, launcher environment path integrity and settings with fail-closed startup and OpenCPN restart-setting checks, parsed OpenCPN chart/GPSD config state, desktop autostart and LightDM autologin path integrity and state, GPSD startup config checks for local receivers, and GPSD socket/service plus chrony service state checks.
+The status report includes readiness checks, NOAA Navionics user unit path integrity checks, parsed user unit-file `[Install]` targets, loaded user unit fragment-path and setting checks when systemd reports them, a recent valid current-boot GPX trackpoint check with a brief post-GPS wait for the logger to flush, launcher environment path integrity and settings with fail-closed startup and OpenCPN restart-setting checks, parsed OpenCPN chart/GPSD config state, desktop autostart and LightDM autologin path integrity and state, GPSD startup config checks for local receivers, and GPSD socket/service plus chrony service state checks.
 The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
