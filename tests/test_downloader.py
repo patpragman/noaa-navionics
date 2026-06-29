@@ -3761,6 +3761,23 @@ class StatusReportTests(unittest.TestCase):
 
             self.assertFalse((real_cache / "noaa-navionics").exists())
 
+    def test_write_status_report_rejects_symlinked_output_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_home = root / "real-home"
+            real_home.mkdir()
+            home_link = root / "home-link"
+            try:
+                home_link.symlink_to(real_home, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            output = home_link / ".cache" / "noaa-navionics" / "status.json"
+
+            with self.assertRaisesRegex(RuntimeError, "status report parent path contains a symlink"):
+                write_status_report({"ok": True}, output)
+
+            self.assertFalse((real_home / ".cache").exists())
+
     def test_write_status_report_syncs_file_and_directory(self):
         calls = []
         original_fsync = report_module.os.fsync

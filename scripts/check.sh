@@ -889,12 +889,14 @@ grep -q 'GPX logger also refuses symlinked track-output parent components' docs/
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
 grep -q 'status report parent directory' src/noaa_navionics/report.py
+grep -q 'status report parent path contains a symlink' src/noaa_navionics/report.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
 grep -q 'status report cache directory' scripts/verify_pi.sh
 grep -q 'status report cache parent directory is a symlink' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
+grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock pid file has permissions' scripts/verify_pi.sh
 grep -q 'def _fsync_directory' src/noaa_navionics/cli.py
