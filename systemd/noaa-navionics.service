@@ -1,0 +1,6 @@
+[Unit]
+Description=Download NOAA ENC charts
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/noaa-navionics download --state AK --output %h/charts/noaa-enc --extract

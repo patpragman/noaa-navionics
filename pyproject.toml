@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noaa-navionics"
+version = "0.1.0"
+description = "Standard-library NOAA ENC downloader with CLI and Tkinter GUI"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Patrick Pragman" }]
+license = { text = "MIT" }
+classifiers = [
+    "Environment :: Console",
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = []
+
+[project.scripts]
+noaa-navionics = "noaa_navionics.cli:main"
+noaa-navionics-gui = "noaa_navionics.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
