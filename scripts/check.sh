@@ -47,6 +47,8 @@ grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/he
 grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
+grep -q 'Track Disk' src/noaa_navionics/health.py
+grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py

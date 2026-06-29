@@ -42,6 +42,7 @@ def build_status_report(
         gps_sample=gps_sample,
         gps_seconds=gps_seconds,
         max_chart_age_days=app_config.max_chart_age_days,
+        track_output=app_config.track_output,
     )
     check_rows = [asdict(check) for check in checks]
     services = _service_summary()

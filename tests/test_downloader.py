@@ -1379,6 +1379,48 @@ class GpsTests(unittest.TestCase):
         finally:
             health_module._directory_writable = original
 
+    def test_preflight_checks_separate_track_storage(self):
+        original = health_module._directory_writable
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                chart_dir = root / "charts"
+                extract = chart_dir / "AK_ENCs"
+                cell = extract / "US5AK3CM" / "US5AK3CM.000"
+                cell.parent.mkdir(parents=True)
+                cell.write_text("cell", encoding="ascii")
+                now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                (chart_dir / MANIFEST_NAME).write_text(
+                    '{"created_at":"' + now + '",'
+                    '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                    '"download":{"path":"","bytes":0,"sha256":""},'
+                    f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                    encoding="utf-8",
+                )
+                sample = root / "sample.nmea"
+                sample.write_text(
+                    "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
+                    encoding="ascii",
+                )
+                track_parent = root / "track-storage"
+                track_parent.mkdir()
+                track_output = track_parent / "tracks"
+                health_module._directory_writable = lambda path: Path(path) != track_parent
+
+                results = health_module.run_preflight(
+                    chart_dir=chart_dir,
+                    chart_package="state",
+                    chart_value="AK",
+                    gps_sample=sample,
+                    track_output=track_output,
+                )
+
+            track_check = next(check for check in results if check.name == "Track Disk")
+            self.assertFalse(track_check.ok)
+            self.assertIn("not writable", track_check.detail)
+        finally:
+            health_module._directory_writable = original
+
 
 class PiHealthTests(unittest.TestCase):
     def test_check_system_clock_rejects_epoch_like_time(self):

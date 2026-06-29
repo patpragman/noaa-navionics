@@ -36,6 +36,7 @@ def run_preflight(
     gps_sample: Optional[Path] = None,
     gps_seconds: float = 5.0,
     max_chart_age_days: int = 30,
+    track_output: Optional[Path] = None,
 ) -> list[CheckResult]:
     results = [
         check_python(),
@@ -55,6 +56,8 @@ def run_preflight(
         check_pi_throttling(),
         check_pi_temperature(),
     ]
+    if track_output is not None and not _same_path(chart_dir, track_output):
+        results.append(check_disk_space(track_output, name="Track Disk"))
     if gpsd:
         if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
             results.append(check_gps_device_path(gps_device))
@@ -306,13 +309,13 @@ def _expected_manifest_filename(package: str, value: str = "") -> str:
         return ""
 
 
-def check_disk_space(chart_dir: Path) -> CheckResult:
+def check_disk_space(chart_dir: Path, *, name: str = "Disk") -> CheckResult:
     path = Path(chart_dir).expanduser()
     existing = path if path.exists() else path.parent
     if not existing.exists():
         existing = Path.home()
     if not existing.is_dir():
-        return CheckResult("Disk", False, f"{existing} is not a directory")
+        return CheckResult(name, False, f"{existing} is not a directory")
     usage = shutil.disk_usage(existing)
     free_gb = usage.free / (1024 ** 3)
     writable = _directory_writable(existing)
@@ -320,7 +323,7 @@ def check_disk_space(chart_dir: Path) -> CheckResult:
     detail = f"{free_gb:.1f} GB free at {existing}"
     if not writable:
         detail += "; not writable"
-    return CheckResult("Disk", ok, detail)
+    return CheckResult(name, ok, detail)
 
 
 def check_pi_throttling() -> CheckResult:
@@ -481,6 +484,13 @@ def _directory_writable(path: Path) -> bool:
             return True
     except OSError:
         return False
+
+
+def _same_path(left: Path, right: Path) -> bool:
+    try:
+        return Path(left).expanduser().resolve() == Path(right).expanduser().resolve()
+    except OSError:
+        return Path(left).expanduser() == Path(right).expanduser()
 
 
 def _fix_detail(fix: GPSFix) -> str:

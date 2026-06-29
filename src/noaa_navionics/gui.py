@@ -292,6 +292,7 @@ class DownloaderApp(tk.Tk):
 
     def _preflight_worker(self) -> None:
         try:
+            app_config = read_config(self._config_path())
             results = run_preflight(
                 chart_dir=Path(self.output.get()),
                 chart_package=self.kind.get(),
@@ -300,8 +301,9 @@ class DownloaderApp(tk.Tk):
                 gpsd_host="127.0.0.1",
                 gpsd_port=2947,
                 gps_device=None if self.use_gpsd.get() else self.gps_device.get().strip() or None,
-                gps_baud=read_config(self._config_path()).gps_baud,
+                gps_baud=app_config.gps_baud,
                 gps_seconds=5.0,
+                track_output=app_config.track_output,
             )
             self.queue.put(("preflight", results))
         except Exception as exc:
