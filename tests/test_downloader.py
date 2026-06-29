@@ -336,6 +336,30 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("ChartDir4=/old\n", text)
             self.assertIn(f"ChartDir5={charts.resolve()}\n", text)
 
+    def test_opencpn_backup_uses_unique_name_within_same_second(self):
+        class FrozenDateTime:
+            @classmethod
+            def now(cls, tz=None):
+                return datetime(2026, 6, 29, 12, 0, 0, tzinfo=timezone.utc)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.write_text("original\n", encoding="utf-8")
+            original_datetime = opencpn_module.datetime
+            try:
+                opencpn_module.datetime = FrozenDateTime
+                first = opencpn_module._write_backup(config)
+                config.write_text("second\n", encoding="utf-8")
+                second = opencpn_module._write_backup(config)
+            finally:
+                opencpn_module.datetime = original_datetime
+
+            self.assertNotEqual(first, second)
+            self.assertEqual(first.read_text(encoding="utf-8"), "original\n")
+            self.assertEqual(second.read_text(encoding="utf-8"), "second\n")
+            self.assertEqual(first.name, "opencpn.conf.noaa-navionics.20260629T120000Z.bak")
+            self.assertEqual(second.name, "opencpn.conf.noaa-navionics.20260629T120000Z.1.bak")
+
     def test_configure_chart_directory_uses_unique_synced_temp_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

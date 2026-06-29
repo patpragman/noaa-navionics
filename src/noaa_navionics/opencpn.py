@@ -161,11 +161,24 @@ def opencpn_running() -> bool:
 
 def _write_backup(target: Path) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    backup_path = target.with_name(f"{target.name}.noaa-navionics.{stamp}.bak")
-    backup_path.write_bytes(target.read_bytes())
-    _fsync_file(backup_path)
+    backup_path = _available_backup_path(target, stamp)
+    with backup_path.open("xb") as handle:
+        handle.write(target.read_bytes())
+        handle.flush()
+        os.fsync(handle.fileno())
     _fsync_directory(backup_path.parent)
     return backup_path
+
+
+def _available_backup_path(target: Path, stamp: str) -> Path:
+    backup_path = target.with_name(f"{target.name}.noaa-navionics.{stamp}.bak")
+    if not backup_path.exists():
+        return backup_path
+    for index in range(1, 1000):
+        candidate = target.with_name(f"{target.name}.noaa-navionics.{stamp}.{index}.bak")
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError(f"could not find available backup filename near {backup_path}")
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
@@ -192,14 +205,6 @@ def _write_text_atomic(target: Path, text: str) -> None:
                 tmp_path.unlink()
             except FileNotFoundError:
                 pass
-
-
-def _fsync_file(path: Path) -> None:
-    try:
-        with Path(path).open("rb") as handle:
-            os.fsync(handle.fileno())
-    except OSError:
-        pass
 
 
 def _fsync_directory(path: Path) -> None:

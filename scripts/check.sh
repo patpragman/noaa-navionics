@@ -471,6 +471,8 @@ grep -q 'track_output=app_config.track_output' src/noaa_navionics/gui.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
+grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
+grep -q 'backup_path.open("xb")' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
