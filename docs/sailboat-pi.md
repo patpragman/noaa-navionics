@@ -143,7 +143,7 @@ noaa-navionics gps-monitor --gpsd --once
 ```
 
 `noaa-navionics configure-opencpn`, below, configures OpenCPN to use the GPSD network source from the onboard config.
-If you intentionally use serial mode instead of GPSD, set `[gps] baud` in `~/.config/noaa-navionics/config.ini` and use `noaa-navionics preflight --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE --gps-baud 9600` when checking that device directly. Direct serial readiness also rejects stale or future-dated timestamped NMEA fixes.
+If you intentionally use serial mode instead of GPSD, set `[gps] baud` in `~/.config/noaa-navionics/config.ini` and use `noaa-navionics preflight --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE --gps-baud 9600` when checking that device directly. Direct serial readiness also rejects stale, future-dated, and untimestamped NMEA fixes.
 Readiness rejects non-finite coordinates, coordinates outside valid latitude/longitude bounds, and invalid `0,0` coordinates. When the receiver reports satellite count or HDOP, readiness also requires at least four satellites and HDOP no higher than 5. GPSD readiness merges recent SKY satellite/HDOP reports with TPV position fixes before applying that gate.
 Fractional NMEA timestamps are normalized across second, minute, and UTC day rollovers before readiness checks and GPX logging.
 

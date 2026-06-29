@@ -229,6 +229,7 @@ grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
+grep -q 'cannot verify freshness' src/noaa_navionics/health.py
 grep -q 'weak GPS fix' src/noaa_navionics/gps.py
 grep -q 'non-finite coordinates' src/noaa_navionics/gps.py
 grep -q 'outside -90..90' src/noaa_navionics/gps.py

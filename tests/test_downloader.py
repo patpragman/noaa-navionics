@@ -2012,6 +2012,21 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("stale", result.detail)
 
+    def test_check_gps_device_rejects_untimestamped_fix(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            return BytesIO(b"$GPGGA,,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,\n")
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("no timestamp", result.detail)
+
     def test_check_gpsd_rejects_stale_timestamped_fix(self):
         original = health_module.iter_gpsd_fixes
         stale = GPSFix(
@@ -2029,6 +2044,25 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("stale", result.detail)
+
+    def test_check_gpsd_rejects_untimestamped_fix(self):
+        original = health_module.iter_gpsd_fixes
+        untimestamped = GPSFix(
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([untimestamped])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("no timestamp", result.detail)
 
     def test_check_gpsd_rejects_weak_fix_quality_when_reported(self):
         original = health_module.iter_gpsd_fixes
