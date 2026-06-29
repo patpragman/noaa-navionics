@@ -263,6 +263,11 @@ def _download_package_unlocked(
         bytes_written = destination.stat().st_size
         result = DownloadResult(destination, package.url, bytes_written, skipped=True, sha256=digest)
         if extract and destination.suffix.lower() == ".zip":
+            if _matching_previous_manifest(output_path, package, result, digest) is None:
+                raise RuntimeError(
+                    "existing chart ZIP does not match a prior verified manifest; "
+                    f"rerun with --force or remove cached chart archive: {destination}"
+                )
             extracted_to = extract_zip(destination, output_path / destination.stem)
             if not keep_zip:
                 destination.unlink()

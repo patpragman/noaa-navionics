@@ -1396,11 +1396,14 @@ class ManifestTests(unittest.TestCase):
 
     def test_existing_zip_extract_respects_no_keep_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            output = Path(tmpdir)
-            existing = output / "AK_ENCs.zip"
-            with zipfile.ZipFile(existing, "w") as archive:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
                 archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
-            package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
+            output = root / "charts"
+            existing = output / "AK_ENCs.zip"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
 
             result = download_package(package, output, extract=True, keep_zip=False)
 
@@ -1409,10 +1412,10 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
             manifest = read_manifest(output)
             self.assertEqual(manifest["download"]["bytes"], result.bytes_written)
-            self.assertEqual(manifest["created_at_source"], "unverified-cache")
+            self.assertEqual(manifest["created_at_source"], "previous-manifest")
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
 
-    def test_existing_zip_without_previous_manifest_fails_freshness_check(self):
+    def test_existing_zip_without_previous_manifest_fails_before_extracting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir)
             existing = output / "AK_ENCs.zip"
@@ -1420,14 +1423,29 @@ class ManifestTests(unittest.TestCase):
                 archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
             package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
 
-            result = download_package(package, output, extract=True)
+            with self.assertRaisesRegex(RuntimeError, "prior verified manifest"):
+                download_package(package, output, extract=True)
 
-            self.assertTrue(result.skipped)
-            manifest = read_manifest(output)
-            self.assertEqual(manifest["created_at_source"], "unverified-cache")
-            check = check_chart_manifest(output)
-            self.assertFalse(check.ok)
-            self.assertIn("existing ZIP without a prior verified manifest", check.detail)
+            self.assertFalse((output / "AK_ENCs").exists())
+            self.assertFalse((output / MANIFEST_NAME).exists())
+
+    def test_existing_zip_mismatched_previous_manifest_fails_before_extracting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            first_zip = root / "first.zip"
+            with zipfile.ZipFile(first_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", first_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
+            existing = output / "AK_ENCs.zip"
+            with zipfile.ZipFile(existing, "w") as archive:
+                archive.writestr("US5AK4CM/US5AK4CM.000", "different cell")
+
+            with self.assertRaisesRegex(RuntimeError, "prior verified manifest"):
+                download_package(package, output, extract=True)
+
+            self.assertFalse((output / "AK_ENCs" / "US5AK4CM").exists())
 
     def test_existing_zip_preserves_previous_manifest_timestamp(self):
         with tempfile.TemporaryDirectory() as tmpdir:
