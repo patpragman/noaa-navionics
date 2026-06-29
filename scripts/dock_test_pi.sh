@@ -175,6 +175,10 @@ wait_for_ssh_up() {
   return 1
 }
 
+remote_boot_id() {
+  ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "cat /proc/sys/kernel/random/boot_id"
+}
+
 if [[ "$skip_deploy" -eq 0 ]]; then
   "${repo_root}/scripts/deploy_to_pi.sh" "$target" "$remote_dir" "${deploy_args[@]}" --provision "${provision_args[@]}"
 fi
@@ -188,9 +192,16 @@ if [[ "$no_reboot" -eq 1 ]]; then
 fi
 
 printf '\n[reboot]\n'
+before_boot_id="$(remote_boot_id)"
 ssh "$target" "sudo reboot" >/dev/null 2>&1 || true
 wait_for_ssh_down
 wait_for_ssh_up
+after_boot_id="$(remote_boot_id)"
+if [[ -z "$after_boot_id" || "$after_boot_id" == "$before_boot_id" ]]; then
+  echo "Pi SSH returned, but boot ID did not change after reboot request" >&2
+  exit 1
+fi
+printf 'OK   boot ID changed after reboot\n'
 
 printf '\n[verify after reboot]\n'
 "${repo_root}/scripts/verify_pi.sh" --require-chartplotter-started "${verify_args[@]}" "$target"
