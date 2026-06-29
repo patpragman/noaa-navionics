@@ -209,7 +209,7 @@ The systemd track logger writes daily GPX files and prunes rotated track logs ol
 ## Raspberry Pi Automation
 
 A user-level systemd timer is included in `systemd/`.
-The Pi provisioning script enables user lingering so the timer and track logger can run after reboot without an interactive login.
+The installer enables the track logger for future boots but does not start it before GPSD is configured. The Pi provisioning script enables user lingering and starts the track logger after GPSD setup so the timer and track logger can run after reboot without an interactive login.
 The included chart sync service retries transient network failures, allows up to two hours for slow NOAA downloads, and asks systemd for delayed retry attempts if the whole run still fails.
 
 ```bash

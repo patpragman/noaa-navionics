@@ -31,6 +31,7 @@ grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
+grep -q 'systemctl --user enable noaa-navionics-track.service' scripts/install_raspberry_pi.sh
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
@@ -78,6 +79,7 @@ grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
