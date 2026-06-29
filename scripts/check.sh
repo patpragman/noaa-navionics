@@ -851,7 +851,8 @@ grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
 grep -q -- '--device is required for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
-grep -q -- '--skip-autologin cannot be used for the rebooted dock acceptance test' scripts/dock_test_pi.sh
+grep -q -- '--skip-autologin cannot be used for the dock acceptance test' scripts/dock_test_pi.sh
+grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
@@ -1346,10 +1347,21 @@ dock_code=$?
 set -e
 if [[ "$dock_code" -ne 2 ]]; then
   cat "$dock_output" >&2
-  echo "expected dock_test_pi.sh to reject --skip-autologin for rebooted dock test with exit 2" >&2
+  echo "expected dock_test_pi.sh to reject --skip-autologin for dock acceptance with exit 2" >&2
   exit 1
 fi
-grep -q -- '--skip-autologin cannot be used for the rebooted dock acceptance test' "$dock_output"
+grep -q -- '--skip-autologin cannot be used for the dock acceptance test' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --no-reboot --skip-autologin >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject --skip-autologin even with --no-reboot with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--skip-autologin cannot be used for the dock acceptance test' "$dock_output"
 
 set +e
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf relative.conf >"$gpsd_output" 2>&1

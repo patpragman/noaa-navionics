@@ -9,7 +9,6 @@ Options:
   --device PATH       Stable GPS device path on the Pi
   --allow-dirty       Allow deploying a dirty local worktree for deliberate test runs
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
-  --skip-autologin    Pass through provisioning without configuring desktop autologin
   --skip-gps-time     Pass through provisioning without configuring chrony GPS time
   --no-reboot         Do not reboot; run only pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
@@ -40,7 +39,6 @@ remote_dir="~/noaa-navionics"
 device=""
 skip_deploy=0
 no_reboot=0
-skip_autologin=0
 timeout=180
 deploy_args=()
 provision_args=()
@@ -222,9 +220,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --skip-autologin)
-      skip_autologin=1
-      provision_args+=("$1")
-      shift
+      cat >&2 <<'EOF'
+--skip-autologin cannot be used for the dock acceptance test.
+The dock test verifies the production desktop startup path; use deploy_to_pi.sh --provision --skip-autologin --skip-services for weaker manual or headless testing.
+EOF
+      exit 2
       ;;
     --skip-gps-time)
       provision_args+=("$1")
@@ -260,14 +260,6 @@ require_positive_integer "--timeout" "$timeout"
 if [[ -z "$device" && ! ( "$skip_deploy" -eq 1 && "$no_reboot" -eq 1 ) ]]; then
   echo "--device is required for the rebooted dock acceptance test" >&2
   echo "Use --skip-deploy --no-reboot only for a weaker smoke check of an already-provisioned Pi." >&2
-  exit 2
-fi
-
-if [[ "$skip_autologin" -eq 1 && "$no_reboot" -eq 0 ]]; then
-  cat >&2 <<'EOF'
---skip-autologin cannot be used for the rebooted dock acceptance test.
-Use --no-reboot for a pre-reboot smoke check, or let provisioning configure desktop autologin so chartplotter autostart can be proven after reboot.
-EOF
   exit 2
 fi
 
