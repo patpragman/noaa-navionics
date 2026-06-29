@@ -61,6 +61,7 @@ from noaa_navionics.health import (
     check_gps_device,
     check_gps_device_path,
     check_gpsd,
+    check_gpsd_startup_config,
     check_gps_sample,
     check_display_power_tool,
     check_chrony_gps_time_source,
@@ -1937,6 +1938,41 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("recognized stable", result.detail)
+
+    def test_check_gpsd_startup_config_accepts_expected_device(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "gpsd"
+            config.write_text(
+                'START_DAEMON="true"\n'
+                'USBAUTO="false"\n'
+                'DEVICES="/dev/serial/by-id/mock-gps"\n'
+                'GPSD_OPTIONS="-n"\n',
+                encoding="utf-8",
+            )
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+
+            self.assertTrue(result.ok)
+            self.assertIn("immediate polling", result.detail)
+
+    def test_check_gpsd_startup_config_rejects_mismatch_and_missing_polling(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "gpsd"
+            config.write_text(
+                'START_DAEMON="false"\n'
+                'USBAUTO="true"\n'
+                'DEVICES="/dev/serial/by-id/other-gps"\n'
+                'GPSD_OPTIONS=""\n',
+                encoding="utf-8",
+            )
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+
+            self.assertFalse(result.ok)
+            self.assertIn("START_DAEMON", result.detail)
+            self.assertIn("USBAUTO", result.detail)
+            self.assertIn("does not include -n", result.detail)
+            self.assertIn("/dev/serial/by-id/mock-gps", result.detail)
 
     def test_chart_check_requires_extracted_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:

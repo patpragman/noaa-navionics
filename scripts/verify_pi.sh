@@ -168,6 +168,7 @@ required_checks = {
     "Pi Power",
     "Pi Thermal",
     "OpenCPN GPSD",
+    "GPSD Config",
     "GPSD",
     "GPS Time Source",
 }

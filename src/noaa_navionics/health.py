@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 import importlib.util
+import shlex
 import shutil
 import subprocess
 import sys
@@ -71,6 +72,7 @@ def run_preflight(
     if gpsd:
         if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
             results.append(check_gps_device_path(gps_device))
+            results.append(check_gpsd_startup_config(gps_device))
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
         results.append(check_chrony_gps_time_source(seconds=gps_seconds))
         results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
@@ -557,6 +559,57 @@ def check_gps_device_path(device: str) -> CheckResult:
         False,
         f"{path} exists but is not a recognized stable GPS path; use /dev/serial/by-id/, /dev/serial0, /dev/serial1, or /dev/gps",
     )
+
+
+def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/default/gpsd")) -> CheckResult:
+    expected_device = str(device).strip()
+    if not expected_device:
+        return CheckResult("GPSD Config", False, "no expected GPSD device configured")
+    path = Path(config_path).expanduser()
+    try:
+        values = _read_gpsd_default_config(path)
+    except OSError as exc:
+        return CheckResult("GPSD Config", False, f"cannot read {path}: {exc}")
+    devices = _split_shell_words(values.get("DEVICES", ""))
+    options = _split_shell_words(values.get("GPSD_OPTIONS", ""))
+    failures = []
+    if values.get("START_DAEMON") != "true":
+        failures.append("START_DAEMON is not true")
+    if values.get("USBAUTO") != "false":
+        failures.append("USBAUTO is not false")
+    if "-n" not in options:
+        failures.append("GPSD_OPTIONS does not include -n")
+    if expected_device not in devices:
+        configured = " ".join(devices) if devices else "<empty>"
+        failures.append(f"DEVICES {configured} does not include {expected_device}")
+    if failures:
+        return CheckResult("GPSD Config", False, f"{path}: " + "; ".join(failures))
+    return CheckResult("GPSD Config", True, f"{path} uses {expected_device} with immediate polling")
+
+
+def _read_gpsd_default_config(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    with path.open(encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            try:
+                parsed = shlex.split(value, comments=False, posix=True)
+            except ValueError:
+                parsed = []
+            values[key] = parsed[0] if len(parsed) == 1 else value.strip("\"'")
+    return values
+
+
+def _split_shell_words(value: str) -> list[str]:
+    try:
+        return shlex.split(value)
+    except ValueError:
+        return []
 
 
 def _stable_gps_device_path(path: str) -> bool:
