@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO, Iterable, Iterator, Optional, TextIO
 import json
@@ -281,13 +281,18 @@ def _parse_rmc_timestamp(time_value: str, date_value: str) -> Optional[datetime]
     return datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
 
 
-def _parse_time_today(value: str) -> Optional[datetime]:
+def _parse_time_today(value: str, *, now: Optional[datetime] = None) -> Optional[datetime]:
     parsed_time = _time_parts(value)
     if parsed_time is None:
         return None
-    now = datetime.now(timezone.utc)
+    now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     hour, minute, second, microsecond = parsed_time
-    return datetime(now.year, now.month, now.day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    candidate = datetime(now.year, now.month, now.day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    if candidate - now > _HALF_DAY:
+        return candidate - _ONE_DAY
+    if now - candidate > _HALF_DAY:
+        return candidate + _ONE_DAY
+    return candidate
 
 
 def _parse_iso_time(value: str) -> Optional[datetime]:
@@ -319,3 +324,7 @@ def _int_or_none(value: str) -> Optional[int]:
     if value == "":
         return None
     return int(value)
+
+
+_HALF_DAY = timedelta(hours=12)
+_ONE_DAY = timedelta(days=1)

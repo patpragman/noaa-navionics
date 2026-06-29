@@ -186,7 +186,7 @@ Live GPS check. GPSD readiness rejects stale timestamped fixes:
 noaa-navionics gps-monitor --gpsd --once
 ```
 
-For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`.
+For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`. Direct serial readiness rejects stale or future-dated timestamped NMEA fixes too.
 
 Track logging:
 

@@ -128,7 +128,7 @@ noaa-navionics gps-monitor --gpsd --once
 ```
 
 `noaa-navionics configure-opencpn`, below, configures OpenCPN to use the GPSD network source from the onboard config.
-If you intentionally use serial mode instead of GPSD, set `[gps] baud` in `~/.config/noaa-navionics/config.ini` and use `noaa-navionics preflight --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE --gps-baud 9600` when checking that device directly.
+If you intentionally use serial mode instead of GPSD, set `[gps] baud` in `~/.config/noaa-navionics/config.ini` and use `noaa-navionics preflight --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE --gps-baud 9600` when checking that device directly. Direct serial readiness also rejects stale or future-dated timestamped NMEA fixes.
 
 ## One-Step Provisioning
 
@@ -224,7 +224,7 @@ Expected checks:
 - At least 2 GB free disk space on writable chart storage
 - No active Raspberry Pi under-voltage or throttling
 - Raspberry Pi temperature below the hard limit
-- Fresh valid GPSD fix
+- Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode
 - Chart refresh timer, track logger, boot readiness service, and GPSD service are in the expected state
 
 If any check fails, treat the Pi as not ready.

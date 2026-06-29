@@ -25,7 +25,15 @@ from noaa_navionics.downloader import (
 )
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.cli import _log_rotating_tracks
-from noaa_navionics.gps import GPSFix, GPXTrackLogger, daily_track_path, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
+from noaa_navionics.gps import (
+    GPSFix,
+    GPXTrackLogger,
+    _parse_time_today,
+    daily_track_path,
+    iter_fixes,
+    parse_gpsd_tpv,
+    parse_nmea_sentence,
+)
 from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
@@ -601,6 +609,13 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.satellites, 8)
         self.assertEqual(fix.altitude_m, 545.4)
 
+    def test_gga_time_without_date_uses_nearest_utc_day(self):
+        before_midnight = _parse_time_today("000010", now=datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
+        after_midnight = _parse_time_today("235950", now=datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))
+
+        self.assertEqual(before_midnight, datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))
+        self.assertEqual(after_midnight, datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
+
     def test_parse_rmc_sentence(self):
         sentence = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
         fix = parse_nmea_sentence(sentence)
@@ -713,7 +728,10 @@ class GpsTests(unittest.TestCase):
         def fake_open_nmea_stream(device, baud=4800):
             captured["device"] = device
             captured["baud"] = baud
-            return BytesIO(b"$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n")
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            return BytesIO(
+                f"$GPGGA,{fix_time},4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,\n".encode("ascii")
+            )
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
@@ -723,6 +741,21 @@ class GpsTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(captured, {"device": "/dev/ttyACM0", "baud": 9600})
+
+    def test_check_gps_device_rejects_stale_timestamped_fix(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            return BytesIO(b"$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W\n")
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("stale", result.detail)
 
     def test_check_gpsd_rejects_stale_timestamped_fix(self):
         original = health_module.iter_gpsd_fixes

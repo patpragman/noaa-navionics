@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 
-from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
+from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream
 from .downloader import MANIFEST_NAME, count_enc_cells, read_manifest
 from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
 
@@ -307,15 +307,30 @@ def check_gps_device_path(device: str) -> CheckResult:
     return CheckResult("GPS Device", True, f"{path} exists; prefer a stable /dev/serial/by-id/ path")
 
 
-def check_gps_device(device: str, *, baud: int = 4800, seconds: float = 5.0) -> CheckResult:
+def check_gps_device(
+    device: str,
+    *,
+    baud: int = 4800,
+    seconds: float = 5.0,
+    max_fix_age_seconds: float = 300.0,
+) -> CheckResult:
     deadline = time.monotonic() + seconds
+    stale_detail = ""
     try:
         with open_nmea_stream(device, baud=baud) as stream:
-            for fix in iter_fixes(_deadline_lines(read_nmea_lines(stream), deadline)):
+            for fix in iter_fixes(_read_nmea_lines_until(stream, deadline)):
+                freshness_detail = _fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds)
+                if freshness_detail:
+                    stale_detail = f"; {freshness_detail}"
+                    continue
                 return CheckResult("GPS", True, _fix_detail(fix))
     except Exception as exc:
         return CheckResult("GPS", False, f"{device}: {exc}")
-    return CheckResult("GPS", False, f"no valid NMEA fix from {device} at {baud} baud within {seconds:.0f}s")
+    return CheckResult(
+        "GPS",
+        False,
+        f"no fresh NMEA fix from {device} at {baud} baud within {seconds:.0f}s{stale_detail}",
+    )
 
 
 def check_gpsd(
@@ -331,14 +346,10 @@ def check_gpsd(
         for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds):
             if time.monotonic() > deadline:
                 break
-            if fix.timestamp is not None:
-                age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
-                if age_seconds > max_fix_age_seconds:
-                    stale_detail = f"; last timestamped fix was stale ({age_seconds:.0f}s old)"
-                    continue
-                if age_seconds < -30:
-                    stale_detail = "; GPSD fix timestamp is in the future"
-                    continue
+            freshness_detail = _fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds)
+            if freshness_detail:
+                stale_detail = f"; {freshness_detail}"
+                continue
             return CheckResult("GPSD", True, _fix_detail(fix))
     except Exception as exc:
         return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}")
@@ -351,11 +362,19 @@ def first_fix(lines: Iterable[str]) -> Optional[GPSFix]:
     return None
 
 
-def _deadline_lines(lines: Iterable[str], deadline: float) -> Iterable[str]:
-    for line in lines:
-        if time.monotonic() > deadline:
-            break
-        yield line
+def _read_nmea_lines_until(stream, deadline: float) -> Iterable[str]:
+    buffer = b""
+    while time.monotonic() <= deadline:
+        chunk = stream.read(1)
+        if not chunk:
+            time.sleep(0.05)
+            continue
+        buffer += chunk
+        if chunk in (b"\n", b"\r"):
+            line = buffer.decode("ascii", errors="ignore").strip()
+            buffer = b""
+            if line:
+                yield line
 
 
 def _limited_find(root: Path, *, suffix: str, limit: int) -> list[Path]:
@@ -382,6 +401,17 @@ def _fix_detail(fix: GPSFix) -> str:
     if fix.hdop is not None:
         pieces.append(f"HDOP {fix.hdop}")
     return "; ".join(pieces)
+
+
+def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
+    if fix.timestamp is None:
+        return ""
+    age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
+    if age_seconds > max_fix_age_seconds:
+        return f"last timestamped fix was stale ({age_seconds:.0f}s old)"
+    if age_seconds < -30:
+        return "fix timestamp is in the future"
+    return ""
 
 
 def _parse_manifest_time(value: str) -> Optional[datetime]:
