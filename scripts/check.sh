@@ -29,6 +29,7 @@ grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
+grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
@@ -202,6 +203,16 @@ set -e
 if [[ "$dock_code" -ne 2 ]]; then
   cat "$dock_output" >&2
   echo "expected dock_test_pi.sh to reject invalid --timeout with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --gps-seconds nope >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
 

@@ -12,6 +12,7 @@ Options:
   --skip-autologin    Pass through provisioning without configuring desktop autologin
   --no-reboot         Do not reboot; run only the pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
+  --gps-seconds N     Seconds to wait for a GPS fix during provisioning
   --sync-retries N    Chart download attempts during provisioning
   --sync-retry-delay N
                      Seconds between chart download retry attempts
@@ -76,7 +77,7 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("--device" "$device")
       shift 2
       ;;
-    --sync-retries)
+    --gps-seconds|--sync-retries)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
         exit 2

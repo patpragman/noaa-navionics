@@ -111,7 +111,7 @@ Deploy and run the onboard provisioning sequence:
 scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` if the initial commissioning download needs a longer retry window.
+Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` or `dock_test_pi.sh` if the initial commissioning download needs a longer retry window. Use `--gps-seconds N` if the attached GPS receiver needs more time for a cold-start fix during commissioning.
 The deploy, provisioning, and dock-test scripts reject invalid retry, delay, GPS wait, and reboot timeout values before starting remote work.
 
 Verify the Raspberry Pi after deployment:
