@@ -292,6 +292,7 @@ grep -q 'pass both --skip-services and --skip-autologin for manual testing' scri
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
+grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
 grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
@@ -713,6 +714,17 @@ if [[ "$gps_time_code" -ne 2 ]]; then
   echo "expected configure_gps_time.sh to reject relative chrony config path with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/configure_gps_time.sh --allow-non-pi --chrony-conf /etc/passwd >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject non-standard chrony config paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'Refusing to write a non-standard chrony config path' "$gpsd_output"
 
 set +e
 scripts/configure_gpsd.sh --allow-non-pi --dry-run --device >"$gpsd_output" 2>&1

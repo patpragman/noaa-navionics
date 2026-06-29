@@ -98,6 +98,14 @@ if [[ "$chrony_conf" =~ [[:space:]\"\'] ]]; then
   exit 2
 fi
 
+if [[ "$dry_run" -eq 0 && "$chrony_conf" != "/etc/chrony/chrony.conf" ]]; then
+  cat >&2 <<EOF
+Refusing to write a non-standard chrony config path: $chrony_conf
+Use /etc/chrony/chrony.conf for production, or --dry-run for custom-path inspection.
+EOF
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF

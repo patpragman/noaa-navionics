@@ -144,7 +144,7 @@ Configure chrony to use GPSD as a local time source:
 scripts/configure_gps_time.sh
 ```
 
-This backs up `/etc/chrony/chrony.conf`, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, syncs the replacement file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present or excluded. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
+This writes only `/etc/chrony/chrony.conf` outside dry-run mode, backs it up, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, syncs the replacement file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present or excluded. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
 
 Restart and verify:
 
