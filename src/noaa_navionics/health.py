@@ -161,10 +161,15 @@ def check_time_synchronization() -> CheckResult:
         if "=" in line:
             key, value = line.split("=", 1)
             values[key.strip()] = value.strip().lower()
-    synchronized = values.get("SystemClockSynchronized") or values.get("NTPSynchronized")
-    if synchronized == "yes":
+    sync_values = [
+        value
+        for key in ("SystemClockSynchronized", "NTPSynchronized")
+        for value in [values.get(key)]
+        if value in {"yes", "no"}
+    ]
+    if "yes" in sync_values:
         return CheckResult("Time Sync", True, "system clock is synchronized")
-    if synchronized == "no":
+    if sync_values:
         return CheckResult(
             "Time Sync",
             False,

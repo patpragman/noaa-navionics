@@ -3668,6 +3668,54 @@ class PiHealthTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
 
+    def test_check_time_synchronization_accepts_ntp_fallback_yes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "timedatectl"
+            fake.write_text(
+                "#!/bin/sh\n"
+                "echo SystemClockSynchronized=no\n"
+                "echo NTPSynchronized=yes\n",
+                encoding="ascii",
+            )
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_time_synchronization()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertIn("synchronized", result.detail)
+
+    def test_check_time_synchronization_accepts_system_clock_yes_over_ntp_no(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "timedatectl"
+            fake.write_text(
+                "#!/bin/sh\n"
+                "echo SystemClockSynchronized=yes\n"
+                "echo NTPSynchronized=no\n",
+                encoding="ascii",
+            )
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_time_synchronization()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertIn("synchronized", result.detail)
+
     def test_check_time_synchronization_rejects_unsynced_pi_clock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             bin_dir = Path(tmpdir)
