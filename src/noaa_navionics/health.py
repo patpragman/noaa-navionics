@@ -11,7 +11,7 @@ import sys
 import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
-from .downloader import MANIFEST_NAME, read_manifest
+from .downloader import MANIFEST_NAME, count_enc_cells, read_manifest
 from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
 
 
@@ -175,9 +175,27 @@ def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckRes
         return CheckResult("Manifest", False, "chart manifest timestamp is in the future")
     if age_days > max_age_days:
         return CheckResult("Manifest", False, f"chart manifest is {age_days:.1f} days old; max is {max_age_days}")
+    extract = manifest.get("extract", {})
+    if not isinstance(extract, dict):
+        return CheckResult("Manifest", False, "manifest has no extract section")
+    extract_path_text = str(extract.get("path", "")).strip()
+    if not extract_path_text:
+        return CheckResult("Manifest", False, "manifest does not record an extracted chart path")
+    extract_path = Path(extract_path_text).expanduser()
+    if not extract_path.exists():
+        return CheckResult("Manifest", False, f"manifest extract path does not exist: {extract_path}")
+    try:
+        manifest_cell_count = int(extract.get("enc_cell_count", 0))
+    except (TypeError, ValueError):
+        return CheckResult("Manifest", False, "manifest has invalid ENC cell count")
+    if manifest_cell_count <= 0:
+        return CheckResult("Manifest", False, "manifest reports no extracted ENC cells")
+    actual_cell_count = count_enc_cells(extract_path)
+    if actual_cell_count <= 0:
+        return CheckResult("Manifest", False, f"no ENC cells found at manifest extract path: {extract_path}")
     package = manifest.get("package", {})
     label = package.get("label", "unknown package") if isinstance(package, dict) else "unknown package"
-    return CheckResult("Manifest", True, f"{label}; updated {age_days:.1f} days ago")
+    return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
 
 
 def check_disk_space(chart_dir: Path) -> CheckResult:

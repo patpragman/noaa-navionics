@@ -296,6 +296,44 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("days old", result.detail)
 
+    def test_manifest_without_extracted_cells_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            old_cell = root / "old" / "US5AK3CM.000"
+            old_cell.parent.mkdir()
+            old_cell.write_text("old", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                '"extract":{"path":"","enc_cell_count":0}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("does not record an extracted chart path", result.detail)
+
+    def test_manifest_with_missing_extract_path_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            missing = root / "AK_ENCs"
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{missing}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("extract path does not exist", result.detail)
+
     def test_chart_package_rejects_update_bundle_as_primary_charts(self):
         result = check_chart_package("updates", "ten-days")
         self.assertFalse(result.ok)
