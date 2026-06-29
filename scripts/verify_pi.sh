@@ -675,6 +675,26 @@ if expected_config_path:
     if not isinstance(status_data_connections, list):
         raise SystemExit(f"status report OpenCPN data connections were not parsed: {opencpn_config_path}")
     opencpn_config_file = Path(opencpn_config_path).expanduser()
+    opencpn_config_dir = opencpn_config_file.parent
+    if opencpn_config_dir.is_symlink():
+        raise SystemExit(f"status report OpenCPN config directory is a symlink: {opencpn_config_dir}")
+    if not opencpn_config_dir.is_dir():
+        raise SystemExit(f"status report OpenCPN config directory is not a directory: {opencpn_config_dir}")
+    try:
+        opencpn_dir_stat = opencpn_config_dir.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report OpenCPN config directory {opencpn_config_dir}: {exc}") from exc
+    if opencpn_dir_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report OpenCPN config directory {opencpn_config_dir} is owned by uid "
+            f"{opencpn_dir_stat.st_uid}, expected {os.getuid()}"
+        )
+    opencpn_dir_mode = opencpn_dir_stat.st_mode & 0o777
+    if opencpn_dir_mode & 0o022:
+        raise SystemExit(
+            f"status report OpenCPN config directory {opencpn_config_dir} has permissions "
+            f"{opencpn_dir_mode:04o}, expected no group/other write bits"
+        )
     if opencpn_config_file.is_symlink():
         raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_file}")
     if not opencpn_config_file.is_file():
