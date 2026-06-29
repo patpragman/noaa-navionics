@@ -1288,6 +1288,15 @@ class GpsTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("48.117300", result.detail)
 
+    def test_check_gps_sample_rejects_weak_fix_quality(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,03,0.9,545.4,M,46.9,M,,\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.nmea"
+            path.write_text(sentence, encoding="ascii")
+            result = check_gps_sample(path)
+            self.assertFalse(result.ok)
+            self.assertIn("weak GPS fix", result.detail)
+
     def test_check_gps_device_uses_configured_baud(self):
         captured = {}
         original = health_module.open_nmea_stream
@@ -1308,6 +1317,43 @@ class GpsTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(captured, {"device": "/dev/ttyACM0", "baud": 9600})
+
+    def test_check_gps_device_rejects_low_satellite_count(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            return BytesIO(
+                f"$GPGGA,{fix_time},4807.038,N,01131.000,E,1,03,0.9,545.4,M,46.9,M,,\n".encode("ascii")
+            )
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("navigation-quality", result.detail)
+        self.assertIn("weak GPS fix", result.detail)
+
+    def test_check_gps_device_rejects_high_hdop(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            return BytesIO(
+                f"$GPGGA,{fix_time},4807.038,N,01131.000,E,1,08,9.9,545.4,M,46.9,M,,\n".encode("ascii")
+            )
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("HDOP", result.detail)
 
     def test_check_gps_device_rejects_stale_timestamped_fix(self):
         original = health_module.open_nmea_stream
@@ -1341,6 +1387,26 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("stale", result.detail)
+
+    def test_check_gpsd_rejects_weak_fix_quality_when_reported(self):
+        original = health_module.iter_gpsd_fixes
+        weak = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+            satellites=3,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([weak])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("weak GPS fix", result.detail)
 
     def test_check_gpsd_accepts_fresh_timestamped_fix(self):
         original = health_module.iter_gpsd_fixes

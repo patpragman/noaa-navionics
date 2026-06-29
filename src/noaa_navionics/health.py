@@ -407,11 +407,15 @@ def check_gps_sample(sample: Path) -> CheckResult:
     path = Path(sample).expanduser()
     if not path.exists():
         return CheckResult("GPS", False, f"sample file not found: {path}")
+    quality_detail = ""
     with path.open(encoding="ascii", errors="ignore") as handle:
-        fix = first_fix(handle)
-    if fix:
-        return CheckResult("GPS", True, _fix_detail(fix))
-    return CheckResult("GPS", False, f"no valid fix found in {path}")
+        for fix in iter_fixes(handle):
+            quality_detail = _fix_quality_failure(fix)
+            if quality_detail:
+                continue
+            return CheckResult("GPS", True, _fix_detail(fix))
+    suffix = f"; {quality_detail}" if quality_detail else ""
+    return CheckResult("GPS", False, f"no valid fix found in {path}{suffix}")
 
 
 def check_gps_device_path(device: str) -> CheckResult:
@@ -458,6 +462,7 @@ def check_gps_device(
 ) -> CheckResult:
     deadline = time.monotonic() + seconds
     stale_detail = ""
+    quality_detail = ""
     try:
         with open_nmea_stream(device, baud=baud) as stream:
             for fix in iter_fixes(_read_nmea_lines_until(stream, deadline)):
@@ -465,13 +470,17 @@ def check_gps_device(
                 if freshness_detail:
                     stale_detail = f"; {freshness_detail}"
                     continue
+                quality_detail = _fix_quality_failure(fix)
+                if quality_detail:
+                    continue
                 return CheckResult("GPS", True, _fix_detail(fix))
     except Exception as exc:
         return CheckResult("GPS", False, f"{device}: {exc}")
+    fix_detail = stale_detail or (f"; {quality_detail}" if quality_detail else "")
     return CheckResult(
         "GPS",
         False,
-        f"no fresh NMEA fix from {device} at {baud} baud within {seconds:.0f}s{stale_detail}",
+        f"no fresh navigation-quality NMEA fix from {device} at {baud} baud within {seconds:.0f}s{fix_detail}",
     )
 
 
@@ -484,6 +493,7 @@ def check_gpsd(
 ) -> CheckResult:
     deadline = time.monotonic() + seconds
     stale_detail = ""
+    quality_detail = ""
     try:
         for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds):
             if time.monotonic() > deadline:
@@ -492,10 +502,14 @@ def check_gpsd(
             if freshness_detail:
                 stale_detail = f"; {freshness_detail}"
                 continue
+            quality_detail = _fix_quality_failure(fix)
+            if quality_detail:
+                continue
             return CheckResult("GPSD", True, _fix_detail(fix))
     except Exception as exc:
         return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}")
-    return CheckResult("GPSD", False, f"no fresh GPSD fix within {seconds:.0f}s{stale_detail}")
+    fix_detail = stale_detail or (f"; {quality_detail}" if quality_detail else "")
+    return CheckResult("GPSD", False, f"no fresh navigation-quality GPSD fix within {seconds:.0f}s{fix_detail}")
 
 
 def first_fix(lines: Iterable[str]) -> Optional[GPSFix]:
@@ -560,6 +574,19 @@ def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
         return f"last timestamped fix was stale ({age_seconds:.0f}s old)"
     if age_seconds < -30:
         return "fix timestamp is in the future"
+    return ""
+
+
+def _fix_quality_failure(
+    fix: GPSFix,
+    *,
+    min_satellites: int = 4,
+    max_hdop: float = 5.0,
+) -> str:
+    if fix.satellites is not None and fix.satellites < min_satellites:
+        return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
+    if fix.hdop is not None and fix.hdop > max_hdop:
+        return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
     return ""
 
 
