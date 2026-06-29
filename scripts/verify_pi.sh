@@ -61,6 +61,7 @@ check_status_report_json() {
   python3 - "$path" <<'PY'
 from datetime import datetime, timezone
 import json
+import os
 import sys
 
 path = sys.argv[1]
@@ -84,9 +85,16 @@ if not isinstance(checks, list) or not checks:
     raise SystemExit("status report has no checks")
 if not isinstance(service_checks, list) or not service_checks:
     raise SystemExit("status report has no service checks")
-if any(check.get("ok") is not True for check in checks if isinstance(check, dict)):
+expected_revision = os.environ.get("NOAA_NAVIONICS_EXPECTED_REVISION", "unknown")
+app = report.get("app")
+if not isinstance(app, dict):
+    raise SystemExit("status report has no app section")
+actual_revision = str(app.get("source_revision", "unknown"))
+if expected_revision != "unknown" and actual_revision != expected_revision:
+    raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")
+if any(not isinstance(check, dict) or check.get("ok") is not True for check in checks):
     raise SystemExit("status report contains a failed readiness check")
-if any(check.get("ok") is not True for check in service_checks if isinstance(check, dict)):
+if any(not isinstance(check, dict) or check.get("ok") is not True for check in service_checks):
     raise SystemExit("status report contains a failed service check")
 PY
 }
