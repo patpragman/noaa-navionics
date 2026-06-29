@@ -530,10 +530,13 @@ def _preflight_execution_check(summary: dict[str, object], unit: str, name: str)
     error = properties.get("error")
     if error:
         return CheckResult(name, False, f"{unit} loaded properties unavailable: {error}")
+    active = str(state.get("active", "")).strip()
     result = str(properties.get("Result", "")).strip()
     status = str(properties.get("ExecMainStatus", "")).strip()
     started = str(properties.get("ExecMainStartTimestampMonotonic", "")).strip()
-    detail = f"{unit} Result={result or '<missing>'} ExecMainStatus={status or '<missing>'}"
+    detail = f"{unit} active={active or '<missing>'} Result={result or '<missing>'} ExecMainStatus={status or '<missing>'}"
+    if active in {"active", "activating"} and started.isdigit() and int(started) > 0:
+        return CheckResult(name, True, detail + f" ExecMainStartTimestampMonotonic={started}")
     if result != "success":
         return CheckResult(name, False, detail)
     if status != "0":

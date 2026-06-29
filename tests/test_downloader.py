@@ -2127,6 +2127,43 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("Result=exit-code", run_check.detail)
         self.assertIn("ExecMainStatus=1", run_check.detail)
 
+    def test_service_readiness_checks_accept_boot_readiness_running_self_report(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "activating",
+                "properties": {
+                    "Type": "oneshot",
+                    "Result": "",
+                    "ExecMainStatus": "",
+                    "ExecMainStartTimestampMonotonic": "123456789",
+                    "TimeoutStartUSec": "infinity",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        run_check = next(check for check in checks if check.name == "Boot Readiness Run")
+
+        self.assertTrue(run_check.ok)
+        self.assertIn("active=activating", run_check.detail)
+        self.assertIn("ExecMainStartTimestampMonotonic=123456789", run_check.detail)
+
     def test_service_readiness_checks_fail_loaded_command_missing_args(self):
         services = {
             "available": True,
