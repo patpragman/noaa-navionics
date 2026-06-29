@@ -262,6 +262,8 @@ grep -q 'root text target .* is owned by uid' scripts/install_raspberry_pi.sh
 ! grep -q 'sudo tee -a /etc/apt/sources.list' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
+grep -q 'umask 077' scripts/install_raspberry_pi.sh
+grep -q 'umask 077' scripts/provision_sailboat_pi.sh
 grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
 grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
 grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
@@ -1378,11 +1380,19 @@ trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" 
 
 install_smoke_home="$tmpdir/install-smoke-home"
 mkdir -p "$install_smoke_home"
-HOME="$install_smoke_home" scripts/install_raspberry_pi.sh --skip-apt --allow-non-pi >"$install_output"
+(umask 000; HOME="$install_smoke_home" scripts/install_raspberry_pi.sh --skip-apt --allow-non-pi >"$install_output")
 test -x "$install_smoke_home/.local/bin/noaa-navionics"
 "$install_smoke_home/.local/bin/noaa-navionics" list-packages >/dev/null
 test -f "$install_smoke_home/.config/noaa-navionics/config.ini"
 test -d "$install_smoke_home/.local/share/noaa-navionics/venv"
+test "$(stat -c '%a' "$install_smoke_home/.local")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.local/bin")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.local/share")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.local/share/noaa-navionics")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.config")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.config/noaa-navionics")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.config/systemd")" = 700
+test "$(stat -c '%a' "$install_smoke_home/.config/systemd/user")" = 700
 install_expected_revision="$(git rev-parse --short HEAD)"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
   install_expected_revision="${install_expected_revision}-dirty"
