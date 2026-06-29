@@ -21,6 +21,8 @@ provision_args=()
 install_args=()
 saw_provision_option=0
 allow_dirty=0
+skip_services=0
+skip_autologin=0
 
 require_positive_integer() {
   local name="$1"
@@ -88,12 +90,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-services)
       saw_provision_option=1
+      skip_services=1
       provision_args+=("$1")
       install_args+=("--no-services")
       shift
       ;;
     --skip-autologin)
       saw_provision_option=1
+      skip_autologin=1
       provision_args+=("$1")
       install_args+=("$1")
       shift
@@ -112,6 +116,14 @@ done
 
 if [[ "$saw_provision_option" -eq 1 && "$provision" -eq 0 ]]; then
   echo "Provisioning options require --provision" >&2
+  exit 2
+fi
+
+if [[ "$skip_services" -eq 1 && "$skip_autologin" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+--skip-services requires --skip-autologin.
+Skipping only user services can leave desktop chartplotter autostart enabled without the readiness and track-logging services.
+EOF
   exit 2
 fi
 

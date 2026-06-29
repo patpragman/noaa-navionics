@@ -300,6 +300,14 @@ if [[ "$skip_gpsd" -eq 0 && -z "$device" ]]; then
   exit 2
 fi
 
+if [[ "$skip_services" -eq 1 && "$skip_autologin" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+--skip-services requires --skip-autologin.
+Skipping only user services can leave desktop chartplotter autostart enabled without the readiness and track-logging services.
+EOF
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF

@@ -95,6 +95,14 @@ for arg in "$@"; do
   esac
 done
 
+if [[ "$enable_services" -eq 0 && "$configure_autologin" -eq 1 ]]; then
+  cat >&2 <<'EOF'
+--no-services requires --skip-autologin.
+Skipping only user services can leave desktop chartplotter autostart enabled without the readiness and track-logging services.
+EOF
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF
