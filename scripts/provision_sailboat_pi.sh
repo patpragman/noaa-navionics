@@ -213,16 +213,28 @@ run() {
 }
 
 status_report="${HOME}/.cache/noaa-navionics/status.json"
+launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 systemd_user_dir="${HOME}/.config/systemd/user"
 chart_service="${systemd_user_dir}/noaa-navionics.service"
 chart_timer="${systemd_user_dir}/noaa-navionics.timer"
 track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 
+write_launcher_env() {
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q\n' "$launcher_env" "$gps_seconds"
+  else
+    mkdir -p "$(dirname "$launcher_env")"
+    printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\n' "$gps_seconds" >"$launcher_env"
+    sync_paths "$launcher_env"
+  fi
+}
+
 run mkdir -p "$(dirname "$config")"
 if [[ ! -f "$config" ]]; then
   run "$bin" init-config --config "$config"
 fi
+write_launcher_env
 
 if [[ "$skip_gpsd" -eq 0 ]]; then
   gpsd_args=(--device "$device" --config "$config")

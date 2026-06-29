@@ -90,6 +90,7 @@ lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
+launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_attempts=3
 status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
@@ -300,10 +301,14 @@ check "noaa-navionics command" test -x "$bin"
 check "chartplotter launcher" test -x "$launcher"
 check "desktop autologin helper" test -x "$desktop_autologin"
 if [[ -x "$launcher" ]]; then
-  check "chartplotter launcher readiness gate" grep -Fq 'status-report --config "$config" --gps-seconds 10 --output "$status_report"' "$launcher"
+  check "chartplotter launcher readiness gate" grep -Fq 'status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"' "$launcher"
+  check "chartplotter launcher GPS wait config" grep -Fq 'NOAA_NAVIONICS_GPS_SECONDS' "$launcher"
   check "chartplotter launcher ENC parse" grep -Fq 'opencpn -parse_all_enc' "$launcher"
   check "chartplotter launcher display awake" grep -Fq 'keep_display_awake' "$launcher"
   check "chartplotter launcher display failure logging" grep -Fq 'xset command(s) failed' "$launcher"
+fi
+if [[ "$gps_seconds" != "10" ]]; then
+  check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
 fi
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then

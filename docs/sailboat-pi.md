@@ -35,7 +35,7 @@ Deploy and run the full onboard provisioning sequence:
 scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, desktop graphical autologin setup, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
+Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, desktop graphical autologin setup, launcher GPS wait persistence, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
 The deploy, provisioning, and dock-test scripts validate retry counts, retry delays, GPS wait time, and reboot wait timeout before starting remote work.
 
 Verify the Raspberry Pi after deployment:
@@ -146,11 +146,11 @@ scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
-The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network. Add `--gps-seconds N` to `deploy_to_pi.sh --provision` or `dock_test_pi.sh` when the GPS receiver needs a longer cold-start fix window.
+The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network. Add `--gps-seconds N` to `deploy_to_pi.sh --provision` or `dock_test_pi.sh` when the GPS receiver needs a longer cold-start fix window; provisioning stores that value in `~/.config/noaa-navionics/launcher.env` for desktop autostart.
 
 ## Startup
 
-The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`, installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and writes `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` for the deployed user. The launcher writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, asks X11 desktop sessions to disable screen blanking and DPMS sleep, warns if readiness fails, and then starts OpenCPN.
+The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`, installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and writes `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` for the deployed user. The launcher reads `NOAA_NAVIONICS_GPS_SECONDS` from `~/.config/noaa-navionics/launcher.env` or its environment, writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, asks X11 desktop sessions to disable screen blanking and DPMS sleep, warns if readiness fails, and then starts OpenCPN.
 
 Manual launch:
 

@@ -113,6 +113,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by
 
 Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` or `dock_test_pi.sh` if the initial commissioning download needs a longer retry window. Use `--gps-seconds N` if the attached GPS receiver needs more time for a cold-start fix during commissioning.
 The deploy, provisioning, and dock-test scripts reject invalid retry, delay, GPS wait, and reboot timeout values before starting remote work.
+Provisioning persists the chosen GPS wait in `~/.config/noaa-navionics/launcher.env` so the desktop chartplotter launcher uses the same cold-start window after reboot.
 
 Verify the Raspberry Pi after deployment:
 
@@ -160,6 +161,7 @@ noaa-navionics-start-chartplotter
 
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
 The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
+It reads `NOAA_NAVIONICS_GPS_SECONDS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
 If those display power commands fail during chartplotter autostart, the launcher records the failure and the strict Pi startup verifier fails the dock test.

@@ -2,10 +2,31 @@
 set -euo pipefail
 
 config="${HOME}/.config/noaa-navionics/config.ini"
+launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
+gps_seconds=10
+
+load_launcher_settings() {
+  local key
+  local value
+  if [[ -r "$launcher_env" ]]; then
+    while IFS='=' read -r key value; do
+      case "$key" in
+        NOAA_NAVIONICS_GPS_SECONDS)
+          gps_seconds="$value"
+          ;;
+      esac
+    done <"$launcher_env"
+  fi
+  gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-$gps_seconds}"
+  if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 10 seconds." >&2
+    gps_seconds=10
+  fi
+}
 
 keep_display_awake() {
   if [[ -n "${DISPLAY:-}" ]] && command -v xset >/dev/null 2>&1; then
@@ -39,9 +60,10 @@ fi
 exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+load_launcher_settings
 keep_display_awake
 
-if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
+if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
   echo "NOAA Navionics preflight passed."
 else
   echo "NOAA Navionics preflight failed. Status report: $status_report" >&2

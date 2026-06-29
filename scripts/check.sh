@@ -25,7 +25,8 @@ grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'xset s noblank' scripts/start_chartplotter.sh
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
-grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
+grep -q 'launcher.env' scripts/start_chartplotter.sh
+grep -q -- '--gps-seconds "$gps_seconds"' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
@@ -59,6 +60,7 @@ grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
+grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
@@ -123,6 +125,7 @@ grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
@@ -277,12 +280,15 @@ scripts/provision_sailboat_pi.sh \
   --device /dev/serial/by-id/mock-gps \
   --skip-autologin \
   --config "$tmpdir/config.ini" \
+  --gps-seconds 17 \
   --sync-retries 7 \
-  --sync-retry-delay 15 >/dev/null
+  --sync-retry-delay 15 >"$provision_output"
+grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
 
 launcher_home="$tmpdir/launcher-home"
-mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics"
-printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_home/.local/bin/noaa-navionics"
+mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=17\n' >"$launcher_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nprintf "noaa-navionics %%s\\n" "$*" >>"$HOME/.cache/noaa-navionics/noaa.log"\nexit 0\n' >"$launcher_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
 printf '#!/usr/bin/env bash\nprintf "xset %%s\\n" "$*" >>"$HOME/.cache/noaa-navionics/xset.log"\n' >"$tmpdir/xset"
 chmod +x "$launcher_home/.local/bin/noaa-navionics" "$tmpdir/opencpn" "$tmpdir/xset"
@@ -293,6 +299,7 @@ test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
+grep -q -- '--gps-seconds 17' "$launcher_home/.cache/noaa-navionics/noaa.log"
 
 launcher_fail_home="$tmpdir/launcher-fail-home"
 mkdir -p "$launcher_fail_home/.local/bin" "$launcher_fail_home/.cache/noaa-navionics"
