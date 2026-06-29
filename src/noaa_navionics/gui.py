@@ -9,7 +9,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .config import DEFAULT_CONFIG_PATH, AppConfig, package_kwargs, read_config
 from .downloader import download_package, package_for
-from .health import run_preflight
+from .health import check_chart_package, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
 
@@ -39,6 +39,23 @@ def run_configured_preflight(
         gps_seconds=gps_seconds,
         max_chart_age_days=app_config.max_chart_age_days,
         track_output=app_config.track_output,
+    )
+
+
+def sync_configured_charts(app_config: AppConfig, *, progress=None, retries: int = 3, retry_delay: float = 10.0):
+    package_check = check_chart_package(app_config.chart_package, app_config.chart_value)
+    if not package_check.ok:
+        raise ValueError(f"sync requires a complete onboard chart package: {package_check.detail}")
+    package = package_for(**package_kwargs(app_config))
+    return download_package(
+        package,
+        app_config.chart_output,
+        extract=app_config.extract,
+        keep_zip=app_config.keep_zip,
+        force=app_config.force,
+        retries=retries,
+        retry_delay=retry_delay,
+        progress=progress,
     )
 
 
@@ -295,21 +312,11 @@ class DownloaderApp(tk.Tk):
     def _config_sync_worker(self) -> None:
         try:
             app_config = read_config(self._config_path())
-            package = package_for(**package_kwargs(app_config))
 
             def progress(done: int, total: Optional[int]) -> None:
                 self.queue.put(("progress", (done, total)))
 
-            result = download_package(
-                package,
-                app_config.chart_output,
-                extract=app_config.extract,
-                keep_zip=app_config.keep_zip,
-                force=app_config.force,
-                retries=3,
-                retry_delay=10.0,
-                progress=progress,
-            )
+            result = sync_configured_charts(app_config, progress=progress)
             self.queue.put(("done", result))
         except Exception as exc:
             self.queue.put(("error", exc))

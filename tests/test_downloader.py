@@ -639,6 +639,45 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(calls[0]["max_chart_age_days"], 12)
         self.assertEqual(calls[0]["track_output"], Path("/tracks/noaa"))
 
+    def test_configured_gui_sync_rejects_incomplete_onboard_chart_packages(self):
+        calls = []
+        original = gui_module.download_package
+
+        def fake_download_package(*args, **kwargs):
+            calls.append((args, kwargs))
+            raise AssertionError("download_package should not be called")
+
+        try:
+            gui_module.download_package = fake_download_package
+            for package, value, expected in [
+                ("updates", "ten-days", "not a complete chart set"),
+                ("catalog", "", "metadata only"),
+            ]:
+                with self.subTest(package=package):
+                    app_config = AppConfig(
+                        chart_package=package,
+                        chart_value=value,
+                        chart_output=Path("/charts/noaa"),
+                        extract=True,
+                        keep_zip=True,
+                        force=True,
+                        max_chart_age_days=12,
+                        gps_mode="gpsd",
+                        gps_device="/dev/serial/by-id/mock-gps",
+                        gps_baud=9600,
+                        gpsd_host="127.0.0.1",
+                        gpsd_port=2947,
+                        track_output=Path("/tracks/noaa"),
+                        track_retention_days=90,
+                    )
+
+                    with self.assertRaisesRegex(ValueError, expected):
+                        gui_module.sync_configured_charts(app_config)
+        finally:
+            gui_module.download_package = original
+
+        self.assertEqual(calls, [])
+
 
 class CLIValidationTests(unittest.TestCase):
     def assert_parse_error(self, args):
