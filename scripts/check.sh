@@ -635,6 +635,12 @@ grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
+grep -q 'validate_user_install_path' scripts/provision_sailboat_pi.sh
+grep -q 'path contains a symlink' scripts/provision_sailboat_pi.sh
+grep -q 'expected no group/other write bits' scripts/provision_sailboat_pi.sh
+grep -q 'validate_user_install_path "$launcher_env" "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh
+grep -q 'validate_user_install_path "$chart_service" "chart refresh user service"' scripts/provision_sailboat_pi.sh
+grep -q 'validate_user_install_path "$autostart_entry" "chartplotter desktop autostart"' scripts/provision_sailboat_pi.sh
 grep -q -- '--no-device-check cannot be used while unattended startup is enabled' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin for manual testing' scripts/provision_sailboat_pi.sh
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
@@ -1534,6 +1540,53 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Custom --config path does not match the unattended onboard config' "$provision_output"
+
+unsafe_provision_home="$tmpdir/unsafe-provision-home"
+mkdir -p "$unsafe_provision_home/.config/noaa-navionics"
+chmod 0777 "$unsafe_provision_home/.config/noaa-navionics"
+set +e
+HOME="$unsafe_provision_home" \
+  scripts/provision_sailboat_pi.sh \
+    --allow-non-pi \
+    --dry-run \
+    --skip-gpsd \
+    --skip-sync \
+    --skip-services \
+    --skip-autologin >"$provision_output" 2>&1
+provision_code=$?
+set -e
+chmod 0700 "$unsafe_provision_home/.config/noaa-navionics"
+if [[ "$provision_code" -eq 0 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject an unsafe launcher environment directory" >&2
+  exit 1
+fi
+grep -q 'chartplotter launcher environment parent .* expected no group/other write bits' "$provision_output"
+! grep -q 'NOAA_NAVIONICS_GPS_SECONDS' "$provision_output"
+
+provision_link_home="$tmpdir/provision-link-home"
+provision_link_target="$tmpdir/provision-link-real.env"
+mkdir -p "$provision_link_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$provision_link_target"
+ln -s "$provision_link_target" "$provision_link_home/.config/noaa-navionics/launcher.env"
+set +e
+HOME="$provision_link_home" \
+  scripts/provision_sailboat_pi.sh \
+    --allow-non-pi \
+    --dry-run \
+    --skip-gpsd \
+    --skip-sync \
+    --skip-services \
+    --skip-autologin >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -eq 0 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject a symlinked launcher environment file" >&2
+  exit 1
+fi
+grep -q 'chartplotter launcher environment path contains a symlink' "$provision_output"
+! grep -q 'NOAA_NAVIONICS_GPS_SECONDS' "$provision_output"
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --sync-retries 0 >"$deploy_output" 2>&1

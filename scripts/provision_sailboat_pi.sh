@@ -456,6 +456,67 @@ run() {
   fi
 }
 
+validate_user_install_path() {
+  local target="$1"
+  local label="$2"
+  python3 - "$target" "$label" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+target = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+home = Path.home().resolve(strict=False)
+path_chain = []
+cursor = target
+while True:
+    path_chain.append(cursor)
+    if cursor == home or cursor == cursor.parent:
+        break
+    cursor = cursor.parent
+if path_chain[-1] != home:
+    raise SystemExit(f"{label} path must be under the deploying user's home directory: {target}")
+
+for path in path_chain:
+    if path.is_symlink():
+        raise SystemExit(f"{label} path contains a symlink: {path}")
+
+try:
+    resolved_target = target.resolve(strict=False)
+except RuntimeError as exc:
+    raise SystemExit(f"{label} path could not be resolved: {target}: {exc}") from exc
+if resolved_target != home and home not in resolved_target.parents:
+    raise SystemExit(f"{label} path must stay under the deploying user's home directory: {target}")
+
+expected_uid = os.getuid()
+for directory in path_chain[1:]:
+    if not directory.exists():
+        continue
+    if not directory.is_dir():
+        raise SystemExit(f"{label} parent is not a directory: {directory}")
+    stat_result = directory.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f"{label} parent {directory} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f"{label} parent {directory} has permissions {mode:04o}, expected no group/other write bits"
+        )
+
+if target.exists():
+    if not target.is_file():
+        raise SystemExit(f"{label} is not a regular file: {target}")
+    stat_result = target.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(f"{label} {target} is owned by uid {stat_result.st_uid}, expected {expected_uid}")
+    if mode & 0o022:
+        raise SystemExit(f"{label} {target} has permissions {mode:04o}, expected no group/other write bits")
+PY
+}
+
 install_file_atomic() {
   local source="$1"
   local target="$2"
@@ -463,6 +524,7 @@ install_file_atomic() {
   local target_dir
   local target_name
   local tmp
+  validate_user_install_path "$target" "provisioned user file"
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ install_file_atomic %q %q %q\n' "$source" "$target" "$mode"
     return 0
@@ -499,6 +561,7 @@ preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 write_launcher_env() {
   local launcher_env_dir
   local launcher_env_tmp
+  validate_user_install_path "$launcher_env" "chartplotter launcher environment"
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q NOAA_NAVIONICS_OPENCPN_RESTARTS=%q NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%q\n' \
       "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"
@@ -565,6 +628,10 @@ fi
 run "$bin" configure-opencpn --config "$config"
 
 if [[ "$skip_services" -eq 0 ]]; then
+  validate_user_install_path "$chart_service" "chart refresh user service"
+  validate_user_install_path "$chart_timer" "chart refresh user timer"
+  validate_user_install_path "$track_service" "track logger user service"
+  validate_user_install_path "$preflight_service" "boot readiness user service"
   run mkdir -p "$systemd_user_dir"
   install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644
   install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644
@@ -580,6 +647,7 @@ if [[ "$skip_services" -eq 0 ]]; then
 fi
 
 if [[ "$skip_autologin" -eq 0 ]]; then
+  validate_user_install_path "$autostart_entry" "chartplotter desktop autostart"
   run mkdir -p "$autostart_dir"
   install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644
   desktop_args=(--user "$USER")
