@@ -220,6 +220,11 @@ def _service_readiness_checks(
     gps_mode: str,
 ) -> list[CheckResult]:
     checks = [
+        _unit_not_failed_check(
+            services,
+            "noaa-navionics.service",
+            "Chart Sync",
+        ),
         _unit_check(
             services,
             "noaa-navionics.timer",
@@ -253,6 +258,19 @@ def _service_readiness_checks(
             )
         )
     return checks
+
+
+def _unit_not_failed_check(summary: dict[str, object], unit: str, name: str) -> CheckResult:
+    if summary.get("available") is False:
+        return CheckResult(name, False, str(summary.get("detail", "systemctl not available")))
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from status report")
+    enabled = str(state.get("enabled", ""))
+    active = str(state.get("active", ""))
+    ok = active != "failed"
+    detail = f"{unit} enabled={enabled} active={active}"
+    return CheckResult(name, ok, detail)
 
 
 def _unit_check(
