@@ -120,6 +120,8 @@ On the Pi, configure GPSD with the GPS device:
 scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
+Use a `/dev/serial/by-id/` path when possible; verification checks that the configured GPSD device still exists.
+
 On the Pi, `status-report` writes a JSON readiness artifact:
 
 ```bash

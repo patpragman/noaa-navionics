@@ -28,6 +28,7 @@ from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
     check_gps_device,
+    check_gps_device_path,
     check_gps_sample,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
@@ -495,6 +496,25 @@ class GpsTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(captured, {"device": "/dev/ttyACM0", "baud": 9600})
+
+    def test_check_gps_device_path_reports_missing_device(self):
+        result = check_gps_device_path("/dev/serial/by-id/no-such-gps")
+        self.assertFalse(result.ok)
+        self.assertIn("does not exist", result.detail)
+
+    def test_check_gps_device_path_accepts_stable_symlink(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "ttyACM0"
+            target.write_text("", encoding="ascii")
+            stable = root / "dev" / "serial" / "by-id" / "usb-gps"
+            stable.parent.mkdir(parents=True)
+            stable.symlink_to(target)
+
+            result = check_gps_device_path(str(stable))
+
+            self.assertTrue(result.ok)
+            self.assertIn("usb-gps", result.detail)
 
     def test_chart_check_requires_extracted_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:

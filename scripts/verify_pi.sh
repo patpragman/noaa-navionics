@@ -62,6 +62,18 @@ check "GPSD command" command -v gpsd
 check "GPSD config" test -f /etc/default/gpsd
 if [[ -r /etc/default/gpsd ]]; then
   check "GPSD device configured" grep -Eq '^DEVICES="[^"]+"' /etc/default/gpsd
+  gpsd_device="$(sed -n 's/^DEVICES="\([^"]*\)".*/\1/p' /etc/default/gpsd | awk '{print $1}')"
+  if [[ -n "$gpsd_device" ]]; then
+    check "GPSD device exists" test -e "$gpsd_device"
+    case "$gpsd_device" in
+      /dev/serial/by-id/*)
+        printf 'OK   GPSD stable device path %s\n' "$gpsd_device"
+        ;;
+      *)
+        printf 'WARN GPSD device path %s is not under /dev/serial/by-id/\n' "$gpsd_device"
+        ;;
+    esac
+  fi
 else
   printf 'FAIL GPSD config readable\n'
   failures=$((failures + 1))

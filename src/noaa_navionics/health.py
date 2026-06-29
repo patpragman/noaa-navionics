@@ -46,6 +46,8 @@ def run_preflight(
         check_pi_temperature(),
     ]
     if gpsd:
+        if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
+            results.append(check_gps_device_path(gps_device))
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
         results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
@@ -214,6 +216,21 @@ def check_gps_sample(sample: Path) -> CheckResult:
     if fix:
         return CheckResult("GPS", True, _fix_detail(fix))
     return CheckResult("GPS", False, f"no valid fix found in {path}")
+
+
+def check_gps_device_path(device: str) -> CheckResult:
+    if not device:
+        return CheckResult("GPS Device", False, "no GPS device configured")
+    path = Path(device).expanduser()
+    if not path.exists():
+        return CheckResult("GPS Device", False, f"{path} does not exist")
+    try:
+        resolved = path.resolve()
+    except OSError:
+        resolved = path
+    if "/dev/serial/by-id/" in str(path):
+        return CheckResult("GPS Device", True, f"{path} -> {resolved}")
+    return CheckResult("GPS Device", True, f"{path} exists; prefer a stable /dev/serial/by-id/ path")
 
 
 def check_gps_device(device: str, *, baud: int = 4800, seconds: float = 5.0) -> CheckResult:

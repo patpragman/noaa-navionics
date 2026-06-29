@@ -261,7 +261,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd=args.gpsd or (gps_mode == "gpsd" and not args.gps_device and not args.gps_sample),
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
-                gps_device=args.gps_device or (app_config.gps_device if gps_mode == "serial" else None),
+                gps_device=args.gps_device or app_config.gps_device,
                 gps_baud=args.gps_baud or app_config.gps_baud,
                 gps_sample=Path(args.gps_sample) if args.gps_sample else None,
                 gps_seconds=args.gps_seconds,
