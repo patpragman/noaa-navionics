@@ -71,7 +71,8 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     chart_value = charts.get("value", defaults.chart_value).strip()
     if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
         raise ValueError(f"charts.value is required when charts.package is {chart_package}")
-    chart_output = Path(charts.get("output", str(defaults.chart_output))).expanduser()
+    chart_output_text = _get_required_text(charts, "output", str(defaults.chart_output), label="charts.output")
+    chart_output = Path(chart_output_text).expanduser()
     max_chart_age_days = _get_int(
         charts,
         "max_age_days",
@@ -85,7 +86,14 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     gps_baud = _get_int(gps, "baud", defaults.gps_baud, label="gps.baud")
     if gps_baud not in GPS_BAUD_RATES:
         raise ValueError(f"gps.baud must be one of: {', '.join(str(rate) for rate in sorted(GPS_BAUD_RATES))}")
+    gps_device = gps.get("device", defaults.gps_device).strip()
+    if gps_mode == "serial" and not gps_device:
+        raise ValueError("gps.device is required when gps.mode is serial")
+    gpsd_host = _get_required_text(gps, "gpsd_host", defaults.gpsd_host, label="gps.gpsd_host")
+    if any(separator in gpsd_host for separator in (";", "|")) or any(char.isspace() for char in gpsd_host):
+        raise ValueError("gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")
     gpsd_port = _get_int(gps, "gpsd_port", defaults.gpsd_port, label="gps.gpsd_port", minimum=1, maximum=65535)
+    track_output_text = _get_required_text(tracking, "output", str(chart_output), label="tracking.output")
     track_retention_days = _get_int(
         tracking,
         "retention_days",
@@ -102,11 +110,11 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         force=_get_bool(charts, "force", defaults.force, label="charts.force"),
         max_chart_age_days=max_chart_age_days,
         gps_mode=gps_mode,
-        gps_device=gps.get("device", defaults.gps_device).strip(),
+        gps_device=gps_device,
         gps_baud=gps_baud,
-        gpsd_host=gps.get("gpsd_host", defaults.gpsd_host).strip(),
+        gpsd_host=gpsd_host,
         gpsd_port=gpsd_port,
-        track_output=Path(tracking.get("output", str(chart_output))).expanduser(),
+        track_output=Path(track_output_text).expanduser(),
         track_retention_days=track_retention_days,
     )
 
@@ -180,6 +188,18 @@ def _get_bool(section: object, key: str, default: bool, *, label: Optional[str] 
     if normalized in {"0", "no", "false", "off"}:
         return False
     raise ValueError(f"{label or key} must be a boolean value")
+
+
+def _get_required_text(section: object, key: str, default: str, *, label: Optional[str] = None) -> str:
+    if not hasattr(section, "get"):
+        value = default
+    else:
+        raw = section.get(key)
+        value = default if raw is None else str(raw)
+    text = value.strip()
+    if not text:
+        raise ValueError(f"{label or key} must not be empty")
+    return text
 
 
 def _get_int(

@@ -40,6 +40,7 @@ grep -q 'no fresh NMEA fix' src/noaa_navionics/health.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
+grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
