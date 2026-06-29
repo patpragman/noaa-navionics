@@ -70,14 +70,14 @@ Manual install:
 
 ```bash
 sudo apt update
-sudo apt install python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils
+sudo apt install python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils python3-setuptools
 sudo apt install raspi-utils || sudo apt install libraspberrypi-bin
 scripts/install_raspberry_pi.sh --skip-apt
 ```
 
 On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
-The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, uses noninteractive apt calls for unattended SSH deployment, ensures rsync remains available for future deployments, ensures LightDM and X11 display-power tools are installed for graphical startup, and ensures `vcgencmd` is available for Raspberry Pi power checks. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, `gpsd` shares one GPS feed between OpenCPN and this tool, and `chrony` can discipline the Pi clock from GPSD when network time is unavailable. The installer leaves chart refresh, track logging, desktop autostart, and LightDM autologin disabled; provisioning installs or enables them only after the onboard config, charts, and GPSD have been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
+The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, uses noninteractive apt calls for unattended SSH deployment, ensures rsync remains available for future deployments, ensures LightDM and X11 display-power tools are installed for graphical startup, and ensures `vcgencmd` is available for Raspberry Pi power checks. It installs the local repo with pip build isolation and PEP 517 disabled because the application has no runtime Python dependencies and the legacy setup metadata can be installed with the Pi's apt-provided setuptools. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, `gpsd` shares one GPS feed between OpenCPN and this tool, and `chrony` can discipline the Pi clock from GPSD when network time is unavailable. The installer leaves chart refresh, track logging, desktop autostart, and LightDM autologin disabled; provisioning installs or enables them only after the onboard config, charts, and GPSD have been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 ## Onboard Config
 

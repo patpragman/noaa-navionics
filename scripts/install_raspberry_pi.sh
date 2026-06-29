@@ -122,13 +122,13 @@ if [[ "$skip_apt" -eq 0 ]]; then
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
-  apt_install python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils
+  apt_install python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils python3-setuptools
   ensure_vcgencmd
 fi
 
 mkdir -p "${HOME}/.local/bin" "$data_dir"
 python3 -m venv "$venv_dir"
-"${venv_dir}/bin/python" -m pip install "${repo_root}"
+"${venv_dir}/bin/python" -m pip install --no-build-isolation --no-use-pep517 "${repo_root}"
 ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"

@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 python3 -m py_compile src/noaa_navionics/*.py
+python3 -m py_compile setup.py
 python3 -m unittest discover -s tests -v
 
 bash -n \
@@ -136,7 +137,14 @@ grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
 grep -q 'python3 python3-venv python3-tk rsync opencpn' scripts/install_raspberry_pi.sh
+grep -q 'python3-setuptools' scripts/install_raspberry_pi.sh
+grep -q -- '--no-build-isolation' scripts/install_raspberry_pi.sh
+grep -q -- '--no-use-pep517' scripts/install_raspberry_pi.sh
 grep -q 'gpsd-clients chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
+grep -q 'console_scripts' setup.py
+grep -q 'noaa-navionics=noaa_navionics.cli:main' setup.py
+grep -q 'noaa-navionics-gui=noaa_navionics.gui:main' setup.py
+! grep -q '^build-backend' pyproject.toml
 grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
