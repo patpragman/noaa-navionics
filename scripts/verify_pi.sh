@@ -339,6 +339,7 @@ fi
 check "OpenCPN command" command -v opencpn
 check "display power command" command -v xset
 check "GPSD command" command -v gpsd
+check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD config" test -f /etc/default/gpsd
 if [[ -r /etc/default/gpsd ]]; then
   check "GPSD daemon enabled" grep -Eq '^START_DAEMON="true"' /etc/default/gpsd

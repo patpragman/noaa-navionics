@@ -55,6 +55,7 @@ grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
+grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
@@ -114,6 +115,7 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
+grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py

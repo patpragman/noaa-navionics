@@ -288,7 +288,7 @@ def _service_readiness_checks(
                 system_services,
                 "gpsd.service",
                 "GPSD Service",
-                require_enabled=False,
+                require_enabled=True,
                 require_active=True,
             )
         )
