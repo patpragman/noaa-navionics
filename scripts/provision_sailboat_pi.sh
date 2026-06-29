@@ -2,7 +2,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-config="${HOME}/.config/noaa-navionics/config.ini"
+default_config="${HOME}/.config/noaa-navionics/config.ini"
+config="$default_config"
 device=""
 allow_non_pi=0
 check_device=1
@@ -83,6 +84,17 @@ require_non_negative_integer() {
     echo "$name must be a non-negative integer" >&2
     exit 2
   fi
+}
+
+same_path() {
+  python3 - "$1" "$2" <<'PY'
+from pathlib import Path
+import sys
+
+left = Path(sys.argv[1]).expanduser().resolve(strict=False)
+right = Path(sys.argv[2]).expanduser().resolve(strict=False)
+raise SystemExit(0 if left == right else 1)
+PY
 }
 
 while [[ $# -gt 0 ]]; do
@@ -194,6 +206,15 @@ if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && ! -e "$
   cat >&2 <<EOF
 GPS device does not exist: $device
 Use a stable path from /dev/serial/by-id/, or pass --no-device-check if it is not plugged in yet.
+EOF
+  exit 2
+fi
+
+if ! same_path "$config" "$default_config" && [[ "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ]]; then
+  cat >&2 <<EOF
+Custom --config path does not match the unattended onboard config: $config
+Installed systemd services and desktop autostart use: $default_config
+Use the default config for production provisioning, or pass both --skip-services and --skip-autologin for manual testing.
 EOF
   exit 2
 fi

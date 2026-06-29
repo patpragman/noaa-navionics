@@ -377,6 +377,8 @@ grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
+grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
 grep -q 'configure_gps_time.sh' scripts/provision_sailboat_pi.sh
 grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
@@ -453,6 +455,22 @@ if [[ "$provision_code" -ne 2 ]]; then
   echo "expected provision_sailboat_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --config /tmp/noaa-navionics-custom.ini >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject custom --config for unattended provisioning with exit 2" >&2
+  exit 1
+fi
+grep -q 'Custom --config path does not match the unattended onboard config' "$provision_output"
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --sync-retries 0 >"$deploy_output" 2>&1
@@ -561,6 +579,7 @@ scripts/provision_sailboat_pi.sh \
   --no-device-check \
   --device /dev/serial/by-id/mock-gps \
   --skip-autologin \
+  --skip-services \
   --config "$tmpdir/config.ini" \
   --gps-seconds 17 \
   --sync-retries 7 \
