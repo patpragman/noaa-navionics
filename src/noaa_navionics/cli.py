@@ -394,6 +394,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd=use_gpsd,
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
+                deadline=deadline,
             )
             fixes = _trackable_fixes(fixes)
             previous_handlers = _install_track_stop_handlers()
@@ -418,6 +419,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                     )
                     count = _log_single_track(fixes, output, deadline=deadline, sample=bool(args.sample))
                     print(f"Saved {count} fixes to {output}")
+                if count == 0:
+                    print("No usable GPS fixes were written to the GPX track.", file=sys.stderr)
+                    return 1
             except _TrackLoggerStop as exc:
                 print(f"Stopped track logger: {exc}")
             finally:
@@ -451,16 +455,39 @@ def _read_fixes(
     gpsd: bool = False,
     gpsd_host: str = "127.0.0.1",
     gpsd_port: int = 2947,
+    deadline: Optional[float] = None,
 ):
     if gpsd:
-        yield from iter_gpsd_fixes(host=gpsd_host, port=gpsd_port)
+        timeout = 10.0
+        if deadline is not None:
+            timeout = max(0.1, deadline - time.monotonic())
+        for fix in iter_gpsd_fixes(host=gpsd_host, port=gpsd_port, timeout=timeout):
+            if deadline is not None and time.monotonic() > deadline:
+                break
+            yield fix
         return
     if sample:
         with Path(sample).expanduser().open(encoding="ascii", errors="ignore") as handle:
             yield from iter_fixes(handle)
         return
     with open_nmea_stream(device, baud=baud) as stream:
-        yield from iter_fixes(read_nmea_lines(stream))
+        lines = _read_nmea_lines_until(stream, deadline) if deadline is not None else read_nmea_lines(stream)
+        yield from iter_fixes(lines)
+
+
+def _read_nmea_lines_until(stream, deadline: float):
+    buffer = b""
+    while time.monotonic() <= deadline:
+        chunk = stream.read(1)
+        if not chunk:
+            time.sleep(0.05)
+            continue
+        buffer += chunk
+        if chunk in (b"\n", b"\r"):
+            line = buffer.decode("ascii", errors="ignore").strip()
+            buffer = b""
+            if line:
+                yield line
 
 
 def _trackable_fixes(fixes):

@@ -560,7 +560,16 @@ class OpenCPNConfigTests(unittest.TestCase):
             calls = []
             original = cli_module._read_fixes
 
-            def fake_read_fixes(device, baud, sample, *, gpsd=False, gpsd_host="127.0.0.1", gpsd_port=2947):
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+            ):
                 calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port))
                 return iter([fix])
 
@@ -601,7 +610,16 @@ class OpenCPNConfigTests(unittest.TestCase):
             calls = []
             original = cli_module._read_fixes
 
-            def fake_read_fixes(device, baud, sample, *, gpsd=False, gpsd_host="127.0.0.1", gpsd_port=2947):
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+            ):
                 calls.append((device, baud, sample, gpsd))
                 return iter([fix])
 
@@ -629,6 +647,48 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False)])
             self.assertFalse(configured_output.exists())
             self.assertTrue((explicit_output / "tracks" / "track-20260629.gpx").exists())
+
+    def test_cli_log_track_seconds_fails_when_no_usable_fix_is_written(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "tracks-out"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            original = cli_module.open_nmea_stream
+
+            def fake_open_nmea_stream(device, baud=4800):
+                return BytesIO(b"")
+
+            try:
+                cli_module.open_nmea_stream = fake_open_nmea_stream
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "log-track",
+                            "--config",
+                            str(app_config),
+                            "--seconds",
+                            "0.01",
+                        ]
+                    )
+            finally:
+                cli_module.open_nmea_stream = original
+
+            self.assertEqual(code, 1)
+            self.assertIn("Saved 0 fixes", stdout.getvalue())
+            self.assertIn("No usable GPS fixes", stderr.getvalue())
+            self.assertFalse(track_output.exists())
 
 
 class GuiTests(unittest.TestCase):
