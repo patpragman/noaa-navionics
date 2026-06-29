@@ -216,9 +216,15 @@ if expected_config_path:
         )
     if manifest.get("exists") is not True:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
-    for key in ("created_at", "package", "url", "sha256", "extract_path"):
+    for key in ("created_at", "package", "package_filename", "url", "download_path", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
+    try:
+        download_bytes = int(manifest.get("download_bytes", 0))
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"status report manifest download byte count invalid: {expected_manifest_path}") from exc
+    if download_bytes <= 0:
+        raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
     extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
     try:
         extract_path.resolve().relative_to(chart_output.resolve())

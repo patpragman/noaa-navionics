@@ -175,7 +175,16 @@ def format_status_text(report: dict[str, object]) -> str:
     manifest = report.get("manifest", {})
     if isinstance(manifest, dict) and manifest:
         lines.extend(["", "Manifest:"])
-        for key in ("created_at", "package", "sha256", "extract_path", "enc_cell_count"):
+        for key in (
+            "created_at",
+            "package",
+            "package_filename",
+            "download_path",
+            "download_bytes",
+            "sha256",
+            "extract_path",
+            "enc_cell_count",
+        ):
             if key in manifest:
                 lines.append(f"{key}: {manifest[key]}")
     services = report.get("services", {})
@@ -258,7 +267,10 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
         "exists": True,
         "created_at": manifest.get("created_at", ""),
         "package": package.get("label", "") if isinstance(package, dict) else "",
+        "package_filename": package.get("filename", "") if isinstance(package, dict) else "",
         "url": package.get("url", "") if isinstance(package, dict) else "",
+        "download_path": download.get("path", "") if isinstance(download, dict) else "",
+        "download_bytes": download.get("bytes", 0) if isinstance(download, dict) else 0,
         "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
         "extract_path": extract.get("path", "") if isinstance(extract, dict) else "",
         "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,

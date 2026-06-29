@@ -132,6 +132,7 @@ grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
 grep -q 'status report manifest missing' scripts/verify_pi.sh
+grep -q 'status report manifest download byte count is not positive' scripts/verify_pi.sh
 grep -q 'status report manifest extract path' scripts/verify_pi.sh
 grep -q 'status report manifest ENC cell count invalid' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
@@ -311,6 +312,8 @@ grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
 grep -q 'def _systemctl_user_show' src/noaa_navionics/report.py
 grep -q 'loaded settings match expected values' src/noaa_navionics/report.py
 grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navionics/report.py
+grep -q '"package_filename"' src/noaa_navionics/report.py
+grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"extract_path": extract.get("path", "")' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
