@@ -687,6 +687,36 @@ check_opencpn_stable() {
   fi
 }
 
+check_launcher_lock_clear_or_live() {
+  local owner_pid=""
+  local cmdline=""
+  if [[ ! -e "$launcher_lock" ]]; then
+    return 0
+  fi
+  if [[ ! -r "${launcher_lock}/pid" ]]; then
+    printf 'chartplotter launcher lock exists without a readable pid file: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  read -r owner_pid <"${launcher_lock}/pid" || owner_pid=""
+  if [[ ! "$owner_pid" =~ ^[0-9]+$ ]]; then
+    printf 'chartplotter launcher lock pid is invalid: %s\n' "${owner_pid:-<empty>}" >&2
+    return 1
+  fi
+  if ! kill -0 "$owner_pid" 2>/dev/null; then
+    printf 'chartplotter launcher lock owner is not running: %s\n' "$owner_pid" >&2
+    return 1
+  fi
+  if [[ ! -r "/proc/${owner_pid}/cmdline" ]]; then
+    printf 'chartplotter launcher lock owner cmdline is unreadable: %s\n' "$owner_pid" >&2
+    return 1
+  fi
+  cmdline="$(tr '\0' ' ' <"/proc/${owner_pid}/cmdline" 2>/dev/null || true)"
+  if [[ "$cmdline" != *"noaa-navionics-start-chartplotter"* && "$cmdline" != *"start_chartplotter.sh"* ]]; then
+    printf 'chartplotter launcher lock owner is not the launcher: %s\n' "${cmdline:-<empty>}" >&2
+    return 1
+  fi
+}
+
 wait_for_chartplotter_started() {
   local deadline=$((SECONDS + chartplotter_start_timeout))
   local last_detail=""
@@ -889,7 +919,7 @@ fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
   check "chartplotter started after boot" wait_for_chartplotter_started
-  check "chartplotter launcher lock clear" test ! -e "$launcher_lock"
+  check "chartplotter launcher lock clear or live" check_launcher_lock_clear_or_live
   if opencpn_running; then
     check "OpenCPN running" true
   else

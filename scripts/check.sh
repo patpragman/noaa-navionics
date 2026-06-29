@@ -71,6 +71,17 @@ grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_c
 grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "$launcher_lock_dir"' scripts/start_chartplotter.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/start_chartplotter.sh").read_text(encoding="utf-8")
+opencpn_start = text.index('opencpn -parse_all_enc &')
+tail = text[opencpn_start:]
+wait_index = tail.index('wait "$opencpn_pid"')
+release_index = tail.find("release_launcher_lock")
+if release_index != -1 and release_index < wait_index:
+    raise SystemExit("chartplotter launcher must keep its launch lock until OpenCPN exits")
+PY
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
@@ -204,7 +215,8 @@ grep -q 'Do not verify root@' scripts/verify_pi.sh
 grep -q 'verification user is not root' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
-grep -q 'chartplotter launcher lock clear' scripts/verify_pi.sh
+grep -q 'check_launcher_lock_clear_or_live' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock clear or live' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
@@ -1289,6 +1301,27 @@ HOME="$launcher_active_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotte
 kill "$active_launcher_pid" 2>/dev/null || true
 wait "$active_launcher_pid" 2>/dev/null || true
 grep -q 'Another NOAA Navionics chartplotter launcher is already running' "$launcher_active_lock_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_live_lock_home="$tmpdir/launcher-live-lock-home"
+mkdir -p "$launcher_live_lock_home/.local/bin" "$launcher_live_lock_home/.cache/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_live_lock_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nprintf "fake opencpn start\\n" >>"$HOME/.cache/noaa-navionics/opencpn-starts.log"\nsleep 2\n' >"$tmpdir/opencpn"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+chmod +x "$launcher_live_lock_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+HOME="$launcher_live_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null &
+live_launcher_pid=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if [[ -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid" ]]; then
+    break
+  fi
+  sleep 0.1
+done
+test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+HOME="$launcher_live_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+wait "$live_launcher_pid"
+test ! -e "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+test "$(grep -c '^fake opencpn start$' "$launcher_live_lock_home/.cache/noaa-navionics/opencpn-starts.log")" -eq 1
+grep -q 'Another NOAA Navionics chartplotter launcher is already running' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_duplicate_home="$tmpdir/launcher-duplicate-home"
 mkdir -p "$launcher_duplicate_home/.local/bin" "$launcher_duplicate_home/.cache/noaa-navionics"

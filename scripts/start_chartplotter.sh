@@ -279,8 +279,6 @@ for _ in 1 2 3 4 5; do
   fi
   sleep 1
 done
-release_launcher_lock
-trap - EXIT
 set +e
 wait "$opencpn_pid"
 opencpn_status=$?
