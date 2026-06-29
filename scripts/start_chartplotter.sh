@@ -286,6 +286,18 @@ validate_launcher_lock_path() {
   fi
 }
 
+launcher_lock_path_safe_for_cleanup() {
+  if [[ -L "$cache_dir" || -L "$launcher_lock_dir" || -L "${launcher_lock_dir}/pid" || -L "${launcher_lock_dir}/boot_id" ]]; then
+    echo "chartplotter launcher lock path became unsafe; leaving it in place: $launcher_lock_dir" >&2
+    return 1
+  fi
+  if [[ -e "$launcher_lock_dir" && ! -d "$launcher_lock_dir" ]]; then
+    echo "chartplotter launcher lock path is no longer a directory; leaving it in place: $launcher_lock_dir" >&2
+    return 1
+  fi
+  return 0
+}
+
 launcher_lock_from_current_boot() {
   local current
   local lock_boot_id=""
@@ -313,6 +325,10 @@ write_launcher_lock_files() {
 
 release_launcher_lock() {
   if [[ "$lock_acquired" -eq 1 ]]; then
+    if ! launcher_lock_path_safe_for_cleanup; then
+      lock_acquired=0
+      return
+    fi
     rm -f "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id"
     rmdir "$launcher_lock_dir" 2>/dev/null || true
     sync_paths "$launcher_lock_dir" || true
@@ -349,6 +365,9 @@ acquire_launcher_lock() {
     fi
   fi
   echo "Removing stale chartplotter launcher lock."
+  if ! launcher_lock_path_safe_for_cleanup; then
+    exit 1
+  fi
   rm -rf "$launcher_lock_dir"
   sync_paths "$launcher_lock_dir" || true
   if mkdir "$launcher_lock_dir" 2>/dev/null; then

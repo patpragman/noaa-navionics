@@ -82,7 +82,9 @@ grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
 grep -q 'current_boot_id' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_lock_path' scripts/start_chartplotter.sh
+grep -q 'launcher_lock_path_safe_for_cleanup' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock path contains a symlink' scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher lock path became unsafe; leaving it in place' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_env_path' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment directory is a symlink' scripts/start_chartplotter.sh
@@ -2828,6 +2830,28 @@ wait "$live_launcher_pid"
 test ! -e "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 test "$(grep -c '^fake opencpn start$' "$launcher_live_lock_home/.cache/noaa-navionics/opencpn-starts.log")" -eq 1
 grep -q 'Another NOAA Navionics chartplotter launcher is already running' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_replaced_lock_home="$tmpdir/launcher-replaced-lock-home"
+mkdir -p "$launcher_replaced_lock_home/.local/bin" "$launcher_replaced_lock_home/.cache/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_replaced_lock_home/.local/bin/noaa-navionics"
+cat >"$tmpdir/opencpn" <<'EOF'
+#!/usr/bin/env bash
+lock="$HOME/.cache/noaa-navionics/chartplotter.launch.lock"
+target="$HOME/.cache/noaa-navionics/replaced-lock-target"
+mkdir -p "$target"
+printf 'keep pid\n' >"$target/pid"
+printf 'keep boot\n' >"$target/boot_id"
+rm -rf "$lock"
+ln -s "$target" "$lock"
+exit 0
+EOF
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+chmod +x "$launcher_replaced_lock_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+HOME="$launcher_replaced_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+test -L "$launcher_replaced_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+test "$(cat "$launcher_replaced_lock_home/.cache/noaa-navionics/replaced-lock-target/pid")" = "keep pid"
+test "$(cat "$launcher_replaced_lock_home/.cache/noaa-navionics/replaced-lock-target/boot_id")" = "keep boot"
+grep -q 'chartplotter launcher lock path became unsafe; leaving it in place' "$launcher_replaced_lock_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_duplicate_home="$tmpdir/launcher-duplicate-home"
 mkdir -p "$launcher_duplicate_home/.local/bin" "$launcher_duplicate_home/.cache/noaa-navionics"
