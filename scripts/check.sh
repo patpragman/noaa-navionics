@@ -210,6 +210,10 @@ grep -q 'python3-setuptools' scripts/install_raspberry_pi.sh
 grep -q -- '--no-build-isolation' scripts/install_raspberry_pi.sh
 grep -q -- '--no-use-pep517' scripts/install_raspberry_pi.sh
 grep -q 'gpsd-clients chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
+grep -q 'status --porcelain --untracked-files=all' scripts/install_raspberry_pi.sh
+grep -q 'revision="${revision}-dirty"' scripts/install_raspberry_pi.sh
+grep -q 'Direct installs run on a dirty Pi worktree' README.md
+grep -q 'direct installs from a dirty Git worktree' docs/sailboat-pi.md
 grep -q 'console_scripts' setup.py
 grep -q 'noaa-navionics=noaa_navionics.cli:main' setup.py
 grep -q 'noaa-navionics-gui=noaa_navionics.gui:main' setup.py
@@ -805,6 +809,11 @@ test -x "$install_smoke_home/.local/bin/noaa-navionics"
 "$install_smoke_home/.local/bin/noaa-navionics" list-packages >/dev/null
 test -f "$install_smoke_home/.config/noaa-navionics/config.ini"
 test -d "$install_smoke_home/.local/share/noaa-navionics/venv"
+install_expected_revision="$(git rev-parse --short HEAD)"
+if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+  install_expected_revision="${install_expected_revision}-dirty"
+fi
+test "$(tr -d '[:space:]' <"$install_smoke_home/.local/share/noaa-navionics/source-revision")" = "$install_expected_revision"
 
 set +e
 scripts/verify_pi.sh --bad-option pi@example.invalid >"$verify_output" 2>&1

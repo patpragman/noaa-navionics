@@ -363,7 +363,9 @@ install_user_file_atomic "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.
 if [[ -f "${repo_root}/.source-revision" ]]; then
   revision="$(tr -d '[:space:]' <"${repo_root}/.source-revision")"
 elif revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null)"; then
-  :
+  if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)" ]]; then
+    revision="${revision}-dirty"
+  fi
 else
   revision="unknown"
 fi
