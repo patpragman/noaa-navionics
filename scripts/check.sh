@@ -545,6 +545,7 @@ grep -q 'def _fsync_tree' src/noaa_navionics/downloader.py
 grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'def _fsync_directory' src/noaa_navionics/gps.py
+grep -q 'fix_quality is not None and self.fix_quality != 0' src/noaa_navionics/gps.py
 grep -q 'if gps_fix_quality_failure(fix):' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: missing coordinates' src/noaa_navionics/gps.py
 grep -q 'hemisphere not in ("N", "S")' src/noaa_navionics/gps.py

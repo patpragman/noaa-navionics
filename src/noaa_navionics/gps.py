@@ -38,7 +38,7 @@ class GPSFix:
 
     @property
     def valid(self) -> bool:
-        return self.latitude is not None and self.longitude is not None and self.fix_quality != 0
+        return self.latitude is not None and self.longitude is not None and self.fix_quality is not None and self.fix_quality != 0
 
     @property
     def speed_mph(self) -> Optional[float]:

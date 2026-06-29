@@ -2858,6 +2858,16 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.satellites, 8)
         self.assertEqual(fix.altitude_m, 545.4)
 
+    def test_iter_fixes_rejects_gga_without_fix_quality(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,,08,0.9,545.4,M,46.9,M,,"
+        fix = parse_nmea_sentence(sentence)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertIsNone(fix.fix_quality)
+        self.assertFalse(fix.valid)
+        self.assertEqual(list(iter_fixes([sentence])), [])
+
     def test_gga_time_without_date_uses_nearest_utc_day(self):
         before_midnight = _parse_time_today("000010", now=datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
         after_midnight = _parse_time_today("235950", now=datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))
