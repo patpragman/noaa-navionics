@@ -141,6 +141,26 @@ PY
   fi
 }
 
+validate_existing_gps_time_config() {
+  if ! python3 - <<'PY'
+from pathlib import Path
+
+chrony_conf = Path("/etc/chrony/chrony.conf")
+expected = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
+if not chrony_conf.exists():
+    raise SystemExit("Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup")
+try:
+    text = chrony_conf.read_text(encoding="utf-8")
+except OSError as exc:
+    raise SystemExit(f"could not read chrony config: {chrony_conf}: {exc}") from exc
+if expected not in text:
+    raise SystemExit("chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used")
+PY
+  then
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -265,6 +285,10 @@ fi
 
 if [[ "$skip_gpsd" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
   validate_existing_gps_config
+fi
+
+if [[ "$skip_gps_time" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
+  validate_existing_gps_time_config
 fi
 
 bin="${HOME}/.local/bin/noaa-navionics"
