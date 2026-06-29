@@ -780,6 +780,41 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(sync_check.ok)
         self.assertIn("failed", sync_check.detail)
 
+    def test_service_readiness_checks_fail_chart_sync_query_error(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {
+                "enabled": "static",
+                "active": "error: Failed to connect to bus",
+            },
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        sync_check = next(check for check in checks if check.name == "Chart Sync")
+
+        self.assertFalse(sync_check.ok)
+        self.assertIn("Failed to connect", sync_check.detail)
+
+    def test_service_readiness_checks_fail_missing_unit_query_result(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "not-found", "active": "unknown"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        timer_check = next(check for check in checks if check.name == "Chart Timer")
+
+        self.assertFalse(timer_check.ok)
+        self.assertIn("not-found", timer_check.detail)
+
     def test_service_readiness_checks_fail_failed_boot_readiness_service(self):
         services = {
             "available": True,

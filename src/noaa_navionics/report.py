@@ -269,8 +269,8 @@ def _unit_not_failed_check(summary: dict[str, object], unit: str, name: str) -> 
         return CheckResult(name, False, f"{unit} missing from status report")
     enabled = str(state.get("enabled", ""))
     active = str(state.get("active", ""))
-    ok = active != "failed"
     detail = f"{unit} enabled={enabled} active={active}"
+    ok = active != "failed" and not _unit_query_failed(enabled) and not _unit_query_failed(active)
     return CheckResult(name, ok, detail)
 
 
@@ -289,6 +289,8 @@ def _unit_check(
         return CheckResult(name, False, f"{unit} missing from status report")
     enabled = str(state.get("enabled", ""))
     active = str(state.get("active", ""))
+    if _unit_query_failed(enabled) or _unit_query_failed(active):
+        return CheckResult(name, False, f"{unit} enabled={enabled} active={active}")
     if active == "failed":
         return CheckResult(name, False, f"{unit} enabled={enabled} active={active}")
     enabled_ok = not require_enabled or enabled in {"enabled", "static", "generated"}
@@ -296,6 +298,18 @@ def _unit_check(
     ok = enabled_ok and active_ok
     detail = f"{unit} enabled={enabled} active={active}"
     return CheckResult(name, ok, detail)
+
+
+def _unit_query_failed(value: str) -> bool:
+    text = value.strip().lower()
+    if not text:
+        return True
+    return (
+        text.startswith("error:")
+        or text.startswith("failed")
+        or text.startswith("exit ")
+        or text in {"not-found", "unknown"}
+    )
 
 
 def _systemctl_user(args: list[str]) -> str:
