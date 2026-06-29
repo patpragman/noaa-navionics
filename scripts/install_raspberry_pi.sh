@@ -38,6 +38,44 @@ for directory in synced_dirs:
 PY
 }
 
+sync_tree() {
+  python3 - "$1" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+root = Path(sys.argv[1]).expanduser()
+if not root.exists():
+    raise SystemExit(f"cannot sync missing tree: {root}")
+
+def fsync_dir(path: Path) -> None:
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+for current_root, dirnames, filenames in os.walk(root):
+    current = Path(current_root)
+    for filename in filenames:
+        file_path = current / filename
+        if file_path.is_symlink():
+            continue
+        try:
+            with file_path.open("rb") as handle:
+                os.fsync(handle.fileno())
+        except OSError:
+            continue
+    for dirname in dirnames:
+        fsync_dir(current / dirname)
+    fsync_dir(current)
+fsync_dir(root.parent)
+PY
+}
+
 reset_private_venv() {
   python3 - "$venv_dir" "$data_dir" <<'PY'
 from pathlib import Path
@@ -156,6 +194,7 @@ mkdir -p "${HOME}/.local/bin" "$data_dir"
 reset_private_venv
 python3 -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install --no-build-isolation --no-use-pep517 "${repo_root}"
+sync_tree "$venv_dir"
 ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"

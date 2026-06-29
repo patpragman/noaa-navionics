@@ -134,6 +134,9 @@ grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
 grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
+grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
+grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
+grep -q 'file_path.is_symlink()' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
