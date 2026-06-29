@@ -267,6 +267,20 @@ class OpenCPNConfigTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    class FakeResponse:
+        def __init__(self, payload, content_length: str = "5"):
+            self.headers = {"Content-Length": content_length}
+            self.payload = BytesIO(payload)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def read(self, size=-1):
+            return self.payload.read(size)
+
     def test_download_writes_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -290,26 +304,11 @@ class ManifestTests(unittest.TestCase):
         calls = {"count": 0}
         original = downloader_module.urlopen
 
-        class FakeResponse:
-            headers = {"Content-Length": "5"}
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return None
-
-            def __init__(self):
-                self.payload = BytesIO(b"chart")
-
-            def read(self, size=-1):
-                return self.payload.read(size)
-
         def fake_urlopen(request, timeout=60):
             calls["count"] += 1
             if calls["count"] == 1:
                 raise URLError("temporary outage")
-            return FakeResponse()
+            return self.FakeResponse(b"chart")
 
         try:
             downloader_module.urlopen = fake_urlopen
@@ -318,6 +317,28 @@ class ManifestTests(unittest.TestCase):
                 result = download_package(package, Path(tmpdir), retries=2, retry_delay=0)
                 self.assertEqual(result.path.read_bytes(), b"chart")
                 self.assertFalse(result.skipped)
+        finally:
+            downloader_module.urlopen = original
+
+        self.assertEqual(calls["count"], 2)
+
+    def test_download_retries_incomplete_response(self):
+        calls = {"count": 0}
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return self.FakeResponse(b"cha")
+            return self.FakeResponse(b"chart")
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                package = Package("Retry test", "https://example.invalid/chart.zip", "chart.zip")
+                result = download_package(package, Path(tmpdir), retries=2, retry_delay=0)
+                self.assertEqual(result.path.read_bytes(), b"chart")
+                self.assertEqual(result.bytes_written, 5)
         finally:
             downloader_module.urlopen = original
 

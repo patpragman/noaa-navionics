@@ -202,6 +202,8 @@ def download_package(
                         written += len(chunk)
                         if progress:
                             progress(written, total)
+                if total is not None and written != total:
+                    raise URLError(f"incomplete download: received {written} of {total} bytes")
         except (HTTPError, URLError, TimeoutError) as exc:
             if tmp_path.exists():
                 tmp_path.unlink()
