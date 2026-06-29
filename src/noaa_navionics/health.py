@@ -699,6 +699,12 @@ def _is_raspberry_pi() -> bool:
 def check_pi_temperature(*, warn_c: float = 70.0, fail_c: float = 80.0) -> CheckResult:
     temperature = _read_pi_temperature()
     if temperature is None:
+        if _is_raspberry_pi():
+            return CheckResult(
+                "Pi Thermal",
+                False,
+                "temperature sensor unavailable on Raspberry Pi; cannot verify enclosure thermal margin",
+            )
         return CheckResult("Pi Thermal", True, "temperature sensor not found; skipping Raspberry Pi thermal check")
     if temperature >= fail_c:
         return CheckResult("Pi Thermal", False, f"{temperature:.1f} C; above {fail_c:.0f} C limit")

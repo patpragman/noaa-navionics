@@ -74,6 +74,7 @@ from noaa_navionics.health import (
     check_chrony_gps_time_source,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
+    check_pi_temperature,
     check_pi_throttling,
     check_source_revision,
     check_system_clock,
@@ -4698,6 +4699,67 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("vcgencmd", result.detail)
+
+    def test_check_pi_temperature_reports_normal_temperature(self):
+        original_reader = health_module._read_pi_temperature
+        try:
+            health_module._read_pi_temperature = lambda: 42.5
+            result = check_pi_temperature()
+        finally:
+            health_module._read_pi_temperature = original_reader
+
+        self.assertTrue(result.ok)
+        self.assertIn("42.5 C", result.detail)
+
+    def test_check_pi_temperature_warns_when_warm(self):
+        original_reader = health_module._read_pi_temperature
+        try:
+            health_module._read_pi_temperature = lambda: 72.0
+            result = check_pi_temperature()
+        finally:
+            health_module._read_pi_temperature = original_reader
+
+        self.assertTrue(result.ok)
+        self.assertIn("warm", result.detail)
+
+    def test_check_pi_temperature_fails_above_limit(self):
+        original_reader = health_module._read_pi_temperature
+        try:
+            health_module._read_pi_temperature = lambda: 81.0
+            result = check_pi_temperature()
+        finally:
+            health_module._read_pi_temperature = original_reader
+
+        self.assertFalse(result.ok)
+        self.assertIn("above 80 C limit", result.detail)
+
+    def test_check_pi_temperature_reports_missing_sensor_on_pi(self):
+        original_reader = health_module._read_pi_temperature
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._read_pi_temperature = lambda: None
+            health_module._is_raspberry_pi = lambda: True
+            result = check_pi_temperature()
+        finally:
+            health_module._read_pi_temperature = original_reader
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("temperature sensor unavailable", result.detail)
+
+    def test_check_pi_temperature_skips_missing_sensor_off_pi(self):
+        original_reader = health_module._read_pi_temperature
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._read_pi_temperature = lambda: None
+            health_module._is_raspberry_pi = lambda: False
+            result = check_pi_temperature()
+        finally:
+            health_module._read_pi_temperature = original_reader
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("skipping", result.detail)
 
 
 if __name__ == "__main__":

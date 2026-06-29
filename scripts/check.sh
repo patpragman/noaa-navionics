@@ -322,6 +322,9 @@ grep -q '"Chart Package"' scripts/verify_pi.sh
 grep -q '"Chart Update Debris"' scripts/verify_pi.sh
 grep -q '"Pi Power"' scripts/verify_pi.sh
 grep -q '"Pi Thermal"' scripts/verify_pi.sh
+grep -q 'temperature sensor unavailable on Raspberry Pi' src/noaa_navionics/health.py
+grep -q 'readable Pi thermal sensor' README.md
+grep -q 'thermal sensor readable' docs/sailboat-pi.md
 grep -q '"GPSD Config"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
