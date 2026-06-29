@@ -431,6 +431,20 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
             self.assertTrue(check_chart_manifest(output, expected_package="state", expected_value="AK").ok)
 
+    def test_write_manifest_does_not_reuse_fixed_part_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            fixed_part = output / "noaa-navionics-manifest.json.part"
+            fixed_part.write_text("other writer\n", encoding="utf-8")
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+
+            downloader_module.write_manifest(output, package, result)
+
+            self.assertEqual(fixed_part.read_text(encoding="utf-8"), "other writer\n")
+            self.assertEqual(read_manifest(output)["package"]["filename"], "AK_ENCs.zip")
+            self.assertFalse(list(output.glob(".noaa-navionics-manifest.json.*.part")))
+
     def test_download_retries_transient_network_failure(self):
         calls = {"count": 0}
         original = downloader_module.urlopen

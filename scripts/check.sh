@@ -45,6 +45,8 @@ grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/he
 grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
+grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
+grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py

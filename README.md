@@ -175,7 +175,7 @@ noaa-navionics configure-opencpn
 
 `configure-opencpn` adds the GPSD network connection only when `[gps] mode = gpsd`; in serial mode it configures charts and skips GPSD.
 
-`sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, NOAA ZIP filename, extraction path, ENC cell count, and sync time. Chart extraction refuses ZIPs with no ENC `.000` cells before replacing the previous extraction. Syncs take a chart-directory lock so a timer run and a manual run cannot update the same chart set at the same time. `preflight` checks that the manifest is current, that the recorded NOAA ZIP matches the configured chart package, that the recorded extraction is still under the configured chart directory, and that it still contains at least the recorded ENC cell count before the boat leaves the dock.
+`sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, NOAA ZIP filename, extraction path, ENC cell count, and sync time. Chart extraction refuses ZIPs with no ENC `.000` cells before replacing the previous extraction. Completed ZIP downloads and manifest JSON are synced before atomic replacement, and manifest writes use unique temporary files. Syncs take a chart-directory lock so a timer run and a manual run cannot update the same chart set at the same time. `preflight` checks that the manifest is current, that the recorded NOAA ZIP matches the configured chart package, that the recorded extraction is still under the configured chart directory, and that it still contains at least the recorded ENC cell count before the boat leaves the dock.
 Preflight also checks for a sane system clock because chart freshness and GPX timestamps depend on UTC time.
 
 Preflight check:

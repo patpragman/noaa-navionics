@@ -231,6 +231,8 @@ def _download_package_unlocked(
                         written += len(chunk)
                         if progress:
                             progress(written, total)
+                    target.flush()
+                    os.fsync(target.fileno())
                 if total is not None and written != total:
                     raise URLError(f"incomplete download: received {written} of {total} bytes")
         except (HTTPError, URLError, TimeoutError) as exc:
@@ -359,6 +361,7 @@ def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_
 
 def write_manifest(output_dir: Union[Path, str], package: Package, result: DownloadResult) -> Path:
     output_path = Path(output_dir).expanduser()
+    output_path.mkdir(parents=True, exist_ok=True)
     digest = result.sha256
     if not digest and result.path.exists():
         digest = sha256_file(result.path)
@@ -381,9 +384,27 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
         },
     }
     target = output_path / MANIFEST_NAME
-    tmp = target.with_suffix(".json.part")
-    tmp.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(tmp, target)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=output_path,
+            prefix=f".{target.name}.",
+            suffix=".part",
+            delete=False,
+        ) as handle:
+            tmp_path = Path(handle.name)
+            handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, target)
+    finally:
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
     return target
 
 
