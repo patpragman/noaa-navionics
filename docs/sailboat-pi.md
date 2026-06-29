@@ -144,7 +144,7 @@ The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add 
 
 ## Startup
 
-The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter` and installs a desktop autostart entry for it. The launcher writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, warns if readiness fails, and then starts OpenCPN.
+The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter` and installs a desktop autostart entry for it. The launcher writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, asks X11 desktop sessions to disable screen blanking and DPMS sleep, warns if readiness fails, and then starts OpenCPN.
 
 Manual launch:
 

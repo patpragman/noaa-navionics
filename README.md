@@ -153,6 +153,7 @@ noaa-navionics-start-chartplotter
 
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
 The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
+When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 
 Create the onboard config:
 

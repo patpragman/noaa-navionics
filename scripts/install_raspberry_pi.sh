@@ -55,7 +55,7 @@ if [[ "$skip_apt" -eq 0 ]]; then
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
-  sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients
+  sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients x11-xserver-utils
 fi
 
 mkdir -p "${HOME}/.local/bin" "$data_dir"

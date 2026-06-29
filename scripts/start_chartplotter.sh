@@ -7,6 +7,17 @@ log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 
+keep_display_awake() {
+  if [[ -n "${DISPLAY:-}" ]] && command -v xset >/dev/null 2>&1; then
+    xset s off >/dev/null 2>&1 || true
+    xset s noblank >/dev/null 2>&1 || true
+    xset -dpms >/dev/null 2>&1 || true
+    echo "Requested display sleep and blanking disabled."
+  elif [[ -n "${DISPLAY:-}" ]]; then
+    echo "Display session found, but xset is unavailable; leaving display power settings unchanged."
+  fi
+}
+
 if [[ ! -x "$bin" ]]; then
   echo "noaa-navionics is not installed at $bin" >&2
   exit 127
@@ -22,6 +33,7 @@ fi
 exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+keep_display_awake
 
 if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
   echo "NOAA Navionics preflight passed."

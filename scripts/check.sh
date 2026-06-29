@@ -21,6 +21,8 @@ grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
+grep -q 'keep_display_awake' scripts/start_chartplotter.sh
+grep -q 'xset s noblank' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
@@ -114,10 +116,14 @@ launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
-chmod +x "$launcher_home/.local/bin/noaa-navionics" "$tmpdir/opencpn"
+printf '#!/usr/bin/env bash\nprintf "xset %%s\\n" "$*" >>"$HOME/.cache/noaa-navionics/xset.log"\n' >"$tmpdir/xset"
+chmod +x "$launcher_home/.local/bin/noaa-navionics" "$tmpdir/opencpn" "$tmpdir/xset"
 head -c 1048577 /dev/zero >"$launcher_home/.cache/noaa-navionics/chartplotter.log"
-HOME="$launcher_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+HOME="$launcher_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log.1"
 test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
+grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
+grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
 
 echo "All checks passed."
