@@ -246,11 +246,13 @@ def _download_package_unlocked(
         break
 
     os.replace(tmp_path, destination)
+    _fsync_directory(output_path)
     extracted_to = None
     if extract and destination.suffix.lower() == ".zip":
         extracted_to = extract_zip(destination, output_path / destination.stem)
         if not keep_zip:
             destination.unlink()
+            _fsync_directory(output_path)
 
     result = DownloadResult(destination, package.url, written, False, extracted_to, digest)
     write_manifest(output_path, package, result)
@@ -275,6 +277,7 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
             archive.extractall(staging)
         if count_enc_cells(staging) <= 0:
             raise RuntimeError(f"extracted ZIP contains no ENC .000 cells: {zip_path}")
+        _fsync_tree(staging)
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
         raise
@@ -285,15 +288,18 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         if destination.exists():
             destination.rename(previous)
         staging.rename(destination)
+        _fsync_directory(parent)
     except Exception:
         if destination.exists():
             _remove_path(destination)
         if previous.exists() and not destination.exists():
             previous.rename(destination)
+            _fsync_directory(parent)
         shutil.rmtree(staging, ignore_errors=True)
         raise
     else:
         _remove_path(previous, missing_ok=True)
+        _fsync_directory(parent)
     return destination
 
 
@@ -317,6 +323,37 @@ def _remove_path(path: Path, *, missing_ok: bool = False) -> None:
     except FileNotFoundError:
         if not missing_ok:
             raise
+
+
+def _fsync_tree(root: Path) -> None:
+    path = Path(root)
+    if not path.exists():
+        return
+    for current_root, dirnames, filenames in os.walk(path):
+        current = Path(current_root)
+        for filename in filenames:
+            file_path = current / filename
+            try:
+                with file_path.open("rb") as handle:
+                    os.fsync(handle.fileno())
+            except OSError:
+                continue
+        for dirname in dirnames:
+            _fsync_directory(current / dirname)
+        _fsync_directory(current)
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        fd = os.open(Path(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 @contextmanager
@@ -399,6 +436,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp_path, target)
+        _fsync_directory(output_path)
     finally:
         if tmp_path is not None:
             try:

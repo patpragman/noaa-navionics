@@ -445,6 +445,22 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(read_manifest(output)["package"]["filename"], "AK_ENCs.zip")
             self.assertFalse(list(output.glob(".noaa-navionics-manifest.json.*.part")))
 
+    def test_write_manifest_syncs_file_and_directory(self):
+        calls = []
+        original_fsync = downloader_module.os.fsync
+        downloader_module.os.fsync = lambda fd: calls.append(fd)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+                result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+
+                downloader_module.write_manifest(output, package, result)
+        finally:
+            downloader_module.os.fsync = original_fsync
+
+        self.assertGreaterEqual(len(calls), 2)
+
     def test_download_retries_transient_network_failure(self):
         calls = {"count": 0}
         original = downloader_module.urlopen
@@ -668,6 +684,23 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual((destination / "US5AK3CM" / "US5AK3CM.000").read_text(encoding="ascii"), "new")
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
             self.assertFalse((root / ".AK_ENCs.previous").exists())
+
+    def test_extract_zip_syncs_extracted_tree_and_parent_directory(self):
+        calls = []
+        original_fsync = downloader_module.os.fsync
+        downloader_module.os.fsync = lambda fd: calls.append(fd)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                archive = root / "charts.zip"
+                with zipfile.ZipFile(archive, "w") as zip_file:
+                    zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+
+                extract_zip(archive, root / "AK_ENCs")
+        finally:
+            downloader_module.os.fsync = original_fsync
+
+        self.assertGreaterEqual(len(calls), 3)
 
     def test_extract_zip_failure_preserves_existing_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
