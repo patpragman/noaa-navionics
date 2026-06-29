@@ -133,6 +133,7 @@ grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py
 grep -q 'sky_max_age_seconds' src/noaa_navionics/gps.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
+grep -q 'def _non_negative_int' src/noaa_navionics/cli.py
 grep -q 'def _non_negative_float' src/noaa_navionics/cli.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py

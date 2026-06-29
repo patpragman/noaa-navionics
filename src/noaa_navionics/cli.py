@@ -44,6 +44,16 @@ def _positive_int(value: str) -> int:
     return parsed
 
 
+def _non_negative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be 0 or greater")
+    return parsed
+
+
 def _positive_float(value: str) -> float:
     try:
         parsed = float(value)
@@ -157,7 +167,7 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--rotate-daily", action="store_true", help="write one GPX file per UTC day")
     track.add_argument(
         "--retention-days",
-        type=int,
+        type=_non_negative_int,
         help="days of rotated GPX track logs to keep; defaults to [tracking].retention_days",
     )
 

@@ -494,6 +494,9 @@ class CLIValidationTests(unittest.TestCase):
     def test_track_logger_rejects_non_positive_duration(self):
         self.assert_parse_error(["log-track", "--seconds", "0"])
 
+    def test_track_logger_rejects_negative_retention_days(self):
+        self.assert_parse_error(["log-track", "--retention-days", "-1"])
+
 
 class ManifestTests(unittest.TestCase):
     class FakeResponse:
