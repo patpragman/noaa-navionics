@@ -1304,6 +1304,23 @@ opencpn_process_active() {
   [[ -n "$state" && "$state" != "Z" ]]
 }
 
+check_opencpn_enc_parse_argument() {
+  local pid
+  local arg
+  while IFS= read -r pid; do
+    if ! opencpn_process_active "$pid" || [[ ! -r "/proc/${pid}/cmdline" ]]; then
+      continue
+    fi
+    while IFS= read -r -d '' arg; do
+      if [[ "$arg" == "-parse_all_enc" ]]; then
+        return 0
+      fi
+    done <"/proc/${pid}/cmdline"
+  done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
+  printf 'no active OpenCPN process was started with -parse_all_enc\n' >&2
+  return 1
+}
+
 check_opencpn_stable() {
   if ! opencpn_running; then
     printf 'OpenCPN is not running before stability wait\n' >&2
@@ -1690,6 +1707,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   else
     check "OpenCPN running" false
   fi
+  check "OpenCPN ENC parse argument" check_opencpn_enc_parse_argument
   check "OpenCPN stable after startup" check_opencpn_stable
   check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config" "$launcher_env"
 fi

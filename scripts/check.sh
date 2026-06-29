@@ -441,6 +441,9 @@ grep -q 'launcher reported failed readiness before OpenCPN startup' scripts/veri
 grep -q 'chartplotter launcher duplicate guard' scripts/verify_pi.sh
 grep -q 'chartplotter launcher OpenCPN restart setting' scripts/verify_pi.sh
 grep -q 'chartplotter launcher OpenCPN restart loop' scripts/verify_pi.sh
+grep -q 'check_opencpn_enc_parse_argument' scripts/verify_pi.sh
+grep -q 'OpenCPN ENC parse argument' scripts/verify_pi.sh
+grep -q 'no active OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher previous-boot lock recovery' scripts/verify_pi.sh
