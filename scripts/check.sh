@@ -391,6 +391,7 @@ grep -q 'status report config path is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory .* has permissions' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
+grep -q 'status report launcher settings path is a symlink' scripts/verify_pi.sh
 grep -q 'config file integrity' scripts/verify_pi.sh
 grep -q 'source revision file integrity' scripts/verify_pi.sh
 grep -q 'Chrony config file integrity' scripts/verify_pi.sh
@@ -975,6 +976,7 @@ grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
+grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' src/noaa_navionics/report.py
@@ -982,6 +984,8 @@ grep -q 'status report launcher settings contain invalid {key}' scripts/verify_p
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/verify_pi.sh
 grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' scripts/verify_pi.sh
 grep -q 'test_launcher_settings_check_fails_invalid_opencpn_restart_values' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_rejects_symlinked_environment' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
 grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
 grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py

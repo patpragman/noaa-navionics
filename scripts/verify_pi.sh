@@ -503,11 +503,16 @@ if expected_launcher_env_path:
         )
     if launcher_settings.get("exists") is not True:
         raise SystemExit(f"status report launcher settings do not exist: {expected_launcher_env_path}")
+    if launcher_settings.get("is_symlink") is True:
+        raise SystemExit(f"status report launcher settings path is a symlink: {expected_launcher_env_path}")
+    launcher_env_file = Path(expected_launcher_env_path).expanduser()
+    if launcher_env_file.is_symlink():
+        raise SystemExit(f"status report launcher settings path is a symlink: {launcher_env_file}")
     values = launcher_settings.get("values")
     if not isinstance(values, dict):
         raise SystemExit(f"status report launcher settings values were not parsed: {expected_launcher_env_path}")
     try:
-        launcher_lines = Path(expected_launcher_env_path).expanduser().read_text(encoding="utf-8").splitlines()
+        launcher_lines = launcher_env_file.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         raise SystemExit(f"could not read launcher environment {expected_launcher_env_path}: {exc}") from exc
     actual_values = {}

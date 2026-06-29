@@ -302,8 +302,10 @@ def format_status_text(report: dict[str, object]) -> str:
             value_text = " ".join(f"{key}={value}" for key, value in sorted(values.items()))
         else:
             value_text = ""
+        symlink_text = f"is_symlink={launcher_settings.get('is_symlink', '')}"
         lines.append(
-            f"path={launcher_settings.get('path', '')} exists={launcher_settings.get('exists', '')} {value_text}".rstrip()
+            f"path={launcher_settings.get('path', '')} "
+            f"exists={launcher_settings.get('exists', '')} {symlink_text} {value_text}".rstrip()
         )
     opencpn_config = report.get("opencpn_config", {})
     if isinstance(opencpn_config, dict) and opencpn_config:
@@ -735,7 +737,14 @@ def _user_unit_file_summary() -> dict[str, object]:
 
 def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]:
     launcher_env = Path(path or DEFAULT_LAUNCHER_ENV_PATH).expanduser()
-    summary: dict[str, object] = {"path": str(launcher_env), "exists": launcher_env.is_file()}
+    summary: dict[str, object] = {
+        "path": str(launcher_env),
+        "exists": launcher_env.is_file(),
+        "is_symlink": launcher_env.is_symlink(),
+    }
+    if launcher_env.is_symlink():
+        summary["error"] = f"launcher environment path is a symlink: {launcher_env}"
+        return summary
     if not launcher_env.exists():
         return summary
     try:
@@ -1062,6 +1071,8 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     path = str(summary.get("path", DEFAULT_LAUNCHER_ENV_PATH.expanduser()))
     if summary.get("exists") is not True:
         return CheckResult("Launcher Settings", False, f"launcher environment is missing: {path}")
+    if summary.get("is_symlink") is True:
+        return CheckResult("Launcher Settings", False, f"launcher environment path is a symlink: {path}")
     error = str(summary.get("error", ""))
     if error:
         return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")
