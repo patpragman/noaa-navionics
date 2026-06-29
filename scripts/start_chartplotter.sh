@@ -190,10 +190,13 @@ acquire_launcher_lock() {
 
 show_preflight_warning() {
   local action_text
+  local button_text
   if [[ "$start_on_failed_readiness" -eq 1 ]]; then
     action_text="OpenCPN will start anyway. Keep backup navigation available."
+    button_text="Start OpenCPN"
   else
     action_text="OpenCPN will not start automatically. Keep backup navigation available and fix readiness before departure."
+    button_text="Dismiss"
   fi
   if [[ "$warning_seconds" -eq 0 ]]; then
     echo "Readiness warning timeout is 0 seconds; continuing immediately."
@@ -209,7 +212,7 @@ show_preflight_warning() {
     sleep "$warning_seconds"
     return 0
   fi
-  if python3 - "$status_report" "$warning_seconds" "$action_text" <<'PY'
+  if python3 - "$status_report" "$warning_seconds" "$action_text" "$button_text" <<'PY'
 from pathlib import Path
 import json
 import sys
@@ -218,6 +221,7 @@ import tkinter as tk
 status_report = Path(sys.argv[1]).expanduser()
 seconds = int(sys.argv[2])
 action_text = sys.argv[3]
+button_text = sys.argv[4]
 
 def failed_checks(path):
     try:
@@ -262,7 +266,7 @@ frame = tk.Frame(root, padx=24, pady=20)
 frame.pack(fill="both", expand=True)
 label = tk.Label(frame, text=message, justify="left", wraplength=520)
 label.pack(pady=(0, 16))
-button = tk.Button(frame, text="Start OpenCPN", command=root.destroy)
+button = tk.Button(frame, text=button_text, command=root.destroy)
 button.pack()
 root.after(seconds * 1000, root.destroy)
 root.mainloop()

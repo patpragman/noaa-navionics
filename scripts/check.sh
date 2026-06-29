@@ -96,6 +96,9 @@ grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/start_chartplotter.sh
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
 grep -q 'import json' scripts/start_chartplotter.sh
 grep -q 'Failed checks' scripts/start_chartplotter.sh
+grep -q 'button_text="Dismiss"' scripts/start_chartplotter.sh
+grep -q 'button_text="Start OpenCPN"' scripts/start_chartplotter.sh
+grep -q 'text=button_text' scripts/start_chartplotter.sh
 grep -q 'Readiness warning displayed' scripts/start_chartplotter.sh
 grep -q 'Not starting OpenCPN automatically because readiness failed' scripts/start_chartplotter.sh
 grep -q 'xset s noblank' scripts/start_chartplotter.sh
