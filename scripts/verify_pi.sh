@@ -98,6 +98,7 @@ require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
 gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-10}"
 chartplotter_start_timeout=120
 chartplotter_start_interval=5
+opencpn_stability_seconds=10
 
 check() {
   local name="$1"
@@ -403,6 +404,18 @@ opencpn_running() {
   pgrep -u "$(id -u)" -x opencpn >/dev/null
 }
 
+check_opencpn_stable() {
+  if ! opencpn_running; then
+    printf 'OpenCPN is not running before stability wait\n' >&2
+    return 1
+  fi
+  sleep "$opencpn_stability_seconds"
+  if ! opencpn_running; then
+    printf 'OpenCPN exited within %ss of startup verification\n' "$opencpn_stability_seconds" >&2
+    return 1
+  fi
+}
+
 wait_for_chartplotter_started() {
   local deadline=$((SECONDS + chartplotter_start_timeout))
   local last_detail=""
@@ -584,6 +597,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   else
     check "OpenCPN running" false
   fi
+  check "OpenCPN stable after startup" check_opencpn_stable
   check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config"
 fi
 check "config file" test -f "$config"

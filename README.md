@@ -132,7 +132,7 @@ scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS
 ```
 
 For deliberate test deployments from a dirty worktree, pass `--allow-dirty` to the dock test as well.
-After the reboot, the dock test requires the Pi boot ID to change, then uses the stricter verify mode that waits briefly for desktop autostart, requires the existing readiness status report and chartplotter launcher log to be fresh for the current boot, and requires an `opencpn` process owned by the deployed user to be running.
+After the reboot, the dock test requires the Pi boot ID to change, then uses the stricter verify mode that waits briefly for desktop autostart, requires the existing readiness status report and chartplotter launcher log to be fresh for the current boot, and requires an `opencpn` process owned by the deployed user to remain running through a short stability check.
 
 On the Pi, configure GPSD with the GPS device:
 
