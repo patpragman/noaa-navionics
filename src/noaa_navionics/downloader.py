@@ -628,9 +628,12 @@ def _matching_previous_manifest(
     except Exception:
         return None
     created_at = str(manifest.get("created_at", "")).strip()
+    created_at_source = str(manifest.get("created_at_source", "")).strip()
     package_section = manifest.get("package", {})
     download = manifest.get("download", {})
     if not created_at or not isinstance(package_section, dict) or not isinstance(download, dict):
+        return None
+    if created_at_source not in {"download", "previous-manifest"}:
         return None
     if package_section.get("filename") != package.filename or package_section.get("url") != package.url:
         return None

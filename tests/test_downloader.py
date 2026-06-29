@@ -1447,6 +1447,24 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse((output / "AK_ENCs" / "US5AK4CM").exists())
 
+    def test_existing_zip_unverified_previous_manifest_fails_before_extracting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
+            manifest = read_manifest(output)
+            manifest["created_at_source"] = "unverified-cache"
+            (output / MANIFEST_NAME).write_text(json.dumps(manifest), encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "prior verified manifest"):
+                download_package(package, output, extract=True)
+
+            self.assertEqual(read_manifest(output)["created_at_source"], "unverified-cache")
+
     def test_existing_zip_preserves_previous_manifest_timestamp(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
