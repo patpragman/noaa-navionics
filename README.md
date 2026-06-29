@@ -115,7 +115,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-Verification also checks that the chartplotter launcher and desktop autostart entry were installed.
+Verification also checks that the chartplotter launcher, desktop autostart entry, and GPSD startup options were installed.
 
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 

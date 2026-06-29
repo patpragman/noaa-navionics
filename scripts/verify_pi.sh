@@ -70,6 +70,9 @@ check "OpenCPN command" command -v opencpn
 check "GPSD command" command -v gpsd
 check "GPSD config" test -f /etc/default/gpsd
 if [[ -r /etc/default/gpsd ]]; then
+  check "GPSD daemon enabled" grep -Eq '^START_DAEMON="true"' /etc/default/gpsd
+  check "GPSD USB auto disabled" grep -Eq '^USBAUTO="false"' /etc/default/gpsd
+  check "GPSD immediate polling" grep -Eq '^GPSD_OPTIONS="[^"]*-n[^"]*"' /etc/default/gpsd
   check "GPSD device configured" grep -Eq '^DEVICES="[^"]+"' /etc/default/gpsd
   gpsd_device="$(sed -n 's/^DEVICES="\([^"]*\)".*/\1/p' /etc/default/gpsd | awk '{print $1}')"
   if [[ -n "$gpsd_device" ]]; then
