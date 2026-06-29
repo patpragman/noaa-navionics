@@ -257,17 +257,21 @@ def format_status_text(report: dict[str, object]) -> str:
             "created_at",
             "created_at_source",
             "is_symlink",
+            "directory_is_symlink",
+            "manifest_symlink_component",
             "package",
             "package_filename",
             "url",
             "download_path",
             "download_path_is_symlink",
+            "download_path_symlink_component",
             "download_url",
             "download_skipped",
             "download_bytes",
             "sha256",
             "extract_path",
             "extract_path_is_symlink",
+            "extract_path_symlink_component",
             "enc_cell_count",
         ):
             if key in manifest:
@@ -669,17 +673,21 @@ def _track_log_readiness_check(track_log: dict[str, object]) -> CheckResult:
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:
     manifest_path = Path(chart_output).expanduser() / MANIFEST_NAME
+    manifest_symlink_component = _first_symlink_ancestor(manifest_path.parent)
     summary: dict[str, object] = {
         "path": str(manifest_path),
         "exists": manifest_path.exists(),
         "is_symlink": manifest_path.is_symlink(),
         "directory_is_symlink": manifest_path.parent.is_symlink(),
+        "manifest_symlink_component": (
+            str(manifest_symlink_component) if manifest_symlink_component is not None else ""
+        ),
     }
     if manifest_path.is_symlink():
         summary["error"] = f"manifest path is a symlink: {manifest_path}"
         return summary
-    if manifest_path.parent.is_symlink():
-        summary["error"] = f"manifest directory is a symlink: {manifest_path.parent}"
+    if manifest_symlink_component is not None:
+        summary["error"] = f"manifest directory is a symlink: {manifest_symlink_component}"
         return summary
     if not manifest_path.exists():
         return summary
@@ -693,6 +701,14 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
     extract = manifest.get("extract", {})
     download_path = str(download.get("path", "")).strip() if isinstance(download, dict) else ""
     extract_path = str(extract.get("path", "")).strip() if isinstance(extract, dict) else ""
+    download_path_obj = Path(download_path).expanduser() if download_path else None
+    extract_path_obj = Path(extract_path).expanduser() if extract_path else None
+    download_path_symlink_component = (
+        _first_symlink_ancestor(download_path_obj) if download_path_obj is not None else None
+    )
+    extract_path_symlink_component = (
+        _first_symlink_ancestor(extract_path_obj) if extract_path_obj is not None else None
+    )
     summary.update(
         {
             "created_at": manifest.get("created_at", ""),
@@ -701,13 +717,19 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
             "package_filename": package.get("filename", "") if isinstance(package, dict) else "",
             "url": package.get("url", "") if isinstance(package, dict) else "",
             "download_path": download_path,
-            "download_path_is_symlink": Path(download_path).expanduser().is_symlink() if download_path else False,
+            "download_path_is_symlink": download_path_obj.is_symlink() if download_path_obj is not None else False,
+            "download_path_symlink_component": (
+                str(download_path_symlink_component) if download_path_symlink_component is not None else ""
+            ),
             "download_url": download.get("url", "") if isinstance(download, dict) else "",
             "download_skipped": download.get("skipped", False) if isinstance(download, dict) else False,
             "download_bytes": download.get("bytes", 0) if isinstance(download, dict) else 0,
             "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
             "extract_path": extract_path,
-            "extract_path_is_symlink": Path(extract_path).expanduser().is_symlink() if extract_path else False,
+            "extract_path_is_symlink": extract_path_obj.is_symlink() if extract_path_obj is not None else False,
+            "extract_path_symlink_component": (
+                str(extract_path_symlink_component) if extract_path_symlink_component is not None else ""
+            ),
             "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
         }
     )

@@ -1110,15 +1110,25 @@ grep -q 'deployed source revision directory is a symlink' src/noaa_navionics/hea
 grep -q 'test_app_summary_rejects_symlinked_source_revision_directory' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_directory_on_pi' tests/test_downloader.py
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
+grep -q '"manifest_symlink_component"' src/noaa_navionics/report.py
+grep -q '"download_path_symlink_component"' src/noaa_navionics/report.py
+grep -q '"extract_path_symlink_component"' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest download path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report desktop autostart directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config directory is a symlink' scripts/verify_pi.sh
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_directory' tests/test_downloader.py
+grep -q 'test_manifest_summary_rejects_symlinked_manifest_ancestor' tests/test_downloader.py
+grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
+grep -q 'Status reports and Pi verification also reject symlinked manifest' README.md
+grep -q 'Status reports and Pi verification also reject symlinked manifest' docs/sailboat-pi.md
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
