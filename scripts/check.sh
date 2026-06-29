@@ -759,6 +759,7 @@ grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Track Log' src/noaa_navionics/report.py
 grep -q 'def _track_log_summary' src/noaa_navionics/report.py
+grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py

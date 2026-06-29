@@ -10,6 +10,7 @@ import shutil
 import sys
 import signal
 import tempfile
+import threading
 import textwrap
 import time
 import unittest
@@ -2388,6 +2389,9 @@ class StatusReportTests(unittest.TestCase):
                 "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
                 encoding="ascii",
             )
+            track_time = datetime.now(timezone.utc)
+            with GPXTrackLogger(charts / "tracks" / "track-20260629.gpx") as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=track_time))
             config = root / "config.ini"
             config.write_text(
                 "[charts]\n"
@@ -2554,6 +2558,33 @@ class StatusReportTests(unittest.TestCase):
             self.assertAlmostEqual(summary["latest_longitude"], -149.9003)
             self.assertTrue(check.ok)
             self.assertIn("61.218100", check.detail)
+
+    def test_track_log_summary_waits_for_delayed_trackpoint(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "tracks" / "track-20260629.gpx"
+
+            def write_later():
+                time.sleep(0.05)
+                with GPXTrackLogger(track_path) as logger:
+                    logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+
+            writer = threading.Thread(target=write_later)
+            writer.start()
+            try:
+                summary = _track_log_summary(
+                    root,
+                    now=timestamp + timedelta(seconds=5),
+                    boot_epoch=timestamp.timestamp() - 10,
+                    wait_seconds=1.0,
+                    poll_seconds=0.01,
+                )
+            finally:
+                writer.join()
+
+            self.assertTrue(summary["ok"])
+            self.assertEqual(summary["latest_path"], str(track_path))
 
     def test_track_log_summary_rejects_stale_trackpoint(self):
         timestamp = datetime.now(timezone.utc) - timedelta(seconds=700)

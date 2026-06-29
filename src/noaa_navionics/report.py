@@ -114,7 +114,10 @@ def build_status_report(
     launcher_settings = _launcher_settings_summary()
     opencpn_config = _opencpn_config_summary()
     desktop = _desktop_summary()
-    track_log = _track_log_summary(app_config.track_output)
+    track_log = _track_log_summary(
+        app_config.track_output,
+        wait_seconds=min(max(float(gps_seconds), 10.0), 60.0),
+    )
     service_checks = _service_readiness_checks(
         services,
         system_services,
@@ -375,6 +378,31 @@ def _current_boot_epoch() -> Optional[float]:
 
 
 def _track_log_summary(
+    track_output: Path,
+    *,
+    max_age_seconds: float = 600.0,
+    now: Optional[datetime] = None,
+    boot_epoch: Optional[float] = None,
+    expected_uid: Optional[int] = None,
+    wait_seconds: float = 0.0,
+    poll_seconds: float = 1.0,
+) -> dict[str, object]:
+    deadline = time.monotonic() + max(0.0, wait_seconds)
+    poll_interval = max(0.1, poll_seconds)
+    while True:
+        summary = _track_log_summary_once(
+            track_output,
+            max_age_seconds=max_age_seconds,
+            now=now,
+            boot_epoch=boot_epoch,
+            expected_uid=expected_uid,
+        )
+        if summary.get("ok") is True or time.monotonic() >= deadline:
+            return summary
+        time.sleep(min(poll_interval, max(0.0, deadline - time.monotonic())))
+
+
+def _track_log_summary_once(
     track_output: Path,
     *,
     max_age_seconds: float = 600.0,
