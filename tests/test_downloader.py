@@ -580,6 +580,29 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("only 1 remain", result.detail)
 
+    def test_manifest_extract_path_outside_chart_dir_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            outside = root / "outside" / "AK_ENCs"
+            cell = outside / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            charts.mkdir()
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (charts / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{outside}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(charts)
+
+            self.assertFalse(result.ok)
+            self.assertIn("outside chart directory", result.detail)
+
     def test_chart_package_rejects_update_bundle_as_primary_charts(self):
         result = check_chart_package("updates", "ten-days")
         self.assertFalse(result.ok)

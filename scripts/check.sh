@@ -38,6 +38,7 @@ grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'no fresh GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh NMEA fix' src/noaa_navionics/health.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
+grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py

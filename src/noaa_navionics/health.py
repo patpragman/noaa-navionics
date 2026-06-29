@@ -198,6 +198,10 @@ def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckRes
     if not extract_path.exists():
         return CheckResult("Manifest", False, f"manifest extract path does not exist: {extract_path}")
     try:
+        extract_path.resolve().relative_to(path.resolve())
+    except ValueError:
+        return CheckResult("Manifest", False, f"manifest extract path is outside chart directory: {extract_path}")
+    try:
         manifest_cell_count = int(extract.get("enc_cell_count", 0))
     except (TypeError, ValueError):
         return CheckResult("Manifest", False, "manifest has invalid ENC cell count")
