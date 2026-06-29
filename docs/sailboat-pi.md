@@ -143,6 +143,14 @@ Manual launch:
 noaa-navionics-start-chartplotter
 ```
 
+Maintenance GUI:
+
+```bash
+noaa-navionics-gui
+```
+
+The GUI can load `~/.config/noaa-navionics/config.ini`, sync the configured chart package, write `~/.cache/noaa-navionics/status.json`, run preflight checks, and register the configured chart/GPSD connection with OpenCPN. Close OpenCPN before using the GUI's OpenCPN configuration button.
+
 ## Charts
 
 Download Alaska charts:
