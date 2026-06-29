@@ -122,7 +122,7 @@ scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 The script requires an absolute `/dev/...` path without whitespace or quotes, backs up `/etc/default/gpsd`, writes and syncs the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
-Readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`; use `/dev/serial/by-id/...` for USB GPS receivers or a stable Raspberry Pi serial alias for UART GPS hardware.
+GPSD setup and readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`; use `/dev/serial/by-id/...` for USB GPS receivers or a stable Raspberry Pi serial alias for UART GPS hardware.
 
 Restart and verify:
 

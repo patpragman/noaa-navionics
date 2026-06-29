@@ -43,6 +43,17 @@ if fd is not None:
 PY
 }
 
+volatile_usb_device_path() {
+  case "$(basename "$1")" in
+    ttyUSB*|ttyACM*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -102,6 +113,14 @@ esac
 
 if [[ "$device" =~ [[:space:]\"\'] ]]; then
   echo "GPS device path must not contain whitespace or quotes: $device" >&2
+  exit 2
+fi
+
+if volatile_usb_device_path "$device"; then
+  cat >&2 <<EOF
+GPS device path is volatile: $device
+Use /dev/serial/by-id/... for USB GPS receivers, or a stable Raspberry Pi serial alias such as /dev/serial0.
+EOF
   exit 2
 fi
 

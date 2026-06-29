@@ -67,6 +67,7 @@ grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autol
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
+grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -229,12 +230,22 @@ if [[ "$gpsd_code" -ne 2 ]]; then
   exit 1
 fi
 
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device /dev/ttyUSB0 >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject volatile GPS device paths with exit 2" >&2
+  exit 1
+fi
+
 tmpdir="$(mktemp -d)"
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
   --no-device-check \
-  --device /dev/ttyUSB0 \
+  --device /dev/serial/by-id/mock-gps \
   --skip-autologin \
   --config "$tmpdir/config.ini" \
   --sync-retries 7 \
