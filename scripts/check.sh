@@ -29,6 +29,8 @@ grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'show_preflight_warning' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' scripts/start_chartplotter.sh
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
+grep -q 'import json' scripts/start_chartplotter.sh
+grep -q 'Failed checks' scripts/start_chartplotter.sh
 grep -q 'Readiness warning displayed' scripts/start_chartplotter.sh
 grep -q 'xset s noblank' scripts/start_chartplotter.sh
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh

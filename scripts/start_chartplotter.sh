@@ -71,17 +71,49 @@ show_preflight_warning() {
   fi
   if python3 - "$status_report" "$warning_seconds" <<'PY'
 from pathlib import Path
+import json
 import sys
 import tkinter as tk
 
 status_report = Path(sys.argv[1]).expanduser()
 seconds = int(sys.argv[2])
+
+def failed_checks(path):
+    try:
+        with path.open(encoding="utf-8") as handle:
+            report = json.load(handle)
+    except Exception:
+        return []
+    failed = []
+    for section in ("checks", "service_checks"):
+        rows = report.get(section, [])
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict) or row.get("ok") is True:
+                continue
+            name = str(row.get("name", "Check")).strip() or "Check"
+            detail = str(row.get("detail", "")).strip()
+            failed.append(f"{name}: {detail}" if detail else name)
+    return failed
+
+failures = failed_checks(status_report)
+if failures:
+    visible = failures[:6]
+    extra = len(failures) - len(visible)
+    failure_text = "Failed checks:\n" + "\n".join(f"- {item}" for item in visible)
+    if extra > 0:
+        failure_text += f"\n- and {extra} more"
+else:
+    failure_text = "Failed checks could not be read from the status report."
+
 root = tk.Tk()
 root.title("NOAA Navionics Readiness")
 root.attributes("-topmost", True)
 root.resizable(False, False)
 message = (
     "NOAA Navionics readiness failed.\n\n"
+    f"{failure_text}\n\n"
     f"Status report:\n{status_report}\n\n"
     "OpenCPN will start anyway. Keep backup navigation available."
 )
