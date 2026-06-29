@@ -303,6 +303,7 @@ grep -q 'GPS device path is not a character device' scripts/provision_sailboat_p
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
+grep -q 'not line.lstrip().startswith("#")' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh

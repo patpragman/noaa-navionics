@@ -123,7 +123,7 @@ Onboard config chart and track output paths must be absolute or start with `~`, 
 For production provisioning, use the default onboard config at `~/.config/noaa-navionics/config.ini`; custom `--config` paths are rejected unless both services and desktop autostart are deliberately skipped for manual testing.
 When `deploy_to_pi.sh --provision` is run with `--skip-autologin`, that choice is applied to both installation and provisioning. `--skip-services` requires `--skip-autologin` so the Pi is not left with desktop chartplotter autostart enabled but no readiness or track-logging services.
 Use `--skip-gpsd` only when the onboard config already names a commissioned local GPSD receiver; provisioning rejects missing, placeholder, remote, volatile, or nonexistent GPS config before enabling unattended startup.
-Use `--skip-gps-time` only when chrony already contains this project's GPSD `SHM 0` time-source block; provisioning rejects missing GPS time configuration before enabling unattended startup.
+Use `--skip-gps-time` only when chrony already contains this project's uncommented GPSD `SHM 0` time-source block; provisioning rejects missing or commented-out GPS time configuration before enabling unattended startup.
 Use `--skip-sync` only when the onboard config already points at a fresh, complete NOAA chart manifest; provisioning rejects missing or incomplete chart data before enabling unattended startup.
 Use `--no-device-check` only for manual testing with both `--skip-services` and `--skip-autologin`; production provisioning requires the GPS receiver path to exist before unattended startup is enabled.
 

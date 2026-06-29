@@ -159,7 +159,8 @@ try:
     text = chrony_conf.read_text(encoding="utf-8")
 except OSError as exc:
     raise SystemExit(f"could not read chrony config: {chrony_conf}: {exc}") from exc
-if expected not in text:
+configured = any(line.strip() == expected for line in text.splitlines() if not line.lstrip().startswith("#"))
+if not configured:
     raise SystemExit("chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used")
 PY
   then
