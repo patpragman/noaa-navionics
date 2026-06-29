@@ -23,6 +23,7 @@ from .gps import (
     GPXTrackLogger,
     daily_track_path,
     default_track_path,
+    gps_fix_has_quality_fields,
     gps_fix_quality_failure,
     iter_fixes,
     iter_gpsd_fixes,
@@ -460,15 +461,25 @@ def _read_fixes(
 
 def _trackable_fixes(fixes):
     last_skip_detail = ""
+    pending_without_quality = None
     for fix in fixes:
         quality_detail = gps_fix_quality_failure(fix)
         if quality_detail:
+            pending_without_quality = None
             if quality_detail != last_skip_detail:
                 print(f"Skipping weak track fix: {quality_detail}", file=sys.stderr)
                 last_skip_detail = quality_detail
             continue
         last_skip_detail = ""
+        if not gps_fix_has_quality_fields(fix):
+            if pending_without_quality is not None:
+                yield pending_without_quality
+            pending_without_quality = fix
+            continue
+        pending_without_quality = None
         yield fix
+    if pending_without_quality is not None:
+        yield pending_without_quality
 
 
 class _TrackLoggerStop(Exception):

@@ -1298,6 +1298,39 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual(list(_trackable_fixes(iter([position_only]))), [position_only])
 
+    def test_trackable_fixes_delay_position_only_until_next_fix(self):
+        first = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+        )
+        second = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 1, tzinfo=timezone.utc),
+            latitude=3.0,
+            longitude=4.0,
+        )
+
+        self.assertEqual(list(_trackable_fixes(iter([first, second]))), [first, second])
+
+    def test_trackable_fixes_drop_pending_position_only_before_weak_quality(self):
+        position_only = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+        )
+        weak = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 1, tzinfo=timezone.utc),
+            latitude=3.0,
+            longitude=4.0,
+            satellites=3,
+            hdop=1.2,
+        )
+
+        with redirect_stderr(StringIO()):
+            fixes = list(_trackable_fixes(iter([position_only, weak])))
+
+        self.assertEqual(fixes, [])
+
     def test_shared_gps_quality_rejects_high_hdop(self):
         fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=9.9)
 
