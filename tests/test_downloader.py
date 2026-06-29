@@ -5161,6 +5161,19 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("not a directory", result.detail)
 
+    def test_disk_check_rejects_symlinked_storage_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "real-charts"
+            target.mkdir()
+            link = root / "charts"
+            link.symlink_to(target, target_is_directory=True)
+
+            result = check_disk_space(link)
+
+            self.assertFalse(result.ok)
+            self.assertIn("is a symlink", result.detail)
+
     def test_disk_check_rejects_missing_parent_storage(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "missing-mount" / "charts"

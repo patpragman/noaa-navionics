@@ -612,6 +612,9 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
     existing = path if path.exists() else path.parent
     if not existing.exists():
         return CheckResult(name, False, f"{existing} does not exist; create or mount the configured storage path")
+    symlink = _first_storage_symlink(path, existing)
+    if symlink is not None:
+        return CheckResult(name, False, f"{symlink} is a symlink; use a real mounted storage directory")
     if not existing.is_dir():
         return CheckResult(name, False, f"{existing} is not a directory")
     mount_detail = _missing_removable_mount(path, existing)
@@ -625,6 +628,19 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
     if not writable:
         detail += "; not writable"
     return CheckResult(name, ok, detail)
+
+
+def _first_storage_symlink(configured_path: Path, existing_path: Path) -> Optional[Path]:
+    current = configured_path
+    while True:
+        if current.is_symlink():
+            return current
+        if current == existing_path:
+            return None
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
 
 
 def _missing_removable_mount(configured_path: Path, existing_path: Path) -> str:

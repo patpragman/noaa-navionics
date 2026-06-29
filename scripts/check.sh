@@ -739,6 +739,8 @@ if not (bytes_index < exists_index and sha_index < exists_index):
     raise SystemExit("manifest download byte count and SHA-256 must be validated before retained ZIP existence")
 PY
 grep -q 'create or mount the configured storage path' src/noaa_navionics/health.py
+grep -q 'use a real mounted storage directory' src/noaa_navionics/health.py
+grep -q 'def _first_storage_symlink' src/noaa_navionics/health.py
 grep -q 'REMOVABLE_STORAGE_ROOTS' src/noaa_navionics/health.py
 grep -q 'no mounted storage device' src/noaa_navionics/health.py
 grep -q 'os.path.ismount' src/noaa_navionics/health.py
@@ -942,6 +944,7 @@ grep -q 'User Linger' src/noaa_navionics/report.py
 grep -q 'status report user linger' scripts/verify_pi.sh
 grep -q '"User Linger"' scripts/verify_pi.sh
 grep -q 'test_service_readiness_checks_include_user_linger' tests/test_downloader.py
+grep -q 'test_disk_check_rejects_symlinked_storage_directory' tests/test_downloader.py
 grep -q 'def _track_log_summary' src/noaa_navionics/report.py
 grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
