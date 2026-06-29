@@ -258,6 +258,9 @@ def _download_package_unlocked(
 ) -> DownloadResult:
     destination = output_path / package.filename
 
+    if destination.is_symlink():
+        raise RuntimeError(f"chart archive path is a symlink: {destination}")
+
     if destination.exists() and not force:
         digest = sha256_file(destination)
         bytes_written = destination.stat().st_size
@@ -279,7 +282,7 @@ def _download_package_unlocked(
     if retries < 1:
         raise ValueError("retries must be at least 1")
     tmp_path = destination.with_suffix(destination.suffix + ".part")
-    if tmp_path.exists():
+    if tmp_path.exists() or tmp_path.is_symlink():
         raise RuntimeError(f"partial download already exists; remove interrupted chart update debris: {tmp_path}")
     request = Request(package.url, headers={"User-Agent": USER_AGENT})
     written = 0
@@ -334,6 +337,8 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
     destination = Path(destination).expanduser()
     parent = destination.parent
     parent.mkdir(parents=True, exist_ok=True)
+    if destination.is_symlink():
+        raise RuntimeError(f"chart extraction destination is a symlink: {destination}")
     staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", suffix=".extracting", dir=parent))
     previous = parent / f".{destination.name}.previous"
     try:

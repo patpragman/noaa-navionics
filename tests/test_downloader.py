@@ -1573,6 +1573,27 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((output / "AK_ENCs").exists())
             self.assertFalse((output / MANIFEST_NAME).exists())
 
+    def test_existing_zip_symlink_fails_before_reading_cache(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "charts"
+            output.mkdir()
+            real_archive = root / "real.zip"
+            with zipfile.ZipFile(real_archive, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            archive_link = output / "AK_ENCs.zip"
+            try:
+                archive_link.symlink_to(real_archive)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            package = Package("State AK", real_archive.as_uri(), "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart archive path is a symlink"):
+                download_package(package, output, extract=True)
+
+            self.assertTrue(archive_link.is_symlink())
+            self.assertFalse((output / "AK_ENCs").exists())
+
     def test_existing_zip_mismatched_previous_manifest_fails_before_extracting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1698,6 +1719,21 @@ class ManifestTests(unittest.TestCase):
                 download_package(package, output, force=True)
 
             self.assertEqual(partial.read_bytes(), b"interrupted")
+
+    def test_download_rejects_existing_partial_symlink(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            partial = output / "AK_ENCs.zip.part"
+            try:
+                partial.symlink_to(output / "missing-part-target")
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            package = package_for(state="AK")
+
+            with self.assertRaisesRegex(RuntimeError, "partial download already exists"):
+                download_package(package, output, force=True)
+
+            self.assertTrue(partial.is_symlink())
 
     def test_download_retries_transient_network_failure(self):
         calls = {"count": 0}
@@ -2451,6 +2487,27 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual((destination / "US5AK3CM" / "US5AK3CM.000").read_text(encoding="ascii"), "new")
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
             self.assertFalse((root / ".AK_ENCs.previous").exists())
+
+    def test_extract_zip_rejects_symlinked_destination(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            real_destination = root / "real-charts"
+            real_destination.mkdir()
+            destination = root / "AK_ENCs"
+            try:
+                destination.symlink_to(real_destination, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "chart extraction destination is a symlink"):
+                extract_zip(archive, destination)
+
+            self.assertTrue(destination.is_symlink())
+            self.assertFalse((real_destination / "US5AK3CM").exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
     def test_extract_zip_syncs_extracted_tree_and_parent_directory(self):
         calls = []
