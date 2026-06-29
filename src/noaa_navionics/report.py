@@ -30,6 +30,7 @@ def build_status_report(
         gpsd_host=app_config.gpsd_host,
         gpsd_port=app_config.gpsd_port,
         gps_device=app_config.gps_device if gps_mode == "serial" and gps_sample is None else None,
+        gps_baud=app_config.gps_baud,
         gps_sample=gps_sample,
         gps_seconds=gps_seconds,
         max_chart_age_days=app_config.max_chart_age_days,

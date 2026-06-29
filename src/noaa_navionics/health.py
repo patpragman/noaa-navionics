@@ -29,6 +29,7 @@ def run_preflight(
     gpsd_host: str = "127.0.0.1",
     gpsd_port: int = 2947,
     gps_device: Optional[str] = None,
+    gps_baud: int = 4800,
     gps_sample: Optional[Path] = None,
     gps_seconds: float = 5.0,
     max_chart_age_days: int = 30,
@@ -50,7 +51,7 @@ def run_preflight(
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
     elif gps_device:
-        results.append(check_gps_device(gps_device, seconds=gps_seconds))
+        results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
     else:
         results.append(CheckResult("GPS", False, "not checked; pass --gps-device /dev/ttyUSB0 or --gps-sample file.nmea"))
     return results
@@ -215,15 +216,15 @@ def check_gps_sample(sample: Path) -> CheckResult:
     return CheckResult("GPS", False, f"no valid fix found in {path}")
 
 
-def check_gps_device(device: str, *, seconds: float = 5.0) -> CheckResult:
+def check_gps_device(device: str, *, baud: int = 4800, seconds: float = 5.0) -> CheckResult:
     deadline = time.monotonic() + seconds
     try:
-        with open_nmea_stream(device) as stream:
+        with open_nmea_stream(device, baud=baud) as stream:
             for fix in iter_fixes(_deadline_lines(read_nmea_lines(stream), deadline)):
                 return CheckResult("GPS", True, _fix_detail(fix))
     except Exception as exc:
         return CheckResult("GPS", False, f"{device}: {exc}")
-    return CheckResult("GPS", False, f"no valid NMEA fix from {device} within {seconds:.0f}s")
+    return CheckResult("GPS", False, f"no valid NMEA fix from {device} at {baud} baud within {seconds:.0f}s")
 
 
 def check_gpsd(*, host: str = "127.0.0.1", port: int = 2947, seconds: float = 5.0) -> CheckResult:

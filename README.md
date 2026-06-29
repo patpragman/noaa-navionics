@@ -166,6 +166,8 @@ Live GPS check:
 noaa-navionics gps-monitor --gpsd --once
 ```
 
+For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`.
+
 Track logging:
 
 ```bash

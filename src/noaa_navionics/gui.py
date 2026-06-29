@@ -296,6 +296,7 @@ class DownloaderApp(tk.Tk):
                 gpsd_host="127.0.0.1",
                 gpsd_port=2947,
                 gps_device=None if self.use_gpsd.get() else self.gps_device.get().strip() or None,
+                gps_baud=read_config(self._config_path()).gps_baud,
                 gps_seconds=5.0,
             )
             self.queue.put(("preflight", results))

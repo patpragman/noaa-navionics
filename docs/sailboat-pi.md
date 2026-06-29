@@ -122,6 +122,7 @@ noaa-navionics gps-monitor --gpsd --once
 ```
 
 `noaa-navionics configure-opencpn`, below, configures OpenCPN to use the GPSD network source from the onboard config.
+If you intentionally use serial mode instead of GPSD, set `[gps] baud` in `~/.config/noaa-navionics/config.ini` and use `noaa-navionics preflight --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE --gps-baud 9600` when checking that device directly.
 
 ## One-Step Provisioning
 

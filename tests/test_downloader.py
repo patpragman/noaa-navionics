@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import redirect_stdout
-from io import StringIO
+from io import BytesIO, StringIO
 import sys
 import tempfile
 import textwrap
@@ -11,6 +11,7 @@ import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from noaa_navionics import health as health_module
 from noaa_navionics.downloader import (
     MANIFEST_NAME,
     Package,
@@ -26,6 +27,7 @@ from noaa_navionics.gps import GPSFix, GPXTrackLogger, daily_track_path, iter_fi
 from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
+    check_gps_device,
     check_gps_sample,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
@@ -475,6 +477,24 @@ class GpsTests(unittest.TestCase):
             result = check_gps_sample(path)
             self.assertTrue(result.ok)
             self.assertIn("48.117300", result.detail)
+
+    def test_check_gps_device_uses_configured_baud(self):
+        captured = {}
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            captured["device"] = device
+            captured["baud"] = baud
+            return BytesIO(b"$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n")
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertTrue(result.ok)
+        self.assertEqual(captured, {"device": "/dev/ttyACM0", "baud": 9600})
 
     def test_chart_check_requires_extracted_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:

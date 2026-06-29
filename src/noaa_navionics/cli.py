@@ -81,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--charts", default="~/charts/noaa-enc", help="chart directory")
     preflight.add_argument("--gpsd", action="store_true", help="check GPSD at localhost:2947")
     preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/ttyUSB0")
+    preflight.add_argument("--gps-baud", type=int, help="NMEA serial baud rate")
     preflight.add_argument("--gps-sample", help="NMEA sample file for testing")
     preflight.add_argument("--gps-seconds", type=float, default=5.0, help="seconds to wait for a GPS fix")
 
@@ -261,6 +262,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
                 gps_device=args.gps_device or (app_config.gps_device if gps_mode == "serial" else None),
+                gps_baud=args.gps_baud or app_config.gps_baud,
                 gps_sample=Path(args.gps_sample) if args.gps_sample else None,
                 gps_seconds=args.gps_seconds,
                 max_chart_age_days=app_config.max_chart_age_days,
