@@ -209,9 +209,18 @@ if expected_config_path:
         )
     if manifest.get("exists") is not True:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
-    for key in ("created_at", "package", "url", "sha256"):
+    for key in ("created_at", "package", "url", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
+    extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
+    try:
+        extract_path.resolve().relative_to(chart_output.resolve())
+    except ValueError as exc:
+        raise SystemExit(
+            f"status report manifest extract path {extract_path} is outside {chart_output}"
+        ) from exc
+    if not extract_path.exists():
+        raise SystemExit(f"status report manifest extract path does not exist: {extract_path}")
     try:
         enc_cell_count = int(manifest.get("enc_cell_count", 0))
     except (TypeError, ValueError) as exc:

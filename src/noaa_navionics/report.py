@@ -172,7 +172,7 @@ def format_status_text(report: dict[str, object]) -> str:
     manifest = report.get("manifest", {})
     if isinstance(manifest, dict) and manifest:
         lines.extend(["", "Manifest:"])
-        for key in ("created_at", "package", "sha256", "enc_cell_count"):
+        for key in ("created_at", "package", "sha256", "extract_path", "enc_cell_count"):
             if key in manifest:
                 lines.append(f"{key}: {manifest[key]}")
     services = report.get("services", {})
@@ -257,6 +257,7 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
         "package": package.get("label", "") if isinstance(package, dict) else "",
         "url": package.get("url", "") if isinstance(package, dict) else "",
         "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
+        "extract_path": extract.get("path", "") if isinstance(extract, dict) else "",
         "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
     }
 
