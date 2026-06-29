@@ -520,6 +520,31 @@ if expected_config_path:
         raise SystemExit(
             f"status report track_log tracks_dir {actual_tracks_dir} does not match configured {expected_tracks_dir}"
         )
+    try:
+        tracks_dir_stat = expected_tracks_dir.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report track_log tracks_dir {expected_tracks_dir}: {exc}") from exc
+    if expected_tracks_dir.is_symlink():
+        raise SystemExit(f"status report track_log tracks_dir is a symlink: {expected_tracks_dir}")
+    if not expected_tracks_dir.is_dir():
+        raise SystemExit(f"status report track_log tracks_dir is not a directory: {expected_tracks_dir}")
+    if tracks_dir_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report track_log tracks_dir {expected_tracks_dir} is owned by uid "
+            f"{tracks_dir_stat.st_uid}, expected {os.getuid()}"
+        )
+    tracks_dir_mode = tracks_dir_stat.st_mode & 0o777
+    if tracks_dir_mode & 0o077:
+        raise SystemExit(
+            f"status report track_log tracks_dir {expected_tracks_dir} has permissions "
+            f"{tracks_dir_mode:04o}, expected private 0700"
+        )
+    status_tracks_mode = str(track_log.get("tracks_mode", "")).strip()
+    if status_tracks_mode != f"{tracks_dir_mode:04o}":
+        raise SystemExit(
+            f"status report track_log tracks_mode {status_tracks_mode or '<missing>'} "
+            f"does not match directory permissions {tracks_dir_mode:04o}"
+        )
     latest_track_path = Path(str(track_log.get("latest_path", "")).strip()).expanduser()
     if not str(latest_track_path):
         raise SystemExit("status report track_log has no latest_path")
@@ -1408,10 +1433,30 @@ def trackpoint_position(trackpoint):
 while True:
     now = time.time()
     if tracks_dir.exists():
-        try:
-            resolved_tracks_dir = tracks_dir.resolve(strict=True)
-        except OSError as exc:
-            last_detail = f"could not resolve GPX tracks directory {tracks_dir}: {exc}"
+        if tracks_dir.is_symlink():
+            last_detail = f"{tracks_dir} is a symlink, expected a private GPX tracks directory"
+            resolved_tracks_dir = None
+        else:
+            try:
+                tracks_stat = tracks_dir.stat()
+            except OSError as exc:
+                last_detail = f"could not inspect GPX tracks directory {tracks_dir}: {exc}"
+                tracks_stat = None
+            if tracks_stat is not None and tracks_stat.st_uid != os.getuid():
+                last_detail = f"{tracks_dir} is owned by uid {tracks_stat.st_uid}, expected {os.getuid()}"
+                tracks_stat = None
+            if tracks_stat is not None:
+                tracks_mode = tracks_stat.st_mode & 0o777
+                if tracks_mode & 0o077:
+                    last_detail = f"{tracks_dir} permissions are {tracks_mode:04o}, expected private 0700"
+                    tracks_stat = None
+            try:
+                resolved_tracks_dir = tracks_dir.resolve(strict=True) if tracks_stat is not None else None
+            except OSError as exc:
+                last_detail = f"could not resolve GPX tracks directory {tracks_dir}: {exc}"
+                resolved_tracks_dir = None
+        if resolved_tracks_dir is not None and not tracks_dir.is_dir():
+            last_detail = f"{tracks_dir} is not a directory"
             resolved_tracks_dir = None
         candidates = []
         if resolved_tracks_dir is not None:

@@ -314,7 +314,7 @@ class GPXTrackLogger:
 
     def __enter__(self) -> "GPXTrackLogger":
         parent = self.path.parent
-        parent.mkdir(parents=True, exist_ok=True)
+        parent.mkdir(parents=True, mode=0o700, exist_ok=True)
         fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
             self.file = os.fdopen(fd, "w", encoding="utf-8")

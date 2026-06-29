@@ -695,6 +695,7 @@ def _log_rotating_tracks(
                     logger.__exit__(None, None, None)
                 current_day = day
                 current_path = _available_track_path(daily_track_path(base_output, fix.timestamp))
+                _prepare_private_tracks_dir(current_path.parent)
                 outputs.append(current_path)
                 logger = GPXTrackLogger(current_path)
                 logger.__enter__()
@@ -711,6 +712,18 @@ def _log_rotating_tracks(
         if logger is not None:
             logger.__exit__(None, None, None)
     return count, outputs
+
+
+def _prepare_private_tracks_dir(tracks_dir: Path) -> None:
+    path = Path(tracks_dir).expanduser()
+    if path.is_symlink():
+        raise RuntimeError(f"{path} is a symlink, expected a private tracks directory")
+    path.mkdir(parents=True, mode=0o700, exist_ok=True)
+    if path.is_symlink():
+        raise RuntimeError(f"{path} is a symlink, expected a private tracks directory")
+    os.chmod(path, 0o700)
+    _fsync_directory(path)
+    _fsync_directory(path.parent)
 
 
 def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Optional[datetime] = None) -> list[Path]:

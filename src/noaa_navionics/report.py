@@ -319,7 +319,8 @@ def format_status_text(report: dict[str, object]) -> str:
             coordinates = f" {track_log.get('latest_latitude')},{track_log.get('latest_longitude')}"
         lines.append(
             f"tracks_dir={track_log.get('tracks_dir', '')} ok={track_log.get('ok', '')} "
-            f"latest={latest}{coordinates} mode={track_log.get('latest_mode', '')} "
+            f"dir_mode={track_log.get('tracks_mode', '')} latest={latest}{coordinates} "
+            f"mode={track_log.get('latest_mode', '')} "
             f"detail={track_log.get('detail', '')}".rstrip()
         )
     return "\n".join(lines)
@@ -431,6 +432,25 @@ def _track_log_summary_once(
     }
     if not tracks_dir.exists():
         summary["detail"] = f"{tracks_dir} does not exist"
+        return summary
+    if tracks_dir.is_symlink():
+        summary["detail"] = f"{tracks_dir} is a symlink, expected a private GPX tracks directory"
+        return summary
+    try:
+        tracks_stat = tracks_dir.stat()
+    except OSError as exc:
+        summary["detail"] = f"could not inspect GPX tracks directory {tracks_dir}: {exc}"
+        return summary
+    if not tracks_dir.is_dir():
+        summary["detail"] = f"{tracks_dir} is not a directory"
+        return summary
+    if tracks_stat.st_uid != expected_owner:
+        summary["detail"] = f"{tracks_dir} is owned by uid {tracks_stat.st_uid}, expected {expected_owner}"
+        return summary
+    tracks_mode = tracks_stat.st_mode & 0o777
+    summary["tracks_mode"] = f"{tracks_mode:04o}"
+    if tracks_mode & 0o077:
+        summary["detail"] = f"{tracks_dir} permissions are {tracks_mode:04o}, expected private 0700"
         return summary
     try:
         resolved_tracks_dir = tracks_dir.resolve(strict=True)

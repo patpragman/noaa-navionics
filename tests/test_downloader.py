@@ -2602,11 +2602,32 @@ class StatusReportTests(unittest.TestCase):
 
             self.assertTrue(summary["ok"])
             self.assertEqual(summary["latest_path"], str(track_path))
+            self.assertEqual(summary["tracks_mode"], "0700")
             self.assertEqual(summary["latest_mode"], "0600")
             self.assertAlmostEqual(summary["latest_latitude"], 61.2181)
             self.assertAlmostEqual(summary["latest_longitude"], -149.9003)
             self.assertTrue(check.ok)
             self.assertIn("61.218100", check.detail)
+
+    def test_track_log_summary_rejects_public_tracks_directory(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "tracks" / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+            track_path.parent.chmod(0o755)
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("permissions are 0755", check.detail)
 
     def test_track_log_summary_rejects_public_track_file(self):
         timestamp = datetime.now(timezone.utc)
@@ -2676,6 +2697,7 @@ class StatusReportTests(unittest.TestCase):
             root = Path(tmpdir)
             tracks = root / "tracks"
             tracks.mkdir()
+            tracks.chmod(0o700)
             real_track = root / "real.gpx"
             with GPXTrackLogger(real_track) as logger:
                 logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
@@ -3915,8 +3937,24 @@ class GpsTests(unittest.TestCase):
                 count, outputs = _log_rotating_tracks(iter(fixes), Path(tmpdir), deadline=None, sample=True)
             self.assertEqual(count, 2)
             self.assertEqual([path.name for path in outputs], ["track-20260629.gpx", "track-20260630.gpx"])
+            self.assertEqual((Path(tmpdir) / "tracks").stat().st_mode & 0o777, 0o700)
             self.assertIn('lat="1.00000000"', outputs[0].read_text(encoding="utf-8"))
             self.assertIn('lat="3.00000000"', outputs[1].read_text(encoding="utf-8"))
+
+    def test_log_rotating_tracks_rejects_symlinked_tracks_directory(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "target"
+            target.mkdir()
+            try:
+                (root / "tracks").symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "symlink"):
+                with redirect_stdout(StringIO()):
+                    _log_rotating_tracks(iter([fix]), root, deadline=None, sample=True)
 
     def test_log_single_track_closes_gpx_on_stop_signal_exception(self):
         def fixes():

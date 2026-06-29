@@ -349,6 +349,8 @@ grep -q 'status report config values do not match current config' scripts/verify
 grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
 grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
+grep -q 'expected private 0700' scripts/verify_pi.sh
+grep -q 'status report track_log tracks_mode' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'status report track_log latest_mode' scripts/verify_pi.sh
 grep -q '"min_free_gb": float' scripts/verify_pi.sh
@@ -711,6 +713,9 @@ grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
+grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
+grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
+grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'def _fsync_directory' src/noaa_navionics/cli.py
 grep -q '_fsync_directory(tracks_dir)' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
@@ -911,8 +916,13 @@ grep -q 'track service private track files' scripts/verify_pi.sh
 grep -q 'track service loaded private track files' scripts/verify_pi.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL' src/noaa_navionics/gps.py
 grep -q '0o600' src/noaa_navionics/gps.py
+grep -q 'mode=0o700' src/noaa_navionics/gps.py
 grep -q 'latest_mode' src/noaa_navionics/report.py
+grep -q 'tracks_mode' src/noaa_navionics/report.py
+grep -q 'permissions are.*expected private 0700' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
+grep -q 'private `0700` tracks directory' README.md
+grep -q 'private `0700` tracks directory' docs/sailboat-pi.md
 grep -q 'private `0600` permissions' README.md
 grep -q 'private `0600` permissions' docs/sailboat-pi.md
 grep -q 'service-created track files also use a private `0077` umask' README.md
