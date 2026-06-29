@@ -158,6 +158,10 @@ grep -q 'validate_remote_dir' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/deploy_to_pi.sh
 grep -q 'validate_ssh_target' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/verify_pi.sh
+grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
+grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
+grep -q 'GPS device path is volatile' scripts/deploy_to_pi.sh
+grep -q 'GPS device path is volatile' scripts/dock_test_pi.sh
 grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
@@ -896,6 +900,17 @@ fi
 grep -q 'Remote deployment directory must be a dedicated noaa-navionics directory' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --device /dev/ttyUSB0 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject volatile GPS device paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPS device path is volatile' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh pi@example.invalid ~/bad-target --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -960,6 +975,17 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Remote deployment directory must be a dedicated noaa-navionics directory' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject volatile GPS device paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPS device path is volatile' "$dock_output"
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --skip-services >"$deploy_output" 2>&1

@@ -86,6 +86,36 @@ EOF
   fi
 }
 
+validate_gps_device_path_arg() {
+  local value="$1"
+  local suffix
+  if [[ -z "$value" ]]; then
+    echo "GPS device path is required" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "GPS device path must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  case "$value" in
+    /dev/serial/by-id/*)
+      suffix="${value#/dev/serial/by-id/}"
+      if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
+        return 0
+      fi
+      ;;
+    /dev/serial0|/dev/serial1|/dev/gps)
+      return 0
+      ;;
+    /dev/ttyUSB*|/dev/ttyACM*)
+      echo "GPS device path is volatile; use /dev/serial/by-id/... instead: $value" >&2
+      exit 2
+      ;;
+  esac
+  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
+  exit 2
+}
+
 require_positive_integer() {
   local name="$1"
   local value="$2"
@@ -149,6 +179,7 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
+      validate_gps_device_path_arg "$2"
       device="$2"
       provision_args+=("--device" "$device")
       verify_args+=("--expected-gps-device" "$device")
