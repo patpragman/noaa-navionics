@@ -261,6 +261,10 @@ validate_remote_dir "$remote_dir"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 remote_dir_quoted="$(quote_remote_dir_for_shell "$remote_dir")"
+remote_dir_trimmed="${remote_dir%/}"
+remote_staging_dir="${remote_dir_trimmed}.deploying"
+remote_previous_dir="${remote_dir_trimmed}.previous"
+remote_staging_dir_quoted="$(quote_remote_dir_for_shell "$remote_staging_dir")"
 source_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
 if [[ "$source_revision" != "unknown" && -n "$worktree_status" ]]; then
@@ -322,16 +326,24 @@ finally:
 PY"
 }
 
-clean_remote_deploy_dir() {
+prepare_remote_tar_staging() {
   local remote_dir_value="$1"
+  local staging_dir_value="$2"
+  local previous_dir_value="$3"
   local remote_dir_env
+  local staging_dir_env
+  local previous_dir_env
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
-  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} python3 - <<'PY'
+  staging_dir_env="$(printf '%q' "$staging_dir_value")"
+  previous_dir_env="$(printf '%q' "$previous_dir_value")"
+  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import shutil
 
 repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
+staging = Path(os.environ['NOAA_NAVIONICS_STAGING_DIR']).expanduser()
+previous = Path(os.environ['NOAA_NAVIONICS_PREVIOUS_DIR']).expanduser()
 name = repo.name
 valid_name = (
     name == 'noaa-navionics'
@@ -340,26 +352,96 @@ valid_name = (
     or name.startswith('noaa-navionics.')
 )
 if not valid_name:
-    raise SystemExit(f'Refusing to clean unexpected deployment directory: {repo}')
+    raise SystemExit(f'Refusing to stage unexpected deployment directory: {repo}')
 if repo.exists() and repo.is_symlink():
-    raise SystemExit(f'Refusing to clean symlink deployment directory: {repo}')
+    raise SystemExit(f'Refusing to stage over symlink deployment directory: {repo}')
 if repo.exists() and not repo.is_dir():
-    raise SystemExit(f'Refusing to clean non-directory deployment path: {repo}')
+    raise SystemExit(f'Refusing to stage over non-directory deployment path: {repo}')
 resolved = repo.resolve(strict=False)
 unsafe = {Path('/'), Path.home(), Path('/home'), Path('/root')}
 if resolved in unsafe:
-    raise SystemExit(f'Refusing to clean broad deployment directory: {repo}')
-repo.mkdir(parents=True, exist_ok=True)
-for child in repo.iterdir():
-    if child.is_dir() and not child.is_symlink():
-        shutil.rmtree(child)
-    else:
-        child.unlink()
-fd = os.open(repo, os.O_RDONLY)
+    raise SystemExit(f'Refusing to stage broad deployment directory: {repo}')
+for sibling in (staging, previous):
+    if sibling.parent != repo.parent:
+        raise SystemExit(f'Refusing staging path outside deployment parent: {sibling}')
+    if not sibling.name.startswith(repo.name + '.'):
+        raise SystemExit(f'Refusing unexpected deployment staging path: {sibling}')
+    if sibling.exists() or sibling.is_symlink():
+        if sibling.is_dir() and not sibling.is_symlink():
+            shutil.rmtree(sibling)
+        else:
+            sibling.unlink()
+repo.parent.mkdir(parents=True, exist_ok=True)
+staging.mkdir(parents=True)
+fd = os.open(repo.parent, os.O_RDONLY)
 try:
     os.fsync(fd)
 finally:
     os.close(fd)
+PY"
+}
+
+promote_remote_tar_staging() {
+  local remote_dir_value="$1"
+  local staging_dir_value="$2"
+  local previous_dir_value="$3"
+  local remote_dir_env
+  local staging_dir_env
+  local previous_dir_env
+  remote_dir_env="$(printf '%q' "$remote_dir_value")"
+  staging_dir_env="$(printf '%q' "$staging_dir_value")"
+  previous_dir_env="$(printf '%q' "$previous_dir_value")"
+  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+from pathlib import Path
+import os
+import shutil
+
+repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
+staging = Path(os.environ['NOAA_NAVIONICS_STAGING_DIR']).expanduser()
+previous = Path(os.environ['NOAA_NAVIONICS_PREVIOUS_DIR']).expanduser()
+
+def remove_path(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+if not staging.exists() or not staging.is_dir() or staging.is_symlink():
+    raise SystemExit(f'Tar staging directory is not ready: {staging}')
+if staging.parent != repo.parent or previous.parent != repo.parent:
+    raise SystemExit('Refusing to promote deployment staging outside deployment parent')
+if not staging.name.startswith(repo.name + '.') or not previous.name.startswith(repo.name + '.'):
+    raise SystemExit('Refusing to promote unexpected deployment staging paths')
+try:
+    if previous.exists() or previous.is_symlink():
+        remove_path(previous)
+    if repo.exists() or repo.is_symlink():
+        if repo.is_symlink() or not repo.is_dir():
+            raise RuntimeError(f'Refusing to replace non-directory deployment path: {repo}')
+        repo.rename(previous)
+    staging.rename(repo)
+    fd = os.open(repo.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+except Exception:
+    if not repo.exists() and previous.exists():
+        previous.rename(repo)
+        fd = os.open(repo.parent, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    raise
+else:
+    if previous.exists() or previous.is_symlink():
+        remove_path(previous)
+    fd = os.open(repo.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 PY"
 }
 
@@ -375,7 +457,7 @@ deploy_with_rsync() {
 }
 
 deploy_with_tar() {
-  clean_remote_deploy_dir "$remote_dir"
+  prepare_remote_tar_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
   (
     cd "$repo_root"
     tar \
@@ -388,7 +470,8 @@ deploy_with_tar() {
       --exclude='./charts' \
       --exclude='*/charts' \
       -czf - .
-  ) | ssh "$target" "tar -xzf - -C ${remote_dir_quoted}"
+  ) | ssh "$target" "tar -xzf - -C ${remote_staging_dir_quoted}"
+  promote_remote_tar_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
 
 deploy_sources() {
