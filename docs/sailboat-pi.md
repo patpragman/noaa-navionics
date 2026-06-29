@@ -105,7 +105,7 @@ cgps
 noaa-navionics gps-monitor --gpsd --once
 ```
 
-Configure OpenCPN to use the GPSD network source at `localhost:2947`.
+`noaa-navionics configure-opencpn`, below, configures OpenCPN to use the GPSD network source from the onboard config.
 
 ## Startup
 
@@ -133,13 +133,13 @@ For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--
 noaa-navionics search-catalog "Cook Inlet"
 ```
 
-Register the chart directory in OpenCPN:
+Register the chart directory and GPSD connection in OpenCPN:
 
 ```bash
 noaa-navionics configure-opencpn
 ```
 
-This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, and leaves OpenCPN closed. The chartplotter launcher starts OpenCPN with `-parse_all_enc` so OpenCPN processes available S-57 ENC charts on start.
+This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, adds a GPSD network connection under `[Settings/NMEADataSource]`, and leaves OpenCPN closed. The chartplotter launcher starts OpenCPN with `-parse_all_enc` so OpenCPN processes available S-57 ENC charts on start.
 
 ## Pre-Departure Check
 
@@ -169,6 +169,7 @@ Expected checks:
 - Extracted ENC chart cells present
 - Current chart manifest present
 - OpenCPN configured with the chart directory
+- OpenCPN configured with the GPSD network connection
 - At least 2 GB free disk space
 - Valid GPSD fix
 

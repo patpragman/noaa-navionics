@@ -19,10 +19,19 @@ from noaa_navionics.downloader import (
 )
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
-from noaa_navionics.health import check_chart_dir, check_chart_manifest, check_gps_sample, check_opencpn_chart_config
+from noaa_navionics.health import (
+    check_chart_dir,
+    check_chart_manifest,
+    check_gps_sample,
+    check_opencpn_chart_config,
+    check_opencpn_gpsd_config,
+)
 from noaa_navionics.opencpn import (
     chart_directory_configured,
     configure_chart_directory,
+    configure_gpsd_connection,
+    gpsd_connection_configured,
+    read_data_connections,
     read_chart_directories,
 )
 from noaa_navionics.report import build_status_report, format_status_text, write_status_report
@@ -195,6 +204,53 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             configure_chart_directory(charts, config_path=config)
             configured = check_opencpn_chart_config(charts, config)
+            self.assertTrue(configured.ok)
+
+    def test_configure_gpsd_connection_creates_nmea_data_source(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+
+            result = configure_gpsd_connection(config_path=config, host="127.0.0.1", port=2947)
+
+            self.assertTrue(result.changed)
+            self.assertTrue(gpsd_connection_configured(config_path=config, host="localhost", port=2947))
+            connections = read_data_connections(config)
+            self.assertEqual(len(connections), 1)
+            self.assertEqual(
+                connections[0],
+                "1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;"
+                "GPSd: 127.0.0.1 TCP port 2947;0;;0;0;",
+            )
+
+    def test_configure_gpsd_connection_is_idempotent_and_preserves_existing_connections(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            existing = "1;0;192.0.2.10;10110;0;;4800;1;0;0;;0;;0;0;0;0;1;AIS;0;;0;0;"
+            config.write_text(
+                "[Settings/NMEADataSource]\n"
+                f"DataConnections={existing}\n",
+                encoding="utf-8",
+            )
+
+            first = configure_gpsd_connection(config_path=config, host="127.0.0.1", port=2947)
+            second = configure_gpsd_connection(config_path=config, host="localhost", port=2947)
+
+            self.assertTrue(first.changed)
+            self.assertFalse(second.changed)
+            connections = read_data_connections(config)
+            self.assertEqual(connections[0], existing)
+            self.assertEqual(len(connections), 2)
+
+    def test_check_opencpn_gpsd_config_reports_missing_and_configured(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+
+            missing = check_opencpn_gpsd_config(config_path=config)
+            self.assertFalse(missing.ok)
+
+            configure_gpsd_connection(config_path=config)
+            configured = check_opencpn_gpsd_config(config_path=config)
             self.assertTrue(configured.ok)
 
 

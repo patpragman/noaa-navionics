@@ -18,7 +18,7 @@ from .downloader import (
 )
 from .gps import GPXTrackLogger, default_track_path, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
 from .health import run_preflight
-from .opencpn import configure_chart_directory, opencpn_running
+from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
 
 
@@ -62,12 +62,13 @@ def build_parser() -> argparse.ArgumentParser:
     init_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     init_config.add_argument("--force", action="store_true", help="overwrite an existing config")
 
-    opencpn_config = subparsers.add_parser("configure-opencpn", help="add the configured chart directory to OpenCPN")
+    opencpn_config = subparsers.add_parser("configure-opencpn", help="configure OpenCPN charts and GPSD")
     opencpn_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="NOAA Navionics config file path")
     opencpn_config.add_argument("--charts", help="chart directory to add; defaults to [charts].output")
     opencpn_config.add_argument("--opencpn-config", help="OpenCPN config path; defaults to ~/.opencpn/opencpn.conf")
     opencpn_config.add_argument("--dry-run", action="store_true", help="print intended change without writing")
     opencpn_config.add_argument("--no-backup", action="store_true", help="do not back up an existing OpenCPN config")
+    opencpn_config.add_argument("--no-gpsd", action="store_true", help="only configure charts, not the GPSD connection")
     opencpn_config.add_argument(
         "--allow-running",
         action="store_true",
@@ -228,6 +229,24 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"OpenCPN config: {result.config_path}")
             if result.backup_path:
                 print(f"Backup: {result.backup_path}")
+            if not args.no_gpsd:
+                gpsd_result = configure_gpsd_connection(
+                    host=app_config.gpsd_host,
+                    port=app_config.gpsd_port,
+                    config_path=Path(args.opencpn_config).expanduser() if args.opencpn_config else None,
+                    backup=not args.no_backup and not result.changed,
+                    dry_run=args.dry_run,
+                )
+                gpsd_action = (
+                    "Would add GPSD"
+                    if args.dry_run and gpsd_result.changed
+                    else "Added GPSD"
+                    if gpsd_result.changed
+                    else "GPSD already present"
+                )
+                print(f"{gpsd_action}: {gpsd_result.host}:{gpsd_result.port}")
+                if gpsd_result.backup_path and gpsd_result.backup_path != result.backup_path:
+                    print(f"Backup: {gpsd_result.backup_path}")
             print("Start OpenCPN with ENC processing: opencpn -parse_all_enc")
             return 0
 

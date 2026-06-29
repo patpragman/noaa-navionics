@@ -11,7 +11,7 @@ import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
 from .downloader import MANIFEST_NAME, read_manifest
-from .opencpn import chart_directory_configured, opencpn_config_path
+from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,7 @@ def run_preflight(
         check_disk_space(chart_dir),
     ]
     if gpsd:
+        results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
         results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
@@ -82,6 +83,28 @@ def check_opencpn_chart_config(chart_dir: Path, config_path: Optional[Path] = No
         "OpenCPN Charts",
         False,
         f"{Path(chart_dir).expanduser()} not listed in {config_path}; run noaa-navionics configure-opencpn",
+    )
+
+
+def check_opencpn_gpsd_config(
+    *,
+    host: str = "127.0.0.1",
+    port: int = 2947,
+    config_path: Optional[Path] = None,
+) -> CheckResult:
+    config_path = opencpn_config_path(config_path)
+    if not config_path.exists():
+        return CheckResult(
+            "OpenCPN GPSD",
+            False,
+            f"missing {config_path}; run noaa-navionics configure-opencpn",
+        )
+    if gpsd_connection_configured(host=host, port=port, config_path=config_path):
+        return CheckResult("OpenCPN GPSD", True, f"GPSD {host}:{port} listed in {config_path}")
+    return CheckResult(
+        "OpenCPN GPSD",
+        False,
+        f"GPSD {host}:{port} not listed in {config_path}; run noaa-navionics configure-opencpn",
     )
 
 

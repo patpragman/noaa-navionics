@@ -131,7 +131,7 @@ Download the configured chart package:
 noaa-navionics sync-charts
 ```
 
-Register the configured chart directory with OpenCPN:
+Register the configured chart directory and GPSD connection with OpenCPN:
 
 ```bash
 noaa-navionics configure-opencpn
