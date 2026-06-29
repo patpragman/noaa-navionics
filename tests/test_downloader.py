@@ -205,6 +205,46 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.track_retention_days, 90)
             self.assertTrue(config.extract)
 
+    def test_write_default_config_creates_private_parent_and_file_with_permissive_umask(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            path = root / ".config" / "noaa-navionics" / "config.ini"
+            original_umask = os.umask(0)
+            try:
+                write_default_config(path)
+            finally:
+                os.umask(original_umask)
+
+            self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_write_default_config_rejects_writable_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / ".config" / "noaa-navionics"
+            parent.mkdir(parents=True)
+            parent.chmod(0o777)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "no group/other write bits"):
+                    write_default_config(parent / "config.ini")
+            finally:
+                parent.chmod(0o700)
+
+    def test_write_default_config_rejects_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_parent = root / "real-config"
+            real_parent.mkdir()
+            link_parent = root / ".config" / "noaa-navionics"
+            link_parent.parent.mkdir()
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "symlink"):
+                write_default_config(link_parent / "config.ini")
+
     def test_write_default_config_uses_unique_synced_temp_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

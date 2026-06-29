@@ -184,7 +184,7 @@ def write_default_config(path: Optional[Path] = None, *, overwrite: bool = False
     target = config_path(path)
     if target.exists() and not overwrite:
         raise FileExistsError(f"config already exists: {target}")
-    target.parent.mkdir(parents=True, exist_ok=True)
+    _prepare_config_parent(target)
     _write_text_atomic(target, default_config_text())
     return target
 
@@ -256,6 +256,7 @@ def _validate_chart_package_value(package: str, value: str) -> None:
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
+    _prepare_config_parent(target)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -269,6 +270,7 @@ def _write_text_atomic(target: Path, text: str) -> None:
             tmp_path = Path(handle.name)
             handle.write(text)
             handle.flush()
+            os.chmod(tmp_path, 0o600)
             os.fsync(handle.fileno())
         os.replace(tmp_path, target)
         _fsync_directory(target.parent)
@@ -278,6 +280,31 @@ def _write_text_atomic(target: Path, text: str) -> None:
                 tmp_path.unlink()
             except FileNotFoundError:
                 pass
+
+
+def _prepare_config_parent(target: Path) -> None:
+    parent = target.parent
+    if parent.is_symlink():
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {parent}")
+    parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    if parent.is_symlink():
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {parent}")
+    if not parent.is_dir():
+        raise RuntimeError(f"NOAA Navionics config parent is not a directory: {parent}")
+    try:
+        parent_stat = parent.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect NOAA Navionics config directory {parent}: {exc}") from exc
+    if parent_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"NOAA Navionics config directory {parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}"
+        )
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o022:
+        raise RuntimeError(
+            f"NOAA Navionics config directory {parent} has permissions {parent_mode:04o}, "
+            "expected no group/other write bits"
+        )
 
 
 def _fsync_directory(path: Path) -> None:

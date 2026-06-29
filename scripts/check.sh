@@ -822,6 +822,10 @@ grep -q 'chart_dir = Path(args.charts).expanduser() if args.charts else app_conf
 grep -q 'pass `--charts PATH` to check a different mounted chart directory explicitly' README.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
+grep -q 'def _prepare_config_parent' src/noaa_navionics/config.py
+grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
+grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'gpsd_connect_retry=use_gpsd and deadline is None and not args.sample' src/noaa_navionics/cli.py
