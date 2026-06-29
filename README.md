@@ -151,7 +151,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 
 Status reports are written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
-The installed boot-time readiness service writes the same status report after login, reads the persisted GPS wait setting, and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed or unqueryable required units, and checks GPSD and chrony service state in addition to recording raw service diagnostics. A failed weekly chart-refresh unit is reported but does not by itself fail readiness; the chart manifest age and contents decide whether the onboard charts are usable.
+The installed boot-time readiness service writes the same status report after login, reads the persisted GPS wait setting, and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, verifies their loaded restart/timer/start-limit settings when systemd reports them, fails readiness on failed or unqueryable required units, and checks GPSD and chrony service state in addition to recording raw service diagnostics. A failed weekly chart-refresh unit is reported but does not by itself fail readiness; the chart manifest age and contents decide whether the onboard charts are usable.
 Deploy/install records the source revision so status reports show which code is running on the Pi.
 
 Start the Pi chartplotter launcher:

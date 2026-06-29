@@ -1063,6 +1063,91 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(all(check.ok for check in checks))
         self.assertIn("Chart Sync", [check.name for check in checks])
 
+    def test_service_readiness_checks_accept_expected_loaded_unit_properties(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {
+                "enabled": "static",
+                "active": "inactive",
+                "properties": {
+                    "TimeoutStartUSec": "2h",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30min",
+                    "StartLimitIntervalUSec": "6h",
+                    "StartLimitBurst": "3",
+                },
+            },
+            "noaa-navionics.timer": {
+                "enabled": "enabled",
+                "active": "active",
+                "properties": {
+                    "TimersCalendar": "{ OnCalendar=weekly ; NextElapseUSecRealtime=Mon 2026-07-06 00:00:00 UTC }",
+                    "Persistent": "yes",
+                },
+            },
+            "noaa-navionics-track.service": {
+                "enabled": "enabled",
+                "active": "active",
+                "properties": {
+                    "StandardOutput": "null",
+                    "Restart": "on-failure",
+                    "RestartUSec": "10s",
+                    "StartLimitIntervalUSec": "10min",
+                    "StartLimitBurst": "60",
+                },
+            },
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "RestartUSec": "30s",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        settings_checks = [check for check in checks if check.name.endswith("Settings")]
+
+        self.assertEqual(len(settings_checks), 4)
+        self.assertTrue(all(check.ok for check in settings_checks))
+
+    def test_service_readiness_checks_fail_stale_loaded_track_settings(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {
+                "enabled": "enabled",
+                "active": "active",
+                "properties": {
+                    "StandardOutput": "journal",
+                    "Restart": "no",
+                    "RestartUSec": "100ms",
+                    "StartLimitIntervalUSec": "10min",
+                    "StartLimitBurst": "60",
+                },
+            },
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        track_settings = next(check for check in checks if check.name == "Track Logger Settings")
+
+        self.assertFalse(track_settings.ok)
+        self.assertIn("StandardOutput=journal", track_settings.detail)
+        self.assertIn("Restart=no", track_settings.detail)
+
     def test_service_readiness_checks_fail_disabled_chart_timer(self):
         services = {
             "available": True,

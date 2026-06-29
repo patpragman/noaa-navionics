@@ -197,9 +197,15 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
+grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
+grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
+grep -q 'Track Logger Settings' src/noaa_navionics/report.py
+grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'Chrony Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
+grep -q 'def _systemctl_user_show' src/noaa_navionics/report.py
+grep -q 'loaded settings match expected values' src/noaa_navionics/report.py
 grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py

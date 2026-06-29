@@ -20,6 +20,30 @@ from . import __version__
 
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
+USER_UNIT_PROPERTIES = {
+    "noaa-navionics.service": [
+        "TimeoutStartUSec",
+        "Restart",
+        "RestartUSec",
+        "StartLimitIntervalUSec",
+        "StartLimitBurst",
+    ],
+    "noaa-navionics.timer": [
+        "TimersCalendar",
+        "Persistent",
+    ],
+    "noaa-navionics-track.service": [
+        "StandardOutput",
+        "Restart",
+        "RestartUSec",
+        "StartLimitIntervalUSec",
+        "StartLimitBurst",
+    ],
+    "noaa-navionics-preflight.service": [
+        "EnvironmentFiles",
+        "RestartUSec",
+    ],
+}
 
 
 def build_status_report(
@@ -231,6 +255,7 @@ def _service_summary() -> dict[str, object]:
         summary[unit] = {
             "enabled": _systemctl_user(["is-enabled", unit]),
             "active": _systemctl_user(["is-active", unit]),
+            "properties": _systemctl_user_show(unit, USER_UNIT_PROPERTIES.get(unit, [])),
         }
     return summary
 
@@ -282,6 +307,49 @@ def _service_readiness_checks(
             require_active=False,
         ),
     ]
+    if _summary_has_loaded_properties(services):
+        checks.extend(
+            [
+                _unit_properties_check(
+                    services,
+                    "noaa-navionics.service",
+                    "Chart Sync Settings",
+                    exact={
+                        "TimeoutStartUSec": "2h",
+                        "Restart": "on-failure",
+                        "RestartUSec": "30min",
+                        "StartLimitIntervalUSec": "6h",
+                        "StartLimitBurst": "3",
+                    },
+                ),
+                _unit_properties_check(
+                    services,
+                    "noaa-navionics.timer",
+                    "Chart Timer Settings",
+                    exact={"Persistent": "yes"},
+                    contains={"TimersCalendar": "OnCalendar=weekly"},
+                ),
+                _unit_properties_check(
+                    services,
+                    "noaa-navionics-track.service",
+                    "Track Logger Settings",
+                    exact={
+                        "StandardOutput": "null",
+                        "Restart": "on-failure",
+                        "RestartUSec": "10s",
+                        "StartLimitIntervalUSec": "10min",
+                        "StartLimitBurst": "60",
+                    },
+                ),
+                _unit_properties_check(
+                    services,
+                    "noaa-navionics-preflight.service",
+                    "Boot Readiness Settings",
+                    exact={"RestartUSec": "30s"},
+                    contains={"EnvironmentFiles": "noaa-navionics/launcher.env"},
+                ),
+            ]
+        )
     if gps_mode == "gpsd":
         checks.append(
             _unit_check(
@@ -302,6 +370,47 @@ def _service_readiness_checks(
             )
         )
     return checks
+
+
+def _summary_has_loaded_properties(summary: dict[str, object]) -> bool:
+    return any(
+        isinstance(state, dict) and isinstance(state.get("properties"), dict)
+        for state in summary.values()
+    )
+
+
+def _unit_properties_check(
+    summary: dict[str, object],
+    unit: str,
+    name: str,
+    *,
+    exact: Optional[dict[str, str]] = None,
+    contains: Optional[dict[str, str]] = None,
+) -> CheckResult:
+    if summary.get("available") is False:
+        return CheckResult(name, False, str(summary.get("detail", "systemctl not available")))
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from status report")
+    properties = state.get("properties")
+    if not isinstance(properties, dict):
+        return CheckResult(name, False, f"{unit} loaded properties missing from status report")
+    error = properties.get("error")
+    if error:
+        return CheckResult(name, False, f"{unit} loaded properties unavailable: {error}")
+
+    failures = []
+    for key, expected in (exact or {}).items():
+        actual = str(properties.get(key, ""))
+        if actual != expected:
+            failures.append(f"{key}={actual or '<missing>'} expected {expected}")
+    for key, expected in (contains or {}).items():
+        actual = str(properties.get(key, ""))
+        if expected not in actual:
+            failures.append(f"{key}={actual or '<missing>'} missing {expected}")
+    if failures:
+        return CheckResult(name, False, f"{unit}: " + "; ".join(failures))
+    return CheckResult(name, True, f"{unit} loaded settings match expected values")
 
 
 def _chart_sync_check(summary: dict[str, object], unit: str, name: str) -> CheckResult:
@@ -374,6 +483,34 @@ def _unit_query_failed(value: str) -> bool:
 
 def _systemctl_user(args: list[str]) -> str:
     return _systemctl(["systemctl", "--user", *args])
+
+
+def _systemctl_user_show(unit: str, properties: list[str]) -> dict[str, str]:
+    if not properties:
+        return {}
+    property_args = []
+    for prop in properties:
+        property_args.extend(["-p", prop])
+    try:
+        completed = subprocess.run(
+            ["systemctl", "--user", "show", unit, *property_args],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+    output = completed.stdout.strip() or completed.stderr.strip()
+    if completed.returncode != 0:
+        return {"error": output or f"exit {completed.returncode}"}
+    parsed: dict[str, str] = {}
+    for line in completed.stdout.splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            parsed[key.strip()] = value.strip()
+    return parsed
 
 
 def _systemctl_system(args: list[str]) -> str:
