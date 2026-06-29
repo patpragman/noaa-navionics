@@ -1012,7 +1012,9 @@ grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/verify_pi.sh
 grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' scripts/verify_pi.sh
 grep -q 'test_launcher_settings_check_fails_invalid_opencpn_restart_values' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_file' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config_directory' tests/test_downloader.py
@@ -1056,6 +1058,8 @@ grep -q 'deployed source revision directory is a symlink' src/noaa_navionics/hea
 grep -q 'test_app_summary_rejects_symlinked_source_revision_directory' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_directory_on_pi' tests/test_downloader.py
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
+grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.py
+grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_directory' tests/test_downloader.py
@@ -2343,6 +2347,25 @@ if [[ "$launcher_symlink_env_code" -eq 0 ]]; then
 fi
 grep -q 'NOAA Navionics launcher environment is a symlink' "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_symlink_env_dir_home="$tmpdir/launcher-symlink-env-dir-home"
+launcher_symlink_env_dir_target="$tmpdir/launcher-symlink-env-dir-target"
+mkdir -p "$launcher_symlink_env_dir_home/.local/bin" "$launcher_symlink_env_dir_home/.cache/noaa-navionics" "$launcher_symlink_env_dir_home/.config" "$launcher_symlink_env_dir_target"
+printf 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_symlink_env_dir_target/launcher.env"
+ln -s "$launcher_symlink_env_dir_target" "$launcher_symlink_env_dir_home/.config/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_env_dir_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_symlink_env_dir_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_symlink_env_dir_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_symlink_env_dir_code=$?
+set -e
+if [[ "$launcher_symlink_env_dir_code" -eq 0 ]]; then
+  cat "$launcher_symlink_env_dir_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a symlinked launcher environment directory" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics launcher environment directory is a symlink' "$launcher_symlink_env_dir_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_symlink_env_dir_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_writable_env_home="$tmpdir/launcher-writable-env-home"
 mkdir -p "$launcher_writable_env_home/.local/bin" "$launcher_writable_env_home/.cache/noaa-navionics" "$launcher_writable_env_home/.config/noaa-navionics"

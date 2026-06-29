@@ -2877,6 +2877,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["host"]["boot_id"], "boot-abc")
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
+            self.assertEqual(report["launcher_settings"]["directory_is_symlink"], False)
             self.assertEqual(report["launcher_settings"]["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "10")
             self.assertEqual(report["opencpn_config"]["path"], str(opencpn_config))
             self.assertEqual(report["opencpn_config"]["exists"], True)
@@ -3025,7 +3026,31 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["path"], str(link_env))
             self.assertEqual(summary["exists"], True)
             self.assertEqual(summary["is_symlink"], True)
+            self.assertEqual(summary["directory_is_symlink"], False)
             self.assertIn("launcher environment path is a symlink", summary["error"])
+            self.assertNotIn("values", summary)
+
+    def test_launcher_settings_summary_rejects_symlinked_environment_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_config = root / "real-config"
+            real_config.mkdir()
+            real_env = real_config / "launcher.env"
+            real_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=10\n", encoding="ascii")
+            link_config = root / "linked-config"
+            try:
+                link_config.symlink_to(real_config, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            link_env = link_config / "launcher.env"
+
+            summary = _launcher_settings_summary(link_env)
+
+            self.assertEqual(summary["path"], str(link_env))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], False)
+            self.assertEqual(summary["directory_is_symlink"], True)
+            self.assertIn("launcher environment directory is a symlink", summary["error"])
             self.assertNotIn("values", summary)
 
     def test_key_value_file_summary_rejects_symlinked_startup_file(self):
@@ -3670,6 +3695,20 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(check.ok)
         self.assertIn("launcher environment path is a symlink", check.detail)
+
+    def test_launcher_settings_check_fails_symlinked_environment_directory(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "directory_is_symlink": True,
+                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("launcher environment directory is a symlink", check.detail)
 
     def test_launcher_settings_check_fails_fail_open_override(self):
         check = _launcher_settings_check(

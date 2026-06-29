@@ -310,7 +310,10 @@ def format_status_text(report: dict[str, object]) -> str:
             value_text = " ".join(f"{key}={value}" for key, value in sorted(values.items()))
         else:
             value_text = ""
-        symlink_text = f"is_symlink={launcher_settings.get('is_symlink', '')}"
+        symlink_text = (
+            f"is_symlink={launcher_settings.get('is_symlink', '')} "
+            f"directory_is_symlink={launcher_settings.get('directory_is_symlink', '')}"
+        )
         lines.append(
             f"path={launcher_settings.get('path', '')} "
             f"exists={launcher_settings.get('exists', '')} {symlink_text} {value_text}".rstrip()
@@ -787,9 +790,13 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
         "path": str(launcher_env),
         "exists": launcher_env.is_file(),
         "is_symlink": launcher_env.is_symlink(),
+        "directory_is_symlink": launcher_env.parent.is_symlink(),
     }
     if launcher_env.is_symlink():
         summary["error"] = f"launcher environment path is a symlink: {launcher_env}"
+        return summary
+    if launcher_env.parent.is_symlink():
+        summary["error"] = f"launcher environment directory is a symlink: {launcher_env.parent}"
         return summary
     if not launcher_env.exists():
         return summary
@@ -1137,6 +1144,9 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
         return CheckResult("Launcher Settings", False, f"launcher environment is missing: {path}")
     if summary.get("is_symlink") is True:
         return CheckResult("Launcher Settings", False, f"launcher environment path is a symlink: {path}")
+    if summary.get("directory_is_symlink") is True:
+        directory = str(Path(path).parent)
+        return CheckResult("Launcher Settings", False, f"launcher environment directory is a symlink: {directory}")
     error = str(summary.get("error", ""))
     if error:
         return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")

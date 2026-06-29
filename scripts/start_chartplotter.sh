@@ -147,9 +147,15 @@ load_launcher_settings() {
 }
 
 validate_launcher_env_path() {
+  local launcher_env_dir
   local env_stat
   local env_uid
   local env_mode
+  launcher_env_dir="$(dirname "$launcher_env")"
+  if [[ -L "$launcher_env_dir" ]]; then
+    echo "NOAA Navionics launcher environment directory is a symlink: $launcher_env_dir" >&2
+    exit 1
+  fi
   if [[ ! -e "$launcher_env" ]]; then
     return 0
   fi

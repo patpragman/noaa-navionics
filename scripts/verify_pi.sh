@@ -508,6 +508,13 @@ if expected_launcher_env_path:
     launcher_env_file = Path(expected_launcher_env_path).expanduser()
     if launcher_env_file.is_symlink():
         raise SystemExit(f"status report launcher settings path is a symlink: {launcher_env_file}")
+    if launcher_settings.get("directory_is_symlink") is not False:
+        raise SystemExit(
+            "status report launcher settings directory is a symlink or missing symlink status: "
+            f"{launcher_env_file.parent}"
+        )
+    if launcher_env_file.parent.is_symlink():
+        raise SystemExit(f"status report launcher settings directory is a symlink: {launcher_env_file.parent}")
     values = launcher_settings.get("values")
     if not isinstance(values, dict):
         raise SystemExit(f"status report launcher settings values were not parsed: {expected_launcher_env_path}")
