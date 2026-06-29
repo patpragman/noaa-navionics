@@ -396,6 +396,9 @@ grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
 grep -q 'create or mount the configured storage path' src/noaa_navionics/health.py
+grep -q 'REMOVABLE_STORAGE_ROOTS' src/noaa_navionics/health.py
+grep -q 'no mounted storage device' src/noaa_navionics/health.py
+grep -q 'os.path.ismount' src/noaa_navionics/health.py
 grep -q 'Chart Update Debris' src/noaa_navionics/health.py
 grep -q 'endswith(".part")' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py

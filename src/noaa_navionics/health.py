@@ -27,6 +27,7 @@ from .opencpn import chart_directory_configured, gpsd_connection_configured, ope
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+REMOVABLE_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
 
 
 @dataclass(frozen=True)
@@ -569,6 +570,9 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
         return CheckResult(name, False, f"{existing} does not exist; create or mount the configured storage path")
     if not existing.is_dir():
         return CheckResult(name, False, f"{existing} is not a directory")
+    mount_detail = _missing_removable_mount(path, existing)
+    if mount_detail:
+        return CheckResult(name, False, mount_detail)
     usage = shutil.disk_usage(existing)
     free_gb = usage.free / (1024 ** 3)
     writable = _directory_writable(existing)
@@ -577,6 +581,39 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
     if not writable:
         detail += "; not writable"
     return CheckResult(name, ok, detail)
+
+
+def _missing_removable_mount(configured_path: Path, existing_path: Path) -> str:
+    try:
+        configured = Path(configured_path).expanduser().resolve(strict=False)
+        existing = Path(existing_path).expanduser().resolve(strict=False)
+    except OSError:
+        return ""
+    root = _removable_storage_root(configured)
+    if root is None:
+        return ""
+    current = existing
+    while True:
+        try:
+            current.relative_to(root)
+        except ValueError:
+            break
+        if os.path.ismount(current):
+            return ""
+        if current == root or current.parent == current:
+            break
+        current = current.parent
+    return f"{configured} is under {root} but no mounted storage device was found; mount the configured storage path"
+
+
+def _removable_storage_root(path: Path) -> Optional[Path]:
+    for root in REMOVABLE_STORAGE_ROOTS:
+        try:
+            path.relative_to(root)
+        except ValueError:
+            continue
+        return root
+    return None
 
 
 def check_pi_throttling() -> CheckResult:

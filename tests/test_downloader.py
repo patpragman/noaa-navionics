@@ -3205,6 +3205,44 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("minimum", result.detail)
 
+    def test_disk_check_rejects_unmounted_removable_storage_path(self):
+        original_roots = health_module.REMOVABLE_STORAGE_ROOTS
+        original_ismount = health_module.os.path.ismount
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                removable_root = Path(tmpdir) / "mnt"
+                charts = removable_root / "usb" / "charts"
+                charts.mkdir(parents=True)
+                health_module.REMOVABLE_STORAGE_ROOTS = (removable_root,)
+                health_module.os.path.ismount = lambda path: False
+
+                result = check_disk_space(charts)
+
+            self.assertFalse(result.ok)
+            self.assertIn("no mounted storage device", result.detail)
+        finally:
+            health_module.REMOVABLE_STORAGE_ROOTS = original_roots
+            health_module.os.path.ismount = original_ismount
+
+    def test_disk_check_accepts_mounted_removable_storage_parent(self):
+        original_roots = health_module.REMOVABLE_STORAGE_ROOTS
+        original_ismount = health_module.os.path.ismount
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                removable_root = Path(tmpdir) / "mnt"
+                mount_point = removable_root / "usb"
+                charts = mount_point / "charts"
+                charts.mkdir(parents=True)
+                health_module.REMOVABLE_STORAGE_ROOTS = (removable_root,)
+                health_module.os.path.ismount = lambda path: Path(path) == mount_point
+
+                result = check_disk_space(charts)
+
+            self.assertTrue(result.ok)
+        finally:
+            health_module.REMOVABLE_STORAGE_ROOTS = original_roots
+            health_module.os.path.ismount = original_ismount
+
     def test_preflight_checks_separate_track_storage(self):
         original = health_module._directory_writable
         try:
