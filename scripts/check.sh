@@ -1045,6 +1045,16 @@ scripts/provision_sailboat_pi.sh \
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
 
+scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --skip-autologin \
+  --skip-services \
+  --config "$tmpdir/skip-gpsd-manual.ini" >"$provision_output"
+grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
+
 set +e
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \

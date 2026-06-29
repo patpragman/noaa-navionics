@@ -455,16 +455,17 @@ if [[ "$skip_gpsd" -eq 0 ]]; then
     gpsd_args+=(--dry-run)
   fi
   run "${repo_root}/scripts/configure_gpsd.sh" "${gpsd_args[@]}"
-  if [[ "$skip_gps_time" -eq 0 ]]; then
-    gps_time_args=()
-    if [[ "$allow_non_pi" -eq 1 ]]; then
-      gps_time_args+=(--allow-non-pi)
-    fi
-    if [[ "$dry_run" -eq 1 ]]; then
-      gps_time_args+=(--dry-run)
-    fi
-    run "${repo_root}/scripts/configure_gps_time.sh" "${gps_time_args[@]}"
+fi
+
+if [[ "$skip_gps_time" -eq 0 ]]; then
+  gps_time_args=()
+  if [[ "$allow_non_pi" -eq 1 ]]; then
+    gps_time_args+=(--allow-non-pi)
   fi
+  if [[ "$dry_run" -eq 1 ]]; then
+    gps_time_args+=(--dry-run)
+  fi
+  run "${repo_root}/scripts/configure_gps_time.sh" "${gps_time_args[@]}"
 fi
 
 if [[ "$skip_sync" -eq 0 ]]; then
