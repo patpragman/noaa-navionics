@@ -145,18 +145,24 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
         return None
     if data.get("mode", 0) < 2 or "lat" not in data or "lon" not in data:
         return None
+    latitude = _finite_float_or_none(data.get("lat"))
+    longitude = _finite_float_or_none(data.get("lon"))
+    if latitude is None or longitude is None:
+        return None
     timestamp = None
     if data.get("time"):
         timestamp = _parse_iso_time(data["time"])
-    speed_mps = data.get("speed")
+    speed_mps = _finite_float_or_none(data.get("speed"))
+    track = _finite_float_or_none(data.get("track"))
+    altitude = _finite_float_or_none(data.get("alt"))
     return GPSFix(
         timestamp=timestamp,
-        latitude=float(data["lat"]),
-        longitude=float(data["lon"]),
-        speed_knots=float(speed_mps) * 1.943844492 if speed_mps is not None else None,
-        course_degrees=float(data["track"]) if data.get("track") is not None else None,
+        latitude=latitude,
+        longitude=longitude,
+        speed_knots=speed_mps * 1.943844492 if speed_mps is not None else None,
+        course_degrees=track,
         fix_quality=int(data.get("mode", 0)),
-        altitude_m=float(data["alt"]) if data.get("alt") is not None else None,
+        altitude_m=altitude,
         source_sentence=payload.strip(),
     )
 
@@ -166,10 +172,10 @@ def parse_gpsd_sky(payload: str) -> Optional[GPSFix]:
     if data.get("class") != "SKY":
         return None
     satellites = _gpsd_used_satellites(data)
-    hdop = data.get("hdop")
+    hdop = _finite_float_or_none(data.get("hdop"))
     return GPSFix(
         satellites=satellites,
-        hdop=float(hdop) if hdop is not None else None,
+        hdop=hdop,
         source_sentence=payload.strip(),
     )
 
@@ -218,6 +224,13 @@ def iter_gpsd_fixes(
                         yield merge_fixes(latest_sky, fix)
                     else:
                         yield fix
+
+
+def _finite_float_or_none(value: object) -> Optional[float]:
+    if value is None:
+        return None
+    parsed = float(value)
+    return parsed if math.isfinite(parsed) else None
 
 
 def _gpsd_used_satellites(data: dict[str, object]) -> Optional[int]:

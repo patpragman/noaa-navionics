@@ -3240,6 +3240,24 @@ class GpsTests(unittest.TestCase):
         self.assertAlmostEqual(fix.speed_knots, 3.887688984)
         self.assertEqual(fix.course_degrees, 180.5)
 
+    def test_parse_gpsd_tpv_rejects_non_finite_position(self):
+        payload = '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z","lat":NaN,"lon":-149.9003}'
+
+        self.assertIsNone(parse_gpsd_tpv(payload))
+
+    def test_parse_gpsd_tpv_drops_non_finite_optional_numbers(self):
+        payload = (
+            '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+            '"lat":61.2181,"lon":-149.9003,"speed":NaN,"track":Infinity,"alt":-Infinity}'
+        )
+        fix = parse_gpsd_tpv(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertIsNone(fix.speed_knots)
+        self.assertIsNone(fix.course_degrees)
+        self.assertIsNone(fix.altitude_m)
+
     def test_parse_gpsd_sky_uses_usat_and_hdop(self):
         payload = '{"class":"SKY","uSat":7,"nSat":11,"hdop":1.4}'
         fix = parse_gpsd_sky(payload)
@@ -3247,6 +3265,15 @@ class GpsTests(unittest.TestCase):
         assert fix is not None
         self.assertEqual(fix.satellites, 7)
         self.assertEqual(fix.hdop, 1.4)
+
+    def test_parse_gpsd_sky_drops_non_finite_hdop(self):
+        payload = '{"class":"SKY","uSat":7,"hdop":NaN}'
+        fix = parse_gpsd_sky(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.satellites, 7)
+        self.assertIsNone(fix.hdop)
 
     def test_parse_gpsd_sky_counts_used_satellites(self):
         payload = (
