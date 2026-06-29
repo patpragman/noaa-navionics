@@ -1004,8 +1004,11 @@ grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/report.py
 grep -q 'OpenCPN config directory is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
+grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart path is a symlink' src/noaa_navionics/report.py
+grep -q 'desktop autostart directory is a symlink' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config path is a symlink' src/noaa_navionics/report.py
+grep -q 'LightDM autologin config directory is a symlink' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' src/noaa_navionics/report.py
@@ -1018,6 +1021,8 @@ grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_directory'
 grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_file' tests/test_downloader.py
+grep -q 'test_key_value_file_summary_rejects_symlinked_startup_directory' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_directories' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config_directory' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_files' tests/test_downloader.py
@@ -1064,6 +1069,8 @@ grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report desktop autostart directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report LightDM autologin config directory is a symlink' scripts/verify_pi.sh
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_directory' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py

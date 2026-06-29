@@ -346,12 +346,16 @@ def format_status_text(report: dict[str, object]) -> str:
         if isinstance(autostart, dict):
             lines.append(
                 f"autostart={autostart.get('path', '')} "
-                f"exists={autostart.get('exists', '')} is_symlink={autostart.get('is_symlink', '')}"
+                f"exists={autostart.get('exists', '')} "
+                f"is_symlink={autostart.get('is_symlink', '')} "
+                f"directory_is_symlink={autostart.get('directory_is_symlink', '')}"
             )
         if isinstance(lightdm, dict):
             lines.append(
                 f"lightdm_autologin={lightdm.get('path', '')} "
-                f"exists={lightdm.get('exists', '')} is_symlink={lightdm.get('is_symlink', '')}"
+                f"exists={lightdm.get('exists', '')} "
+                f"is_symlink={lightdm.get('is_symlink', '')} "
+                f"directory_is_symlink={lightdm.get('directory_is_symlink', '')}"
             )
         lines.append(
             f"graphical_target={desktop.get('graphical_target', '')} "
@@ -867,9 +871,13 @@ def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) ->
         "path": str(path),
         "exists": path.is_file(),
         "is_symlink": path.is_symlink(),
+        "directory_is_symlink": path.parent.is_symlink(),
     }
     if path.is_symlink():
         summary["error"] = f"key-value file path is a symlink: {path}"
+        return summary
+    if path.parent.is_symlink():
+        summary["error"] = f"key-value file directory is a symlink: {path.parent}"
         return summary
     if not path.exists():
         return summary
@@ -1193,6 +1201,8 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             failures.append(f"desktop autostart missing at {path}")
         if autostart.get("is_symlink") is True:
             failures.append(f"desktop autostart path is a symlink: {path}")
+        if autostart.get("directory_is_symlink") is True:
+            failures.append(f"desktop autostart directory is a symlink: {Path(path).parent}")
         if str(autostart.get("error", "")):
             failures.append(f"desktop autostart unreadable at {path}: {autostart.get('error')}")
         values = autostart.get("values")
@@ -1230,6 +1240,8 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             failures.append(f"LightDM autologin config missing at {path}")
         if lightdm.get("is_symlink") is True:
             failures.append(f"LightDM autologin config path is a symlink: {path}")
+        if lightdm.get("directory_is_symlink") is True:
+            failures.append(f"LightDM autologin config directory is a symlink: {Path(path).parent}")
         if str(lightdm.get("error", "")):
             failures.append(f"LightDM autologin config unreadable at {path}: {lightdm.get('error')}")
         sections = {str(section) for section in lightdm.get("sections", [])} if isinstance(lightdm.get("sections"), list) else set()
