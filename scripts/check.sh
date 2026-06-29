@@ -874,6 +874,16 @@ grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
+python3 - <<'PY'
+import sys
+
+sys.path.insert(0, "src")
+from noaa_navionics import report
+
+properties = report.USER_UNIT_PROPERTIES["noaa-navionics-track.service"]
+if "UMask" not in properties:
+    raise SystemExit("status report must query loaded track logger UMask")
+PY
 grep -q 'FragmentPath' src/noaa_navionics/report.py
 grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
 grep -q 'loaded no new privileges' scripts/verify_pi.sh

@@ -59,6 +59,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
         "NoNewPrivileges",
         "PrivateTmp",
+        "UMask",
     ],
     "noaa-navionics-preflight.service": [
         "FragmentPath",

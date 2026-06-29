@@ -2411,6 +2411,9 @@ class ManifestTests(unittest.TestCase):
 
 
 class StatusReportTests(unittest.TestCase):
+    def test_status_report_queries_track_logger_umask(self):
+        self.assertIn("UMask", report_module.USER_UNIT_PROPERTIES["noaa-navionics-track.service"])
+
     def test_build_and_write_status_report(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
