@@ -89,6 +89,7 @@ autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
+launcher_lock="${HOME}/.cache/noaa-navionics/chartplotter.launch.lock"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_attempts=3
@@ -570,6 +571,7 @@ fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
   check "chartplotter started after boot" wait_for_chartplotter_started
+  check "chartplotter launcher lock clear" test ! -e "$launcher_lock"
   if opencpn_running; then
     check "OpenCPN running" true
   else
