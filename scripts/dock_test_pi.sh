@@ -104,6 +104,14 @@ require_non_negative_integer() {
   fi
 }
 
+require_local_command() {
+  local command_name="$1"
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+}
+
 validate_remote_dir() {
   local value="$1"
   local trimmed
@@ -235,6 +243,8 @@ if [[ "$skip_deploy" -eq 0 ]]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+require_local_command ssh
 
 wait_for_ssh_down() {
   local deadline=$((SECONDS + 60))

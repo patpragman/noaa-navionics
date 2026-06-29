@@ -26,6 +26,14 @@ require_positive_integer() {
   fi
 }
 
+require_local_command() {
+  local command_name="$1"
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+}
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -103,6 +111,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_ssh_target "$target"
+require_local_command ssh
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"

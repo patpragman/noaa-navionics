@@ -33,7 +33,7 @@ scripts/install_raspberry_pi.sh
 
 For headless use, `python3-tk` is optional.
 For chartplotter use, use Raspberry Pi OS with Desktop/LightDM so OpenCPN can launch on the attached display after power-up.
-The Raspberry Pi installer installs OpenCPN, GPSD, chrony, LightDM, and X11 display-power utilities on the Pi with noninteractive apt calls, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm. Provisioning configures graphical autologin only after GPSD, charts, and the onboard config are commissioned.
+The Raspberry Pi installer installs rsync, OpenCPN, GPSD, chrony, LightDM, and X11 display-power utilities on the Pi with noninteractive apt calls, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm. Provisioning configures graphical autologin only after GPSD, charts, and the onboard config are commissioned.
 Run install, deployment, GPS setup, provisioning, verification, and dock tests as the normal Pi desktop user, not `root`; SSH targets must use plain `user@host` without scp-style paths or ports, and the scripts use `sudo` only for the specific system changes they need.
 The optional SSH deploy directory must be a dedicated `noaa-navionics` directory because deployment uses `rsync --delete` to keep the Pi copy exact.
 
@@ -107,7 +107,7 @@ Deploy to a Raspberry Pi over SSH:
 scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
-Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
+Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script checks for local `ssh` and `rsync`, checks that `rsync` is available on the Pi before copying, and writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
 
 Deploy and run the onboard provisioning sequence:
 

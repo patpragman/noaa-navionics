@@ -84,6 +84,12 @@ grep -q 'launcher.env' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds "$gps_seconds"' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q 'write_remote_source_revision' scripts/deploy_to_pi.sh
+grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
+grep -q 'require_local_command rsync' scripts/deploy_to_pi.sh
+grep -q 'require_remote_command rsync' scripts/deploy_to_pi.sh
+grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
+grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
+grep -q 'require_local_command ssh' scripts/verify_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/deploy_to_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
 grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh
@@ -116,6 +122,7 @@ grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
+grep -q 'python3 python3-venv python3-tk rsync opencpn' scripts/install_raspberry_pi.sh
 grep -q 'gpsd-clients chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
 grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh

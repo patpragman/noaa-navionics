@@ -82,6 +82,25 @@ require_non_negative_integer() {
   fi
 }
 
+require_local_command() {
+  local command_name="$1"
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+}
+
+require_remote_command() {
+  local command_name="$1"
+  if ! ssh -o ConnectTimeout=10 "$target" "command -v ${command_name} >/dev/null 2>&1"; then
+    cat >&2 <<EOF
+Could not confirm required remote command on the Pi: $command_name
+Confirm SSH works and install $command_name on the Pi before deployment, then rerun this script.
+EOF
+    exit 2
+  fi
+}
+
 validate_remote_dir() {
   local value="$1"
   local trimmed
@@ -210,6 +229,10 @@ EOF
   fi
   source_revision="${source_revision}-dirty"
 fi
+
+require_local_command ssh
+require_local_command rsync
+require_remote_command rsync
 
 write_remote_source_revision() {
   local remote_dir_value="$1"

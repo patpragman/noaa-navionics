@@ -30,7 +30,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
 The deploy script copies this repo to the Raspberry Pi and runs the installer on the Pi. It does not install or enable services on the computer you run it from.
-It refuses a dirty local worktree by default so the Pi's recorded source revision matches the source you are verifying. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
+It refuses a dirty local worktree by default so the Pi's recorded source revision matches the source you are verifying. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script checks for local `ssh` and `rsync`, checks that `rsync` is available on the Pi before copying, and writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
 
 Deploy and run the full onboard provisioning sequence:
 
@@ -70,14 +70,14 @@ Manual install:
 
 ```bash
 sudo apt update
-sudo apt install python3 python3-venv python3-tk opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils
+sudo apt install python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils
 sudo apt install raspi-utils || sudo apt install libraspberrypi-bin
 scripts/install_raspberry_pi.sh --skip-apt
 ```
 
 On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
-The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, uses noninteractive apt calls for unattended SSH deployment, ensures LightDM and X11 display-power tools are installed for graphical startup, and ensures `vcgencmd` is available for Raspberry Pi power checks. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, `gpsd` shares one GPS feed between OpenCPN and this tool, and `chrony` can discipline the Pi clock from GPSD when network time is unavailable. The installer leaves chart refresh, track logging, desktop autostart, and LightDM autologin disabled; provisioning installs or enables them only after the onboard config, charts, and GPSD have been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
+The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, uses noninteractive apt calls for unattended SSH deployment, ensures rsync remains available for future deployments, ensures LightDM and X11 display-power tools are installed for graphical startup, and ensures `vcgencmd` is available for Raspberry Pi power checks. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, `gpsd` shares one GPS feed between OpenCPN and this tool, and `chrony` can discipline the Pi clock from GPSD when network time is unavailable. The installer leaves chart refresh, track logging, desktop autostart, and LightDM autologin disabled; provisioning installs or enables them only after the onboard config, charts, and GPSD have been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 ## Onboard Config
 
