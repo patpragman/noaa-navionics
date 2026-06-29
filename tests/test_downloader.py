@@ -456,7 +456,7 @@ class StatusReportTests(unittest.TestCase):
                 '{"created_at":"' + now + '",'
                 '"package":{"label":"Test","url":"file:///test.zip"},'
                 '"download":{"sha256":"abc"},'
-                '"extract":{"enc_cell_count":1}}\n',
+                f'"extract":{{"path":"{cell.parent}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
             )
             sample = root / "sample.nmea"
@@ -483,10 +483,12 @@ class StatusReportTests(unittest.TestCase):
             report = build_status_report(config_path=config, gps_sample=sample)
             self.assertIn("checks", report)
             self.assertIn("services", report)
+            self.assertIn("system_services", report)
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertFalse(report["ok"])
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
+            self.assertIn("System Services:", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())

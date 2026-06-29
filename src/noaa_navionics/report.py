@@ -51,6 +51,7 @@ def build_status_report(
         "config": _config_summary(app_config),
         "manifest": _manifest_summary(app_config.chart_output),
         "services": _service_summary(),
+        "system_services": _system_service_summary(),
         "checks": check_rows,
     }
 
@@ -88,6 +89,12 @@ def format_status_text(report: dict[str, object]) -> str:
     if isinstance(services, dict) and services:
         lines.extend(["", "Services:"])
         for name, state in services.items():
+            if isinstance(state, dict):
+                lines.append(f"{name}: enabled={state.get('enabled', '')} active={state.get('active', '')}")
+    system_services = report.get("system_services", {})
+    if isinstance(system_services, dict) and system_services:
+        lines.extend(["", "System Services:"])
+        for name, state in system_services.items():
             if isinstance(state, dict):
                 lines.append(f"{name}: enabled={state.get('enabled', '')} active={state.get('active', '')}")
     return "\n".join(lines)
@@ -142,16 +149,37 @@ def _service_summary() -> dict[str, object]:
     summary: dict[str, object] = {"available": True}
     for unit in units:
         summary[unit] = {
-            "enabled": _systemctl(["is-enabled", unit]),
-            "active": _systemctl(["is-active", unit]),
+            "enabled": _systemctl_user(["is-enabled", unit]),
+            "active": _systemctl_user(["is-active", unit]),
         }
     return summary
 
 
-def _systemctl(args: list[str]) -> str:
+def _system_service_summary() -> dict[str, object]:
+    if shutil.which("systemctl") is None:
+        return {"available": False, "detail": "systemctl not found"}
+    units = ["gpsd.service"]
+    summary: dict[str, object] = {"available": True}
+    for unit in units:
+        summary[unit] = {
+            "enabled": _systemctl_system(["is-enabled", unit]),
+            "active": _systemctl_system(["is-active", unit]),
+        }
+    return summary
+
+
+def _systemctl_user(args: list[str]) -> str:
+    return _systemctl(["systemctl", "--user", *args])
+
+
+def _systemctl_system(args: list[str]) -> str:
+    return _systemctl(["systemctl", *args])
+
+
+def _systemctl(command: list[str]) -> str:
     try:
         completed = subprocess.run(
-            ["systemctl", "--user", *args],
+            command,
             check=False,
             text=True,
             stdout=subprocess.PIPE,

@@ -199,6 +199,8 @@ Save a status report for troubleshooting:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
+The status report includes readiness checks, NOAA Navionics user units, and the GPSD system service state.
+
 Expected checks:
 
 - Python 3.9+

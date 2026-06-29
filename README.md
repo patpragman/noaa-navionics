@@ -132,7 +132,7 @@ On the Pi, `status-report` writes a JSON readiness artifact:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
-The installed boot-time readiness service writes the same status report after login and retries briefly while the GPS gets its first fix.
+The installed boot-time readiness service writes the same status report after login and retries briefly while the GPS gets its first fix. The report includes the NOAA Navionics user units and the GPSD system service state for troubleshooting.
 
 Start the Pi chartplotter launcher:
 
