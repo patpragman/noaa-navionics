@@ -432,6 +432,7 @@ grep -q 'status report manifest package URL' scripts/verify_pi.sh
 grep -q 'status report manifest download URL' scripts/verify_pi.sh
 grep -q 'status report manifest download path' scripts/verify_pi.sh
 grep -q 'status report manifest download path is a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest download path contains a symlink' scripts/verify_pi.sh
 grep -q 'def parse_manifest_int' scripts/verify_pi.sh
 grep -q 'status report manifest {field} is invalid in {source}' scripts/verify_pi.sh
 grep -q '"download_bytes"' scripts/verify_pi.sh
@@ -439,6 +440,7 @@ grep -q '"download bytes"' scripts/verify_pi.sh
 grep -q 'status report manifest download byte count is not positive' scripts/verify_pi.sh
 grep -q 'status report manifest extract path' scripts/verify_pi.sh
 grep -q 'status report manifest extract path is a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
 grep -q '"ENC cell count"' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
@@ -742,6 +744,7 @@ grep -q 'unverified-cache' src/noaa_navionics/health.py
 grep -q 'chart directory is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest path is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest extract path is a symlink' src/noaa_navionics/health.py
+grep -q 'manifest extract path contains a symlink' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'unexpected ENC chart directories' src/noaa_navionics/health.py
 grep -q 'manifest package URL' src/noaa_navionics/health.py
@@ -749,6 +752,7 @@ grep -q 'manifest download URL' src/noaa_navionics/health.py
 grep -q 'manifest does not record a download URL' src/noaa_navionics/health.py
 grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is a symlink' src/noaa_navionics/health.py
+grep -q 'manifest download path contains a symlink' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
@@ -1055,6 +1059,8 @@ grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_directory' tests/test_downloader.py
+grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
+grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py

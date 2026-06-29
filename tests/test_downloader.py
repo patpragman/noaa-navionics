@@ -2051,6 +2051,35 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("manifest extract path is a symlink", result.detail)
 
+    def test_manifest_extract_path_under_symlinked_parent_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_parent = root / "real-extract-parent"
+            real_extract = real_parent / "AK_ENCs"
+            cell = real_extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            link_parent = root / "extract-link"
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            extract = link_parent / "AK_ENCs"
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest extract path contains a symlink", result.detail)
+            self.assertIn("extract-link", result.detail)
+
     def test_manifest_with_missing_recorded_cells_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -2502,6 +2531,40 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("manifest download path is a symlink", result.detail)
+
+    def test_manifest_archive_path_under_symlinked_parent_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_parent = root / "real-archive-parent"
+            real_parent.mkdir()
+            archive = real_parent / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            digest = downloader_module.sha256_file(archive)
+            link_parent = root / "archive-link"
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            archive_path = link_parent / "AK_ENCs.zip"
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive_path}","bytes":5,"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download path contains a symlink", result.detail)
+            self.assertIn("archive-link", result.detail)
 
     def test_chart_package_rejects_update_bundle_as_primary_charts(self):
         result = check_chart_package("updates", "ten-days")

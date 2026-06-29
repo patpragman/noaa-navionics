@@ -433,6 +433,9 @@ def check_chart_manifest(
         extract_path.resolve().relative_to(path.resolve())
     except ValueError:
         return CheckResult("Manifest", False, f"manifest extract path is outside chart directory: {extract_path}")
+    symlink_component = _first_path_symlink_between(extract_path, path)
+    if symlink_component is not None:
+        return CheckResult("Manifest", False, f"manifest extract path contains a symlink: {symlink_component}")
     try:
         manifest_cell_count = int(extract.get("enc_cell_count", 0))
     except (TypeError, ValueError):
@@ -538,6 +541,9 @@ def _check_manifest_archive(
         archive_path.resolve().relative_to(chart_dir.resolve())
     except ValueError:
         return CheckResult("Manifest", False, f"manifest download path is outside chart directory: {archive_path}")
+    symlink_component = _first_path_symlink_between(archive_path, chart_dir)
+    if symlink_component is not None:
+        return CheckResult("Manifest", False, f"manifest download path contains a symlink: {symlink_component}")
     try:
         expected_bytes = int(download.get("bytes", 0))
     except (TypeError, ValueError):
@@ -562,6 +568,20 @@ def _check_manifest_archive(
     if actual_sha256.lower() != expected_sha256:
         return CheckResult("Manifest", False, f"manifest SHA-256 does not match {archive_path}")
     return None
+
+
+def _first_path_symlink_between(path: Path, root: Path) -> Optional[Path]:
+    root_path = Path(root).expanduser()
+    current = Path(path).expanduser()
+    while True:
+        if current.is_symlink():
+            return current
+        if current == root_path:
+            return None
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
 
 
 def _expected_manifest_package(package: str, value: str = "") -> tuple[str, str]:

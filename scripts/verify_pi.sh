@@ -982,6 +982,18 @@ if expected_config_path:
             f"status report manifest download URL {manifest_download_url} "
             f"does not match configured package filename from {expected_package_source_url} or uses a non-HTTPS redirect"
         )
+    def first_symlink_component(path, root):
+        root_path = Path(root).expanduser()
+        current = Path(path).expanduser()
+        while True:
+            if current.is_symlink():
+                return current
+            if current == root_path:
+                return None
+            parent = current.parent
+            if parent == current:
+                return None
+            current = parent
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
     if manifest.get("download_path_is_symlink") is True or download_path.is_symlink():
         raise SystemExit(f"status report manifest download path is a symlink: {download_path}")
@@ -995,6 +1007,11 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest download path {download_path} is outside {chart_output}"
         ) from exc
+    download_symlink_component = first_symlink_component(download_path, chart_output)
+    if download_symlink_component is not None:
+        raise SystemExit(
+            f"status report manifest download path contains a symlink: {download_symlink_component}"
+        )
     if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
     extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
@@ -1006,6 +1023,11 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest extract path {extract_path} is outside {chart_output}"
         ) from exc
+    extract_symlink_component = first_symlink_component(extract_path, chart_output)
+    if extract_symlink_component is not None:
+        raise SystemExit(
+            f"status report manifest extract path contains a symlink: {extract_symlink_component}"
+        )
     if not extract_path.exists():
         raise SystemExit(f"status report manifest extract path does not exist: {extract_path}")
     if status_enc_cell_count <= 0:
