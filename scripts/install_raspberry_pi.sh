@@ -37,6 +37,10 @@ import sys
 synced_dirs: set[Path] = set()
 for arg in sys.argv[1:]:
     path = Path(arg).expanduser()
+    if path.is_dir():
+        synced_dirs.add(path)
+        synced_dirs.add(path.parent)
+        continue
     try:
         with path.open("rb") as handle:
             os.fsync(handle.fileno())
@@ -236,6 +240,15 @@ if expected_kind in {"regular", "link"} and target.exists() and not target.is_sy
     if mode & 0o022:
         raise SystemExit(f"{label} {target} has permissions {mode:04o}, expected no group/other write bits")
 PY
+}
+
+ensure_private_directory() {
+  local target="$1"
+  local label="$2"
+  validate_user_install_path "$target" "$label" directory
+  mkdir -p "$target"
+  chmod 0700 "$target"
+  sync_paths "$target"
 }
 
 install_root_text_atomic() {
@@ -519,7 +532,10 @@ if [[ "$skip_apt" -eq 0 ]]; then
   ensure_vcgencmd
 fi
 
-mkdir -p "${HOME}/.local/bin" "$data_dir"
+ensure_private_directory "${HOME}/.local/bin" "user command directory"
+ensure_private_directory "$data_dir" "NOAA Navionics data directory"
+ensure_private_directory "$config_dir" "NOAA Navionics config directory"
+ensure_private_directory "$systemd_user_dir" "user systemd directory"
 reset_private_venv
 python3 -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install --disable-pip-version-check --no-index --no-build-isolation --no-use-pep517 "${repo_root}"
@@ -542,7 +558,6 @@ fi
 write_source_revision "$revision"
 sync_paths "$revision_file"
 
-mkdir -p "$config_dir" "$systemd_user_dir"
 if [[ ! -f "${config_dir}/config.ini" ]]; then
   "${HOME}/.local/bin/noaa-navionics" init-config --config "${config_dir}/config.ini"
 fi

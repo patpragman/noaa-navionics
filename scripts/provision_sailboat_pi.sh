@@ -29,6 +29,10 @@ import sys
 synced_dirs: set[Path] = set()
 for arg in sys.argv[1:]:
     path = Path(arg).expanduser()
+    if path.is_dir():
+        synced_dirs.add(path)
+        synced_dirs.add(path.parent)
+        continue
     try:
         with path.open("rb") as handle:
             os.fsync(handle.fileno())
@@ -518,6 +522,70 @@ if target.exists():
 PY
 }
 
+validate_user_directory_path() {
+  local target="$1"
+  local label="$2"
+  python3 - "$target" "$label" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+target = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+home = Path.home().resolve(strict=False)
+path_chain = []
+cursor = target
+while True:
+    path_chain.append(cursor)
+    if cursor == home or cursor == cursor.parent:
+        break
+    cursor = cursor.parent
+if path_chain[-1] != home:
+    raise SystemExit(f"{label} path must be under the deploying user's home directory: {target}")
+
+for path in path_chain:
+    if path.is_symlink():
+        raise SystemExit(f"{label} path contains a symlink: {path}")
+
+try:
+    resolved_target = target.resolve(strict=False)
+except RuntimeError as exc:
+    raise SystemExit(f"{label} path could not be resolved: {target}: {exc}") from exc
+if resolved_target != home and home not in resolved_target.parents:
+    raise SystemExit(f"{label} path must stay under the deploying user's home directory: {target}")
+
+expected_uid = os.getuid()
+for directory in path_chain:
+    if not directory.exists():
+        continue
+    if not directory.is_dir():
+        raise SystemExit(f"{label} path is not a directory: {directory}")
+    stat_result = directory.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f"{label} path {directory} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f"{label} path {directory} has permissions {mode:04o}, expected no group/other write bits"
+        )
+PY
+}
+
+ensure_private_directory() {
+  local target="$1"
+  local label="$2"
+  validate_user_directory_path "$target" "$label"
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ ensure_private_directory %q %q\n' "$target" "$label"
+    return 0
+  fi
+  mkdir -p "$target"
+  chmod 0700 "$target"
+  sync_paths "$target"
+}
+
 install_file_atomic() {
   local source="$1"
   local target="$2"
@@ -568,7 +636,7 @@ write_launcher_env() {
       "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"
   else
     launcher_env_dir="$(dirname "$launcher_env")"
-    mkdir -p "$launcher_env_dir"
+    ensure_private_directory "$launcher_env_dir" "chartplotter launcher environment directory"
     launcher_env_tmp="$(mktemp "${launcher_env_dir}/.launcher.env.XXXXXX")"
     if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\nNOAA_NAVIONICS_OPENCPN_RESTARTS=%s\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s\n' \
       "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay" >"$launcher_env_tmp"; then
@@ -591,7 +659,11 @@ write_launcher_env() {
   fi
 }
 
-run mkdir -p "$(dirname "$config")"
+if same_path "$config" "$default_config"; then
+  ensure_private_directory "$(dirname "$config")" "NOAA Navionics config directory"
+else
+  run mkdir -p "$(dirname "$config")"
+fi
 if [[ ! -f "$config" ]]; then
   run "$bin" init-config --config "$config"
 fi
@@ -633,7 +705,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   validate_user_install_path "$chart_timer" "chart refresh user timer"
   validate_user_install_path "$track_service" "track logger user service"
   validate_user_install_path "$preflight_service" "boot readiness user service"
-  run mkdir -p "$systemd_user_dir"
+  ensure_private_directory "$systemd_user_dir" "user systemd directory"
   install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644
   install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644
   install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644
@@ -649,7 +721,7 @@ fi
 
 if [[ "$skip_autologin" -eq 0 ]]; then
   validate_user_install_path "$autostart_entry" "chartplotter desktop autostart"
-  run mkdir -p "$autostart_dir"
+  ensure_private_directory "$autostart_dir" "desktop autostart directory"
   install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644
   desktop_args=(--user "$USER")
   if [[ "$allow_non_pi" -eq 1 ]]; then

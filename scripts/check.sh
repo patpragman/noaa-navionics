@@ -283,6 +283,17 @@ grep -q 'expected no group/other write bits' scripts/install_raspberry_pi.sh
 grep -q 'validate_user_install_path "${HOME}/.local/bin" "user command directory" directory' scripts/install_raspberry_pi.sh
 grep -q 'validate_user_install_path "$data_dir" "NOAA Navionics data directory" directory' scripts/install_raspberry_pi.sh
 grep -q 'validate_user_install_path "$revision_file" "source revision file" regular' scripts/install_raspberry_pi.sh
+grep -q 'ensure_private_directory "${HOME}/.local/bin" "user command directory"' scripts/install_raspberry_pi.sh
+grep -q 'ensure_private_directory "$data_dir" "NOAA Navionics data directory"' scripts/install_raspberry_pi.sh
+grep -q 'ensure_private_directory "$config_dir" "NOAA Navionics config directory"' scripts/install_raspberry_pi.sh
+grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/install_raspberry_pi.sh
+grep -q 'chmod 0700 "$target"' scripts/install_raspberry_pi.sh
+grep -q 'if path.is_dir():' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_directory_path' scripts/provision_sailboat_pi.sh
+grep -q 'ensure_private_directory "$(dirname "$config")" "NOAA Navionics config directory"' scripts/provision_sailboat_pi.sh
+grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/provision_sailboat_pi.sh
+grep -q 'ensure_private_directory "$autostart_dir" "desktop autostart directory"' scripts/provision_sailboat_pi.sh
+grep -q 'if path.is_dir():' scripts/provision_sailboat_pi.sh
 grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
@@ -1975,7 +1986,7 @@ if [[ "$provision_code" -eq 0 ]]; then
   echo "expected provision_sailboat_pi.sh to reject an unsafe launcher environment directory" >&2
   exit 1
 fi
-grep -q 'chartplotter launcher environment parent .* expected no group/other write bits' "$provision_output"
+grep -q 'NOAA Navionics config directory path .* expected no group/other write bits' "$provision_output"
 ! grep -q 'NOAA_NAVIONICS_GPS_SECONDS' "$provision_output"
 
 provision_link_home="$tmpdir/provision-link-home"
