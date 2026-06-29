@@ -261,6 +261,30 @@ apt_install() {
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
 }
 
+ensure_gpsd_client_tools() {
+  if command -v cgps >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if apt_install gpsd-clients; then
+    if command -v cgps >/dev/null 2>&1; then
+      return 0
+    fi
+    echo "gpsd-clients installed but cgps is unavailable; trying gpsd-tools." >&2
+  else
+    echo "gpsd-clients install did not complete; trying gpsd-tools." >&2
+  fi
+
+  if apt_install gpsd-tools; then
+    if command -v cgps >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  echo "cgps is not available after installing GPSD client tools; GPS manual verification will fail." >&2
+  return 1
+}
+
 ensure_vcgencmd() {
   if command -v vcgencmd >/dev/null 2>&1; then
     return 0
@@ -345,7 +369,8 @@ if [[ "$skip_apt" -eq 0 ]]; then
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
-  apt_install python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients chrony lightdm x11-xserver-utils python3-setuptools procps
+  apt_install python3 python3-venv python3-tk rsync opencpn gpsd chrony lightdm x11-xserver-utils python3-setuptools procps
+  ensure_gpsd_client_tools
   ensure_vcgencmd
 fi
 

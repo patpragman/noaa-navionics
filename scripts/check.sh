@@ -235,13 +235,17 @@ grep -q 'usage()' scripts/configure_gpsd.sh
 grep -q 'usage()' scripts/configure_gps_time.sh
 grep -q 'usage()' scripts/configure_desktop_autologin.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
+grep -q 'ensure_gpsd_client_tools' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
 grep -q 'python3 python3-venv python3-tk rsync opencpn' scripts/install_raspberry_pi.sh
 grep -q 'python3-setuptools' scripts/install_raspberry_pi.sh
 grep -q -- '--no-build-isolation' scripts/install_raspberry_pi.sh
 grep -q -- '--no-use-pep517' scripts/install_raspberry_pi.sh
-grep -q 'gpsd-clients chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
+grep -q 'opencpn gpsd chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
+grep -q 'gpsd-clients' scripts/install_raspberry_pi.sh
+grep -q 'gpsd-tools' scripts/install_raspberry_pi.sh
+grep -q 'command -v cgps' scripts/install_raspberry_pi.sh
 grep -q 'status --porcelain --untracked-files=all' scripts/install_raspberry_pi.sh
 grep -q 'revision="${revision}-dirty"' scripts/install_raspberry_pi.sh
 grep -q 'Direct installs run on a dirty Pi worktree' README.md
