@@ -572,7 +572,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644
   run systemctl --user daemon-reload
   run sudo loginctl enable-linger "$USER"
-  run systemctl --user reset-failed noaa-navionics-track.service noaa-navionics-preflight.service
+  run systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
   run systemctl --user enable --now noaa-navionics.timer
   run systemctl --user enable --now noaa-navionics-track.service
   run systemctl --user restart noaa-navionics-track.service

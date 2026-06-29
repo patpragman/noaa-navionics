@@ -922,7 +922,9 @@ grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service"
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'sudo loginctl enable-linger "$USER"' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user reset-failed noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
+grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
+grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' docs/sailboat-pi.md
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
