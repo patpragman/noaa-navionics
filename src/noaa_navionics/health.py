@@ -11,7 +11,14 @@ import sys
 import tempfile
 import time
 
-from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream
+from .gps import (
+    GPSFix,
+    gps_fix_has_quality_fields,
+    gps_fix_quality_failure,
+    iter_fixes,
+    iter_gpsd_fixes,
+    open_nmea_stream,
+)
 from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest, sha256_file
 from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
 
@@ -410,7 +417,7 @@ def check_gps_sample(sample: Path) -> CheckResult:
     quality_detail = ""
     with path.open(encoding="ascii", errors="ignore") as handle:
         for fix in iter_fixes(handle):
-            quality_detail = _fix_quality_failure(fix)
+            quality_detail = gps_fix_quality_failure(fix)
             if quality_detail:
                 continue
             return CheckResult("GPS", True, _fix_detail(fix))
@@ -470,7 +477,7 @@ def check_gps_device(
                 if freshness_detail:
                     stale_detail = f"; {freshness_detail}"
                     continue
-                quality_detail = _fix_quality_failure(fix)
+                quality_detail = gps_fix_quality_failure(fix)
                 if quality_detail:
                     continue
                 return CheckResult("GPS", True, _fix_detail(fix))
@@ -503,11 +510,11 @@ def check_gpsd(
             if freshness_detail:
                 stale_detail = f"; {freshness_detail}"
                 continue
-            quality_detail = _fix_quality_failure(fix)
+            quality_detail = gps_fix_quality_failure(fix)
             if quality_detail:
                 pending_without_quality = None
                 continue
-            if not _fix_has_quality_fields(fix):
+            if not gps_fix_has_quality_fields(fix):
                 pending_without_quality = fix
                 continue
             return CheckResult("GPSD", True, _fix_detail(fix))
@@ -584,23 +591,6 @@ def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
     if age_seconds < -30:
         return "fix timestamp is in the future"
     return ""
-
-
-def _fix_quality_failure(
-    fix: GPSFix,
-    *,
-    min_satellites: int = 4,
-    max_hdop: float = 5.0,
-) -> str:
-    if fix.satellites is not None and fix.satellites < min_satellites:
-        return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
-    if fix.hdop is not None and fix.hdop > max_hdop:
-        return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
-    return ""
-
-
-def _fix_has_quality_fields(fix: GPSFix) -> bool:
-    return fix.satellites is not None or fix.hdop is not None
 
 
 def _parse_manifest_time(value: str) -> Optional[datetime]:

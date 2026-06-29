@@ -226,6 +226,23 @@ def _gpsd_used_satellites(data: dict[str, object]) -> Optional[int]:
     return used if saw_used else None
 
 
+def gps_fix_quality_failure(
+    fix: GPSFix,
+    *,
+    min_satellites: int = 4,
+    max_hdop: float = 5.0,
+) -> str:
+    if fix.satellites is not None and fix.satellites < min_satellites:
+        return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
+    if fix.hdop is not None and fix.hdop > max_hdop:
+        return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
+    return ""
+
+
+def gps_fix_has_quality_fields(fix: GPSFix) -> bool:
+    return fix.satellites is not None or fix.hdop is not None
+
+
 class GPXTrackLogger:
     def __init__(
         self,

@@ -19,7 +19,16 @@ from .downloader import (
     package_for,
     search_catalog,
 )
-from .gps import GPXTrackLogger, daily_track_path, default_track_path, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
+from .gps import (
+    GPXTrackLogger,
+    daily_track_path,
+    default_track_path,
+    gps_fix_quality_failure,
+    iter_fixes,
+    iter_gpsd_fixes,
+    open_nmea_stream,
+    read_nmea_lines,
+)
 from .health import run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
@@ -371,6 +380,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
             )
+            fixes = _trackable_fixes(fixes)
             previous_handlers = _install_track_stop_handlers()
             try:
                 if args.rotate_daily and not args.file:
@@ -436,6 +446,19 @@ def _read_fixes(
         return
     with open_nmea_stream(device, baud=baud) as stream:
         yield from iter_fixes(read_nmea_lines(stream))
+
+
+def _trackable_fixes(fixes):
+    last_skip_detail = ""
+    for fix in fixes:
+        quality_detail = gps_fix_quality_failure(fix)
+        if quality_detail:
+            if quality_detail != last_skip_detail:
+                print(f"Skipping weak track fix: {quality_detail}", file=sys.stderr)
+                last_skip_detail = quality_detail
+            continue
+        last_skip_detail = ""
+        yield fix
 
 
 class _TrackLoggerStop(Exception):

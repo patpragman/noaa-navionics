@@ -95,9 +95,9 @@ grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
-grep -q 'weak GPS fix' src/noaa_navionics/health.py
+grep -q 'weak GPS fix' src/noaa_navionics/gps.py
 grep -q 'pending_without_quality' src/noaa_navionics/health.py
-grep -q 'def _fix_has_quality_fields' src/noaa_navionics/health.py
+grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'does not match configured' src/noaa_navionics/health.py
@@ -120,6 +120,8 @@ grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'day_carry' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
+grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
+grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' src/noaa_navionics/config.py
 grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' examples/noaa-navionics.ini

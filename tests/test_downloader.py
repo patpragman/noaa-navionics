@@ -33,12 +33,19 @@ from noaa_navionics.downloader import (
     search_catalog,
 )
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
-from noaa_navionics.cli import _TrackLoggerStop, _log_rotating_tracks, _log_single_track, _raise_track_logger_stop
+from noaa_navionics.cli import (
+    _TrackLoggerStop,
+    _log_rotating_tracks,
+    _log_single_track,
+    _raise_track_logger_stop,
+    _trackable_fixes,
+)
 from noaa_navionics.gps import (
     GPSFix,
     GPXTrackLogger,
     _parse_time_today,
     daily_track_path,
+    gps_fix_quality_failure,
     iter_fixes,
     iter_gpsd_fixes,
     parse_gpsd_sky,
@@ -1231,6 +1238,42 @@ class GpsTests(unittest.TestCase):
             text = output.read_text(encoding="utf-8")
             self.assertIn('lat="1.00000000"', text)
             self.assertTrue(text.endswith("</gpx>\n"))
+
+    def test_trackable_fixes_skip_reported_weak_quality(self):
+        weak = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=3,
+            hdop=1.2,
+        )
+        good = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 1, tzinfo=timezone.utc),
+            latitude=3.0,
+            longitude=4.0,
+            satellites=5,
+            hdop=1.2,
+        )
+
+        with redirect_stderr(StringIO()) as stderr:
+            fixes = list(_trackable_fixes(iter([weak, good])))
+
+        self.assertEqual(fixes, [good])
+        self.assertIn("Skipping weak track fix", stderr.getvalue())
+
+    def test_trackable_fixes_keep_position_only_fix(self):
+        position_only = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+        )
+
+        self.assertEqual(list(_trackable_fixes(iter([position_only]))), [position_only])
+
+    def test_shared_gps_quality_rejects_high_hdop(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=9.9)
+
+        self.assertIn("HDOP", gps_fix_quality_failure(fix))
 
     def test_track_signal_handler_raises_stop_exception(self):
         with self.assertRaisesRegex(_TrackLoggerStop, "SIGTERM"):
