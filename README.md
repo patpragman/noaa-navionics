@@ -171,7 +171,7 @@ Register the configured chart directory and GPSD connection with OpenCPN:
 noaa-navionics configure-opencpn
 ```
 
-`sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, extraction path, ENC cell count, and sync time. `preflight` checks that the manifest is current and that the recorded extraction still contains at least the recorded ENC cell count before the boat leaves the dock.
+`sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, extraction path, ENC cell count, and sync time. Chart extraction refuses ZIPs with no ENC `.000` cells before replacing the previous extraction. `preflight` checks that the manifest is current and that the recorded extraction still contains at least the recorded ENC cell count before the boat leaves the dock.
 Preflight also checks for a sane system clock because chart freshness and GPX timestamps depend on UTC time.
 
 Preflight check:

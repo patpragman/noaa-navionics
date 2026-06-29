@@ -242,6 +242,8 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
                 except ValueError as exc:
                     raise RuntimeError(f"unsafe ZIP member path: {member.filename}") from exc
             archive.extractall(staging)
+        if count_enc_cells(staging) <= 0:
+            raise RuntimeError(f"extracted ZIP contains no ENC .000 cells: {zip_path}")
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
         raise

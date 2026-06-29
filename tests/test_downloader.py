@@ -484,6 +484,23 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((root / "evil.000").exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
+    def test_extract_zip_without_enc_cells_preserves_existing_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "empty-charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("README.txt", "no chart cells")
+            destination = root / "AK_ENCs"
+            old_cell = destination / "US5AK3CM" / "US5AK3CM.000"
+            old_cell.parent.mkdir(parents=True)
+            old_cell.write_text("old", encoding="ascii")
+
+            with self.assertRaisesRegex(RuntimeError, "no ENC"):
+                extract_zip(archive, destination)
+
+            self.assertEqual(old_cell.read_text(encoding="ascii"), "old")
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
 
 class StatusReportTests(unittest.TestCase):
     def test_build_and_write_status_report(self):
