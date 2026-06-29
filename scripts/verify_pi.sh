@@ -143,6 +143,23 @@ def config_bool(parser, section, key, fallback):
         return False
     raise SystemExit(f"{section}.{key} is not a boolean value: {value}")
 
+def expected_package_filename(package, value):
+    package = package.strip().lower()
+    value = value.strip()
+    if package == "state":
+        return f"{value.upper()}_ENCs.zip"
+    if package == "cgd":
+        code = value.upper().replace("CGD", "")
+        return f"{int(code):02d}CGD_ENCs.zip"
+    if package == "region":
+        code = value.upper().replace("REGION", "")
+        return f"{int(code):02d}Region_ENCs.zip"
+    if package == "chart":
+        return f"{value.upper()}.zip"
+    if package == "all":
+        return "All_ENCs.zip"
+    return ""
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -192,6 +209,10 @@ if expected_config_path:
         "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
         "track_retention_days": int(parser.get("tracking", "retention_days", fallback="90").strip()),
     }
+    expected_package_zip = expected_package_filename(
+        expected_config["chart_package"],
+        expected_config["chart_value"],
+    )
     try:
         require_track_disk_check = Path(expected_config["track_output"]).resolve() != chart_output.resolve()
     except OSError:
@@ -219,6 +240,23 @@ if expected_config_path:
     for key in ("created_at", "package", "package_filename", "url", "download_path", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
+    manifest_package_filename = str(manifest.get("package_filename", "")).strip()
+    if expected_package_zip and manifest_package_filename != expected_package_zip:
+        raise SystemExit(
+            f"status report manifest package filename {manifest_package_filename} "
+            f"does not match configured {expected_package_zip}"
+        )
+    download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
+    if download_path.name != manifest_package_filename:
+        raise SystemExit(
+            f"status report manifest download path {download_path} does not end with {manifest_package_filename}"
+        )
+    try:
+        download_path.resolve().relative_to(chart_output.resolve())
+    except ValueError as exc:
+        raise SystemExit(
+            f"status report manifest download path {download_path} is outside {chart_output}"
+        ) from exc
     try:
         download_bytes = int(manifest.get("download_bytes", 0))
     except (TypeError, ValueError) as exc:
