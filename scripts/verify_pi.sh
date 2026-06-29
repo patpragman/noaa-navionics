@@ -468,6 +468,33 @@ if configured_device != gpsd_device:
 PY
 }
 
+check_lightdm_autologin_session() {
+  local config_path="$1"
+  python3 - "$config_path" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+config = Path(sys.argv[1])
+try:
+    text = config.read_text(encoding="utf-8")
+except OSError as exc:
+    raise SystemExit(f"could not read LightDM autologin config: {exc}") from exc
+session = ""
+for line in text.splitlines():
+    if line.startswith("autologin-session="):
+        session = line.split("=", 1)[1].strip()
+        break
+if not session:
+    raise SystemExit("LightDM autologin session is not configured")
+if not re.fullmatch(r"[A-Za-z0-9._+-]+", session):
+    raise SystemExit(f"LightDM autologin session name is unsafe: {session}")
+session_file = Path("/usr/share/xsessions") / f"{session}.desktop"
+if not session_file.is_file():
+    raise SystemExit(f"LightDM autologin session is not an installed X11 session: {session_file}")
+PY
+}
+
 stable_gps_device_path() {
   case "$1" in
     /dev/serial/by-id/*)
@@ -736,6 +763,7 @@ if [[ -f "$lightdm_autologin" ]]; then
   check "LightDM autologin seat" grep -Fxq '[Seat:*]' "$lightdm_autologin"
   check "LightDM autologin user" grep -Fxq "autologin-user=${USER}" "$lightdm_autologin"
   check "LightDM autologin timeout" grep -Fxq 'autologin-user-timeout=0' "$lightdm_autologin"
+  check "LightDM autologin X11 session" check_lightdm_autologin_session "$lightdm_autologin"
 fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'

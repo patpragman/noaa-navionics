@@ -2,6 +2,7 @@
 set -euo pipefail
 
 autologin_user="${USER}"
+autologin_session=""
 allow_non_pi=0
 dry_run=0
 
@@ -11,6 +12,8 @@ Usage: scripts/configure_desktop_autologin.sh [options]
 
 Options:
   --user USER         User to log in automatically; defaults to current user
+  --session SESSION   LightDM X11 session name; defaults to an installed
+                      session from /usr/share/xsessions
   --dry-run           Print intended changes without writing system files
   --allow-non-pi      Allow running on non-Raspberry Pi architecture
 
@@ -52,6 +55,61 @@ run() {
   fi
 }
 
+session_is_safe() {
+  [[ "$1" =~ ^[A-Za-z0-9._+-]+$ ]]
+}
+
+installed_xsession() {
+  local session="$1"
+  [[ -f "/usr/share/xsessions/${session}.desktop" ]]
+}
+
+choose_xsession() {
+  local session_file
+  local session_name
+  local preferred
+  if [[ -n "$autologin_session" ]]; then
+    if ! session_is_safe "$autologin_session"; then
+      echo "Autologin session is not a safe LightDM session name: $autologin_session" >&2
+      exit 2
+    fi
+    if [[ "$dry_run" -eq 0 ]] && ! installed_xsession "$autologin_session"; then
+      echo "Autologin session is not installed under /usr/share/xsessions: $autologin_session" >&2
+      exit 2
+    fi
+    return 0
+  fi
+
+  for preferred in LXDE-pi LXDE-pi-x openbox xfce; do
+    if installed_xsession "$preferred"; then
+      autologin_session="$preferred"
+      return 0
+    fi
+  done
+
+  if [[ -d /usr/share/xsessions ]]; then
+    for session_file in /usr/share/xsessions/*.desktop; do
+      [[ -e "$session_file" ]] || continue
+      session_name="$(basename "$session_file" .desktop)"
+      if session_is_safe "$session_name"; then
+        autologin_session="$session_name"
+        return 0
+      fi
+    done
+  fi
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    autologin_session="LXDE-pi"
+    return 0
+  fi
+
+  cat >&2 <<'EOF'
+No LightDM X11 sessions are installed under /usr/share/xsessions.
+Install Raspberry Pi OS with Desktop/X11 support before relying on chartplotter autostart and display power controls.
+EOF
+  exit 2
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --user)
@@ -60,6 +118,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       autologin_user="${2:-}"
+      shift 2
+      ;;
+    --session)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      autologin_session="${2:-}"
       shift 2
       ;;
     --dry-run)
@@ -144,6 +210,8 @@ EOF
   exit 2
 fi
 
+choose_xsession
+
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
@@ -151,6 +219,7 @@ cat >"$tmp" <<EOF
 [Seat:*]
 autologin-user=${autologin_user}
 autologin-user-timeout=0
+autologin-session=${autologin_session}
 EOF
 
 if [[ "$dry_run" -eq 1 ]]; then
@@ -167,4 +236,4 @@ fi
 run sudo systemctl set-default graphical.target
 run sudo systemctl enable lightdm.service
 
-echo "Configured graphical autologin for $autologin_user"
+echo "Configured graphical autologin for $autologin_user using X11 session $autologin_session"

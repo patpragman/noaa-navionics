@@ -269,6 +269,8 @@ grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
+grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
+grep -q '/usr/share/xsessions' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
@@ -310,6 +312,10 @@ grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
 grep -q 'must contain exactly' src/noaa_navionics/health.py
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
+grep -q 'autologin-session=' scripts/configure_desktop_autologin.sh
+grep -q 'choose_xsession' scripts/configure_desktop_autologin.sh
+grep -q '/usr/share/xsessions' scripts/configure_desktop_autologin.sh
+grep -q 'No LightDM X11 sessions are installed' scripts/configure_desktop_autologin.sh
 grep -q 'Refusing to configure graphical autologin for root' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
@@ -659,6 +665,11 @@ if [[ "$desktop_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Refusing to configure graphical autologin for root' "$install_output"
+
+scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" --session LXDE-pi >"$install_output"
+grep -q 'autologin-session=LXDE-pi' "$install_output"
+grep -q 'Configured graphical autologin for' "$install_output"
+grep -q 'using X11 session LXDE-pi' "$install_output"
 
 set +e
 scripts/install_raspberry_pi.sh --bad-option >"$install_output" 2>&1
