@@ -327,7 +327,13 @@ def _service_readiness_checks(
                         "StartLimitBurst": "3",
                     },
                     contains={
-                        "ExecStart": "noaa-navionics sync-charts",
+                        "ExecStart": [
+                            "noaa-navionics sync-charts",
+                            "--config",
+                            "noaa-navionics/config.ini",
+                            "--retries 5",
+                            "--retry-delay 30",
+                        ],
                     },
                 ),
                 _unit_properties_check(
@@ -349,7 +355,12 @@ def _service_readiness_checks(
                         "StartLimitBurst": "60",
                     },
                     contains={
-                        "ExecStart": "noaa-navionics log-track",
+                        "ExecStart": [
+                            "noaa-navionics log-track",
+                            "--config",
+                            "noaa-navionics/config.ini",
+                            "--rotate-daily",
+                        ],
                     },
                 ),
                 _unit_properties_check(
@@ -362,7 +373,14 @@ def _service_readiness_checks(
                         "StartLimitBurst": "5",
                     },
                     contains={
-                        "ExecStart": "noaa-navionics status-report",
+                        "ExecStart": [
+                            "noaa-navionics status-report",
+                            "--config",
+                            "noaa-navionics/config.ini",
+                            "--gps-seconds",
+                            "--output",
+                            "noaa-navionics/status.json",
+                        ],
                         "EnvironmentFiles": "noaa-navionics/launcher.env",
                     },
                 ),
@@ -403,7 +421,7 @@ def _unit_properties_check(
     name: str,
     *,
     exact: Optional[dict[str, str]] = None,
-    contains: Optional[dict[str, str]] = None,
+    contains: Optional[dict[str, str | list[str]]] = None,
 ) -> CheckResult:
     if summary.get("available") is False:
         return CheckResult(name, False, str(summary.get("detail", "systemctl not available")))
@@ -422,10 +440,12 @@ def _unit_properties_check(
         actual = str(properties.get(key, ""))
         if actual != expected:
             failures.append(f"{key}={actual or '<missing>'} expected {expected}")
-    for key, expected in (contains or {}).items():
+    for key, expected_value in (contains or {}).items():
         actual = str(properties.get(key, ""))
-        if expected not in actual:
-            failures.append(f"{key}={actual or '<missing>'} missing {expected}")
+        expected_values = [expected_value] if isinstance(expected_value, str) else expected_value
+        for expected in expected_values:
+            if expected not in actual:
+                failures.append(f"{key}={actual or '<missing>'} missing {expected}")
     if failures:
         return CheckResult(name, False, f"{unit}: " + "; ".join(failures))
     return CheckResult(name, True, f"{unit} loaded settings match expected values")

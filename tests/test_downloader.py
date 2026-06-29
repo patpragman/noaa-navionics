@@ -1153,6 +1153,38 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("StandardOutput=journal", track_settings.detail)
         self.assertIn("Restart=no", track_settings.detail)
 
+    def test_service_readiness_checks_fail_loaded_command_missing_args(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {
+                "enabled": "static",
+                "active": "inactive",
+                "properties": {
+                    "ExecStart": "{ argv[]=/home/pi/.local/bin/noaa-navionics sync-charts ; }",
+                    "TimeoutStartUSec": "2h",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30min",
+                    "StartLimitIntervalUSec": "6h",
+                    "StartLimitBurst": "3",
+                },
+            },
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        chart_settings = next(check for check in checks if check.name == "Chart Sync Settings")
+
+        self.assertFalse(chart_settings.ok)
+        self.assertIn("missing --config", chart_settings.detail)
+        self.assertIn("missing --retries 5", chart_settings.detail)
+
     def test_service_readiness_checks_fail_disabled_chart_timer(self):
         services = {
             "available": True,
