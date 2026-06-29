@@ -211,8 +211,8 @@ validate_launcher_env_path() {
     echo "NOAA Navionics launcher environment is owned by uid ${env_uid}, expected $(id -u): $launcher_env" >&2
     exit 1
   fi
-  if (( (8#$env_mode & 8#022) != 0 )); then
-    echo "NOAA Navionics launcher environment has permissions ${env_mode}, expected no group/other write bits: $launcher_env" >&2
+  if [[ "$env_mode" != "600" && "$env_mode" != "0600" ]]; then
+    echo "NOAA Navionics launcher environment has permissions ${env_mode}, expected private 0600: $launcher_env" >&2
     exit 1
   fi
 }
