@@ -1083,7 +1083,7 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(timer_check.ok)
         self.assertIn("disabled", timer_check.detail)
 
-    def test_service_readiness_checks_fail_failed_chart_sync_service(self):
+    def test_service_readiness_checks_allow_failed_chart_sync_service(self):
         services = {
             "available": True,
             "noaa-navionics.service": {"enabled": "static", "active": "failed"},
@@ -1100,8 +1100,8 @@ class StatusReportTests(unittest.TestCase):
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         sync_check = next(check for check in checks if check.name == "Chart Sync")
 
-        self.assertFalse(sync_check.ok)
-        self.assertIn("failed", sync_check.detail)
+        self.assertTrue(sync_check.ok)
+        self.assertIn("manifest freshness", sync_check.detail)
 
     def test_service_readiness_checks_fail_chart_sync_query_error(self):
         services = {

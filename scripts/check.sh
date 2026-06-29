@@ -173,6 +173,7 @@ grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'Chrony Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
+grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service

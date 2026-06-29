@@ -255,7 +255,7 @@ def _service_readiness_checks(
     gps_mode: str,
 ) -> list[CheckResult]:
     checks = [
-        _unit_not_failed_check(
+        _chart_sync_check(
             services,
             "noaa-navionics.service",
             "Chart Sync",
@@ -302,6 +302,23 @@ def _service_readiness_checks(
             )
         )
     return checks
+
+
+def _chart_sync_check(summary: dict[str, object], unit: str, name: str) -> CheckResult:
+    if summary.get("available") is False:
+        return CheckResult(name, False, str(summary.get("detail", "systemctl not available")))
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from status report")
+    enabled = str(state.get("enabled", ""))
+    active = str(state.get("active", ""))
+    detail = f"{unit} enabled={enabled} active={active}"
+    active_text = active.strip().lower()
+    if _unit_query_failed(enabled) or (active_text != "failed" and _unit_query_failed(active)):
+        return CheckResult(name, False, detail)
+    if active_text == "failed":
+        detail += "; last chart refresh failed, but chart manifest freshness decides navigation readiness"
+    return CheckResult(name, True, detail)
 
 
 def _unit_not_failed_check(summary: dict[str, object], unit: str, name: str) -> CheckResult:
