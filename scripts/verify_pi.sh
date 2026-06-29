@@ -26,6 +26,42 @@ require_positive_integer() {
   fi
 }
 
+validate_ssh_target() {
+  local value="$1"
+  local user_part
+  local host_part
+
+  if [[ -z "$value" ]]; then
+    usage
+    exit 2
+  fi
+  if [[ "$value" == -* ]]; then
+    echo "SSH target must not begin with '-': $value" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "SSH target must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  if [[ "$value" != *@* ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  user_part="${value%@*}"
+  host_part="${value#*@}"
+  if [[ -z "$user_part" || -z "$host_part" ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  if [[ "$user_part" == "root" ]]; then
+    cat >&2 <<'EOF'
+Do not verify root@.
+Verify the Pi desktop user so autologin, user services, charts, and tracks are checked for the real helm account.
+EOF
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --require-chartplotter-started)
@@ -62,18 +98,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$target" ]]; then
-  usage
-  exit 2
-fi
-
-if [[ "$target" == root@* ]]; then
-  cat >&2 <<'EOF'
-Do not verify root@.
-Verify the Pi desktop user so autologin, user services, charts, and tracks are checked for the real helm account.
-EOF
-  exit 2
-fi
+validate_ssh_target "$target"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"

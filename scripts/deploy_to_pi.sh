@@ -24,13 +24,41 @@ allow_dirty=0
 skip_services=0
 skip_autologin=0
 
-if [[ "$target" == root@* ]]; then
-  cat >&2 <<'EOF'
+validate_ssh_target() {
+  local value="$1"
+  local user_part
+  local host_part
+
+  if [[ -z "$value" ]]; then
+    echo "SSH target is required" >&2
+    exit 2
+  fi
+  if [[ "$value" == -* ]]; then
+    echo "SSH target must not begin with '-': $value" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "SSH target must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  if [[ "$value" != *@* ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  user_part="${value%@*}"
+  host_part="${value#*@}"
+  if [[ -z "$user_part" || -z "$host_part" ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  if [[ "$user_part" == "root" ]]; then
+    cat >&2 <<'EOF'
 Do not deploy to root@.
 Deploy to the Pi desktop user; remote scripts use sudo only where system changes are required.
 EOF
-  exit 2
-fi
+    exit 2
+  fi
+}
 
 require_positive_integer() {
   local name="$1"
@@ -146,6 +174,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+validate_ssh_target "$target"
 
 if [[ "$saw_provision_option" -eq 1 && "$provision" -eq 0 ]]; then
   echo "Provisioning options require --provision" >&2

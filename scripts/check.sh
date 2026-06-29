@@ -92,6 +92,11 @@ grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q 'validate_remote_dir' scripts/deploy_to_pi.sh
 grep -q 'validate_remote_dir' scripts/dock_test_pi.sh
+grep -q 'validate_ssh_target' scripts/deploy_to_pi.sh
+grep -q 'validate_ssh_target' scripts/dock_test_pi.sh
+grep -q 'validate_ssh_target' scripts/verify_pi.sh
+grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
+grep -q 'SSH target must be user@host' scripts/verify_pi.sh
 grep -q 'Remote deployment directory must be a dedicated noaa-navionics directory' scripts/deploy_to_pi.sh
 grep -q 'Remote deployment directory must end in noaa-navionics' scripts/deploy_to_pi.sh
 grep -q -- '--skip-gps-time' scripts/deploy_to_pi.sh
@@ -521,6 +526,28 @@ fi
 grep -q 'Do not verify root@' "$verify_output"
 
 set +e
+scripts/verify_pi.sh -oProxyCommand=bad >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject option-like SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not begin with' "$verify_output"
+
+set +e
+scripts/verify_pi.sh raspberrypi.local >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to require user@host SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must be user@host' "$verify_output"
+
+set +e
 scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1
 desktop_code=$?
 set -e
@@ -564,6 +591,28 @@ fi
 grep -q 'Do not deploy to root@' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh -oProxyCommand=bad --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject option-like SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not begin with' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh raspberrypi.local --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to require user@host SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must be user@host' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh pi@example.invalid / --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -595,6 +644,28 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not run the dock test as root@' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh -oProxyCommand=bad --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject option-like SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not begin with' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh raspberrypi.local --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to require user@host SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must be user@host' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid / --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
