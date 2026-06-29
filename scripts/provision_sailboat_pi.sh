@@ -161,6 +161,48 @@ PY
   fi
 }
 
+validate_existing_charts() {
+  if ! python3 - "$repo_root" "$config" <<'PY'
+from pathlib import Path
+import sys
+
+repo_root = Path(sys.argv[1])
+config_path = Path(sys.argv[2]).expanduser()
+if not config_path.exists():
+    raise SystemExit("Existing chart config is required when --skip-sync is used with unattended startup")
+sys.path.insert(0, str(repo_root / "src"))
+from noaa_navionics.config import read_config
+from noaa_navionics.health import (
+    check_chart_dir,
+    check_chart_manifest,
+    check_chart_package,
+    check_chart_update_debris,
+)
+
+app_config = read_config(config_path)
+checks = [
+    check_chart_package(app_config.chart_package, app_config.chart_value),
+    check_chart_dir(app_config.chart_output),
+    check_chart_update_debris(app_config.chart_output),
+    check_chart_manifest(
+        app_config.chart_output,
+        max_age_days=app_config.max_chart_age_days,
+        expected_package=app_config.chart_package,
+        expected_value=app_config.chart_value,
+    ),
+]
+failures = [f"{check.name}: {check.detail}" for check in checks if not check.ok]
+if failures:
+    raise SystemExit(
+        "existing complete charts are required when --skip-sync is used with unattended startup: "
+        + "; ".join(failures)
+    )
+PY
+  then
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -289,6 +331,10 @@ fi
 
 if [[ "$skip_gps_time" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
   validate_existing_gps_time_config
+fi
+
+if [[ "$skip_sync" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
+  validate_existing_charts
 fi
 
 bin="${HOME}/.local/bin/noaa-navionics"

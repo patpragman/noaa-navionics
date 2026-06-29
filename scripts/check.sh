@@ -31,6 +31,7 @@ scripts = [
     Path("scripts/start_chartplotter.sh"),
     Path("scripts/configure_gpsd.sh"),
     Path("scripts/configure_gps_time.sh"),
+    Path("scripts/provision_sailboat_pi.sh"),
 ]
 for path in scripts:
     lines = path.read_text(encoding="utf-8").splitlines()
@@ -258,6 +259,10 @@ grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
+grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
@@ -661,6 +666,27 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -Eq 'Existing chrony GPS time config is required|chrony config must already contain the NOAA Navionics GPSD SHM 0 time source' "$provision_output"
+
+skip_sync_home="$tmpdir/skip-sync-home"
+mkdir -p "$skip_sync_home/.local/bin"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$skip_sync_home/.local/bin/noaa-navionics"
+chmod +x "$skip_sync_home/.local/bin/noaa-navionics"
+set +e
+HOME="$skip_sync_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-sync \
+  --skip-services >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-sync without existing complete charts" >&2
+  exit 1
+fi
+grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' "$provision_output"
 
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony.conf" >"$gpsd_output"
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' "$gpsd_output"

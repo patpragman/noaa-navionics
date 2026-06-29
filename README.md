@@ -120,6 +120,7 @@ For production provisioning, use the default onboard config at `~/.config/noaa-n
 When `deploy_to_pi.sh --provision` is run with `--skip-services` or `--skip-autologin`, those choices are applied to both installation and provisioning so the Pi is not partly configured for unattended startup.
 Use `--skip-gpsd` only when the onboard config already names a commissioned local GPSD receiver; provisioning rejects missing, placeholder, remote, volatile, or nonexistent GPS config before enabling unattended startup.
 Use `--skip-gps-time` only when chrony already contains this project's GPSD `SHM 0` time-source block; provisioning rejects missing GPS time configuration before enabling unattended startup.
+Use `--skip-sync` only when the onboard config already points at a fresh, complete NOAA chart manifest; provisioning rejects missing or incomplete chart data before enabling unattended startup.
 
 Verify the Raspberry Pi after deployment:
 

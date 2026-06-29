@@ -40,6 +40,7 @@ The deploy, provisioning, and dock-test scripts validate retry counts, retry del
 When deployment is combined with provisioning, `--skip-services` and `--skip-autologin` are applied during both install and provisioning so deliberate headless or manual-test deployments do not leave partially enabled unattended startup.
 Use `--skip-gpsd` only when GPSD and the onboard config are already commissioned. If unattended services or desktop autostart are still enabled, provisioning rejects missing config, placeholder GPS devices, non-local GPSD hosts, volatile device names, and nonexistent GPS paths before it enables startup behavior.
 Use `--skip-gps-time` only when chrony already contains this project's GPSD `SHM 0` time-source block. If unattended services or desktop autostart are still enabled, provisioning rejects missing GPS time configuration before it enables startup behavior.
+Use `--skip-sync` only when the configured chart directory already has a fresh, complete NOAA chart manifest. If unattended services or desktop autostart are still enabled, provisioning rejects missing or incomplete chart data before it enables startup behavior.
 
 Verify the Raspberry Pi after deployment:
 
