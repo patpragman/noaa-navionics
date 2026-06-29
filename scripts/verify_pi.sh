@@ -1509,6 +1509,10 @@ check "track service loaded start limit burst" sh -c 'systemctl --user show noaa
 check "track service install target" check_unit_install_target "$track_service" default.target
 check "preflight service file" test -f "$preflight_service"
 check "preflight service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-preflight.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$preflight_service"
+check "preflight service wants track logger" grep -Fxq 'Wants=noaa-navionics-track.service' "$preflight_service"
+check "preflight service after track logger" grep -Fxq 'After=noaa-navionics-track.service' "$preflight_service"
+check "preflight service loaded wants track logger" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Wants 2>/dev/null | grep -Fq noaa-navionics-track.service'
+check "preflight service loaded after track logger" sh -c 'systemctl --user show noaa-navionics-preflight.service -p After 2>/dev/null | grep -Fq noaa-navionics-track.service'
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
 check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=10' "$preflight_service"

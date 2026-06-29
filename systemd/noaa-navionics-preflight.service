@@ -1,5 +1,7 @@
 [Unit]
 Description=Write NOAA Navionics readiness report
+Wants=noaa-navionics-track.service
+After=noaa-navionics-track.service
 StartLimitIntervalSec=30min
 StartLimitBurst=60
 

@@ -813,6 +813,12 @@ grep -q 'loaded no new privileges' scripts/verify_pi.sh
 grep -q 'loaded private tmp' scripts/verify_pi.sh
 grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py
 grep -q 'StartLimitIntervalSec=30min' systemd/noaa-navionics-preflight.service
+grep -q 'Wants=noaa-navionics-track.service' systemd/noaa-navionics-preflight.service
+grep -q 'After=noaa-navionics-track.service' systemd/noaa-navionics-preflight.service
+grep -q 'preflight service loaded wants track logger' scripts/verify_pi.sh
+grep -q 'preflight service loaded after track logger' scripts/verify_pi.sh
+grep -q '"Wants": "noaa-navionics-track.service"' src/noaa_navionics/report.py
+grep -q '"After": "noaa-navionics-track.service"' src/noaa_navionics/report.py
 grep -q 'StartLimitIntervalUSec.*30min' src/noaa_navionics/report.py
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-preflight.service
 grep -q 'Type=simple' systemd/noaa-navionics-track.service

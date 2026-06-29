@@ -60,6 +60,8 @@ USER_UNIT_PROPERTIES = {
     ],
     "noaa-navionics-preflight.service": [
         "FragmentPath",
+        "Wants",
+        "After",
         "ExecStart",
         "Type",
         "Environment",
@@ -849,6 +851,8 @@ def _service_readiness_checks(
                         "noaa-navionics-preflight.service",
                     ),
                     contains={
+                        "Wants": "noaa-navionics-track.service",
+                        "After": "noaa-navionics-track.service",
                         "ExecStart": [
                             "noaa-navionics status-report",
                             "--config",
