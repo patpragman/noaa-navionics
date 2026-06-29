@@ -19,7 +19,12 @@ from noaa_navionics.downloader import (
 )
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
-from noaa_navionics.health import check_chart_dir, check_chart_manifest, check_gps_sample
+from noaa_navionics.health import check_chart_dir, check_chart_manifest, check_gps_sample, check_opencpn_chart_config
+from noaa_navionics.opencpn import (
+    chart_directory_configured,
+    configure_chart_directory,
+    read_chart_directories,
+)
 from noaa_navionics.report import build_status_report, format_status_text, write_status_report
 
 
@@ -142,6 +147,55 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.max_chart_age_days, 14)
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
+
+
+class OpenCPNConfigTests(unittest.TestCase):
+    def test_configure_chart_directory_creates_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / ".opencpn" / "opencpn.conf"
+            charts = root / "charts" / "noaa-enc"
+
+            result = configure_chart_directory(charts, config_path=config)
+
+            self.assertTrue(result.changed)
+            self.assertEqual(result.key, "ChartDir1")
+            self.assertTrue(config.exists())
+            self.assertEqual(read_chart_directories(config), [charts.resolve()])
+            self.assertTrue(chart_directory_configured(charts, config))
+
+    def test_configure_chart_directory_is_idempotent_and_backs_up_existing_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "charts"
+            config.write_text("[Settings]\nShowStatusBar=1\n\n[ChartDirectories]\nChartDir4=/old\n", encoding="utf-8")
+
+            result = configure_chart_directory(charts, config_path=config)
+            second = configure_chart_directory(charts, config_path=config)
+
+            self.assertTrue(result.changed)
+            self.assertIsNotNone(result.backup_path)
+            assert result.backup_path is not None
+            self.assertTrue(result.backup_path.exists())
+            self.assertFalse(second.changed)
+            text = config.read_text(encoding="utf-8")
+            self.assertIn("[Settings]\nShowStatusBar=1\n", text)
+            self.assertIn("ChartDir4=/old\n", text)
+            self.assertIn(f"ChartDir5={charts.resolve()}\n", text)
+
+    def test_check_opencpn_chart_config_reports_missing_and_configured(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "charts"
+
+            missing = check_opencpn_chart_config(charts, config)
+            self.assertFalse(missing.ok)
+
+            configure_chart_directory(charts, config_path=config)
+            configured = check_opencpn_chart_config(charts, config)
+            self.assertTrue(configured.ok)
 
 
 class ManifestTests(unittest.TestCase):

@@ -18,6 +18,7 @@ from .downloader import (
 )
 from .gps import GPXTrackLogger, default_track_path, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
 from .health import run_preflight
+from .opencpn import configure_chart_directory, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
 
 
@@ -60,6 +61,18 @@ def build_parser() -> argparse.ArgumentParser:
     init_config = subparsers.add_parser("init-config", help="write a default onboard config file")
     init_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     init_config.add_argument("--force", action="store_true", help="overwrite an existing config")
+
+    opencpn_config = subparsers.add_parser("configure-opencpn", help="add the configured chart directory to OpenCPN")
+    opencpn_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="NOAA Navionics config file path")
+    opencpn_config.add_argument("--charts", help="chart directory to add; defaults to [charts].output")
+    opencpn_config.add_argument("--opencpn-config", help="OpenCPN config path; defaults to ~/.opencpn/opencpn.conf")
+    opencpn_config.add_argument("--dry-run", action="store_true", help="print intended change without writing")
+    opencpn_config.add_argument("--no-backup", action="store_true", help="do not back up an existing OpenCPN config")
+    opencpn_config.add_argument(
+        "--allow-running",
+        action="store_true",
+        help="allow editing OpenCPN config while OpenCPN appears to be running",
+    )
 
     preflight = subparsers.add_parser("preflight", help="check Pi navigation readiness")
     preflight.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -197,6 +210,25 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.command == "init-config":
             path = write_default_config(Path(args.config), overwrite=args.force)
             print(path)
+            return 0
+
+        if args.command == "configure-opencpn":
+            if opencpn_running() and not args.allow_running:
+                raise RuntimeError("OpenCPN appears to be running; close it before editing its config")
+            app_config = read_config(Path(args.config))
+            chart_dir = Path(args.charts).expanduser() if args.charts else app_config.chart_output
+            result = configure_chart_directory(
+                chart_dir,
+                config_path=Path(args.opencpn_config).expanduser() if args.opencpn_config else None,
+                backup=not args.no_backup,
+                dry_run=args.dry_run,
+            )
+            action = "Would add" if args.dry_run and result.changed else "Added" if result.changed else "Already present"
+            print(f"{action}: {result.key}={result.chart_dir}")
+            print(f"OpenCPN config: {result.config_path}")
+            if result.backup_path:
+                print(f"Backup: {result.backup_path}")
+            print("Start OpenCPN with database rebuild: opencpn -D")
             return 0
 
         if args.command == "preflight":

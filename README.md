@@ -131,6 +131,12 @@ Download the configured chart package:
 noaa-navionics sync-charts
 ```
 
+Register the configured chart directory with OpenCPN:
+
+```bash
+noaa-navionics configure-opencpn
+```
+
 `sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, extraction path, and sync time. `preflight` checks that manifest before the boat leaves the dock.
 
 Preflight check:

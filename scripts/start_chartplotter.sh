@@ -20,4 +20,4 @@ else
   sleep 8
 fi
 
-exec opencpn
+exec opencpn -D

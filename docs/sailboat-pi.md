@@ -133,7 +133,13 @@ For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--
 noaa-navionics search-catalog "Cook Inlet"
 ```
 
-In OpenCPN, add the extracted chart directory under `~/charts/noaa-enc` to the chart directories list, then force a chart database rebuild.
+Register the chart directory in OpenCPN:
+
+```bash
+noaa-navionics configure-opencpn
+```
+
+This backs up `~/.opencpn/opencpn.conf` if it already exists, adds the configured chart directory under `[ChartDirectories]`, and leaves OpenCPN closed. The chartplotter launcher starts OpenCPN with `-D` so OpenCPN rescans the chart directories and rebuilds the chart database.
 
 ## Pre-Departure Check
 
@@ -162,6 +168,7 @@ Expected checks:
 - OpenCPN installed
 - Extracted ENC chart cells present
 - Current chart manifest present
+- OpenCPN configured with the chart directory
 - At least 2 GB free disk space
 - Valid GPSD fix
 

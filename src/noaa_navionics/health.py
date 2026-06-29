@@ -11,6 +11,7 @@ import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
 from .downloader import MANIFEST_NAME, read_manifest
+from .opencpn import chart_directory_configured, opencpn_config_path
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ def run_preflight(
         check_opencpn(),
         check_chart_dir(chart_dir),
         check_chart_manifest(chart_dir, max_age_days=max_chart_age_days),
+        check_opencpn_chart_config(chart_dir),
         check_disk_space(chart_dir),
     ]
     if gpsd:
@@ -64,6 +66,23 @@ def check_tkinter() -> CheckResult:
 def check_opencpn() -> CheckResult:
     path = shutil.which("opencpn")
     return CheckResult("OpenCPN", path is not None, path or "missing; install opencpn for chart display")
+
+
+def check_opencpn_chart_config(chart_dir: Path, config_path: Optional[Path] = None) -> CheckResult:
+    config_path = opencpn_config_path(config_path)
+    if not config_path.exists():
+        return CheckResult(
+            "OpenCPN Charts",
+            False,
+            f"missing {config_path}; run noaa-navionics configure-opencpn after chart sync",
+        )
+    if chart_directory_configured(chart_dir, config_path):
+        return CheckResult("OpenCPN Charts", True, f"{Path(chart_dir).expanduser()} listed in {config_path}")
+    return CheckResult(
+        "OpenCPN Charts",
+        False,
+        f"{Path(chart_dir).expanduser()} not listed in {config_path}; run noaa-navionics configure-opencpn",
+    )
 
 
 def check_chart_dir(chart_dir: Path) -> CheckResult:
