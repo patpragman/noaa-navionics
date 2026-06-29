@@ -322,15 +322,21 @@ class DownloaderApp(tk.Tk):
                 raise RuntimeError("OpenCPN appears to be running; close it before editing its config")
             app_config = read_config(self._config_path())
             chart_result = configure_chart_directory(app_config.chart_output)
-            gpsd_result = configure_gpsd_connection(host=app_config.gpsd_host, port=app_config.gpsd_port)
             lines = [
                 f"OpenCPN config: {chart_result.config_path}",
                 f"Charts: {'added' if chart_result.changed else 'already present'} {chart_result.chart_dir}",
-                f"GPSD: {'added' if gpsd_result.changed else 'already present'} {gpsd_result.host}:{gpsd_result.port}",
             ]
+            gpsd_result = None
+            if app_config.gps_mode == "gpsd":
+                gpsd_result = configure_gpsd_connection(host=app_config.gpsd_host, port=app_config.gpsd_port)
+                lines.append(
+                    f"GPSD: {'added' if gpsd_result.changed else 'already present'} {gpsd_result.host}:{gpsd_result.port}"
+                )
+            else:
+                lines.append(f"GPSD: skipped (gps.mode={app_config.gps_mode})")
             if chart_result.backup_path:
                 lines.append(f"Backup: {chart_result.backup_path}")
-            if gpsd_result.backup_path and gpsd_result.backup_path != chart_result.backup_path:
+            if gpsd_result and gpsd_result.backup_path and gpsd_result.backup_path != chart_result.backup_path:
                 lines.append(f"Backup: {gpsd_result.backup_path}")
             self.queue.put(("log-lines", ("OpenCPN configured", lines)))
         except Exception as exc:

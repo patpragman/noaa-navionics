@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from noaa_navionics import health as health_module
 from noaa_navionics import downloader as downloader_module
+from noaa_navionics import cli as cli_module
 from noaa_navionics.downloader import (
     DOWNLOAD_LOCK_NAME,
     MANIFEST_NAME,
@@ -313,6 +314,84 @@ class OpenCPNConfigTests(unittest.TestCase):
             configure_gpsd_connection(config_path=config)
             configured = check_opencpn_gpsd_config(config_path=config)
             self.assertTrue(configured.ok)
+
+    def test_cli_configure_opencpn_skips_gpsd_for_serial_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            opencpn_config = root / "opencpn.conf"
+            charts = root / "charts"
+            app_config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {charts}\n"
+                "\n"
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/ttyUSB0\n",
+                encoding="utf-8",
+            )
+
+            original = cli_module.opencpn_running
+            try:
+                cli_module.opencpn_running = lambda: False
+                with redirect_stdout(StringIO()) as output:
+                    code = cli_module.main(
+                        [
+                            "configure-opencpn",
+                            "--config",
+                            str(app_config),
+                            "--opencpn-config",
+                            str(opencpn_config),
+                            "--dry-run",
+                        ]
+                    )
+            finally:
+                cli_module.opencpn_running = original
+
+            self.assertEqual(code, 0)
+            self.assertIn("GPSD skipped: gps.mode=serial", output.getvalue())
+            self.assertNotIn("Added GPSD", output.getvalue())
+
+    def test_cli_configure_opencpn_adds_gpsd_for_gpsd_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            opencpn_config = root / "opencpn.conf"
+            charts = root / "charts"
+            app_config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {charts}\n"
+                "\n"
+                "[gps]\n"
+                "mode = gpsd\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n",
+                encoding="utf-8",
+            )
+
+            original = cli_module.opencpn_running
+            try:
+                cli_module.opencpn_running = lambda: False
+                with redirect_stdout(StringIO()) as output:
+                    code = cli_module.main(
+                        [
+                            "configure-opencpn",
+                            "--config",
+                            str(app_config),
+                            "--opencpn-config",
+                            str(opencpn_config),
+                            "--dry-run",
+                        ]
+                    )
+            finally:
+                cli_module.opencpn_running = original
+
+            self.assertEqual(code, 0)
+            self.assertIn("Would add GPSD: 127.0.0.1:2947", output.getvalue())
 
 
 class ManifestTests(unittest.TestCase):

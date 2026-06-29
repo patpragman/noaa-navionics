@@ -245,7 +245,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"OpenCPN config: {result.config_path}")
             if result.backup_path:
                 print(f"Backup: {result.backup_path}")
-            if not args.no_gpsd:
+            if not args.no_gpsd and app_config.gps_mode == "gpsd":
                 gpsd_result = configure_gpsd_connection(
                     host=app_config.gpsd_host,
                     port=app_config.gpsd_port,
@@ -263,6 +263,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(f"{gpsd_action}: {gpsd_result.host}:{gpsd_result.port}")
                 if gpsd_result.backup_path and gpsd_result.backup_path != result.backup_path:
                     print(f"Backup: {gpsd_result.backup_path}")
+            elif not args.no_gpsd:
+                print(f"GPSD skipped: gps.mode={app_config.gps_mode}")
             print("Start OpenCPN with ENC processing: opencpn -parse_all_enc")
             return 0
 
