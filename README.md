@@ -165,6 +165,7 @@ Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
 The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
 It reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
 If OpenCPN is already running for the same user, a repeated launcher invocation leaves the existing chartplotter instance in place instead of starting a second one.
+The launcher also uses a cache-directory lock so overlapping desktop startup attempts cannot race each other before OpenCPN is visible.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
 If readiness fails in a desktop session, the launcher shows a Tkinter warning listing failed checks and the status report path before starting OpenCPN anyway.

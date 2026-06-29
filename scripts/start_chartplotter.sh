@@ -5,10 +5,12 @@ config="${HOME}/.config/noaa-navionics/config.ini"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
+launcher_lock_dir="${HOME}/.cache/noaa-navionics/chartplotter.launch.lock"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 gps_seconds=10
 warning_seconds=8
+lock_acquired=0
 
 load_launcher_settings() {
   local key
@@ -60,6 +62,46 @@ opencpn_running() {
   else
     return 1
   fi
+}
+
+release_launcher_lock() {
+  if [[ "$lock_acquired" -eq 1 ]]; then
+    rm -f "${launcher_lock_dir}/pid"
+    rmdir "$launcher_lock_dir" 2>/dev/null || true
+    lock_acquired=0
+  fi
+}
+
+acquire_launcher_lock() {
+  local owner_pid=""
+  if mkdir "$launcher_lock_dir" 2>/dev/null; then
+    printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
+    lock_acquired=1
+    trap release_launcher_lock EXIT
+    return 0
+  fi
+  if [[ -r "${launcher_lock_dir}/pid" ]]; then
+    read -r owner_pid <"${launcher_lock_dir}/pid" || owner_pid=""
+  fi
+  if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null; then
+    if opencpn_running; then
+      echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
+    else
+      echo "Another NOAA Navionics chartplotter launcher is already running; leaving it in charge."
+    fi
+    exit 0
+  fi
+  echo "Removing stale chartplotter launcher lock."
+  rm -f "${launcher_lock_dir}/pid"
+  rmdir "$launcher_lock_dir" 2>/dev/null || true
+  if mkdir "$launcher_lock_dir" 2>/dev/null; then
+    printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
+    lock_acquired=1
+    trap release_launcher_lock EXIT
+    return 0
+  fi
+  echo "Could not acquire chartplotter launcher lock; leaving any active launcher in charge." >&2
+  exit 0
 }
 
 show_preflight_warning() {
@@ -157,6 +199,7 @@ fi
 exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+acquire_launcher_lock
 load_launcher_settings
 keep_display_awake
 
@@ -179,4 +222,14 @@ if opencpn_running; then
 fi
 
 echo "Launching OpenCPN with ENC processing."
-exec opencpn -parse_all_enc
+opencpn -parse_all_enc &
+opencpn_pid=$!
+for _ in 1 2 3 4 5; do
+  if opencpn_running || ! kill -0 "$opencpn_pid" 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
+release_launcher_lock
+trap - EXIT
+wait "$opencpn_pid"
