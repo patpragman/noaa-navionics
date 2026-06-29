@@ -25,6 +25,7 @@ from .gps import (
     GPXTrackLogger,
     daily_track_path,
     default_track_path,
+    first_symlink_ancestor,
     gps_fix_has_quality_fields,
     gps_fix_quality_failure,
     iter_fixes,
@@ -716,11 +717,13 @@ def _log_rotating_tracks(
 
 def _prepare_private_tracks_dir(tracks_dir: Path) -> None:
     path = Path(tracks_dir).expanduser()
-    if path.is_symlink():
-        raise RuntimeError(f"{path} is a symlink, expected a private tracks directory")
+    symlink_component = first_symlink_ancestor(path)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} is a symlink, expected a private tracks directory")
     path.mkdir(parents=True, mode=0o700, exist_ok=True)
-    if path.is_symlink():
-        raise RuntimeError(f"{path} is a symlink, expected a private tracks directory")
+    symlink_component = first_symlink_ancestor(path)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} is a symlink, expected a private tracks directory")
     os.chmod(path, 0o700)
     _fsync_directory(path)
     _fsync_directory(path.parent)

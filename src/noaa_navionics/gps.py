@@ -314,7 +314,13 @@ class GPXTrackLogger:
 
     def __enter__(self) -> "GPXTrackLogger":
         parent = self.path.parent
+        symlink_component = first_symlink_ancestor(parent)
+        if symlink_component is not None:
+            raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
         parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+        symlink_component = first_symlink_ancestor(parent)
+        if symlink_component is not None:
+            raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
         fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
             self.file = os.fdopen(fd, "w", encoding="utf-8")
@@ -381,6 +387,15 @@ def _fsync_directory(path: Path) -> None:
         pass
     finally:
         os.close(fd)
+
+
+def first_symlink_ancestor(path: Path) -> Optional[Path]:
+    current = Path(path).expanduser()
+    candidates = [current, *current.parents]
+    for candidate in candidates:
+        if candidate.is_symlink():
+            return candidate
+    return None
 
 
 def default_track_path(base_dir: Path) -> Path:

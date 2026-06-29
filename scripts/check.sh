@@ -851,8 +851,15 @@ grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
+grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
+grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py
+grep -q 'test_gpx_logger_rejects_symlinked_track_parent' tests/test_downloader.py
 grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
+grep -q 'first_symlink_ancestor' src/noaa_navionics/cli.py
 grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
+grep -q 'test_log_rotating_tracks_rejects_symlinked_base_directory' tests/test_downloader.py
+grep -q 'GPX logging rejects symlinked track-output parent components' README.md
+grep -q 'GPX logger also refuses symlinked track-output parent components' docs/sailboat-pi.md
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
 grep -q 'status report parent directory' src/noaa_navionics/report.py

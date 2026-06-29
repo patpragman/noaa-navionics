@@ -4890,6 +4890,24 @@ class GpsTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 5)
 
+    def test_gpx_logger_rejects_symlinked_track_parent(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "target"
+            target.mkdir()
+            link_parent = root / "track-parent"
+            try:
+                link_parent.symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "expected real GPX track storage"):
+                with GPXTrackLogger(link_parent / "track.gpx") as logger:
+                    logger.append(fix)
+
+            self.assertFalse((target / "track.gpx").exists())
+
     def test_gpx_logger_does_not_overwrite_existing_file(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -4934,6 +4952,24 @@ class GpsTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "symlink"):
                 with redirect_stdout(StringIO()):
                     _log_rotating_tracks(iter([fix]), root, deadline=None, sample=True)
+
+    def test_log_rotating_tracks_rejects_symlinked_base_directory(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "target"
+            target.mkdir()
+            link_base = root / "track-storage"
+            try:
+                link_base.symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "expected a private tracks directory"):
+                with redirect_stdout(StringIO()):
+                    _log_rotating_tracks(iter([fix]), link_base, deadline=None, sample=True)
+
+            self.assertFalse((target / "tracks").exists())
 
     def test_log_single_track_closes_gpx_on_stop_signal_exception(self):
         def fixes():
