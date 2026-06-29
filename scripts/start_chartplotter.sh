@@ -204,6 +204,17 @@ current_boot_id() {
   fi
 }
 
+validate_launcher_lock_path() {
+  if [[ -L "$cache_dir" || -L "$launcher_lock_dir" || -L "${launcher_lock_dir}/pid" || -L "${launcher_lock_dir}/boot_id" ]]; then
+    echo "chartplotter launcher lock path contains a symlink: $launcher_lock_dir" >&2
+    exit 1
+  fi
+  if [[ -e "$launcher_lock_dir" && ! -d "$launcher_lock_dir" ]]; then
+    echo "chartplotter launcher lock path is not a directory: $launcher_lock_dir" >&2
+    exit 1
+  fi
+}
+
 launcher_lock_from_current_boot() {
   local current
   local lock_boot_id=""
@@ -240,6 +251,7 @@ release_launcher_lock() {
 
 acquire_launcher_lock() {
   local owner_pid=""
+  validate_launcher_lock_path
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
     chmod 0700 "$launcher_lock_dir"
     write_launcher_lock_files

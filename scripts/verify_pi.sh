@@ -1984,6 +1984,7 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher OpenCPN restart loop" grep -Fq 'Restarting OpenCPN after nonzero exit status' "$launcher"
   check "chartplotter launcher lock" grep -Fq 'chartplotter.launch.lock' "$launcher"
   check "chartplotter launcher lock boot ID" grep -Fq 'current_boot_id' "$launcher"
+  check "chartplotter launcher lock symlink guard" grep -Fq 'chartplotter launcher lock path contains a symlink' "$launcher"
   check "chartplotter launcher previous-boot lock recovery" grep -Fq 'Launcher lock is from a previous boot; treating lock as stale' "$launcher"
   check "chartplotter launcher lock sync create" grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' "$launcher"
   check "chartplotter launcher lock sync cleanup" grep -Fq 'sync_paths "$launcher_lock_dir"' "$launcher"

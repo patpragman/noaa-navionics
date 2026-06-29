@@ -78,6 +78,8 @@ grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
 grep -q 'current_boot_id' scripts/start_chartplotter.sh
+grep -q 'validate_launcher_lock_path' scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher lock path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_from_current_boot' scripts/start_chartplotter.sh
 grep -q 'Launcher lock is from a previous boot; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_chartplotter.sh
@@ -315,6 +317,7 @@ grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock exists without a readable boot ID file' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
@@ -2217,6 +2220,26 @@ test ! -e "$launcher_fail_home/.cache/noaa-navionics/chartplotter.launch.lock"
 grep -q 'Display session found, but 3 xset command(s) failed' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited with status 0' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_symlink_lock_home="$tmpdir/launcher-symlink-lock-home"
+launcher_symlink_lock_target="$tmpdir/launcher-symlink-lock-real"
+mkdir -p "$launcher_symlink_lock_home/.local/bin" "$launcher_symlink_lock_home/.cache/noaa-navionics" "$launcher_symlink_lock_target"
+ln -s "$launcher_symlink_lock_target" "$launcher_symlink_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_lock_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nprintf "opencpn launched\\n" >"$HOME/.cache/noaa-navionics/opencpn-started"\nexit 0\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_symlink_lock_home/.local/bin/noaa-navionics" "$tmpdir/opencpn"
+set +e
+HOME="$launcher_symlink_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_symlink_lock_code=$?
+set -e
+if [[ "$launcher_symlink_lock_code" -eq 0 ]]; then
+  cat "$launcher_symlink_lock_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a symlinked launch lock" >&2
+  exit 1
+fi
+test -L "$launcher_symlink_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+test ! -e "$launcher_symlink_lock_home/.cache/noaa-navionics/opencpn-started"
+grep -q 'chartplotter launcher lock path contains a symlink' "$launcher_symlink_lock_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_lock_home="$tmpdir/launcher-lock-home"
 mkdir -p "$launcher_lock_home/.local/bin" "$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
