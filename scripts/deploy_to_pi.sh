@@ -34,8 +34,8 @@ saw_provision_option=0
 allow_dirty=0
 skip_services=0
 skip_autologin=0
-ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10)
-ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10)
+ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 
 validate_ssh_target() {
   local value="$1"
@@ -629,7 +629,7 @@ PY"
 
 deploy_with_rsync() {
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
-  rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10" \
+  rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4" \
     --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \

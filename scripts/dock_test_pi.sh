@@ -47,6 +47,8 @@ timeout=180
 deploy_args=()
 provision_args=()
 verify_args=()
+ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 
 validate_ssh_target() {
   local value="$1"
@@ -315,17 +317,17 @@ wait_for_ssh_up() {
 }
 
 ssh_available() {
-  ssh -o BatchMode=yes -o ConnectTimeout=5 "$target" "true" >/dev/null 2>&1
+  ssh "${ssh_probe_options[@]}" "$target" "true" >/dev/null 2>&1
 }
 
 remote_boot_id() {
-  ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "cat /proc/sys/kernel/random/boot_id"
+  ssh "${ssh_batch_options[@]}" "$target" "cat /proc/sys/kernel/random/boot_id"
 }
 
 check_remote_noninteractive_reboot_available() {
   local reboot_cmd
 
-  if ! reboot_cmd="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
+  if ! reboot_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
     echo "Could not find the remote reboot command on $target." >&2
     return 1
   fi
@@ -334,7 +336,7 @@ check_remote_noninteractive_reboot_available() {
     return 1
   fi
 
-  if ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "sudo -n -l '$reboot_cmd'" >/dev/null 2>&1; then
+  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n -l '$reboot_cmd'" >/dev/null 2>&1; then
     printf 'OK   noninteractive sudo can run %s\n' "$reboot_cmd"
     return 0
   fi
@@ -347,7 +349,7 @@ check_remote_noninteractive_reboot_available() {
 }
 
 request_reboot() {
-  if ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "sudo -n reboot" >/dev/null 2>&1; then
+  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n reboot" >/dev/null 2>&1; then
     return 0
   fi
 

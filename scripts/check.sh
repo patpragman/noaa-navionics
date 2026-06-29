@@ -150,9 +150,12 @@ grep -q 'Refusing source revision write under symlinked deployment path' scripts
 grep -q 'Deployment directory is not ready for source revision write' scripts/deploy_to_pi.sh
 grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
-grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10)' scripts/deploy_to_pi.sh
-grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10)' scripts/deploy_to_pi.sh
-grep -q 'rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10"' scripts/deploy_to_pi.sh
+grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
+grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
+grep -q 'rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
+grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
+grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
+grep -q 'ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
 grep -q 'local_command_exists rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_exists rsync' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available python3' scripts/deploy_to_pi.sh
@@ -199,7 +202,7 @@ grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
 grep -q 'require_local_command ssh' scripts/verify_pi.sh
-grep -Fq 'ssh -T -o BatchMode=yes -o ConnectTimeout=10 "$target"' scripts/verify_pi.sh
+grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
@@ -1370,7 +1373,10 @@ grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
 grep -q 'sudo -n -l' scripts/dock_test_pi.sh
-grep -q 'ssh -T -o BatchMode=yes -o ConnectTimeout=10' scripts/verify_pi.sh
+grep -q 'ssh -T "${ssh_batch_options\[@\]}" "$target"' scripts/verify_pi.sh
+grep -q 'ServerAliveInterval=30' scripts/deploy_to_pi.sh
+grep -q 'ServerAliveInterval=30' scripts/verify_pi.sh
+grep -q 'ServerAliveInterval=30' scripts/dock_test_pi.sh
 grep -q 'reboot sudo preflight' scripts/dock_test_pi.sh
 grep -q 'request_reboot' scripts/dock_test_pi.sh
 grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
