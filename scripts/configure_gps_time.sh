@@ -171,13 +171,19 @@ skipping = False
 for line in lines:
     stripped = line.strip()
     if stripped == begin:
+        if skipping:
+            raise SystemExit(f"nested NOAA Navionics GPS time block in {source}")
         skipping = True
         continue
     if stripped == end and skipping:
         skipping = False
         continue
+    if stripped == end:
+        raise SystemExit(f"found NOAA Navionics GPS time END marker without BEGIN in {source}")
     if not skipping:
         filtered.append(line)
+if skipping:
+    raise SystemExit(f"unterminated NOAA Navionics GPS time block in {source}")
 
 if filtered and filtered[-1].strip():
     filtered.append("\n")

@@ -542,6 +542,8 @@ grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_ti
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
+grep -q 'unterminated NOAA Navionics GPS time block' scripts/configure_gps_time.sh
+grep -q 'END marker without BEGIN' scripts/configure_gps_time.sh
 grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
@@ -1690,6 +1692,18 @@ grep -q 'Existing chart config is required when --skip-sync is used with unatten
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony.conf" >"$gpsd_output"
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' "$gpsd_output"
 grep -q 'Would restart chrony and GPSD' "$gpsd_output"
+
+printf '# BEGIN NOAA Navionics GPS time\nrefclock SHM 0 offset 0.5 delay 0.1 refid GPS\n' >"$tmpdir/bad-chrony.conf"
+set +e
+scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/bad-chrony.conf" >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject unterminated managed chrony block" >&2
+  exit 1
+fi
+grep -q 'unterminated NOAA Navionics GPS time block' "$gpsd_output"
 
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"
