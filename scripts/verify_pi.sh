@@ -1205,8 +1205,14 @@ for unit, expected_target in expected_unit_files.items():
         raise SystemExit(
             f"status report {unit} directory is a symlink or missing symlink status: {expected_unit_path.parent}"
         )
+    unit_symlink_component = str(state.get("path_symlink_component", "")).strip()
+    if unit_symlink_component:
+        raise SystemExit(f"status report {unit} path contains a symlink: {unit_symlink_component}")
     if expected_unit_path.parent.is_symlink():
         raise SystemExit(f"status report {unit} directory is a symlink: {expected_unit_path.parent}")
+    live_unit_symlink_component = first_symlink_ancestor(expected_unit_path.parent)
+    if live_unit_symlink_component is not None:
+        raise SystemExit(f"status report {unit} path contains a symlink: {live_unit_symlink_component}")
     if expected_target:
         wanted_by = state.get("wanted_by")
         if not isinstance(wanted_by, list):

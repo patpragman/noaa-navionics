@@ -308,6 +308,7 @@ def format_status_text(report: dict[str, object]) -> str:
                     f"{name}: exists={state.get('exists', '')} "
                     f"is_symlink={state.get('is_symlink', '')} "
                     f"directory_is_symlink={state.get('directory_is_symlink', '')} "
+                    f"path_symlink_component={state.get('path_symlink_component', '')} "
                     f"wanted_by={wanted_by_text}"
                 )
     launcher_settings = report.get("launcher_settings", {})
@@ -810,18 +811,20 @@ def _user_unit_file_summary() -> dict[str, object]:
     summary: dict[str, object] = {"directory": str(unit_dir)}
     for unit in USER_UNIT_PROPERTIES:
         path = unit_dir / unit
+        symlink_component = _first_symlink_ancestor(path.parent)
         state: dict[str, object] = {
             "path": str(path),
             "exists": path.is_file(),
             "is_symlink": path.is_symlink(),
             "directory_is_symlink": path.parent.is_symlink(),
+            "path_symlink_component": str(symlink_component) if symlink_component is not None else "",
         }
         if path.is_symlink():
             state["error"] = f"user unit file path is a symlink: {path}"
             summary[unit] = state
             continue
-        if path.parent.is_symlink():
-            state["error"] = f"user unit file directory is a symlink: {path.parent}"
+        if symlink_component is not None:
+            state["error"] = f"user unit file directory is a symlink: {symlink_component}"
             summary[unit] = state
             continue
         if path.is_file():
@@ -1358,6 +1361,9 @@ def _unit_file_install_target_check(
         return CheckResult(name, False, f"{unit} unit file path is a symlink: {path}")
     if state.get("directory_is_symlink") is True:
         return CheckResult(name, False, f"{unit} unit file directory is a symlink: {Path(path).parent}")
+    symlink_component = str(state.get("path_symlink_component", "")).strip()
+    if symlink_component:
+        return CheckResult(name, False, f"{unit} unit file path contains a symlink: {symlink_component}")
     error = str(state.get("error", ""))
     if error:
         return CheckResult(name, False, f"{unit} unit file unreadable at {path}: {error}")

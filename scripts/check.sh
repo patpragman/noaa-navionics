@@ -1074,12 +1074,16 @@ grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
 grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py
 grep -q 'user unit file path is a symlink' src/noaa_navionics/report.py
 grep -q 'user unit file directory is a symlink' src/noaa_navionics/report.py
+grep -q 'unit file path contains a symlink' src/noaa_navionics/report.py
+grep -q 'status report {unit} path contains a symlink' scripts/verify_pi.sh
 grep -q 'section != "Install"' src/noaa_navionics/report.py
 grep -q 'wanted_by' src/noaa_navionics/report.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_file' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_directory' tests/test_downloader.py
+grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_ancestor' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_install_target' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_directory' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_symlinked_source_revision' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_on_pi' tests/test_downloader.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
@@ -1102,8 +1106,8 @@ grep -q 'loaded settings match expected values' src/noaa_navionics/report.py
 grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navionics/report.py
 grep -q 'missing or disabled chart-refresh service still fails readiness' README.md
 grep -q 'missing or disabled chart-refresh service still fails readiness' docs/sailboat-pi.md
-grep -q 'user unit path and parent-directory integrity' README.md
-grep -q 'user unit path and parent-directory integrity' docs/sailboat-pi.md
+grep -q 'user unit path-component integrity' README.md
+grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'rejects symlinked cache parents' README.md
 grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
@@ -1144,6 +1148,8 @@ grep -q 'launcher environment path components' README.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
+grep -q 'user unit path-component integrity' README.md
+grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification also reject symlinked desktop autostart' README.md
 grep -q 'Status reports and Pi verification also reject symlinked desktop autostart' docs/sailboat-pi.md
 grep -q '"download_bytes"' src/noaa_navionics/report.py
