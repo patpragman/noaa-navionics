@@ -4337,6 +4337,7 @@ class StatusReportTests(unittest.TestCase):
                     "NOAA_NAVIONICS_GPS_SECONDS": "30",
                     "NOAA_NAVIONICS_READINESS_ATTEMPTS": "3",
                     "NOAA_NAVIONICS_READINESS_RETRY_DELAY": "10",
+                    "NOAA_NAVIONICS_WARNING_SECONDS": "8",
                     "NOAA_NAVIONICS_OPENCPN_RESTARTS": "3",
                     "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": "5",
                     "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "no",
@@ -4403,13 +4404,14 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(check.ok)
         self.assertIn("START_ON_FAILED_READINESS is enabled", check.detail)
 
-    def test_launcher_settings_check_fails_invalid_opencpn_restart_values(self):
+    def test_launcher_settings_check_fails_invalid_optional_timing_values(self):
         check = _launcher_settings_check(
             {
                 "path": "/home/pi/.config/noaa-navionics/launcher.env",
                 "exists": True,
                 "values": {
                     "NOAA_NAVIONICS_GPS_SECONDS": "30",
+                    "NOAA_NAVIONICS_WARNING_SECONDS": "soon",
                     "NOAA_NAVIONICS_OPENCPN_RESTARTS": "-1",
                     "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": "soon",
                 },
@@ -4417,6 +4419,7 @@ class StatusReportTests(unittest.TestCase):
         )
 
         self.assertFalse(check.ok)
+        self.assertIn("NOAA_NAVIONICS_WARNING_SECONDS=soon expected non-negative integer", check.detail)
         self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTARTS=-1 expected non-negative integer", check.detail)
         self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=soon expected non-negative integer", check.detail)
 

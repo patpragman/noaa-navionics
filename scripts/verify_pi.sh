@@ -1439,6 +1439,7 @@ def optional_non_negative_integer(key):
 
 optional_positive_integer("NOAA_NAVIONICS_READINESS_ATTEMPTS")
 optional_non_negative_integer("NOAA_NAVIONICS_READINESS_RETRY_DELAY")
+optional_non_negative_integer("NOAA_NAVIONICS_WARNING_SECONDS")
 optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")
 optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY")
 value = values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS")

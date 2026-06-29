@@ -1127,12 +1127,14 @@ grep -q 'LightDM autologin config path is a symlink' src/noaa_navionics/report.p
 grep -q 'LightDM autologin config directory is a symlink' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config path contains a symlink' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
+grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' src/noaa_navionics/report.py
 grep -q 'status report launcher settings contain invalid {key}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/verify_pi.sh
+grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_WARNING_SECONDS")' scripts/verify_pi.sh
 grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' scripts/verify_pi.sh
-grep -q 'test_launcher_settings_check_fails_invalid_opencpn_restart_values' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_invalid_optional_timing_values' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py
