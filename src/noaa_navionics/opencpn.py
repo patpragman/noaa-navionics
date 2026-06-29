@@ -50,6 +50,7 @@ def opencpn_config_path(explicit: Optional[Path] = None) -> Path:
 
 def read_chart_directories(config_path: Optional[Path] = None) -> list[Path]:
     path = opencpn_config_path(config_path)
+    _reject_unsafe_config_path(path)
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8", errors="ignore")
@@ -63,6 +64,7 @@ def chart_directory_configured(chart_dir: Path, config_path: Optional[Path] = No
 
 def read_data_connections(config_path: Optional[Path] = None) -> list[str]:
     path = opencpn_config_path(config_path)
+    _reject_unsafe_config_path(path)
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8", errors="ignore")
@@ -96,6 +98,7 @@ def configure_chart_directory(
     dry_run: bool = False,
 ) -> OpenCPNConfigResult:
     target = opencpn_config_path(config_path)
+    _reject_unsafe_config_path(target)
     wanted = _normalize_chart_dir(chart_dir)
     original = target.read_text(encoding="utf-8", errors="ignore") if target.exists() else ""
     updated, changed, key = _set_chart_directory(original, wanted)
@@ -126,6 +129,7 @@ def configure_gpsd_connection(
     dry_run: bool = False,
 ) -> OpenCPNGPSDConfigResult:
     target = opencpn_config_path(config_path)
+    _reject_unsafe_config_path(target)
     original = target.read_text(encoding="utf-8", errors="ignore") if target.exists() else ""
     updated, changed = _set_gpsd_connection(original, host, port)
     backup_path = None
@@ -174,6 +178,7 @@ def _process_state_from_stat_text(text: str) -> str:
 
 
 def _write_backup(target: Path) -> Path:
+    _reject_unsafe_config_path(target)
     _prepare_config_parent(target)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = _available_backup_path(target, stamp)
@@ -198,6 +203,7 @@ def _available_backup_path(target: Path, stamp: str) -> Path:
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
+    _reject_unsafe_config_path(target)
     _prepare_config_parent(target)
     tmp_path = None
     try:
@@ -226,11 +232,13 @@ def _write_text_atomic(target: Path, text: str) -> None:
 
 def _prepare_config_parent(target: Path) -> None:
     parent = target.parent
-    if parent.is_symlink():
-        raise RuntimeError(f"OpenCPN config directory is a symlink: {parent}")
+    symlink_component = _first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"OpenCPN config directory is a symlink: {symlink_component}")
     parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-    if parent.is_symlink():
-        raise RuntimeError(f"OpenCPN config directory is a symlink: {parent}")
+    symlink_component = _first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"OpenCPN config directory is a symlink: {symlink_component}")
     if not parent.is_dir():
         raise RuntimeError(f"OpenCPN config parent is not a directory: {parent}")
     try:
@@ -247,6 +255,23 @@ def _prepare_config_parent(target: Path) -> None:
             f"OpenCPN config directory {parent} has permissions {parent_mode:04o}, "
             "expected no group/other write bits"
         )
+
+
+def _reject_unsafe_config_path(path: Path) -> None:
+    if path.is_symlink():
+        raise RuntimeError(f"OpenCPN config path is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"OpenCPN config directory is a symlink: {symlink_component}")
+
+
+def _first_symlink_ancestor(path: Path) -> Optional[Path]:
+    current = Path(path).expanduser()
+    candidates = [current, *current.parents]
+    for candidate in candidates:
+        if candidate.is_symlink():
+            return candidate
+    return None
 
 
 def _fsync_directory(path: Path) -> None:

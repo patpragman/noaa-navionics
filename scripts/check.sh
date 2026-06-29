@@ -925,12 +925,18 @@ grep -q 'pass `--charts PATH` to check a different mounted chart directory expli
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/config.py
+grep -q 'def _first_symlink_ancestor' src/noaa_navionics/config.py
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config is a symlink' src/noaa_navionics/config.py
+grep -q 'test_write_default_config_rejects_symlinked_ancestor' tests/test_downloader.py
+grep -q 'test_write_default_config_rejects_symlinked_config_file_when_overwriting' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
+grep -q 'test_read_config_rejects_symlinked_ancestor' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent_when_config_missing' tests/test_downloader.py
+grep -q 'symlinked config path components' README.md
+grep -q 'symlinked config path components' docs/sailboat-pi.md
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
@@ -977,9 +983,16 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/opencpn.py
+grep -q 'def _reject_unsafe_config_path' src/noaa_navionics/opencpn.py
+grep -q 'def _first_symlink_ancestor' src/noaa_navionics/opencpn.py
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config directory .* has permissions' src/noaa_navionics/opencpn.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
+grep -q 'test_configure_chart_directory_rejects_symlinked_config_ancestor' tests/test_downloader.py
+grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_downloader.py
+grep -q 'symlinked OpenCPN config files or path components' README.md
+grep -q 'symlinked OpenCPN config files or path components' docs/sailboat-pi.md
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
 grep -q 'os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)' src/noaa_navionics/opencpn.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/opencpn.py

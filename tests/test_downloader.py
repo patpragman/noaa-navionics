@@ -248,6 +248,36 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "symlink"):
                 write_default_config(link_parent / "config.ini")
 
+    def test_write_default_config_rejects_symlinked_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_config_root = root / "real-config-root"
+            real_config_root.mkdir()
+            link_config_root = root / ".config"
+            try:
+                link_config_root.symlink_to(real_config_root, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory is a symlink"):
+                write_default_config(link_config_root / "noaa-navionics" / "config.ini")
+
+            self.assertFalse((real_config_root / "noaa-navionics" / "config.ini").exists())
+
+    def test_write_default_config_rejects_symlinked_config_file_when_overwriting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_config = root / "real-config.ini"
+            write_default_config(real_config)
+            link_config = root / "config.ini"
+            try:
+                link_config.symlink_to(real_config)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config is a symlink"):
+                write_default_config(link_config, overwrite=True)
+
     def test_read_config_rejects_symlinked_config_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -277,6 +307,22 @@ class ConfigTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory is a symlink"):
                 read_config(link_parent / "config.ini")
+
+    def test_read_config_rejects_symlinked_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_config_root = root / "real-config-root"
+            real_config_parent = real_config_root / "noaa-navionics"
+            real_config_parent.mkdir(parents=True)
+            write_default_config(real_config_parent / "config.ini")
+            link_config_root = root / ".config"
+            try:
+                link_config_root.symlink_to(real_config_root, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory is a symlink"):
+                read_config(link_config_root / "noaa-navionics" / "config.ini")
 
     def test_read_config_rejects_symlinked_parent_when_config_missing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -470,6 +516,40 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "symlink"):
                 configure_chart_directory(root / "charts", config_path=link_parent / "opencpn.conf")
+
+    def test_configure_chart_directory_rejects_symlinked_config_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_config_root = root / "real-config-root"
+            real_config_root.mkdir()
+            link_config_root = root / ".config"
+            try:
+                link_config_root.symlink_to(real_config_root, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN config directory is a symlink"):
+                configure_chart_directory(
+                    root / "charts",
+                    config_path=link_config_root / "opencpn" / "opencpn.conf",
+                )
+
+            self.assertFalse((real_config_root / "opencpn" / "opencpn.conf").exists())
+
+    def test_read_chart_directories_rejects_symlinked_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            real_config = root / "real-opencpn.conf"
+            configure_chart_directory(charts, config_path=real_config)
+            link_config = root / "opencpn.conf"
+            try:
+                link_config.symlink_to(real_config)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN config path is a symlink"):
+                read_chart_directories(link_config)
 
     def test_configure_chart_directory_is_idempotent_and_backs_up_existing_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:

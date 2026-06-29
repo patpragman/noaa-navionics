@@ -101,8 +101,9 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     parser = ConfigParser()
     if cfg_path.is_symlink():
         raise RuntimeError(f"NOAA Navionics config is a symlink: {cfg_path}")
-    if cfg_path.parent.is_symlink():
-        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {cfg_path.parent}")
+    symlink_component = _first_symlink_ancestor(cfg_path.parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {symlink_component}")
     if cfg_path.exists():
         parser.read(cfg_path)
 
@@ -186,6 +187,8 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
 
 def write_default_config(path: Optional[Path] = None, *, overwrite: bool = False) -> Path:
     target = config_path(path)
+    if target.is_symlink():
+        raise RuntimeError(f"NOAA Navionics config is a symlink: {target}")
     if target.exists() and not overwrite:
         raise FileExistsError(f"config already exists: {target}")
     _prepare_config_parent(target)
@@ -260,6 +263,8 @@ def _validate_chart_package_value(package: str, value: str) -> None:
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
+    if target.is_symlink():
+        raise RuntimeError(f"NOAA Navionics config is a symlink: {target}")
     _prepare_config_parent(target)
     tmp_path = None
     try:
@@ -288,11 +293,13 @@ def _write_text_atomic(target: Path, text: str) -> None:
 
 def _prepare_config_parent(target: Path) -> None:
     parent = target.parent
-    if parent.is_symlink():
-        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {parent}")
+    symlink_component = _first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {symlink_component}")
     parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-    if parent.is_symlink():
-        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {parent}")
+    symlink_component = _first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {symlink_component}")
     if not parent.is_dir():
         raise RuntimeError(f"NOAA Navionics config parent is not a directory: {parent}")
     try:
@@ -309,6 +316,15 @@ def _prepare_config_parent(target: Path) -> None:
             f"NOAA Navionics config directory {parent} has permissions {parent_mode:04o}, "
             "expected no group/other write bits"
         )
+
+
+def _first_symlink_ancestor(path: Path) -> Optional[Path]:
+    current = Path(path).expanduser()
+    candidates = [current, *current.parents]
+    for candidate in candidates:
+        if candidate.is_symlink():
+            return candidate
+    return None
 
 
 def _fsync_directory(path: Path) -> None:
