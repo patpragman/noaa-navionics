@@ -96,9 +96,19 @@ conf_dir = Path(sys.argv[2])
 target = Path(sys.argv[3])
 dry_run = sys.argv[4] == "1"
 
+def first_symlink_ancestor(path: Path):
+    current = Path(path).expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
 def check_directory(path: Path, label: str, *, required: bool) -> None:
     if path.is_symlink():
         raise SystemExit(f"{label} is a symlink: {path}")
+    symlink_component = first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        raise SystemExit(f"{label} path contains a symlink: {symlink_component}")
     if not path.exists():
         if required:
             raise SystemExit(f"{label} does not exist: {path}")
@@ -116,6 +126,9 @@ check_directory(lightdm_dir, "LightDM config directory", required=not dry_run)
 check_directory(conf_dir, "LightDM autologin directory", required=False)
 if target.is_symlink():
     raise SystemExit(f"LightDM autologin config is a symlink: {target}")
+target_symlink_component = first_symlink_ancestor(target.parent)
+if target_symlink_component is not None:
+    raise SystemExit(f"LightDM autologin config path contains a symlink: {target_symlink_component}")
 if target.exists():
     if not target.is_file():
         raise SystemExit(f"LightDM autologin config is not a regular file: {target}")

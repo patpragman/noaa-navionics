@@ -643,8 +643,10 @@ grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autol
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
+grep -q 'first_symlink_ancestor' scripts/configure_desktop_autologin.sh
 grep -q 'has permissions {mode:04o}, expected no group/other write bits' scripts/configure_desktop_autologin.sh
 grep -q 'LightDM autologin config is a symlink' scripts/configure_desktop_autologin.sh
+grep -q 'LightDM autologin config path contains a symlink' scripts/configure_desktop_autologin.sh
 grep -q 'pwd.getpwnam' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user home does not exist' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user does not own home directory' scripts/configure_desktop_autologin.sh
@@ -1489,6 +1491,24 @@ if [[ "$desktop_code" -eq 0 ]]; then
   exit 1
 fi
 grep -q 'LightDM autologin config is a symlink' "$install_output"
+! grep -q 'Would write' "$install_output"
+
+lightdm_real_root="$tmpdir/lightdm-real-root"
+lightdm_link_root="$tmpdir/lightdm-link-root"
+mkdir -p "$lightdm_real_root/lightdm/lightdm.conf.d"
+ln -s "$lightdm_real_root" "$lightdm_link_root"
+set +e
+NOAA_NAVIONICS_LIGHTDM_DIR="$lightdm_link_root/lightdm" \
+  scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" --session LXDE-pi >"$install_output" 2>&1
+desktop_code=$?
+set -e
+if [[ "$desktop_code" -eq 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh to reject a symlinked LightDM autologin ancestor" >&2
+  exit 1
+fi
+grep -q 'LightDM config directory path contains a symlink' "$install_output"
+grep -q "$lightdm_link_root" "$install_output"
 ! grep -q 'Would write' "$install_output"
 
 set +e
