@@ -941,6 +941,7 @@ check "chart service loaded start limit burst" sh -c 'systemctl --user show noaa
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer randomized delay" grep -Fxq 'RandomizedDelaySec=30min' "$chart_timer"
+check "chart timer install target" grep -Fxq 'WantedBy=timers.target' "$chart_timer"
 check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
 check "chart timer loaded randomized delay" sh -c 'systemctl --user show noaa-navionics.timer -p RandomizedDelayUSec 2>/dev/null | grep -Fxq RandomizedDelayUSec=30min'
@@ -962,6 +963,7 @@ check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10mi
 check "track service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=10min'
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"
 check "track service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
+check "track service install target" grep -Fxq 'WantedBy=default.target' "$track_service"
 check "preflight service file" test -f "$preflight_service"
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
@@ -985,6 +987,7 @@ check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=
 check "preflight service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=30min'
 check "preflight service start limit burst" grep -Fxq 'StartLimitBurst=60' "$preflight_service"
 check "preflight service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
+check "preflight service install target" grep -Fxq 'WantedBy=default.target' "$preflight_service"
 check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
 check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service

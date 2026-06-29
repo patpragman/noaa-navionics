@@ -309,6 +309,7 @@ grep -q 'chart service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
 grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'chart timer loaded randomized delay' scripts/verify_pi.sh
+grep -q 'chart timer install target' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
@@ -318,6 +319,7 @@ grep -q 'track service loaded restart delay' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'track service loaded start limit burst' scripts/verify_pi.sh
+grep -q 'track service install target' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
@@ -329,6 +331,7 @@ grep -q 'preflight service loaded timeout' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
+grep -q 'preflight service install target' scripts/verify_pi.sh
 grep -q 'preflight service last success' scripts/verify_pi.sh
 grep -q 'ExecMainStartTimestampMonotonic' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
