@@ -6,6 +6,8 @@ config_dir="${HOME}/.config/noaa-navionics"
 systemd_user_dir="${HOME}/.config/systemd/user"
 autostart_dir="${HOME}/.config/autostart"
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
+data_dir="${HOME}/.local/share/noaa-navionics"
+revision_file="${data_dir}/source-revision"
 
 skip_apt=0
 enable_services=1
@@ -48,12 +50,20 @@ if [[ "$skip_apt" -eq 0 ]]; then
   sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients
 fi
 
-mkdir -p "${HOME}/.local/bin" "$(dirname "$venv_dir")"
+mkdir -p "${HOME}/.local/bin" "$data_dir"
 python3 -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install "${repo_root}"
 ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 cp "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
+
+if [[ -f "${repo_root}/.source-revision" ]]; then
+  cp "${repo_root}/.source-revision" "$revision_file"
+elif revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null)"; then
+  printf '%s\n' "$revision" >"$revision_file"
+else
+  printf 'unknown\n' >"$revision_file"
+fi
 
 mkdir -p "$config_dir" "$systemd_user_dir" "$autostart_dir"
 if [[ ! -f "${config_dir}/config.ini" ]]; then

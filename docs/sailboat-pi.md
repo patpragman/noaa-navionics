@@ -200,6 +200,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
 The status report includes readiness checks, NOAA Navionics user units, and the GPSD system service state.
+It also records the installed source revision so you can confirm the Pi is running the expected deployment.
 
 Expected checks:
 

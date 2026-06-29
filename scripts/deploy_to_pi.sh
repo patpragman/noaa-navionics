@@ -60,6 +60,7 @@ fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 remote_dir_quoted="$(printf '%q' "$remote_dir")"
+source_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 
 ssh "$target" "mkdir -p ${remote_dir_quoted}"
 rsync -az --delete \
@@ -69,6 +70,7 @@ rsync -az --delete \
   --exclude '.pytest_cache/' \
   --exclude 'charts/' \
   "${repo_root}/" "${target}:${remote_dir}/"
+printf '%s\n' "$source_revision" | ssh "$target" "cat > ${remote_dir_quoted}/.source-revision"
 
 ssh -t "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh"
 

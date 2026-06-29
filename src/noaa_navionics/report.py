@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import json
+import os
 import platform
 import shutil
 import socket
@@ -14,6 +15,10 @@ import sys
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
 from .health import run_preflight
+from . import __version__
+
+
+DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 
 
 def build_status_report(
@@ -47,6 +52,7 @@ def build_status_report(
             "machine": platform.machine(),
             "python": sys.version.split()[0],
         },
+        "app": _app_summary(),
         "config_path": str(Path(config_path).expanduser()),
         "config": _config_summary(app_config),
         "manifest": _manifest_summary(app_config.chart_output),
@@ -69,6 +75,7 @@ def format_status_text(report: dict[str, object]) -> str:
     lines = [
         f"Generated: {report.get('generated_at', '')}",
         f"Host: {report.get('host', {}).get('name', '')}",
+        f"App: {report.get('app', {}).get('version', '')} revision {report.get('app', {}).get('source_revision', '')}",
         f"Config: {report.get('config_path', '')}",
         f"Ready: {'yes' if report.get('ok') else 'no'}",
         "",
@@ -113,6 +120,28 @@ def _config_summary(app_config: AppConfig) -> dict[str, object]:
         "gpsd_port": app_config.gpsd_port,
         "track_output": str(app_config.track_output),
     }
+
+
+def _app_summary() -> dict[str, object]:
+    return {
+        "version": __version__,
+        "source_revision": _source_revision(),
+        "source_revision_path": str(_source_revision_path()),
+    }
+
+
+def _source_revision() -> str:
+    path = _source_revision_path()
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "unknown"
+    return value or "unknown"
+
+
+def _source_revision_path() -> Path:
+    override = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+    return Path(override).expanduser() if override else DEFAULT_SOURCE_REVISION_PATH.expanduser()
 
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:

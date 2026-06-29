@@ -57,6 +57,7 @@ esac
 
 check "noaa-navionics command" test -x "$bin"
 check "config file" test -f "$config"
+check "source revision recorded" test -s "${HOME}/.local/share/noaa-navionics/source-revision"
 check "OpenCPN command" command -v opencpn
 check "GPSD command" command -v gpsd
 check "GPSD config" test -f /etc/default/gpsd

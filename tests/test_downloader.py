@@ -481,14 +481,26 @@ class StatusReportTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = build_status_report(config_path=config, gps_sample=sample)
+            revision = root / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+            os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
+            try:
+                report = build_status_report(config_path=config, gps_sample=sample)
+            finally:
+                if original_revision_path is None:
+                    os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
+                else:
+                    os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = original_revision_path
             self.assertIn("checks", report)
             self.assertIn("services", report)
             self.assertIn("system_services", report)
+            self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertFalse(report["ok"])
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
+            self.assertIn("revision abc123", text)
             self.assertIn("System Services:", text)
             output = root / "status.json"
             write_status_report(report, output)

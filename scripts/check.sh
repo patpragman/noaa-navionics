@@ -21,6 +21,9 @@ grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
+grep -q '.source-revision' scripts/deploy_to_pi.sh
+grep -q 'source-revision' scripts/install_raspberry_pi.sh
+grep -q 'source-revision' scripts/verify_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
