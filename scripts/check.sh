@@ -504,9 +504,13 @@ grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_root_regular_file_integrity' scripts/verify_pi.sh
+grep -q 'check_root_directory_integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher env file integrity' scripts/verify_pi.sh
 grep -q 'chartplotter autostart file integrity' scripts/verify_pi.sh
 grep -q 'LightDM autologin file integrity' scripts/verify_pi.sh
+grep -q 'LightDM autologin directory integrity' scripts/verify_pi.sh
+grep -q 'Chrony config directory integrity' scripts/verify_pi.sh
+grep -q 'GPSD config directory integrity' scripts/verify_pi.sh
 grep -q 'chart service file integrity' scripts/verify_pi.sh
 grep -q 'chart timer file integrity' scripts/verify_pi.sh
 grep -q 'track service file integrity' scripts/verify_pi.sh

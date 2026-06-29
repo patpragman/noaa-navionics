@@ -1338,6 +1338,39 @@ check_root_regular_file_integrity() {
   fi
 }
 
+check_root_directory_integrity() {
+  local path="$1"
+  local label="$2"
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+
+  if [[ -L "$path" ]]; then
+    printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if [[ ! -d "$path" ]]; then
+    printf '%s is not a directory: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$path" 2>/dev/null)" || {
+    printf 'could not inspect %s: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "0" ]]; then
+    printf '%s is owned by uid %s, expected root: %s\n' "$label" "$owner_uid" "$path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    printf '%s has permissions %s, expected no group/other write bits: %s\n' "$label" "$mode_text" "$path" >&2
+    return 1
+  fi
+}
+
 launcher_env_value() {
   local key="$1"
   local default="$2"
@@ -2010,6 +2043,7 @@ fi
 check "graphical boot target" sh -c 'systemctl get-default 2>/dev/null | grep -qx graphical.target'
 check "LightDM unit installed" sh -c 'systemctl --no-pager --no-legend list-unit-files lightdm.service 2>/dev/null | grep -q "^lightdm.service"'
 check "LightDM enabled" systemctl is-enabled --quiet lightdm.service
+check "LightDM autologin directory integrity" check_root_directory_integrity "$(dirname "$lightdm_autologin")" "LightDM autologin directory"
 check "LightDM autologin config" test -f "$lightdm_autologin"
 if [[ -f "$lightdm_autologin" ]]; then
   check "LightDM autologin file integrity" check_root_regular_file_integrity "$lightdm_autologin" "LightDM autologin config"
@@ -2053,6 +2087,7 @@ check "Pi power command" command -v vcgencmd
 check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
+check "Chrony config directory integrity" check_root_directory_integrity /etc/chrony "chrony config directory"
 check "Chrony config file integrity" check_root_regular_file_integrity /etc/chrony/chrony.conf "chrony config"
 check "Chrony GPSD time source" check_chrony_gps_time_config
 check "Chrony usable GPS source" wait_for_chrony_gps_source
@@ -2062,6 +2097,7 @@ check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket
 check "GPSD socket active" systemctl is-active --quiet gpsd.socket
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD service active" systemctl is-active --quiet gpsd
+check "GPSD config directory integrity" check_root_directory_integrity /etc/default "GPSD config directory"
 check "GPSD config" test -f /etc/default/gpsd
 if [[ -f /etc/default/gpsd ]]; then
   check "GPSD config file integrity" check_root_regular_file_integrity /etc/default/gpsd "GPSD config"
