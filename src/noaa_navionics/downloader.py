@@ -456,11 +456,8 @@ def _chart_update_lock(output_path: Path):
     )
     while True:
         try:
-            lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-            os.write(lock_fd, lock_text.encode("ascii"))
-            os.fsync(lock_fd)
-            _fsync_directory(output_path)
-            break
+            lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+            opened_fd = os.open(lock_path, lock_flags, 0o600)
         except FileExistsError as exc:
             if lock_path.is_symlink():
                 raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
@@ -474,6 +471,31 @@ def _chart_update_lock(output_path: Path):
                     pass
                 continue
             raise RuntimeError(f"chart update already in progress; lock exists at {lock_path}") from exc
+        except OSError as exc:
+            if lock_path.is_symlink():
+                raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
+            raise
+        try:
+            lock_fd = opened_fd
+            os.fchmod(lock_fd, 0o600)
+            os.write(lock_fd, lock_text.encode("ascii"))
+            os.fsync(lock_fd)
+            _fsync_directory(output_path)
+            break
+        except OSError as exc:
+            os.close(lock_fd)
+            lock_fd = None
+            try:
+                if not lock_path.is_symlink():
+                    lock_path.unlink()
+                    _fsync_directory(output_path)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                pass
+            if lock_path.is_symlink():
+                raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
+            raise
     try:
         yield
     finally:

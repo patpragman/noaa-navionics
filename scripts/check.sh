@@ -844,6 +844,8 @@ grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
+grep -q 'lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
+grep -q 'os.fchmod(lock_fd, 0o600)' src/noaa_navionics/downloader.py
 grep -q 'partial download already exists; remove interrupted chart update debris' src/noaa_navionics/downloader.py
 grep -q 'chart archive path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'tmp_path.exists() or tmp_path.is_symlink()' src/noaa_navionics/downloader.py

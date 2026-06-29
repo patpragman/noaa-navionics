@@ -2107,11 +2107,31 @@ class ManifestTests(unittest.TestCase):
 
                 with downloader_module._chart_update_lock(root):
                     self.assertTrue(lock.exists())
+                    self.assertEqual(lock.stat().st_mode & 0o777, 0o600)
                 self.assertFalse(lock.exists())
         finally:
             downloader_module.os.fsync = original_fsync
 
         self.assertGreaterEqual(len(calls), 3)
+
+    def test_download_lock_cleans_up_failed_lock_setup(self):
+        original_fchmod = downloader_module.os.fchmod
+        def failing_fchmod(fd, mode):
+            raise OSError("chmod failed")
+
+        downloader_module.os.fchmod = failing_fchmod
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                lock = root / DOWNLOAD_LOCK_NAME
+
+                with self.assertRaisesRegex(OSError, "chmod failed"):
+                    with downloader_module._chart_update_lock(root):
+                        pass
+
+                self.assertFalse(lock.exists())
+        finally:
+            downloader_module.os.fchmod = original_fchmod
 
     def test_stale_manifest_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
