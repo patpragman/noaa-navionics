@@ -224,7 +224,10 @@ def format_status_text(report: dict[str, object]) -> str:
         f"Generated: {report.get('generated_at', '')}",
         f"Host: {report.get('host', {}).get('name', '')}",
         f"Boot ID: {report.get('host', {}).get('boot_id', '')}",
-        f"App: {report.get('app', {}).get('version', '')} revision {report.get('app', {}).get('source_revision', '')}",
+        f"App: {report.get('app', {}).get('version', '')} "
+        f"revision {report.get('app', {}).get('source_revision', '')} "
+        f"source_revision_path_is_symlink="
+        f"{report.get('app', {}).get('source_revision_path_is_symlink', '')}",
         f"Config: {report.get('config_path', '')}",
         f"Ready: {'yes' if report.get('ok') else 'no'}",
         "",
@@ -383,17 +386,25 @@ def _config_summary(app_config: AppConfig) -> dict[str, object]:
 
 
 def _app_summary() -> dict[str, object]:
-    return {
+    source_revision_path = _source_revision_path()
+    source_revision_is_symlink = source_revision_path.is_symlink()
+    summary: dict[str, object] = {
         "version": __version__,
-        "source_revision": _source_revision(),
-        "source_revision_path": str(_source_revision_path()),
+        "source_revision": "unknown",
+        "source_revision_path": str(source_revision_path),
+        "source_revision_path_is_symlink": source_revision_is_symlink,
     }
+    if source_revision_is_symlink:
+        summary["source_revision_error"] = f"source revision path is a symlink: {source_revision_path}"
+        return summary
+    summary["source_revision"] = _source_revision(source_revision_path)
+    return summary
 
 
-def _source_revision() -> str:
-    path = _source_revision_path()
+def _source_revision(path: Optional[Path] = None) -> str:
+    revision_path = path or _source_revision_path()
     try:
-        value = path.read_text(encoding="utf-8").strip()
+        value = revision_path.read_text(encoding="utf-8").strip()
     except OSError:
         return "unknown"
     return value or "unknown"

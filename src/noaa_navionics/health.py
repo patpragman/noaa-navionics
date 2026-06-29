@@ -113,6 +113,8 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
     if not _is_raspberry_pi():
         return CheckResult("Source Revision", True, "not a Raspberry Pi; skipping deployed source revision check")
     revision_path = path or _source_revision_path()
+    if revision_path.is_symlink():
+        return CheckResult("Source Revision", False, f"deployed source revision path is a symlink: {revision_path}")
     try:
         revision = revision_path.read_text(encoding="utf-8").strip()
     except OSError as exc:

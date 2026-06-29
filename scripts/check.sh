@@ -386,6 +386,7 @@ grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
+grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config path is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.sh
@@ -711,6 +712,7 @@ grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
 grep -q 'Source Revision' src/noaa_navionics/health.py
 grep -q 'NOAA_NAVIONICS_SOURCE_REVISION_PATH' src/noaa_navionics/health.py
+grep -q 'deployed source revision path is a symlink' src/noaa_navionics/health.py
 grep -q 'deployed source revision is not recorded' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
@@ -1003,6 +1005,8 @@ grep -q 'section != "Install"' src/noaa_navionics/report.py
 grep -q 'wanted_by' src/noaa_navionics/report.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_file' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_install_target' tests/test_downloader.py
+grep -q 'test_app_summary_rejects_symlinked_source_revision' tests/test_downloader.py
+grep -q 'test_check_source_revision_rejects_symlinked_revision_on_pi' tests/test_downloader.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
 grep -q 'wait-network' src/noaa_navionics/cli.py
 grep -q 'socket.create_connection' src/noaa_navionics/cli.py
@@ -1025,6 +1029,7 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' README
 grep -q 'missing or disabled chart-refresh service still fails readiness' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"is_symlink"' src/noaa_navionics/report.py
+grep -q '"source_revision_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py

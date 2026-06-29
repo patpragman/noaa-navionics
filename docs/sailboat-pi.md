@@ -244,7 +244,7 @@ The status report includes readiness checks, NOAA Navionics user unit path integ
 The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
-It also records the current Linux boot ID and installed source revision through synced atomic file writes so you can confirm the Pi is running the expected deployment. On Raspberry Pi targets, readiness fails if that deployed source revision is missing or recorded as `unknown`.
+It also records the current Linux boot ID and installed source revision through synced atomic file writes so you can confirm the Pi is running the expected deployment and that the recorded revision path is not symlinked. On Raspberry Pi targets, readiness fails if that deployed source revision is missing, symlinked, or recorded as `unknown`.
 
 Expected checks:
 

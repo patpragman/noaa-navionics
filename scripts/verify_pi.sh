@@ -1076,6 +1076,17 @@ expected_revision = os.environ.get("NOAA_NAVIONICS_EXPECTED_REVISION", "unknown"
 app = report.get("app")
 if not isinstance(app, dict):
     raise SystemExit("status report has no app section")
+source_revision_path = str(app.get("source_revision_path", "")).strip()
+if source_revision_path != str(Path("~/.local/share/noaa-navionics/source-revision").expanduser()):
+    raise SystemExit(
+        "status report source revision path "
+        f"{source_revision_path or '<missing>'} does not match {Path('~/.local/share/noaa-navionics/source-revision').expanduser()}"
+    )
+if app.get("source_revision_path_is_symlink") is True:
+    raise SystemExit(f"status report source revision path is a symlink: {source_revision_path}")
+source_revision_file = Path(source_revision_path).expanduser()
+if source_revision_file.is_symlink():
+    raise SystemExit(f"status report source revision path is a symlink: {source_revision_file}")
 actual_revision = str(app.get("source_revision", "unknown"))
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")
