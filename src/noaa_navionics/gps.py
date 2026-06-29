@@ -151,8 +151,9 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
     if latitude is None or longitude is None:
         return None
     timestamp = None
-    if data.get("time"):
-        timestamp = _parse_iso_time(data["time"])
+    time_value = data.get("time")
+    if isinstance(time_value, str) and time_value:
+        timestamp = _parse_iso_time(time_value)
     speed_mps = _finite_float_or_none(data.get("speed"))
     track = _finite_float_or_none(data.get("track"))
     altitude = _finite_float_or_none(data.get("alt"))
