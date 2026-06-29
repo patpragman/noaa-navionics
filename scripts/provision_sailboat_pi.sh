@@ -293,6 +293,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"
   run systemctl --user daemon-reload
   run sudo loginctl enable-linger "$USER"
+  run systemctl --user reset-failed noaa-navionics-track.service noaa-navionics-preflight.service
   run systemctl --user enable --now noaa-navionics.timer
   run systemctl --user enable --now noaa-navionics-track.service
   run systemctl --user restart noaa-navionics-track.service
