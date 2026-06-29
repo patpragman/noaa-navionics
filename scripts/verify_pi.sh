@@ -150,6 +150,30 @@ if not isinstance(checks, list) or not checks:
     raise SystemExit("status report has no checks")
 if not isinstance(service_checks, list) or not service_checks:
     raise SystemExit("status report has no service checks")
+check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
+service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
+required_checks = {
+    "Charts",
+    "Manifest",
+    "OpenCPN Charts",
+    "OpenCPN GPSD",
+    "GPSD",
+    "GPS Time Source",
+}
+required_service_checks = {
+    "Chart Sync",
+    "Chart Timer",
+    "Track Logger",
+    "Boot Readiness",
+    "GPSD Service",
+    "Chrony Service",
+}
+missing_checks = sorted(required_checks - check_names)
+if missing_checks:
+    raise SystemExit("status report missing readiness checks: " + ", ".join(missing_checks))
+missing_service_checks = sorted(required_service_checks - service_check_names)
+if missing_service_checks:
+    raise SystemExit("status report missing service checks: " + ", ".join(missing_service_checks))
 expected_revision = os.environ.get("NOAA_NAVIONICS_EXPECTED_REVISION", "unknown")
 app = report.get("app")
 if not isinstance(app, dict):
