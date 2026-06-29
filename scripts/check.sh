@@ -554,6 +554,8 @@ grep -q 'if lat is None or lon is None:' src/noaa_navionics/gps.py
 grep -q 'minutes < 0.0 or minutes >= 60.0' src/noaa_navionics/gps.py
 grep -q 'def _finite_float_or_none' src/noaa_navionics/gps.py
 grep -q 'math.isfinite(parsed)' src/noaa_navionics/gps.py
+grep -q 'def _non_negative_int_or_none' src/noaa_navionics/gps.py
+grep -q 'mode = _non_negative_int_or_none' src/noaa_navionics/gps.py
 grep -q 'day_carry' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py

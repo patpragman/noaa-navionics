@@ -143,7 +143,8 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
     data = json.loads(payload)
     if data.get("class") != "TPV":
         return None
-    if data.get("mode", 0) < 2 or "lat" not in data or "lon" not in data:
+    mode = _non_negative_int_or_none(data.get("mode", 0))
+    if mode is None or mode < 2 or "lat" not in data or "lon" not in data:
         return None
     latitude = _finite_float_or_none(data.get("lat"))
     longitude = _finite_float_or_none(data.get("lon"))
@@ -161,7 +162,7 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
         longitude=longitude,
         speed_knots=speed_mps * 1.943844492 if speed_mps is not None else None,
         course_degrees=track,
-        fix_quality=int(data.get("mode", 0)),
+        fix_quality=mode,
         altitude_m=altitude,
         source_sentence=payload.strip(),
     )
@@ -229,14 +230,26 @@ def iter_gpsd_fixes(
 def _finite_float_or_none(value: object) -> Optional[float]:
     if value is None:
         return None
-    parsed = float(value)
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
     return parsed if math.isfinite(parsed) else None
+
+
+def _non_negative_int_or_none(value: object) -> Optional[int]:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0 or not parsed.is_integer():
+        return None
+    return int(parsed)
 
 
 def _gpsd_used_satellites(data: dict[str, object]) -> Optional[int]:
     usat = data.get("uSat")
     if usat is not None:
-        return int(usat)
+        parsed_usat = _non_negative_int_or_none(usat)
+        if parsed_usat is not None:
+            return parsed_usat
     satellites = data.get("satellites")
     if not isinstance(satellites, list):
         return None

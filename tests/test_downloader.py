@@ -3245,6 +3245,13 @@ class GpsTests(unittest.TestCase):
 
         self.assertIsNone(parse_gpsd_tpv(payload))
 
+    def test_parse_gpsd_tpv_rejects_malformed_fix_mode(self):
+        base = '"class":"TPV","time":"2026-06-28T12:34:56.000Z","lat":61.2181,"lon":-149.9003'
+
+        self.assertIsNone(parse_gpsd_tpv("{" + base + ',"mode":NaN}'))
+        self.assertIsNone(parse_gpsd_tpv("{" + base + ',"mode":2.5}'))
+        self.assertIsNone(parse_gpsd_tpv("{" + base + ',"mode":"bad"}'))
+
     def test_parse_gpsd_tpv_drops_non_finite_optional_numbers(self):
         payload = (
             '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
@@ -3274,6 +3281,14 @@ class GpsTests(unittest.TestCase):
         assert fix is not None
         self.assertEqual(fix.satellites, 7)
         self.assertIsNone(fix.hdop)
+
+    def test_parse_gpsd_sky_ignores_malformed_usat(self):
+        payload = '{"class":"SKY","uSat":NaN,"satellites":[{"used":true},{"used":false},{"used":true}]}'
+        fix = parse_gpsd_sky(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.satellites, 2)
 
     def test_parse_gpsd_sky_counts_used_satellites(self):
         payload = (
