@@ -74,6 +74,7 @@ grep -q 'NOAA Navionics cache parent directory is a symlink' scripts/start_chart
 grep -q 'NOAA Navionics cache path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher log is not a regular file' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
@@ -2574,6 +2575,23 @@ fi
 grep -q 'NOAA Navionics rotated launcher log is a symlink' "$launcher_symlink_rotated_log_output"
 test -L "$launcher_symlink_rotated_log_home/.cache/noaa-navionics/chartplotter.log.1"
 test ! -e "$launcher_symlink_rotated_log_target/chartplotter.log"
+
+launcher_nonregular_log_home="$tmpdir/launcher-nonregular-log-home"
+launcher_nonregular_log_output="$tmpdir/launcher-nonregular-log.out"
+mkdir -p "$launcher_nonregular_log_home/.local/bin" "$launcher_nonregular_log_home/.cache/noaa-navionics/chartplotter.log"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_nonregular_log_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_nonregular_log_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_nonregular_log_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_nonregular_log_output" 2>&1
+launcher_nonregular_log_code=$?
+set -e
+if [[ "$launcher_nonregular_log_code" -eq 0 ]]; then
+  cat "$launcher_nonregular_log_output" >&2
+  echo "expected chartplotter launcher to reject a non-regular launcher log" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics launcher log is not a regular file' "$launcher_nonregular_log_output"
+test -d "$launcher_nonregular_log_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"

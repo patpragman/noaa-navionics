@@ -95,6 +95,10 @@ prepare_private_log_file() {
     echo "NOAA Navionics launcher log is a symlink: $log_file" >&2
     exit 1
   fi
+  if [[ -e "$log_file" && ! -f "$log_file" ]]; then
+    echo "NOAA Navionics launcher log is not a regular file: $log_file" >&2
+    exit 1
+  fi
   : >>"$log_file"
   chmod 0600 "$log_file"
   sync_paths "$log_file" || true
@@ -539,6 +543,10 @@ fi
 prepare_private_cache_dir
 if [[ -L "$log_file" ]]; then
   echo "NOAA Navionics launcher log is a symlink: $log_file" >&2
+  exit 1
+fi
+if [[ -e "$log_file" && ! -f "$log_file" ]]; then
+  echo "NOAA Navionics launcher log is not a regular file: $log_file" >&2
   exit 1
 fi
 if [[ -f "$log_file" ]]; then
