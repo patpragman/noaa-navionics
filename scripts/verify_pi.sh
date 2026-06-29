@@ -14,6 +14,10 @@ fi
 target="$1"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
+if [[ "$expected_revision" != "unknown" && -n "$worktree_status" ]]; then
+  expected_revision="${expected_revision}-dirty"
+fi
 expected_revision_quoted="$(printf '%q' "$expected_revision")"
 
 ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} bash -s" <<'REMOTE'
