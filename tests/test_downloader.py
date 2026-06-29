@@ -67,6 +67,7 @@ from noaa_navionics.health import (
     check_opencpn_gpsd_config,
     check_pi_throttling,
     check_system_clock,
+    check_time_synchronization,
     _parse_throttled_value,
 )
 from noaa_navionics.opencpn import (
@@ -1829,6 +1830,69 @@ class PiHealthTests(unittest.TestCase):
     def test_check_system_clock_accepts_modern_time(self):
         result = check_system_clock(datetime(2026, 6, 29, tzinfo=timezone.utc))
         self.assertTrue(result.ok)
+
+    def test_check_time_synchronization_skips_non_pi(self):
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._is_raspberry_pi = lambda: False
+            result = check_time_synchronization()
+        finally:
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("skipping", result.detail)
+
+    def test_check_time_synchronization_accepts_synced_pi_clock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "timedatectl"
+            fake.write_text("#!/bin/sh\necho SystemClockSynchronized=yes\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_time_synchronization()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertIn("synchronized", result.detail)
+
+    def test_check_time_synchronization_rejects_unsynced_pi_clock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "timedatectl"
+            fake.write_text("#!/bin/sh\necho SystemClockSynchronized=no\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_time_synchronization()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("not synchronized", result.detail)
+
+    def test_check_time_synchronization_reports_missing_timedatectl_on_pi(self):
+        original_path = os.environ.get("PATH", "")
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            os.environ["PATH"] = "/nonexistent"
+            health_module._is_raspberry_pi = lambda: True
+            result = check_time_synchronization()
+        finally:
+            os.environ["PATH"] = original_path
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("timedatectl", result.detail)
 
     def test_check_display_power_tool_reports_missing_xset(self):
         original_path = os.environ.get("PATH", "")

@@ -48,6 +48,7 @@ def run_preflight(
     results = [
         check_python(),
         check_system_clock(),
+        check_time_synchronization(),
         check_tkinter(),
         check_opencpn(),
         check_display_power_tool(),
@@ -102,6 +103,43 @@ def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) 
             f"system clock is {current.isoformat()}; set time or enable time sync before relying on chart age checks",
         )
     return CheckResult("Clock", True, current.isoformat())
+
+
+def check_time_synchronization() -> CheckResult:
+    if not _is_raspberry_pi():
+        return CheckResult("Time Sync", True, "not a Raspberry Pi; skipping time synchronization check")
+    timedatectl = shutil.which("timedatectl")
+    if timedatectl is None:
+        return CheckResult("Time Sync", False, "timedatectl not found; cannot verify Raspberry Pi clock sync")
+    try:
+        completed = subprocess.run(
+            [timedatectl, "show", "-p", "SystemClockSynchronized", "-p", "NTPSynchronized"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception as exc:
+        return CheckResult("Time Sync", False, f"timedatectl failed: {exc}")
+    output = completed.stdout.strip() or completed.stderr.strip()
+    if completed.returncode != 0:
+        return CheckResult("Time Sync", False, f"timedatectl failed: {output}")
+    values = {}
+    for line in completed.stdout.splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().lower()
+    synchronized = values.get("SystemClockSynchronized") or values.get("NTPSynchronized")
+    if synchronized == "yes":
+        return CheckResult("Time Sync", True, "system clock is synchronized")
+    if synchronized == "no":
+        return CheckResult(
+            "Time Sync",
+            False,
+            "system clock is not synchronized; connect network time or configure GPS time before relying on chart age and GPX timestamps",
+        )
+    return CheckResult("Time Sync", False, f"could not determine clock synchronization from timedatectl: {output}")
 
 
 def check_tkinter() -> CheckResult:
