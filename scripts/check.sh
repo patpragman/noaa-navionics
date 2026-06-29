@@ -1315,10 +1315,14 @@ grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges=true' systemd/noaa-navionics.service
 grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
+grep -q 'ProtectSystem=full' systemd/noaa-navionics.service
+grep -q 'ProtectSystem=full' systemd/noaa-navionics-track.service
+grep -q 'ProtectSystem=full' systemd/noaa-navionics-preflight.service
 grep -q 'UMask=0077' systemd/noaa-navionics.service
 grep -q 'UMask=0077' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
+grep -q 'ProtectSystem.*full' src/noaa_navionics/report.py
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
 python3 - <<'PY'
 import sys
@@ -1334,11 +1338,14 @@ for unit in (
     properties = report.USER_UNIT_PROPERTIES[unit]
     if "UMask" not in properties:
         raise SystemExit(f"status report must query loaded {unit} UMask")
+    if "ProtectSystem" not in properties:
+        raise SystemExit(f"status report must query loaded {unit} ProtectSystem")
 PY
 grep -q 'FragmentPath' src/noaa_navionics/report.py
 grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
 grep -q 'loaded no new privileges' scripts/verify_pi.sh
 grep -q 'loaded private tmp' scripts/verify_pi.sh
+grep -q 'loaded protected system' scripts/verify_pi.sh
 grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py
 grep -q 'StartLimitIntervalSec=30min' systemd/noaa-navionics-preflight.service
 grep -q 'Wants=noaa-navionics-track.service' systemd/noaa-navionics-preflight.service

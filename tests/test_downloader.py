@@ -3048,6 +3048,7 @@ class StatusReportTests(unittest.TestCase):
         ):
             with self.subTest(unit=unit):
                 self.assertIn("UMask", report_module.USER_UNIT_PROPERTIES[unit])
+                self.assertIn("ProtectSystem", report_module.USER_UNIT_PROPERTIES[unit])
 
     def test_build_and_write_status_report(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -4196,6 +4197,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "3",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                     "UMask": "0077",
                 },
             },
@@ -4223,6 +4225,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                     "UMask": "0077",
                 },
             },
@@ -4247,6 +4250,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                     "UMask": "0077",
                 },
             },
@@ -4290,6 +4294,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "3",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
             "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
@@ -4877,6 +4882,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                     "UMask": "0077",
                 },
             },
@@ -4897,6 +4903,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
         }
@@ -5006,6 +5013,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
         }
@@ -5047,6 +5055,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
         }
@@ -5085,6 +5094,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
         }
@@ -5122,6 +5132,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
         }
@@ -5160,6 +5171,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
                 },
             },
         }

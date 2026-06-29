@@ -40,6 +40,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
         "NoNewPrivileges",
         "PrivateTmp",
+        "ProtectSystem",
         "UMask",
     ],
     "noaa-navionics.timer": [
@@ -59,6 +60,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
         "NoNewPrivileges",
         "PrivateTmp",
+        "ProtectSystem",
         "UMask",
     ],
     "noaa-navionics-preflight.service": [
@@ -79,6 +81,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
         "NoNewPrivileges",
         "PrivateTmp",
+        "ProtectSystem",
         "UMask",
     ],
 }
@@ -1062,6 +1065,7 @@ def _service_readiness_checks(
                             "StartLimitBurst": "3",
                             "NoNewPrivileges": "yes",
                             "PrivateTmp": "yes",
+                            "ProtectSystem": "full",
                             "UMask": "0077",
                         },
                         unit_files,
@@ -1109,6 +1113,7 @@ def _service_readiness_checks(
                             "StartLimitBurst": "60",
                             "NoNewPrivileges": "yes",
                             "PrivateTmp": "yes",
+                            "ProtectSystem": "full",
                             "UMask": "0077",
                         },
                         unit_files,
@@ -1137,6 +1142,7 @@ def _service_readiness_checks(
                             "StartLimitBurst": "60",
                             "NoNewPrivileges": "yes",
                             "PrivateTmp": "yes",
+                            "ProtectSystem": "full",
                             "UMask": "0077",
                         },
                         unit_files,
