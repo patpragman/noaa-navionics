@@ -312,16 +312,31 @@ def check_gps_device(device: str, *, baud: int = 4800, seconds: float = 5.0) -> 
     return CheckResult("GPS", False, f"no valid NMEA fix from {device} at {baud} baud within {seconds:.0f}s")
 
 
-def check_gpsd(*, host: str = "127.0.0.1", port: int = 2947, seconds: float = 5.0) -> CheckResult:
+def check_gpsd(
+    *,
+    host: str = "127.0.0.1",
+    port: int = 2947,
+    seconds: float = 5.0,
+    max_fix_age_seconds: float = 300.0,
+) -> CheckResult:
     deadline = time.monotonic() + seconds
+    stale_detail = ""
     try:
         for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds):
             if time.monotonic() > deadline:
                 break
+            if fix.timestamp is not None:
+                age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
+                if age_seconds > max_fix_age_seconds:
+                    stale_detail = f"; last timestamped fix was stale ({age_seconds:.0f}s old)"
+                    continue
+                if age_seconds < -30:
+                    stale_detail = "; GPSD fix timestamp is in the future"
+                    continue
             return CheckResult("GPSD", True, _fix_detail(fix))
     except Exception as exc:
         return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}")
-    return CheckResult("GPSD", False, f"no valid GPSD fix within {seconds:.0f}s")
+    return CheckResult("GPSD", False, f"no fresh GPSD fix within {seconds:.0f}s{stale_detail}")
 
 
 def first_fix(lines: Iterable[str]) -> Optional[GPSFix]:

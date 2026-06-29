@@ -220,7 +220,7 @@ Expected checks:
 - At least 2 GB free disk space on writable chart storage
 - No active Raspberry Pi under-voltage or throttling
 - Raspberry Pi temperature below the hard limit
-- Valid GPSD fix
+- Fresh valid GPSD fix
 - Chart refresh timer, track logger, boot readiness service, and GPSD service are in the expected state
 
 If any check fails, treat the Pi as not ready.

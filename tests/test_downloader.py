@@ -33,6 +33,7 @@ from noaa_navionics.health import (
     check_chart_package,
     check_gps_device,
     check_gps_device_path,
+    check_gpsd,
     check_gps_sample,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
@@ -693,6 +694,42 @@ class GpsTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(captured, {"device": "/dev/ttyACM0", "baud": 9600})
+
+    def test_check_gpsd_rejects_stale_timestamped_fix(self):
+        original = health_module.iter_gpsd_fixes
+        stale = GPSFix(
+            timestamp=datetime(2000, 1, 1, tzinfo=timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([stale])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("stale", result.detail)
+
+    def test_check_gpsd_accepts_fresh_timestamped_fix(self):
+        original = health_module.iter_gpsd_fixes
+        fresh = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([fresh])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertTrue(result.ok)
+        self.assertIn("61.000000", result.detail)
 
     def test_check_gps_device_path_reports_missing_device(self):
         result = check_gps_device_path("/dev/serial/by-id/no-such-gps")

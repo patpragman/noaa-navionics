@@ -176,7 +176,7 @@ Preflight check:
 noaa-navionics preflight
 ```
 
-Live GPS check:
+Live GPS check. GPSD readiness rejects stale timestamped fixes:
 
 ```bash
 noaa-navionics gps-monitor --gpsd --once
