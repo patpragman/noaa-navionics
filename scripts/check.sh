@@ -119,6 +119,7 @@ grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
 grep -q 'require_local_command ssh' scripts/verify_pi.sh
+grep -Fq 'ssh -T "$target"' scripts/verify_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/deploy_to_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
 grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh

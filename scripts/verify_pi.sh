@@ -123,7 +123,7 @@ expected_revision_quoted="$(printf '%q' "$expected_revision")"
 require_chartplotter_started_quoted="$(printf '%q' "$require_chartplotter_started")"
 gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
 
-ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} bash -s" <<'REMOTE'
+ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
