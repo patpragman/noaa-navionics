@@ -1,5 +1,7 @@
 [Unit]
 Description=Log GPSD fixes to GPX with NOAA Navionics
+StartLimitIntervalSec=10min
+StartLimitBurst=60
 
 [Service]
 Type=simple
