@@ -657,8 +657,17 @@ grep -q 'configure_gps_time.sh' scripts/provision_sailboat_pi.sh
 grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'noaa-navionics-chartplotter.desktop' scripts/provision_sailboat_pi.sh
-grep -q 'run sync_paths "$autostart_entry"' scripts/provision_sailboat_pi.sh
-grep -q 'run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic' scripts/provision_sailboat_pi.sh
+grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/provision_sailboat_pi.sh
+grep -q 'install -m "$mode" "$source" "$tmp"' scripts/provision_sailboat_pi.sh
+grep -q 'sync_paths "$tmp"' scripts/provision_sailboat_pi.sh
+grep -q 'mv -f "$tmp" "$target"' scripts/provision_sailboat_pi.sh
+grep -q 'sync_paths "$target"' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'sudo loginctl enable-linger "$USER"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user reset-failed noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh

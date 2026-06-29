@@ -417,6 +417,36 @@ run() {
   fi
 }
 
+install_file_atomic() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local target_dir
+  local target_name
+  local tmp
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ install_file_atomic %q %q %q\n' "$source" "$target" "$mode"
+    return 0
+  fi
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
+  mkdir -p "$target_dir"
+  tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! install -m "$mode" "$source" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! sync_paths "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! mv -f "$tmp" "$target"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  sync_paths "$target"
+}
+
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 autostart_dir="${HOME}/.config/autostart"
@@ -495,12 +525,10 @@ run "$bin" configure-opencpn --config "$config"
 
 if [[ "$skip_services" -eq 0 ]]; then
   run mkdir -p "$systemd_user_dir"
-  run cp "${repo_root}/systemd/noaa-navionics.service" \
-         "${repo_root}/systemd/noaa-navionics.timer" \
-         "${repo_root}/systemd/noaa-navionics-track.service" \
-         "${repo_root}/systemd/noaa-navionics-preflight.service" \
-         "$systemd_user_dir/"
-  run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"
+  install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644
+  install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644
+  install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644
+  install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644
   run systemctl --user daemon-reload
   run sudo loginctl enable-linger "$USER"
   run systemctl --user reset-failed noaa-navionics-track.service noaa-navionics-preflight.service
@@ -515,8 +543,7 @@ run "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --outpu
 
 if [[ "$skip_autologin" -eq 0 ]]; then
   run mkdir -p "$autostart_dir"
-  run install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
-  run sync_paths "$autostart_entry"
+  install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644
   desktop_args=(--user "$USER")
   if [[ "$allow_non_pi" -eq 1 ]]; then
     desktop_args+=(--allow-non-pi)
