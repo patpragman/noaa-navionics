@@ -489,7 +489,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   run systemctl --user enable --now noaa-navionics-track.service
   run systemctl --user restart noaa-navionics-track.service
   run systemctl --user enable noaa-navionics-preflight.service
-  run systemctl --user start noaa-navionics-preflight.service
+  run systemctl --user restart noaa-navionics-preflight.service
 fi
 
 run "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"

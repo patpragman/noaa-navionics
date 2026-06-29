@@ -302,6 +302,7 @@ grep -q 'track service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service loaded GPS wait default' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart' scripts/verify_pi.sh
 grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
 grep -q 'preflight service loaded status report' scripts/verify_pi.sh
@@ -575,7 +576,7 @@ grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/pro
 grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user start noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl --user restart noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 python3 - <<'PY'
 from pathlib import Path
