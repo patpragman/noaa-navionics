@@ -804,7 +804,7 @@ def check_gpsd(
     quality_detail = ""
     pending_without_quality: Optional[GPSFix] = None
     try:
-        for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds):
+        for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds, max_duration=seconds):
             if time.monotonic() > deadline:
                 break
             freshness_detail = _fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds)

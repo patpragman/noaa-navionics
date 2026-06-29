@@ -217,14 +217,14 @@ Preflight check:
 noaa-navionics preflight
 ```
 
-Live GPS check. GPSD readiness rejects stale, future-dated, and untimestamped fixes:
+Live GPS check. GPSD readiness is bounded by the configured wait time and rejects stale, future-dated, and untimestamped fixes:
 
 ```bash
 noaa-navionics gps-monitor --gpsd --once
 ```
 
 For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`. Direct serial readiness rejects stale, future-dated, and untimestamped NMEA fixes too.
-GPS readiness rejects non-finite coordinates, coordinates outside valid latitude/longitude bounds, and invalid `0,0` coordinates. When a receiver reports quality fields, it also rejects weak fixes with fewer than four satellites or HDOP above 5. GPSD readiness merges recent SKY satellite/HDOP reports with TPV position fixes before applying that gate.
+GPS readiness rejects non-finite coordinates, coordinates outside valid latitude/longitude bounds, and invalid `0,0` coordinates. When a receiver reports quality fields, it also rejects weak fixes with fewer than four satellites or HDOP above 5. GPSD readiness merges recent SKY satellite/HDOP reports with TPV position fixes before applying that gate, and it still exits inside the wait window if GPSD only streams non-fix status messages.
 NMEA fractional timestamps are normalized across second, minute, and UTC day rollovers before freshness checks and GPX logging.
 
 Track logging:

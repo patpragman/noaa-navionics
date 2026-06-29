@@ -2571,6 +2571,59 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(fix.hdop)
         self.assertAlmostEqual(fix.latitude, 61.2181)
 
+    def test_iter_gpsd_fixes_stops_after_max_duration_without_fixes(self):
+        original_socket = gps_module.socket.create_connection
+        original_monotonic = gps_module.time.monotonic
+
+        class FakeHandle:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def readline(self):
+                return '{"class":"TPV","mode":1}\n'
+
+        class FakeSocket:
+            def __init__(self):
+                self.timeouts = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return FakeHandle()
+
+            def settimeout(self, timeout):
+                self.timeouts.append(timeout)
+
+        fake_socket = FakeSocket()
+
+        def fake_monotonic():
+            fake_monotonic.value += 0.06
+            return fake_monotonic.value
+
+        fake_monotonic.value = -0.06
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: fake_socket
+            gps_module.time.monotonic = fake_monotonic
+            fixes = list(iter_gpsd_fixes(timeout=1, max_duration=0.1))
+        finally:
+            gps_module.socket.create_connection = original_socket
+            gps_module.time.monotonic = original_monotonic
+
+        self.assertEqual(fixes, [])
+        self.assertTrue(fake_socket.timeouts)
+        self.assertLessEqual(max(fake_socket.timeouts), 0.1)
+
     def test_check_gps_sample(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2732,7 +2785,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([stale])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([stale])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2751,7 +2804,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([untimestamped])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([untimestamped])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2771,7 +2824,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([weak])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([weak])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2791,7 +2844,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([invalid])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([invalid])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2811,7 +2864,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([invalid])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([invalid])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2837,7 +2890,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([position_only, weak])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([position_only, weak])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2863,7 +2916,7 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([position_only, good])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([position_only, good])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
@@ -2882,13 +2935,30 @@ class GpsTests(unittest.TestCase):
         )
 
         try:
-            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([fresh])
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([fresh])
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
 
         self.assertTrue(result.ok)
         self.assertIn("61.000000", result.detail)
+
+    def test_check_gpsd_bounds_gpsd_iterator_by_wait_seconds(self):
+        original = health_module.iter_gpsd_fixes
+        calls = []
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            calls.append((host, port, timeout, max_duration))
+            return iter([])
+
+        try:
+            health_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            result = check_gpsd(host="127.0.0.1", port=2947, seconds=7)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertEqual(calls, [("127.0.0.1", 2947, 7, 7)])
+        self.assertFalse(result.ok)
 
     def test_check_gps_device_path_reports_missing_device(self):
         result = check_gps_device_path("/dev/serial/by-id/no-such-gps")

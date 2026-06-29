@@ -459,9 +459,16 @@ def _read_fixes(
 ):
     if gpsd:
         timeout = 10.0
+        max_duration = None
         if deadline is not None:
             timeout = max(0.1, deadline - time.monotonic())
-        for fix in iter_gpsd_fixes(host=gpsd_host, port=gpsd_port, timeout=timeout):
+            max_duration = timeout
+        for fix in iter_gpsd_fixes(
+            host=gpsd_host,
+            port=gpsd_port,
+            timeout=timeout,
+            max_duration=max_duration,
+        ):
             if deadline is not None and time.monotonic() > deadline:
                 break
             yield fix
