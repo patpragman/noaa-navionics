@@ -16,6 +16,10 @@ Options:
   --sync-retries N    Chart download attempts during provisioning
   --sync-retry-delay N
                      Seconds between chart download retry attempts
+  --opencpn-restarts N
+                     OpenCPN nonzero-exit restart attempts after boot
+  --opencpn-restart-delay N
+                     Seconds between OpenCPN restart attempts
 
 Runs a dock acceptance test over SSH:
 deploy/provision, verify, reboot, wait for the Pi, and verify again.
@@ -202,7 +206,7 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
-    --sync-retry-delay)
+    --sync-retry-delay|--opencpn-restarts|--opencpn-restart-delay)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
         exit 2

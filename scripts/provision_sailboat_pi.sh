@@ -14,6 +14,8 @@ skip_services=0
 skip_autologin=0
 skip_gps_time=0
 gps_seconds=10
+opencpn_restarts=3
+opencpn_restart_delay=5
 sync_retries=5
 sync_retry_delay=30
 
@@ -51,6 +53,10 @@ Usage: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS [opt
 Options:
   --config PATH       NOAA Navionics config path
   --gps-seconds N     Seconds to wait for a GPS fix during final status report
+  --opencpn-restarts N
+                     OpenCPN nonzero-exit restart attempts after boot
+  --opencpn-restart-delay N
+                     Seconds between OpenCPN restart attempts
   --sync-retries N    Chart download attempts during initial commissioning
   --sync-retry-delay N
                      Seconds between chart download retry attempts
@@ -273,6 +279,22 @@ while [[ $# -gt 0 ]]; do
       sync_retries="${2:-}"
       shift 2
       ;;
+    --opencpn-restarts)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      opencpn_restarts="${2:-}"
+      shift 2
+      ;;
+    --opencpn-restart-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      opencpn_restart_delay="${2:-}"
+      shift 2
+      ;;
     --sync-retry-delay)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
@@ -327,6 +349,8 @@ done
 
 require_positive_integer "--gps-seconds" "$gps_seconds"
 require_positive_integer "--sync-retries" "$sync_retries"
+require_non_negative_integer "--opencpn-restarts" "$opencpn_restarts"
+require_non_negative_integer "--opencpn-restart-delay" "$opencpn_restart_delay"
 require_non_negative_integer "--sync-retry-delay" "$sync_retry_delay"
 
 if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
@@ -476,12 +500,14 @@ write_launcher_env() {
   local launcher_env_dir
   local launcher_env_tmp
   if [[ "$dry_run" -eq 1 ]]; then
-    printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q\n' "$launcher_env" "$gps_seconds"
+    printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q NOAA_NAVIONICS_OPENCPN_RESTARTS=%q NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%q\n' \
+      "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"
   else
     launcher_env_dir="$(dirname "$launcher_env")"
     mkdir -p "$launcher_env_dir"
     launcher_env_tmp="$(mktemp "${launcher_env_dir}/.launcher.env.XXXXXX")"
-    if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\n' "$gps_seconds" >"$launcher_env_tmp"; then
+    if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\nNOAA_NAVIONICS_OPENCPN_RESTARTS=%s\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s\n' \
+      "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay" >"$launcher_env_tmp"; then
       rm -f "$launcher_env_tmp"
       return 1
     fi

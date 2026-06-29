@@ -7,6 +7,8 @@ Usage: scripts/deploy_to_pi.sh user@raspberrypi.local [remote-dir] [--provision 
 
 Copies this repo to the Raspberry Pi over SSH and runs the Pi installer there.
 With --provision, also runs the onboard commissioning sequence on the Pi.
+Provisioning options include --gps-seconds, --sync-retries, --sync-retry-delay,
+--opencpn-restarts, and --opencpn-restart-delay.
 Refuses a dirty local worktree unless --allow-dirty is passed.
 Nothing is installed or enabled on the local computer.
 EOF
@@ -248,7 +250,7 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
-    --sync-retry-delay)
+    --sync-retry-delay|--opencpn-restarts|--opencpn-restart-delay)
       saw_provision_option=1
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2

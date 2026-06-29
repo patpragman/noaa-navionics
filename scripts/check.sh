@@ -170,6 +170,12 @@ grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
+grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
+grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
+grep -q -- '--opencpn-restarts' scripts/deploy_to_pi.sh
+grep -q -- '--opencpn-restart-delay' scripts/deploy_to_pi.sh
+grep -q -- '--opencpn-restarts' scripts/dock_test_pi.sh
+grep -q -- '--opencpn-restart-delay' scripts/dock_test_pi.sh
 grep -q 'validate_remote_dir' scripts/deploy_to_pi.sh
 grep -q 'quote_remote_dir_for_shell' scripts/deploy_to_pi.sh
 grep -Fq 'printf '\''~/%s'\''' scripts/deploy_to_pi.sh
@@ -872,6 +878,8 @@ grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${launcher_env_dir}/.launcher.env.XXXXXX"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
@@ -1318,6 +1326,17 @@ if [[ "$provision_code" -ne 2 ]]; then
 fi
 
 set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --opencpn-restarts nope >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject invalid --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be a non-negative integer' "$provision_output"
+
+set +e
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
@@ -1342,6 +1361,17 @@ if [[ "$deploy_code" -ne 2 ]]; then
   echo "expected deploy_to_pi.sh to reject invalid --sync-retries with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --opencpn-restart-delay soon >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject invalid --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be a non-negative integer' "$deploy_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout nope >"$dock_output" 2>&1
@@ -1415,6 +1445,17 @@ if [[ "$dock_code" -ne 2 ]]; then
   echo "expected dock_test_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --opencpn-restarts nope >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject invalid --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be a non-negative integer' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --skip-autologin >"$dock_output" 2>&1
@@ -1580,9 +1621,13 @@ scripts/provision_sailboat_pi.sh \
   --skip-services \
   --config "$tmpdir/config.ini" \
   --gps-seconds 17 \
+  --opencpn-restarts 4 \
+  --opencpn-restart-delay 2 \
   --sync-retries 7 \
   --sync-retry-delay 15 >"$provision_output"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=4' "$provision_output"
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=2' "$provision_output"
 ! grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes' "$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
 
