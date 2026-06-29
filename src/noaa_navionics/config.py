@@ -14,6 +14,26 @@ CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "chart"}
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+UNSAFE_STORAGE_NAMES = {
+    "",
+    ".cache",
+    ".config",
+    ".local",
+    "boot",
+    "dev",
+    "etc",
+    "home",
+    "media",
+    "mnt",
+    "opt",
+    "proc",
+    "root",
+    "run",
+    "sys",
+    "tmp",
+    "usr",
+    "var",
+}
 
 
 @dataclass(frozen=True)
@@ -81,6 +101,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     chart_output_text = _get_required_text(charts, "output", str(defaults.chart_output), label="charts.output")
     chart_output = Path(chart_output_text).expanduser()
     _require_absolute_path(chart_output, label="charts.output")
+    _require_safe_storage_path(chart_output, label="charts.output")
     max_chart_age_days = _get_int(
         charts,
         "max_age_days",
@@ -117,6 +138,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     track_output_text = _get_required_text(tracking, "output", str(chart_output), label="tracking.output")
     track_output = Path(track_output_text).expanduser()
     _require_absolute_path(track_output, label="tracking.output")
+    _require_safe_storage_path(track_output, label="tracking.output")
     track_retention_days = _get_int(
         tracking,
         "retention_days",
@@ -285,6 +307,18 @@ def _get_required_text(section: object, key: str, default: str, *, label: Option
 def _require_absolute_path(path: Path, *, label: str) -> None:
     if not path.is_absolute():
         raise ValueError(f"{label} must be an absolute path or start with ~")
+
+
+def _require_safe_storage_path(path: Path, *, label: str) -> None:
+    expanded = Path(path).expanduser()
+    home = Path.home()
+    unsafe_paths = {Path("/"), home}
+    unsafe_paths.update(Path("/") / name for name in UNSAFE_STORAGE_NAMES if name and not name.startswith("."))
+    unsafe_paths.update(home / name for name in (".cache", ".config", ".local"))
+    if expanded in unsafe_paths or expanded.name in UNSAFE_STORAGE_NAMES:
+        raise ValueError(
+            f"{label} must be a dedicated storage directory, not a broad system or home directory"
+        )
 
 
 def _stable_gps_device_path(path: str) -> bool:
