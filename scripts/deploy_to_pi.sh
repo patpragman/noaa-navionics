@@ -191,6 +191,12 @@ validate_remote_dir() {
     echo "Remote deployment directory contains unsafe characters: $value" >&2
     exit 2
   fi
+  case "$trimmed" in
+    /tmp/*|/var/*|/etc/*|/usr/*|/bin/*|/sbin/*|/lib/*|/lib64/*|/run/*|/dev/*|/proc/*|/sys/*|/boot/*)
+      echo "Remote deployment directory must be under the Pi user's home directory, not a system or volatile path: $value" >&2
+      exit 2
+      ;;
+  esac
   basename="${trimmed##*/}"
   case "$basename" in
     noaa-navionics|noaa-navionics-*|noaa-navionics_*|noaa-navionics.*)
@@ -419,12 +425,34 @@ for sibling in (staging, previous):
     if not sibling.name.startswith(repo.name + '.'):
         raise SystemExit(f'Refusing unexpected deployment staging path: {sibling}')
 
+def validate_deployment_parent() -> None:
+    parent = repo.parent
+    if parent.is_symlink():
+        raise SystemExit(f'Refusing deployment parent symlink: {parent}')
+    if not parent.exists():
+        parent.mkdir(parents=True, exist_ok=True)
+    if not parent.is_dir():
+        raise SystemExit(f'Refusing non-directory deployment parent: {parent}')
+    stat_result = parent.stat()
+    mode = stat_result.st_mode & 0o777
+    expected_uid = os.getuid()
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Refusing deployment parent owned by uid {stat_result.st_uid}, expected {expected_uid}: {parent}'
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f'Refusing deployment parent with permissions {mode:04o}, expected no group/other write bits: {parent}'
+        )
+
 def fsync_parent() -> None:
     fd = os.open(repo.parent, os.O_RDONLY)
     try:
         os.fsync(fd)
     finally:
         os.close(fd)
+
+validate_deployment_parent()
 
 if not repo.exists() and not repo.is_symlink() and (previous.exists() or previous.is_symlink()):
     if previous.is_symlink() or not previous.is_dir():
@@ -439,7 +467,6 @@ for sibling in (staging, previous):
             shutil.rmtree(sibling)
         else:
             sibling.unlink()
-repo.parent.mkdir(parents=True, exist_ok=True)
 staging.mkdir(parents=True)
 fsync_parent()
 PY"
@@ -464,11 +491,31 @@ repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
 staging = Path(os.environ['NOAA_NAVIONICS_STAGING_DIR']).expanduser()
 previous = Path(os.environ['NOAA_NAVIONICS_PREVIOUS_DIR']).expanduser()
 
+def validate_deployment_parent() -> None:
+    parent = repo.parent
+    if parent.is_symlink():
+        raise SystemExit(f'Refusing deployment parent symlink: {parent}')
+    if not parent.exists() or not parent.is_dir():
+        raise SystemExit(f'Deployment parent is not ready: {parent}')
+    stat_result = parent.stat()
+    mode = stat_result.st_mode & 0o777
+    expected_uid = os.getuid()
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Refusing deployment parent owned by uid {stat_result.st_uid}, expected {expected_uid}: {parent}'
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f'Refusing deployment parent with permissions {mode:04o}, expected no group/other write bits: {parent}'
+        )
+
 def remove_path(path: Path) -> None:
     if path.is_dir() and not path.is_symlink():
         shutil.rmtree(path)
     else:
         path.unlink()
+
+validate_deployment_parent()
 
 if not staging.exists() or not staging.is_dir() or staging.is_symlink():
     raise SystemExit(f'Deployment staging directory is not ready: {staging}')

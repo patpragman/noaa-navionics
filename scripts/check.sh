@@ -145,6 +145,8 @@ grep -q 'remote_staging_dir="${remote_dir_trimmed}.deploying"' scripts/deploy_to
 grep -q 'remote_previous_dir="${remote_dir_trimmed}.previous"' scripts/deploy_to_pi.sh
 grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
+grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
+grep -q 'expected no group/other write bits' scripts/deploy_to_pi.sh
 grep -q 'Deployment staging directory is not ready' scripts/deploy_to_pi.sh
 grep -q 'Refusing to promote deployment staging outside deployment parent' scripts/deploy_to_pi.sh
 grep -q 'Restored previous deployment after interrupted promotion' scripts/deploy_to_pi.sh
@@ -211,6 +213,8 @@ grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/verify_pi.sh
 grep -q 'Remote deployment directory must be a dedicated noaa-navionics directory' scripts/deploy_to_pi.sh
 grep -q 'Remote deployment directory must end in noaa-navionics' scripts/deploy_to_pi.sh
+grep -q 'Remote deployment directory must be under the Pi user' scripts/deploy_to_pi.sh
+grep -q 'Remote deployment directory must be under the Pi user' scripts/dock_test_pi.sh
 grep -q -- '--skip-gps-time' scripts/deploy_to_pi.sh
 grep -q -- '--skip-gps-time' scripts/dock_test_pi.sh
 grep -q 'install_args+=("--no-services")' scripts/deploy_to_pi.sh
@@ -1448,6 +1452,17 @@ fi
 grep -q 'Remote deployment directory must end in noaa-navionics' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh pi@example.invalid /tmp/noaa-navionics --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject volatile remote deployment directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Remote deployment directory must be under the Pi user' "$deploy_output"
+
+set +e
 scripts/dock_test_pi.sh root@example.invalid --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
 dock_code=$?
 set -e
@@ -1501,6 +1516,17 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Remote deployment directory must be a dedicated noaa-navionics directory' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid /tmp/noaa-navionics --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject volatile remote deployment directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Remote deployment directory must be under the Pi user' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$dock_output" 2>&1
