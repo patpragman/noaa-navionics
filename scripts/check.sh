@@ -118,7 +118,18 @@ grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Deployment staging directory is not ready' scripts/deploy_to_pi.sh
 grep -q 'Refusing to promote deployment staging outside deployment parent' scripts/deploy_to_pi.sh
+grep -q 'Restored previous deployment after interrupted promotion' scripts/deploy_to_pi.sh
+grep -q 'Refusing to restore non-directory previous deployment path' scripts/deploy_to_pi.sh
 grep -q 'previous.rename(repo)' scripts/deploy_to_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/deploy_to_pi.sh").read_text(encoding="utf-8")
+restore_index = text.index("Restored previous deployment after interrupted promotion")
+cleanup_index = text.index("for sibling in (staging, previous):", restore_index)
+if cleanup_index < restore_index:
+    raise SystemExit("deploy staging cleanup must not run before interrupted promotion recovery")
+PY
 grep -q -- "--exclude='./.git'" scripts/deploy_to_pi.sh
 grep -Fq -- "--exclude '*.egg-info/'" scripts/deploy_to_pi.sh
 grep -Fq -- "--exclude '.venv/'" scripts/deploy_to_pi.sh

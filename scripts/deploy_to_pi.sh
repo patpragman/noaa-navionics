@@ -366,6 +366,22 @@ for sibling in (staging, previous):
         raise SystemExit(f'Refusing staging path outside deployment parent: {sibling}')
     if not sibling.name.startswith(repo.name + '.'):
         raise SystemExit(f'Refusing unexpected deployment staging path: {sibling}')
+
+def fsync_parent() -> None:
+    fd = os.open(repo.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+if not repo.exists() and not repo.is_symlink() and (previous.exists() or previous.is_symlink()):
+    if previous.is_symlink() or not previous.is_dir():
+        raise SystemExit(f'Refusing to restore non-directory previous deployment path: {previous}')
+    previous.rename(repo)
+    fsync_parent()
+    print(f'Restored previous deployment after interrupted promotion: {repo}', flush=True)
+
+for sibling in (staging, previous):
     if sibling.exists() or sibling.is_symlink():
         if sibling.is_dir() and not sibling.is_symlink():
             shutil.rmtree(sibling)
@@ -373,11 +389,7 @@ for sibling in (staging, previous):
             sibling.unlink()
 repo.parent.mkdir(parents=True, exist_ok=True)
 staging.mkdir(parents=True)
-fd = os.open(repo.parent, os.O_RDONLY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
+fsync_parent()
 PY"
 }
 
