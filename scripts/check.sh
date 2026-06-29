@@ -334,6 +334,7 @@ grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
+grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics log-track' src/noaa_navionics/report.py
 grep -q 'noaa-navionics status-report' src/noaa_navionics/report.py

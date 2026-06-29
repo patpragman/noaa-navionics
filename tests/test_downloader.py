@@ -659,6 +659,32 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["sync-charts", "--retries", "0"])
         self.assert_parse_error(["sync-charts", "--retry-delay", "-1"])
 
+    def test_sync_rejects_incomplete_onboard_chart_packages(self):
+        cases = [
+            ("updates", "ten-days", "not a complete chart set"),
+            ("catalog", "", "metadata only"),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for index, (package, value, expected) in enumerate(cases):
+                with self.subTest(package=package):
+                    config = root / f"config-{index}.ini"
+                    config.write_text(
+                        "[charts]\n"
+                        f"package = {package}\n"
+                        f"value = {value}\n"
+                        f"output = {root / 'charts'}\n",
+                        encoding="utf-8",
+                    )
+
+                    stderr = StringIO()
+                    with redirect_stderr(stderr):
+                        code = cli_module.main(["sync-charts", "--config", str(config)])
+
+                    self.assertEqual(code, 2)
+                    self.assertIn("sync-charts requires a complete onboard chart package", stderr.getvalue())
+                    self.assertIn(expected, stderr.getvalue())
+
     def test_gps_waits_reject_negative_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])

@@ -30,7 +30,7 @@ from .gps import (
     open_nmea_stream,
     read_nmea_lines,
 )
-from .health import run_preflight
+from .health import check_chart_package, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
 
@@ -226,6 +226,9 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         if args.command == "sync-charts":
             app_config = read_config(Path(args.config))
+            package_check = check_chart_package(app_config.chart_package, app_config.chart_value)
+            if not package_check.ok:
+                raise ValueError(f"sync-charts requires a complete onboard chart package: {package_check.detail}")
             package = package_for(**package_kwargs(app_config))
             result = download_package(
                 package,
