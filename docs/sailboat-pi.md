@@ -27,6 +27,14 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local
 
 The deploy script copies this repo to the Raspberry Pi and runs the installer on the Pi. It does not install or enable services on the computer you run it from.
 
+Deploy and run the full onboard provisioning sequence:
+
+```bash
+scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
+Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, user service enablement, and a final status report on the Pi.
+
 Verify the Raspberry Pi after deployment:
 
 ```bash
@@ -106,6 +114,16 @@ noaa-navionics gps-monitor --gpsd --once
 ```
 
 `noaa-navionics configure-opencpn`, below, configures OpenCPN to use the GPSD network source from the onboard config.
+
+## One-Step Provisioning
+
+After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboard setup with:
+
+```bash
+scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables the user timer and track/preflight services, and writes `~/.cache/noaa-navionics/status.json`.
 
 ## Startup
 

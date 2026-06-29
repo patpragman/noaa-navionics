@@ -95,6 +95,12 @@ Deploy to a Raspberry Pi over SSH:
 scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
+Deploy and run the onboard provisioning sequence:
+
+```bash
+scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
 Verify the Raspberry Pi after deployment:
 
 ```bash

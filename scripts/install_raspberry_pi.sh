@@ -75,9 +75,6 @@ Installed NOAA Navionics.
 
 Next steps:
 1. Edit ${config_dir}/config.ini for your cruising area and GPS.
-2. Configure GPSD: scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
-3. Run: noaa-navionics sync-charts
-4. Run: noaa-navionics configure-opencpn
-5. Run: noaa-navionics preflight
-6. Start OpenCPN with: noaa-navionics-start-chartplotter
+2. Run: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
+3. Start OpenCPN with: noaa-navionics-start-chartplotter
 EOF
