@@ -1216,6 +1216,18 @@ class ManifestTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 2)
 
+    def test_download_rejects_existing_partial_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            partial = output / "AK_ENCs.zip.part"
+            partial.write_bytes(b"interrupted")
+            package = package_for(state="AK")
+
+            with self.assertRaisesRegex(RuntimeError, "partial download already exists"):
+                download_package(package, output, force=True)
+
+            self.assertEqual(partial.read_bytes(), b"interrupted")
+
     def test_download_retries_transient_network_failure(self):
         calls = {"count": 0}
         original = downloader_module.urlopen

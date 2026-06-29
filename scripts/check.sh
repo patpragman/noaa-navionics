@@ -443,6 +443,7 @@ grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
+grep -q 'partial download already exists; remove interrupted chart update debris' src/noaa_navionics/downloader.py
 grep -q 'def _pid_is_running' src/noaa_navionics/downloader.py
 grep -q 'def _current_boot_id' src/noaa_navionics/downloader.py
 grep -q 'STATE_PACKAGES' src/noaa_navionics/downloader.py

@@ -273,6 +273,8 @@ def _download_package_unlocked(
     if retries < 1:
         raise ValueError("retries must be at least 1")
     tmp_path = destination.with_suffix(destination.suffix + ".part")
+    if tmp_path.exists():
+        raise RuntimeError(f"partial download already exists; remove interrupted chart update debris: {tmp_path}")
     request = Request(package.url, headers={"User-Agent": USER_AGENT})
     written = 0
     digest = ""
