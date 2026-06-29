@@ -69,6 +69,7 @@ grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
 grep -q 'OpenCPN is already running' scripts/start_chartplotter.sh
+grep -q 'OpenCPN exited with status' scripts/start_chartplotter.sh
 grep -q 'show_preflight_warning' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' scripts/start_chartplotter.sh
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
@@ -127,6 +128,7 @@ grep -q 'tracking.output' scripts/verify_pi.sh
 grep -q '<trkpt\\b' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
+grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/verify_pi.sh
 grep -q 'launcher log does not contain OpenCPN launch or duplicate marker' scripts/verify_pi.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
@@ -596,6 +598,7 @@ HOME="$launcher_preflight_fail_home" NOAA_NAVIONICS_WARNING_SECONDS=0 PATH="$tmp
 grep -q 'NOAA Navionics preflight failed' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Readiness warning timeout is 0 seconds' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN exited with status 0' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_fail_home="$tmpdir/launcher-fail-home"
 mkdir -p "$launcher_fail_home/.local/bin" "$launcher_fail_home/.cache/noaa-navionics"
@@ -606,6 +609,7 @@ HOME="$launcher_fail_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartp
 test ! -e "$launcher_fail_home/.cache/noaa-navionics/chartplotter.launch.lock"
 grep -q 'Display session found, but 3 xset command(s) failed' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN exited with status 0' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_lock_home="$tmpdir/launcher-lock-home"
 mkdir -p "$launcher_lock_home/.local/bin" "$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
@@ -619,6 +623,7 @@ test ! -e "$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 grep -q 'is not a chartplotter launcher; treating lock as stale' "$launcher_lock_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Removing stale chartplotter launcher lock' "$launcher_lock_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_lock_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN exited with status 0' "$launcher_lock_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_active_lock_home="$tmpdir/launcher-active-lock-home"
 mkdir -p "$launcher_active_lock_home/.local/bin" "$launcher_active_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"

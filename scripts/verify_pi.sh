@@ -454,12 +454,15 @@ text = path.read_text(encoding="utf-8", errors="replace")
 startup_marker = "Starting NOAA Navionics chartplotter launcher"
 launch_marker = "Launching OpenCPN with ENC processing."
 duplicate_marker = "OpenCPN is already running; leaving the existing chartplotter instance in place."
+exit_marker = "OpenCPN exited with status"
 startup_index = text.rfind(startup_marker)
 if startup_index < 0:
     raise SystemExit("launcher log does not contain startup marker")
 latest_startup = text[startup_index:]
 if launch_marker not in latest_startup and duplicate_marker not in latest_startup:
     raise SystemExit("launcher log does not contain OpenCPN launch or duplicate marker")
+if exit_marker in latest_startup:
+    raise SystemExit("launcher log shows OpenCPN exited after current-boot startup")
 if "xset command(s) failed" in latest_startup:
     raise SystemExit("launcher failed to disable one or more display power settings")
 if "xset is unavailable" in latest_startup:

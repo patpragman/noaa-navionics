@@ -162,7 +162,7 @@ The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add 
 
 ## Startup
 
-The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`, installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and writes `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` for the deployed user. The launcher reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or its environment, writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, uses a cache-directory launch lock, clears stale locks whose live PID is not actually the chartplotter launcher, leaves an existing OpenCPN process in place instead of starting a duplicate, asks X11 desktop sessions to disable screen blanking and DPMS sleep, shows a Tkinter warning with failed checks if readiness fails, and then starts OpenCPN.
+The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`, installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and writes `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` for the deployed user. The launcher reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or its environment, writes `~/.cache/noaa-navionics/status.json`, appends startup output and OpenCPN's exit status to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, uses a cache-directory launch lock, clears stale locks whose live PID is not actually the chartplotter launcher, leaves an existing OpenCPN process in place instead of starting a duplicate, asks X11 desktop sessions to disable screen blanking and DPMS sleep, shows a Tkinter warning with failed checks if readiness fails, and then starts OpenCPN.
 
 Manual launch:
 
@@ -242,7 +242,7 @@ Expected checks:
 - OpenCPN installed
 - `xset` available so the launcher can disable X11 display blanking and DPMS sleep
 - `vcgencmd` available on Raspberry Pi so under-voltage and throttling can be checked
-- Chartplotter startup log has no display-awake command failures after the current boot
+- Chartplotter startup log has no display-awake command failures or OpenCPN exit marker after the current boot
 - Desktop autostart installed for the chartplotter launcher and not marked hidden or disabled
 - Configured chart package is a complete chart source, not an updates-only bundle
 - Extracted ENC chart cells present

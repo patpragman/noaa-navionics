@@ -245,4 +245,9 @@ for _ in 1 2 3 4 5; do
 done
 release_launcher_lock
 trap - EXIT
+set +e
 wait "$opencpn_pid"
+opencpn_status=$?
+set -e
+printf '[%s] OpenCPN exited with status %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$opencpn_status"
+exit "$opencpn_status"
