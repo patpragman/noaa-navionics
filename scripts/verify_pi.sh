@@ -219,7 +219,8 @@ check_status_report_json() {
   local path="$1"
   local require_current_boot="${2:-0}"
   local expected_config_path="${3:-}"
-  python3 - "$path" "$require_current_boot" "$expected_config_path" <<'PY'
+  local expected_launcher_env_path="${4:-}"
+  python3 - "$path" "$require_current_boot" "$expected_config_path" "$expected_launcher_env_path" <<'PY'
 from pathlib import Path
 from configparser import ConfigParser
 from datetime import datetime, timezone
@@ -277,6 +278,7 @@ def parse_manifest_int(value, field, source):
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
+expected_launcher_env_path = sys.argv[4]
 require_track_disk_check = False
 with open(path, encoding="utf-8") as handle:
     report = json.load(handle)
@@ -301,6 +303,50 @@ if not isinstance(service_checks, list) or not service_checks:
 actual_config_path = str(report.get("config_path", "")).strip()
 if expected_config_path and actual_config_path != expected_config_path:
     raise SystemExit(f"status report config path {actual_config_path} does not match {expected_config_path}")
+if expected_launcher_env_path:
+    launcher_settings = report.get("launcher_settings")
+    if not isinstance(launcher_settings, dict):
+        raise SystemExit("status report has no launcher_settings section")
+    launcher_env_path = str(launcher_settings.get("path", "")).strip()
+    if launcher_env_path != expected_launcher_env_path:
+        raise SystemExit(
+            f"status report launcher settings path {launcher_env_path} does not match {expected_launcher_env_path}"
+        )
+    if launcher_settings.get("exists") is not True:
+        raise SystemExit(f"status report launcher settings do not exist: {expected_launcher_env_path}")
+    values = launcher_settings.get("values")
+    if not isinstance(values, dict):
+        raise SystemExit(f"status report launcher settings values were not parsed: {expected_launcher_env_path}")
+    try:
+        launcher_lines = Path(expected_launcher_env_path).expanduser().read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise SystemExit(f"could not read launcher environment {expected_launcher_env_path}: {exc}") from exc
+    actual_values = {}
+    for raw_line in launcher_lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        actual_values[key.strip()] = value.strip()
+    if values != actual_values:
+        raise SystemExit(
+            f"status report launcher settings values {values!r} do not match launcher environment {actual_values!r}"
+        )
+    gps_wait = str(values.get("NOAA_NAVIONICS_GPS_SECONDS", "")).strip()
+    if gps_wait != os.environ.get("NOAA_NAVIONICS_GPS_SECONDS", "10"):
+        raise SystemExit(
+            f"status report launcher GPS wait {gps_wait} does not match verification wait "
+            f"{os.environ.get('NOAA_NAVIONICS_GPS_SECONDS', '10')}"
+        )
+    fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
+    if fail_open in {"1", "yes", "true", "on"}:
+        raise SystemExit(
+            "status report launcher settings enable NOAA_NAVIONICS_START_ON_FAILED_READINESS"
+        )
+    if fail_open and fail_open not in {"0", "no", "false", "off"}:
+        raise SystemExit(
+            f"status report launcher settings contain invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS={fail_open}"
+        )
 if expected_config_path:
     parser = ConfigParser()
     if not parser.read(Path(expected_config_path).expanduser()):
@@ -1081,7 +1127,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
     check "OpenCPN running" false
   fi
   check "OpenCPN stable after startup" check_opencpn_stable
-  check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config"
+  check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config" "$launcher_env"
 fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "$revision_file"
@@ -1227,7 +1273,7 @@ for attempt in $(seq 1 "$status_attempts"); do
   if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
     printf 'OK   preflight\n'
     printf 'OK   status report %s\n' "$status_report"
-    check "status report JSON ready" check_status_report_json "$status_report" 0 "$config"
+    check "status report JSON ready" check_status_report_json "$status_report" 0 "$config" "$launcher_env"
     preflight_ok=1
     break
   fi

@@ -375,6 +375,9 @@ grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
 grep -q 'chartplotter launcher fail-open override disabled' scripts/verify_pi.sh
 grep -q 'production dock verification requires fail-closed chartplotter startup' scripts/verify_pi.sh
+grep -q 'status report launcher settings values' scripts/verify_pi.sh
+grep -q 'do not match launcher environment' scripts/verify_pi.sh
+grep -q 'status report launcher GPS wait' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
