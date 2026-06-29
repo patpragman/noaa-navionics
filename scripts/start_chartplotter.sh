@@ -9,13 +9,19 @@ bin="${HOME}/.local/bin/noaa-navionics"
 
 keep_display_awake() {
   if [[ -n "${DISPLAY:-}" ]] && command -v xset >/dev/null 2>&1; then
-    xset s off >/dev/null 2>&1 || true
-    xset s noblank >/dev/null 2>&1 || true
-    xset -dpms >/dev/null 2>&1 || true
-    echo "Requested display sleep and blanking disabled."
+    local failures=0
+    xset s off >/dev/null 2>&1 || failures=$((failures + 1))
+    xset s noblank >/dev/null 2>&1 || failures=$((failures + 1))
+    xset -dpms >/dev/null 2>&1 || failures=$((failures + 1))
+    if [[ "$failures" -eq 0 ]]; then
+      echo "Requested display sleep and blanking disabled."
+    else
+      echo "Display session found, but ${failures} xset command(s) failed; leaving some display power settings unchanged." >&2
+    fi
   elif [[ -n "${DISPLAY:-}" ]]; then
     echo "Display session found, but xset is unavailable; leaving display power settings unchanged."
   fi
+  return 0
 }
 
 if [[ ! -x "$bin" ]]; then

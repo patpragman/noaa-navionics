@@ -24,6 +24,7 @@ grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'xset s noblank' scripts/start_chartplotter.sh
+grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
@@ -45,6 +46,7 @@ grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
+grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
@@ -266,5 +268,14 @@ test -f "$launcher_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
+
+launcher_fail_home="$tmpdir/launcher-fail-home"
+mkdir -p "$launcher_fail_home/.local/bin" "$launcher_fail_home/.cache/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_fail_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/xset"
+chmod +x "$launcher_fail_home/.local/bin/noaa-navionics" "$tmpdir/xset"
+HOME="$launcher_fail_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+grep -q 'Display session found, but 3 xset command(s) failed' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 
 echo "All checks passed."

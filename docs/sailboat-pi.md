@@ -225,6 +225,7 @@ Expected checks:
 - Tkinter available for the GUI
 - OpenCPN installed
 - `xset` available so the launcher can disable X11 display blanking and DPMS sleep
+- Chartplotter startup log has no display-awake command failures after the current boot
 - Configured chart package is a complete chart source, not an updates-only bundle
 - Extracted ENC chart cells present
 - Current chart manifest present, matching the configured chart package, and tied to an existing extraction with the recorded ENC cell count

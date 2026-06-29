@@ -207,6 +207,11 @@ if startup_index < 0:
     raise SystemExit("launcher log does not contain startup marker")
 if launch_index < startup_index:
     raise SystemExit("launcher log does not contain OpenCPN launch marker")
+latest_startup = text[startup_index:]
+if "xset command(s) failed" in latest_startup:
+    raise SystemExit("launcher failed to disable one or more display power settings")
+if "xset is unavailable" in latest_startup:
+    raise SystemExit("launcher could not find xset for display power settings")
 try:
     uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
 except Exception as exc:

@@ -161,6 +161,7 @@ Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
 The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
+If those display power commands fail during chartplotter autostart, the launcher records the failure and the strict Pi startup verifier fails the dock test.
 The installer and provisioning script configure LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 Create the onboard config:
