@@ -115,6 +115,7 @@ grep -q 'boot status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
+grep -q 'status report config values do not match current config' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
 grep -q '"Time Sync"' scripts/verify_pi.sh
 grep -q '"Display Power"' scripts/verify_pi.sh

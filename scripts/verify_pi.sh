@@ -127,6 +127,7 @@ check_status_report_json() {
   local expected_config_path="${3:-}"
   python3 - "$path" "$require_current_boot" "$expected_config_path" <<'PY'
 from pathlib import Path
+from configparser import ConfigParser
 from datetime import datetime, timezone
 import json
 import os
@@ -158,6 +159,34 @@ if not isinstance(service_checks, list) or not service_checks:
 actual_config_path = str(report.get("config_path", "")).strip()
 if expected_config_path and actual_config_path != expected_config_path:
     raise SystemExit(f"status report config path {actual_config_path} does not match {expected_config_path}")
+if expected_config_path:
+    parser = ConfigParser()
+    if not parser.read(Path(expected_config_path).expanduser()):
+        raise SystemExit(f"could not read expected config: {expected_config_path}")
+    chart_output = Path(parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()).expanduser()
+    expected_config = {
+        "chart_package": parser.get("charts", "package", fallback="state").strip().lower(),
+        "chart_value": parser.get("charts", "value", fallback="AK").strip(),
+        "chart_output": str(chart_output),
+        "max_chart_age_days": int(parser.get("charts", "max_age_days", fallback="30").strip()),
+        "gps_mode": parser.get("gps", "mode", fallback="gpsd").strip().lower(),
+        "gps_device": parser.get("gps", "device", fallback="/dev/serial/by-id/YOUR_GPS_DEVICE").strip(),
+        "gps_baud": int(parser.get("gps", "baud", fallback="4800").strip()),
+        "gpsd_host": parser.get("gps", "gpsd_host", fallback="127.0.0.1").strip(),
+        "gpsd_port": int(parser.get("gps", "gpsd_port", fallback="2947").strip()),
+        "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
+        "track_retention_days": int(parser.get("tracking", "retention_days", fallback="90").strip()),
+    }
+    report_config = report.get("config")
+    if not isinstance(report_config, dict):
+        raise SystemExit("status report has no config section")
+    mismatches = []
+    for key, expected in expected_config.items():
+        actual = report_config.get(key)
+        if actual != expected:
+            mismatches.append(f"{key}={actual!r}, expected {expected!r}")
+    if mismatches:
+        raise SystemExit("status report config values do not match current config: " + "; ".join(mismatches))
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {
