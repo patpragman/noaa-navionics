@@ -264,6 +264,9 @@ grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
 grep -q 'umask 077' scripts/install_raspberry_pi.sh
 grep -q 'umask 077' scripts/provision_sailboat_pi.sh
+grep -q 'umask 077' scripts/configure_gpsd.sh
+grep -q 'umask 077' scripts/configure_gps_time.sh
+grep -q 'umask 077' scripts/configure_desktop_autologin.sh
 grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
 grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
 grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
