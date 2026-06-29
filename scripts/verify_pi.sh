@@ -545,6 +545,8 @@ if startup_index < 0:
 latest_startup = text[startup_index:]
 if launch_marker not in latest_startup and duplicate_marker not in latest_startup:
     raise SystemExit("launcher log does not contain OpenCPN launch or duplicate marker")
+if "NOAA Navionics preflight failed" in latest_startup:
+    raise SystemExit("launcher reported failed readiness before OpenCPN startup")
 if exit_marker in latest_startup:
     raise SystemExit("launcher log shows OpenCPN exited after current-boot startup")
 if "xset command(s) failed" in latest_startup:
