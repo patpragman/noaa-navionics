@@ -399,7 +399,28 @@ def check_chart_manifest(
     archive_check = _check_manifest_archive(path, manifest)
     if archive_check is not None:
         return archive_check
+    download_url_check = _check_manifest_download_url(manifest)
+    if download_url_check is not None:
+        return download_url_check
     return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
+
+
+def _check_manifest_download_url(manifest: dict[str, object]) -> Optional[CheckResult]:
+    package = manifest.get("package", {})
+    download = manifest.get("download", {})
+    if not isinstance(package, dict) or not isinstance(download, dict):
+        return CheckResult("Manifest", False, "manifest has no package or download section")
+    package_url = str(package.get("url", "")).strip()
+    download_url = str(download.get("url", "")).strip()
+    if not download_url:
+        return CheckResult("Manifest", False, "manifest does not record a download URL")
+    if package_url and download_url != package_url:
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest download URL {download_url} does not match package URL {package_url}",
+        )
+    return None
 
 
 def _check_manifest_archive(chart_dir: Path, manifest: dict[str, object]) -> Optional[CheckResult]:

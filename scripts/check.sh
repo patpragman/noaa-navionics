@@ -138,6 +138,7 @@ grep -q 'expected_package_filename' scripts/verify_pi.sh
 grep -q 'expected_package_url' scripts/verify_pi.sh
 grep -q 'status report manifest package filename' scripts/verify_pi.sh
 grep -q 'status report manifest package URL' scripts/verify_pi.sh
+grep -q 'status report manifest download URL' scripts/verify_pi.sh
 grep -q 'status report manifest download path' scripts/verify_pi.sh
 grep -q 'status report manifest download byte count is not positive' scripts/verify_pi.sh
 grep -q 'status report manifest extract path' scripts/verify_pi.sh
@@ -250,6 +251,8 @@ grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'unexpected ENC chart directories' src/noaa_navionics/health.py
 grep -q 'manifest package URL' src/noaa_navionics/health.py
+grep -q 'manifest download URL' src/noaa_navionics/health.py
+grep -q 'manifest does not record a download URL' src/noaa_navionics/health.py
 grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'positive download byte count' src/noaa_navionics/health.py

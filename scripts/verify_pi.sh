@@ -245,7 +245,7 @@ if expected_config_path:
         )
     if manifest.get("exists") is not True:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
-    for key in ("created_at", "package", "package_filename", "url", "download_path", "sha256", "extract_path"):
+    for key in ("created_at", "package", "package_filename", "url", "download_path", "download_url", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
     manifest_package_filename = str(manifest.get("package_filename", "")).strip()
@@ -258,6 +258,12 @@ if expected_config_path:
     if expected_package_source_url and manifest_package_url != expected_package_source_url:
         raise SystemExit(
             f"status report manifest package URL {manifest_package_url} "
+            f"does not match configured {expected_package_source_url}"
+        )
+    manifest_download_url = str(manifest.get("download_url", "")).strip()
+    if expected_package_source_url and manifest_download_url != expected_package_source_url:
+        raise SystemExit(
+            f"status report manifest download URL {manifest_download_url} "
             f"does not match configured {expected_package_source_url}"
         )
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()

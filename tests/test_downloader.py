@@ -547,6 +547,7 @@ class ManifestTests(unittest.TestCase):
             manifest = read_manifest(output)
             self.assertEqual(manifest["package"]["label"], "Test package")
             self.assertEqual(manifest["package"]["url"], source_zip.as_uri())
+            self.assertEqual(manifest["download"]["url"], source_zip.as_uri())
             self.assertEqual(manifest["download"]["sha256"], result.sha256)
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
             self.assertTrue(check_chart_manifest(output).ok)
@@ -817,6 +818,51 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("manifest package URL", result.detail)
             self.assertIn("https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", result.detail)
 
+    def test_manifest_download_url_mismatch_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                '"download":{"url":"https://example.invalid/AK_ENCs.zip","sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download URL", result.detail)
+            self.assertIn("does not match package URL", result.detail)
+
+    def test_manifest_missing_download_url_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("does not record a download URL", result.detail)
+
     def test_manifest_fails_when_other_extracted_enc_directory_remains(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -833,7 +879,7 @@ class ManifestTests(unittest.TestCase):
                 '{"created_at":"' + now + '",'
                 '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
                 '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
-                '"download":{"sha256":"abc"},'
+                '"download":{"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip","sha256":"abc"},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
             )
@@ -1084,7 +1130,8 @@ class StatusReportTests(unittest.TestCase):
             manifest.write_text(
                 '{"created_at":"' + now + '",'
                 '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
-                f'"download":{{"path":"{charts / "AK_ENCs.zip"}","bytes":123,"sha256":"abc"}},'
+                f'"download":{{"path":"{charts / "AK_ENCs.zip"}","url":"file:///test.zip",'
+                '"bytes":123,"sha256":"abc"},'
                 f'"extract":{{"path":"{cell.parent}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
             )
@@ -1141,6 +1188,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["manifest"]["package_filename"], "AK_ENCs.zip")
             self.assertEqual(report["manifest"]["url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_path"], str(charts / "AK_ENCs.zip"))
+            self.assertEqual(report["manifest"]["download_url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_bytes"], 123)
             self.assertEqual(report["manifest"]["sha256"], "abc")
             self.assertEqual(report["manifest"]["extract_path"], str(cell.parent))
@@ -1152,6 +1200,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("revision abc123", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)
+            self.assertIn("download_url: file:///test.zip", text)
             self.assertIn("download_bytes: 123", text)
             self.assertIn(f"extract_path: {cell.parent}", text)
             self.assertIn("Service Checks:", text)
@@ -2375,7 +2424,7 @@ class GpsTests(unittest.TestCase):
                     '{"created_at":"' + now + '",'
                     '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
                     '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
-                    '"download":{"path":"","bytes":0,"sha256":""},'
+                    '"download":{"path":"","url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip","bytes":0,"sha256":""},'
                     f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                     encoding="utf-8",
                 )
@@ -2416,7 +2465,7 @@ class GpsTests(unittest.TestCase):
                 '{"created_at":"' + now + '",'
                 '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
                 '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
-                '"download":{"path":"","bytes":0,"sha256":""},'
+                '"download":{"path":"","url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip","bytes":0,"sha256":""},'
                 f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
             )

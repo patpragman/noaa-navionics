@@ -415,6 +415,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
         },
         "download": {
             "path": str(result.path),
+            "url": result.url,
             "bytes": result.bytes_written,
             "sha256": digest,
             "skipped": result.skipped,
