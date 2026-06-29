@@ -371,6 +371,9 @@ grep -q 'chartplotter launcher lock sync create' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock sync cleanup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
+grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
+grep -q 'chartplotter launcher fail-open override disabled' scripts/verify_pi.sh
+grep -q 'production dock verification requires fail-closed chartplotter startup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
@@ -1451,6 +1454,7 @@ scripts/provision_sailboat_pi.sh \
   --sync-retries 7 \
   --sync-retry-delay 15 >"$provision_output"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
+! grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes' "$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
 
 scripts/provision_sailboat_pi.sh \

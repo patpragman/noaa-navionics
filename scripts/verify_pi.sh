@@ -662,6 +662,51 @@ if not configured:
 PY
 }
 
+check_launcher_env_production_settings() {
+  local path="$1"
+  python3 - "$path" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+try:
+    lines = path.read_text(encoding="utf-8").splitlines()
+except OSError as exc:
+    raise SystemExit(f"could not read launcher environment {path}: {exc}") from exc
+values = {}
+for raw_line in lines:
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    values[key.strip()] = value.strip()
+
+def optional_positive_integer(key):
+    value = values.get(key)
+    if value is not None and (not value.isdigit() or int(value) <= 0):
+        raise SystemExit(f"{key} must be a positive integer in {path}: {value!r}")
+
+def optional_non_negative_integer(key):
+    value = values.get(key)
+    if value is not None and (not value.isdigit() or int(value) < 0):
+        raise SystemExit(f"{key} must be a non-negative integer in {path}: {value!r}")
+
+optional_positive_integer("NOAA_NAVIONICS_READINESS_ATTEMPTS")
+optional_non_negative_integer("NOAA_NAVIONICS_READINESS_RETRY_DELAY")
+value = values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS")
+if value is None:
+    raise SystemExit(0)
+normalized = value.lower()
+if normalized in {"1", "yes", "true", "on"}:
+    raise SystemExit(
+        f"NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled in {path}; "
+        "production dock verification requires fail-closed chartplotter startup"
+    )
+if normalized not in {"0", "no", "false", "off"}:
+    raise SystemExit(f"NOAA_NAVIONICS_START_ON_FAILED_READINESS has an invalid value in {path}: {value!r}")
+PY
+}
+
 stable_gps_device_path() {
   case "$1" in
     /dev/serial/by-id/*)
@@ -1004,6 +1049,7 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher stale lock recovery" grep -Fq 'is not a chartplotter launcher; treating lock as stale' "$launcher"
 fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
+check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then
   check "chartplotter autostart type" grep -Fxq 'Type=Application' "$autostart"
