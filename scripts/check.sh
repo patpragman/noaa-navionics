@@ -397,6 +397,7 @@ grep -q 'status report source revision directory is a symlink' scripts/verify_pi
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config path is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report OpenCPN config path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory .* has permissions' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
 grep -q 'status report launcher settings path is a symlink' scripts/verify_pi.sh
@@ -1035,6 +1036,10 @@ grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
 grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/report.py
 grep -q 'OpenCPN config directory is a symlink' src/noaa_navionics/report.py
+grep -q '"config_symlink_component"' src/noaa_navionics/report.py
+grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/test_downloader.py
+grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' README.md
+grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py

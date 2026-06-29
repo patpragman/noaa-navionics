@@ -340,6 +340,7 @@ def format_status_text(report: dict[str, object]) -> str:
             f"exists={opencpn_config.get('exists', '')} "
             f"is_symlink={opencpn_config.get('is_symlink', '')} "
             f"directory_is_symlink={opencpn_config.get('directory_is_symlink', '')} "
+            f"config_symlink_component={opencpn_config.get('config_symlink_component', '')} "
             f"chart_directories={chart_dir_text} data_connections={connection_count}".rstrip()
         )
     desktop = report.get("desktop", {})
@@ -843,24 +844,26 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
 
 def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
     config_path = opencpn_config_path(path)
+    symlink_component = _first_symlink_ancestor(config_path.parent)
     summary: dict[str, object] = {
         "path": str(config_path),
         "exists": config_path.is_file(),
         "is_symlink": config_path.is_symlink(),
         "directory_is_symlink": config_path.parent.is_symlink(),
+        "config_symlink_component": str(symlink_component) if symlink_component is not None else "",
     }
     if config_path.is_symlink():
         summary["error"] = f"OpenCPN config path is a symlink: {config_path}"
         return summary
-    if config_path.parent.is_symlink():
-        summary["error"] = f"OpenCPN config directory is a symlink: {config_path.parent}"
+    if symlink_component is not None:
+        summary["error"] = f"OpenCPN config directory is a symlink: {symlink_component}"
         return summary
     if not config_path.exists():
         return summary
     try:
         summary["chart_directories"] = [str(chart_dir) for chart_dir in read_chart_directories(config_path)]
         summary["data_connections"] = read_data_connections(config_path)
-    except OSError as exc:
+    except Exception as exc:
         summary["error"] = str(exc)
     return summary
 

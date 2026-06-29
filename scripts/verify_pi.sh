@@ -733,6 +733,9 @@ if expected_config_path:
         raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_path}")
     if opencpn_config.get("directory_is_symlink") is True:
         raise SystemExit(f"status report OpenCPN config directory is a symlink: {Path(opencpn_config_path).expanduser().parent}")
+    opencpn_symlink_component = str(opencpn_config.get("config_symlink_component", "")).strip()
+    if opencpn_symlink_component:
+        raise SystemExit(f"status report OpenCPN config path contains a symlink: {opencpn_symlink_component}")
     if str(opencpn_config.get("error", "")).strip():
         raise SystemExit(
             f"status report OpenCPN config has parse error at {opencpn_config_path}: {opencpn_config.get('error')}"
@@ -745,6 +748,9 @@ if expected_config_path:
         raise SystemExit(f"status report OpenCPN data connections were not parsed: {opencpn_config_path}")
     opencpn_config_file = Path(opencpn_config_path).expanduser()
     opencpn_config_dir = opencpn_config_file.parent
+    opencpn_live_symlink_component = first_symlink_ancestor(opencpn_config_dir)
+    if opencpn_live_symlink_component is not None:
+        raise SystemExit(f"status report OpenCPN config path contains a symlink: {opencpn_live_symlink_component}")
     if opencpn_config_dir.is_symlink():
         raise SystemExit(f"status report OpenCPN config directory is a symlink: {opencpn_config_dir}")
     if not opencpn_config_dir.is_dir():
