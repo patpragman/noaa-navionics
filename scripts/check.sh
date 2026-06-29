@@ -79,6 +79,12 @@ grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
+grep -q '"Time Sync"' scripts/verify_pi.sh
+grep -q '"Display Power"' scripts/verify_pi.sh
+grep -q '"Chart Package"' scripts/verify_pi.sh
+grep -q '"Chart Update Debris"' scripts/verify_pi.sh
+grep -q '"Pi Power"' scripts/verify_pi.sh
+grep -q '"Pi Thermal"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
 grep -q '"Chart Timer Settings"' scripts/verify_pi.sh

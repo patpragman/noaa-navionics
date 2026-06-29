@@ -153,9 +153,20 @@ if not isinstance(service_checks, list) or not service_checks:
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {
+    "Python",
+    "Clock",
+    "Time Sync",
+    "Tkinter",
+    "OpenCPN",
+    "Display Power",
+    "Chart Package",
     "Charts",
+    "Chart Update Debris",
     "Manifest",
     "OpenCPN Charts",
+    "Disk",
+    "Pi Power",
+    "Pi Thermal",
     "OpenCPN GPSD",
     "GPSD",
     "GPS Time Source",
