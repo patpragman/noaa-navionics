@@ -138,7 +138,7 @@ scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 Use a `/dev/serial/by-id/` path when possible; verification checks that the configured GPSD device still exists.
-The installer syncs installed launchers, source revision, desktop autostart, and user systemd unit files to disk. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement.
+The installer syncs installed command symlinks, launchers, source revision, desktop autostart, and user systemd unit files to disk. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement.
 
 On the Pi, `status-report` writes a JSON readiness artifact:
 

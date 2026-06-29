@@ -97,6 +97,8 @@ ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-g
 install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 install -m 0755 "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 sync_paths \
+  "${HOME}/.local/bin/noaa-navionics" \
+  "${HOME}/.local/bin/noaa-navionics-gui" \
   "${HOME}/.local/bin/noaa-navionics-start-chartplotter" \
   "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 
