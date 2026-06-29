@@ -302,6 +302,62 @@ wait_for_chrony_gps_source() {
   done
 }
 
+check_recent_track_log() {
+  local config_path="$1"
+  python3 - "$config_path" "$gps_seconds" <<'PY'
+from configparser import ConfigParser
+from pathlib import Path
+import sys
+import time
+
+config_path = Path(sys.argv[1]).expanduser()
+timeout = max(10.0, float(sys.argv[2]))
+parser = ConfigParser()
+if not parser.read(config_path):
+    raise SystemExit(f"could not read config: {config_path}")
+chart_output = parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()
+track_output = parser.get("tracking", "output", fallback=chart_output).strip()
+if not track_output:
+    raise SystemExit("tracking.output is empty")
+tracks_dir = Path(track_output).expanduser() / "tracks"
+try:
+    uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
+except Exception as exc:
+    raise SystemExit(f"could not read /proc/uptime: {exc}") from exc
+boot_epoch = time.time() - uptime_seconds
+deadline = time.monotonic() + timeout
+last_detail = ""
+while True:
+    if tracks_dir.exists():
+        candidates = []
+        for path in tracks_dir.glob("track-*.gpx"):
+            try:
+                stat = path.stat()
+            except OSError as exc:
+                last_detail = f"could not inspect {path}: {exc}"
+                continue
+            candidates.append((stat.st_mtime, path, stat))
+        candidates.sort(reverse=True)
+        for _mtime, path, stat in candidates:
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError as exc:
+                last_detail = f"could not read {path}: {exc}"
+                continue
+            if stat.st_mtime + 5 < boot_epoch:
+                continue
+            if "<trkpt " in text:
+                print(path)
+                raise SystemExit(0)
+            last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
+    else:
+        last_detail = f"{tracks_dir} does not exist"
+    if time.monotonic() >= deadline:
+        raise SystemExit(last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}")
+    time.sleep(1)
+PY
+}
+
 arch="$(uname -m)"
 case "$arch" in
   armv7l|aarch64)
@@ -444,6 +500,7 @@ if [[ "$preflight_ok" -eq 0 ]]; then
   printf 'FAIL status report %s\n' "$status_report"
   failures=$((failures + 1))
 fi
+check "recent GPX trackpoint" check_recent_track_log "$config"
 
 if [[ "$failures" -eq 0 ]]; then
   printf '\nRaspberry Pi verification passed.\n'
