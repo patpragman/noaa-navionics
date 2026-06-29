@@ -735,6 +735,7 @@ grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.s
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
+grep -q -- '--device is required for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
 grep -q -- '--skip-autologin cannot be used for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 
@@ -1053,6 +1054,27 @@ set -e
 if [[ "$dock_code" -ne 2 ]]; then
   cat "$dock_output" >&2
   echo "expected dock_test_pi.sh to reject invalid --timeout with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to require --device for rebooted --skip-deploy acceptance tests with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required for the rebooted dock acceptance test' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --timeout nope >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh no-reboot smoke test to still reject invalid --timeout with exit 2" >&2
   exit 1
 fi
 

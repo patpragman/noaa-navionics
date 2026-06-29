@@ -257,8 +257,9 @@ done
 validate_ssh_target "$target"
 require_positive_integer "--timeout" "$timeout"
 
-if [[ "$skip_deploy" -eq 0 && -z "$device" ]]; then
-  echo "--device is required unless --skip-deploy is used" >&2
+if [[ -z "$device" && ! ( "$skip_deploy" -eq 1 && "$no_reboot" -eq 1 ) ]]; then
+  echo "--device is required for the rebooted dock acceptance test" >&2
+  echo "Use --skip-deploy --no-reboot only for a weaker smoke check of an already-provisioned Pi." >&2
   exit 2
 fi
 
