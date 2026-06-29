@@ -103,6 +103,8 @@ grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
 grep -q 'chart service loaded restart delay' scripts/verify_pi.sh
+grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
+grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
