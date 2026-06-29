@@ -227,6 +227,9 @@ grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
 grep -q 'weak GPS fix' src/noaa_navionics/gps.py
+grep -q 'non-finite coordinates' src/noaa_navionics/gps.py
+grep -q 'outside -90..90' src/noaa_navionics/gps.py
+grep -q 'outside -180..180' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: 0.000000, 0.000000 coordinates' src/noaa_navionics/gps.py
 grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py

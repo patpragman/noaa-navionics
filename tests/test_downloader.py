@@ -4,6 +4,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import BytesIO, StringIO
 from urllib.error import URLError
 import json
+import math
 import sys
 import signal
 import tempfile
@@ -1645,6 +1646,18 @@ class GpsTests(unittest.TestCase):
 
         self.assertIn("0.000000, 0.000000", gps_fix_quality_failure(fix))
 
+    def test_shared_gps_quality_rejects_out_of_range_coordinates(self):
+        latitude = GPSFix(latitude=91.0, longitude=-149.0, satellites=8, hdop=1.2)
+        longitude = GPSFix(latitude=61.0, longitude=-181.0, satellites=8, hdop=1.2)
+
+        self.assertIn("latitude 91.000000 outside -90..90", gps_fix_quality_failure(latitude))
+        self.assertIn("longitude -181.000000 outside -180..180", gps_fix_quality_failure(longitude))
+
+    def test_shared_gps_quality_rejects_non_finite_coordinates(self):
+        fix = GPSFix(latitude=math.nan, longitude=-149.0, satellites=8, hdop=1.2)
+
+        self.assertIn("non-finite coordinates", gps_fix_quality_failure(fix))
+
     def test_track_signal_handler_raises_stop_exception(self):
         with self.assertRaisesRegex(_TrackLoggerStop, "SIGTERM"):
             _raise_track_logger_stop(signal.SIGTERM, None)
@@ -1880,6 +1893,24 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("0.000000, 0.000000", result.detail)
 
+    def test_check_gps_device_rejects_out_of_range_coordinates(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            return BytesIO(
+                f"$GPGGA,{fix_time},9100.000,N,18100.000,E,1,08,0.9,545.4,M,46.9,M,,\n".encode("ascii")
+            )
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("latitude 91.000000 outside -90..90", result.detail)
+
     def test_check_gps_device_rejects_stale_timestamped_fix(self):
         original = health_module.open_nmea_stream
 
@@ -1952,6 +1983,26 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("0.000000, 0.000000", result.detail)
+
+    def test_check_gpsd_rejects_out_of_range_coordinates(self):
+        original = health_module.iter_gpsd_fixes
+        invalid = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=181.0,
+            fix_quality=3,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([invalid])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("longitude 181.000000 outside -180..180", result.detail)
 
     def test_check_gpsd_waits_for_quality_after_initial_position(self):
         original = health_module.iter_gpsd_fixes

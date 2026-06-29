@@ -210,7 +210,7 @@ noaa-navionics gps-monitor --gpsd --once
 ```
 
 For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`. Direct serial readiness rejects stale or future-dated timestamped NMEA fixes too.
-GPS readiness rejects invalid `0,0` coordinates. When a receiver reports quality fields, it also rejects weak fixes with fewer than four satellites or HDOP above 5. GPSD readiness merges recent SKY satellite/HDOP reports with TPV position fixes before applying that gate.
+GPS readiness rejects non-finite coordinates, coordinates outside valid latitude/longitude bounds, and invalid `0,0` coordinates. When a receiver reports quality fields, it also rejects weak fixes with fewer than four satellites or HDOP above 5. GPSD readiness merges recent SKY satellite/HDOP reports with TPV position fixes before applying that gate.
 NMEA fractional timestamps are normalized across second, minute, and UTC day rollovers before freshness checks and GPX logging.
 
 Track logging:
@@ -219,7 +219,7 @@ Track logging:
 noaa-navionics log-track
 ```
 
-The systemd track logger writes daily GPX files and prunes rotated track logs older than `[tracking] retention_days` from the onboard config. GPX files are created exclusively so existing tracks are not silently overwritten, the new file entry is synced after creation, points are periodically synced to disk to reduce data loss after abrupt power loss, and SIGTERM/SIGINT shutdown closes the current GPX file before exit. The track logger skips invalid `0,0` coordinates and weak satellite/HDOP fixes instead of writing them to GPX, and single-file logging does not create an output file until the first accepted fix. The installed service drops per-fix stdout so normal GPS logging does not fill the systemd journal, while stderr warnings and failures still go to the service log. If `[tracking] output` is on separate storage from the charts, preflight also checks that track destination has an existing writable parent and enough free space. The default retention is 90 days; set it to `0` to keep all rotated track logs.
+The systemd track logger writes daily GPX files and prunes rotated track logs older than `[tracking] retention_days` from the onboard config. GPX files are created exclusively so existing tracks are not silently overwritten, the new file entry is synced after creation, points are periodically synced to disk to reduce data loss after abrupt power loss, and SIGTERM/SIGINT shutdown closes the current GPX file before exit. The track logger skips invalid coordinates and weak satellite/HDOP fixes instead of writing them to GPX, and single-file logging does not create an output file until the first accepted fix. The installed service drops per-fix stdout so normal GPS logging does not fill the systemd journal, while stderr warnings and failures still go to the service log. If `[tracking] output` is on separate storage from the charts, preflight also checks that track destination has an existing writable parent and enough free space. The default retention is 90 days; set it to `0` to keep all rotated track logs.
 The track logger service uses a generous start-limit window so delayed GPSD or GPS hardware at boot does not permanently suppress GPX logging.
 
 ## Raspberry Pi Automation

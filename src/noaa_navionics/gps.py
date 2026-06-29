@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO, Iterable, Iterator, Optional, TextIO
 import json
+import math
 import os
 import socket
 import termios
@@ -232,7 +233,16 @@ def gps_fix_quality_failure(
     min_satellites: int = 4,
     max_hdop: float = 5.0,
 ) -> str:
-    if fix.latitude == 0.0 and fix.longitude == 0.0:
+    latitude = fix.latitude
+    longitude = fix.longitude
+    if latitude is not None and longitude is not None:
+        if not math.isfinite(latitude) or not math.isfinite(longitude):
+            return f"invalid GPS fix: non-finite coordinates {latitude:.6f}, {longitude:.6f}"
+        if latitude < -90.0 or latitude > 90.0:
+            return f"invalid GPS fix: latitude {latitude:.6f} outside -90..90"
+        if longitude < -180.0 or longitude > 180.0:
+            return f"invalid GPS fix: longitude {longitude:.6f} outside -180..180"
+    if latitude == 0.0 and longitude == 0.0:
         return "invalid GPS fix: 0.000000, 0.000000 coordinates"
     if fix.satellites is not None and fix.satellites < min_satellites:
         return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
