@@ -302,6 +302,7 @@ check_names = {str(check.get("name", "")) for check in checks if isinstance(chec
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {
     "Python",
+    "Source Revision",
     "Clock",
     "Time Sync",
     "Tkinter",

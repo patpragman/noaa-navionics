@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 import importlib.util
+import os
 import shlex
 import shutil
 import subprocess
@@ -22,6 +23,9 @@ from .gps import (
 )
 from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest, sha256_file
 from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
+
+
+DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ def run_preflight(
 ) -> list[CheckResult]:
     results = [
         check_python(),
+        check_source_revision(),
         check_system_clock(),
         check_time_synchronization(),
         check_tkinter(),
@@ -95,6 +100,24 @@ def check_python() -> CheckResult:
     version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     ok = sys.version_info >= (3, 9)
     return CheckResult("Python", ok, f"running Python {version}")
+
+
+def check_source_revision(path: Optional[Path] = None) -> CheckResult:
+    if not _is_raspberry_pi():
+        return CheckResult("Source Revision", True, "not a Raspberry Pi; skipping deployed source revision check")
+    revision_path = path or _source_revision_path()
+    try:
+        revision = revision_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return CheckResult("Source Revision", False, f"cannot read deployed source revision at {revision_path}: {exc}")
+    if not revision or revision == "unknown":
+        return CheckResult("Source Revision", False, f"deployed source revision is not recorded at {revision_path}")
+    return CheckResult("Source Revision", True, revision)
+
+
+def _source_revision_path() -> Path:
+    override = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+    return Path(override).expanduser() if override else DEFAULT_SOURCE_REVISION_PATH.expanduser()
 
 
 def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) -> CheckResult:

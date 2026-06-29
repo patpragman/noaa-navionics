@@ -150,6 +150,7 @@ grep -q 'status report manifest ENC cell count invalid' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
+grep -q '"Source Revision"' scripts/verify_pi.sh
 grep -q '"Time Sync"' scripts/verify_pi.sh
 grep -q '"Display Power"' scripts/verify_pi.sh
 grep -q '"Chart Package"' scripts/verify_pi.sh
@@ -236,6 +237,9 @@ grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
+grep -q 'Source Revision' src/noaa_navionics/health.py
+grep -q 'NOAA_NAVIONICS_SOURCE_REVISION_PATH' src/noaa_navionics/health.py
+grep -q 'deployed source revision is not recorded' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/health.py

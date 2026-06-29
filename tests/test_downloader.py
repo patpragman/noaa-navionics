@@ -69,6 +69,7 @@ from noaa_navionics.health import (
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
     check_pi_throttling,
+    check_source_revision,
     check_system_clock,
     check_time_synchronization,
     _parse_throttled_value,
@@ -2490,6 +2491,58 @@ class GpsTests(unittest.TestCase):
 
 
 class PiHealthTests(unittest.TestCase):
+    def test_check_source_revision_skips_non_pi(self):
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._is_raspberry_pi = lambda: False
+            result = check_source_revision()
+        finally:
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("skipping", result.detail)
+
+    def test_check_source_revision_accepts_recorded_revision_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("abc123-dirty\n", encoding="utf-8")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertEqual(result.detail, "abc123-dirty")
+
+    def test_check_source_revision_rejects_missing_revision_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "missing"
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("cannot read deployed source revision", result.detail)
+
+    def test_check_source_revision_rejects_unknown_revision_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("unknown\n", encoding="utf-8")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("not recorded", result.detail)
+
     def test_check_system_clock_rejects_epoch_like_time(self):
         result = check_system_clock(datetime(1970, 1, 1, tzinfo=timezone.utc))
         self.assertFalse(result.ok)
