@@ -10,6 +10,7 @@ This project is the chart-data, GPS-check, and operations wrapper for a Raspberr
 - USB or UART GPS that emits NMEA 0183
 - Daylight-readable display
 - Keyboard/mouse or touchscreen available for maintenance
+- Raspberry Pi OS with Desktop/LightDM for unattended OpenCPN startup
 
 ## Install Packages
 
@@ -34,7 +35,7 @@ Deploy and run the full onboard provisioning sequence:
 scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
+Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, desktop graphical autologin setup, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
 The deploy, provisioning, and dock-test scripts validate retry counts, retry delays, GPS wait time, and reboot wait timeout before starting remote work.
 
 Verify the Raspberry Pi after deployment:
@@ -43,7 +44,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-The verify script runs checks on the Pi over SSH, including architecture, installed commands, deployed source revision, chartplotter launcher content, desktop autostart fields, installed user systemd unit contents, GPSD startup options, GPSD device matching the onboard config, config, and `noaa-navionics status-report`. It also parses the generated JSON readiness artifact and requires it to be fresh, ready, populated with readiness checks, and stamped with the expected source revision. It expects a `-dirty` revision suffix only when verifying from a dirty local worktree. The status report step retries briefly so GPSD has time to produce its first fix after boot.
+The verify script runs checks on the Pi over SSH, including architecture, installed commands, deployed source revision, chartplotter launcher content, desktop autostart fields, graphical boot target, LightDM autologin for the deployed user, installed user systemd unit contents, GPSD startup options, GPSD device matching the onboard config, config, and `noaa-navionics status-report`. It also parses the generated JSON readiness artifact and requires it to be fresh, ready, populated with readiness checks, and stamped with the expected source revision. It expects a `-dirty` revision suffix only when verifying from a dirty local worktree. The status report step retries briefly so GPSD has time to produce its first fix after boot.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:
@@ -65,7 +66,7 @@ scripts/install_raspberry_pi.sh --skip-apt
 
 On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
-The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv` and symlinks commands into `~/.local/bin`. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured.
+The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, and configures LightDM graphical autologin for the installing user. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 ## Onboard Config
 
@@ -142,12 +143,12 @@ After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboar
 scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
 The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network.
 
 ## Startup
 
-The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter` and installs a desktop autostart entry for it. The launcher writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, asks X11 desktop sessions to disable screen blanking and DPMS sleep, warns if readiness fails, and then starts OpenCPN.
+The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`, installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and writes `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` for the deployed user. The launcher writes `~/.cache/noaa-navionics/status.json`, appends startup output to `~/.cache/noaa-navionics/chartplotter.log`, rotates that log after 1 MB, asks X11 desktop sessions to disable screen blanking and DPMS sleep, warns if readiness fails, and then starts OpenCPN.
 
 Manual launch:
 
@@ -226,6 +227,7 @@ Expected checks:
 - Current chart manifest present, matching the configured chart package, and tied to an existing extraction with the recorded ENC cell count
 - OpenCPN configured with the chart directory
 - OpenCPN configured with the GPSD network connection
+- Graphical boot and LightDM autologin configured for unattended startup
 - Configured local GPS device path exists when GPSD is using a local receiver
 - At least 2 GB free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path
 - No active Raspberry Pi under-voltage or throttling

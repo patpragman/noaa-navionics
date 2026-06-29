@@ -85,7 +85,7 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
-    --skip-gpsd|--skip-sync|--skip-services|--no-device-check)
+    --skip-gpsd|--skip-sync|--skip-services|--skip-autologin|--no-device-check)
       saw_provision_option=1
       provision_args+=("$1")
       shift

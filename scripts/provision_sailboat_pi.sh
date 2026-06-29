@@ -10,6 +10,7 @@ dry_run=0
 skip_gpsd=0
 skip_sync=0
 skip_services=0
+skip_autologin=0
 gps_seconds=10
 sync_retries=5
 sync_retry_delay=30
@@ -28,6 +29,7 @@ Options:
   --skip-gpsd         Do not configure GPSD
   --skip-sync         Do not download charts
   --skip-services     Do not enable user systemd services
+  --skip-autologin    Do not configure desktop graphical autologin
   --no-device-check   Do not require the GPS device path to exist now
   --allow-non-pi      Allow running on non-Raspberry Pi architecture
 
@@ -110,6 +112,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-services)
       skip_services=1
+      shift
+      ;;
+    --skip-autologin)
+      skip_autologin=1
       shift
       ;;
     --no-device-check)
@@ -206,6 +212,17 @@ if [[ "$skip_sync" -eq 0 ]]; then
 fi
 
 run "$bin" configure-opencpn --config "$config"
+
+if [[ "$skip_autologin" -eq 0 ]]; then
+  desktop_args=(--user "$USER")
+  if [[ "$allow_non_pi" -eq 1 ]]; then
+    desktop_args+=(--allow-non-pi)
+  fi
+  if [[ "$dry_run" -eq 1 ]]; then
+    desktop_args+=(--dry-run)
+  fi
+  run "${repo_root}/scripts/configure_desktop_autologin.sh" "${desktop_args[@]}"
+fi
 
 if [[ "$skip_services" -eq 0 ]]; then
   run mkdir -p "$systemd_user_dir"

@@ -12,6 +12,7 @@ bash -n \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
   scripts/start_chartplotter.sh \
+  scripts/configure_desktop_autologin.sh \
   scripts/configure_gpsd.sh \
   scripts/provision_sailboat_pi.sh \
   scripts/dock_test_pi.sh \
@@ -31,6 +32,7 @@ grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
+grep -q 'configure_desktop_autologin.sh' scripts/install_raspberry_pi.sh
 grep -q 'systemctl --user enable noaa-navionics-track.service' scripts/install_raspberry_pi.sh
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
@@ -43,10 +45,16 @@ grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
+grep -q 'graphical boot target' scripts/verify_pi.sh
+grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
+grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
+grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
+grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
+grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
@@ -89,6 +97,7 @@ grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
+grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
@@ -100,6 +109,16 @@ gpsd_output="$(mktemp)"
 deploy_output="$(mktemp)"
 dock_output="$(mktemp)"
 trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output"' EXIT
+
+set +e
+scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1
+desktop_code=$?
+set -e
+if [[ "$desktop_code" -ne 2 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh to reject unsafe username with exit 2" >&2
+  exit 1
+fi
 
 set +e
 scripts/install_raspberry_pi.sh --skip-apt --no-services >"$install_output" 2>&1
@@ -187,6 +206,7 @@ scripts/provision_sailboat_pi.sh \
   --dry-run \
   --no-device-check \
   --device /dev/ttyUSB0 \
+  --skip-autologin \
   --config "$tmpdir/config.ini" \
   --sync-retries 7 \
   --sync-retry-delay 15 >/dev/null

@@ -12,6 +12,7 @@ revision_file="${data_dir}/source-revision"
 skip_apt=0
 enable_services=1
 allow_non_pi=0
+configure_autologin=1
 
 for arg in "$@"; do
   case "$arg" in
@@ -20,6 +21,9 @@ for arg in "$@"; do
       ;;
     --no-services)
       enable_services=0
+      ;;
+    --skip-autologin)
+      configure_autologin=0
       ;;
     --allow-non-pi)
       allow_non_pi=1
@@ -64,6 +68,7 @@ python3 -m venv "$venv_dir"
 ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
+install -m 0755 "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 
 if [[ -f "${repo_root}/.source-revision" ]]; then
   cp "${repo_root}/.source-revision" "$revision_file"
@@ -85,6 +90,14 @@ cp "${repo_root}/systemd/noaa-navionics.service" \
    "$systemd_user_dir/"
 
 install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
+
+if [[ "$configure_autologin" -eq 1 ]]; then
+  autologin_args=()
+  if [[ "$allow_non_pi" -eq 1 ]]; then
+    autologin_args+=(--allow-non-pi)
+  fi
+  "${repo_root}/scripts/configure_desktop_autologin.sh" --user "$USER" "${autologin_args[@]}"
+fi
 
 systemctl --user daemon-reload
 if [[ "$enable_services" -eq 1 ]]; then

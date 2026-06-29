@@ -30,7 +30,8 @@ scripts/install_raspberry_pi.sh
 ```
 
 For headless use, `python3-tk` is optional.
-The Raspberry Pi installer installs OpenCPN and GPSD on the Pi, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
+For chartplotter use, use Raspberry Pi OS with Desktop/LightDM so OpenCPN can launch on the attached display after power-up.
+The Raspberry Pi installer installs OpenCPN and GPSD on the Pi, configures graphical autologin for the installing user, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
 
 ## Tkinter GUI
 
@@ -119,7 +120,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-Verification also checks that the chartplotter launcher contains the readiness gate and OpenCPN ENC parsing command, that the desktop autostart entry is enabled, that the installed user systemd units contain the expected commands, and that GPSD startup options, GPSD device path, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
+Verification also checks that the chartplotter launcher contains the readiness gate and OpenCPN ENC parsing command, that the desktop autostart entry is enabled, that LightDM autologin and the graphical boot target are configured for the deployed user, that the installed user systemd units contain the expected commands, and that GPSD startup options, GPSD device path, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
 
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 
@@ -158,6 +159,7 @@ noaa-navionics-start-chartplotter
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
 The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
+The installer and provisioning script configure LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 Create the onboard config:
 
@@ -210,6 +212,7 @@ The systemd track logger writes daily GPX files and prunes rotated track logs ol
 
 A user-level systemd timer is included in `systemd/`.
 The installer enables the track logger for future boots but does not start it before GPSD is configured. The Pi provisioning script enables user lingering and starts the track logger after GPSD setup so the timer and track logger can run after reboot without an interactive login.
+The installer and provisioning script also configure the Pi to boot to `graphical.target` and autologin through LightDM as the deployed user, so the desktop autostart entry can bring up OpenCPN after a power cycle.
 The included chart sync service retries transient network failures, allows up to two hours for slow NOAA downloads, and asks systemd for delayed retry attempts if the whole run still fails.
 
 ```bash

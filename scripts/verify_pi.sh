@@ -27,7 +27,9 @@ failures=0
 config="${HOME}/.config/noaa-navionics/config.ini"
 bin="${HOME}/.local/bin/noaa-navionics"
 launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
+desktop_autologin="${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
+lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 status_attempts=3
@@ -136,6 +138,7 @@ esac
 
 check "noaa-navionics command" test -x "$bin"
 check "chartplotter launcher" test -x "$launcher"
+check "desktop autologin helper" test -x "$desktop_autologin"
 if [[ -x "$launcher" ]]; then
   check "chartplotter launcher readiness gate" grep -Fq 'status-report --config "$config" --gps-seconds 10 --output "$status_report"' "$launcher"
   check "chartplotter launcher ENC parse" grep -Fq 'opencpn -parse_all_enc' "$launcher"
@@ -147,6 +150,15 @@ if [[ -f "$autostart" ]]; then
   check "chartplotter autostart exec" grep -Fq 'noaa-navionics-start-chartplotter' "$autostart"
   check "chartplotter autostart terminal" grep -Fxq 'Terminal=false' "$autostart"
   check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
+fi
+check "graphical boot target" sh -c 'systemctl get-default 2>/dev/null | grep -qx graphical.target'
+check "LightDM unit installed" sh -c 'systemctl --no-pager --no-legend list-unit-files lightdm.service 2>/dev/null | grep -q "^lightdm.service"'
+check "LightDM enabled" systemctl is-enabled --quiet lightdm.service
+check "LightDM autologin config" test -f "$lightdm_autologin"
+if [[ -f "$lightdm_autologin" ]]; then
+  check "LightDM autologin seat" grep -Fxq '[Seat:*]' "$lightdm_autologin"
+  check "LightDM autologin user" grep -Fxq "autologin-user=${USER}" "$lightdm_autologin"
+  check "LightDM autologin timeout" grep -Fxq 'autologin-user-timeout=0' "$lightdm_autologin"
 fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "$revision_file"

@@ -9,6 +9,7 @@ Options:
   --device PATH       Stable GPS device path on the Pi
   --allow-dirty       Allow deploying a dirty local worktree for deliberate test runs
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
+  --skip-autologin    Pass through provisioning without configuring desktop autologin
   --no-reboot         Do not reboot; run only the pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
   --sync-retries N    Chart download attempts during provisioning
@@ -99,6 +100,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-deploy)
       skip_deploy=1
+      shift
+      ;;
+    --skip-autologin)
+      provision_args+=("$1")
       shift
       ;;
     --no-reboot)
