@@ -506,6 +506,8 @@ grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
 grep -q 'GPSD device is character device' scripts/verify_pi.sh
+grep -q 'GPSD client command' scripts/verify_pi.sh
+grep -q 'command -v cgps' scripts/verify_pi.sh
 grep -q 'GPSD socket enabled' scripts/verify_pi.sh
 grep -q 'GPSD socket active' scripts/verify_pi.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh

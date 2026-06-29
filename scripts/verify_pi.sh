@@ -1573,6 +1573,7 @@ check "Chrony service active" systemctl is-active --quiet chrony
 check "Chrony GPSD time source" check_chrony_gps_time_config
 check "Chrony usable GPS source" wait_for_chrony_gps_source
 check "GPSD command" command -v gpsd
+check "GPSD client command" command -v cgps
 check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket
 check "GPSD socket active" systemctl is-active --quiet gpsd.socket
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
