@@ -6,6 +6,7 @@ from typing import Optional
 import argparse
 import json
 import math
+import os
 import signal
 import time
 import sys
@@ -647,7 +648,22 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
         except OSError:
             continue
         removed.append(path)
+    if removed:
+        _fsync_directory(tracks_dir)
     return removed
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        fd = os.open(Path(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 def _track_date_from_name(path: Path):

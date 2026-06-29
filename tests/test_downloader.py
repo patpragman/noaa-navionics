@@ -2903,6 +2903,28 @@ class GpsTests(unittest.TestCase):
             self.assertTrue(unrelated.exists())
             self.assertTrue((tracks / "track-20260630.gpx").exists())
 
+    def test_pruned_track_log_directory_is_synced(self):
+        calls = []
+        original_fsync = cli_module.os.fsync
+        cli_module.os.fsync = lambda fd: calls.append(fd)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tracks = Path(tmpdir) / "tracks"
+                tracks.mkdir()
+                old = tracks / "track-20260401.gpx"
+                old.write_text("old", encoding="utf-8")
+
+                removed = cli_module._prune_old_track_logs(
+                    Path(tmpdir),
+                    retention_days=30,
+                    now=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc),
+                )
+        finally:
+            cli_module.os.fsync = original_fsync
+
+        self.assertEqual([path.name for path in removed], ["track-20260401.gpx"])
+        self.assertGreaterEqual(len(calls), 1)
+
     def test_parse_gpsd_tpv(self):
         payload = (
             '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
