@@ -52,6 +52,7 @@ scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS
 ```
 
 The dock test deploys and provisions the Pi, verifies readiness, reboots it, waits for SSH to return, and verifies readiness again. Use `--skip-deploy` to test an already-provisioned Pi.
+For deliberate test deployments from a dirty worktree, pass `--allow-dirty` to the dock test as well.
 
 Manual install:
 

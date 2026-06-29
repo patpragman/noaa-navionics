@@ -7,6 +7,7 @@ Usage: scripts/dock_test_pi.sh user@raspberrypi.local [remote-dir] --device /dev
 
 Options:
   --device PATH       Stable GPS device path on the Pi
+  --allow-dirty       Allow deploying a dirty local worktree for deliberate test runs
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
   --no-reboot         Do not reboot; run only the pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
@@ -37,6 +38,7 @@ device=""
 skip_deploy=0
 no_reboot=0
 timeout=180
+deploy_args=()
 provision_args=()
 
 if [[ $# -gt 0 && "$1" != --* ]]; then
@@ -62,6 +64,10 @@ while [[ $# -gt 0 ]]; do
       fi
       provision_args+=("$1" "${2:-}")
       shift 2
+      ;;
+    --allow-dirty)
+      deploy_args+=("$1")
+      shift
       ;;
     --skip-deploy)
       skip_deploy=1
@@ -121,7 +127,7 @@ wait_for_ssh_up() {
 }
 
 if [[ "$skip_deploy" -eq 0 ]]; then
-  "${repo_root}/scripts/deploy_to_pi.sh" "$target" "$remote_dir" --provision "${provision_args[@]}"
+  "${repo_root}/scripts/deploy_to_pi.sh" "$target" "$remote_dir" "${deploy_args[@]}" --provision "${provision_args[@]}"
 fi
 
 printf '\n[verify before reboot]\n'

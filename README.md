@@ -125,6 +125,8 @@ Run the full dock acceptance test, including a reboot and post-reboot verificati
 scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
+For deliberate test deployments from a dirty worktree, pass `--allow-dirty` to the dock test as well.
+
 On the Pi, configure GPSD with the GPS device:
 
 ```bash
