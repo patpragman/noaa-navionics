@@ -200,7 +200,18 @@ grep -q 'noaa-navionics=noaa_navionics.cli:main' setup.py
 grep -q 'noaa-navionics-gui=noaa_navionics.gui:main' setup.py
 ! grep -q '^build-backend' pyproject.toml
 grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
-grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic' scripts/install_raspberry_pi.sh
+grep -q 'link_user_atomic' scripts/install_raspberry_pi.sh
+grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/install_raspberry_pi.sh
+grep -q 'install -m "$mode" "$source" "$tmp"' scripts/install_raspberry_pi.sh
+grep -q 'ln -s "$source" "$tmp"' scripts/install_raspberry_pi.sh
+grep -q 'mv -f "$tmp" "$target"' scripts/install_raspberry_pi.sh
+grep -q 'sync_paths "$target"' scripts/install_raspberry_pi.sh
+grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"' scripts/install_raspberry_pi.sh
+grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" 0755' scripts/install_raspberry_pi.sh
+grep -q 'install_user_file_atomic "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time" 0755' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
 grep -q 'Do not run the Raspberry Pi installer as root' scripts/install_raspberry_pi.sh

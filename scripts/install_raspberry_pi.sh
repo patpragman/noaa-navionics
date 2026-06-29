@@ -142,6 +142,54 @@ finally:
 PY
 }
 
+install_user_file_atomic() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local target_dir
+  local target_name
+  local tmp
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
+  mkdir -p "$target_dir"
+  tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! install -m "$mode" "$source" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! sync_paths "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! mv -f "$tmp" "$target"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  sync_paths "$target"
+}
+
+link_user_atomic() {
+  local source="$1"
+  local target="$2"
+  local target_dir
+  local target_name
+  local tmp
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
+  mkdir -p "$target_dir"
+  tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  rm -f "$tmp"
+  if ! ln -s "$source" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! mv -f "$tmp" "$target"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  sync_paths "$target"
+}
+
 apt_update() {
   sudo env DEBIAN_FRONTEND=noninteractive apt-get update
 }
@@ -235,17 +283,11 @@ reset_private_venv
 python3 -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install --no-build-isolation --no-use-pep517 "${repo_root}"
 sync_tree "$venv_dir"
-ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
-ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
-install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
-install -m 0755 "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
-install -m 0755 "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time"
-sync_paths \
-  "${HOME}/.local/bin/noaa-navionics" \
-  "${HOME}/.local/bin/noaa-navionics-gui" \
-  "${HOME}/.local/bin/noaa-navionics-start-chartplotter" \
-  "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" \
-  "${HOME}/.local/bin/noaa-navionics-configure-gps-time"
+link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
+link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
+install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755
+install_user_file_atomic "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" 0755
+install_user_file_atomic "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time" 0755
 
 if [[ -f "${repo_root}/.source-revision" ]]; then
   revision="$(tr -d '[:space:]' <"${repo_root}/.source-revision")"
