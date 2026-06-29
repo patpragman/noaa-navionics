@@ -19,6 +19,7 @@ set -euo pipefail
 failures=0
 config="${HOME}/.config/noaa-navionics/config.ini"
 bin="${HOME}/.local/bin/noaa-navionics"
+status_report="${HOME}/.cache/noaa-navionics/status.json"
 
 check() {
   local name="$1"
@@ -66,10 +67,12 @@ printf '\n[systemd user units]\n'
 systemctl --user --no-pager list-unit-files 'noaa-navionics*' || failures=$((failures + 1))
 
 printf '\n[preflight]\n'
-if "$bin" preflight --config "$config" --gps-seconds 10; then
+if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
   printf 'OK   preflight\n'
+  printf 'OK   status report %s\n' "$status_report"
 else
   printf 'FAIL preflight\n'
+  printf 'FAIL status report %s\n' "$status_report"
   failures=$((failures + 1))
 fi
 

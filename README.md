@@ -101,6 +101,12 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
+On the Pi, `status-report` writes a JSON readiness artifact:
+
+```bash
+noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
+```
+
 Create the onboard config:
 
 ```bash

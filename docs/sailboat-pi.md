@@ -34,6 +34,7 @@ scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
 The verify script runs checks on the Pi over SSH, including architecture, installed commands, user units, config, and `noaa-navionics preflight`.
+It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Manual install:
 
@@ -137,6 +138,12 @@ or, using the onboard config:
 
 ```bash
 noaa-navionics preflight
+```
+
+Save a status report for troubleshooting:
+
+```bash
+noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
 Expected checks:

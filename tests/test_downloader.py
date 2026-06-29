@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 import sys
 import tempfile
 import textwrap
@@ -11,6 +12,7 @@ from noaa_navionics.downloader import MANIFEST_NAME, Package, download_package, 
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
 from noaa_navionics.health import check_chart_dir, check_chart_manifest, check_gps_sample
+from noaa_navionics.report import build_status_report, format_status_text, write_status_report
 
 
 class PackageForTests(unittest.TestCase):
@@ -165,6 +167,55 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_manifest(root, max_age_days=1)
             self.assertFalse(result.ok)
             self.assertIn("days old", result.detail)
+
+
+class StatusReportTests(unittest.TestCase):
+    def test_build_and_write_status_report(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            manifest = charts / MANIFEST_NAME
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            manifest.write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test","url":"file:///test.zip"},'
+                '"download":{"sha256":"abc"},'
+                '"extract":{"enc_cell_count":1}}\n',
+                encoding="utf-8",
+            )
+            sample = root / "sample.nmea"
+            sample.write_text(
+                "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
+                encoding="ascii",
+            )
+            config = root / "config.ini"
+            config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {charts}\n"
+                "max_age_days = 30\n"
+                "\n"
+                "[gps]\n"
+                "mode = gpsd\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {charts}\n",
+                encoding="utf-8",
+            )
+
+            report = build_status_report(config_path=config, gps_sample=sample)
+            self.assertIn("checks", report)
+            self.assertEqual(report["manifest"]["package"], "Test")
+            self.assertFalse(report["ok"])
+            text = format_status_text(report)
+            self.assertIn("Ready: no", text)
+            output = root / "status.json"
+            write_status_report(report, output)
+            self.assertTrue(output.exists())
 
 
 class GpsTests(unittest.TestCase):

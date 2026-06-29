@@ -92,6 +92,8 @@ def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckRes
     if created is None:
         return CheckResult("Manifest", False, f"manifest has no valid created_at: {manifest_path}")
     age_days = (datetime.now(timezone.utc) - created).total_seconds() / 86400
+    if age_days < -0.01:
+        return CheckResult("Manifest", False, "chart manifest timestamp is in the future")
     if age_days > max_age_days:
         return CheckResult("Manifest", False, f"chart manifest is {age_days:.1f} days old; max is {max_age_days}")
     package = manifest.get("package", {})

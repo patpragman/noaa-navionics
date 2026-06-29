@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 import argparse
+import json
 import time
 import sys
 
@@ -17,6 +18,7 @@ from .downloader import (
 )
 from .gps import GPXTrackLogger, default_track_path, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
 from .health import run_preflight
+from .report import build_status_report, format_status_text, write_status_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -66,6 +68,13 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/ttyUSB0")
     preflight.add_argument("--gps-sample", help="NMEA sample file for testing")
     preflight.add_argument("--gps-seconds", type=float, default=5.0, help="seconds to wait for a GPS fix")
+
+    status = subparsers.add_parser("status-report", help="write an onboard readiness status report")
+    status.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    status.add_argument("--gps-sample", help="NMEA sample file for testing")
+    status.add_argument("--gps-seconds", type=float, default=5.0, help="seconds to wait for a GPS fix")
+    status.add_argument("--output", help="write JSON report to this file")
+    status.add_argument("--json", action="store_true", help="print JSON instead of text")
 
     gps = subparsers.add_parser("gps-monitor", help="print live GPS fixes from an NMEA device")
     gps.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -207,6 +216,20 @@ def main(argv: Optional[list[str]] = None) -> int:
                 mark = "OK" if result.ok else "FAIL"
                 print(f"{mark:4} {result.name:10} {result.detail}")
             return 0 if all(result.ok for result in results) else 1
+
+        if args.command == "status-report":
+            report = build_status_report(
+                config_path=Path(args.config),
+                gps_sample=Path(args.gps_sample) if args.gps_sample else None,
+                gps_seconds=args.gps_seconds,
+            )
+            if args.output:
+                write_status_report(report, Path(args.output))
+            if args.json:
+                print(json.dumps(report, indent=2, sort_keys=True))
+            else:
+                print(format_status_text(report))
+            return 0 if report["ok"] else 1
 
         if args.command == "gps-monitor":
             app_config = read_config(Path(args.config))
