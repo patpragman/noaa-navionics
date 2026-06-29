@@ -56,6 +56,41 @@ check_output() {
   fi
 }
 
+check_status_report_json() {
+  local path="$1"
+  python3 - "$path" <<'PY'
+from datetime import datetime, timezone
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    report = json.load(handle)
+if report.get("ok") is not True:
+    raise SystemExit("status report ok is not true")
+generated_at = str(report.get("generated_at", ""))
+if not generated_at:
+    raise SystemExit("status report has no generated_at")
+try:
+    generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00")).astimezone(timezone.utc)
+except ValueError as exc:
+    raise SystemExit(f"invalid generated_at: {generated_at}") from exc
+age_seconds = (datetime.now(timezone.utc) - generated).total_seconds()
+if age_seconds < -30 or age_seconds > 600:
+    raise SystemExit(f"status report is not fresh: {age_seconds:.0f}s old")
+checks = report.get("checks")
+service_checks = report.get("service_checks")
+if not isinstance(checks, list) or not checks:
+    raise SystemExit("status report has no checks")
+if not isinstance(service_checks, list) or not service_checks:
+    raise SystemExit("status report has no service checks")
+if any(check.get("ok") is not True for check in checks if isinstance(check, dict)):
+    raise SystemExit("status report contains a failed readiness check")
+if any(check.get("ok") is not True for check in service_checks if isinstance(check, dict)):
+    raise SystemExit("status report contains a failed service check")
+PY
+}
+
 arch="$(uname -m)"
 case "$arch" in
   armv7l|aarch64)
@@ -122,6 +157,7 @@ for attempt in $(seq 1 "$status_attempts"); do
   if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
     printf 'OK   preflight\n'
     printf 'OK   status report %s\n' "$status_report"
+    check "status report JSON ready" check_status_report_json "$status_report"
     preflight_ok=1
     break
   fi

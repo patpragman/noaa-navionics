@@ -35,6 +35,8 @@ grep -q 'systemctl --user enable noaa-navionics-track.service' scripts/install_r
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
+grep -q 'check_status_report_json' scripts/verify_pi.sh
+grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
