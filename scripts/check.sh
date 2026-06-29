@@ -637,6 +637,10 @@ grep -q 'pass both --skip-services and --skip-autologin for manual testing' scri
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
+grep -q 'validate_chrony_config_path' scripts/configure_gps_time.sh
+grep -q 'Chrony config is a symlink' scripts/configure_gps_time.sh
+grep -q 'Chrony config directory .* has permissions' scripts/configure_gps_time.sh
+grep -q 'expected no group/other write bits' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
 grep -q 'unterminated NOAA Navionics GPS time block' scripts/configure_gps_time.sh
 grep -q 'END marker without BEGIN' scripts/configure_gps_time.sh
@@ -1651,6 +1655,44 @@ if [[ "$gps_time_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Refusing to write a non-standard chrony config path' "$gpsd_output"
+
+unsafe_chrony_parent="$tmpdir/unsafe-chrony-parent"
+mkdir -p "$unsafe_chrony_parent"
+chmod 0777 "$unsafe_chrony_parent"
+set +e
+scripts/configure_gps_time.sh \
+  --allow-non-pi \
+  --dry-run \
+  --chrony-conf "$unsafe_chrony_parent/chrony.conf" >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+chmod 0700 "$unsafe_chrony_parent"
+if [[ "$gps_time_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject an unsafe chrony config directory" >&2
+  exit 1
+fi
+grep -q 'expected no group/other write bits' "$gpsd_output"
+! grep -q 'Would update' "$gpsd_output"
+
+chrony_real_file="$tmpdir/real-chrony.conf"
+chrony_link_file="$tmpdir/link-chrony.conf"
+printf 'pool time.example iburst\n' >"$chrony_real_file"
+ln -s "$chrony_real_file" "$chrony_link_file"
+set +e
+scripts/configure_gps_time.sh \
+  --allow-non-pi \
+  --dry-run \
+  --chrony-conf "$chrony_link_file" >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject a symlinked chrony config" >&2
+  exit 1
+fi
+grep -q 'Chrony config is a symlink' "$gpsd_output"
+! grep -q 'Would update' "$gpsd_output"
 
 set +e
 scripts/configure_gpsd.sh --allow-non-pi --dry-run --device >"$gpsd_output" 2>&1

@@ -68,6 +68,46 @@ install_root_file_atomic() {
   sync_path "$target"
 }
 
+validate_chrony_config_path() {
+  python3 - "$chrony_conf" "$dry_run" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+path = Path(sys.argv[1])
+dry_run = sys.argv[2] == "1"
+parent = path.parent
+
+if path.is_symlink():
+    raise SystemExit(f"Chrony config is a symlink: {path}")
+if path.exists() and not path.is_file():
+    raise SystemExit(f"Chrony config is not a regular file: {path}")
+if parent.is_symlink():
+    raise SystemExit(f"Chrony config directory is a symlink: {parent}")
+if parent.exists():
+    if not parent.is_dir():
+        raise SystemExit(f"Chrony config parent is not a directory: {parent}")
+    parent_stat = parent.stat()
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o022:
+        raise SystemExit(
+            f"Chrony config directory {parent} has permissions {parent_mode:04o}, "
+            "expected no group/other write bits"
+        )
+    if not dry_run and parent_stat.st_uid != 0:
+        raise SystemExit(f"Chrony config directory {parent} is owned by uid {parent_stat.st_uid}, expected root")
+if not dry_run and path.exists():
+    path_stat = path.stat()
+    path_mode = path_stat.st_mode & 0o777
+    if path_stat.st_uid != 0:
+        raise SystemExit(f"Chrony config {path} is owned by uid {path_stat.st_uid}, expected root")
+    if path_mode & 0o022:
+        raise SystemExit(
+            f"Chrony config {path} has permissions {path_mode:04o}, expected no group/other write bits"
+        )
+PY
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --chrony-conf)
@@ -140,6 +180,8 @@ Run this on the Raspberry Pi, or pass --allow-non-pi for development-only testin
 EOF
   exit 2
 fi
+
+validate_chrony_config_path
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
