@@ -69,9 +69,12 @@ grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
+grep -q 'current_boot_id' scripts/start_chartplotter.sh
+grep -q 'launcher_lock_from_current_boot' scripts/start_chartplotter.sh
+grep -q 'Launcher lock is from a previous boot; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
-grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir"' scripts/start_chartplotter.sh
+grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "$launcher_lock_dir"' scripts/start_chartplotter.sh
 python3 - <<'PY'
 from pathlib import Path
@@ -281,6 +284,8 @@ grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock exists without a readable boot ID file' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
@@ -395,6 +400,8 @@ grep -q 'chartplotter launcher dynamic warning button' scripts/verify_pi.sh
 grep -q 'launcher reported failed readiness before OpenCPN startup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher duplicate guard' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
+grep -q 'chartplotter launcher previous-boot lock recovery' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock sync create' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock sync cleanup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
@@ -1822,6 +1829,25 @@ grep -q 'Removing stale chartplotter launcher lock' "$launcher_dirty_lock_home/.
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited with status 0' "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.log"
 
+launcher_old_boot_lock_home="$tmpdir/launcher-old-boot-lock-home"
+mkdir -p "$launcher_old_boot_lock_home/.local/bin" "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+bash -c 'while :; do sleep 1; done' start_chartplotter.sh &
+old_boot_launcher_pid=$!
+printf '%s\n' "$old_boot_launcher_pid" >"$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+printf 'previous-boot\n' >"$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_old_boot_lock_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_old_boot_lock_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+HOME="$launcher_old_boot_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+kill "$old_boot_launcher_pid" 2>/dev/null || true
+wait "$old_boot_launcher_pid" 2>/dev/null || true
+test ! -e "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+grep -q 'Launcher lock is from a previous boot; treating lock as stale.' "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Removing stale chartplotter launcher lock' "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN exited with status 0' "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.log"
+
 launcher_active_lock_home="$tmpdir/launcher-active-lock-home"
 mkdir -p "$launcher_active_lock_home/.local/bin" "$launcher_active_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 bash -c 'while :; do sleep 1; done' start_chartplotter.sh &
@@ -1851,6 +1877,10 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 0.1
 done
 test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id"
+if [[ -r /proc/sys/kernel/random/boot_id ]]; then
+  test "$(cat "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id")" = "$(cat /proc/sys/kernel/random/boot_id)"
+fi
 HOME="$launcher_live_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 wait "$live_launcher_pid"
 test ! -e "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"

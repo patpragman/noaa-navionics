@@ -159,9 +159,38 @@ process_looks_like_launcher() {
   [[ "$cmdline" == *"noaa-navionics-start-chartplotter"* || "$cmdline" == *"start_chartplotter.sh"* ]]
 }
 
+current_boot_id() {
+  if [[ -r /proc/sys/kernel/random/boot_id ]]; then
+    head -n 1 /proc/sys/kernel/random/boot_id 2>/dev/null || true
+  fi
+}
+
+launcher_lock_from_current_boot() {
+  local current
+  local lock_boot_id=""
+  current="$(current_boot_id)"
+  if [[ -z "$current" || ! -r "${launcher_lock_dir}/boot_id" ]]; then
+    return 0
+  fi
+  read -r lock_boot_id <"${launcher_lock_dir}/boot_id" || lock_boot_id=""
+  [[ "$lock_boot_id" == "$current" ]]
+}
+
+write_launcher_lock_files() {
+  local boot_id
+  printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
+  boot_id="$(current_boot_id)"
+  if [[ -n "$boot_id" ]]; then
+    printf '%s\n' "$boot_id" >"${launcher_lock_dir}/boot_id"
+  else
+    rm -f "${launcher_lock_dir}/boot_id"
+  fi
+  sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir" || true
+}
+
 release_launcher_lock() {
   if [[ "$lock_acquired" -eq 1 ]]; then
-    rm -f "${launcher_lock_dir}/pid"
+    rm -f "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id"
     rmdir "$launcher_lock_dir" 2>/dev/null || true
     sync_paths "$launcher_lock_dir" || true
     lock_acquired=0
@@ -171,32 +200,34 @@ release_launcher_lock() {
 acquire_launcher_lock() {
   local owner_pid=""
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
-    printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
-    sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir" || true
+    write_launcher_lock_files
     lock_acquired=1
     trap release_launcher_lock EXIT
     return 0
   fi
-  if [[ -r "${launcher_lock_dir}/pid" ]]; then
-    read -r owner_pid <"${launcher_lock_dir}/pid" || owner_pid=""
-  fi
-  if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null && process_looks_like_launcher "$owner_pid"; then
-    if opencpn_running; then
-      echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
-    else
-      echo "Another NOAA Navionics chartplotter launcher is already running; leaving it in charge."
+  if ! launcher_lock_from_current_boot; then
+    echo "Launcher lock is from a previous boot; treating lock as stale."
+  else
+    if [[ -r "${launcher_lock_dir}/pid" ]]; then
+      read -r owner_pid <"${launcher_lock_dir}/pid" || owner_pid=""
     fi
-    exit 0
-  fi
-  if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null; then
-    echo "Launcher lock PID ${owner_pid} is not a chartplotter launcher; treating lock as stale."
+    if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null && process_looks_like_launcher "$owner_pid"; then
+      if opencpn_running; then
+        echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
+      else
+        echo "Another NOAA Navionics chartplotter launcher is already running; leaving it in charge."
+      fi
+      exit 0
+    fi
+    if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null; then
+      echo "Launcher lock PID ${owner_pid} is not a chartplotter launcher; treating lock as stale."
+    fi
   fi
   echo "Removing stale chartplotter launcher lock."
   rm -rf "$launcher_lock_dir"
   sync_paths "$launcher_lock_dir" || true
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
-    printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
-    sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir" || true
+    write_launcher_lock_files
     lock_acquired=1
     trap release_launcher_lock EXIT
     return 0

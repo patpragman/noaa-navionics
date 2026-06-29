@@ -1120,12 +1120,28 @@ check_opencpn_stable() {
 check_launcher_lock_live() {
   local owner_pid=""
   local cmdline=""
+  local current_boot_id=""
+  local lock_boot_id=""
   if [[ ! -e "$launcher_lock" ]]; then
     printf 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised: %s\n' "$launcher_lock" >&2
     return 1
   fi
   if [[ ! -r "${launcher_lock}/pid" ]]; then
     printf 'chartplotter launcher lock exists without a readable pid file: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  if [[ ! -r "${launcher_lock}/boot_id" ]]; then
+    printf 'chartplotter launcher lock exists without a readable boot ID file: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  current_boot_id="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+  if [[ -z "$current_boot_id" ]]; then
+    printf 'could not read current boot ID for chartplotter launcher lock verification\n' >&2
+    return 1
+  fi
+  read -r lock_boot_id <"${launcher_lock}/boot_id" || lock_boot_id=""
+  if [[ "$lock_boot_id" != "$current_boot_id" ]]; then
+    printf 'chartplotter launcher lock boot ID %s does not match current boot %s\n' "${lock_boot_id:-<empty>}" "$current_boot_id" >&2
     return 1
   fi
   read -r owner_pid <"${launcher_lock}/pid" || owner_pid=""
@@ -1379,7 +1395,9 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher dynamic warning button" grep -Fq 'text=button_text' "$launcher"
   check "chartplotter launcher duplicate guard" grep -Fq 'OpenCPN is already running' "$launcher"
   check "chartplotter launcher lock" grep -Fq 'chartplotter.launch.lock' "$launcher"
-  check "chartplotter launcher lock sync create" grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir"' "$launcher"
+  check "chartplotter launcher lock boot ID" grep -Fq 'current_boot_id' "$launcher"
+  check "chartplotter launcher previous-boot lock recovery" grep -Fq 'Launcher lock is from a previous boot; treating lock as stale' "$launcher"
+  check "chartplotter launcher lock sync create" grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' "$launcher"
   check "chartplotter launcher lock sync cleanup" grep -Fq 'sync_paths "$launcher_lock_dir"' "$launcher"
   check "chartplotter launcher stale lock recovery" grep -Fq 'is not a chartplotter launcher; treating lock as stale' "$launcher"
 fi
