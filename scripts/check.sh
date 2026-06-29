@@ -80,6 +80,9 @@ grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
 grep -q 'current_boot_id' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_lock_path' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock path contains a symlink' scripts/start_chartplotter.sh
+grep -q 'validate_launcher_env_path' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher environment is a symlink' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher environment has permissions' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_from_current_boot' scripts/start_chartplotter.sh
 grep -q 'Launcher lock is from a previous boot; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_chartplotter.sh
@@ -1140,6 +1143,8 @@ grep -q 'preflights noninteractive sudo reboot access before deploying or provis
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
+grep -q 'only after rejecting symlinked, misowned, or group/world-writable launcher environment files' README.md
+grep -q 'only after rejecting symlinked, misowned, or group/world-writable launcher environment files' docs/sailboat-pi.md
 
 python3 - <<'PY'
 from pathlib import Path
@@ -2267,6 +2272,43 @@ grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q -- '--gps-seconds 17' "$launcher_home/.cache/noaa-navionics/noaa.log"
+
+launcher_symlink_env_home="$tmpdir/launcher-symlink-env-home"
+launcher_symlink_env_target="$tmpdir/launcher-symlink-env-target"
+mkdir -p "$launcher_symlink_env_home/.local/bin" "$launcher_symlink_env_home/.cache/noaa-navionics" "$launcher_symlink_env_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_symlink_env_target"
+ln -s "$launcher_symlink_env_target" "$launcher_symlink_env_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_env_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_symlink_env_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_symlink_env_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_symlink_env_code=$?
+set -e
+if [[ "$launcher_symlink_env_code" -eq 0 ]]; then
+  cat "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a symlinked launcher environment" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics launcher environment is a symlink' "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_writable_env_home="$tmpdir/launcher-writable-env-home"
+mkdir -p "$launcher_writable_env_home/.local/bin" "$launcher_writable_env_home/.cache/noaa-navionics" "$launcher_writable_env_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_writable_env_home/.config/noaa-navionics/launcher.env"
+chmod 0664 "$launcher_writable_env_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_writable_env_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_writable_env_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_writable_env_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_writable_env_code=$?
+set -e
+if [[ "$launcher_writable_env_code" -eq 0 ]]; then
+  cat "$launcher_writable_env_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a writable launcher environment" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics launcher environment has permissions' "$launcher_writable_env_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_writable_env_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_preflight_fail_home="$tmpdir/launcher-preflight-fail-home"
 mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics"

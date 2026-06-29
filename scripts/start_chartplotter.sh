@@ -146,6 +146,37 @@ load_launcher_settings() {
   esac
 }
 
+validate_launcher_env_path() {
+  local env_stat
+  local env_uid
+  local env_mode
+  if [[ ! -e "$launcher_env" ]]; then
+    return 0
+  fi
+  if [[ -L "$launcher_env" ]]; then
+    echo "NOAA Navionics launcher environment is a symlink: $launcher_env" >&2
+    exit 1
+  fi
+  if [[ ! -f "$launcher_env" ]]; then
+    echo "NOAA Navionics launcher environment is not a regular file: $launcher_env" >&2
+    exit 1
+  fi
+  env_stat="$(stat -c '%u %a' "$launcher_env" 2>/dev/null || true)"
+  if [[ -z "$env_stat" ]]; then
+    echo "Could not inspect NOAA Navionics launcher environment: $launcher_env" >&2
+    exit 1
+  fi
+  read -r env_uid env_mode <<<"$env_stat"
+  if [[ "$env_uid" != "$(id -u)" ]]; then
+    echo "NOAA Navionics launcher environment is owned by uid ${env_uid}, expected $(id -u): $launcher_env" >&2
+    exit 1
+  fi
+  if (( (8#$env_mode & 8#022) != 0 )); then
+    echo "NOAA Navionics launcher environment has permissions ${env_mode}, expected no group/other write bits: $launcher_env" >&2
+    exit 1
+  fi
+}
+
 keep_display_awake() {
   if [[ -n "${DISPLAY:-}" ]] && command -v xset >/dev/null 2>&1; then
     local failures=0
@@ -463,6 +494,7 @@ exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 acquire_launcher_lock
+validate_launcher_env_path
 load_launcher_settings
 keep_display_awake
 
