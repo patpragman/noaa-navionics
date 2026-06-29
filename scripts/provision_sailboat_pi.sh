@@ -387,6 +387,7 @@ fi
 if [[ "$skip_gpsd" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
   validate_existing_gps_config
   if [[ "$dry_run" -eq 0 ]]; then
+    validate_existing_system_service gpsd.socket "GPSD socket" --skip-gpsd
     validate_existing_system_service gpsd.service GPSD --skip-gpsd
   fi
 fi
