@@ -803,6 +803,12 @@ grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' src/noaa_navionics/report.py
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' src/noaa_navionics/report.py
+grep -q 'status report launcher settings contain invalid {key}' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/verify_pi.sh
+grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' scripts/verify_pi.sh
+grep -q 'test_launcher_settings_check_fails_invalid_opencpn_restart_values' tests/test_downloader.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
 grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
 grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py

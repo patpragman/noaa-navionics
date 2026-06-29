@@ -414,6 +414,10 @@ if expected_launcher_env_path:
         raise SystemExit(
             f"status report launcher settings contain invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS={fail_open}"
         )
+    for key in ("NOAA_NAVIONICS_OPENCPN_RESTARTS", "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY"):
+        value = str(values.get(key, "")).strip()
+        if value and (not value.isdigit() or int(value) < 0):
+            raise SystemExit(f"status report launcher settings contain invalid {key}={value}")
 if expected_config_path:
     parser = ConfigParser()
     if not parser.read(Path(expected_config_path).expanduser()):
@@ -955,6 +959,8 @@ def optional_non_negative_integer(key):
 
 optional_positive_integer("NOAA_NAVIONICS_READINESS_ATTEMPTS")
 optional_non_negative_integer("NOAA_NAVIONICS_READINESS_RETRY_DELAY")
+optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")
+optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY")
 value = values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS")
 if value is None:
     raise SystemExit(0)

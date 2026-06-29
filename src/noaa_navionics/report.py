@@ -959,6 +959,14 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     retry_delay = str(values.get("NOAA_NAVIONICS_READINESS_RETRY_DELAY", "")).strip()
     if retry_delay and (not retry_delay.isdigit() or int(retry_delay) < 0):
         failures.append(f"NOAA_NAVIONICS_READINESS_RETRY_DELAY={retry_delay} expected non-negative integer")
+    opencpn_restarts = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "")).strip()
+    if opencpn_restarts and (not opencpn_restarts.isdigit() or int(opencpn_restarts) < 0):
+        failures.append(f"NOAA_NAVIONICS_OPENCPN_RESTARTS={opencpn_restarts} expected non-negative integer")
+    opencpn_restart_delay = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", "")).strip()
+    if opencpn_restart_delay and (not opencpn_restart_delay.isdigit() or int(opencpn_restart_delay) < 0):
+        failures.append(
+            f"NOAA_NAVIONICS_OPENCPN_RESTART_DELAY={opencpn_restart_delay} expected non-negative integer"
+        )
     fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
     if fail_open in {"1", "yes", "true", "on"}:
         failures.append("NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled")
