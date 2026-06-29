@@ -1052,11 +1052,12 @@ check_opencpn_stable() {
   fi
 }
 
-check_launcher_lock_clear_or_live() {
+check_launcher_lock_live() {
   local owner_pid=""
   local cmdline=""
   if [[ ! -e "$launcher_lock" ]]; then
-    return 0
+    printf 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised: %s\n' "$launcher_lock" >&2
+    return 1
   fi
   if [[ ! -r "${launcher_lock}/pid" ]]; then
     printf 'chartplotter launcher lock exists without a readable pid file: %s\n' "$launcher_lock" >&2
@@ -1292,7 +1293,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
   check "LightDM active after boot" systemctl is-active --quiet lightdm.service
   check "chartplotter started after boot" wait_for_chartplotter_started
-  check "chartplotter launcher lock clear or live" check_launcher_lock_clear_or_live
+  check "chartplotter launcher lock live" check_launcher_lock_live
   if opencpn_running; then
     check "OpenCPN running" true
   else

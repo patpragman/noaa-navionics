@@ -273,8 +273,9 @@ grep -q 'Do not verify root@' scripts/verify_pi.sh
 grep -q 'verification user is not root' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
-grep -q 'check_launcher_lock_clear_or_live' scripts/verify_pi.sh
-grep -q 'chartplotter launcher lock clear or live' scripts/verify_pi.sh
+grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
