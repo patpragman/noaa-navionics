@@ -214,6 +214,12 @@ def expected_package_url(package, value):
     filename = expected_package_filename(package, value)
     return f"https://www.charts.noaa.gov/ENCs/{filename}" if filename else ""
 
+def parse_manifest_int(value, field, source):
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}") from exc
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -353,14 +359,32 @@ if expected_config_path:
                 f"status report manifest {status_key} {status_value} "
                 f"does not match manifest file {source_key} {file_value}"
             )
-    manifest_file_download_bytes = int(download_section.get("bytes", 0))
-    manifest_file_enc_cell_count = int(extract_section.get("enc_cell_count", 0))
-    if int(manifest.get("download_bytes", 0)) != manifest_file_download_bytes:
+    manifest_file_download_bytes = parse_manifest_int(
+        download_section.get("bytes", 0),
+        "download bytes",
+        expected_manifest_path,
+    )
+    manifest_file_enc_cell_count = parse_manifest_int(
+        extract_section.get("enc_cell_count", 0),
+        "ENC cell count",
+        expected_manifest_path,
+    )
+    status_download_bytes = parse_manifest_int(
+        manifest.get("download_bytes", 0),
+        "download_bytes",
+        "status report",
+    )
+    status_enc_cell_count = parse_manifest_int(
+        manifest.get("enc_cell_count", 0),
+        "enc_cell_count",
+        "status report",
+    )
+    if status_download_bytes != manifest_file_download_bytes:
         raise SystemExit(
             f"status report manifest download_bytes {manifest.get('download_bytes', 0)} "
             f"does not match manifest file bytes {manifest_file_download_bytes}"
         )
-    if int(manifest.get("enc_cell_count", 0)) != manifest_file_enc_cell_count:
+    if status_enc_cell_count != manifest_file_enc_cell_count:
         raise SystemExit(
             f"status report manifest enc_cell_count {manifest.get('enc_cell_count', 0)} "
             f"does not match manifest file enc_cell_count {manifest_file_enc_cell_count}"
@@ -394,11 +418,7 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest download path {download_path} is outside {chart_output}"
         ) from exc
-    try:
-        download_bytes = int(manifest.get("download_bytes", 0))
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(f"status report manifest download byte count invalid: {expected_manifest_path}") from exc
-    if download_bytes <= 0:
+    if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
     extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
     try:
@@ -409,11 +429,7 @@ if expected_config_path:
         ) from exc
     if not extract_path.exists():
         raise SystemExit(f"status report manifest extract path does not exist: {extract_path}")
-    try:
-        enc_cell_count = int(manifest.get("enc_cell_count", 0))
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(f"status report manifest ENC cell count invalid: {expected_manifest_path}") from exc
-    if enc_cell_count <= 0:
+    if status_enc_cell_count <= 0:
         raise SystemExit(f"status report manifest has no ENC cells: {expected_manifest_path}")
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}

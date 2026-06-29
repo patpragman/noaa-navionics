@@ -240,9 +240,13 @@ grep -q 'status report manifest package filename' scripts/verify_pi.sh
 grep -q 'status report manifest package URL' scripts/verify_pi.sh
 grep -q 'status report manifest download URL' scripts/verify_pi.sh
 grep -q 'status report manifest download path' scripts/verify_pi.sh
+grep -q 'def parse_manifest_int' scripts/verify_pi.sh
+grep -q 'status report manifest {field} is invalid in {source}' scripts/verify_pi.sh
+grep -q '"download_bytes"' scripts/verify_pi.sh
+grep -q '"download bytes"' scripts/verify_pi.sh
 grep -q 'status report manifest download byte count is not positive' scripts/verify_pi.sh
 grep -q 'status report manifest extract path' scripts/verify_pi.sh
-grep -q 'status report manifest ENC cell count invalid' scripts/verify_pi.sh
+grep -q '"ENC cell count"' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
