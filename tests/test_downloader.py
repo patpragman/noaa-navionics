@@ -3029,6 +3029,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Track Log:", text)
             self.assertIn(f"track_output={charts}", text)
             self.assertIn("track_output_is_symlink=False", text)
+            self.assertIn("track_storage_symlink_component=", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
@@ -3381,6 +3382,36 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(summary["ok"])
             self.assertEqual(summary["track_output"], str(link_output))
             self.assertEqual(summary["track_output_is_symlink"], True)
+            self.assertEqual(summary["track_storage_symlink_component"], str(link_output))
+            self.assertFalse(check.ok)
+            self.assertIn("expected real GPX track storage", check.detail)
+
+    def test_track_log_summary_rejects_symlinked_track_output_ancestor(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            real_root = root / "real-storage"
+            real_output = real_root / "noaa-tracks"
+            track_path = real_output / "tracks" / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+            link_root = root / "link-storage"
+            try:
+                link_root.symlink_to(real_root, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = _track_log_summary(
+                link_root / "noaa-tracks",
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(summary["track_output"], str(link_root / "noaa-tracks"))
+            self.assertEqual(summary["track_output_is_symlink"], False)
+            self.assertEqual(summary["track_storage_symlink_component"], str(link_root))
             self.assertFalse(check.ok)
             self.assertIn("expected real GPX track storage", check.detail)
 

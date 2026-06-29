@@ -345,6 +345,13 @@ def parse_manifest_int(value, field, source):
 def normalize_path(value):
     return str(Path(value).expanduser().resolve(strict=False))
 
+def first_symlink_ancestor(path):
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
+
 def normalize_host(value):
     value = value.strip().lower()
     return "127.0.0.1" if value == "localhost" else value
@@ -639,12 +646,19 @@ if expected_config_path:
         raise SystemExit(
             f"status report track_log track_output is a symlink or missing symlink status: {expected_track_output}"
         )
-    if expected_track_output.is_symlink():
-        raise SystemExit(f"configured track output is a symlink: {expected_track_output}")
     actual_tracks_dir = str(track_log.get("tracks_dir", "")).strip()
     if actual_tracks_dir != str(expected_tracks_dir):
         raise SystemExit(
             f"status report track_log tracks_dir {actual_tracks_dir} does not match configured {expected_tracks_dir}"
+        )
+    track_symlink_component = first_symlink_ancestor(expected_tracks_dir)
+    status_track_symlink_component = str(track_log.get("track_storage_symlink_component", "")).strip()
+    if track_symlink_component is not None:
+        raise SystemExit(f"configured GPX track storage path contains a symlink: {track_symlink_component}")
+    if status_track_symlink_component:
+        raise SystemExit(
+            "status report track_log track_storage_symlink_component is set unexpectedly: "
+            f"{status_track_symlink_component}"
         )
     try:
         tracks_dir_stat = expected_tracks_dir.stat()
@@ -1200,6 +1214,9 @@ if not isinstance(track_log, dict):
     raise SystemExit("status report has no track_log section")
 if track_log.get("track_output_is_symlink") is True:
     raise SystemExit(f"status report track_log track_output is a symlink: {track_log.get('track_output', '<missing>')}")
+track_symlink_component = str(track_log.get("track_storage_symlink_component", "")).strip()
+if track_symlink_component:
+    raise SystemExit(f"status report track_log storage path contains a symlink: {track_symlink_component}")
 if track_log.get("ok") is not True:
     raise SystemExit(f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")
 latest_track_path = str(track_log.get("latest_path", "")).strip()
@@ -2011,6 +2028,13 @@ except Exception as exc:
 boot_epoch = time.time() - uptime_seconds
 deadline = time.monotonic() + timeout
 last_detail = ""
+def first_symlink_ancestor(path):
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
+
 def trackpoint_position(trackpoint):
     tag_match = re.search(r"<trkpt\b([^>]*)>", trackpoint)
     if not tag_match:
@@ -2035,8 +2059,9 @@ def trackpoint_position(trackpoint):
 
 while True:
     now = time.time()
-    if track_output_path.is_symlink():
-        last_detail = f"{track_output_path} is a symlink, expected real GPX track storage"
+    symlink_component = first_symlink_ancestor(tracks_dir)
+    if symlink_component is not None:
+        last_detail = f"{symlink_component} is a symlink, expected real GPX track storage"
         raise SystemExit(last_detail)
     if tracks_dir.exists():
         if tracks_dir.is_symlink():

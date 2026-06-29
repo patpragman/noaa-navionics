@@ -376,6 +376,7 @@ def format_status_text(report: dict[str, object]) -> str:
             f"track_output={track_log.get('track_output', '')} "
             f"tracks_dir={track_log.get('tracks_dir', '')} ok={track_log.get('ok', '')} "
             f"track_output_is_symlink={track_log.get('track_output_is_symlink', '')} "
+            f"track_storage_symlink_component={track_log.get('track_storage_symlink_component', '')} "
             f"dir_mode={track_log.get('tracks_mode', '')} latest={latest}{coordinates} "
             f"mode={track_log.get('latest_mode', '')} "
             f"detail={track_log.get('detail', '')}".rstrip()
@@ -495,16 +496,18 @@ def _track_log_summary_once(
     boot_time = _current_boot_epoch() if boot_epoch is None else boot_epoch
     track_output_path = Path(track_output).expanduser()
     tracks_dir = track_output_path / "tracks"
+    symlink_component = _first_symlink_ancestor(tracks_dir)
     summary: dict[str, object] = {
         "track_output": str(track_output_path),
         "track_output_is_symlink": track_output_path.is_symlink(),
+        "track_storage_symlink_component": str(symlink_component) if symlink_component is not None else "",
         "tracks_dir": str(tracks_dir),
         "exists": tracks_dir.exists(),
         "ok": False,
         "max_age_seconds": max_age_seconds,
     }
-    if track_output_path.is_symlink():
-        summary["detail"] = f"{track_output_path} is a symlink, expected real GPX track storage"
+    if symlink_component is not None:
+        summary["detail"] = f"{symlink_component} is a symlink, expected real GPX track storage"
         return summary
     if not tracks_dir.exists():
         summary["detail"] = f"{tracks_dir} does not exist"
@@ -623,6 +626,15 @@ def _track_log_summary_once(
         return summary
     summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
     return summary
+
+
+def _first_symlink_ancestor(path: Path) -> Optional[Path]:
+    current = Path(path).expanduser()
+    candidates = [current, *current.parents]
+    for candidate in candidates:
+        if candidate.is_symlink():
+            return candidate
+    return None
 
 
 def _gpx_trackpoint_position(trackpoint: str) -> tuple[Optional[tuple[float, float]], str]:
