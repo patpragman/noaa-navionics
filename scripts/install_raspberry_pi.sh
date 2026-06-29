@@ -141,6 +141,7 @@ try:
         delete=False,
     ) as handle:
         tmp_path = Path(handle.name)
+        os.chmod(tmp_path, 0o600)
         handle.write(revision + "\n")
         handle.flush()
         os.fsync(handle.fileno())

@@ -319,6 +319,7 @@ grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight
 ! grep -q 'cp "${repo_root}/systemd' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
+grep -q 'os.chmod(tmp_path, 0o600)' scripts/install_raspberry_pi.sh
 grep -q 'Do not run the Raspberry Pi installer as root' scripts/install_raspberry_pi.sh
 ! grep -q 'noaa-navionics-chartplotter.desktop' scripts/install_raspberry_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/install_raspberry_pi.sh
