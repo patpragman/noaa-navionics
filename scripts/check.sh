@@ -82,6 +82,7 @@ grep -q 'validate_launcher_lock_path' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_env_path' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment is a symlink' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment has permissions' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_from_current_boot' scripts/start_chartplotter.sh
 grep -q 'Launcher lock is from a previous boot; treating lock as stale' scripts/start_chartplotter.sh
@@ -527,6 +528,7 @@ grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_root_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_root_directory_integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher env file integrity' scripts/verify_pi.sh
+grep -q 'chartplotter launcher environment directory symlink guard' scripts/verify_pi.sh
 grep -q 'chartplotter autostart file integrity' scripts/verify_pi.sh
 grep -q 'LightDM autologin file integrity' scripts/verify_pi.sh
 grep -q 'LightDM autologin directory integrity' scripts/verify_pi.sh
@@ -1199,8 +1201,8 @@ grep -q 'preflights noninteractive sudo reboot access before deploying or provis
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
-grep -q 'only after rejecting symlinked, misowned, or group/world-writable launcher environment files' README.md
-grep -q 'only after rejecting symlinked, misowned, or group/world-writable launcher environment files' docs/sailboat-pi.md
+grep -q 'only after rejecting symlinked launcher environment files or directories' README.md
+grep -q 'only after rejecting symlinked launcher environment files or directories' docs/sailboat-pi.md
 
 python3 - <<'PY'
 from pathlib import Path
