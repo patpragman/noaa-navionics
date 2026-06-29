@@ -349,6 +349,10 @@ grep -q 'GPSD device matches expected' scripts/verify_pi.sh
 grep -q 'Do not verify root@' scripts/verify_pi.sh
 grep -q 'verification user is not root' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
+grep -q 'rotated_log_file="${log_file}.1"' scripts/verify_pi.sh
+grep -q 'check_optional_user_regular_file_integrity' scripts/verify_pi.sh
+grep -q 'chartplotter launcher log file integrity' scripts/verify_pi.sh
+grep -q 'chartplotter rotated launcher log file integrity' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh

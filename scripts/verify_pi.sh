@@ -241,6 +241,7 @@ autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
+rotated_log_file="${log_file}.1"
 launcher_lock="${HOME}/.cache/noaa-navionics/chartplotter.launch.lock"
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
@@ -1563,6 +1564,16 @@ check_user_private_directory_integrity() {
   fi
 }
 
+check_optional_user_regular_file_integrity() {
+  local path="$1"
+  local label="$2"
+
+  if [[ ! -e "$path" && ! -L "$path" ]]; then
+    return 0
+  fi
+  check_user_regular_file_integrity "$path" "$label"
+}
+
 check_command_symlink_to_private_venv() {
   local path="$1"
   local label="$2"
@@ -2375,6 +2386,8 @@ fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
   check "LightDM active after boot" systemctl is-active --quiet lightdm.service
+  check "chartplotter launcher log file integrity" check_user_regular_file_integrity "$log_file" "chartplotter launcher log"
+  check "chartplotter rotated launcher log file integrity" check_optional_user_regular_file_integrity "$rotated_log_file" "chartplotter rotated launcher log"
   check "chartplotter started after boot" wait_for_chartplotter_started
   check "chartplotter launcher lock live" check_launcher_lock_live
   check "display power disabled after boot" check_live_display_power_disabled
