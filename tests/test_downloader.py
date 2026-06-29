@@ -2975,6 +2975,7 @@ class StatusReportTests(unittest.TestCase):
             boot_id.write_text("boot-abc\n", encoding="ascii")
             launcher_env = root / "launcher.env"
             launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=10\n", encoding="ascii")
+            launcher_env.chmod(0o600)
             opencpn_config = root / "opencpn.conf"
             configure_chart_directory(charts, config_path=opencpn_config)
             configure_gpsd_connection(config_path=opencpn_config)
@@ -3054,6 +3055,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
             self.assertEqual(report["launcher_settings"]["directory_is_symlink"], False)
             self.assertEqual(report["launcher_settings"]["launcher_settings_symlink_component"], "")
+            self.assertEqual(report["launcher_settings"]["mode"], "0600")
             self.assertEqual(report["launcher_settings"]["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "10")
             self.assertEqual(report["opencpn_config"]["path"], str(opencpn_config))
             self.assertEqual(report["opencpn_config"]["exists"], True)
@@ -4290,6 +4292,7 @@ class StatusReportTests(unittest.TestCase):
                 "path": "/home/pi/.config/noaa-navionics/launcher.env",
                 "exists": True,
                 "is_symlink": False,
+                "mode": "0600",
                 "values": {
                     "NOAA_NAVIONICS_GPS_SECONDS": "30",
                     "NOAA_NAVIONICS_READINESS_ATTEMPTS": "3",
@@ -4303,6 +4306,20 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertTrue(check.ok)
         self.assertIn("fail-closed", check.detail)
+
+    def test_launcher_settings_check_fails_public_environment(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "mode": "0644",
+                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("expected private 0600", check.detail)
 
     def test_launcher_settings_check_fails_symlinked_environment(self):
         check = _launcher_settings_check(

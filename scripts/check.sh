@@ -548,6 +548,7 @@ grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
+grep -q 'check_user_private_regular_file_integrity "$launcher_env" "chartplotter launcher environment"' scripts/verify_pi.sh
 grep -q 'check_root_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_root_directory_integrity' scripts/verify_pi.sh
 grep -q 'first_shell_symlink_ancestor' scripts/verify_pi.sh
@@ -1081,6 +1082,7 @@ grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/te
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' README.md
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
+grep -q 'launcher environment has permissions.*expected private 0600' src/noaa_navionics/report.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
 grep -q '"path_symlink_component"' src/noaa_navionics/report.py
@@ -1271,6 +1273,7 @@ grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=%s' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${launcher_env_dir}/.launcher.env.XXXXXX"' scripts/provision_sailboat_pi.sh
+grep -q 'chmod 0600 "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh

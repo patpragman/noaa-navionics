@@ -574,7 +574,7 @@ write_launcher_env() {
       rm -f "$launcher_env_tmp"
       return 1
     fi
-    if ! chmod 0644 "$launcher_env_tmp"; then
+    if ! chmod 0600 "$launcher_env_tmp"; then
       rm -f "$launcher_env_tmp"
       return 1
     fi

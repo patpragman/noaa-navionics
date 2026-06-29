@@ -868,6 +868,11 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
     if not launcher_env.exists():
         return summary
     try:
+        summary["mode"] = f"{launcher_env.stat().st_mode & 0o777:04o}"
+    except OSError as exc:
+        summary["error"] = str(exc)
+        return summary
+    try:
         lines = launcher_env.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         summary["error"] = str(exc)
@@ -1232,6 +1237,13 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     error = str(summary.get("error", ""))
     if error:
         return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")
+    mode = str(summary.get("mode", "")).strip()
+    if mode and mode != "0600":
+        return CheckResult(
+            "Launcher Settings",
+            False,
+            f"launcher environment has permissions {mode}, expected private 0600: {path}",
+        )
     values = summary.get("values", {})
     if not isinstance(values, dict):
         return CheckResult("Launcher Settings", False, f"launcher environment values were not parsed: {path}")

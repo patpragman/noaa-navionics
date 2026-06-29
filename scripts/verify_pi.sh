@@ -1513,6 +1513,22 @@ check_user_regular_file_integrity() {
   fi
 }
 
+check_user_private_regular_file_integrity() {
+  local path="$1"
+  local label="$2"
+  local mode_text
+
+  check_user_regular_file_integrity "$path" "$label" || return 1
+  mode_text="$(stat -c '%a' "$path" 2>/dev/null)" || {
+    printf 'could not inspect %s: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  if [[ "$mode_text" != "600" && "$mode_text" != "0600" ]]; then
+    printf '%s has permissions %s, expected private 0600: %s\n' "$label" "$mode_text" "$path" >&2
+    return 1
+  fi
+}
+
 check_user_executable_file_integrity() {
   local path="$1"
   local label="$2"
@@ -2391,7 +2407,7 @@ fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
 check "chartplotter launcher OpenCPN restarts persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTARTS=${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$launcher_env"
 check "chartplotter launcher OpenCPN restart delay persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$launcher_env"
-check "chartplotter launcher env file integrity" check_user_regular_file_integrity "$launcher_env" "chartplotter launcher environment"
+check "chartplotter launcher env file integrity" check_user_private_regular_file_integrity "$launcher_env" "chartplotter launcher environment"
 check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
 set_chartplotter_start_timeout_from_launcher_env
 check "desktop autostart directory integrity" check_user_private_directory_integrity "$autostart_dir" "desktop autostart directory"
