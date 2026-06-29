@@ -60,6 +60,8 @@ grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
+grep -q 'chartplotter autostart name' scripts/verify_pi.sh
+grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
@@ -73,6 +75,7 @@ grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
+grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh

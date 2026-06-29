@@ -313,7 +313,8 @@ fi
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then
   check "chartplotter autostart type" grep -Fxq 'Type=Application' "$autostart"
-  check "chartplotter autostart exec" grep -Fq 'noaa-navionics-start-chartplotter' "$autostart"
+  check "chartplotter autostart name" grep -Fxq 'Name=NOAA Navionics Chartplotter' "$autostart"
+  check "chartplotter autostart exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' "$autostart"
   check "chartplotter autostart terminal" grep -Fxq 'Terminal=false' "$autostart"
   check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
 fi
