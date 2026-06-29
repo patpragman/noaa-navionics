@@ -1,5 +1,5 @@
 # Copy to /etc/default/gpsd and edit DEVICES for your GPS.
 START_DAEMON="true"
-USBAUTO="true"
+USBAUTO="false"
 DEVICES="/dev/serial/by-id/YOUR_GPS_DEVICE"
 GPSD_OPTIONS="-n"

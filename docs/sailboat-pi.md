@@ -88,14 +88,13 @@ For a USB GPS, check the device name:
 ls -l /dev/serial/by-id/
 ```
 
-Edit `/etc/default/gpsd`:
+Configure GPSD with the stable device path:
 
-```text
-START_DAEMON="true"
-USBAUTO="true"
-DEVICES="/dev/serial/by-id/YOUR_GPS_DEVICE"
-GPSD_OPTIONS="-n"
+```bash
+scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
+
+The script backs up `/etc/default/gpsd`, writes the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini`.
 
 Restart and verify:
 

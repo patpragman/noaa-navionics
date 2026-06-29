@@ -59,6 +59,13 @@ check "noaa-navionics command" test -x "$bin"
 check "config file" test -f "$config"
 check "OpenCPN command" command -v opencpn
 check "GPSD command" command -v gpsd
+check "GPSD config" test -f /etc/default/gpsd
+if [[ -r /etc/default/gpsd ]]; then
+  check "GPSD device configured" grep -Eq '^DEVICES="[^"]+"' /etc/default/gpsd
+else
+  printf 'FAIL GPSD config readable\n'
+  failures=$((failures + 1))
+fi
 
 check_output "version/help" "$bin" --help
 check_output "configured packages" "$bin" list-packages

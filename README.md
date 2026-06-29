@@ -101,6 +101,12 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
+On the Pi, configure GPSD with the GPS device:
+
+```bash
+scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
 On the Pi, `status-report` writes a JSON readiness artifact:
 
 ```bash

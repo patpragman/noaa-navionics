@@ -75,7 +75,7 @@ Installed NOAA Navionics.
 
 Next steps:
 1. Edit ${config_dir}/config.ini for your cruising area and GPS.
-2. Configure GPSD using ${repo_root}/templates/gpsd.default as a reference.
+2. Configure GPSD: scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 3. Run: noaa-navionics sync-charts
 4. Run: noaa-navionics preflight
 5. Add the extracted chart directory to OpenCPN.
