@@ -337,15 +337,18 @@ grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
+grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'validate_existing_system_service gpsd.service GPSD --skip-gpsd' scripts/provision_sailboat_pi.sh
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
 grep -q 'safe_by_id_chars' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
+grep -q 'validate_existing_system_service chrony.service chrony --skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'not line.lstrip().startswith("#")' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh

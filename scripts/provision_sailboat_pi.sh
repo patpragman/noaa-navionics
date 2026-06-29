@@ -168,6 +168,28 @@ PY
   fi
 }
 
+validate_existing_system_service() {
+  local unit="$1"
+  local label="$2"
+  local skip_flag="$3"
+  local enabled
+  local active
+  if ! command -v systemctl >/dev/null 2>&1; then
+    echo "systemctl is required to validate existing ${label} service state when ${skip_flag} is used" >&2
+    exit 2
+  fi
+  if ! systemctl is-enabled --quiet "$unit"; then
+    enabled="$(systemctl is-enabled "$unit" 2>&1 || true)"
+    echo "${label} service must already be enabled when ${skip_flag} is used with unattended startup: ${unit} is ${enabled:-unknown}" >&2
+    exit 2
+  fi
+  if ! systemctl is-active --quiet "$unit"; then
+    active="$(systemctl is-active "$unit" 2>&1 || true)"
+    echo "${label} service must already be active when ${skip_flag} is used with unattended startup: ${unit} is ${active:-unknown}" >&2
+    exit 2
+  fi
+}
+
 validate_existing_charts() {
   if ! python3 - "$repo_root" "$config" <<'PY'
 from pathlib import Path
@@ -358,10 +380,16 @@ fi
 
 if [[ "$skip_gpsd" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
   validate_existing_gps_config
+  if [[ "$dry_run" -eq 0 ]]; then
+    validate_existing_system_service gpsd.service GPSD --skip-gpsd
+  fi
 fi
 
 if [[ "$skip_gps_time" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
   validate_existing_gps_time_config
+  if [[ "$dry_run" -eq 0 ]]; then
+    validate_existing_system_service chrony.service chrony --skip-gps-time
+  fi
 fi
 
 if [[ "$skip_sync" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
