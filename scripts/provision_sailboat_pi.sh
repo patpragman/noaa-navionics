@@ -60,7 +60,8 @@ Options:
   --skip-services     Do not enable user systemd services
   --skip-autologin    Do not configure desktop graphical autologin
   --skip-gps-time     Do not configure chrony to use GPSD time
-  --no-device-check   Do not require the GPS device path to exist now
+  --no-device-check   Do not require the GPS device path to exist now; requires
+                      --skip-services and --skip-autologin
   --allow-non-pi      Allow running on non-Raspberry Pi architecture
 
 Runs the onboard commissioning sequence on the Raspberry Pi:
@@ -321,6 +322,14 @@ if ! same_path "$config" "$default_config" && [[ "$skip_services" -eq 0 || "$ski
 Custom --config path does not match the unattended onboard config: $config
 Installed systemd services and desktop autostart use: $default_config
 Use the default config for production provisioning, or pass both --skip-services and --skip-autologin for manual testing.
+EOF
+  exit 2
+fi
+
+if [[ "$check_device" -eq 0 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
+  cat >&2 <<EOF
+--no-device-check cannot be used while unattended startup is enabled.
+Plug in the GPS receiver and use a stable device path, or pass both --skip-services and --skip-autologin for manual testing.
 EOF
   exit 2
 fi

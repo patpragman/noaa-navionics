@@ -121,6 +121,7 @@ When `deploy_to_pi.sh --provision` is run with `--skip-services` or `--skip-auto
 Use `--skip-gpsd` only when the onboard config already names a commissioned local GPSD receiver; provisioning rejects missing, placeholder, remote, volatile, or nonexistent GPS config before enabling unattended startup.
 Use `--skip-gps-time` only when chrony already contains this project's GPSD `SHM 0` time-source block; provisioning rejects missing GPS time configuration before enabling unattended startup.
 Use `--skip-sync` only when the onboard config already points at a fresh, complete NOAA chart manifest; provisioning rejects missing or incomplete chart data before enabling unattended startup.
+Use `--no-device-check` only for manual testing with both `--skip-services` and `--skip-autologin`; production provisioning requires the GPS receiver path to exist before unattended startup is enabled.
 
 Verify the Raspberry Pi after deployment:
 

@@ -263,6 +263,8 @@ grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
+grep -q -- '--no-device-check cannot be used while unattended startup is enabled' scripts/provision_sailboat_pi.sh
+grep -q 'pass both --skip-services and --skip-autologin for manual testing' scripts/provision_sailboat_pi.sh
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
@@ -627,6 +629,22 @@ scripts/provision_sailboat_pi.sh \
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
 
+set +e
+scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-services >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --no-device-check with unattended autostart enabled" >&2
+  exit 1
+fi
+grep -q -- '--no-device-check cannot be used while unattended startup is enabled' "$provision_output"
+
 skip_gpsd_home="$tmpdir/skip-gpsd-home"
 mkdir -p "$skip_gpsd_home"
 set +e
@@ -653,7 +671,6 @@ set +e
 HOME="$skip_gps_time_home" scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
-  --no-device-check \
   --device /dev/serial/by-id/mock-gps \
   --skip-gps-time \
   --skip-sync \
@@ -675,7 +692,6 @@ set +e
 HOME="$skip_sync_home" scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
-  --no-device-check \
   --device /dev/serial/by-id/mock-gps \
   --skip-sync \
   --skip-services >"$provision_output" 2>&1
