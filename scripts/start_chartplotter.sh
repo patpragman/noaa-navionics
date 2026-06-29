@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 config="${HOME}/.config/noaa-navionics/config.ini"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"

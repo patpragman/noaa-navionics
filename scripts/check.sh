@@ -67,6 +67,7 @@ grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-
 grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
+grep -q 'umask 077' scripts/start_chartplotter.sh
 grep -q 'prepare_private_cache_dir' scripts/start_chartplotter.sh
 grep -q 'first_symlink_ancestor' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache parent directory is a symlink' scripts/start_chartplotter.sh
