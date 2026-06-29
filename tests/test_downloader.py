@@ -3029,6 +3029,19 @@ class GpsTests(unittest.TestCase):
             self.assertEqual(count, 0)
             self.assertFalse(output.exists())
 
+    def test_log_single_track_does_not_create_file_for_missing_coordinates(self):
+        invalid = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            satellites=8,
+            hdop=1.2,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "track.gpx"
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                count = _log_single_track(_trackable_fixes(iter([invalid])), output, deadline=None, sample=True)
+            self.assertEqual(count, 0)
+            self.assertFalse(output.exists())
+
     def test_trackable_fixes_skip_reported_weak_quality(self):
         weak = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
@@ -3109,6 +3122,11 @@ class GpsTests(unittest.TestCase):
 
         self.assertIn("latitude 91.000000 outside -90..90", gps_fix_quality_failure(latitude))
         self.assertIn("longitude -181.000000 outside -180..180", gps_fix_quality_failure(longitude))
+
+    def test_shared_gps_quality_rejects_missing_coordinates(self):
+        fix = GPSFix(satellites=8, hdop=1.2)
+
+        self.assertIn("missing coordinates", gps_fix_quality_failure(fix))
 
     def test_shared_gps_quality_rejects_non_finite_coordinates(self):
         fix = GPSFix(latitude=math.nan, longitude=-149.0, satellites=8, hdop=1.2)
