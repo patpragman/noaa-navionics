@@ -40,6 +40,9 @@ grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
+grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
+grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
+grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
