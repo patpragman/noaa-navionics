@@ -467,6 +467,7 @@ check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "track service file" test -f "$track_service"
 check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
+check "track service loaded quiet stdout" sh -c 'systemctl --user show noaa-navionics-track.service -p StandardOutput 2>/dev/null | grep -Fxq StandardOutput=null'
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
 check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10min' "$track_service"
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"

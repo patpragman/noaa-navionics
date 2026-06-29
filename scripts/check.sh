@@ -98,6 +98,7 @@ grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
+grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
@@ -195,6 +196,7 @@ grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh

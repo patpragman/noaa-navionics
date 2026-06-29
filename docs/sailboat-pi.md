@@ -155,7 +155,7 @@ After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboar
 scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-This runs the same sequence expected before departure: initializes config if needed, configures GPSD, configures chrony to use GPSD time, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, configures chrony to use GPSD time, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, reloads the user manager, enables user linger, enables the user timer and track/readiness services, restarts the track logger so refreshed service settings are active, and writes `~/.cache/noaa-navionics/status.json`.
 The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network. Add `--gps-seconds N` to `deploy_to_pi.sh --provision` or `dock_test_pi.sh` when the GPS receiver needs a longer cold-start fix window; provisioning stores that value in `~/.config/noaa-navionics/launcher.env` for boot readiness and desktop autostart.
 
 ## Startup

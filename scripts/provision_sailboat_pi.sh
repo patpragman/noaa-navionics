@@ -295,6 +295,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   run sudo loginctl enable-linger "$USER"
   run systemctl --user enable --now noaa-navionics.timer
   run systemctl --user enable --now noaa-navionics-track.service
+  run systemctl --user restart noaa-navionics-track.service
   run systemctl --user enable noaa-navionics-preflight.service
 fi
 
