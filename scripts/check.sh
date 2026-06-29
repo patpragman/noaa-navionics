@@ -1120,6 +1120,7 @@ grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
+grep -q 'LAUNCHER_ENV_KEYS' src/noaa_navionics/report.py
 grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/report.py
 grep -q 'OpenCPN config directory is a symlink' src/noaa_navionics/report.py
 grep -q '"config_symlink_component"' src/noaa_navionics/report.py
@@ -1127,6 +1128,8 @@ grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/te
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' README.md
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
+grep -q 'malformed launcher environment line' src/noaa_navionics/report.py
+grep -q 'unknown launcher environment key' src/noaa_navionics/report.py
 grep -q 'launcher environment has permissions.*expected private 0600' src/noaa_navionics/report.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
@@ -1146,6 +1149,9 @@ grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/verify_pi.sh
 grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_WARNING_SECONDS")' scripts/verify_pi.sh
 grep -q 'optional_non_negative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' scripts/verify_pi.sh
 grep -q 'test_launcher_settings_check_fails_invalid_optional_timing_values' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_records_malformed_environment_lines' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_unknown_environment_keys' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_malformed_environment_lines' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py

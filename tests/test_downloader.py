@@ -3432,6 +3432,21 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("launcher environment directory is a symlink", summary["error"])
             self.assertNotIn("values", summary)
 
+    def test_launcher_settings_summary_records_malformed_environment_lines(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            launcher_env = Path(tmpdir) / "launcher.env"
+            launcher_env.write_text(
+                "NOAA_NAVIONICS_GPS_SECONDS=60\n"
+                "# comment\n"
+                "not-a-setting\n",
+                encoding="ascii",
+            )
+
+            summary = _launcher_settings_summary(launcher_env)
+
+            self.assertEqual(summary["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "60")
+            self.assertEqual(summary["malformed_lines"], ["3: not-a-setting"])
+
     def test_launcher_settings_check_fails_symlinked_environment_ancestor(self):
         check = _launcher_settings_check(
             {
@@ -3446,6 +3461,38 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(check.ok)
         self.assertIn("launcher environment directory is a symlink: /home/pi", check.detail)
+
+    def test_launcher_settings_check_fails_unknown_environment_keys(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "mode": "0600",
+                "values": {
+                    "NOAA_NAVIONICS_GPS_SECONDS": "60",
+                    "NOAA_NAVIONICS_UNEXPECTED": "1",
+                },
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("unknown launcher environment key(s): NOAA_NAVIONICS_UNEXPECTED", check.detail)
+
+    def test_launcher_settings_check_fails_malformed_environment_lines(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "mode": "0600",
+                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
+                "malformed_lines": ["2: not-a-setting"],
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("malformed launcher environment line 2: not-a-setting", check.detail)
 
     def test_key_value_file_summary_rejects_symlinked_startup_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:

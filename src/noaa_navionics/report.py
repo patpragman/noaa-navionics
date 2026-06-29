@@ -87,6 +87,15 @@ USER_UNIT_INSTALL_TARGETS = {
     "noaa-navionics-track.service": "default.target",
     "noaa-navionics-preflight.service": "default.target",
 }
+LAUNCHER_ENV_KEYS = {
+    "NOAA_NAVIONICS_GPS_SECONDS",
+    "NOAA_NAVIONICS_WARNING_SECONDS",
+    "NOAA_NAVIONICS_READINESS_ATTEMPTS",
+    "NOAA_NAVIONICS_READINESS_RETRY_DELAY",
+    "NOAA_NAVIONICS_START_ON_FAILED_READINESS",
+    "NOAA_NAVIONICS_OPENCPN_RESTARTS",
+    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY",
+}
 
 
 def build_status_report(
@@ -879,13 +888,18 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
         summary["error"] = str(exc)
         return summary
     values: dict[str, str] = {}
-    for raw_line in lines:
+    malformed_lines = []
+    for line_number, raw_line in enumerate(lines, start=1):
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
+            if line and not line.startswith("#") and "=" not in line:
+                malformed_lines.append(f"{line_number}: {line}")
             continue
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip()
     summary["values"] = values
+    if malformed_lines:
+        summary["malformed_lines"] = malformed_lines
     return summary
 
 
@@ -1252,6 +1266,14 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
         return CheckResult("Launcher Settings", False, f"launcher environment values were not parsed: {path}")
 
     failures = []
+    malformed_lines = summary.get("malformed_lines", [])
+    if isinstance(malformed_lines, list):
+        failures.extend(f"malformed launcher environment line {line}" for line in malformed_lines)
+    else:
+        failures.append("malformed launcher environment lines were not parsed")
+    unknown_keys = sorted(str(key) for key in values if str(key) not in LAUNCHER_ENV_KEYS)
+    if unknown_keys:
+        failures.append("unknown launcher environment key(s): " + ", ".join(unknown_keys))
     gps_seconds = str(values.get("NOAA_NAVIONICS_GPS_SECONDS", "")).strip()
     if not gps_seconds.isdigit() or int(gps_seconds) <= 0:
         failures.append(f"NOAA_NAVIONICS_GPS_SECONDS={gps_seconds or '<missing>'} expected positive integer")
