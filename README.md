@@ -144,6 +144,7 @@ noaa-navionics-start-chartplotter
 ```
 
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
+The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
 
 Create the onboard config:
 

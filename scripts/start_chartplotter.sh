@@ -4,6 +4,7 @@ set -euo pipefail
 config="${HOME}/.config/noaa-navionics/config.ini"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
+max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 
 if [[ ! -x "$bin" ]]; then
@@ -12,6 +13,12 @@ if [[ ! -x "$bin" ]]; then
 fi
 
 mkdir -p "$(dirname "$status_report")"
+if [[ -f "$log_file" ]]; then
+  log_bytes="$(wc -c <"$log_file" 2>/dev/null || printf '0')"
+  if [[ "$log_bytes" -gt "$max_log_bytes" ]]; then
+    mv -f "$log_file" "${log_file}.1"
+  fi
+fi
 exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
