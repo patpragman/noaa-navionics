@@ -406,6 +406,7 @@ required_service_checks = {
     "Track Logger Settings",
     "Boot Readiness",
     "Boot Readiness Settings",
+    "Boot Readiness Run",
     "GPSD Service",
     "Chrony Service",
 }

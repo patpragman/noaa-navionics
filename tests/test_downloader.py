@@ -1886,6 +1886,9 @@ class StatusReportTests(unittest.TestCase):
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Result": "success",
+                    "ExecMainStatus": "0",
+                    "ExecMainStartTimestampMonotonic": "123456789",
                     "TimeoutStartUSec": "infinity",
                     "Restart": "on-failure",
                     "RestartUSec": "30s",
@@ -1904,9 +1907,11 @@ class StatusReportTests(unittest.TestCase):
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         settings_checks = [check for check in checks if check.name.endswith("Settings")]
+        run_check = next(check for check in checks if check.name == "Boot Readiness Run")
 
         self.assertEqual(len(settings_checks), 4)
         self.assertTrue(all(check.ok for check in settings_checks))
+        self.assertTrue(run_check.ok)
 
     def test_service_readiness_checks_fail_missing_loaded_unit_hardening(self):
         services = {
@@ -1957,6 +1962,9 @@ class StatusReportTests(unittest.TestCase):
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Result": "success",
+                    "ExecMainStatus": "0",
+                    "ExecMainStartTimestampMonotonic": "123456789",
                     "TimeoutStartUSec": "infinity",
                     "Restart": "on-failure",
                     "RestartUSec": "30s",
@@ -2045,6 +2053,79 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("Type=simple", boot_settings.detail)
         self.assertIn("TimeoutStartUSec=90s", boot_settings.detail)
         self.assertIn("Restart=no", boot_settings.detail)
+
+    def test_service_readiness_checks_fail_boot_readiness_never_ran(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "Type": "oneshot",
+                    "Result": "success",
+                    "ExecMainStatus": "0",
+                    "ExecMainStartTimestampMonotonic": "0",
+                    "TimeoutStartUSec": "infinity",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        run_check = next(check for check in checks if check.name == "Boot Readiness Run")
+
+        self.assertFalse(run_check.ok)
+        self.assertIn("ExecMainStartTimestampMonotonic=0", run_check.detail)
+
+    def test_service_readiness_checks_fail_boot_readiness_exit_status(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "Type": "oneshot",
+                    "Result": "exit-code",
+                    "ExecMainStatus": "1",
+                    "ExecMainStartTimestampMonotonic": "123456789",
+                    "TimeoutStartUSec": "infinity",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        run_check = next(check for check in checks if check.name == "Boot Readiness Run")
+
+        self.assertFalse(run_check.ok)
+        self.assertIn("Result=exit-code", run_check.detail)
+        self.assertIn("ExecMainStatus=1", run_check.detail)
 
     def test_service_readiness_checks_fail_loaded_command_missing_args(self):
         services = {

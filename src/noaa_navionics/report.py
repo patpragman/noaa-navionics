@@ -53,6 +53,9 @@ USER_UNIT_PROPERTIES = {
         "ExecStart",
         "Type",
         "EnvironmentFiles",
+        "Result",
+        "ExecMainStatus",
+        "ExecMainStartTimestampMonotonic",
         "TimeoutStartUSec",
         "Restart",
         "RestartUSec",
@@ -443,6 +446,11 @@ def _service_readiness_checks(
                         "EnvironmentFiles": "noaa-navionics/launcher.env",
                     },
                 ),
+                _preflight_execution_check(
+                    services,
+                    "noaa-navionics-preflight.service",
+                    "Boot Readiness Run",
+                ),
             ]
         )
     if gps_mode == "gpsd":
@@ -508,6 +516,31 @@ def _unit_properties_check(
     if failures:
         return CheckResult(name, False, f"{unit}: " + "; ".join(failures))
     return CheckResult(name, True, f"{unit} loaded settings match expected values")
+
+
+def _preflight_execution_check(summary: dict[str, object], unit: str, name: str) -> CheckResult:
+    if summary.get("available") is False:
+        return CheckResult(name, False, str(summary.get("detail", "systemctl not available")))
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from status report")
+    properties = state.get("properties")
+    if not isinstance(properties, dict):
+        return CheckResult(name, False, f"{unit} loaded properties missing from status report")
+    error = properties.get("error")
+    if error:
+        return CheckResult(name, False, f"{unit} loaded properties unavailable: {error}")
+    result = str(properties.get("Result", "")).strip()
+    status = str(properties.get("ExecMainStatus", "")).strip()
+    started = str(properties.get("ExecMainStartTimestampMonotonic", "")).strip()
+    detail = f"{unit} Result={result or '<missing>'} ExecMainStatus={status or '<missing>'}"
+    if result != "success":
+        return CheckResult(name, False, detail)
+    if status != "0":
+        return CheckResult(name, False, detail)
+    if not started.isdigit() or int(started) <= 0:
+        return CheckResult(name, False, detail + f" ExecMainStartTimestampMonotonic={started or '<missing>'}")
+    return CheckResult(name, True, detail)
 
 
 def _chart_sync_check(summary: dict[str, object], unit: str, name: str) -> CheckResult:
