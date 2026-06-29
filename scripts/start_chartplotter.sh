@@ -543,6 +543,14 @@ fi
 if [[ -f "$log_file" ]]; then
   log_bytes="$(wc -c <"$log_file" 2>/dev/null || printf '0')"
   if [[ "$log_bytes" -gt "$max_log_bytes" ]]; then
+    if [[ -L "${log_file}.1" ]]; then
+      echo "NOAA Navionics rotated launcher log is a symlink: ${log_file}.1" >&2
+      exit 1
+    fi
+    if [[ -e "${log_file}.1" && ! -f "${log_file}.1" ]]; then
+      echo "NOAA Navionics rotated launcher log is not a regular file: ${log_file}.1" >&2
+      exit 1
+    fi
     mv -f "$log_file" "${log_file}.1"
     chmod 0600 "${log_file}.1"
     sync_paths "${log_file}.1" || true

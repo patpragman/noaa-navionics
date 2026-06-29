@@ -108,6 +108,7 @@ if release_index != -1 and release_index < wait_index:
     raise SystemExit("chartplotter launcher must keep its launch lock until OpenCPN exits")
 PY
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics rotated launcher log is a symlink' scripts/start_chartplotter.sh
 grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
@@ -2535,6 +2536,27 @@ fi
 grep -q 'NOAA Navionics cache path contains a symlink' "$launcher_symlink_cache_ancestor_output"
 grep -q "$launcher_symlink_cache_ancestor_home" "$launcher_symlink_cache_ancestor_output"
 test ! -e "$launcher_symlink_cache_ancestor_real_home/.cache/noaa-navionics"
+
+launcher_symlink_rotated_log_home="$tmpdir/launcher-symlink-rotated-log-home"
+launcher_symlink_rotated_log_target="$tmpdir/launcher-symlink-rotated-log-target"
+launcher_symlink_rotated_log_output="$tmpdir/launcher-symlink-rotated-log.out"
+mkdir -p "$launcher_symlink_rotated_log_home/.local/bin" "$launcher_symlink_rotated_log_home/.cache/noaa-navionics" "$launcher_symlink_rotated_log_target"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_rotated_log_home/.local/bin/noaa-navionics"
+head -c 1048577 /dev/zero >"$launcher_symlink_rotated_log_home/.cache/noaa-navionics/chartplotter.log"
+ln -s "$launcher_symlink_rotated_log_target" "$launcher_symlink_rotated_log_home/.cache/noaa-navionics/chartplotter.log.1"
+chmod +x "$launcher_symlink_rotated_log_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_symlink_rotated_log_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_symlink_rotated_log_output" 2>&1
+launcher_symlink_rotated_log_code=$?
+set -e
+if [[ "$launcher_symlink_rotated_log_code" -eq 0 ]]; then
+  cat "$launcher_symlink_rotated_log_output" >&2
+  echo "expected chartplotter launcher to reject a symlinked rotated launcher log" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics rotated launcher log is a symlink' "$launcher_symlink_rotated_log_output"
+test -L "$launcher_symlink_rotated_log_home/.cache/noaa-navionics/chartplotter.log.1"
+test ! -e "$launcher_symlink_rotated_log_target/chartplotter.log"
 
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"
