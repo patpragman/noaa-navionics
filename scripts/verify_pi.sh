@@ -3,12 +3,14 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--expected-gps-device PATH] user@raspberrypi.local
+Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--opencpn-restarts N] [--opencpn-restart-delay N] [--expected-gps-device PATH] user@raspberrypi.local
 
 Runs onboard verification on the Raspberry Pi over SSH.
 With --require-chartplotter-started, also requires a post-boot launcher log
 and a running OpenCPN process.
 Use --gps-seconds to allow a longer GPS fix wait during the status report.
+Use --opencpn-restarts and --opencpn-restart-delay to assert the persisted
+OpenCPN supervision policy.
 Use --expected-gps-device to assert GPSD and the onboard config use a specific receiver.
 Nothing is installed or enabled on the local computer.
 EOF
@@ -17,6 +19,8 @@ EOF
 target=""
 require_chartplotter_started=0
 gps_seconds=10
+opencpn_restarts=3
+opencpn_restart_delay=5
 expected_gps_device=""
 
 require_positive_integer() {
@@ -24,6 +28,15 @@ require_positive_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
     echo "$name must be a positive integer" >&2
+    exit 2
+  fi
+}
+
+require_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "$name must be a non-negative integer" >&2
     exit 2
   fi
 }
@@ -121,6 +134,24 @@ while [[ $# -gt 0 ]]; do
       gps_seconds="${2:-}"
       shift 2
       ;;
+    --opencpn-restarts)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_non_negative_integer "$1" "${2:-}"
+      opencpn_restarts="${2:-}"
+      shift 2
+      ;;
+    --opencpn-restart-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_non_negative_integer "$1" "${2:-}"
+      opencpn_restart_delay="${2:-}"
+      shift 2
+      ;;
     --expected-gps-device)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
@@ -163,9 +194,11 @@ fi
 expected_revision_quoted="$(printf '%q' "$expected_revision")"
 require_chartplotter_started_quoted="$(printf '%q' "$require_chartplotter_started")"
 gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
+opencpn_restarts_quoted="$(printf '%q' "$opencpn_restarts")"
+opencpn_restart_delay_quoted="$(printf '%q' "$opencpn_restart_delay")"
 expected_gps_device_quoted="$(printf '%q' "$expected_gps_device")"
 
-ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} bash -s" <<'REMOTE'
+ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
@@ -404,6 +437,20 @@ if expected_launcher_env_path:
         raise SystemExit(
             f"status report launcher GPS wait {gps_wait} does not match verification wait "
             f"{os.environ.get('NOAA_NAVIONICS_GPS_SECONDS', '10')}"
+        )
+    restart_attempts = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "")).strip()
+    expected_restart_attempts = os.environ.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "3")
+    if restart_attempts != expected_restart_attempts:
+        raise SystemExit(
+            f"status report launcher OpenCPN restart attempts {restart_attempts or '<missing>'} "
+            f"do not match verification value {expected_restart_attempts}"
+        )
+    restart_delay = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", "")).strip()
+    expected_restart_delay = os.environ.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", "5")
+    if restart_delay != expected_restart_delay:
+        raise SystemExit(
+            f"status report launcher OpenCPN restart delay {restart_delay or '<missing>'} "
+            f"does not match verification value {expected_restart_delay}"
         )
     fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
     if fail_open in {"1", "yes", "true", "on"}:
@@ -1410,6 +1457,8 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher stale lock recovery" grep -Fq 'is not a chartplotter launcher; treating lock as stale' "$launcher"
 fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
+check "chartplotter launcher OpenCPN restarts persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTARTS=${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$launcher_env"
+check "chartplotter launcher OpenCPN restart delay persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$launcher_env"
 check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then

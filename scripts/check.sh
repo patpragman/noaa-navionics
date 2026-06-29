@@ -174,8 +174,13 @@ grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restarts' scripts/deploy_to_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/deploy_to_pi.sh
+grep -q -- '--opencpn-restarts' scripts/verify_pi.sh
+grep -q -- '--opencpn-restart-delay' scripts/verify_pi.sh
 grep -q -- '--opencpn-restarts' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/dock_test_pi.sh
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted}' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted}' scripts/verify_pi.sh
+grep -q 'verify_args+=("$1" "${2:-}")' scripts/dock_test_pi.sh
 grep -q 'validate_remote_dir' scripts/deploy_to_pi.sh
 grep -q 'quote_remote_dir_for_shell' scripts/deploy_to_pi.sh
 grep -Fq 'printf '\''~/%s'\''' scripts/deploy_to_pi.sh
@@ -1413,6 +1418,17 @@ if [[ "$verify_code" -ne 2 ]]; then
   echo "expected verify_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/verify_pi.sh --opencpn-restart-delay soon pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject invalid --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be a non-negative integer' "$verify_output"
 
 set +e
 scripts/verify_pi.sh --expected-gps-device >"$verify_output" 2>&1

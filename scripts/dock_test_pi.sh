@@ -206,13 +206,23 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
-    --sync-retry-delay|--opencpn-restarts|--opencpn-restart-delay)
+    --sync-retry-delay)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
       provision_args+=("$1" "${2:-}")
+      shift 2
+      ;;
+    --opencpn-restarts|--opencpn-restart-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_non_negative_integer "$1" "${2:-}"
+      provision_args+=("$1" "${2:-}")
+      verify_args+=("$1" "${2:-}")
       shift 2
       ;;
     --allow-dirty)
