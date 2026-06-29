@@ -43,7 +43,7 @@ def default_config() -> AppConfig:
         force=True,
         max_chart_age_days=30,
         gps_mode="gpsd",
-        gps_device="/dev/ttyUSB0",
+        gps_device="/dev/serial/by-id/YOUR_GPS_DEVICE",
         gps_baud=4800,
         gpsd_host="127.0.0.1",
         gpsd_port=2947,

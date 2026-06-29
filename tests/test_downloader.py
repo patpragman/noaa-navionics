@@ -157,6 +157,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.chart_package, "state")
             self.assertEqual(config.chart_value, "AK")
             self.assertEqual(config.gps_mode, "gpsd")
+            self.assertEqual(config.gps_device, "/dev/serial/by-id/YOUR_GPS_DEVICE")
             self.assertEqual(config.max_chart_age_days, 30)
             self.assertEqual(config.track_retention_days, 90)
             self.assertTrue(config.extract)

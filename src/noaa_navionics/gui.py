@@ -37,7 +37,7 @@ class DownloaderApp(tk.Tk):
         self.keep_zip = tk.BooleanVar(value=True)
         self.force = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="Ready")
-        self.gps_device = tk.StringVar(value="/dev/ttyUSB0")
+        self.gps_device = tk.StringVar(value="/dev/serial/by-id/YOUR_GPS_DEVICE")
         self.use_gpsd = tk.BooleanVar(value=True)
 
         self._build()

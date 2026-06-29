@@ -116,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     preflight.add_argument("--charts", default="~/charts/noaa-enc", help="chart directory")
     preflight.add_argument("--gpsd", action="store_true", help="check GPSD at localhost:2947")
-    preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/ttyUSB0")
+    preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/serial/by-id/YOUR_GPS_DEVICE")
     preflight.add_argument("--gps-baud", type=int, help="NMEA serial baud rate")
     preflight.add_argument("--gps-sample", help="NMEA sample file for testing")
     preflight.add_argument("--gps-seconds", type=_non_negative_float, default=5.0, help="seconds to wait for a GPS fix")

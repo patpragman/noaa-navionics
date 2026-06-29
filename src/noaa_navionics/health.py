@@ -69,7 +69,13 @@ def run_preflight(
     elif gps_device:
         results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
     else:
-        results.append(CheckResult("GPS", False, "not checked; pass --gps-device /dev/ttyUSB0 or --gps-sample file.nmea"))
+        results.append(
+            CheckResult(
+                "GPS",
+                False,
+                "not checked; pass --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE or --gps-sample file.nmea",
+            )
+        )
     return results
 
 
