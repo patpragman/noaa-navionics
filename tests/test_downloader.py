@@ -3413,6 +3413,23 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
+    def test_write_status_report_rejects_symlinked_output_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_cache = root / "real-cache"
+            real_cache.mkdir()
+            cache_link = root / ".cache"
+            try:
+                cache_link.symlink_to(real_cache, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            output = cache_link / "noaa-navionics" / "status.json"
+
+            with self.assertRaisesRegex(RuntimeError, "status report parent directory .* is a symlink"):
+                write_status_report({"ok": True}, output)
+
+            self.assertFalse((real_cache / "noaa-navionics").exists())
+
     def test_write_status_report_syncs_file_and_directory(self):
         calls = []
         original_fsync = report_module.os.fsync

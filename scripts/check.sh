@@ -68,6 +68,7 @@ grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
 grep -q 'prepare_private_cache_dir' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache parent directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
@@ -854,10 +855,13 @@ grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
 grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
+grep -q 'status report parent directory' src/noaa_navionics/report.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
 grep -q 'status report cache directory' scripts/verify_pi.sh
+grep -q 'status report cache parent directory is a symlink' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
+grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock pid file has permissions' scripts/verify_pi.sh
 grep -q 'def _fsync_directory' src/noaa_navionics/cli.py
@@ -1062,6 +1066,8 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' README
 grep -q 'missing or disabled chart-refresh service still fails readiness' docs/sailboat-pi.md
 grep -q 'user unit path and parent-directory integrity' README.md
 grep -q 'user unit path and parent-directory integrity' docs/sailboat-pi.md
+grep -q 'rejects symlinked cache parents' README.md
+grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_path_is_symlink"' src/noaa_navionics/report.py
@@ -2321,6 +2327,25 @@ if [[ "$gps_time_code" -eq 0 ]]; then
   exit 1
 fi
 grep -q 'unterminated NOAA Navionics GPS time block' "$gpsd_output"
+
+launcher_symlink_cache_parent_home="$tmpdir/launcher-symlink-cache-parent-home"
+launcher_symlink_cache_parent_target="$tmpdir/launcher-symlink-cache-parent-target"
+launcher_symlink_cache_parent_output="$tmpdir/launcher-symlink-cache-parent.out"
+mkdir -p "$launcher_symlink_cache_parent_home/.local/bin" "$launcher_symlink_cache_parent_target"
+ln -s "$launcher_symlink_cache_parent_target" "$launcher_symlink_cache_parent_home/.cache"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_cache_parent_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_symlink_cache_parent_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_symlink_cache_parent_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_symlink_cache_parent_output" 2>&1
+launcher_symlink_cache_parent_code=$?
+set -e
+if [[ "$launcher_symlink_cache_parent_code" -eq 0 ]]; then
+  cat "$launcher_symlink_cache_parent_output" >&2
+  echo "expected chartplotter launcher to reject a symlinked cache parent directory" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics cache parent directory is a symlink' "$launcher_symlink_cache_parent_output"
+test ! -e "$launcher_symlink_cache_parent_target/noaa-navionics"
 
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"

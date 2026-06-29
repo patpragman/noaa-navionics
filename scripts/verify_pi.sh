@@ -434,6 +434,8 @@ if status_mode != 0o600:
 cache_dir = status_path.parent
 if cache_dir.is_symlink():
     raise SystemExit(f"status report cache directory is a symlink: {cache_dir}")
+if cache_dir.parent.is_symlink():
+    raise SystemExit(f"status report cache parent directory is a symlink: {cache_dir.parent}")
 if not cache_dir.is_dir():
     raise SystemExit(f"status report cache directory is not a directory: {cache_dir}")
 try:

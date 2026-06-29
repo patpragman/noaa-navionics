@@ -243,7 +243,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 The status report includes readiness checks, NOAA Navionics user unit path and parent-directory integrity checks, parsed user unit-file `[Install]` targets, loaded user unit fragment-path and setting checks when systemd reports them, a recent valid current-boot GPX trackpoint check with a brief post-GPS wait for the logger to flush, launcher environment path integrity and settings with fail-closed startup and OpenCPN restart-setting checks, parsed OpenCPN chart/GPSD config path integrity and state, desktop autostart and LightDM autologin path and parent-directory integrity and state, GPSD startup config checks for local receivers, and GPSD socket/service plus chrony service state checks.
 The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
-The status JSON is synced to disk along with the replacement directory entry.
+The status JSON is synced to disk along with the replacement directory entry, and strict verification rejects symlinked cache parents, public cache directories, or public status files.
 It also records the current Linux boot ID and installed source revision through synced atomic file writes so you can confirm the Pi is running the expected deployment and that the recorded revision path is not symlinked. On Raspberry Pi targets, readiness fails if that deployed source revision is missing, symlinked, or recorded as `unknown`.
 
 Expected checks:

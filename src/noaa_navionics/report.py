@@ -194,6 +194,8 @@ def _prepare_private_status_parent(path: Path) -> None:
     path = Path(path).expanduser()
     if path.is_symlink():
         raise RuntimeError(f"status report directory {path} is a symlink")
+    if path.parent.is_symlink():
+        raise RuntimeError(f"status report parent directory {path.parent} is a symlink")
     path.mkdir(parents=True, mode=0o700, exist_ok=True)
     stat_result = path.stat()
     if stat_result.st_uid != os.getuid():

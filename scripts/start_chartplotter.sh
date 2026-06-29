@@ -51,6 +51,12 @@ PY
 }
 
 prepare_private_cache_dir() {
+  local cache_parent
+  cache_parent="$(dirname "$cache_dir")"
+  if [[ -L "$cache_parent" ]]; then
+    echo "NOAA Navionics cache parent directory is a symlink: $cache_parent" >&2
+    exit 1
+  fi
   if [[ -L "$cache_dir" ]]; then
     echo "NOAA Navionics cache directory is a symlink: $cache_dir" >&2
     exit 1
