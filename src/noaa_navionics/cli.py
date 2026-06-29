@@ -529,7 +529,12 @@ def _read_nmea_lines_until(stream, deadline: float):
                 yield line
 
 
-def _trackable_fixes(fixes):
+def _trackable_fixes(
+    fixes,
+    *,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 30.0,
+):
     last_skip_detail = ""
     pending_without_quality = None
     for fix in fixes:
@@ -549,6 +554,17 @@ def _trackable_fixes(fixes):
                 print(f"Skipping untimestamped track fix: {detail}", file=sys.stderr)
                 last_skip_detail = detail
             continue
+        freshness_detail = _track_fix_freshness_failure(
+            fix,
+            max_fix_age_seconds=max_fix_age_seconds,
+            future_tolerance_seconds=future_tolerance_seconds,
+        )
+        if freshness_detail:
+            pending_without_quality = None
+            if freshness_detail != last_skip_detail:
+                print(f"Skipping stale track fix: {freshness_detail}", file=sys.stderr)
+                last_skip_detail = freshness_detail
+            continue
         last_skip_detail = ""
         if not gps_fix_has_quality_fields(fix):
             if pending_without_quality is not None:
@@ -559,6 +575,22 @@ def _trackable_fixes(fixes):
         yield fix
     if pending_without_quality is not None:
         yield pending_without_quality
+
+
+def _track_fix_freshness_failure(
+    fix,
+    *,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 30.0,
+) -> str:
+    if fix.timestamp is None:
+        return "fix has no timestamp; cannot write reliable GPX trackpoint"
+    age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
+    if age_seconds > max_fix_age_seconds:
+        return f"fix timestamp is stale ({age_seconds:.0f}s old)"
+    if age_seconds < -future_tolerance_seconds:
+        return f"fix timestamp is in the future by {-age_seconds:.0f}s"
+    return ""
 
 
 class _TrackLoggerStop(Exception):
