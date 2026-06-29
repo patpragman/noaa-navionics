@@ -56,6 +56,8 @@ Download Alaska ENCs and extract them:
 noaa-navionics download --state AK --output ~/charts/noaa-enc --extract
 ```
 
+For unreliable marina or hotspot networks, `download` and `sync-charts` accept `--retries` and `--retry-delay`.
+
 Download the 10-day update bundle:
 
 ```bash
@@ -182,6 +184,7 @@ noaa-navionics log-track
 
 A user-level systemd timer is included in `systemd/`.
 The Pi provisioning script enables user lingering so the timer and track logger can run after reboot without an interactive login.
+The included chart sync service retries transient network failures before reporting a failed run.
 
 ```bash
 mkdir -p ~/.config/systemd/user

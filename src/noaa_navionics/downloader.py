@@ -12,6 +12,7 @@ import json
 import os
 import shutil
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -162,6 +163,8 @@ def download_package(
     keep_zip: bool = True,
     force: bool = False,
     timeout: float = 60,
+    retries: int = 1,
+    retry_delay: float = 2.0,
     progress: Optional[ProgressCallback] = None,
 ) -> DownloadResult:
     output_path = Path(output_dir).expanduser()
@@ -177,30 +180,39 @@ def download_package(
             write_manifest(output_path, package, result)
         return result
 
+    if retries < 1:
+        raise ValueError("retries must be at least 1")
     tmp_path = destination.with_suffix(destination.suffix + ".part")
     request = Request(package.url, headers={"User-Agent": USER_AGENT})
-    hasher = hashlib.sha256()
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            total = _content_length(response)
-            written = 0
-            with tmp_path.open("wb") as target:
-                while True:
-                    chunk = response.read(1024 * 256)
-                    if not chunk:
-                        break
-                    target.write(chunk)
-                    hasher.update(chunk)
-                    written += len(chunk)
-                    if progress:
-                        progress(written, total)
-    except (HTTPError, URLError, TimeoutError) as exc:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise RuntimeError(f"download failed for {package.url}: {exc}") from exc
+    written = 0
+    digest = ""
+    for attempt in range(1, retries + 1):
+        hasher = hashlib.sha256()
+        written = 0
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                total = _content_length(response)
+                with tmp_path.open("wb") as target:
+                    while True:
+                        chunk = response.read(1024 * 256)
+                        if not chunk:
+                            break
+                        target.write(chunk)
+                        hasher.update(chunk)
+                        written += len(chunk)
+                        if progress:
+                            progress(written, total)
+        except (HTTPError, URLError, TimeoutError) as exc:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            if attempt < retries and _retryable_download_error(exc):
+                time.sleep(retry_delay)
+                continue
+            raise RuntimeError(f"download failed for {package.url}: {exc}") from exc
+        digest = hasher.hexdigest()
+        break
 
     os.replace(tmp_path, destination)
-    digest = hasher.hexdigest()
     extracted_to = None
     if extract and destination.suffix.lower() == ".zip":
         extracted_to = extract_zip(destination, output_path / destination.stem)
@@ -430,6 +442,12 @@ def _content_length(response: object) -> Optional[int]:
         return int(value)
     except ValueError:
         return None
+
+
+def _retryable_download_error(exc: BaseException) -> bool:
+    if isinstance(exc, HTTPError):
+        return exc.code in {408, 429, 500, 502, 503, 504}
+    return isinstance(exc, (URLError, TimeoutError))
 
 
 def _local_name(tag: str) -> str:

@@ -282,6 +282,8 @@ class DownloaderApp(tk.Tk):
                 extract=app_config.extract,
                 keep_zip=app_config.keep_zip,
                 force=app_config.force,
+                retries=3,
+                retry_delay=10.0,
                 progress=progress,
             )
             self.queue.put(("done", result))

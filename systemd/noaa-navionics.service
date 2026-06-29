@@ -3,4 +3,4 @@ Description=Download NOAA ENC charts
 
 [Service]
 Type=oneshot
-ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini
+ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30

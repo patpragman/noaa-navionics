@@ -37,11 +37,15 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--no-keep-zip", action="store_true", help="remove ZIP after successful extraction")
     download.add_argument("--force", action="store_true", help="overwrite an existing local file")
     download.add_argument("--timeout", type=float, default=60, help="network timeout in seconds")
+    download.add_argument("--retries", type=int, default=1, help="download attempts before failing")
+    download.add_argument("--retry-delay", type=float, default=2.0, help="seconds between retryable failures")
     download.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
 
     sync = subparsers.add_parser("sync-charts", help="download the chart package from the config file")
     sync.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     sync.add_argument("--force", action="store_true", help="override config and force redownload")
+    sync.add_argument("--retries", type=int, default=3, help="download attempts before failing")
+    sync.add_argument("--retry-delay", type=float, default=10.0, help="seconds between retryable failures")
 
     catalog = subparsers.add_parser("catalog", help="download NOAA's XML product catalog")
     catalog.add_argument("--output", "-o", default="~/charts/noaa-enc", help="download directory")
@@ -145,6 +149,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 keep_zip=not args.no_keep_zip,
                 force=args.force,
                 timeout=args.timeout,
+                retries=args.retries,
+                retry_delay=args.retry_delay,
                 progress=progress,
             )
             print()
@@ -170,6 +176,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 extract=app_config.extract,
                 keep_zip=app_config.keep_zip,
                 force=args.force or app_config.force,
+                retries=args.retries,
+                retry_delay=args.retry_delay,
             )
             print(f"Downloaded: {result.path}" if not result.skipped else f"Already exists: {result.path}")
             if result.extracted_to:
