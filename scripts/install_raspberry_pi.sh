@@ -102,6 +102,46 @@ if venv.exists() or venv.is_symlink():
 PY
 }
 
+write_source_revision() {
+  local revision="$1"
+  python3 - "$revision_file" "$revision" <<'PY'
+from pathlib import Path
+import os
+import sys
+import tempfile
+
+target = Path(sys.argv[1]).expanduser()
+revision = sys.argv[2].strip() or "unknown"
+target.parent.mkdir(parents=True, exist_ok=True)
+tmp_path = None
+try:
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=target.parent,
+        prefix=f".{target.name}.",
+        suffix=".part",
+        delete=False,
+    ) as handle:
+        tmp_path = Path(handle.name)
+        handle.write(revision + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp_path, target)
+    fd = os.open(target.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+finally:
+    if tmp_path is not None:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+PY
+}
+
 apt_update() {
   sudo env DEBIAN_FRONTEND=noninteractive apt-get update
 }
@@ -208,12 +248,13 @@ sync_paths \
   "${HOME}/.local/bin/noaa-navionics-configure-gps-time"
 
 if [[ -f "${repo_root}/.source-revision" ]]; then
-  cp "${repo_root}/.source-revision" "$revision_file"
+  revision="$(tr -d '[:space:]' <"${repo_root}/.source-revision")"
 elif revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null)"; then
-  printf '%s\n' "$revision" >"$revision_file"
+  :
 else
-  printf 'unknown\n' >"$revision_file"
+  revision="unknown"
 fi
+write_source_revision "$revision"
 sync_paths "$revision_file"
 
 mkdir -p "$config_dir" "$systemd_user_dir"

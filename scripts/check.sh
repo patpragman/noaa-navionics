@@ -145,6 +145,9 @@ grep -q -- '--skip-services requires --skip-autologin' scripts/deploy_to_pi.sh
 grep -Fq 'scripts/install_raspberry_pi.sh ${remote_install_args[*]}' scripts/deploy_to_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
+grep -q 'write_source_revision' scripts/install_raspberry_pi.sh
+grep -q 'tempfile.NamedTemporaryFile' scripts/install_raspberry_pi.sh
+grep -q 'os.replace(tmp_path, target)' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
