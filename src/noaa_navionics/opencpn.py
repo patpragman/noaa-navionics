@@ -102,7 +102,7 @@ def configure_chart_directory(
     backup_path = None
 
     if changed and not dry_run:
-        target.parent.mkdir(parents=True, exist_ok=True)
+        _prepare_config_parent(target)
         if backup and target.exists():
             backup_path = _write_backup(target)
         _write_text_atomic(target, updated)
@@ -131,7 +131,7 @@ def configure_gpsd_connection(
     backup_path = None
 
     if changed and not dry_run:
-        target.parent.mkdir(parents=True, exist_ok=True)
+        _prepare_config_parent(target)
         if backup and target.exists():
             backup_path = _write_backup(target)
         _write_text_atomic(target, updated)
@@ -174,6 +174,7 @@ def _process_state_from_stat_text(text: str) -> str:
 
 
 def _write_backup(target: Path) -> Path:
+    _prepare_config_parent(target)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = _available_backup_path(target, stamp)
     with backup_path.open("xb") as handle:
@@ -196,7 +197,7 @@ def _available_backup_path(target: Path, stamp: str) -> Path:
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
+    _prepare_config_parent(target)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -219,6 +220,31 @@ def _write_text_atomic(target: Path, text: str) -> None:
                 tmp_path.unlink()
             except FileNotFoundError:
                 pass
+
+
+def _prepare_config_parent(target: Path) -> None:
+    parent = target.parent
+    if parent.is_symlink():
+        raise RuntimeError(f"OpenCPN config directory is a symlink: {parent}")
+    parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    if parent.is_symlink():
+        raise RuntimeError(f"OpenCPN config directory is a symlink: {parent}")
+    if not parent.is_dir():
+        raise RuntimeError(f"OpenCPN config parent is not a directory: {parent}")
+    try:
+        parent_stat = parent.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect OpenCPN config directory {parent}: {exc}") from exc
+    if parent_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"OpenCPN config directory {parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}"
+        )
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o022:
+        raise RuntimeError(
+            f"OpenCPN config directory {parent} has permissions {parent_mode:04o}, "
+            "expected no group/other write bits"
+        )
 
 
 def _fsync_directory(path: Path) -> None:

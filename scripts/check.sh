@@ -866,6 +866,10 @@ grep -q 'track_output=app_config.track_output' src/noaa_navionics/gui.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
+grep -q 'def _prepare_config_parent' src/noaa_navionics/opencpn.py
+grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN config directory .* has permissions' src/noaa_navionics/opencpn.py
+grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
 grep -q 'backup_path.open("xb")' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py

@@ -351,8 +351,36 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertTrue(result.changed)
             self.assertEqual(result.key, "ChartDir1")
             self.assertTrue(config.exists())
+            self.assertEqual(config.parent.stat().st_mode & 0o777, 0o700)
             self.assertEqual(read_chart_directories(config), [charts.resolve()])
             self.assertTrue(chart_directory_configured(charts, config))
+
+    def test_configure_chart_directory_rejects_writable_config_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / ".opencpn"
+            parent.mkdir()
+            parent.chmod(0o777)
+            config = parent / "opencpn.conf"
+            try:
+                with self.assertRaisesRegex(RuntimeError, "no group/other write bits"):
+                    configure_chart_directory(root / "charts", config_path=config)
+            finally:
+                parent.chmod(0o700)
+
+    def test_configure_chart_directory_rejects_symlinked_config_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_parent = root / "real-opencpn"
+            real_parent.mkdir()
+            link_parent = root / ".opencpn"
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "symlink"):
+                configure_chart_directory(root / "charts", config_path=link_parent / "opencpn.conf")
 
     def test_configure_chart_directory_is_idempotent_and_backs_up_existing_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
