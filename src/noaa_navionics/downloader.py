@@ -202,10 +202,14 @@ def _download_package_unlocked(
 
     if destination.exists() and not force:
         digest = sha256_file(destination)
-        result = DownloadResult(destination, package.url, destination.stat().st_size, skipped=True, sha256=digest)
+        bytes_written = destination.stat().st_size
+        result = DownloadResult(destination, package.url, bytes_written, skipped=True, sha256=digest)
         if extract and destination.suffix.lower() == ".zip":
             extracted_to = extract_zip(destination, output_path / destination.stem)
-            result = DownloadResult(destination, package.url, destination.stat().st_size, True, extracted_to, digest)
+            if not keep_zip:
+                destination.unlink()
+                _fsync_directory(output_path)
+            result = DownloadResult(destination, package.url, bytes_written, True, extracted_to, digest)
             write_manifest(output_path, package, result)
         return result
 

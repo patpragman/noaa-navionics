@@ -532,6 +532,23 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
             self.assertTrue(check_chart_manifest(output, expected_package="state", expected_value="AK").ok)
 
+    def test_existing_zip_extract_respects_no_keep_zip(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            existing = output / "AK_ENCs.zip"
+            with zipfile.ZipFile(existing, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
+
+            result = download_package(package, output, extract=True, keep_zip=False)
+
+            self.assertTrue(result.skipped)
+            self.assertFalse(existing.exists())
+            self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
+            manifest = read_manifest(output)
+            self.assertEqual(manifest["download"]["bytes"], result.bytes_written)
+            self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
+
     def test_write_manifest_does_not_reuse_fixed_part_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir)

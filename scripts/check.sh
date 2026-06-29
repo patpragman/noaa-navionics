@@ -112,6 +112,7 @@ grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
+grep -q 'if not keep_zip' src/noaa_navionics/downloader.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
