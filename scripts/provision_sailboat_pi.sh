@@ -465,7 +465,7 @@ write_launcher_env() {
   else
     launcher_env_dir="$(dirname "$launcher_env")"
     mkdir -p "$launcher_env_dir"
-    launcher_env_tmp="$(mktemp "${launcher_env_dir}/launcher.env.XXXXXX")"
+    launcher_env_tmp="$(mktemp "${launcher_env_dir}/.launcher.env.XXXXXX")"
     if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\n' "$gps_seconds" >"$launcher_env_tmp"; then
       rm -f "$launcher_env_tmp"
       return 1
