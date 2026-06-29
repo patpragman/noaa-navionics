@@ -905,6 +905,9 @@ grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/config.py
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config is a symlink' src/noaa_navionics/config.py
+grep -q 'test_read_config_rejects_symlinked_config_file' tests/test_downloader.py
+grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
