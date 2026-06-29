@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from noaa_navionics import health as health_module
 from noaa_navionics import downloader as downloader_module
+from noaa_navionics import gps as gps_module
 from noaa_navionics import cli as cli_module
 from noaa_navionics.downloader import (
     DOWNLOAD_LOCK_NAME,
@@ -918,6 +919,21 @@ class GpsTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("<trkpt lat=\"48.11730000\" lon=\"11.51666667\">", text)
             self.assertIn("<ele>545.40</ele>", text)
+
+    def test_gpx_logger_syncs_track_file_to_disk(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        calls = []
+        original_fsync = gps_module.os.fsync
+        gps_module.os.fsync = lambda fd: calls.append(fd)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = Path(tmpdir) / "track.gpx"
+                with GPXTrackLogger(path, fsync_interval_seconds=0) as logger:
+                    logger.append(fix)
+        finally:
+            gps_module.os.fsync = original_fsync
+
+        self.assertGreaterEqual(len(calls), 3)
 
     def test_gpx_logger_does_not_overwrite_existing_file(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)

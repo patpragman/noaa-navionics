@@ -198,7 +198,7 @@ Track logging:
 noaa-navionics log-track
 ```
 
-The systemd track logger writes daily GPX files and prunes rotated track logs older than `[tracking] retention_days` from the onboard config. GPX files are created exclusively so existing tracks are not silently overwritten, and SIGTERM/SIGINT shutdown closes the current GPX file before exit. The default retention is 90 days; set it to `0` to keep all rotated track logs.
+The systemd track logger writes daily GPX files and prunes rotated track logs older than `[tracking] retention_days` from the onboard config. GPX files are created exclusively so existing tracks are not silently overwritten, periodically synced to disk to reduce data loss after abrupt power loss, and SIGTERM/SIGINT shutdown closes the current GPX file before exit. The default retention is 90 days; set it to `0` to keep all rotated track logs.
 
 ## Raspberry Pi Automation
 

@@ -174,10 +174,18 @@ def iter_gpsd_fixes(host: str = "127.0.0.1", port: int = 2947, timeout: float = 
 
 
 class GPXTrackLogger:
-    def __init__(self, path: Path, name: str = "NOAA Navionics Track") -> None:
+    def __init__(
+        self,
+        path: Path,
+        name: str = "NOAA Navionics Track",
+        *,
+        fsync_interval_seconds: float = 30.0,
+    ) -> None:
         self.path = Path(path).expanduser()
         self.name = name
+        self.fsync_interval_seconds = fsync_interval_seconds
         self.file: Optional[TextIO] = None
+        self._last_fsync_monotonic: Optional[float] = None
 
     def __enter__(self) -> "GPXTrackLogger":
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -186,12 +194,15 @@ class GPXTrackLogger:
         self.file.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')
         self.file.write(f"  <trk><name>{escape(self.name)}</name><trkseg>\n")
         self.file.flush()
+        self._sync_to_disk(force=True)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if not self.file:
             return
         self.file.write("  </trkseg></trk>\n</gpx>\n")
+        self.file.flush()
+        self._sync_to_disk(force=True)
         self.file.close()
         self.file = None
 
@@ -207,6 +218,20 @@ class GPXTrackLogger:
             self.file.write(f"      <time>{fix.timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}</time>\n")
         self.file.write("    </trkpt>\n")
         self.file.flush()
+        self._sync_to_disk()
+
+    def _sync_to_disk(self, *, force: bool = False) -> None:
+        if not self.file:
+            return
+        interval = self.fsync_interval_seconds
+        if interval < 0 and not force:
+            return
+        current = time.monotonic()
+        if not force and self._last_fsync_monotonic is not None:
+            if current - self._last_fsync_monotonic < interval:
+                return
+        os.fsync(self.file.fileno())
+        self._last_fsync_monotonic = current
 
 
 def default_track_path(base_dir: Path) -> Path:
