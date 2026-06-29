@@ -360,7 +360,9 @@ def format_status_text(report: dict[str, object]) -> str:
         if "latest_latitude" in track_log and "latest_longitude" in track_log:
             coordinates = f" {track_log.get('latest_latitude')},{track_log.get('latest_longitude')}"
         lines.append(
+            f"track_output={track_log.get('track_output', '')} "
             f"tracks_dir={track_log.get('tracks_dir', '')} ok={track_log.get('ok', '')} "
+            f"track_output_is_symlink={track_log.get('track_output_is_symlink', '')} "
             f"dir_mode={track_log.get('tracks_mode', '')} latest={latest}{coordinates} "
             f"mode={track_log.get('latest_mode', '')} "
             f"detail={track_log.get('detail', '')}".rstrip()
@@ -473,13 +475,19 @@ def _track_log_summary_once(
     current = current.astimezone(timezone.utc)
     expected_owner = os.getuid() if expected_uid is None else expected_uid
     boot_time = _current_boot_epoch() if boot_epoch is None else boot_epoch
-    tracks_dir = Path(track_output).expanduser() / "tracks"
+    track_output_path = Path(track_output).expanduser()
+    tracks_dir = track_output_path / "tracks"
     summary: dict[str, object] = {
+        "track_output": str(track_output_path),
+        "track_output_is_symlink": track_output_path.is_symlink(),
         "tracks_dir": str(tracks_dir),
         "exists": tracks_dir.exists(),
         "ok": False,
         "max_age_seconds": max_age_seconds,
     }
+    if track_output_path.is_symlink():
+        summary["detail"] = f"{track_output_path} is a symlink, expected real GPX track storage"
+        return summary
     if not tracks_dir.exists():
         summary["detail"] = f"{tracks_dir} does not exist"
         return summary

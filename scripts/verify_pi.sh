@@ -618,7 +618,20 @@ if expected_config_path:
     track_log = report.get("track_log")
     if not isinstance(track_log, dict):
         raise SystemExit("status report has no track_log section")
-    expected_tracks_dir = Path(expected_config["track_output"]).expanduser() / "tracks"
+    expected_track_output = Path(expected_config["track_output"]).expanduser()
+    expected_tracks_dir = expected_track_output / "tracks"
+    actual_track_output = str(track_log.get("track_output", "")).strip()
+    if actual_track_output != str(expected_track_output):
+        raise SystemExit(
+            f"status report track_log track_output {actual_track_output or '<missing>'} "
+            f"does not match configured {expected_track_output}"
+        )
+    if track_log.get("track_output_is_symlink") is not False:
+        raise SystemExit(
+            f"status report track_log track_output is a symlink or missing symlink status: {expected_track_output}"
+        )
+    if expected_track_output.is_symlink():
+        raise SystemExit(f"configured track output is a symlink: {expected_track_output}")
     actual_tracks_dir = str(track_log.get("tracks_dir", "")).strip()
     if actual_tracks_dir != str(expected_tracks_dir):
         raise SystemExit(
@@ -1121,6 +1134,8 @@ if any(not isinstance(check, dict) or check.get("ok") is not True for check in s
 track_log = report.get("track_log")
 if not isinstance(track_log, dict):
     raise SystemExit("status report has no track_log section")
+if track_log.get("track_output_is_symlink") is True:
+    raise SystemExit(f"status report track_log track_output is a symlink: {track_log.get('track_output', '<missing>')}")
 if track_log.get("ok") is not True:
     raise SystemExit(f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")
 latest_track_path = str(track_log.get("latest_path", "")).strip()
@@ -1923,7 +1938,8 @@ chart_output = parser.get("charts", "output", fallback="~/charts/noaa-enc").stri
 track_output = parser.get("tracking", "output", fallback=chart_output).strip()
 if not track_output:
     raise SystemExit("tracking.output is empty")
-tracks_dir = Path(track_output).expanduser() / "tracks"
+track_output_path = Path(track_output).expanduser()
+tracks_dir = track_output_path / "tracks"
 try:
     uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
 except Exception as exc:
@@ -1955,6 +1971,9 @@ def trackpoint_position(trackpoint):
 
 while True:
     now = time.time()
+    if track_output_path.is_symlink():
+        last_detail = f"{track_output_path} is a symlink, expected real GPX track storage"
+        raise SystemExit(last_detail)
     if tracks_dir.exists():
         if tracks_dir.is_symlink():
             last_detail = f"{tracks_dir} is a symlink, expected a private GPX tracks directory"

@@ -357,6 +357,7 @@ grep -q 'trackpoint_position' scripts/verify_pi.sh
 grep -q 'GPX trackpoint latitude is outside -90..90' scripts/verify_pi.sh
 grep -q 'GPX trackpoint longitude is outside -180..180' scripts/verify_pi.sh
 grep -q 'GPX trackpoint has invalid 0,0 coordinates' scripts/verify_pi.sh
+grep -q 'expected real GPX track storage' scripts/verify_pi.sh
 grep -q 'expected a regular GPX track file' scripts/verify_pi.sh
 grep -q 'resolves outside GPX tracks directory' scripts/verify_pi.sh
 grep -q 'expected {os.getuid()}' scripts/verify_pi.sh
@@ -401,6 +402,8 @@ grep -q 'Chrony config file integrity' scripts/verify_pi.sh
 grep -q 'GPSD config file integrity' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
 grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
+grep -q 'status report track_log track_output is a symlink' scripts/verify_pi.sh
+grep -q 'configured track output is a symlink' scripts/verify_pi.sh
 grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
 grep -q 'expected private 0700' scripts/verify_pi.sh
@@ -977,6 +980,9 @@ grep -q '"User Linger"' scripts/verify_pi.sh
 grep -q 'test_service_readiness_checks_include_user_linger' tests/test_downloader.py
 grep -q 'test_disk_check_rejects_symlinked_storage_directory' tests/test_downloader.py
 grep -q 'def _track_log_summary' src/noaa_navionics/report.py
+grep -q '"track_output_is_symlink"' src/noaa_navionics/report.py
+grep -q 'expected real GPX track storage' src/noaa_navionics/report.py
+grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downloader.py
 grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py

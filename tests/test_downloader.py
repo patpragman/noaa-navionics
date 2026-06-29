@@ -2828,6 +2828,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["lightdm_autologin"]["values"]["autologin-user-timeout"], "0")
             self.assertEqual(report["desktop"]["graphical_target"], "graphical.target")
             self.assertEqual(report["desktop"]["lightdm_enabled"], "enabled")
+            self.assertEqual(report["track_log"]["track_output"], str(charts))
+            self.assertEqual(report["track_log"]["track_output_is_symlink"], False)
             self.assertEqual(report["track_log"]["tracks_dir"], str(charts / "tracks"))
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
@@ -2876,6 +2878,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Launcher Settings:", text)
             self.assertIn("is_symlink=False", text)
             self.assertIn("Track Log:", text)
+            self.assertIn(f"track_output={charts}", text)
+            self.assertIn("track_output_is_symlink=False", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
@@ -3099,6 +3103,33 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(summary["ok"])
             self.assertFalse(check.ok)
             self.assertIn("permissions are 0755", check.detail)
+
+    def test_track_log_summary_rejects_symlinked_track_output(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            real_output = root / "real-tracks"
+            track_path = real_output / "tracks" / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+            link_output = root / "track-link"
+            try:
+                link_output.symlink_to(real_output, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = _track_log_summary(
+                link_output,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(summary["track_output"], str(link_output))
+            self.assertEqual(summary["track_output_is_symlink"], True)
+            self.assertFalse(check.ok)
+            self.assertIn("expected real GPX track storage", check.detail)
 
     def test_track_log_summary_rejects_public_track_file(self):
         timestamp = datetime.now(timezone.utc)
