@@ -1102,6 +1102,8 @@ class StatusReportTests(unittest.TestCase):
                 "properties": {
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
                     "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "5min",
+                    "StartLimitBurst": "5",
                 },
             },
         }

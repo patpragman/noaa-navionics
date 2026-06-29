@@ -565,6 +565,10 @@ check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-n
 check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
 check "preflight service loaded GPS wait config" sh -c 'systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fq "noaa-navionics/launcher.env"'
 check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
+check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=5min' "$preflight_service"
+check "preflight service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=5min'
+check "preflight service start limit burst" grep -Fxq 'StartLimitBurst=5' "$preflight_service"
+check "preflight service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=5'
 check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
 check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
