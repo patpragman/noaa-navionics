@@ -715,7 +715,9 @@ grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_ti
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
 grep -q 'validate_chrony_config_path' scripts/configure_gps_time.sh
+grep -q 'first_symlink_ancestor' scripts/configure_gps_time.sh
 grep -q 'Chrony config is a symlink' scripts/configure_gps_time.sh
+grep -q 'Chrony config directory is a symlink' scripts/configure_gps_time.sh
 grep -q 'Chrony config directory .* has permissions' scripts/configure_gps_time.sh
 grep -q 'expected no group/other write bits' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
@@ -740,6 +742,8 @@ grep -Fq 'line[1] in "*+"' src/noaa_navionics/health.py
 grep -Fq '^#[*+].*GPS' scripts/verify_pi.sh
 grep -q 'uncommented chrony GPSD time-source config' README.md
 grep -q 'uncommented GPSD time-source config' docs/sailboat-pi.md
+grep -q 'symlinked chrony config path components' README.md
+grep -q 'symlinked chrony config path components' docs/sailboat-pi.md
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
@@ -2078,6 +2082,27 @@ if [[ "$gps_time_code" -eq 0 ]]; then
   exit 1
 fi
 grep -q 'Chrony config is a symlink' "$gpsd_output"
+! grep -q 'Would update' "$gpsd_output"
+
+chrony_real_root="$tmpdir/real-chrony-root"
+chrony_link_root="$tmpdir/link-chrony-root"
+mkdir -p "$chrony_real_root/chrony"
+printf 'pool time.example iburst\n' >"$chrony_real_root/chrony/chrony.conf"
+ln -s "$chrony_real_root" "$chrony_link_root"
+set +e
+scripts/configure_gps_time.sh \
+  --allow-non-pi \
+  --dry-run \
+  --chrony-conf "$chrony_link_root/chrony/chrony.conf" >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject a symlinked chrony config ancestor" >&2
+  exit 1
+fi
+grep -q 'Chrony config directory is a symlink' "$gpsd_output"
+grep -q "$chrony_link_root" "$gpsd_output"
 ! grep -q 'Would update' "$gpsd_output"
 
 set +e

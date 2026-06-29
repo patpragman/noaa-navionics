@@ -171,12 +171,22 @@ path = Path(sys.argv[1])
 dry_run = sys.argv[2] == "1"
 parent = path.parent
 
+def first_symlink_ancestor(candidate):
+    current = Path(candidate).expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
 if path.is_symlink():
     raise SystemExit(f"Chrony config is a symlink: {path}")
 if path.exists() and not path.is_file():
     raise SystemExit(f"Chrony config is not a regular file: {path}")
 if parent.is_symlink():
     raise SystemExit(f"Chrony config directory is a symlink: {parent}")
+symlink_component = first_symlink_ancestor(parent)
+if symlink_component is not None:
+    raise SystemExit(f"Chrony config directory is a symlink: {symlink_component}")
 if parent.exists():
     if not parent.is_dir():
         raise SystemExit(f"Chrony config parent is not a directory: {parent}")
