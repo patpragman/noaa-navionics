@@ -72,6 +72,11 @@ check_output "configured packages" "$bin" list-packages
 
 printf '\n[systemd user units]\n'
 systemctl --user --no-pager list-unit-files 'noaa-navionics*' || failures=$((failures + 1))
+check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
+check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
+check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
+check "preflight service enabled" systemctl --user is-enabled --quiet noaa-navionics-preflight.service
+check "chart timer active" systemctl --user is-active --quiet noaa-navionics.timer
 
 printf '\n[preflight]\n'
 if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then

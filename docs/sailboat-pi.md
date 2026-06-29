@@ -33,7 +33,7 @@ Deploy and run the full onboard provisioning sequence:
 scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, user service enablement, and a final status report on the Pi.
+Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
 
 Verify the Raspberry Pi after deployment:
 
@@ -123,7 +123,7 @@ After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboar
 scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables the user timer and track/preflight services, and writes `~/.cache/noaa-navionics/status.json`.
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables user linger, enables the user timer and track/preflight services, and writes `~/.cache/noaa-navionics/status.json`.
 
 ## Startup
 

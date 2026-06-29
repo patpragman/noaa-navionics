@@ -166,6 +166,7 @@ noaa-navionics log-track
 ## Raspberry Pi Automation
 
 A user-level systemd timer is included in `systemd/`.
+The Pi provisioning script enables user lingering so the timer and track logger can run after reboot without an interactive login.
 
 ```bash
 mkdir -p ~/.config/systemd/user

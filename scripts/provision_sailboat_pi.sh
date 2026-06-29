@@ -172,6 +172,7 @@ if [[ "$skip_services" -eq 0 ]]; then
          "${repo_root}/systemd/noaa-navionics-preflight.service" \
          "$systemd_user_dir/"
   run systemctl --user daemon-reload
+  run sudo loginctl enable-linger "$USER"
   run systemctl --user enable --now noaa-navionics.timer
   run systemctl --user enable --now noaa-navionics-track.service
   run systemctl --user enable noaa-navionics-preflight.service
