@@ -462,6 +462,8 @@ preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 check "chart service file" test -f "$chart_service"
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
+check "chart service loaded timeout" sh -c 'systemctl --user show noaa-navionics.service -p TimeoutStartUSec 2>/dev/null | grep -Fxq TimeoutStartUSec=2h'
+check "chart service loaded restart delay" sh -c 'systemctl --user show noaa-navionics.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30min'
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "track service file" test -f "$track_service"
