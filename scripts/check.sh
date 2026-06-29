@@ -457,6 +457,16 @@ grep -q 'chartplotter launcher lock sync cleanup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
+grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
+grep -q 'check_root_regular_file_integrity' scripts/verify_pi.sh
+grep -q 'chartplotter launcher env file integrity' scripts/verify_pi.sh
+grep -q 'chartplotter autostart file integrity' scripts/verify_pi.sh
+grep -q 'LightDM autologin file integrity' scripts/verify_pi.sh
+grep -q 'chart service file integrity' scripts/verify_pi.sh
+grep -q 'chart timer file integrity' scripts/verify_pi.sh
+grep -q 'track service file integrity' scripts/verify_pi.sh
+grep -q 'preflight service file integrity' scripts/verify_pi.sh
+grep -q 'expected no group/other write bits' scripts/verify_pi.sh
 grep -q 'chartplotter launcher fail-open override disabled' scripts/verify_pi.sh
 grep -q 'production dock verification requires fail-closed chartplotter startup' scripts/verify_pi.sh
 grep -q 'status report launcher settings values' scripts/verify_pi.sh

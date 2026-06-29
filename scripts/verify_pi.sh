@@ -1117,6 +1117,74 @@ if normalized not in {"0", "no", "false", "off"}:
 PY
 }
 
+check_user_regular_file_integrity() {
+  local path="$1"
+  local label="$2"
+  local expected_uid
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+
+  expected_uid="$(id -u)"
+  if [[ -L "$path" ]]; then
+    printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if [[ ! -f "$path" ]]; then
+    printf '%s is not a regular file: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$path" 2>/dev/null)" || {
+    printf 'could not inspect %s: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "$expected_uid" ]]; then
+    printf '%s is owned by uid %s, expected %s: %s\n' "$label" "$owner_uid" "$expected_uid" "$path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    printf '%s has permissions %s, expected no group/other write bits: %s\n' "$label" "$mode_text" "$path" >&2
+    return 1
+  fi
+}
+
+check_root_regular_file_integrity() {
+  local path="$1"
+  local label="$2"
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+
+  if [[ -L "$path" ]]; then
+    printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if [[ ! -f "$path" ]]; then
+    printf '%s is not a regular file: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$path" 2>/dev/null)" || {
+    printf 'could not inspect %s: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "0" ]]; then
+    printf '%s is owned by uid %s, expected root: %s\n' "$label" "$owner_uid" "$path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    printf '%s has permissions %s, expected no group/other write bits: %s\n' "$label" "$mode_text" "$path" >&2
+    return 1
+  fi
+}
+
 launcher_env_value() {
   local key="$1"
   local default="$2"
@@ -1752,10 +1820,12 @@ fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
 check "chartplotter launcher OpenCPN restarts persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTARTS=${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$launcher_env"
 check "chartplotter launcher OpenCPN restart delay persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$launcher_env"
+check "chartplotter launcher env file integrity" check_user_regular_file_integrity "$launcher_env" "chartplotter launcher environment"
 check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
 set_chartplotter_start_timeout_from_launcher_env
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then
+  check "chartplotter autostart file integrity" check_user_regular_file_integrity "$autostart" "chartplotter autostart file"
   check "chartplotter autostart type" grep -Fxq 'Type=Application' "$autostart"
   check "chartplotter autostart name" grep -Fxq 'Name=NOAA Navionics Chartplotter' "$autostart"
   check "chartplotter autostart exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' "$autostart"
@@ -1768,6 +1838,7 @@ check "LightDM unit installed" sh -c 'systemctl --no-pager --no-legend list-unit
 check "LightDM enabled" systemctl is-enabled --quiet lightdm.service
 check "LightDM autologin config" test -f "$lightdm_autologin"
 if [[ -f "$lightdm_autologin" ]]; then
+  check "LightDM autologin file integrity" check_root_regular_file_integrity "$lightdm_autologin" "LightDM autologin config"
   check "LightDM autologin seat" grep -Fxq '[Seat:*]' "$lightdm_autologin"
   check "LightDM autologin user" grep -Fxq "autologin-user=${USER}" "$lightdm_autologin"
   check "LightDM autologin timeout" grep -Fxq 'autologin-user-timeout=0' "$lightdm_autologin"
@@ -1854,6 +1925,9 @@ chart_timer="${systemd_user_dir}/noaa-navionics.timer"
 track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 check "chart service file" test -f "$chart_service"
+if [[ -f "$chart_service" ]]; then
+  check "chart service file integrity" check_user_regular_file_integrity "$chart_service" "chart service unit file"
+fi
 check "chart service loaded fragment path" sh -c 'systemctl --user show noaa-navionics.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_service"
 check "chart service type" grep -Fxq 'Type=oneshot' "$chart_service"
 check "chart service loaded type" sh -c 'systemctl --user show noaa-navionics.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
@@ -1878,11 +1952,17 @@ check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
 check "chart timer loaded fragment path" sh -c 'systemctl --user show noaa-navionics.timer -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer randomized delay" grep -Fxq 'RandomizedDelaySec=30min' "$chart_timer"
+if [[ -f "$chart_timer" ]]; then
+  check "chart timer file integrity" check_user_regular_file_integrity "$chart_timer" "chart timer unit file"
+fi
 check "chart timer install target" check_unit_install_target "$chart_timer" timers.target
 check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
 check "chart timer loaded randomized delay" sh -c 'systemctl --user show noaa-navionics.timer -p RandomizedDelayUSec 2>/dev/null | grep -Fxq RandomizedDelayUSec=30min'
 check "track service file" test -f "$track_service"
+if [[ -f "$track_service" ]]; then
+  check "track service file integrity" check_user_regular_file_integrity "$track_service" "track service unit file"
+fi
 check "track service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-track.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$track_service"
 check "track service type" grep -Fxq 'Type=simple' "$track_service"
 check "track service loaded type" sh -c 'systemctl --user show noaa-navionics-track.service -p Type 2>/dev/null | grep -Fxq Type=simple'
@@ -1905,6 +1985,9 @@ check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_s
 check "track service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
 check "track service install target" check_unit_install_target "$track_service" default.target
 check "preflight service file" test -f "$preflight_service"
+if [[ -f "$preflight_service" ]]; then
+  check "preflight service file integrity" check_user_regular_file_integrity "$preflight_service" "preflight service unit file"
+fi
 check "preflight service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-preflight.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$preflight_service"
 check "preflight service wants track logger" grep -Fxq 'Wants=noaa-navionics-track.service' "$preflight_service"
 check "preflight service after track logger" grep -Fxq 'After=noaa-navionics-track.service' "$preflight_service"
