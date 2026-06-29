@@ -103,7 +103,7 @@ Deploy to a Raspberry Pi over SSH:
 scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
-Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix.
+Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
 
 Deploy and run the onboard provisioning sequence:
 
@@ -152,7 +152,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 Status reports include the current Linux boot ID and are written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
 The installed boot-time readiness service writes the same status report after login, reads the persisted GPS wait setting, and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, verifies their loaded restart/timer/start-limit settings when systemd reports them, fails readiness on failed or unqueryable required units, verifies `/etc/default/gpsd` for exactly the configured local GPS device and immediate polling, and checks GPSD and chrony service state in addition to recording raw service diagnostics. A failed weekly chart-refresh unit is reported but does not by itself fail readiness; the chart manifest age and contents decide whether the onboard charts are usable.
-Deploy/install records the source revision so status reports show which code is running on the Pi.
+Deploy/install records the source revision through synced atomic file writes so status reports show which code is running on the Pi.
 The strict dock-test verifier checks the pre-existing report's boot ID before it regenerates the report, proving the post-reboot launcher or readiness service already wrote a current-boot artifact.
 
 Start the Pi chartplotter launcher:

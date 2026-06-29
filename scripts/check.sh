@@ -79,6 +79,10 @@ grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
 grep -q 'launcher.env' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds "$gps_seconds"' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
+grep -q 'write_remote_source_revision' scripts/deploy_to_pi.sh
+grep -q 'tempfile.NamedTemporaryFile' scripts/deploy_to_pi.sh
+grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
+grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh

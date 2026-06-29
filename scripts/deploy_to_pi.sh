@@ -117,6 +117,51 @@ EOF
   source_revision="${source_revision}-dirty"
 fi
 
+write_remote_source_revision() {
+  local remote_dir_value="$1"
+  local revision_value="$2"
+  local remote_dir_env
+  local revision_env
+  remote_dir_env="$(printf '%q' "$remote_dir_value")"
+  revision_env="$(printf '%q' "$revision_value")"
+  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
+from pathlib import Path
+import os
+import tempfile
+
+repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
+revision = os.environ['NOAA_NAVIONICS_SOURCE_REVISION'].strip() or 'unknown'
+repo.mkdir(parents=True, exist_ok=True)
+target = repo / '.source-revision'
+tmp_path = None
+try:
+    with tempfile.NamedTemporaryFile(
+        'w',
+        encoding='utf-8',
+        dir=repo,
+        prefix='.source-revision.',
+        suffix='.part',
+        delete=False,
+    ) as handle:
+        tmp_path = Path(handle.name)
+        handle.write(revision + '\n')
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp_path, target)
+    fd = os.open(repo, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+finally:
+    if tmp_path is not None:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+PY"
+}
+
 ssh "$target" "mkdir -p ${remote_dir_quoted}"
 rsync -az --delete \
   --exclude '.git/' \
@@ -125,7 +170,7 @@ rsync -az --delete \
   --exclude '.pytest_cache/' \
   --exclude 'charts/' \
   "${repo_root}/" "${target}:${remote_dir}/"
-printf '%s\n' "$source_revision" | ssh "$target" "cat > ${remote_dir_quoted}/.source-revision"
+write_remote_source_revision "$remote_dir" "$source_revision"
 
 ssh -t "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh"
 
