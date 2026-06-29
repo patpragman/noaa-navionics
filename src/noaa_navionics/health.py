@@ -646,6 +646,8 @@ def check_gps_device_path(device: str) -> CheckResult:
     path = Path(device).expanduser()
     if not path.exists():
         return CheckResult("GPS Device", False, f"{path} does not exist")
+    if path.is_dir():
+        return CheckResult("GPS Device", False, f"{path} is a directory, not a GPS device")
     try:
         resolved = path.resolve()
     except OSError:
@@ -718,7 +720,8 @@ def _split_shell_words(value: str) -> list[str]:
 
 
 def _stable_gps_device_path(path: str) -> bool:
-    return "/dev/serial/by-id/" in path or path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+    by_id_prefix = "/dev/serial/by-id/"
+    return (path.startswith(by_id_prefix) and path != by_id_prefix) or path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
 def _volatile_usb_device_path(path: str) -> bool:

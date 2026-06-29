@@ -56,6 +56,9 @@ volatile_usb_device_path() {
 
 stable_gps_device_path() {
   case "$1" in
+    /dev/serial/by-id/)
+      return 1
+      ;;
     /dev/serial/by-id/*|/dev/serial0|/dev/serial1|/dev/gps)
       return 0
       ;;
@@ -157,6 +160,11 @@ if [[ "$check_device" -eq 1 && ! -e "$device" ]]; then
 GPS device does not exist: $device
 Use a stable path from /dev/serial/by-id/, or pass --no-device-check if it is not plugged in yet.
 EOF
+  exit 2
+fi
+
+if [[ "$check_device" -eq 1 && -d "$device" ]]; then
+  echo "GPS device path is a directory, not a GPS device: $device" >&2
   exit 2
 fi
 

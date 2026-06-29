@@ -13,6 +13,7 @@ import time
 import unittest
 import zipfile
 import os
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -2565,18 +2566,26 @@ class GpsTests(unittest.TestCase):
         self.assertIn("does not exist", result.detail)
 
     def test_check_gps_device_path_accepts_stable_symlink(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            target = root / "ttyACM0"
-            target.write_text("", encoding="ascii")
-            stable = root / "dev" / "serial" / "by-id" / "usb-gps"
-            stable.parent.mkdir(parents=True)
-            stable.symlink_to(target)
-
+        with (
+            patch("noaa_navionics.health.Path.exists", return_value=True),
+            patch("noaa_navionics.health.Path.is_dir", return_value=False),
+            patch("noaa_navionics.health.Path.resolve", return_value=Path("/dev/ttyACM0")),
+        ):
+            stable = "/dev/serial/by-id/usb-gps"
             result = check_gps_device_path(str(stable))
 
             self.assertTrue(result.ok)
             self.assertIn("usb-gps", result.detail)
+
+    def test_check_gps_device_path_rejects_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = check_gps_device_path(tmpdir)
+
+            self.assertFalse(result.ok)
+            self.assertIn("directory", result.detail)
+
+    def test_stable_gps_device_path_rejects_bare_by_id_directory(self):
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/"))
 
     def test_check_gps_device_path_rejects_volatile_usb_name(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -419,6 +419,9 @@ PY
 
 stable_gps_device_path() {
   case "$1" in
+    /dev/serial/by-id/)
+      return 1
+      ;;
     /dev/serial/by-id/*|/dev/serial0|/dev/serial1|/dev/gps)
       return 0
       ;;
@@ -721,6 +724,7 @@ if [[ -r /etc/default/gpsd ]]; then
   gpsd_device="$(awk '{print $1}' <<<"$gpsd_devices")"
   if [[ -n "$gpsd_device" ]]; then
     check "GPSD device exists" test -e "$gpsd_device"
+    check "GPSD device is not directory" test ! -d "$gpsd_device"
     check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"
     if stable_gps_device_path "$gpsd_device"; then
       printf 'OK   GPSD stable device path %s\n' "$gpsd_device"

@@ -231,6 +231,8 @@ grep -q 'preflight service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
+grep -q 'GPSD device is not directory' scripts/verify_pi.sh
+grep -q '/dev/serial/by-id/)' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
 grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
@@ -243,6 +245,8 @@ grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
+grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
+grep -q '/dev/serial/by-id/)' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -290,6 +294,7 @@ grep -q 'Track Disk' src/noaa_navionics/health.py
 grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py
 grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
+grep -q 'is a directory, not a GPS device' src/noaa_navionics/health.py
 grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
@@ -582,6 +587,16 @@ set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
   echo "expected configure_gpsd.sh to reject unrecognized GPS device paths with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device /dev/serial/by-id/ >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject bare GPS by-id directory paths with exit 2" >&2
   exit 1
 fi
 
