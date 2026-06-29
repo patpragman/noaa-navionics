@@ -561,6 +561,19 @@ grep -q 'manifest download path is outside chart directory' src/noaa_navionics/h
 grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("src/noaa_navionics/health.py").read_text(encoding="utf-8")
+start = text.index("def _check_manifest_archive")
+end = text.index("\ndef _expected_manifest_package", start)
+block = text[start:end]
+bytes_index = block.index('expected_bytes = int(download.get("bytes", 0))')
+sha_index = block.index('expected_sha256 = str(download.get("sha256", "")).strip().lower()')
+exists_index = block.index('if not archive_path.exists():')
+if not (bytes_index < exists_index and sha_index < exists_index):
+    raise SystemExit("manifest download byte count and SHA-256 must be validated before retained ZIP existence")
+PY
 grep -q 'create or mount the configured storage path' src/noaa_navionics/health.py
 grep -q 'REMOVABLE_STORAGE_ROOTS' src/noaa_navionics/health.py
 grep -q 'no mounted storage device' src/noaa_navionics/health.py

@@ -522,26 +522,26 @@ def _check_manifest_archive(
         archive_path.resolve().relative_to(chart_dir.resolve())
     except ValueError:
         return CheckResult("Manifest", False, f"manifest download path is outside chart directory: {archive_path}")
-    if not archive_path.exists():
-        if required:
-            return CheckResult("Manifest", False, f"manifest retained download path is missing: {archive_path}")
-        return None
     try:
         expected_bytes = int(download.get("bytes", 0))
     except (TypeError, ValueError):
         return CheckResult("Manifest", False, "manifest has invalid download byte count")
-    actual_bytes = archive_path.stat().st_size
     if expected_bytes <= 0:
         return CheckResult("Manifest", False, "manifest does not record a positive download byte count")
+    expected_sha256 = str(download.get("sha256", "")).strip().lower()
+    if not expected_sha256:
+        return CheckResult("Manifest", False, "manifest does not record a download SHA-256")
+    if not archive_path.exists():
+        if required:
+            return CheckResult("Manifest", False, f"manifest retained download path is missing: {archive_path}")
+        return None
+    actual_bytes = archive_path.stat().st_size
     if actual_bytes != expected_bytes:
         return CheckResult(
             "Manifest",
             False,
             f"manifest recorded {expected_bytes} downloaded bytes but {archive_path} has {actual_bytes}",
         )
-    expected_sha256 = str(download.get("sha256", "")).strip().lower()
-    if not expected_sha256:
-        return CheckResult("Manifest", False, "manifest does not record a download SHA-256")
     actual_sha256 = sha256_file(archive_path)
     if actual_sha256.lower() != expected_sha256:
         return CheckResult("Manifest", False, f"manifest SHA-256 does not match {archive_path}")
