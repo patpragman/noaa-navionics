@@ -599,6 +599,7 @@ grep -q 'choose_xsession' scripts/configure_desktop_autologin.sh
 grep -q '/usr/share/xsessions' scripts/configure_desktop_autologin.sh
 grep -q 'No LightDM X11 sessions are installed' scripts/configure_desktop_autologin.sh
 grep -q 'Refusing to configure graphical autologin for root' scripts/configure_desktop_autologin.sh
+grep -q 'Do not configure desktop autologin as root' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh

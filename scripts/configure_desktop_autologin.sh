@@ -234,6 +234,14 @@ if [[ "$autologin_user" == "root" ]]; then
   exit 2
 fi
 
+if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+Do not configure desktop autologin as root.
+Run this as the Pi desktop user; the script uses sudo only for LightDM and systemd changes.
+EOF
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF
