@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable, Optional, Union
@@ -20,6 +21,8 @@ import zipfile
 BASE_URL = "https://www.charts.noaa.gov/ENCs/"
 CATALOG_NAME = "ENCProdCat_19115.xml"
 MANIFEST_NAME = "noaa-navionics-manifest.json"
+DOWNLOAD_LOCK_NAME = ".noaa-navionics-download.lock"
+DOWNLOAD_LOCK_STALE_SECONDS = 6 * 60 * 60
 USER_AGENT = "noaa-navionics/0.1 (+https://www.charts.noaa.gov/ENCs/ENCs.shtml)"
 
 UPDATE_PACKAGES = {
@@ -169,6 +172,32 @@ def download_package(
 ) -> DownloadResult:
     output_path = Path(output_dir).expanduser()
     output_path.mkdir(parents=True, exist_ok=True)
+    with _chart_update_lock(output_path):
+        return _download_package_unlocked(
+            package,
+            output_path,
+            extract=extract,
+            keep_zip=keep_zip,
+            force=force,
+            timeout=timeout,
+            retries=retries,
+            retry_delay=retry_delay,
+            progress=progress,
+        )
+
+
+def _download_package_unlocked(
+    package: Package,
+    output_path: Path,
+    *,
+    extract: bool,
+    keep_zip: bool,
+    force: bool,
+    timeout: float,
+    retries: int,
+    retry_delay: float,
+    progress: Optional[ProgressCallback],
+) -> DownloadResult:
     destination = output_path / package.filename
 
     if destination.exists() and not force:
@@ -286,6 +315,46 @@ def _remove_path(path: Path, *, missing_ok: bool = False) -> None:
     except FileNotFoundError:
         if not missing_ok:
             raise
+
+
+@contextmanager
+def _chart_update_lock(output_path: Path):
+    lock_path = Path(output_path) / DOWNLOAD_LOCK_NAME
+    lock_fd: Optional[int] = None
+    lock_text = f"pid={os.getpid()} created_at={datetime.now(timezone.utc).isoformat()}\n"
+    while True:
+        try:
+            lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            os.write(lock_fd, lock_text.encode("ascii"))
+            break
+        except FileExistsError as exc:
+            if _lock_is_stale(lock_path):
+                try:
+                    lock_path.unlink()
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    pass
+                continue
+            raise RuntimeError(f"chart update already in progress; lock exists at {lock_path}") from exc
+    try:
+        yield
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
+        try:
+            if lock_path.read_text(encoding="ascii", errors="ignore") == lock_text:
+                lock_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_SECONDS) -> bool:
+    try:
+        age_seconds = time.time() - lock_path.stat().st_mtime
+    except OSError:
+        return False
+    return age_seconds > stale_seconds
 
 
 def write_manifest(output_dir: Union[Path, str], package: Package, result: DownloadResult) -> Path:

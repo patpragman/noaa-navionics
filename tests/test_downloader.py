@@ -6,6 +6,7 @@ from urllib.error import URLError
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 import zipfile
 import os
@@ -15,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from noaa_navionics import health as health_module
 from noaa_navionics import downloader as downloader_module
 from noaa_navionics.downloader import (
+    DOWNLOAD_LOCK_NAME,
     MANIFEST_NAME,
     Package,
     download_package,
@@ -390,6 +392,43 @@ class ManifestTests(unittest.TestCase):
             downloader_module.urlopen = original
 
         self.assertEqual(calls["count"], 2)
+
+    def test_download_lock_blocks_concurrent_chart_update(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("busy\n", encoding="ascii")
+            package = Package("Locked test", "https://example.invalid/chart.zip", "chart.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "already in progress"):
+                download_package(package, root)
+
+            self.assertTrue(lock.exists())
+
+    def test_stale_download_lock_is_replaced(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "chart.zip").write_bytes(b"existing")
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("stale\n", encoding="ascii")
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(lock, (old_time, old_time))
+            package = Package("Stale lock test", "https://example.invalid/chart.zip", "chart.zip")
+
+            result = download_package(package, root)
+
+            self.assertTrue(result.skipped)
+            self.assertFalse(lock.exists())
+
+    def test_download_lock_cleanup_preserves_replaced_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            lock = root / DOWNLOAD_LOCK_NAME
+
+            with downloader_module._chart_update_lock(root):
+                lock.write_text("new owner\n", encoding="ascii")
+
+            self.assertEqual(lock.read_text(encoding="ascii"), "new owner\n")
 
     def test_stale_manifest_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
