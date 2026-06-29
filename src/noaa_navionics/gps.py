@@ -232,6 +232,8 @@ def gps_fix_quality_failure(
     min_satellites: int = 4,
     max_hdop: float = 5.0,
 ) -> str:
+    if fix.latitude == 0.0 and fix.longitude == 0.0:
+        return "invalid GPS fix: 0.000000, 0.000000 coordinates"
     if fix.satellites is not None and fix.satellites < min_satellites:
         return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
     if fix.hdop is not None and fix.hdop > max_hdop:

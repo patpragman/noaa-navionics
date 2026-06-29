@@ -1555,6 +1555,22 @@ class GpsTests(unittest.TestCase):
             self.assertEqual(count, 0)
             self.assertFalse(output.exists())
 
+    def test_log_single_track_does_not_create_file_for_null_island_fix(self):
+        invalid = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=0.0,
+            longitude=0.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "track.gpx"
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                count = _log_single_track(_trackable_fixes(iter([invalid])), output, deadline=None, sample=True)
+
+            self.assertEqual(count, 0)
+            self.assertFalse(output.exists())
+
     def test_trackable_fixes_skip_reported_weak_quality(self):
         weak = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
@@ -1623,6 +1639,11 @@ class GpsTests(unittest.TestCase):
         fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=9.9)
 
         self.assertIn("HDOP", gps_fix_quality_failure(fix))
+
+    def test_shared_gps_quality_rejects_null_island_fix(self):
+        fix = GPSFix(latitude=0.0, longitude=0.0, satellites=8, hdop=1.2)
+
+        self.assertIn("0.000000, 0.000000", gps_fix_quality_failure(fix))
 
     def test_track_signal_handler_raises_stop_exception(self):
         with self.assertRaisesRegex(_TrackLoggerStop, "SIGTERM"):
@@ -1774,6 +1795,15 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("weak GPS fix", result.detail)
 
+    def test_check_gps_sample_rejects_null_island_fix(self):
+        sentence = "$GPGGA,123519,0000.000,N,00000.000,E,1,08,0.9,545.4,M,46.9,M,,\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.nmea"
+            path.write_text(sentence, encoding="ascii")
+            result = check_gps_sample(path)
+            self.assertFalse(result.ok)
+            self.assertIn("0.000000, 0.000000", result.detail)
+
     def test_check_gps_device_uses_configured_baud(self):
         captured = {}
         original = health_module.open_nmea_stream
@@ -1832,6 +1862,24 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("HDOP", result.detail)
 
+    def test_check_gps_device_rejects_null_island_fix(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            return BytesIO(
+                f"$GPGGA,{fix_time},0000.000,N,00000.000,E,1,08,0.9,545.4,M,46.9,M,,\n".encode("ascii")
+            )
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("0.000000, 0.000000", result.detail)
+
     def test_check_gps_device_rejects_stale_timestamped_fix(self):
         original = health_module.open_nmea_stream
 
@@ -1884,6 +1932,26 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("weak GPS fix", result.detail)
+
+    def test_check_gpsd_rejects_null_island_fix(self):
+        original = health_module.iter_gpsd_fixes
+        invalid = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=0.0,
+            longitude=0.0,
+            fix_quality=3,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout: iter([invalid])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("0.000000, 0.000000", result.detail)
 
     def test_check_gpsd_waits_for_quality_after_initial_position(self):
         original = health_module.iter_gpsd_fixes
