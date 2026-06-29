@@ -97,6 +97,7 @@ from noaa_navionics.report import (
     format_status_text,
     write_status_report,
     _install_wanted_by_targets,
+    _key_value_file_summary,
     _launcher_settings_summary,
     _launcher_settings_check,
     _service_readiness_checks,
@@ -2770,8 +2771,10 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["opencpn_config"]["chart_directories"], [str(charts.resolve())])
             self.assertTrue(report["opencpn_config"]["data_connections"])
             self.assertEqual(report["desktop"]["autostart"]["path"], str(autostart))
+            self.assertEqual(report["desktop"]["autostart"]["is_symlink"], False)
             self.assertEqual(report["desktop"]["autostart"]["values"]["Exec"], 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"')
             self.assertEqual(report["desktop"]["lightdm_autologin"]["path"], str(lightdm_autologin))
+            self.assertEqual(report["desktop"]["lightdm_autologin"]["is_symlink"], False)
             self.assertEqual(report["desktop"]["lightdm_autologin"]["values"]["autologin-user-timeout"], "0")
             self.assertEqual(report["desktop"]["graphical_target"], "graphical.target")
             self.assertEqual(report["desktop"]["lightdm_enabled"], "enabled")
@@ -2802,6 +2805,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn(f"path={opencpn_config}", text)
             self.assertIn("Desktop Startup:", text)
             self.assertIn(f"autostart={autostart}", text)
+            self.assertIn("is_symlink=False", text)
             self.assertIn("created_at_source: download", text)
             self.assertIn("is_symlink: False", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
@@ -2842,6 +2846,25 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["exists"], True)
             self.assertEqual(summary["is_symlink"], True)
             self.assertIn("launcher environment path is a symlink", summary["error"])
+            self.assertNotIn("values", summary)
+
+    def test_key_value_file_summary_rejects_symlinked_startup_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_file = root / "real.desktop"
+            real_file.write_text("[Desktop Entry]\nName=Unexpected\n", encoding="utf-8")
+            link_file = root / "noaa-navionics-chartplotter.desktop"
+            try:
+                link_file.symlink_to(real_file)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = _key_value_file_summary(link_file, comment_prefixes=("#",))
+
+            self.assertEqual(summary["path"], str(link_file))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], True)
+            self.assertIn("key-value file path is a symlink", summary["error"])
             self.assertNotIn("values", summary)
 
     def test_manifest_summary_rejects_symlinked_manifest(self):
@@ -3442,6 +3465,46 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("desktop autostart missing", desktop_check.detail)
         self.assertIn("systemd default target is multi-user.target", desktop_check.detail)
         self.assertIn("lightdm.service is disabled", desktop_check.detail)
+
+    def test_service_readiness_checks_fail_symlinked_desktop_startup_files(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(
+            services,
+            system_services,
+            desktop={
+                "autostart": {
+                    "path": "/home/pi/.config/autostart/noaa-navionics-chartplotter.desktop",
+                    "exists": True,
+                    "is_symlink": True,
+                },
+                "lightdm_autologin": {
+                    "path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf",
+                    "exists": True,
+                    "is_symlink": True,
+                },
+                "graphical_target": "graphical.target",
+                "lightdm_enabled": "enabled",
+            },
+            gps_mode="gpsd",
+        )
+        desktop_check = next(check for check in checks if check.name == "Desktop Startup")
+
+        self.assertFalse(desktop_check.ok)
+        self.assertIn("desktop autostart path is a symlink", desktop_check.detail)
+        self.assertIn("LightDM autologin config path is a symlink", desktop_check.detail)
 
     def test_service_readiness_checks_fail_stale_unit_file_install_target(self):
         services = {

@@ -776,6 +776,11 @@ if expected_config_path:
     autostart_path = str(autostart.get("path", "")).strip()
     if autostart.get("exists") is not True:
         raise SystemExit(f"status report desktop autostart does not exist: {autostart_path}")
+    if autostart.get("is_symlink") is True:
+        raise SystemExit(f"status report desktop autostart path is a symlink: {autostart_path}")
+    autostart_file = Path(autostart_path).expanduser()
+    if autostart_file.is_symlink():
+        raise SystemExit(f"status report desktop autostart path is a symlink: {autostart_file}")
     autostart_values = autostart.get("values")
     if not isinstance(autostart_values, dict):
         raise SystemExit(f"status report desktop autostart values were not parsed: {autostart_path}")
@@ -801,6 +806,11 @@ if expected_config_path:
     lightdm_path = str(lightdm.get("path", "")).strip()
     if lightdm.get("exists") is not True:
         raise SystemExit(f"status report LightDM autologin config does not exist: {lightdm_path}")
+    if lightdm.get("is_symlink") is True:
+        raise SystemExit(f"status report LightDM autologin config path is a symlink: {lightdm_path}")
+    lightdm_file = Path(lightdm_path).expanduser()
+    if lightdm_file.is_symlink():
+        raise SystemExit(f"status report LightDM autologin config path is a symlink: {lightdm_file}")
     lightdm_values = lightdm.get("values")
     lightdm_sections = lightdm.get("sections")
     if not isinstance(lightdm_values, dict) or not isinstance(lightdm_sections, list):
