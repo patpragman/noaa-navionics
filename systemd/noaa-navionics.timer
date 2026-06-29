@@ -4,6 +4,7 @@ Description=Refresh NOAA ENC charts weekly
 [Timer]
 OnCalendar=weekly
 Persistent=true
+RandomizedDelaySec=30min
 
 [Install]
 WantedBy=timers.target

@@ -202,6 +202,7 @@ grep -q 'chart service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'chart service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
 grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
+grep -q 'chart timer loaded randomized delay' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
@@ -336,6 +337,7 @@ grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
+grep -q 'RandomizedDelayUSec.*30min' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
@@ -357,6 +359,7 @@ grep -q '"extract_path": extract.get("path", "")' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
+grep -q 'RandomizedDelaySec=30min' systemd/noaa-navionics.timer
 grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
 grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py

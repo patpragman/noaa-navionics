@@ -760,8 +760,10 @@ check "chart service start limit burst" grep -Fxq 'StartLimitBurst=3' "$chart_se
 check "chart service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=3'
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
+check "chart timer randomized delay" grep -Fxq 'RandomizedDelaySec=30min' "$chart_timer"
 check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
+check "chart timer loaded randomized delay" sh -c 'systemctl --user show noaa-navionics.timer -p RandomizedDelayUSec 2>/dev/null | grep -Fxq RandomizedDelayUSec=30min'
 check "track service file" test -f "$track_service"
 check "track service type" grep -Fxq 'Type=simple' "$track_service"
 check "track service loaded type" sh -c 'systemctl --user show noaa-navionics-track.service -p Type 2>/dev/null | grep -Fxq Type=simple'

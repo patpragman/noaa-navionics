@@ -1545,6 +1545,7 @@ class StatusReportTests(unittest.TestCase):
                 "properties": {
                     "TimersCalendar": "{ OnCalendar=weekly ; NextElapseUSecRealtime=Mon 2026-07-06 00:00:00 UTC }",
                     "Persistent": "yes",
+                    "RandomizedDelayUSec": "30min",
                 },
             },
             "noaa-navionics-track.service": {

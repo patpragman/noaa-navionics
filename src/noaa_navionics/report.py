@@ -34,6 +34,7 @@ USER_UNIT_PROPERTIES = {
     "noaa-navionics.timer": [
         "TimersCalendar",
         "Persistent",
+        "RandomizedDelayUSec",
     ],
     "noaa-navionics-track.service": [
         "ExecStart",
@@ -380,7 +381,7 @@ def _service_readiness_checks(
                     services,
                     "noaa-navionics.timer",
                     "Chart Timer Settings",
-                    exact={"Persistent": "yes"},
+                    exact={"Persistent": "yes", "RandomizedDelayUSec": "30min"},
                     contains={"TimersCalendar": "OnCalendar=weekly"},
                 ),
                 _unit_properties_check(
