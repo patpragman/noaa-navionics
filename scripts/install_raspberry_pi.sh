@@ -142,6 +142,53 @@ finally:
 PY
 }
 
+install_root_text_atomic() {
+  local target="$1"
+  local mode="$2"
+  local text="$3"
+  sudo python3 - "$target" "$mode" "$text" <<'PY'
+from pathlib import Path
+import os
+import sys
+import tempfile
+
+target = Path(sys.argv[1])
+mode = int(sys.argv[2], 8)
+text = sys.argv[3]
+target.parent.mkdir(parents=True, exist_ok=True)
+tmp_path = None
+try:
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=target.parent,
+        prefix=f".{target.name}.",
+        delete=False,
+    ) as handle:
+        tmp_path = Path(handle.name)
+        handle.write(text)
+        if not text.endswith("\n"):
+            handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.chmod(tmp_path, mode)
+    with tmp_path.open("rb") as handle:
+        os.fsync(handle.fileno())
+    os.replace(tmp_path, target)
+    fd = os.open(target.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+finally:
+    if tmp_path is not None:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+PY
+}
+
 install_user_file_atomic() {
   local source="$1"
   local target="$2"
@@ -269,7 +316,10 @@ if [[ "$skip_apt" -eq 0 ]]; then
     os_codename="${VERSION_CODENAME:-}"
   fi
   if [[ "$os_codename" == "bookworm" ]] && ! grep -Rqs '^deb .*bookworm-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
-    echo 'deb https://deb.debian.org/debian bookworm-backports main' | sudo tee -a /etc/apt/sources.list >/dev/null
+    install_root_text_atomic \
+      "/etc/apt/sources.list.d/noaa-navionics-bookworm-backports.list" \
+      0644 \
+      "deb https://deb.debian.org/debian bookworm-backports main"
     apt_update
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."

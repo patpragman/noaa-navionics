@@ -177,6 +177,10 @@ grep -q 'write_source_revision' scripts/install_raspberry_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/install_raspberry_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
+grep -q 'install_root_text_atomic' scripts/install_raspberry_pi.sh
+grep -q 'sudo python3 - "$target" "$mode" "$text"' scripts/install_raspberry_pi.sh
+grep -q 'noaa-navionics-bookworm-backports.list' scripts/install_raspberry_pi.sh
+! grep -q 'sudo tee -a /etc/apt/sources.list' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
 grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
