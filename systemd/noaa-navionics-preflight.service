@@ -5,7 +5,9 @@ StartLimitBurst=5
 
 [Service]
 Type=oneshot
-ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds 10 --output %h/.cache/noaa-navionics/status.json
+Environment=NOAA_NAVIONICS_GPS_SECONDS=10
+EnvironmentFile=-%h/.config/noaa-navionics/launcher.env
+ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS} --output %h/.cache/noaa-navionics/status.json
 Restart=on-failure
 RestartSec=30
 

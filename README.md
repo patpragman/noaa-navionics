@@ -113,7 +113,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by
 
 Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` or `dock_test_pi.sh` if the initial commissioning download needs a longer retry window. Use `--gps-seconds N` if the attached GPS receiver needs more time for a cold-start fix during commissioning.
 The deploy, provisioning, and dock-test scripts reject invalid retry, delay, GPS wait, and reboot timeout values before starting remote work.
-Provisioning persists the chosen GPS wait in `~/.config/noaa-navionics/launcher.env` so the desktop chartplotter launcher uses the same cold-start window after reboot.
+Provisioning persists the chosen GPS wait in `~/.config/noaa-navionics/launcher.env` so the boot readiness service and desktop chartplotter launcher use the same cold-start window after reboot.
 
 Verify the Raspberry Pi after deployment:
 
@@ -150,7 +150,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 
 Status reports are written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
-The installed boot-time readiness service writes the same status report after login and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed or unqueryable units, and checks GPSD service state in addition to recording raw service diagnostics.
+The installed boot-time readiness service writes the same status report after login, reads the persisted GPS wait setting, and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed or unqueryable units, and checks GPSD service state in addition to recording raw service diagnostics.
 Deploy/install records the source revision so status reports show which code is running on the Pi.
 
 Start the Pi chartplotter launcher:

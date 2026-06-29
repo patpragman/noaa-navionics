@@ -20,6 +20,8 @@ bash -n \
 
 grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
+grep -q 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
+grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
@@ -69,6 +71,7 @@ grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
+grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh

@@ -146,7 +146,7 @@ scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
-The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network. Add `--gps-seconds N` to `deploy_to_pi.sh --provision` or `dock_test_pi.sh` when the GPS receiver needs a longer cold-start fix window; provisioning stores that value in `~/.config/noaa-navionics/launcher.env` for desktop autostart.
+The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network. Add `--gps-seconds N` to `deploy_to_pi.sh --provision` or `dock_test_pi.sh` when the GPS receiver needs a longer cold-start fix window; provisioning stores that value in `~/.config/noaa-navionics/launcher.env` for boot readiness and desktop autostart.
 
 ## Startup
 
@@ -214,6 +214,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
 The status report includes readiness checks, NOAA Navionics user unit checks, and GPSD service state checks.
+The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
 It also records the installed source revision so you can confirm the Pi is running the expected deployment.
