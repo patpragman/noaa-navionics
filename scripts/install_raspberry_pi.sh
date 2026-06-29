@@ -48,6 +48,8 @@ if [[ "$skip_apt" -eq 0 ]]; then
 fi
 
 python3 -m pip install --user "${repo_root}"
+mkdir -p "${HOME}/.local/bin"
+cp "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 
 mkdir -p "$config_dir" "$systemd_user_dir" "$autostart_dir"
 if [[ ! -f "${config_dir}/config.ini" ]]; then
@@ -60,7 +62,7 @@ cp "${repo_root}/systemd/noaa-navionics.service" \
    "${repo_root}/systemd/noaa-navionics-preflight.service" \
    "$systemd_user_dir/"
 
-cp "${repo_root}/templates/noaa-navionics-opencpn.desktop" "$autostart_dir/"
+cp "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
 
 systemctl --user daemon-reload
 if [[ "$enable_services" -eq 1 ]]; then
@@ -77,4 +79,5 @@ Next steps:
 3. Run: noaa-navionics sync-charts
 4. Run: noaa-navionics preflight
 5. Add the extracted chart directory to OpenCPN.
+6. Start OpenCPN with: noaa-navionics-start-chartplotter
 EOF

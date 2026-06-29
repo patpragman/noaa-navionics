@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=NOAA Navionics Chartplotter
+Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"
+Terminal=false
+X-GNOME-Autostart-enabled=true

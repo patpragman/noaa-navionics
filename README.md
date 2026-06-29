@@ -107,6 +107,12 @@ On the Pi, `status-report` writes a JSON readiness artifact:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
+Start the Pi chartplotter launcher:
+
+```bash
+noaa-navionics-start-chartplotter
+```
+
 Create the onboard config:
 
 ```bash

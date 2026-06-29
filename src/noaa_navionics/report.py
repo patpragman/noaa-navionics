@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Optional
 import json
 import platform
+import shutil
 import socket
+import subprocess
 import sys
 
 from .config import AppConfig, read_config
@@ -45,6 +47,7 @@ def build_status_report(
         "config_path": str(Path(config_path).expanduser()),
         "config": _config_summary(app_config),
         "manifest": _manifest_summary(app_config.chart_output),
+        "services": _service_summary(),
         "checks": check_rows,
     }
 
@@ -78,6 +81,12 @@ def format_status_text(report: dict[str, object]) -> str:
         for key in ("created_at", "package", "sha256", "enc_cell_count"):
             if key in manifest:
                 lines.append(f"{key}: {manifest[key]}")
+    services = report.get("services", {})
+    if isinstance(services, dict) and services:
+        lines.extend(["", "Services:"])
+        for name, state in services.items():
+            if isinstance(state, dict):
+                lines.append(f"{name}: enabled={state.get('enabled', '')} active={state.get('active', '')}")
     return "\n".join(lines)
 
 
@@ -116,3 +125,37 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
         "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
         "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
     }
+
+
+def _service_summary() -> dict[str, object]:
+    if shutil.which("systemctl") is None:
+        return {"available": False, "detail": "systemctl not found"}
+    units = [
+        "noaa-navionics.service",
+        "noaa-navionics.timer",
+        "noaa-navionics-track.service",
+        "noaa-navionics-preflight.service",
+    ]
+    summary: dict[str, object] = {"available": True}
+    for unit in units:
+        summary[unit] = {
+            "enabled": _systemctl(["is-enabled", unit]),
+            "active": _systemctl(["is-active", unit]),
+        }
+    return summary
+
+
+def _systemctl(args: list[str]) -> str:
+    try:
+        completed = subprocess.run(
+            ["systemctl", "--user", *args],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception as exc:
+        return f"error: {exc}"
+    value = completed.stdout.strip() or completed.stderr.strip()
+    return value or f"exit {completed.returncode}"

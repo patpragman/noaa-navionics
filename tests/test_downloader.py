@@ -209,6 +209,7 @@ class StatusReportTests(unittest.TestCase):
 
             report = build_status_report(config_path=config, gps_sample=sample)
             self.assertIn("checks", report)
+            self.assertIn("services", report)
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertFalse(report["ok"])
             text = format_status_text(report)

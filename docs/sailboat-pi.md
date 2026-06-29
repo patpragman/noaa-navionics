@@ -108,6 +108,16 @@ noaa-navionics gps-monitor --gpsd --once
 
 Configure OpenCPN to use the GPSD network source at `localhost:2947`.
 
+## Startup
+
+The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter` and installs a desktop autostart entry for it. The launcher writes `~/.cache/noaa-navionics/status.json`, warns if readiness fails, and then starts OpenCPN.
+
+Manual launch:
+
+```bash
+noaa-navionics-start-chartplotter
+```
+
 ## Charts
 
 Download Alaska charts:
