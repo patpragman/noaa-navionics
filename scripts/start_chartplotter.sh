@@ -19,6 +19,23 @@ opencpn_restarts=3
 opencpn_restart_delay=5
 lock_acquired=0
 
+reexec_without_ambient_launcher_settings() {
+  local key
+  local removed=0
+  local env_args=()
+  while IFS='=' read -r key _; do
+    case "$key" in
+      NOAA_NAVIONICS_*)
+        env_args+=("-u" "$key")
+        removed=$((removed + 1))
+        ;;
+    esac
+  done < <(env)
+  if [[ "$removed" -gt 0 ]]; then
+    exec env "${env_args[@]}" "$0" "$@"
+  fi
+}
+
 first_symlink_ancestor() {
   local path="$1"
   local current
@@ -234,22 +251,6 @@ validate_launcher_env_path() {
   if [[ "$env_mode" != "600" && "$env_mode" != "0600" ]]; then
     echo "NOAA Navionics launcher environment has permissions ${env_mode}, expected private 0600: $launcher_env" >&2
     exit 1
-  fi
-}
-
-drop_ambient_launcher_settings() {
-  local key
-  local removed=0
-  while IFS='=' read -r key _; do
-    case "$key" in
-      NOAA_NAVIONICS_*)
-        unset "$key" 2>/dev/null || true
-        removed=$((removed + 1))
-        ;;
-    esac
-  done < <(env)
-  if [[ "$removed" -gt 0 ]]; then
-    echo "Ignored ${removed} ambient NOAA_NAVIONICS_* environment variable(s); using $launcher_env for launcher settings."
   fi
 }
 
@@ -566,6 +567,8 @@ run_opencpn_supervised() {
   done
 }
 
+reexec_without_ambient_launcher_settings "$@"
+
 if [[ ! -x "$bin" ]]; then
   echo "noaa-navionics is not installed at $bin" >&2
   exit 127
@@ -602,7 +605,6 @@ exec > >(tee -a "$log_file") 2>&1
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 acquire_launcher_lock
 validate_launcher_env_path
-drop_ambient_launcher_settings
 load_launcher_settings
 keep_display_awake
 

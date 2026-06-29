@@ -127,12 +127,18 @@ grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/start_chartplotter.sh
-grep -q 'drop_ambient_launcher_settings' scripts/start_chartplotter.sh
-grep -q 'using $launcher_env for launcher settings' scripts/start_chartplotter.sh
+grep -q 'reexec_without_ambient_launcher_settings' scripts/start_chartplotter.sh
+grep -q 'NOAA_NAVIONICS_\*)' scripts/start_chartplotter.sh
+grep -Fq 'exec env "${env_args[@]}" "$0" "$@"' scripts/start_chartplotter.sh
 python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/start_chartplotter.sh").read_text(encoding="utf-8")
+main_flow = text[text.index('reexec_without_ambient_launcher_settings "$@"'):]
+reexec_index = main_flow.index('reexec_without_ambient_launcher_settings "$@"')
+lock_index = main_flow.index('\nacquire_launcher_lock')
+if reexec_index > lock_index:
+    raise SystemExit("launcher must sanitize inherited NOAA_NAVIONICS_* environment before taking the launch lock")
 for key in (
     "NOAA_NAVIONICS_GPS_SECONDS",
     "NOAA_NAVIONICS_WARNING_SECONDS",
@@ -594,6 +600,8 @@ grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scrip
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness retries' scripts/verify_pi.sh
+grep -q 'chartplotter launcher ambient environment scrub' scripts/verify_pi.sh
+grep -q 'chartplotter launcher ambient environment re-exec' scripts/verify_pi.sh
 grep -q 'chartplotter launcher fail-closed default' scripts/verify_pi.sh
 grep -q 'chartplotter launcher explicit fail-open override' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness warning' scripts/verify_pi.sh
@@ -2852,7 +2860,6 @@ if [[ "$launcher_preflight_code" -eq 0 ]]; then
   echo "expected chartplotter launcher to fail closed when readiness fails" >&2
   exit 1
 fi
-grep -q 'Ignored 2 ambient NOAA_NAVIONICS_\* environment variable(s); using' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'NOAA Navionics preflight failed on attempt 1/1' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Readiness warning timeout is 0 seconds' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Not starting OpenCPN automatically because readiness failed' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
@@ -3020,7 +3027,7 @@ printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_live_lock_home/.local/bin/noa
 printf '#!/usr/bin/env bash\nprintf "fake opencpn start\\n" >>"$HOME/.cache/noaa-navionics/opencpn-starts.log"\nsleep 2\n' >"$tmpdir/opencpn"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 chmod +x "$launcher_live_lock_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
-HOME="$launcher_live_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null &
+HOME="$launcher_live_lock_home" NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null &
 live_launcher_pid=$!
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   if [[ -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid" ]]; then
@@ -3030,6 +3037,12 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 test -r "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id"
+launcher_live_lock_pid="$(cat "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid")"
+if tr '\0' '\n' <"/proc/${launcher_live_lock_pid}/environ" 2>/dev/null | grep -q '^NOAA_NAVIONICS_'; then
+  tr '\0' '\n' <"/proc/${launcher_live_lock_pid}/environ" >&2 || true
+  echo "expected chartplotter launcher process environment to be sanitized before taking the launch lock" >&2
+  exit 1
+fi
 test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics")" = 700
 test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock")" = 700
 test "$(stat -c '%a' "$launcher_live_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid")" = 600
