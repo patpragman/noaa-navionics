@@ -101,6 +101,8 @@ Deploy to a Raspberry Pi over SSH:
 scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
+Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix.
+
 Deploy and run the onboard provisioning sequence:
 
 ```bash

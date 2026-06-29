@@ -23,6 +23,8 @@ grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
+grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
+grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh

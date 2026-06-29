@@ -26,6 +26,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
 The deploy script copies this repo to the Raspberry Pi and runs the installer on the Pi. It does not install or enable services on the computer you run it from.
+It refuses a dirty local worktree by default so the Pi's recorded source revision matches the source you are verifying. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix.
 
 Deploy and run the full onboard provisioning sequence:
 

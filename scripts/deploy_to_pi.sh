@@ -7,6 +7,7 @@ Usage: scripts/deploy_to_pi.sh user@raspberrypi.local [remote-dir] [--provision 
 
 Copies this repo to the Raspberry Pi over SSH and runs the Pi installer there.
 With --provision, also runs the onboard commissioning sequence on the Pi.
+Refuses a dirty local worktree unless --allow-dirty is passed.
 Nothing is installed or enabled on the local computer.
 EOF
   exit 2
@@ -18,6 +19,7 @@ remote_dir="~/noaa-navionics"
 provision=0
 provision_args=()
 saw_provision_option=0
+allow_dirty=0
 
 if [[ $# -gt 0 && "$1" != --* ]]; then
   remote_dir="$1"
@@ -30,6 +32,10 @@ while [[ $# -gt 0 ]]; do
       provision=1
       saw_provision_option=1
       provision_args+=("$1")
+      shift
+      ;;
+    --allow-dirty)
+      allow_dirty=1
       shift
       ;;
     --device|--config|--gps-seconds|--sync-retries|--sync-retry-delay)
@@ -61,6 +67,17 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 remote_dir_quoted="$(printf '%q' "$remote_dir")"
 source_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
+if [[ "$source_revision" != "unknown" && -n "$worktree_status" ]]; then
+  if [[ "$allow_dirty" -eq 0 ]]; then
+    cat >&2 <<EOF
+Refusing to deploy a dirty worktree.
+Commit or stash local changes first, or pass --allow-dirty to deploy them and record ${source_revision}-dirty.
+EOF
+    exit 2
+  fi
+  source_revision="${source_revision}-dirty"
+fi
 
 ssh "$target" "mkdir -p ${remote_dir_quoted}"
 rsync -az --delete \
