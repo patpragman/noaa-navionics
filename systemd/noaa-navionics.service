@@ -9,3 +9,5 @@ ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navi
 TimeoutStartSec=2h
 Restart=on-failure
 RestartSec=30min
+NoNewPrivileges=true
+PrivateTmp=true

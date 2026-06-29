@@ -11,6 +11,8 @@ ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-na
 TimeoutStartSec=0
 Restart=on-failure
 RestartSec=30
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=default.target

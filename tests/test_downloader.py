@@ -1667,6 +1667,8 @@ class StatusReportTests(unittest.TestCase):
                     "RestartUSec": "30min",
                     "StartLimitIntervalUSec": "6h",
                     "StartLimitBurst": "3",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
                 },
             },
             "noaa-navionics.timer": {
@@ -1689,6 +1691,8 @@ class StatusReportTests(unittest.TestCase):
                     "RestartUSec": "10s",
                     "StartLimitIntervalUSec": "10min",
                     "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
                 },
             },
             "noaa-navionics-preflight.service": {
@@ -1703,6 +1707,8 @@ class StatusReportTests(unittest.TestCase):
                     "RestartUSec": "30s",
                     "StartLimitIntervalUSec": "30min",
                     "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
                 },
             },
         }
@@ -1717,6 +1723,78 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertEqual(len(settings_checks), 4)
         self.assertTrue(all(check.ok for check in settings_checks))
+
+    def test_service_readiness_checks_fail_missing_loaded_unit_hardening(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {
+                "enabled": "static",
+                "active": "inactive",
+                "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "Type": "oneshot",
+                    "TimeoutStartUSec": "2h",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30min",
+                    "StartLimitIntervalUSec": "6h",
+                    "StartLimitBurst": "3",
+                    "NoNewPrivileges": "no",
+                    "PrivateTmp": "no",
+                },
+            },
+            "noaa-navionics.timer": {
+                "enabled": "enabled",
+                "active": "active",
+                "properties": {
+                    "TimersCalendar": "{ OnCalendar=weekly ; NextElapseUSecRealtime=Mon 2026-07-06 00:00:00 UTC }",
+                    "Persistent": "yes",
+                    "RandomizedDelayUSec": "30min",
+                },
+            },
+            "noaa-navionics-track.service": {
+                "enabled": "enabled",
+                "active": "active",
+                "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "Type": "simple",
+                    "StandardOutput": "null",
+                    "Restart": "on-failure",
+                    "RestartUSec": "10s",
+                    "StartLimitIntervalUSec": "10min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "Type": "oneshot",
+                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "TimeoutStartUSec": "infinity",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        chart_settings = next(check for check in checks if check.name == "Chart Sync Settings")
+
+        self.assertFalse(chart_settings.ok)
+        self.assertIn("NoNewPrivileges=no", chart_settings.detail)
+        self.assertIn("PrivateTmp=no", chart_settings.detail)
 
     def test_service_readiness_checks_fail_stale_loaded_track_settings(self):
         services = {

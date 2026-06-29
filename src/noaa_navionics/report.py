@@ -30,6 +30,8 @@ USER_UNIT_PROPERTIES = {
         "RestartUSec",
         "StartLimitIntervalUSec",
         "StartLimitBurst",
+        "NoNewPrivileges",
+        "PrivateTmp",
     ],
     "noaa-navionics.timer": [
         "TimersCalendar",
@@ -44,6 +46,8 @@ USER_UNIT_PROPERTIES = {
         "RestartUSec",
         "StartLimitIntervalUSec",
         "StartLimitBurst",
+        "NoNewPrivileges",
+        "PrivateTmp",
     ],
     "noaa-navionics-preflight.service": [
         "ExecStart",
@@ -54,6 +58,8 @@ USER_UNIT_PROPERTIES = {
         "RestartUSec",
         "StartLimitIntervalUSec",
         "StartLimitBurst",
+        "NoNewPrivileges",
+        "PrivateTmp",
     ],
 }
 
@@ -368,6 +374,8 @@ def _service_readiness_checks(
                         "RestartUSec": "30min",
                         "StartLimitIntervalUSec": "6h",
                         "StartLimitBurst": "3",
+                        "NoNewPrivileges": "yes",
+                        "PrivateTmp": "yes",
                     },
                     contains={
                         "ExecStart": [
@@ -397,6 +405,8 @@ def _service_readiness_checks(
                         "RestartUSec": "10s",
                         "StartLimitIntervalUSec": "10min",
                         "StartLimitBurst": "60",
+                        "NoNewPrivileges": "yes",
+                        "PrivateTmp": "yes",
                     },
                     contains={
                         "ExecStart": [
@@ -418,6 +428,8 @@ def _service_readiness_checks(
                         "RestartUSec": "30s",
                         "StartLimitIntervalUSec": "30min",
                         "StartLimitBurst": "60",
+                        "NoNewPrivileges": "yes",
+                        "PrivateTmp": "yes",
                     },
                     contains={
                         "ExecStart": [

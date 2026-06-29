@@ -9,6 +9,8 @@ ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navion
 StandardOutput=null
 Restart=on-failure
 RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=default.target

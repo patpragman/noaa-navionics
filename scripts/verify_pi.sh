@@ -803,6 +803,10 @@ check "chart service loaded timeout" sh -c 'systemctl --user show noaa-navionics
 check "chart service restart" grep -Fxq 'Restart=on-failure' "$chart_service"
 check "chart service loaded restart" sh -c 'systemctl --user show noaa-navionics.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
 check "chart service loaded restart delay" sh -c 'systemctl --user show noaa-navionics.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30min'
+check "chart service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$chart_service"
+check "chart service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
+check "chart service private tmp" grep -Fxq 'PrivateTmp=true' "$chart_service"
+check "chart service loaded private tmp" sh -c 'systemctl --user show noaa-navionics.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
 check "chart service start limit interval" grep -Fxq 'StartLimitIntervalSec=6h' "$chart_service"
 check "chart service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=6h'
 check "chart service start limit burst" grep -Fxq 'StartLimitBurst=3' "$chart_service"
@@ -823,6 +827,10 @@ check "track service loaded quiet stdout" sh -c 'systemctl --user show noaa-navi
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
 check "track service loaded restart" sh -c 'systemctl --user show noaa-navionics-track.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
 check "track service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-track.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=10s'
+check "track service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$track_service"
+check "track service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics-track.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
+check "track service private tmp" grep -Fxq 'PrivateTmp=true' "$track_service"
+check "track service loaded private tmp" sh -c 'systemctl --user show noaa-navionics-track.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
 check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10min' "$track_service"
 check "track service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=10min'
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"
@@ -839,6 +847,10 @@ check "preflight service loaded timeout" sh -c 'systemctl --user show noaa-navio
 check "preflight service restart" grep -Fxq 'Restart=on-failure' "$preflight_service"
 check "preflight service loaded restart" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
 check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
+check "preflight service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$preflight_service"
+check "preflight service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics-preflight.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
+check "preflight service private tmp" grep -Fxq 'PrivateTmp=true' "$preflight_service"
+check "preflight service loaded private tmp" sh -c 'systemctl --user show noaa-navionics-preflight.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
 check "preflight service loaded GPS wait config" sh -c 'systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fq "noaa-navionics/launcher.env"'
 check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
 check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=30min' "$preflight_service"

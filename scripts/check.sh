@@ -447,6 +447,12 @@ grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RandomizedDelaySec=30min' systemd/noaa-navionics.timer
 grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
+grep -q 'NoNewPrivileges=true' systemd/noaa-navionics.service
+grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
+grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
+grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
+grep -q 'loaded no new privileges' scripts/verify_pi.sh
+grep -q 'loaded private tmp' scripts/verify_pi.sh
 grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py
 grep -q 'StartLimitIntervalSec=30min' systemd/noaa-navionics-preflight.service
 grep -q 'StartLimitIntervalUSec.*30min' src/noaa_navionics/report.py
