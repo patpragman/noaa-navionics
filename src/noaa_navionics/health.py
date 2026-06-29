@@ -72,6 +72,7 @@ def run_preflight(
         if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
             results.append(check_gps_device_path(gps_device))
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
+        results.append(check_chrony_gps_time_source())
         results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
@@ -159,6 +160,39 @@ def check_display_power_tool() -> CheckResult:
         path is not None,
         path or "missing; install x11-xserver-utils so the launcher can disable display blanking",
     )
+
+
+def check_chrony_gps_time_source() -> CheckResult:
+    if not _is_raspberry_pi():
+        return CheckResult("GPS Time Source", True, "not a Raspberry Pi; skipping chrony GPS source check")
+    chronyc = shutil.which("chronyc")
+    if chronyc is None:
+        return CheckResult("GPS Time Source", False, "chronyc not found; install chrony")
+    try:
+        completed = subprocess.run(
+            [chronyc, "sources", "-n"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception as exc:
+        return CheckResult("GPS Time Source", False, f"chronyc sources failed: {exc}")
+    output = completed.stdout.strip() or completed.stderr.strip()
+    if completed.returncode != 0:
+        return CheckResult("GPS Time Source", False, f"chronyc sources failed: {output}")
+    gps_lines = [
+        line.strip()
+        for line in completed.stdout.splitlines()
+        if line.startswith("#") and "GPS" in line.upper()
+    ]
+    usable = [line for line in gps_lines if len(line) > 1 and line[1] in "*+-"]
+    if usable:
+        return CheckResult("GPS Time Source", True, "chrony GPS source: " + usable[0])
+    if gps_lines:
+        return CheckResult("GPS Time Source", False, "chrony GPS source is not usable yet: " + gps_lines[0])
+    return CheckResult("GPS Time Source", False, "chrony does not report a GPS refclock source")
 
 
 def check_chart_package(package: str, value: str = "") -> CheckResult:

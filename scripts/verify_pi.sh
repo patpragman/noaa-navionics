@@ -348,6 +348,7 @@ check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
 check "Chrony GPSD time source" grep -Fq 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' /etc/chrony/chrony.conf
+check "Chrony usable GPS source" sh -c "chronyc sources -n 2>/dev/null | grep -Eq '^#[*+-].*GPS'"
 check "GPSD command" command -v gpsd
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD config" test -f /etc/default/gpsd

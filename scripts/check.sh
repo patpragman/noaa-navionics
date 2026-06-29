@@ -75,6 +75,7 @@ grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'Chrony service enabled' scripts/verify_pi.sh
 grep -q 'Chrony GPSD time source' scripts/verify_pi.sh
+grep -q 'Chrony usable GPS source' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter autostart name' scripts/verify_pi.sh
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scripts/verify_pi.sh
@@ -110,6 +111,8 @@ grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
+grep -q 'GPS Time Source' src/noaa_navionics/health.py
+grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
 grep -q 'weak GPS fix' src/noaa_navionics/gps.py

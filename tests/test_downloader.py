@@ -63,6 +63,7 @@ from noaa_navionics.health import (
     check_gpsd,
     check_gps_sample,
     check_display_power_tool,
+    check_chrony_gps_time_source,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
     check_pi_throttling,
@@ -1941,6 +1942,74 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("timedatectl", result.detail)
+
+    def test_check_chrony_gps_time_source_skips_non_pi(self):
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._is_raspberry_pi = lambda: False
+            result = check_chrony_gps_time_source()
+        finally:
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("skipping", result.detail)
+
+    def test_check_chrony_gps_time_source_accepts_usable_gps_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "chronyc"
+            fake.write_text("#!/bin/sh\necho '#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms'\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_source()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertIn("GPS", result.detail)
+
+    def test_check_chrony_gps_time_source_rejects_unusable_gps_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "chronyc"
+            fake.write_text("#!/bin/sh\necho '#? GPS 0 4 0 - +0ns[ +0ns] +/- 0ns'\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_source()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("not usable", result.detail)
+
+    def test_check_chrony_gps_time_source_reports_missing_gps_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "chronyc"
+            fake.write_text("#!/bin/sh\necho '^* 192.0.2.1 2 6 377 10 +1ms[ +1ms] +/- 20ms'\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_source()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPS refclock", result.detail)
 
     def test_check_display_power_tool_reports_missing_xset(self):
         original_path = os.environ.get("PATH", "")

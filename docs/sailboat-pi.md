@@ -44,7 +44,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-The verify script runs checks on the Pi over SSH, including architecture, installed commands, Raspberry Pi power diagnostics, deployed source revision, chartplotter launcher content, persisted launcher GPS wait, desktop autostart fields, graphical boot target, LightDM autologin for the deployed user, installed user systemd unit contents, GPSD boot enablement and startup options, GPSD device matching the onboard config, chrony service state and GPSD time-source config, config, and `noaa-navionics status-report`. It also parses the generated JSON readiness artifact and requires it to be fresh, ready, populated with readiness checks, and stamped with the expected source revision. It expects a `-dirty` revision suffix only when verifying from a dirty local worktree. The status report step retries briefly so GPSD has time to produce its first fix after boot; add `--gps-seconds N` if the receiver needs a longer fix window.
+The verify script runs checks on the Pi over SSH, including architecture, installed commands, Raspberry Pi power diagnostics, deployed source revision, chartplotter launcher content, persisted launcher GPS wait, desktop autostart fields, graphical boot target, LightDM autologin for the deployed user, installed user systemd unit contents, GPSD boot enablement and startup options, GPSD device matching the onboard config, chrony service state, GPSD time-source config, a usable chrony GPS source, config, and `noaa-navionics status-report`. It also parses the generated JSON readiness artifact and requires it to be fresh, ready, populated with readiness checks, and stamped with the expected source revision. It expects a `-dirty` revision suffix only when verifying from a dirty local worktree. The status report step retries briefly so GPSD has time to produce its first fix after boot; add `--gps-seconds N` if the receiver needs a longer fix window.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:
@@ -245,7 +245,7 @@ Expected checks:
 - Current chart manifest present, matching the configured chart package, and tied to an existing extraction with the recorded ENC cell count
 - OpenCPN configured with the chart directory
 - OpenCPN configured with the GPSD network connection
-- Chrony enabled, active, and configured to use GPSD time
+- Chrony enabled, active, configured to use GPSD time, and reporting a usable GPS refclock source
 - Graphical boot and LightDM autologin configured for unattended startup
 - Configured local GPS device path exists when GPSD is using a local receiver
 - At least 2 GB free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path
