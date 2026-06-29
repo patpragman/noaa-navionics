@@ -80,6 +80,7 @@ grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
+grep -q 'GPSD service active' scripts/verify_pi.sh
 grep -q 'Chrony service enabled' scripts/verify_pi.sh
 grep -q 'Chrony GPSD time source' scripts/verify_pi.sh
 grep -q 'Chrony usable GPS source' scripts/verify_pi.sh
