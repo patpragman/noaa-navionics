@@ -413,6 +413,8 @@ grep -q 'no mounted storage device' src/noaa_navionics/health.py
 grep -q 'os.path.ismount' src/noaa_navionics/health.py
 grep -q 'Chart Update Debris' src/noaa_navionics/health.py
 grep -q 'endswith(".part")' src/noaa_navionics/health.py
+grep -q 'def _manifest_archive_path' src/noaa_navionics/health.py
+grep -q 'suffix.lower() == ".zip"' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
 grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py

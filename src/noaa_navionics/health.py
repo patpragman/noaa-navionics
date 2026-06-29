@@ -337,11 +337,13 @@ def check_chart_update_debris(chart_dir: Path) -> CheckResult:
     if not path.exists():
         return CheckResult("Chart Update Debris", True, f"not checked; {path} does not exist")
     try:
+        retained_archive = _manifest_archive_path(path)
         debris = sorted(
             child
             for child in path.iterdir()
             if (
                 child.name.endswith(".part")
+                or (child.is_file() and child.suffix.lower() == ".zip" and not _same_path(child, retained_archive))
                 or (
                     child.name.startswith(".")
                     and (child.name.endswith(".extracting") or child.name.endswith(".previous"))
@@ -359,6 +361,17 @@ def check_chart_update_debris(chart_dir: Path) -> CheckResult:
             f"remove stale chart update debris before departure: {names}{suffix}",
         )
     return CheckResult("Chart Update Debris", True, "no interrupted chart updates found")
+
+
+def _manifest_archive_path(chart_dir: Path) -> Path:
+    try:
+        manifest = read_manifest(chart_dir)
+    except Exception:
+        return Path()
+    download = manifest.get("download", {})
+    if not isinstance(download, dict):
+        return Path()
+    return Path(str(download.get("path", "")).strip()).expanduser()
 
 
 def check_chart_manifest(

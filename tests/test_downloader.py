@@ -1773,6 +1773,56 @@ class ManifestTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
 
+    def test_chart_update_debris_allows_retained_manifest_archive(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":5,"sha256":"abc"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_update_debris(root)
+
+            self.assertTrue(result.ok)
+
+    def test_chart_update_debris_fails_for_unexpected_top_level_zip(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            extra = root / "CA_ENCs.zip"
+            archive.write_bytes(b"chart")
+            extra.write_bytes(b"stale chart")
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":5,"sha256":"abc"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_update_debris(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("CA_ENCs.zip", result.detail)
+            self.assertNotIn("AK_ENCs.zip", result.detail)
+
     def test_extract_zip_replaces_existing_directory_after_success(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
