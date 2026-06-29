@@ -305,6 +305,9 @@ grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
+grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
+grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
+grep -q 'is owned by uid' scripts/verify_pi.sh
 grep -q '"min_free_gb": float' scripts/verify_pi.sh
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh

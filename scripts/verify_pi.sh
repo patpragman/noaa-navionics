@@ -459,6 +459,39 @@ if expected_config_path:
             mismatches.append(f"{key}={actual!r}, expected {expected!r}")
     if mismatches:
         raise SystemExit("status report config values do not match current config: " + "; ".join(mismatches))
+    track_log = report.get("track_log")
+    if not isinstance(track_log, dict):
+        raise SystemExit("status report has no track_log section")
+    expected_tracks_dir = Path(expected_config["track_output"]).expanduser() / "tracks"
+    actual_tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    if actual_tracks_dir != str(expected_tracks_dir):
+        raise SystemExit(
+            f"status report track_log tracks_dir {actual_tracks_dir} does not match configured {expected_tracks_dir}"
+        )
+    latest_track_path = Path(str(track_log.get("latest_path", "")).strip()).expanduser()
+    if not str(latest_track_path):
+        raise SystemExit("status report track_log has no latest_path")
+    if latest_track_path.is_symlink():
+        raise SystemExit(f"status report track_log latest_path is a symlink: {latest_track_path}")
+    if not latest_track_path.is_file():
+        raise SystemExit(f"status report track_log latest_path is not a regular file: {latest_track_path}")
+    try:
+        latest_track_path.resolve(strict=True).relative_to(expected_tracks_dir.resolve(strict=True))
+    except OSError as exc:
+        raise SystemExit(f"could not resolve status report track_log paths: {exc}") from exc
+    except ValueError as exc:
+        raise SystemExit(
+            f"status report track_log latest_path {latest_track_path} is outside {expected_tracks_dir}"
+        ) from exc
+    try:
+        latest_track_stat = latest_track_path.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report track_log latest_path {latest_track_path}: {exc}") from exc
+    if latest_track_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report track_log latest_path {latest_track_path} is owned by uid "
+            f"{latest_track_stat.st_uid}, expected {os.getuid()}"
+        )
     opencpn_config = report.get("opencpn_config")
     if not isinstance(opencpn_config, dict):
         raise SystemExit("status report has no opencpn_config section")
