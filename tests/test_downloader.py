@@ -3437,6 +3437,9 @@ class GpsTests(unittest.TestCase):
                     '"lat":61.2181,"lon":-149.9003}\n'
                 )
 
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
         try:
             gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
             fix = next(iter_gpsd_fixes(timeout=1))
@@ -3468,6 +3471,9 @@ class GpsTests(unittest.TestCase):
                     '"lat":61.2181,"lon":-149.9003}\n'
                 )
 
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
         clock_values = iter([100.0, 121.0])
         try:
             gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
@@ -3479,6 +3485,49 @@ class GpsTests(unittest.TestCase):
 
         self.assertIsNone(fix.satellites)
         self.assertIsNone(fix.hdop)
+        self.assertAlmostEqual(fix.latitude, 61.2181)
+
+    def test_iter_gpsd_fixes_clears_read_timeout_for_unbounded_stream(self):
+        original_socket = gps_module.socket.create_connection
+
+        class FakeSocket:
+            def __init__(self):
+                self.timeouts = []
+                self.request = b""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":61.2181,"lon":-149.9003}\n'
+                )
+
+            def settimeout(self, timeout):
+                self.timeouts.append(timeout)
+
+        fake_socket = FakeSocket()
+        calls = []
+
+        def fake_create_connection(address, timeout=10.0):
+            calls.append((address, timeout))
+            return fake_socket
+
+        try:
+            gps_module.socket.create_connection = fake_create_connection
+            fix = next(iter_gpsd_fixes(host="127.0.0.1", port=2947, timeout=7, max_duration=None))
+        finally:
+            gps_module.socket.create_connection = original_socket
+
+        self.assertEqual(calls, [(("127.0.0.1", 2947), 7)])
+        self.assertEqual(fake_socket.timeouts, [None])
         self.assertAlmostEqual(fix.latitude, 61.2181)
 
     def test_iter_gpsd_fixes_stops_after_max_duration_without_fixes(self):

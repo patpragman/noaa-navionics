@@ -195,6 +195,8 @@ def iter_gpsd_fixes(
     deadline = time.monotonic() + max_duration if max_duration is not None else None
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.sendall(b'?WATCH={"enable":true,"json":true};\n')
+        if deadline is None:
+            sock.settimeout(None)
         with sock.makefile("r", encoding="utf-8", errors="ignore") as handle:
             while True:
                 if deadline is not None:

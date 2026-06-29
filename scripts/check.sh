@@ -607,6 +607,9 @@ grep -q 'used' src/noaa_navionics/gps.py
 grep -q 'sky_max_age_seconds' src/noaa_navionics/gps.py
 grep -q 'max_duration' src/noaa_navionics/gps.py
 grep -q 'sock.settimeout' src/noaa_navionics/gps.py
+grep -q 'sock.settimeout(None)' src/noaa_navionics/gps.py
+grep -q 'keeps the connected stream unbounded through temporary GPSD quiet periods' README.md
+grep -q 'keeps the connected stream unbounded through temporary GPSD quiet periods' docs/sailboat-pi.md
 grep -q 'max_duration=seconds' src/noaa_navionics/health.py
 grep -q 'max_duration=max_duration' src/noaa_navionics/cli.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
