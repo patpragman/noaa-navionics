@@ -1112,6 +1112,7 @@ class StatusReportTests(unittest.TestCase):
                 "properties": {
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Restart": "on-failure",
                     "RestartUSec": "30s",
                     "StartLimitIntervalUSec": "5min",
                     "StartLimitBurst": "5",
@@ -1160,6 +1161,35 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(track_settings.ok)
         self.assertIn("StandardOutput=journal", track_settings.detail)
         self.assertIn("Restart=no", track_settings.detail)
+
+    def test_service_readiness_checks_fail_stale_loaded_boot_readiness_restart(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "Restart": "no",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "5min",
+                    "StartLimitBurst": "5",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        boot_settings = next(check for check in checks if check.name == "Boot Readiness Settings")
+
+        self.assertFalse(boot_settings.ok)
+        self.assertIn("Restart=no", boot_settings.detail)
 
     def test_service_readiness_checks_fail_loaded_command_missing_args(self):
         services = {

@@ -45,6 +45,7 @@ USER_UNIT_PROPERTIES = {
     "noaa-navionics-preflight.service": [
         "ExecStart",
         "EnvironmentFiles",
+        "Restart",
         "RestartUSec",
         "StartLimitIntervalUSec",
         "StartLimitBurst",
@@ -379,6 +380,7 @@ def _service_readiness_checks(
                     "noaa-navionics-preflight.service",
                     "Boot Readiness Settings",
                     exact={
+                        "Restart": "on-failure",
                         "RestartUSec": "30s",
                         "StartLimitIntervalUSec": "5min",
                         "StartLimitBurst": "5",

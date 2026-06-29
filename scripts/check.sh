@@ -134,6 +134,7 @@ grep -q 'track service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service loaded restart' scripts/verify_pi.sh
 grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
 grep -q 'preflight service loaded status report' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
@@ -227,6 +228,7 @@ grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics log-track' src/noaa_navionics/report.py
 grep -q 'noaa-navionics status-report' src/noaa_navionics/report.py
+grep -q '"Restart": "on-failure"' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'Chrony Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
