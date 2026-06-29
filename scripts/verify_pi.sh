@@ -626,6 +626,7 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher readiness warning" grep -Fq 'show_preflight_warning' "$launcher"
   check "chartplotter launcher duplicate guard" grep -Fq 'OpenCPN is already running' "$launcher"
   check "chartplotter launcher lock" grep -Fq 'chartplotter.launch.lock' "$launcher"
+  check "chartplotter launcher stale lock recovery" grep -Fq 'is not a chartplotter launcher; treating lock as stale' "$launcher"
 fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
 check "chartplotter autostart" test -f "$autostart"

@@ -64,6 +64,16 @@ opencpn_running() {
   fi
 }
 
+process_looks_like_launcher() {
+  local pid="$1"
+  local cmdline
+  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/cmdline" ]]; then
+    return 1
+  fi
+  cmdline="$(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true)"
+  [[ "$cmdline" == *"noaa-navionics-start-chartplotter"* || "$cmdline" == *"start_chartplotter.sh"* ]]
+}
+
 release_launcher_lock() {
   if [[ "$lock_acquired" -eq 1 ]]; then
     rm -f "${launcher_lock_dir}/pid"
@@ -83,13 +93,16 @@ acquire_launcher_lock() {
   if [[ -r "${launcher_lock_dir}/pid" ]]; then
     read -r owner_pid <"${launcher_lock_dir}/pid" || owner_pid=""
   fi
-  if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null; then
+  if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null && process_looks_like_launcher "$owner_pid"; then
     if opencpn_running; then
       echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
     else
       echo "Another NOAA Navionics chartplotter launcher is already running; leaving it in charge."
     fi
     exit 0
+  fi
+  if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null; then
+    echo "Launcher lock PID ${owner_pid} is not a chartplotter launcher; treating lock as stale."
   fi
   echo "Removing stale chartplotter launcher lock."
   rm -f "${launcher_lock_dir}/pid"
