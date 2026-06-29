@@ -115,11 +115,12 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
     revision_path = path or _source_revision_path()
     if revision_path.is_symlink():
         return CheckResult("Source Revision", False, f"deployed source revision path is a symlink: {revision_path}")
-    if revision_path.parent.is_symlink():
+    symlink_component = _first_symlink_ancestor(revision_path.parent)
+    if symlink_component is not None:
         return CheckResult(
             "Source Revision",
             False,
-            f"deployed source revision directory is a symlink: {revision_path.parent}",
+            f"deployed source revision directory is a symlink: {symlink_component}",
         )
     try:
         revision = revision_path.read_text(encoding="utf-8").strip()
@@ -133,6 +134,14 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
 def _source_revision_path() -> Path:
     override = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
     return Path(override).expanduser() if override else DEFAULT_SOURCE_REVISION_PATH.expanduser()
+
+
+def _first_symlink_ancestor(path: Path) -> Optional[Path]:
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
 
 
 def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) -> CheckResult:

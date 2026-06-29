@@ -1239,11 +1239,21 @@ if app.get("source_revision_directory_is_symlink") is not False:
         "status report source revision directory is a symlink or missing symlink status: "
         f"{Path(source_revision_path).expanduser().parent}"
     )
+source_revision_symlink_component = str(app.get("source_revision_symlink_component", "")).strip()
+if source_revision_symlink_component:
+    raise SystemExit(
+        f"status report source revision path contains a symlink: {source_revision_symlink_component}"
+    )
 source_revision_file = Path(source_revision_path).expanduser()
 if source_revision_file.is_symlink():
     raise SystemExit(f"status report source revision path is a symlink: {source_revision_file}")
 if source_revision_file.parent.is_symlink():
     raise SystemExit(f"status report source revision directory is a symlink: {source_revision_file.parent}")
+live_source_revision_symlink_component = first_symlink_ancestor(source_revision_file.parent)
+if live_source_revision_symlink_component is not None:
+    raise SystemExit(
+        f"status report source revision path contains a symlink: {live_source_revision_symlink_component}"
+    )
 actual_revision = str(app.get("source_revision", "unknown"))
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")

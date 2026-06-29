@@ -1114,10 +1114,16 @@ grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_directory_is_symlink"' src/noaa_navionics/report.py
+grep -q '"source_revision_symlink_component"' src/noaa_navionics/report.py
 grep -q 'source revision directory is a symlink' src/noaa_navionics/report.py
 grep -q 'deployed source revision directory is a symlink' src/noaa_navionics/health.py
+grep -q 'status report source revision path contains a symlink' scripts/verify_pi.sh
 grep -q 'test_app_summary_rejects_symlinked_source_revision_directory' tests/test_downloader.py
+grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_directory_on_pi' tests/test_downloader.py
+grep -q 'test_check_source_revision_rejects_symlinked_revision_ancestor_on_pi' tests/test_downloader.py
+grep -q 'recorded through a symlinked path component' README.md
+grep -q 'recorded through a symlinked path component' docs/sailboat-pi.md
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
 grep -q '"manifest_symlink_component"' src/noaa_navionics/report.py
 grep -q '"download_path_symlink_component"' src/noaa_navionics/report.py
