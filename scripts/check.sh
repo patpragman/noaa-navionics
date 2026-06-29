@@ -952,6 +952,9 @@ grep -q 'usage()' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
+grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
+grep -q 'sudo -n -l' scripts/dock_test_pi.sh
+grep -q 'reboot sudo preflight' scripts/dock_test_pi.sh
 grep -q 'request_reboot' scripts/dock_test_pi.sh
 grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
@@ -962,6 +965,19 @@ grep -q -- '--device is required for the rebooted dock acceptance test' scripts/
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
 grep -q -- '--skip-autologin cannot be used for the dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
+grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' README.md
+grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
+
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/dock_test_pi.sh").read_text(encoding="utf-8")
+preflight_block_index = text.index('if [[ "$no_reboot" -eq 0 ]]; then')
+preflight_call_index = text.index("check_remote_noninteractive_reboot_available", preflight_block_index)
+deploy_index = text.index('"${repo_root}/scripts/deploy_to_pi.sh"', preflight_call_index)
+if deploy_index < preflight_call_index:
+    raise SystemExit("dock test reboot sudo preflight must run before deploy/provision")
+PY
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"

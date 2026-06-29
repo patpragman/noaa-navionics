@@ -316,6 +316,30 @@ remote_boot_id() {
   ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "cat /proc/sys/kernel/random/boot_id"
 }
 
+check_remote_noninteractive_reboot_available() {
+  local reboot_cmd
+
+  if ! reboot_cmd="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
+    echo "Could not find the remote reboot command on $target." >&2
+    return 1
+  fi
+  if [[ "$reboot_cmd" != /* || "$reboot_cmd" =~ [[:space:]\"\'] ]]; then
+    echo "Remote reboot command path is unsafe: $reboot_cmd" >&2
+    return 1
+  fi
+
+  if ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "sudo -n -l '$reboot_cmd'" >/dev/null 2>&1; then
+    printf 'OK   noninteractive sudo can run %s\n' "$reboot_cmd"
+    return 0
+  fi
+
+  echo "Failed to preflight passwordless sudo reboot on $target." >&2
+  echo "The dock test requires the SSH user to run reboot without a password prompt." >&2
+  echo "Allow passwordless sudo for: $reboot_cmd" >&2
+  echo "Use --no-reboot only for a weaker pre-reboot smoke check." >&2
+  return 1
+}
+
 request_reboot() {
   if ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "sudo -n reboot" >/dev/null 2>&1; then
     return 0
@@ -333,6 +357,11 @@ request_reboot() {
   echo "The dock test requires the SSH user to run: sudo -n reboot" >&2
   return 1
 }
+
+if [[ "$no_reboot" -eq 0 ]]; then
+  printf '\n[reboot sudo preflight]\n'
+  check_remote_noninteractive_reboot_available
+fi
 
 if [[ "$skip_deploy" -eq 0 ]]; then
   "${repo_root}/scripts/deploy_to_pi.sh" "$target" "$remote_dir" "${deploy_args[@]}" --provision "${provision_args[@]}"
