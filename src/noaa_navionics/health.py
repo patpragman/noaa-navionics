@@ -8,6 +8,7 @@ import importlib.util
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
@@ -203,10 +204,16 @@ def check_disk_space(chart_dir: Path) -> CheckResult:
     existing = path if path.exists() else path.parent
     if not existing.exists():
         existing = Path.home()
+    if not existing.is_dir():
+        return CheckResult("Disk", False, f"{existing} is not a directory")
     usage = shutil.disk_usage(existing)
     free_gb = usage.free / (1024 ** 3)
-    ok = free_gb >= 2.0
-    return CheckResult("Disk", ok, f"{free_gb:.1f} GB free at {existing}")
+    writable = _directory_writable(existing)
+    ok = free_gb >= 2.0 and writable
+    detail = f"{free_gb:.1f} GB free at {existing}"
+    if not writable:
+        detail += "; not writable"
+    return CheckResult("Disk", ok, detail)
 
 
 def check_pi_throttling() -> CheckResult:
@@ -325,6 +332,14 @@ def _limited_find(root: Path, *, suffix: str, limit: int) -> list[Path]:
         if len(found) >= limit:
             break
     return found
+
+
+def _directory_writable(path: Path) -> bool:
+    try:
+        with tempfile.NamedTemporaryFile(prefix=".noaa-navionics.", dir=path):
+            return True
+    except OSError:
+        return False
 
 
 def _fix_detail(fix: GPSFix) -> str:

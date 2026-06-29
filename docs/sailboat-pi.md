@@ -210,7 +210,7 @@ Expected checks:
 - OpenCPN configured with the chart directory
 - OpenCPN configured with the GPSD network connection
 - Configured local GPS device path exists when GPSD is using a local receiver
-- At least 2 GB free disk space
+- At least 2 GB free disk space on writable chart storage
 - No active Raspberry Pi under-voltage or throttling
 - Raspberry Pi temperature below the hard limit
 - Valid GPSD fix

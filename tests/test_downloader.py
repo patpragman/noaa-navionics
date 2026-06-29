@@ -29,6 +29,7 @@ from noaa_navionics.gps import GPSFix, GPXTrackLogger, daily_track_path, iter_fi
 from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
+    check_disk_space,
     check_chart_package,
     check_gps_device,
     check_gps_device_path,
@@ -635,6 +636,25 @@ class GpsTests(unittest.TestCase):
             cell.write_text("", encoding="ascii")
             extracted_result = check_chart_dir(root)
             self.assertTrue(extracted_result.ok)
+
+    def test_disk_check_requires_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "charts"
+            path.write_text("not a directory", encoding="ascii")
+            result = check_disk_space(path)
+            self.assertFalse(result.ok)
+            self.assertIn("not a directory", result.detail)
+
+    def test_disk_check_reports_unwritable_directory(self):
+        original = health_module._directory_writable
+        try:
+            health_module._directory_writable = lambda path: False
+            with tempfile.TemporaryDirectory() as tmpdir:
+                result = check_disk_space(Path(tmpdir))
+            self.assertFalse(result.ok)
+            self.assertIn("not writable", result.detail)
+        finally:
+            health_module._directory_writable = original
 
 
 class PiHealthTests(unittest.TestCase):
