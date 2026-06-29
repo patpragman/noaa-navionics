@@ -613,6 +613,9 @@ grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
 grep -q 'prepare_app_config_path' scripts/configure_gpsd.sh
+grep -q 'validate_gpsd_config_path' scripts/configure_gpsd.sh
+grep -q 'GPSD config is a symlink' scripts/configure_gpsd.sh
+grep -q 'GPSD config directory .* has permissions' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import read_config' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _prepare_config_parent' scripts/configure_gpsd.sh
 grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh

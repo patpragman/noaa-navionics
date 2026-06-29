@@ -135,7 +135,7 @@ Configure GPSD with the stable device path:
 scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The script requires an absolute `/dev/...` path without whitespace or quotes, validates the onboard app config and config directory before touching GPSD, creates a synced root-owned private `0600` backup of `/etc/default/gpsd`, replaces the GPSD config through a synced temporary file, reloads systemd, enables and restarts both `gpsd.socket` and `gpsd.service`, and updates `~/.config/noaa-navionics/config.ini` through a synced private `0600` atomic replacement.
+The script requires an absolute `/dev/...` path without whitespace or quotes, validates the onboard app config, config directory, and `/etc/default/gpsd` target path before touching GPSD, creates a synced root-owned private `0600` backup of `/etc/default/gpsd`, replaces the GPSD config through a synced temporary file, reloads systemd, enables and restarts both `gpsd.socket` and `gpsd.service`, and updates `~/.config/noaa-navionics/config.ini` through a synced private `0600` atomic replacement.
 Deploy, dock-test, direct verification, config validation, GPSD setup, and readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, reject nested or shell-unsafe by-id paths, require the configured path to be a character device when device checks are enabled, and reject unrecognized device paths; use one `/dev/serial/by-id/...` symlink name for USB GPS receivers, `/dev/serial0` or `/dev/serial1` for Raspberry Pi UART GPS hardware, or `/dev/gps` for a managed stable alias. GPSD setup validates the final NOAA Navionics app config before writing `/etc/default/gpsd`, so unsafe chart or track storage settings fail before system GPSD files are changed.
 
 Configure chrony to use GPSD as a local time source:
@@ -144,7 +144,7 @@ Configure chrony to use GPSD as a local time source:
 scripts/configure_gps_time.sh
 ```
 
-This writes only `/etc/chrony/chrony.conf` outside dry-run mode, rejects symlinked or writable chrony config paths, backs it up, refuses damaged managed block markers, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, replaces the config through a synced temporary file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present or excluded. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
+This writes only `/etc/chrony/chrony.conf` outside dry-run mode, rejects symlinked or writable chrony config paths, creates a synced root-owned private `0600` backup, refuses damaged managed block markers, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, replaces the config through a synced temporary file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present or excluded. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
 
 Restart and verify:
 

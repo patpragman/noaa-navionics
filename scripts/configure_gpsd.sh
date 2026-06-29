@@ -259,6 +259,61 @@ _prepare_config_parent(config_path)
 PY
 }
 
+validate_gpsd_config_path() {
+  python3 - "$dry_run" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+dry_run = sys.argv[1] == "1"
+path = Path("/etc/default/gpsd")
+parent = path.parent
+
+if path.is_symlink():
+    raise SystemExit(f"GPSD config is a symlink: {path}")
+if path.exists() and not path.is_file():
+    raise SystemExit(f"GPSD config is not a regular file: {path}")
+if parent.is_symlink():
+    raise SystemExit(f"GPSD config directory is a symlink: {parent}")
+if parent.exists():
+    if not parent.is_dir():
+        raise SystemExit(f"GPSD config parent is not a directory: {parent}")
+    parent_stat = parent.stat()
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o022:
+        raise SystemExit(
+            f"GPSD config directory {parent} has permissions {parent_mode:04o}, "
+            "expected no group/other write bits"
+        )
+    if not dry_run and parent_stat.st_uid != 0:
+        raise SystemExit(f"GPSD config directory {parent} is owned by uid {parent_stat.st_uid}, expected root")
+elif not dry_run:
+    ancestor = parent.parent
+    if ancestor.is_symlink():
+        raise SystemExit(f"GPSD config parent directory is below a symlink: {ancestor}")
+    if not ancestor.exists() or not ancestor.is_dir():
+        raise SystemExit(f"GPSD config parent ancestor is not a directory: {ancestor}")
+    ancestor_stat = ancestor.stat()
+    ancestor_mode = ancestor_stat.st_mode & 0o777
+    if ancestor_stat.st_uid != 0:
+        raise SystemExit(f"GPSD config parent ancestor {ancestor} is owned by uid {ancestor_stat.st_uid}, expected root")
+    if ancestor_mode & 0o022:
+        raise SystemExit(
+            f"GPSD config parent ancestor {ancestor} has permissions {ancestor_mode:04o}, "
+            "expected no group/other write bits"
+        )
+if not dry_run and path.exists():
+    path_stat = path.stat()
+    path_mode = path_stat.st_mode & 0o777
+    if path_stat.st_uid != 0:
+        raise SystemExit(f"GPSD config {path} is owned by uid {path_stat.st_uid}, expected root")
+    if path_mode & 0o022:
+        raise SystemExit(
+            f"GPSD config {path} has permissions {path_mode:04o}, expected no group/other write bits"
+        )
+PY
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -374,6 +429,7 @@ fi
 
 prepare_app_config_path
 validate_updated_app_config
+validate_gpsd_config_path
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
