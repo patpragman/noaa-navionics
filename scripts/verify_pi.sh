@@ -281,6 +281,7 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher readiness gate" grep -Fq 'status-report --config "$config" --gps-seconds 10 --output "$status_report"' "$launcher"
   check "chartplotter launcher ENC parse" grep -Fq 'opencpn -parse_all_enc' "$launcher"
   check "chartplotter launcher display awake" grep -Fq 'keep_display_awake' "$launcher"
+  check "chartplotter launcher display failure logging" grep -Fq 'xset command(s) failed' "$launcher"
 fi
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then

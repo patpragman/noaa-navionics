@@ -56,6 +56,7 @@ grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
+grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
