@@ -107,6 +107,12 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
+Run the full dock acceptance test, including a reboot and post-reboot verification:
+
+```bash
+scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
 On the Pi, configure GPSD with the GPS device:
 
 ```bash

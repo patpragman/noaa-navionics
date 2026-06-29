@@ -44,6 +44,14 @@ scripts/verify_pi.sh pi@raspberrypi.local
 The verify script runs checks on the Pi over SSH, including architecture, installed commands, user units, config, and `noaa-navionics preflight`.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
+Run the dock acceptance test before relying on the Pi underway:
+
+```bash
+scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
+The dock test deploys and provisions the Pi, verifies readiness, reboots it, waits for SSH to return, and verifies readiness again. Use `--skip-deploy` to test an already-provisioned Pi.
+
 Manual install:
 
 ```bash

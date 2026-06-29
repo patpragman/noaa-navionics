@@ -14,6 +14,7 @@ bash -n \
   scripts/start_chartplotter.sh \
   scripts/configure_gpsd.sh \
   scripts/provision_sailboat_pi.sh \
+  scripts/dock_test_pi.sh \
   scripts/check.sh
 
 install_output="$(mktemp)"
