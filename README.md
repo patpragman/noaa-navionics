@@ -183,7 +183,7 @@ When an X desktop session is present, the launcher also asks the display server 
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
 If readiness fails in a desktop session, the launcher shows a Tkinter warning listing failed checks and the status report path before starting OpenCPN anyway.
 If those display power commands fail during chartplotter autostart, or if the current-boot launcher log shows OpenCPN already exited, the strict Pi startup verifier fails the dock test.
-The provisioning script configures LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Use `--skip-autologin` only for deliberate headless or development deployments.
+The provisioning script configures LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Autologin setup rejects root and requires the selected account to exist with an owned local home directory. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 Create the onboard config:
 

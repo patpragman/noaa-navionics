@@ -270,6 +270,9 @@ grep -q 'Refusing to configure graphical autologin for root' scripts/configure_d
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
+grep -q 'pwd.getpwnam' scripts/configure_desktop_autologin.sh
+grep -q 'Autologin user home does not exist' scripts/configure_desktop_autologin.sh
+grep -q 'Autologin user does not own home directory' scripts/configure_desktop_autologin.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh

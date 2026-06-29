@@ -106,6 +106,32 @@ if [[ "$dry_run" -eq 0 ]] && ! id "$autologin_user" >/dev/null 2>&1; then
   exit 2
 fi
 
+if [[ "$dry_run" -eq 0 ]]; then
+  if ! python3 - "$autologin_user" <<'PY'
+from pathlib import Path
+import pwd
+import sys
+
+username = sys.argv[1]
+try:
+    entry = pwd.getpwnam(username)
+except KeyError as exc:
+    raise SystemExit(f"Autologin user does not exist: {username}") from exc
+home = Path(entry.pw_dir)
+if not home.is_absolute():
+    raise SystemExit(f"Autologin user home is not absolute: {home}")
+if not home.exists():
+    raise SystemExit(f"Autologin user home does not exist: {home}")
+if not home.is_dir():
+    raise SystemExit(f"Autologin user home is not a directory: {home}")
+if home.stat().st_uid != entry.pw_uid:
+    raise SystemExit(f"Autologin user does not own home directory: {home}")
+PY
+  then
+    exit 2
+  fi
+fi
+
 lightdm_dir="/etc/lightdm"
 lightdm_conf_dir="${lightdm_dir}/lightdm.conf.d"
 autologin_conf="${lightdm_conf_dir}/50-noaa-navionics-autologin.conf"
