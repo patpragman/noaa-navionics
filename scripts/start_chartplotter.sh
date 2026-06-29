@@ -18,6 +18,24 @@ opencpn_restarts=3
 opencpn_restart_delay=5
 lock_acquired=0
 
+first_symlink_ancestor() {
+  local path="$1"
+  local current
+
+  current="$path"
+  while [[ -n "$current" && "$current" != "." ]]; do
+    if [[ -L "$current" ]]; then
+      printf '%s\n' "$current"
+      return 0
+    fi
+    if [[ "$current" == "/" ]]; then
+      return 1
+    fi
+    current="$(dirname "$current")"
+  done
+  return 1
+}
+
 sync_paths() {
   python3 - "$@" <<'PY'
 from pathlib import Path
@@ -52,9 +70,14 @@ PY
 
 prepare_private_cache_dir() {
   local cache_parent
+  local symlink_component
   cache_parent="$(dirname "$cache_dir")"
   if [[ -L "$cache_parent" ]]; then
     echo "NOAA Navionics cache parent directory is a symlink: $cache_parent" >&2
+    exit 1
+  fi
+  if symlink_component="$(first_symlink_ancestor "$(dirname "$cache_parent")")"; then
+    echo "NOAA Navionics cache path contains a symlink: $symlink_component" >&2
     exit 1
   fi
   if [[ -L "$cache_dir" ]]; then
@@ -157,9 +180,14 @@ validate_launcher_env_path() {
   local env_stat
   local env_uid
   local env_mode
+  local symlink_component
   launcher_env_dir="$(dirname "$launcher_env")"
   if [[ -L "$launcher_env_dir" ]]; then
     echo "NOAA Navionics launcher environment directory is a symlink: $launcher_env_dir" >&2
+    exit 1
+  fi
+  if symlink_component="$(first_symlink_ancestor "$(dirname "$launcher_env_dir")")"; then
+    echo "NOAA Navionics launcher environment path contains a symlink: $symlink_component" >&2
     exit 1
   fi
   if [[ ! -e "$launcher_env" ]]; then

@@ -68,7 +68,9 @@ grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
 grep -q 'prepare_private_cache_dir' scripts/start_chartplotter.sh
+grep -q 'first_symlink_ancestor' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache parent directory is a symlink' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
@@ -84,6 +86,7 @@ grep -q 'chartplotter launcher lock path contains a symlink' scripts/start_chart
 grep -q 'validate_launcher_env_path' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment directory is a symlink' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher environment path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment has permissions' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_from_current_boot' scripts/start_chartplotter.sh
 grep -q 'Launcher lock is from a previous boot; treating lock as stale' scripts/start_chartplotter.sh
@@ -2497,6 +2500,26 @@ fi
 grep -q 'NOAA Navionics cache parent directory is a symlink' "$launcher_symlink_cache_parent_output"
 test ! -e "$launcher_symlink_cache_parent_target/noaa-navionics"
 
+launcher_symlink_cache_ancestor_real_home="$tmpdir/launcher-symlink-cache-ancestor-real-home"
+launcher_symlink_cache_ancestor_home="$tmpdir/launcher-symlink-cache-ancestor-home"
+launcher_symlink_cache_ancestor_output="$tmpdir/launcher-symlink-cache-ancestor.out"
+mkdir -p "$launcher_symlink_cache_ancestor_real_home/.local/bin"
+ln -s "$launcher_symlink_cache_ancestor_real_home" "$launcher_symlink_cache_ancestor_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_cache_ancestor_real_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_symlink_cache_ancestor_real_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_symlink_cache_ancestor_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_symlink_cache_ancestor_output" 2>&1
+launcher_symlink_cache_ancestor_code=$?
+set -e
+if [[ "$launcher_symlink_cache_ancestor_code" -eq 0 ]]; then
+  cat "$launcher_symlink_cache_ancestor_output" >&2
+  echo "expected chartplotter launcher to reject a symlinked cache ancestor" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics cache path contains a symlink' "$launcher_symlink_cache_ancestor_output"
+grep -q "$launcher_symlink_cache_ancestor_home" "$launcher_symlink_cache_ancestor_output"
+test ! -e "$launcher_symlink_cache_ancestor_real_home/.cache/noaa-navionics"
+
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"
 printf 'NOAA_NAVIONICS_GPS_SECONDS=17\n' >"$launcher_home/.config/noaa-navionics/launcher.env"
@@ -2556,6 +2579,26 @@ if [[ "$launcher_symlink_env_dir_code" -eq 0 ]]; then
 fi
 grep -q 'NOAA Navionics launcher environment directory is a symlink' "$launcher_symlink_env_dir_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_symlink_env_dir_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_symlink_env_ancestor_home="$tmpdir/launcher-symlink-env-ancestor-home"
+launcher_symlink_env_ancestor_target="$tmpdir/launcher-symlink-env-ancestor-target"
+mkdir -p "$launcher_symlink_env_ancestor_home/.local/bin" "$launcher_symlink_env_ancestor_home/.cache/noaa-navionics" "$launcher_symlink_env_ancestor_target/noaa-navionics"
+printf 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_symlink_env_ancestor_target/noaa-navionics/launcher.env"
+ln -s "$launcher_symlink_env_ancestor_target" "$launcher_symlink_env_ancestor_home/.config"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_env_ancestor_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_symlink_env_ancestor_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_symlink_env_ancestor_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_symlink_env_ancestor_code=$?
+set -e
+if [[ "$launcher_symlink_env_ancestor_code" -eq 0 ]]; then
+  cat "$launcher_symlink_env_ancestor_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a symlinked launcher environment ancestor" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics launcher environment path contains a symlink' "$launcher_symlink_env_ancestor_home/.cache/noaa-navionics/chartplotter.log"
+grep -q "$launcher_symlink_env_ancestor_home/.config" "$launcher_symlink_env_ancestor_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_symlink_env_ancestor_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_writable_env_home="$tmpdir/launcher-writable-env-home"
 mkdir -p "$launcher_writable_env_home/.local/bin" "$launcher_writable_env_home/.cache/noaa-navionics" "$launcher_writable_env_home/.config/noaa-navionics"

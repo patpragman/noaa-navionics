@@ -174,7 +174,7 @@ Start the Pi chartplotter launcher:
 noaa-navionics-start-chartplotter
 ```
 
-Launcher startup rejects symlinked cache parent directories before creating `~/.cache/noaa-navionics`. Launcher output is appended to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log`, including OpenCPN's exit status if the chartplotter process stops.
+Launcher startup rejects symlinked cache path components before creating `~/.cache/noaa-navionics`. Launcher output is appended to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log`, including OpenCPN's exit status if the chartplotter process stops.
 The launcher rotates that log once it exceeds 1 MB and syncs the rotated file and directory entry so repeated unattended boots do not grow the cache indefinitely.
 It reads `NOAA_NAVIONICS_GPS_SECONDS`, optional `NOAA_NAVIONICS_WARNING_SECONDS`, optional `NOAA_NAVIONICS_READINESS_ATTEMPTS`, optional `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, optional `NOAA_NAVIONICS_OPENCPN_RESTARTS`, optional `NOAA_NAVIONICS_OPENCPN_RESTART_DELAY`, and optional `NOAA_NAVIONICS_START_ON_FAILED_READINESS` from `~/.config/noaa-navionics/launcher.env` only after rejecting symlinked launcher environment files or path components and misowned or group/world-writable launcher environment files, then applies process environment overrides before writing its startup readiness report.
 If OpenCPN is already running for the same user, a repeated launcher invocation leaves the existing chartplotter instance in place instead of starting a second one; defunct zombie processes do not count as running.
