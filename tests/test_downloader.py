@@ -428,7 +428,7 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["package"]["label"], "Test package")
             self.assertEqual(manifest["download"]["sha256"], result.sha256)
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
-            self.assertTrue(check_chart_manifest(output).ok)
+            self.assertTrue(check_chart_manifest(output, expected_package="state", expected_value="AK").ok)
 
     def test_download_retries_transient_network_failure(self):
         calls = {"count": 0}
@@ -604,6 +604,27 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("outside chart directory", result.detail)
+
+    def test_manifest_package_mismatch_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="CA")
+
+            self.assertFalse(result.ok)
+            self.assertIn("does not match configured CA_ENCs.zip", result.detail)
 
     def test_chart_package_rejects_update_bundle_as_primary_charts(self):
         result = check_chart_package("updates", "ten-days")

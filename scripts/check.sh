@@ -42,6 +42,7 @@ grep -q 'no fresh GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh NMEA fix' src/noaa_navionics/health.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
+grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py

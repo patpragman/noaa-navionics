@@ -12,7 +12,7 @@ import tempfile
 import time
 
 from .gps import GPSFix, iter_fixes, iter_gpsd_fixes, open_nmea_stream
-from .downloader import MANIFEST_NAME, count_enc_cells, read_manifest
+from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest
 from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
 
 
@@ -44,7 +44,12 @@ def run_preflight(
         check_opencpn(),
         check_chart_package(chart_package, chart_value),
         check_chart_dir(chart_dir),
-        check_chart_manifest(chart_dir, max_age_days=max_chart_age_days),
+        check_chart_manifest(
+            chart_dir,
+            max_age_days=max_chart_age_days,
+            expected_package=chart_package,
+            expected_value=chart_value,
+        ),
         check_opencpn_chart_config(chart_dir),
         check_disk_space(chart_dir),
         check_pi_throttling(),
@@ -171,7 +176,13 @@ def check_chart_dir(chart_dir: Path) -> CheckResult:
     return CheckResult("Charts", False, f"no ENC .000 cells or ZIPs found under {path}")
 
 
-def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckResult:
+def check_chart_manifest(
+    chart_dir: Path,
+    *,
+    max_age_days: int = 30,
+    expected_package: str = "",
+    expected_value: str = "",
+) -> CheckResult:
     path = Path(chart_dir).expanduser()
     manifest_path = path / MANIFEST_NAME
     if not manifest_path.exists():
@@ -218,7 +229,45 @@ def check_chart_manifest(chart_dir: Path, *, max_age_days: int = 30) -> CheckRes
         )
     package = manifest.get("package", {})
     label = package.get("label", "unknown package") if isinstance(package, dict) else "unknown package"
+    expected_filename = _expected_manifest_filename(expected_package, expected_value)
+    if expected_filename:
+        actual_filename = package.get("filename", "") if isinstance(package, dict) else ""
+        if actual_filename != expected_filename:
+            actual_detail = actual_filename or label
+            return CheckResult(
+                "Manifest",
+                False,
+                f"manifest package {actual_detail} does not match configured {expected_filename}",
+            )
     return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
+
+
+def _expected_manifest_filename(package: str, value: str = "") -> str:
+    package = package.strip().lower()
+    value = value.strip()
+    if not package:
+        return ""
+    kwargs: dict[str, object]
+    if package == "state":
+        kwargs = {"state": value}
+    elif package == "cgd":
+        kwargs = {"cgd": value}
+    elif package == "region":
+        kwargs = {"region": value}
+    elif package == "updates":
+        kwargs = {"updates": value}
+    elif package == "chart":
+        kwargs = {"chart": value}
+    elif package == "all":
+        kwargs = {"all_charts": True}
+    elif package == "catalog":
+        kwargs = {"catalog": True}
+    else:
+        return ""
+    try:
+        return package_for(**kwargs).filename
+    except ValueError:
+        return ""
 
 
 def check_disk_space(chart_dir: Path) -> CheckResult:
