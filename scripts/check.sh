@@ -348,6 +348,9 @@ grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'GPSD service active' scripts/verify_pi.sh
 grep -q 'Chrony service enabled' scripts/verify_pi.sh
 grep -q 'Chrony GPSD time source' scripts/verify_pi.sh
+grep -q 'check_chrony_gps_time_config' scripts/verify_pi.sh
+grep -q 'not line.lstrip().startswith("#")' scripts/verify_pi.sh
+grep -q 'uncommented NOAA Navionics GPSD SHM 0 time source' scripts/verify_pi.sh
 grep -q 'Chrony usable GPS source' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter autostart name' scripts/verify_pi.sh
@@ -501,6 +504,8 @@ grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/h
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -Fq 'line[1] in "*+"' src/noaa_navionics/health.py
 grep -Fq '^#[*+].*GPS' scripts/verify_pi.sh
+grep -q 'uncommented chrony GPSD time-source config' README.md
+grep -q 'uncommented GPSD time-source config' docs/sailboat-pi.md
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py

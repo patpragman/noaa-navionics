@@ -642,6 +642,26 @@ if not session_file.is_file():
 PY
 }
 
+check_chrony_gps_time_config() {
+  python3 - <<'PY'
+from pathlib import Path
+
+path = Path("/etc/chrony/chrony.conf")
+expected = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
+try:
+    text = path.read_text(encoding="utf-8")
+except OSError as exc:
+    raise SystemExit(f"could not read chrony config {path}: {exc}") from exc
+configured = any(
+    line.strip() == expected
+    for line in text.splitlines()
+    if not line.lstrip().startswith("#")
+)
+if not configured:
+    raise SystemExit(f"{path} does not contain an uncommented NOAA Navionics GPSD SHM 0 time source")
+PY
+}
+
 stable_gps_device_path() {
   case "$1" in
     /dev/serial/by-id/*)
@@ -1025,7 +1045,7 @@ check "Pi power command" command -v vcgencmd
 check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
-check "Chrony GPSD time source" grep -Fq 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' /etc/chrony/chrony.conf
+check "Chrony GPSD time source" check_chrony_gps_time_config
 check "Chrony usable GPS source" wait_for_chrony_gps_source
 check "GPSD command" command -v gpsd
 check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket
