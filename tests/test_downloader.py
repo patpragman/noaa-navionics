@@ -486,6 +486,110 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Would add GPSD: 127.0.0.1:2947", output.getvalue())
 
+    def test_cli_log_track_uses_configured_output_and_gpsd_when_omitted(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            chart_output = root / "charts"
+            track_output = root / "configured-tracks"
+            app_config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {chart_output}\n"
+                "\n"
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n"
+                "retention_days = 14\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+                latitude=1.0,
+                longitude=2.0,
+                satellites=8,
+                hdop=1.2,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(device, baud, sample, *, gpsd=False, gpsd_host="127.0.0.1", gpsd_port=2947):
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(["log-track", "--config", str(app_config), "--rotate-daily"])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947)])
+            self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
+
+    def test_cli_log_track_explicit_device_and_output_override_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            configured_output = root / "configured-tracks"
+            explicit_output = root / "explicit-tracks"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {configured_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+                latitude=1.0,
+                longitude=2.0,
+                satellites=8,
+                hdop=1.2,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(device, baud, sample, *, gpsd=False, gpsd_host="127.0.0.1", gpsd_port=2947):
+                calls.append((device, baud, sample, gpsd))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(
+                        [
+                            "log-track",
+                            "--config",
+                            str(app_config),
+                            "--device",
+                            "/dev/ttyUSB-test",
+                            "--baud",
+                            "9600",
+                            "--output",
+                            str(explicit_output),
+                            "--rotate-daily",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False)])
+            self.assertFalse(configured_output.exists())
+            self.assertTrue((explicit_output / "tracks" / "track-20260629.gpx").exists())
+
 
 class CLIValidationTests(unittest.TestCase):
     def assert_parse_error(self, args):

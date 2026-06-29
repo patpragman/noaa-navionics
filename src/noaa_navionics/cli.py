@@ -150,18 +150,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     gps = subparsers.add_parser("gps-monitor", help="print live GPS fixes from an NMEA device")
     gps.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
-    gps.add_argument("--device", default="/dev/ttyUSB0", help="NMEA serial device")
-    gps.add_argument("--baud", type=int, default=4800, help="serial baud rate")
+    gps.add_argument("--device", help="NMEA serial device")
+    gps.add_argument("--baud", type=int, help="serial baud rate")
     gps.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
     gps.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     gps.add_argument("--once", action="store_true", help="exit after the first valid fix")
 
     track = subparsers.add_parser("log-track", help="record GPS fixes to a GPX track")
     track.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
-    track.add_argument("--device", default="/dev/ttyUSB0", help="NMEA serial device")
-    track.add_argument("--baud", type=int, default=4800, help="serial baud rate")
+    track.add_argument("--device", help="NMEA serial device")
+    track.add_argument("--baud", type=int, help="serial baud rate")
     track.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
-    track.add_argument("--output", "-o", default="~/charts/noaa-enc", help="base output directory")
+    track.add_argument("--output", "-o", help="base output directory; defaults to [tracking].output")
     track.add_argument("--file", help="explicit GPX output file")
     track.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     track.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
@@ -358,13 +358,11 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         if args.command == "gps-monitor":
             app_config = read_config(Path(args.config))
-            use_gpsd = args.gpsd or (
-                app_config.gps_mode == "gpsd" and not args.sample and args.device == "/dev/ttyUSB0"
-            )
+            use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
             count = 0
             for fix in _read_fixes(
-                args.device if args.device != "/dev/ttyUSB0" else app_config.gps_device,
-                args.baud if args.baud != 4800 else app_config.gps_baud,
+                args.device or app_config.gps_device,
+                args.baud or app_config.gps_baud,
                 args.sample,
                 gpsd=use_gpsd,
                 gpsd_host=app_config.gpsd_host,
@@ -378,14 +376,12 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         if args.command == "log-track":
             app_config = read_config(Path(args.config))
-            use_gpsd = args.gpsd or (
-                app_config.gps_mode == "gpsd" and not args.sample and args.device == "/dev/ttyUSB0"
-            )
-            base_output = Path(args.output) if args.output != "~/charts/noaa-enc" else app_config.track_output
+            use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
+            base_output = Path(args.output).expanduser() if args.output else app_config.track_output
             deadline = time.monotonic() + args.seconds if args.seconds else None
             fixes = _read_fixes(
-                args.device if args.device != "/dev/ttyUSB0" else app_config.gps_device,
-                args.baud if args.baud != 4800 else app_config.gps_baud,
+                args.device or app_config.gps_device,
+                args.baud or app_config.gps_baud,
                 args.sample,
                 gpsd=use_gpsd,
                 gpsd_host=app_config.gpsd_host,
