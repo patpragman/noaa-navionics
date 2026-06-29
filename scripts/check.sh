@@ -198,6 +198,10 @@ grep -q 'refusing to remove venv outside data directory' scripts/install_raspber
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
 grep -q 'shutil.rmtree(venv)' scripts/install_raspberry_pi.sh
 grep -q 'usage()' scripts/install_raspberry_pi.sh
+grep -q 'usage()' scripts/provision_sailboat_pi.sh
+grep -q 'usage()' scripts/configure_gpsd.sh
+grep -q 'usage()' scripts/configure_gps_time.sh
+grep -q 'usage()' scripts/configure_desktop_autologin.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
@@ -864,6 +868,72 @@ scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" -
 grep -q 'autologin-session=LXDE-pi' "$install_output"
 grep -q 'Configured graphical autologin for' "$install_output"
 grep -q 'using X11 session LXDE-pi' "$install_output"
+
+set +e
+scripts/provision_sailboat_pi.sh --help >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 0 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/provision_sailboat_pi.sh' "$provision_output"
+
+set +e
+scripts/configure_gpsd.sh --help >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/configure_gpsd.sh' "$gpsd_output"
+
+set +e
+scripts/configure_gps_time.sh --help >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -ne 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/configure_gps_time.sh' "$gpsd_output"
+
+set +e
+scripts/configure_desktop_autologin.sh --help >"$install_output" 2>&1
+desktop_code=$?
+set -e
+if [[ "$desktop_code" -ne 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/configure_desktop_autologin.sh' "$install_output"
+
+set +e
+scripts/verify_pi.sh --help >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 0 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/verify_pi.sh' "$verify_output"
+
+set +e
+scripts/dock_test_pi.sh --help >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 0 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/dock_test_pi.sh' "$dock_output"
 
 set +e
 scripts/install_raspberry_pi.sh --help >"$install_output" 2>&1
