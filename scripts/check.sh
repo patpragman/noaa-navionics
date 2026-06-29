@@ -284,6 +284,10 @@ grep -q 'recent GPX trackpoint' scripts/verify_pi.sh
 grep -q 'max_trackpoint_age = 600.0' scripts/verify_pi.sh
 grep -q 'newest GPX trackpoint is stale' scripts/verify_pi.sh
 grep -q 'timestamped trackpoint' scripts/verify_pi.sh
+grep -q 'trackpoint_position' scripts/verify_pi.sh
+grep -q 'GPX trackpoint latitude is outside -90..90' scripts/verify_pi.sh
+grep -q 'GPX trackpoint longitude is outside -180..180' scripts/verify_pi.sh
+grep -q 'GPX trackpoint has invalid 0,0 coordinates' scripts/verify_pi.sh
 grep -q 'tracking.output' scripts/verify_pi.sh
 grep -q '<trkpt\\b' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh

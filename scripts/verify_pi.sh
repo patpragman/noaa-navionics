@@ -1172,6 +1172,28 @@ except Exception as exc:
 boot_epoch = time.time() - uptime_seconds
 deadline = time.monotonic() + timeout
 last_detail = ""
+def trackpoint_position(trackpoint):
+    tag_match = re.search(r"<trkpt\b([^>]*)>", trackpoint)
+    if not tag_match:
+        return None, "GPX trackpoint has no opening trkpt tag"
+    attrs = tag_match.group(1)
+    lat_match = re.search(r'\blat="([^"]+)"', attrs)
+    lon_match = re.search(r'\blon="([^"]+)"', attrs)
+    if not lat_match or not lon_match:
+        return None, "GPX trackpoint is missing latitude or longitude"
+    try:
+        latitude = float(lat_match.group(1))
+        longitude = float(lon_match.group(1))
+    except ValueError:
+        return None, f"GPX trackpoint has non-numeric coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+    if not (-90.0 <= latitude <= 90.0):
+        return None, f"GPX trackpoint latitude is outside -90..90: {latitude}"
+    if not (-180.0 <= longitude <= 180.0):
+        return None, f"GPX trackpoint longitude is outside -180..180: {longitude}"
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        return None, "GPX trackpoint has invalid 0,0 coordinates"
+    return (latitude, longitude), ""
+
 while True:
     now = time.time()
     if tracks_dir.exists():
@@ -1197,9 +1219,15 @@ while True:
                 last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
                 continue
             newest_track_time = None
+            newest_track_position = None
             for trackpoint in trackpoint_times:
+                position, position_error = trackpoint_position(trackpoint)
+                if position is None:
+                    last_detail = f"{path} {position_error}"
+                    continue
                 match = re.search(r"<time>([^<]+)</time>", trackpoint)
                 if not match:
+                    last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
                     continue
                 timestamp_text = match.group(1).strip()
                 try:
@@ -1209,8 +1237,9 @@ while True:
                     continue
                 if newest_track_time is None or track_time > newest_track_time:
                     newest_track_time = track_time
+                    newest_track_position = position
             if newest_track_time is None:
-                last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
+                last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped position yet"
                 continue
             track_epoch = newest_track_time.timestamp()
             if track_epoch + 5 < boot_epoch:
@@ -1224,7 +1253,7 @@ while True:
             if age > max_trackpoint_age:
                 last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
                 continue
-            print(path)
+            print(f"{path} {newest_track_position[0]:.6f},{newest_track_position[1]:.6f}")
             raise SystemExit(0)
     else:
         last_detail = f"{tracks_dir} does not exist"
