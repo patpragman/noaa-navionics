@@ -2887,6 +2887,24 @@ class GpsTests(unittest.TestCase):
         assert fix is not None
         self.assertEqual(fix.timestamp, datetime(2026, 6, 30, 0, 0, 0, tzinfo=timezone.utc))
 
+    def test_parse_nmea_rejects_bad_coordinate_hemispheres(self):
+        gga = parse_nmea_sentence("$GPGGA,123519,4807.038,X,01131.000,E,1,08,0.9,545.4,M,46.9,M,,")
+        rmc = parse_nmea_sentence("$GPRMC,123519,A,4807.038,N,01131.000,X,022.4,084.4,230394,003.1,W")
+
+        self.assertIsNone(gga)
+        self.assertIsNone(rmc)
+        self.assertEqual(
+            list(
+                iter_fixes(
+                    [
+                        "$GPGGA,123519,4807.038,X,01131.000,E,1,08,0.9,545.4,M,46.9,M,,",
+                        "$GPRMC,123519,A,4807.038,N,01131.000,X,022.4,084.4,230394,003.1,W",
+                    ]
+                )
+            ),
+            [],
+        )
+
     def test_iter_fixes_merges_gga_and_rmc(self):
         fixes = list(
             iter_fixes(

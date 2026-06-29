@@ -362,8 +362,10 @@ def daily_track_path(base_dir: Path, timestamp: Optional[datetime] = None) -> Pa
 def _parse_rmc(fields: list[str], raw: str) -> Optional[GPSFix]:
     if len(fields) < 10 or fields[2] != "A":
         return None
-    lat = _parse_lat_lon(fields[3], fields[4])
-    lon = _parse_lat_lon(fields[5], fields[6])
+    lat = _parse_lat_lon(fields[3], fields[4], latitude=True)
+    lon = _parse_lat_lon(fields[5], fields[6], latitude=False)
+    if lat is None or lon is None:
+        return None
     timestamp = _parse_rmc_timestamp(fields[1], fields[9])
     return GPSFix(
         timestamp=timestamp,
@@ -379,8 +381,10 @@ def _parse_rmc(fields: list[str], raw: str) -> Optional[GPSFix]:
 def _parse_gga(fields: list[str], raw: str) -> Optional[GPSFix]:
     if len(fields) < 10:
         return None
-    lat = _parse_lat_lon(fields[2], fields[3])
-    lon = _parse_lat_lon(fields[4], fields[5])
+    lat = _parse_lat_lon(fields[2], fields[3], latitude=True)
+    lon = _parse_lat_lon(fields[4], fields[5], latitude=False)
+    if lat is None or lon is None:
+        return None
     quality = _int_or_none(fields[6])
     return GPSFix(
         timestamp=_parse_time_today(fields[1]),
@@ -394,10 +398,17 @@ def _parse_gga(fields: list[str], raw: str) -> Optional[GPSFix]:
     )
 
 
-def _parse_lat_lon(value: str, hemisphere: str) -> Optional[float]:
+def _parse_lat_lon(value: str, hemisphere: str, *, latitude: bool) -> Optional[float]:
     if not value or not hemisphere:
         return None
-    split_at = 2 if hemisphere in ("N", "S") else 3
+    if latitude:
+        if hemisphere not in ("N", "S"):
+            return None
+        split_at = 2
+    else:
+        if hemisphere not in ("E", "W"):
+            return None
+        split_at = 3
     degrees = float(value[:split_at])
     minutes = float(value[split_at:])
     decimal = degrees + minutes / 60
