@@ -31,7 +31,7 @@ scripts/install_raspberry_pi.sh
 
 For headless use, `python3-tk` is optional.
 For chartplotter use, use Raspberry Pi OS with Desktop/LightDM so OpenCPN can launch on the attached display after power-up.
-The Raspberry Pi installer installs OpenCPN and GPSD on the Pi, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, configures graphical autologin for the installing user, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
+The Raspberry Pi installer installs OpenCPN, GPSD, and chrony on the Pi, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, configures graphical autologin for the installing user, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
 
 ## Tkinter GUI
 
@@ -114,6 +114,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by
 Provisioning runs the first chart sync with retry settings suited to unreliable marina Wi-Fi. Use `--sync-retries` and `--sync-retry-delay` with `deploy_to_pi.sh` or `dock_test_pi.sh` if the initial commissioning download needs a longer retry window. Use `--gps-seconds N` if the attached GPS receiver needs more time for a cold-start fix during commissioning.
 The deploy, provisioning, and dock-test scripts reject invalid retry, delay, GPS wait, and reboot timeout values before starting remote work.
 Provisioning persists the chosen GPS wait in `~/.config/noaa-navionics/launcher.env` so the boot readiness service and desktop chartplotter launcher use the same cold-start window after reboot.
+Provisioning also configures chrony to use GPSD's message-based `SHM 0` time source so a Pi without an RTC can synchronize its clock from the GPS when network time is unavailable.
 
 Verify the Raspberry Pi after deployment:
 
@@ -122,7 +123,7 @@ scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
 Use `--gps-seconds N` here too if the GPS receiver needs a longer fix window.
-Verification also checks that the chartplotter launcher contains the readiness gate and OpenCPN ENC parsing command, that the persisted launcher GPS wait matches the verification wait, that the desktop autostart entry is enabled, that LightDM autologin and the graphical boot target are configured for the deployed user, that Raspberry Pi power diagnostics are available, that the installed user systemd units contain the expected commands, and that GPSD is enabled for boot, startup options, GPSD device path, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
+Verification also checks that the chartplotter launcher contains the readiness gate and OpenCPN ENC parsing command, that the persisted launcher GPS wait matches the verification wait, that the desktop autostart entry is enabled, that LightDM autologin and the graphical boot target are configured for the deployed user, that Raspberry Pi power diagnostics are available, that the installed user systemd units contain the expected commands, and that GPSD and chrony are enabled for boot, startup options, GPSD device path, chrony GPSD time-source config, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
 
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 
@@ -140,7 +141,7 @@ scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
 Use a `/dev/serial/by-id/` path when possible; GPSD setup and verification fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, and reject unrecognized device paths that are not one of the documented stable aliases.
-The installer syncs installed command symlinks, launchers, source revision, desktop autostart, and user systemd unit files to disk. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement.
+The installer syncs installed command symlinks, launchers, source revision, desktop autostart, and user systemd unit files to disk. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement. `scripts/configure_gps_time.sh` backs up and syncs `/etc/chrony/chrony.conf`, adds a managed GPSD `SHM 0` refclock block, restarts chrony, then restarts GPSD so the daemons reconnect in the right order.
 
 On the Pi, `status-report` writes a JSON readiness artifact:
 
@@ -150,7 +151,7 @@ noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 
 Status reports are written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
-The installed boot-time readiness service writes the same status report after login, reads the persisted GPS wait setting, and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed or unqueryable units, and checks GPSD service state in addition to recording raw service diagnostics.
+The installed boot-time readiness service writes the same status report after login, reads the persisted GPS wait setting, and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed or unqueryable units, and checks GPSD and chrony service state in addition to recording raw service diagnostics.
 Deploy/install records the source revision so status reports show which code is running on the Pi.
 
 Start the Pi chartplotter launcher:

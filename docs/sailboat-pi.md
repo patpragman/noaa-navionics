@@ -35,7 +35,7 @@ Deploy and run the full onboard provisioning sequence:
 scripts/deploy_to_pi.sh pi@raspberrypi.local --provision --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-Provisioning runs GPSD setup, chart sync, OpenCPN chart/GPSD registration, desktop graphical autologin setup, launcher GPS wait persistence, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
+Provisioning runs GPSD setup, chrony GPS time setup, chart sync, OpenCPN chart/GPSD registration, desktop graphical autologin setup, launcher GPS wait persistence, user service enablement, user linger for reboot persistence, and a final status report on the Pi.
 The deploy, provisioning, and dock-test scripts validate retry counts, retry delays, GPS wait time, and reboot wait timeout before starting remote work.
 
 Verify the Raspberry Pi after deployment:
@@ -44,7 +44,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-The verify script runs checks on the Pi over SSH, including architecture, installed commands, Raspberry Pi power diagnostics, deployed source revision, chartplotter launcher content, persisted launcher GPS wait, desktop autostart fields, graphical boot target, LightDM autologin for the deployed user, installed user systemd unit contents, GPSD boot enablement and startup options, GPSD device matching the onboard config, config, and `noaa-navionics status-report`. It also parses the generated JSON readiness artifact and requires it to be fresh, ready, populated with readiness checks, and stamped with the expected source revision. It expects a `-dirty` revision suffix only when verifying from a dirty local worktree. The status report step retries briefly so GPSD has time to produce its first fix after boot; add `--gps-seconds N` if the receiver needs a longer fix window.
+The verify script runs checks on the Pi over SSH, including architecture, installed commands, Raspberry Pi power diagnostics, deployed source revision, chartplotter launcher content, persisted launcher GPS wait, desktop autostart fields, graphical boot target, LightDM autologin for the deployed user, installed user systemd unit contents, GPSD boot enablement and startup options, GPSD device matching the onboard config, chrony service state and GPSD time-source config, config, and `noaa-navionics status-report`. It also parses the generated JSON readiness artifact and requires it to be fresh, ready, populated with readiness checks, and stamped with the expected source revision. It expects a `-dirty` revision suffix only when verifying from a dirty local worktree. The status report step retries briefly so GPSD has time to produce its first fix after boot; add `--gps-seconds N` if the receiver needs a longer fix window.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:
@@ -60,14 +60,14 @@ Manual install:
 
 ```bash
 sudo apt update
-sudo apt install python3 python3-venv python3-tk opencpn gpsd gpsd-clients x11-xserver-utils
+sudo apt install python3 python3-venv python3-tk opencpn gpsd gpsd-clients chrony x11-xserver-utils
 sudo apt install raspi-utils || sudo apt install libraspberrypi-bin
 scripts/install_raspberry_pi.sh --skip-apt
 ```
 
 On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
-The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, ensures `vcgencmd` is available for Raspberry Pi power checks, and configures LightDM graphical autologin for the installing user. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, desktop autostart entry, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
+The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, ensures `vcgencmd` is available for Raspberry Pi power checks, and configures LightDM graphical autologin for the installing user. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, desktop autostart entry, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, `gpsd` shares one GPS feed between OpenCPN and this tool, and `chrony` can discipline the Pi clock from GPSD when network time is unavailable. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 ## Onboard Config
 
@@ -125,6 +125,14 @@ scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 The script requires an absolute `/dev/...` path without whitespace or quotes, backs up `/etc/default/gpsd`, writes and syncs the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
 GPSD setup and readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, and reject unrecognized device paths; use `/dev/serial/by-id/...` for USB GPS receivers, `/dev/serial0` or `/dev/serial1` for Raspberry Pi UART GPS hardware, or `/dev/gps` for a managed stable alias.
 
+Configure chrony to use GPSD as a local time source:
+
+```bash
+scripts/configure_gps_time.sh
+```
+
+This backs up `/etc/chrony/chrony.conf`, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, syncs the replacement file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
+
 Restart and verify:
 
 ```bash
@@ -147,7 +155,7 @@ After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboar
 scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, configures chrony to use GPSD time, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
 The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network. Add `--gps-seconds N` to `deploy_to_pi.sh --provision` or `dock_test_pi.sh` when the GPS receiver needs a longer cold-start fix window; provisioning stores that value in `~/.config/noaa-navionics/launcher.env` for boot readiness and desktop autostart.
 
 ## Startup
@@ -178,7 +186,7 @@ noaa-navionics sync-charts
 
 Each sync writes `noaa-navionics-manifest.json` next to the chart data. The manifest records the NOAA package URL and ZIP filename, download size, SHA-256, extraction path, ENC cell count, and UTC sync time. ZIP extraction refuses packages with no ENC `.000` cells before replacing the previous chart directory. Completed ZIP downloads, extracted chart trees, manifest JSON, and the affected directory entries are synced before atomic replacement; manifest writes use unique temporary files. If `[charts] keep_zip = no`, the ZIP is removed after extraction even when it was already cached. Syncs hold `.noaa-navionics-download.lock` in the chart directory so a timer run and a manual run cannot update the same chart set at the same time; stale locks older than six hours are replaced. Preflight requires this manifest, fails if it is older than `max_age_days`, fails if stale chart-update staging or previous directories remain from an interrupted sync, verifies that the recorded NOAA ZIP matches the configured chart package, verifies that the recorded extraction path is still under the configured chart directory, and verifies that the extraction still contains at least the recorded number of ENC cells. If the kept ZIP is still present, preflight also verifies its recorded path, size, and SHA-256.
 The installed chart refresh service runs `sync-charts` with retries, a two-hour systemd start timeout, and delayed service-level retry attempts so large NOAA bundles are not killed or abandoned during slow marina Wi-Fi downloads.
-Preflight requires a plausible system clock, and on Raspberry Pi targets it also requires `timedatectl` to report the system clock synchronized before relying on chart age or GPX timestamps. For offline operation away from network time, configure a reliable time source such as GPS time/PPS before treating readiness as complete.
+Preflight requires a plausible system clock, and on Raspberry Pi targets it also requires `timedatectl` to report the system clock synchronized before relying on chart age or GPX timestamps. Provisioning configures chrony to use GPSD's `SHM 0` message-based time source, which is sufficient for chart age and GPX timestamps. For sub-second timekeeping, add GPS/PPS hardware and tune chrony for PPS separately.
 
 For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--chart` downloads. Use the catalog search to identify specific cells:
 
@@ -216,7 +224,7 @@ Save a status report for troubleshooting:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
-The status report includes readiness checks, NOAA Navionics user unit checks, and GPSD service state checks.
+The status report includes readiness checks, NOAA Navionics user unit checks, and GPSD/chrony service state checks.
 The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.
@@ -226,6 +234,7 @@ Expected checks:
 
 - Python 3.9+
 - System clock has a sane modern UTC date
+- Raspberry Pi clock is synchronized before chart-age and GPX timestamp checks are trusted
 - Tkinter available for the GUI
 - OpenCPN installed
 - `xset` available so the launcher can disable X11 display blanking and DPMS sleep
@@ -236,13 +245,14 @@ Expected checks:
 - Current chart manifest present, matching the configured chart package, and tied to an existing extraction with the recorded ENC cell count
 - OpenCPN configured with the chart directory
 - OpenCPN configured with the GPSD network connection
+- Chrony enabled, active, and configured to use GPSD time
 - Graphical boot and LightDM autologin configured for unattended startup
 - Configured local GPS device path exists when GPSD is using a local receiver
 - At least 2 GB free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path
 - No active Raspberry Pi under-voltage or throttling
 - Raspberry Pi temperature below the hard limit
 - Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode
-- Chart refresh timer, track logger, boot readiness service, and GPSD service are in the expected state
+- Chart refresh timer, track logger, boot readiness service, GPSD service, and chrony service are in the expected state
 - During the dock test after reboot, the chartplotter launcher ran during the current boot and OpenCPN is running
 
 If any check fails, treat the Pi as not ready.

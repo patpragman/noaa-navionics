@@ -1051,7 +1051,11 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
 
@@ -1066,7 +1070,11 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         timer_check = next(check for check in checks if check.name == "Chart Timer")
@@ -1082,7 +1090,11 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         sync_check = next(check for check in checks if check.name == "Chart Sync")
@@ -1101,7 +1113,11 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         sync_check = next(check for check in checks if check.name == "Chart Sync")
@@ -1117,7 +1133,11 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         timer_check = next(check for check in checks if check.name == "Chart Timer")
@@ -1133,7 +1153,11 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "failed"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         boot_check = next(check for check in checks if check.name == "Boot Readiness")
@@ -1149,13 +1173,37 @@ class StatusReportTests(unittest.TestCase):
             "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
             "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
         }
-        system_services = {"available": True, "gpsd.service": {"enabled": "disabled", "active": "active"}}
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "disabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
 
         checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
         gpsd_check = next(check for check in checks if check.name == "GPSD Service")
 
         self.assertFalse(gpsd_check.ok)
         self.assertIn("disabled", gpsd_check.detail)
+
+    def test_service_readiness_checks_fail_disabled_chrony_service(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "disabled", "active": "inactive"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        chrony_check = next(check for check in checks if check.name == "Chrony Service")
+
+        self.assertFalse(chrony_check.ok)
+        self.assertIn("disabled", chrony_check.detail)
 
 
 class GpsTests(unittest.TestCase):

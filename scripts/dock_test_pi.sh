@@ -10,6 +10,7 @@ Options:
   --allow-dirty       Allow deploying a dirty local worktree for deliberate test runs
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
   --skip-autologin    Pass through provisioning without configuring desktop autologin
+  --skip-gps-time     Pass through provisioning without configuring chrony GPS time
   --no-reboot         Do not reboot; run only the pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
   --gps-seconds N     Seconds to wait for a GPS fix during provisioning
@@ -114,7 +115,7 @@ while [[ $# -gt 0 ]]; do
       skip_deploy=1
       shift
       ;;
-    --skip-autologin)
+    --skip-autologin|--skip-gps-time)
       provision_args+=("$1")
       shift
       ;;

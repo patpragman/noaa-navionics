@@ -11,6 +11,7 @@ skip_gpsd=0
 skip_sync=0
 skip_services=0
 skip_autologin=0
+skip_gps_time=0
 gps_seconds=10
 sync_retries=5
 sync_retry_delay=30
@@ -57,6 +58,7 @@ Options:
   --skip-sync         Do not download charts
   --skip-services     Do not enable user systemd services
   --skip-autologin    Do not configure desktop graphical autologin
+  --skip-gps-time     Do not configure chrony to use GPSD time
   --no-device-check   Do not require the GPS device path to exist now
   --allow-non-pi      Allow running on non-Raspberry Pi architecture
 
@@ -143,6 +145,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-autologin)
       skip_autologin=1
+      shift
+      ;;
+    --skip-gps-time)
+      skip_gps_time=1
       shift
       ;;
     --no-device-check)
@@ -248,6 +254,16 @@ if [[ "$skip_gpsd" -eq 0 ]]; then
     gpsd_args+=(--dry-run)
   fi
   run "${repo_root}/scripts/configure_gpsd.sh" "${gpsd_args[@]}"
+  if [[ "$skip_gps_time" -eq 0 ]]; then
+    gps_time_args=()
+    if [[ "$allow_non_pi" -eq 1 ]]; then
+      gps_time_args+=(--allow-non-pi)
+    fi
+    if [[ "$dry_run" -eq 1 ]]; then
+      gps_time_args+=(--dry-run)
+    fi
+    run "${repo_root}/scripts/configure_gps_time.sh" "${gps_time_args[@]}"
+  fi
 fi
 
 if [[ "$skip_sync" -eq 0 ]]; then

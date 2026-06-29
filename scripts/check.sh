@@ -14,6 +14,7 @@ bash -n \
   scripts/start_chartplotter.sh \
   scripts/configure_desktop_autologin.sh \
   scripts/configure_gpsd.sh \
+  scripts/configure_gps_time.sh \
   scripts/provision_sailboat_pi.sh \
   scripts/dock_test_pi.sh \
   scripts/check.sh
@@ -33,18 +34,22 @@ grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
+grep -q -- '--skip-gps-time' scripts/deploy_to_pi.sh
+grep -q -- '--skip-gps-time' scripts/dock_test_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
+grep -q 'gpsd-clients chrony' scripts/install_raspberry_pi.sh
 grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
 grep -q 'noaa-navionics-chartplotter.desktop' scripts/install_raspberry_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/install_raspberry_pi.sh
+grep -q 'noaa-navionics-configure-gps-time' scripts/install_raspberry_pi.sh
 grep -q 'systemctl --user enable noaa-navionics-track.service' scripts/install_raspberry_pi.sh
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
@@ -64,6 +69,8 @@ grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
+grep -q 'Chrony service enabled' scripts/verify_pi.sh
+grep -q 'Chrony GPSD time source' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter autostart name' scripts/verify_pi.sh
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scripts/verify_pi.sh
@@ -92,6 +99,9 @@ grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
+grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
+grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
+grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
@@ -149,6 +159,7 @@ grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
+grep -q 'Chrony Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
@@ -157,6 +168,8 @@ grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'configure_gps_time.sh' scripts/provision_sailboat_pi.sh
+grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
@@ -264,6 +277,16 @@ if [[ "$dock_code" -ne 2 ]]; then
 fi
 
 set +e
+scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf relative.conf >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject relative chrony config path with exit 2" >&2
+  exit 1
+fi
+
+set +e
 scripts/configure_gpsd.sh --allow-non-pi --dry-run --device >"$gpsd_output" 2>&1
 gpsd_code=$?
 set -e
@@ -325,6 +348,11 @@ scripts/provision_sailboat_pi.sh \
   --sync-retries 7 \
   --sync-retry-delay 15 >"$provision_output"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
+grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
+
+scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony.conf" >"$gpsd_output"
+grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' "$gpsd_output"
+grep -q 'Would restart chrony and GPSD' "$gpsd_output"
 
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"

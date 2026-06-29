@@ -111,7 +111,7 @@ if [[ "$skip_apt" -eq 0 ]]; then
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
-  sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients x11-xserver-utils
+  sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients chrony x11-xserver-utils
   ensure_vcgencmd
 fi
 
@@ -122,11 +122,13 @@ ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 install -m 0755 "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
+install -m 0755 "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time"
 sync_paths \
   "${HOME}/.local/bin/noaa-navionics" \
   "${HOME}/.local/bin/noaa-navionics-gui" \
   "${HOME}/.local/bin/noaa-navionics-start-chartplotter" \
-  "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
+  "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" \
+  "${HOME}/.local/bin/noaa-navionics-configure-gps-time"
 
 if [[ -f "${repo_root}/.source-revision" ]]; then
   cp "${repo_root}/.source-revision" "$revision_file"
