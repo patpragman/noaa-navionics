@@ -155,7 +155,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 wait_for_ssh_down() {
   local deadline=$((SECONDS + 60))
   while [[ "$SECONDS" -lt "$deadline" ]]; do
-    if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "$target" "true" >/dev/null 2>&1; then
+    if ! ssh_available; then
       return 0
     fi
     sleep 2
@@ -166,7 +166,7 @@ wait_for_ssh_down() {
 wait_for_ssh_up() {
   local deadline=$((SECONDS + timeout))
   while [[ "$SECONDS" -lt "$deadline" ]]; do
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$target" "true" >/dev/null 2>&1; then
+    if ssh_available; then
       return 0
     fi
     sleep 5
@@ -175,8 +175,30 @@ wait_for_ssh_up() {
   return 1
 }
 
+ssh_available() {
+  ssh -o BatchMode=yes -o ConnectTimeout=5 "$target" "true" >/dev/null 2>&1
+}
+
 remote_boot_id() {
   ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "cat /proc/sys/kernel/random/boot_id"
+}
+
+request_reboot() {
+  if ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" "sudo -n reboot" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local deadline=$((SECONDS + 30))
+  while [[ "$SECONDS" -lt "$deadline" ]]; do
+    if ! ssh_available; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "Failed to request reboot with passwordless sudo on $target." >&2
+  echo "The dock test requires the SSH user to run: sudo -n reboot" >&2
+  return 1
 }
 
 if [[ "$skip_deploy" -eq 0 ]]; then
@@ -193,7 +215,7 @@ fi
 
 printf '\n[reboot]\n'
 before_boot_id="$(remote_boot_id)"
-ssh "$target" "sudo reboot" >/dev/null 2>&1 || true
+request_reboot
 wait_for_ssh_down
 wait_for_ssh_up
 after_boot_id="$(remote_boot_id)"

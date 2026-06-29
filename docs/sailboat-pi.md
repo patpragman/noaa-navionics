@@ -53,7 +53,7 @@ Run the dock acceptance test before relying on the Pi underway:
 scripts/dock_test_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The dock test deploys and provisions the Pi, verifies readiness, reboots it, waits for SSH to return, requires the Pi boot ID to change, and verifies readiness again. After reboot, it uses the stricter verify mode that waits briefly for desktop autostart, requires the existing readiness status report and chartplotter launcher log to be fresh for the current boot, and requires an `opencpn` process owned by the deployed user to remain running through a short stability check, proving the desktop autostart path actually launched or preserved OpenCPN. Use `--skip-deploy` to test an already-provisioned Pi.
+The dock test deploys and provisions the Pi, verifies readiness, requests reboot with noninteractive `sudo -n reboot`, waits for SSH to return, requires the Pi boot ID to change, and verifies readiness again. If the SSH user cannot reboot without a password prompt, the test fails clearly instead of waiting on an interactive sudo prompt. After reboot, it uses the stricter verify mode that waits briefly for desktop autostart, requires the existing readiness status report and chartplotter launcher log to be fresh for the current boot, and requires an `opencpn` process owned by the deployed user to remain running through a short stability check, proving the desktop autostart path actually launched or preserved OpenCPN. Use `--skip-deploy` to test an already-provisioned Pi.
 For deliberate test deployments from a dirty worktree, pass `--allow-dirty` to the dock test as well.
 
 Manual install:

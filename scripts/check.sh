@@ -385,6 +385,9 @@ grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
+grep -q 'request_reboot' scripts/dock_test_pi.sh
+grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
+grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
 
