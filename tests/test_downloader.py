@@ -2912,6 +2912,23 @@ class GpsTests(unittest.TestCase):
             self.assertIn("<trkpt lat=\"48.11730000\" lon=\"11.51666667\">", text)
             self.assertIn("<ele>545.40</ele>", text)
 
+    def test_gpx_logger_skips_invalid_direct_fix(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=math.nan,
+            longitude=-149.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "track.gpx"
+            with GPXTrackLogger(path, name="Test") as logger:
+                logger.append(fix)
+
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("<trkpt", text)
+            self.assertNotIn("nan", text)
+
     def test_gpx_logger_syncs_track_file_and_directory_to_disk(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
         calls = []
