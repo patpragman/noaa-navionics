@@ -300,6 +300,8 @@ grep -q 'preflight service loaded timeout' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
+grep -q 'preflight service last success' scripts/verify_pi.sh
+grep -q 'ExecMainStartTimestampMonotonic' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh

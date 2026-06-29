@@ -629,6 +629,28 @@ wait_for_chrony_gps_source() {
   done
 }
 
+check_preflight_service_succeeded() {
+  local deadline=$((SECONDS + gps_seconds + 60))
+  local state=""
+  while true; do
+    state="$(systemctl --user show noaa-navionics-preflight.service \
+      -p ActiveState \
+      -p Result \
+      -p ExecMainStatus \
+      -p ExecMainStartTimestampMonotonic 2>/dev/null || true)"
+    if printf '%s\n' "$state" | grep -Fxq 'Result=success' \
+      && printf '%s\n' "$state" | grep -Fxq 'ExecMainStatus=0' \
+      && printf '%s\n' "$state" | grep -Eq '^ExecMainStartTimestampMonotonic=[1-9][0-9]*$'; then
+      return 0
+    fi
+    if [[ "$SECONDS" -ge "$deadline" ]]; then
+      printf '%s\n' "${state:-could not read noaa-navionics-preflight.service state}" >&2
+      return 1
+    fi
+    sleep 1
+  done
+}
+
 check_recent_track_log() {
   local config_path="$1"
   python3 - "$config_path" "$gps_seconds" <<'PY'
@@ -903,6 +925,7 @@ check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.t
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
 check "track service active" systemctl --user is-active --quiet noaa-navionics-track.service
 check "preflight service enabled" systemctl --user is-enabled --quiet noaa-navionics-preflight.service
+check "preflight service last success" check_preflight_service_succeeded
 check "chart timer active" systemctl --user is-active --quiet noaa-navionics.timer
 
 printf '\n[preflight]\n'
