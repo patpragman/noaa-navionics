@@ -7,6 +7,9 @@ from typing import Optional
 
 
 DEFAULT_CONFIG_PATH = Path("~/.config/noaa-navionics/config.ini")
+CHART_PACKAGES = {"state", "cgd", "region", "updates", "chart", "all", "catalog"}
+CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "updates", "chart"}
+GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 
 
 @dataclass(frozen=True)
@@ -62,25 +65,49 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     gps = parser["gps"] if parser.has_section("gps") else {}
     tracking = parser["tracking"] if parser.has_section("tracking") else {}
 
+    chart_package = charts.get("package", defaults.chart_package).strip().lower()
+    if chart_package not in CHART_PACKAGES:
+        raise ValueError("charts.package must be one of: state, cgd, region, updates, chart, all, catalog")
+    chart_value = charts.get("value", defaults.chart_value).strip()
+    if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
+        raise ValueError(f"charts.value is required when charts.package is {chart_package}")
     chart_output = Path(charts.get("output", str(defaults.chart_output))).expanduser()
+    max_chart_age_days = _get_int(
+        charts,
+        "max_age_days",
+        defaults.max_chart_age_days,
+        label="charts.max_age_days",
+        minimum=1,
+    )
     gps_mode = gps.get("mode", defaults.gps_mode).strip().lower()
     if gps_mode not in {"gpsd", "serial"}:
         raise ValueError("gps.mode must be either gpsd or serial")
+    gps_baud = _get_int(gps, "baud", defaults.gps_baud, label="gps.baud")
+    if gps_baud not in GPS_BAUD_RATES:
+        raise ValueError(f"gps.baud must be one of: {', '.join(str(rate) for rate in sorted(GPS_BAUD_RATES))}")
+    gpsd_port = _get_int(gps, "gpsd_port", defaults.gpsd_port, label="gps.gpsd_port", minimum=1, maximum=65535)
+    track_retention_days = _get_int(
+        tracking,
+        "retention_days",
+        defaults.track_retention_days,
+        label="tracking.retention_days",
+        minimum=0,
+    )
     return AppConfig(
-        chart_package=charts.get("package", defaults.chart_package).strip().lower(),
-        chart_value=charts.get("value", defaults.chart_value).strip(),
+        chart_package=chart_package,
+        chart_value=chart_value,
         chart_output=chart_output,
-        extract=_get_bool(charts, "extract", defaults.extract),
-        keep_zip=_get_bool(charts, "keep_zip", defaults.keep_zip),
-        force=_get_bool(charts, "force", defaults.force),
-        max_chart_age_days=int(charts.get("max_age_days", str(defaults.max_chart_age_days))),
+        extract=_get_bool(charts, "extract", defaults.extract, label="charts.extract"),
+        keep_zip=_get_bool(charts, "keep_zip", defaults.keep_zip, label="charts.keep_zip"),
+        force=_get_bool(charts, "force", defaults.force, label="charts.force"),
+        max_chart_age_days=max_chart_age_days,
         gps_mode=gps_mode,
         gps_device=gps.get("device", defaults.gps_device).strip(),
-        gps_baud=int(gps.get("baud", str(defaults.gps_baud))),
+        gps_baud=gps_baud,
         gpsd_host=gps.get("gpsd_host", defaults.gpsd_host).strip(),
-        gpsd_port=int(gps.get("gpsd_port", str(defaults.gpsd_port))),
+        gpsd_port=gpsd_port,
         track_output=Path(tracking.get("output", str(chart_output))).expanduser(),
-        track_retention_days=int(tracking.get("retention_days", str(defaults.track_retention_days))),
+        track_retention_days=track_retention_days,
     )
 
 
@@ -141,10 +168,44 @@ def package_kwargs(app_config: AppConfig) -> dict[str, object]:
     raise ValueError("charts.package must be one of: state, cgd, region, updates, chart, all, catalog")
 
 
-def _get_bool(section: object, key: str, default: bool) -> bool:
+def _get_bool(section: object, key: str, default: bool, *, label: Optional[str] = None) -> bool:
     if not hasattr(section, "get"):
         return default
     value = section.get(key)
     if value is None:
         return default
-    return str(value).strip().lower() in {"1", "yes", "true", "on"}
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "yes", "true", "on"}:
+        return True
+    if normalized in {"0", "no", "false", "off"}:
+        return False
+    raise ValueError(f"{label or key} must be a boolean value")
+
+
+def _get_int(
+    section: object,
+    key: str,
+    default: int,
+    *,
+    label: Optional[str] = None,
+    minimum: Optional[int] = None,
+    maximum: Optional[int] = None,
+) -> int:
+    field = label or key
+    if not hasattr(section, "get"):
+        value = default
+    else:
+        raw = section.get(key)
+        value = default if raw is None else _parse_int(field, raw)
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{field} must be at least {minimum}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{field} must be at most {maximum}")
+    return value
+
+
+def _parse_int(key: str, value: object) -> int:
+    try:
+        return int(str(value).strip())
+    except ValueError as exc:
+        raise ValueError(f"{key} must be an integer") from exc

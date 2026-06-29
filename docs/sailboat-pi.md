@@ -100,6 +100,7 @@ output = ~/charts/noaa-enc
 retention_days = 90
 ```
 
+Config validation fails fast on unsafe values: `charts.package` must be one of `state`, `cgd`, `region`, `updates`, `chart`, `all`, or `catalog`; packages other than `all` and `catalog` need `charts.value`; `charts.max_age_days` must be at least `1`; GPSD ports must be `1` through `65535`; serial baud must be one of `4800`, `9600`, `19200`, `38400`, `57600`, or `115200`; and track retention must be `0` or greater.
 `gps.mode` must be `gpsd` or `serial`. Use `gpsd` for onboard production so OpenCPN and this tool can share the receiver.
 
 ## GPSD Setup

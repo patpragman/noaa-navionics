@@ -192,6 +192,26 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "gps.mode"):
                 read_config(path)
 
+    def test_invalid_config_values_fail_fast(self):
+        cases = [
+            ("[charts]\npackage = potato\n", "charts.package"),
+            ("[charts]\npackage = state\nvalue =\n", "charts.value"),
+            ("[charts]\nmax_age_days = 0\n", "charts.max_age_days"),
+            ("[charts]\nextract = maybe\n", "charts.extract"),
+            ("[gps]\nbaud = 12345\n", "gps.baud"),
+            ("[gps]\ngpsd_port = 70000\n", "gps.gpsd_port"),
+            ("[tracking]\nretention_days = -1\n", "tracking.retention_days"),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for index, (text, error) in enumerate(cases):
+                with self.subTest(error=error):
+                    path = root / f"config-{index}.ini"
+                    path.write_text(text, encoding="utf-8")
+
+                    with self.assertRaisesRegex(ValueError, error):
+                        read_config(path)
+
 
 class OpenCPNConfigTests(unittest.TestCase):
     def test_configure_chart_directory_creates_config(self):
