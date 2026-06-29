@@ -94,7 +94,7 @@ grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
-grep -q 'gpsd-clients chrony' scripts/install_raspberry_pi.sh
+grep -q 'gpsd-clients chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
 grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
