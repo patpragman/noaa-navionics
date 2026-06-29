@@ -91,8 +91,8 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     if gps_baud not in GPS_BAUD_RATES:
         raise ValueError(f"gps.baud must be one of: {', '.join(str(rate) for rate in sorted(GPS_BAUD_RATES))}")
     gps_device = gps.get("device", defaults.gps_device).strip()
-    if gps_mode == "serial" and not gps_device:
-        raise ValueError("gps.device is required when gps.mode is serial")
+    if gps_mode in {"gpsd", "serial"} and not gps_device:
+        raise ValueError(f"gps.device is required when gps.mode is {gps_mode}")
     gpsd_host = _get_required_text(gps, "gpsd_host", defaults.gpsd_host, label="gps.gpsd_host")
     if any(separator in gpsd_host for separator in (";", "|")) or any(char.isspace() for char in gpsd_host):
         raise ValueError("gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")

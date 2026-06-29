@@ -248,6 +248,7 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\nmax_age_days = 0\n", "charts.max_age_days"),
             ("[charts]\nextract = maybe\n", "charts.extract"),
             ("[gps]\nmode = serial\ndevice =\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice =\n", "gps.device"),
             ("[gps]\nbaud = 12345\n", "gps.baud"),
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
             ("[gps]\nmode = gpsd\ngpsd_host = 192.168.1.10\n", "gps.gpsd_host"),

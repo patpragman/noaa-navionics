@@ -324,6 +324,7 @@ grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/conf
 grep -q 'gps.gpsd_host must be local for onboard gpsd mode' src/noaa_navionics/config.py
 grep -q 'GPSD_LOCAL_HOSTS' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
+grep -q 'gps.device is required when gps.mode is' src/noaa_navionics/config.py
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
 grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py
