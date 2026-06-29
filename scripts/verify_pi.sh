@@ -330,12 +330,15 @@ check_recent_track_log() {
   local config_path="$1"
   python3 - "$config_path" "$gps_seconds" <<'PY'
 from configparser import ConfigParser
+from datetime import datetime, timezone
 from pathlib import Path
+import re
 import sys
 import time
 
 config_path = Path(sys.argv[1]).expanduser()
 timeout = max(10.0, float(sys.argv[2]))
+max_trackpoint_age = 600.0
 parser = ConfigParser()
 if not parser.read(config_path):
     raise SystemExit(f"could not read config: {config_path}")
@@ -352,6 +355,7 @@ boot_epoch = time.time() - uptime_seconds
 deadline = time.monotonic() + timeout
 last_detail = ""
 while True:
+    now = time.time()
     if tracks_dir.exists():
         candidates = []
         for path in tracks_dir.glob("track-*.gpx"):
@@ -370,10 +374,40 @@ while True:
                 continue
             if stat.st_mtime + 5 < boot_epoch:
                 continue
-            if "<trkpt " in text:
-                print(path)
-                raise SystemExit(0)
-            last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
+            trackpoint_times = re.findall(r"<trkpt\b.*?</trkpt>", text, flags=re.DOTALL)
+            if not trackpoint_times:
+                last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
+                continue
+            newest_track_time = None
+            for trackpoint in trackpoint_times:
+                match = re.search(r"<time>([^<]+)</time>", trackpoint)
+                if not match:
+                    continue
+                timestamp_text = match.group(1).strip()
+                try:
+                    track_time = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")).astimezone(timezone.utc)
+                except ValueError:
+                    last_detail = f"{path} has an invalid GPX trackpoint timestamp: {timestamp_text}"
+                    continue
+                if newest_track_time is None or track_time > newest_track_time:
+                    newest_track_time = track_time
+            if newest_track_time is None:
+                last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
+                continue
+            track_epoch = newest_track_time.timestamp()
+            if track_epoch + 5 < boot_epoch:
+                age = boot_epoch - track_epoch
+                last_detail = f"{path} newest GPX trackpoint is older than current boot by {age:.0f}s"
+                continue
+            age = now - track_epoch
+            if age < -30:
+                last_detail = f"{path} newest GPX trackpoint timestamp is in the future by {-age:.0f}s"
+                continue
+            if age > max_trackpoint_age:
+                last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
+                continue
+            print(path)
+            raise SystemExit(0)
     else:
         last_detail = f"{tracks_dir} does not exist"
     if time.monotonic() >= deadline:

@@ -68,8 +68,11 @@ grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
 grep -q 'check_recent_track_log' scripts/verify_pi.sh
 grep -q 'recent GPX trackpoint' scripts/verify_pi.sh
+grep -q 'max_trackpoint_age = 600.0' scripts/verify_pi.sh
+grep -q 'newest GPX trackpoint is stale' scripts/verify_pi.sh
+grep -q 'timestamped trackpoint' scripts/verify_pi.sh
 grep -q 'tracking.output' scripts/verify_pi.sh
-grep -q '<trkpt ' scripts/verify_pi.sh
+grep -q '<trkpt\\b' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
