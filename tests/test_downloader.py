@@ -1001,6 +1001,45 @@ class GuiTests(unittest.TestCase):
 
             self.assertEqual(calls, [])
 
+    def test_configured_gui_sync_rejects_missing_storage_before_creating_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            chart_output = root / "missing-storage" / "charts"
+            app_config = AppConfig(
+                chart_package="state",
+                chart_value="AK",
+                chart_output=chart_output,
+                extract=True,
+                keep_zip=True,
+                force=True,
+                max_chart_age_days=12,
+                min_free_gb=0.1,
+                gps_mode="gpsd",
+                gps_device="/dev/serial/by-id/mock-gps",
+                gps_baud=9600,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                track_output=Path("/tracks/noaa"),
+                track_retention_days=90,
+            )
+            calls = []
+            original_download = gui_module.download_package
+
+            def fake_download_package(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise AssertionError("download_package should not be called")
+
+            try:
+                gui_module.download_package = fake_download_package
+
+                with self.assertRaisesRegex(RuntimeError, "create or mount the configured storage path"):
+                    gui_module.sync_configured_charts(app_config)
+            finally:
+                gui_module.download_package = original_download
+
+            self.assertFalse(chart_output.exists())
+            self.assertEqual(calls, [])
+
 
 class CLIValidationTests(unittest.TestCase):
     def assert_parse_error(self, args):

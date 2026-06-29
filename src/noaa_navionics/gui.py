@@ -49,6 +49,9 @@ def sync_configured_charts(app_config: AppConfig, *, progress=None, retries: int
     package_check = check_chart_package(app_config.chart_package, app_config.chart_value)
     if not package_check.ok:
         raise ValueError(f"sync requires a complete onboard chart package: {package_check.detail}")
+    disk_check = check_disk_space(app_config.chart_output, min_free_gb=app_config.min_free_gb)
+    if not disk_check.ok:
+        raise RuntimeError(f"sync requires writable chart storage with enough free space: {disk_check.detail}")
     app_config.chart_output.mkdir(parents=True, exist_ok=True)
     disk_check = check_disk_space(app_config.chart_output, min_free_gb=app_config.min_free_gb)
     if not disk_check.ok:
