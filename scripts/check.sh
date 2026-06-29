@@ -267,9 +267,12 @@ grep -q '"GPSD Config"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
 grep -q '"Chart Timer Settings"' scripts/verify_pi.sh
+grep -q '"Chart Timer Install"' scripts/verify_pi.sh
 grep -q '"Track Logger Settings"' scripts/verify_pi.sh
+grep -q '"Track Logger Install"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Settings"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Run"' scripts/verify_pi.sh
+grep -q '"Boot Readiness Install"' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
@@ -540,11 +543,16 @@ grep -q 'backup_path.open("xb")' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
+grep -q 'Chart Timer Install' src/noaa_navionics/report.py
 grep -q 'RandomizedDelayUSec.*30min' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
+grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
+grep -q 'Boot Readiness Install' src/noaa_navionics/report.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
+grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
+grep -q 'wanted_by' src/noaa_navionics/report.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics log-track' src/noaa_navionics/report.py

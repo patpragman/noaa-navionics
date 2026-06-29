@@ -239,7 +239,7 @@ Save a status report for troubleshooting:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
-The status report includes readiness checks, NOAA Navionics user unit checks, loaded user unit setting checks when systemd reports them, GPSD startup config checks for local receivers, and GPSD/chrony service state checks.
+The status report includes readiness checks, NOAA Navionics user unit checks, parsed user unit-file install targets, loaded user unit setting checks when systemd reports them, GPSD startup config checks for local receivers, and GPSD/chrony service state checks.
 The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON is synced to disk along with the replacement directory entry.

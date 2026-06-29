@@ -66,6 +66,11 @@ USER_UNIT_PROPERTIES = {
         "PrivateTmp",
     ],
 }
+USER_UNIT_INSTALL_TARGETS = {
+    "noaa-navionics.timer": "timers.target",
+    "noaa-navionics-track.service": "default.target",
+    "noaa-navionics-preflight.service": "default.target",
+}
 
 
 def build_status_report(
@@ -95,9 +100,11 @@ def build_status_report(
     check_rows = [asdict(check) for check in checks]
     services = _service_summary()
     system_services = _system_service_summary()
+    unit_files = _user_unit_file_summary()
     service_checks = _service_readiness_checks(
         services,
         system_services,
+        unit_files=unit_files,
         gps_mode=gps_mode,
     )
     return {
@@ -116,6 +123,7 @@ def build_status_report(
         "manifest": _manifest_summary(app_config.chart_output),
         "services": services,
         "system_services": system_services,
+        "unit_files": unit_files,
         "service_checks": [asdict(check) for check in service_checks],
         "checks": check_rows,
     }
@@ -217,6 +225,17 @@ def format_status_text(report: dict[str, object]) -> str:
         for name, state in system_services.items():
             if isinstance(state, dict):
                 lines.append(f"{name}: enabled={state.get('enabled', '')} active={state.get('active', '')}")
+    unit_files = report.get("unit_files", {})
+    if isinstance(unit_files, dict) and unit_files:
+        lines.extend(["", "User Unit Files:"])
+        for name, state in unit_files.items():
+            if isinstance(state, dict):
+                wanted_by = state.get("wanted_by", [])
+                if isinstance(wanted_by, list):
+                    wanted_by_text = ",".join(str(value) for value in wanted_by)
+                else:
+                    wanted_by_text = str(wanted_by)
+                lines.append(f"{name}: exists={state.get('exists', '')} wanted_by={wanted_by_text}")
     return "\n".join(lines)
 
 
@@ -331,10 +350,32 @@ def _system_service_summary() -> dict[str, object]:
     return summary
 
 
+def _user_unit_file_summary() -> dict[str, object]:
+    unit_dir = Path.home() / ".config/systemd/user"
+    summary: dict[str, object] = {"directory": str(unit_dir)}
+    for unit in USER_UNIT_INSTALL_TARGETS:
+        path = unit_dir / unit
+        state: dict[str, object] = {"path": str(path), "exists": path.is_file()}
+        if path.is_file():
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+            except OSError as exc:
+                state["error"] = str(exc)
+            else:
+                state["wanted_by"] = [
+                    line.split("=", 1)[1].strip()
+                    for line in lines
+                    if line.startswith("WantedBy=") and line.split("=", 1)[1].strip()
+                ]
+        summary[unit] = state
+    return summary
+
+
 def _service_readiness_checks(
     services: dict[str, object],
     system_services: dict[str, object],
     *,
+    unit_files: Optional[dict[str, object]] = None,
     gps_mode: str,
 ) -> list[CheckResult]:
     checks = [
@@ -456,6 +497,29 @@ def _service_readiness_checks(
                 ),
             ]
         )
+    if unit_files is not None:
+        checks.extend(
+            [
+                _unit_file_install_target_check(
+                    unit_files,
+                    "noaa-navionics.timer",
+                    "Chart Timer Install",
+                    "timers.target",
+                ),
+                _unit_file_install_target_check(
+                    unit_files,
+                    "noaa-navionics-track.service",
+                    "Track Logger Install",
+                    "default.target",
+                ),
+                _unit_file_install_target_check(
+                    unit_files,
+                    "noaa-navionics-preflight.service",
+                    "Boot Readiness Install",
+                    "default.target",
+                ),
+            ]
+        )
     if gps_mode == "gpsd":
         checks.append(
             _unit_check(
@@ -476,6 +540,33 @@ def _service_readiness_checks(
             )
         )
     return checks
+
+
+def _unit_file_install_target_check(
+    summary: dict[str, object],
+    unit: str,
+    name: str,
+    expected_target: str,
+) -> CheckResult:
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from unit file summary")
+    path = str(state.get("path", unit))
+    if state.get("exists") is not True:
+        return CheckResult(name, False, f"{unit} unit file is missing at {path}")
+    error = str(state.get("error", ""))
+    if error:
+        return CheckResult(name, False, f"{unit} unit file unreadable at {path}: {error}")
+    wanted_by = state.get("wanted_by")
+    if not isinstance(wanted_by, list):
+        return CheckResult(name, False, f"{unit} has no parsed WantedBy target at {path}")
+    if expected_target not in {str(value) for value in wanted_by}:
+        return CheckResult(
+            name,
+            False,
+            f"{unit} WantedBy={','.join(str(value) for value in wanted_by) or '<missing>'} expected {expected_target}",
+        )
+    return CheckResult(name, True, f"{unit} installs into {expected_target}")
 
 
 def _summary_has_loaded_properties(summary: dict[str, object]) -> bool:

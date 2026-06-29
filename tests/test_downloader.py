@@ -1967,6 +1967,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("checks", report)
             self.assertIn("services", report)
             self.assertIn("system_services", report)
+            self.assertIn("unit_files", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["config"]["extract"], True)
@@ -2002,6 +2003,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn(f"extract_path: {cell.parent}", text)
             self.assertIn("Service Checks:", text)
             self.assertIn("System Services:", text)
+            self.assertIn("User Unit Files:", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
@@ -2127,6 +2129,57 @@ class StatusReportTests(unittest.TestCase):
         self.assertEqual(len(settings_checks), 4)
         self.assertTrue(all(check.ok for check in settings_checks))
         self.assertTrue(run_check.ok)
+
+    def test_service_readiness_checks_accept_unit_file_install_targets(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_files = {
+            "noaa-navionics.timer": {"path": "/home/pi/.config/systemd/user/noaa-navionics.timer", "exists": True, "wanted_by": ["timers.target"]},
+            "noaa-navionics-track.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-track.service", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics-preflight.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service", "exists": True, "wanted_by": ["default.target"]},
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        install_checks = [check for check in checks if check.name.endswith("Install")]
+
+        self.assertEqual(len(install_checks), 3)
+        self.assertTrue(all(check.ok for check in install_checks))
+
+    def test_service_readiness_checks_fail_stale_unit_file_install_target(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_files = {
+            "noaa-navionics.timer": {"path": "/home/pi/.config/systemd/user/noaa-navionics.timer", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics-track.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-track.service", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics-preflight.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service", "exists": True, "wanted_by": ["default.target"]},
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        timer_install = next(check for check in checks if check.name == "Chart Timer Install")
+
+        self.assertFalse(timer_install.ok)
+        self.assertIn("WantedBy=default.target", timer_install.detail)
+        self.assertIn("expected timers.target", timer_install.detail)
 
     def test_service_readiness_checks_fail_missing_loaded_unit_hardening(self):
         services = {
