@@ -432,6 +432,7 @@ grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
+grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"

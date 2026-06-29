@@ -11,7 +11,7 @@ Options:
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
   --skip-autologin    Pass through provisioning without configuring desktop autologin
   --skip-gps-time     Pass through provisioning without configuring chrony GPS time
-  --no-reboot         Do not reboot; run only the pre-reboot verification
+  --no-reboot         Do not reboot; run only pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot
   --gps-seconds N     Seconds to wait for a GPS fix during provisioning
   --sync-retries N    Chart download attempts during provisioning
@@ -209,7 +209,7 @@ printf '\n[verify before reboot]\n'
 "${repo_root}/scripts/verify_pi.sh" "${verify_args[@]}" "$target"
 
 if [[ "$no_reboot" -eq 1 ]]; then
-  printf '\nDock test passed without reboot.\n'
+  printf '\nPre-reboot verification passed; reboot and chartplotter autostart proof were skipped.\n'
   exit 0
 fi
 
