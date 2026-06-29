@@ -1411,10 +1411,17 @@ grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'The unattended startup services were installed but not enabled' scripts/provision_sailboat_pi.sh
 grep -q 'sudo loginctl enable-linger "$USER"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' docs/sailboat-pi.md
+grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' README.md
+grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' docs/sailboat-pi.md
 grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
@@ -2496,6 +2503,28 @@ scripts/provision_sailboat_pi.sh \
   --skip-services \
   --config "$tmpdir/skip-gpsd-manual.ini" >"$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
+
+full_provision_home="$tmpdir/provision-full-home"
+mkdir -p "$full_provision_home"
+chmod 0700 "$full_provision_home"
+HOME="$full_provision_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --device /dev/serial/by-id/mock-gps >"$provision_output"
+grep -q 'systemctl --user daemon-reload' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full' "$provision_output"
+python3 - "$provision_output" <<'PY'
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+guard_index = text.index("require_loaded_user_unit_property noaa-navionics.service ProtectSystem full")
+linger_index = text.index("sudo loginctl enable-linger")
+if guard_index > linger_index:
+    raise SystemExit("loaded user-unit guard must run before user linger and service enablement")
+PY
 
 set +e
 scripts/provision_sailboat_pi.sh \

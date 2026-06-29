@@ -617,6 +617,56 @@ install_file_atomic() {
   sync_paths "$target"
 }
 
+require_loaded_user_unit_property() {
+  local unit="$1"
+  local property="$2"
+  local expected="$3"
+  local label="$4"
+  local loaded
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ require_loaded_user_unit_property %q %q %q %q\n' "$unit" "$property" "$expected" "$label"
+    return 0
+  fi
+  if ! loaded="$(systemctl --user show "$unit" -p "$property" 2>/dev/null)"; then
+    cat >&2 <<EOF
+Could not inspect loaded user unit property: $unit $property
+The unattended startup services were installed but not enabled. Check the user systemd manager with: systemctl --user status $unit
+EOF
+    exit 2
+  fi
+  if [[ "$loaded" != "${property}=${expected}" ]]; then
+    cat >&2 <<EOF
+Loaded user unit setting mismatch for $label.
+Expected: ${property}=${expected}
+Loaded:   ${loaded:-<empty>}
+The unattended startup services were installed but not enabled. Check systemd support for the installed unit settings, then run: systemctl --user daemon-reload
+EOF
+    exit 2
+  fi
+}
+
+require_loaded_user_units() {
+  require_loaded_user_unit_property noaa-navionics.service FragmentPath "$chart_service" "chart refresh service"
+  require_loaded_user_unit_property noaa-navionics.timer FragmentPath "$chart_timer" "chart refresh timer"
+  require_loaded_user_unit_property noaa-navionics-track.service FragmentPath "$track_service" "track logger service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service FragmentPath "$preflight_service" "boot readiness service"
+  require_loaded_user_unit_property noaa-navionics.service Type oneshot "chart refresh service"
+  require_loaded_user_unit_property noaa-navionics-track.service Type simple "track logger service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service Type oneshot "boot readiness service"
+  require_loaded_user_unit_property noaa-navionics.service NoNewPrivileges yes "chart refresh service"
+  require_loaded_user_unit_property noaa-navionics-track.service NoNewPrivileges yes "track logger service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service NoNewPrivileges yes "boot readiness service"
+  require_loaded_user_unit_property noaa-navionics.service PrivateTmp yes "chart refresh service"
+  require_loaded_user_unit_property noaa-navionics-track.service PrivateTmp yes "track logger service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service PrivateTmp yes "boot readiness service"
+  require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"
+  require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"
+  require_loaded_user_unit_property noaa-navionics.service UMask 0077 "chart refresh service"
+  require_loaded_user_unit_property noaa-navionics-track.service UMask 0077 "track logger service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service UMask 0077 "boot readiness service"
+}
+
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 autostart_dir="${HOME}/.config/autostart"
@@ -711,6 +761,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644
   install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644
   run systemctl --user daemon-reload
+  require_loaded_user_units
   run sudo loginctl enable-linger "$USER"
   run systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
   run systemctl --user enable --now noaa-navionics.timer
