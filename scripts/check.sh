@@ -133,7 +133,9 @@ grep -q 'status report manifest path' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
 grep -q 'status report manifest missing' scripts/verify_pi.sh
 grep -q 'expected_package_filename' scripts/verify_pi.sh
+grep -q 'expected_package_url' scripts/verify_pi.sh
 grep -q 'status report manifest package filename' scripts/verify_pi.sh
+grep -q 'status report manifest package URL' scripts/verify_pi.sh
 grep -q 'status report manifest download path' scripts/verify_pi.sh
 grep -q 'status report manifest download byte count is not positive' scripts/verify_pi.sh
 grep -q 'status report manifest extract path' scripts/verify_pi.sh

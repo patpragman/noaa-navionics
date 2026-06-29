@@ -179,6 +179,7 @@ def format_status_text(report: dict[str, object]) -> str:
             "created_at",
             "package",
             "package_filename",
+            "url",
             "download_path",
             "download_bytes",
             "sha256",

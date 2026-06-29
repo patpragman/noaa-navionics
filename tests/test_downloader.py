@@ -1151,6 +1151,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Boot ID: boot-abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
+            self.assertIn("url: file:///test.zip", text)
             self.assertIn("download_bytes: 123", text)
             self.assertIn(f"extract_path: {cell.parent}", text)
             self.assertIn("Service Checks:", text)

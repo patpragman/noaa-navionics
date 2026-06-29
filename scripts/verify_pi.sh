@@ -160,6 +160,10 @@ def expected_package_filename(package, value):
         return "All_ENCs.zip"
     return ""
 
+def expected_package_url(package, value):
+    filename = expected_package_filename(package, value)
+    return f"https://www.charts.noaa.gov/ENCs/{filename}" if filename else ""
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -213,6 +217,10 @@ if expected_config_path:
         expected_config["chart_package"],
         expected_config["chart_value"],
     )
+    expected_package_source_url = expected_package_url(
+        expected_config["chart_package"],
+        expected_config["chart_value"],
+    )
     try:
         require_track_disk_check = Path(expected_config["track_output"]).resolve() != chart_output.resolve()
     except OSError:
@@ -245,6 +253,12 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest package filename {manifest_package_filename} "
             f"does not match configured {expected_package_zip}"
+        )
+    manifest_package_url = str(manifest.get("url", "")).strip()
+    if expected_package_source_url and manifest_package_url != expected_package_source_url:
+        raise SystemExit(
+            f"status report manifest package URL {manifest_package_url} "
+            f"does not match configured {expected_package_source_url}"
         )
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
     if download_path.name != manifest_package_filename:
