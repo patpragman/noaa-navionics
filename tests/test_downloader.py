@@ -3469,7 +3469,34 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(state["path"], str(unit_link))
             self.assertEqual(state["exists"], True)
             self.assertEqual(state["is_symlink"], True)
+            self.assertEqual(state["directory_is_symlink"], False)
             self.assertIn("user unit file path is a symlink", state["error"])
+            self.assertNotIn("wanted_by", state)
+
+    def test_user_unit_file_summary_rejects_symlinked_unit_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_unit_dir = root / "real-systemd-user"
+            real_unit_dir.mkdir()
+            real_unit = real_unit_dir / "noaa-navionics.timer"
+            real_unit.write_text("[Install]\nWantedBy=timers.target\n", encoding="utf-8")
+            config_dir = root / ".config/systemd"
+            config_dir.mkdir(parents=True)
+            unit_dir = config_dir / "user"
+            try:
+                unit_dir.symlink_to(real_unit_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with patch.dict(os.environ, {"HOME": str(root)}):
+                summary = _user_unit_file_summary()
+
+            state = summary["noaa-navionics.timer"]
+            self.assertEqual(state["path"], str(unit_dir / "noaa-navionics.timer"))
+            self.assertEqual(state["exists"], True)
+            self.assertEqual(state["is_symlink"], False)
+            self.assertEqual(state["directory_is_symlink"], True)
+            self.assertIn("user unit file directory is a symlink", state["error"])
             self.assertNotIn("wanted_by", state)
 
     def test_service_readiness_checks_accept_expected_onboard_units(self):
@@ -3688,6 +3715,46 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(timer_install.ok)
         self.assertIn("unit file path is a symlink", timer_install.detail)
+
+    def test_service_readiness_checks_fail_symlinked_unit_file_directory(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_files = {
+            "noaa-navionics.timer": {
+                "path": "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                "exists": True,
+                "is_symlink": False,
+                "directory_is_symlink": True,
+                "wanted_by": ["timers.target"],
+            },
+            "noaa-navionics-track.service": {
+                "path": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                "exists": True,
+                "wanted_by": ["default.target"],
+            },
+            "noaa-navionics-preflight.service": {
+                "path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                "exists": True,
+                "wanted_by": ["default.target"],
+            },
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        timer_install = next(check for check in checks if check.name == "Chart Timer Install")
+
+        self.assertFalse(timer_install.ok)
+        self.assertIn("unit file directory is a symlink", timer_install.detail)
 
     def test_launcher_settings_check_accepts_fail_closed_settings(self):
         check = _launcher_settings_check(
