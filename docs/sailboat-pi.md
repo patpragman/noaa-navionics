@@ -120,7 +120,7 @@ Configure GPSD with the stable device path:
 scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The script requires an absolute `/dev/...` path without whitespace or quotes, backs up `/etc/default/gpsd`, writes the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
+The script requires an absolute `/dev/...` path without whitespace or quotes, backs up `/etc/default/gpsd`, writes and syncs the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
 
 Restart and verify:
 

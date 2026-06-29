@@ -21,6 +21,28 @@ Configures GPSD on the Raspberry Pi and updates NOAA Navionics config.
 EOF
 }
 
+sync_path() {
+  local path="$1"
+  sudo python3 - "$path" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+path = Path(sys.argv[1])
+with path.open("rb") as handle:
+    os.fsync(handle.fileno())
+try:
+    fd = os.open(path.parent, os.O_RDONLY)
+except OSError:
+    fd = None
+if fd is not None:
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+PY
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -120,10 +142,13 @@ fi
 
 if [[ -e /etc/default/gpsd ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-  sudo cp -a /etc/default/gpsd "/etc/default/gpsd.noaa-navionics.${stamp}.bak"
+  backup="/etc/default/gpsd.noaa-navionics.${stamp}.bak"
+  sudo cp -a /etc/default/gpsd "$backup"
+  sync_path "$backup"
 fi
 
 sudo install -m 0644 "$tmp" /etc/default/gpsd
+sync_path /etc/default/gpsd
 sudo systemctl enable --now gpsd
 sudo systemctl restart gpsd
 

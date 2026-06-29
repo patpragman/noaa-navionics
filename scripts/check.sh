@@ -37,6 +37,8 @@ grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
+grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
+grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
