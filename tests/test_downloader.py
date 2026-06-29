@@ -139,6 +139,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.chart_value, "AK")
             self.assertEqual(config.gps_mode, "gpsd")
             self.assertEqual(config.max_chart_age_days, 30)
+            self.assertEqual(config.track_retention_days, 90)
             self.assertTrue(config.extract)
 
     def test_custom_config_package_kwargs(self):
@@ -159,7 +160,9 @@ class ConfigTests(unittest.TestCase):
                 "device = /dev/ttyACM0\n"
                 "baud = 9600\n"
                 "gpsd_host = 192.168.1.10\n"
-                "gpsd_port = 2947\n",
+                "gpsd_port = 2947\n"
+                "[tracking]\n"
+                "retention_days = 14\n",
                 encoding="utf-8",
             )
             config = read_config(path)
@@ -168,6 +171,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.gps_device, "/dev/ttyACM0")
             self.assertEqual(config.gps_baud, 9600)
             self.assertEqual(config.max_chart_age_days, 14)
+            self.assertEqual(config.track_retention_days, 14)
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
 
@@ -629,6 +633,26 @@ class GpsTests(unittest.TestCase):
             self.assertEqual(count, 1)
             self.assertEqual(outputs[0].name, "track-20260629-1.gpx")
             self.assertEqual(existing.read_text(encoding="utf-8"), "old")
+
+    def test_log_rotating_tracks_prunes_old_daily_files(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracks = Path(tmpdir) / "tracks"
+            tracks.mkdir()
+            old = tracks / "track-20260401.gpx"
+            keep = tracks / "track-20260620.gpx"
+            unrelated = tracks / "notes.gpx"
+            old.write_text("old", encoding="utf-8")
+            keep.write_text("keep", encoding="utf-8")
+            unrelated.write_text("notes", encoding="utf-8")
+
+            with redirect_stdout(StringIO()):
+                _log_rotating_tracks(iter([fix]), Path(tmpdir), deadline=None, sample=True, retention_days=30)
+
+            self.assertFalse(old.exists())
+            self.assertTrue(keep.exists())
+            self.assertTrue(unrelated.exists())
+            self.assertTrue((tracks / "track-20260630.gpx").exists())
 
     def test_parse_gpsd_tpv(self):
         payload = (

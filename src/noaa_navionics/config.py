@@ -24,6 +24,7 @@ class AppConfig:
     gpsd_host: str
     gpsd_port: int
     track_output: Path
+    track_retention_days: int
 
 
 def default_config() -> AppConfig:
@@ -42,6 +43,7 @@ def default_config() -> AppConfig:
         gpsd_host="127.0.0.1",
         gpsd_port=2947,
         track_output=chart_output,
+        track_retention_days=90,
     )
 
 
@@ -75,6 +77,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         gpsd_host=gps.get("gpsd_host", defaults.gpsd_host).strip(),
         gpsd_port=int(gps.get("gpsd_port", str(defaults.gpsd_port))),
         track_output=Path(tracking.get("output", str(chart_output))).expanduser(),
+        track_retention_days=int(tracking.get("retention_days", str(defaults.track_retention_days))),
     )
 
 
@@ -110,6 +113,8 @@ def default_config_text() -> str:
         "\n"
         "[tracking]\n"
         f"output = {defaults.track_output}\n"
+        "# Keep this many days of rotated GPX track logs; 0 disables pruning.\n"
+        f"retention_days = {defaults.track_retention_days}\n"
     )
 
 

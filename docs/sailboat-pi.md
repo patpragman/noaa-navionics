@@ -94,6 +94,8 @@ gpsd_port = 2947
 
 [tracking]
 output = ~/charts/noaa-enc
+# Keep this many days of rotated GPX track logs; 0 disables pruning.
+retention_days = 90
 ```
 
 ## GPSD Setup
@@ -237,7 +239,7 @@ or, using the onboard config:
 noaa-navionics log-track
 ```
 
-The generated GPX files are stored under `~/charts/noaa-enc/tracks/`. The systemd service writes one file per UTC day, such as `track-20260629.gpx`; if the service restarts on the same day it uses a numeric suffix instead of overwriting the earlier file.
+The generated GPX files are stored under `~/charts/noaa-enc/tracks/`. The systemd service writes one file per UTC day, such as `track-20260629.gpx`; if the service restarts on the same day it uses a numeric suffix instead of overwriting the earlier file. By default, rotated track logs older than 90 days are pruned; set `[tracking] retention_days = 0` to disable pruning.
 
 Systemd user service:
 

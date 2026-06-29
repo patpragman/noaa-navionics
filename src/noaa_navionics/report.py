@@ -135,6 +135,7 @@ def _config_summary(app_config: AppConfig) -> dict[str, object]:
         "gpsd_host": app_config.gpsd_host,
         "gpsd_port": app_config.gpsd_port,
         "track_output": str(app_config.track_output),
+        "track_retention_days": app_config.track_retention_days,
     }
 
 

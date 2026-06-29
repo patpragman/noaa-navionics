@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 import argparse
@@ -114,6 +114,11 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     track.add_argument("--seconds", type=float, help="stop after this many seconds")
     track.add_argument("--rotate-daily", action="store_true", help="write one GPX file per UTC day")
+    track.add_argument(
+        "--retention-days",
+        type=int,
+        help="days of rotated GPX track logs to keep; defaults to [tracking].retention_days",
+    )
 
     return parser
 
@@ -332,7 +337,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_port=app_config.gpsd_port,
             )
             if args.rotate_daily and not args.file:
-                count, outputs = _log_rotating_tracks(fixes, base_output, deadline=deadline, sample=bool(args.sample))
+                retention_days = args.retention_days
+                if retention_days is None:
+                    retention_days = app_config.track_retention_days
+                count, outputs = _log_rotating_tracks(
+                    fixes,
+                    base_output,
+                    deadline=deadline,
+                    sample=bool(args.sample),
+                    retention_days=retention_days,
+                )
                 print(f"Saved {count} fixes to {', '.join(str(path) for path in outputs)}")
             else:
                 output = Path(args.file).expanduser() if args.file else default_track_path(base_output)
@@ -393,7 +407,14 @@ def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample:
     return count
 
 
-def _log_rotating_tracks(fixes, base_output: Path, *, deadline: Optional[float], sample: bool) -> tuple[int, list[Path]]:
+def _log_rotating_tracks(
+    fixes,
+    base_output: Path,
+    *,
+    deadline: Optional[float],
+    sample: bool,
+    retention_days: int = 0,
+) -> tuple[int, list[Path]]:
     count = 0
     current_day: Optional[str] = None
     current_path: Optional[Path] = None
@@ -410,6 +431,7 @@ def _log_rotating_tracks(fixes, base_output: Path, *, deadline: Optional[float],
                 outputs.append(current_path)
                 logger = GPXTrackLogger(current_path)
                 logger.__enter__()
+                _prune_old_track_logs(base_output, retention_days=retention_days, now=fix.timestamp)
             assert logger is not None
             logger.append(fix)
             count += 1
@@ -422,6 +444,37 @@ def _log_rotating_tracks(fixes, base_output: Path, *, deadline: Optional[float],
         if logger is not None:
             logger.__exit__(None, None, None)
     return count, outputs
+
+
+def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Optional[datetime] = None) -> list[Path]:
+    if retention_days <= 0:
+        return []
+    tracks_dir = Path(base_output).expanduser() / "tracks"
+    if not tracks_dir.exists():
+        return []
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).date()
+    cutoff = current - timedelta(days=retention_days)
+    removed: list[Path] = []
+    for path in tracks_dir.glob("track-*.gpx"):
+        track_date = _track_date_from_name(path)
+        if track_date is None or track_date >= cutoff:
+            continue
+        try:
+            path.unlink()
+        except OSError:
+            continue
+        removed.append(path)
+    return removed
+
+
+def _track_date_from_name(path: Path):
+    pieces = path.stem.split("-")
+    if len(pieces) < 2 or len(pieces[1]) != 8:
+        return None
+    try:
+        return datetime.strptime(pieces[1], "%Y%m%d").date()
+    except ValueError:
+        return None
 
 
 def _track_day(fix) -> str:
