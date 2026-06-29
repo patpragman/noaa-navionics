@@ -90,15 +90,50 @@ require_local_command() {
   fi
 }
 
-require_remote_command() {
+local_command_exists() {
   local command_name="$1"
-  if ! ssh -o ConnectTimeout=10 "$target" "command -v ${command_name} >/dev/null 2>&1"; then
+  command -v "$command_name" >/dev/null 2>&1
+}
+
+remote_command_exists() {
+  local command_name="$1"
+  case "$command_name" in
+    python3|rsync|tar)
+      ;;
+    *)
+      echo "Unsupported remote command check: $command_name" >&2
+      return 2
+      ;;
+  esac
+  ssh -o ConnectTimeout=10 "$target" "command -v ${command_name} >/dev/null 2>&1"
+}
+
+require_remote_command_available() {
+  local command_name="$1"
+  local status
+  if remote_command_exists "$command_name"; then
+    return 0
+  fi
+  status="$?"
+  if [[ "$status" -eq 255 ]]; then
     cat >&2 <<EOF
-Could not confirm required remote command on the Pi: $command_name
-Confirm SSH works and install $command_name on the Pi before deployment, then rerun this script.
+Could not connect to the Pi over SSH while checking for: $command_name
+Confirm SSH works, then rerun this script.
 EOF
     exit 2
   fi
+  if [[ "$command_name" == "python3" ]]; then
+    cat >&2 <<EOF
+Could not confirm required remote command on the Pi: python3
+Install Raspberry Pi OS with Python 3 available, then rerun this script.
+EOF
+    exit 2
+  fi
+  cat >&2 <<EOF
+Could not confirm required remote command on the Pi: $command_name
+Install $command_name on the Pi before deployment, then rerun this script.
+EOF
+  exit 2
 }
 
 validate_remote_dir() {
@@ -124,6 +159,15 @@ validate_remote_dir() {
       exit 2
       ;;
   esac
+}
+
+quote_remote_dir_for_shell() {
+  local value="$1"
+  if [[ "$value" == "~/"* ]]; then
+    printf '~/%s' "${value#~/}"
+  else
+    printf '%q' "$value"
+  fi
 }
 
 if [[ $# -gt 0 && "$1" != --* ]]; then
@@ -216,7 +260,7 @@ fi
 validate_remote_dir "$remote_dir"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-remote_dir_quoted="$(printf '%q' "$remote_dir")"
+remote_dir_quoted="$(quote_remote_dir_for_shell "$remote_dir")"
 source_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
 if [[ "$source_revision" != "unknown" && -n "$worktree_status" ]]; then
@@ -231,8 +275,7 @@ EOF
 fi
 
 require_local_command ssh
-require_local_command rsync
-require_remote_command rsync
+require_remote_command_available python3
 
 write_remote_source_revision() {
   local remote_dir_value="$1"
@@ -279,14 +322,102 @@ finally:
 PY"
 }
 
-ssh "$target" "mkdir -p ${remote_dir_quoted}"
-rsync -az --delete \
-  --exclude '.git/' \
-  --exclude '__pycache__/' \
-  --exclude '*.pyc' \
-  --exclude '.pytest_cache/' \
-  --exclude 'charts/' \
-  "${repo_root}/" "${target}:${remote_dir}/"
+clean_remote_deploy_dir() {
+  local remote_dir_value="$1"
+  local remote_dir_env
+  remote_dir_env="$(printf '%q' "$remote_dir_value")"
+  ssh "$target" "NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} python3 - <<'PY'
+from pathlib import Path
+import os
+import shutil
+
+repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
+name = repo.name
+valid_name = (
+    name == 'noaa-navionics'
+    or name.startswith('noaa-navionics-')
+    or name.startswith('noaa-navionics_')
+    or name.startswith('noaa-navionics.')
+)
+if not valid_name:
+    raise SystemExit(f'Refusing to clean unexpected deployment directory: {repo}')
+if repo.exists() and repo.is_symlink():
+    raise SystemExit(f'Refusing to clean symlink deployment directory: {repo}')
+if repo.exists() and not repo.is_dir():
+    raise SystemExit(f'Refusing to clean non-directory deployment path: {repo}')
+resolved = repo.resolve(strict=False)
+unsafe = {Path('/'), Path.home(), Path('/home'), Path('/root')}
+if resolved in unsafe:
+    raise SystemExit(f'Refusing to clean broad deployment directory: {repo}')
+repo.mkdir(parents=True, exist_ok=True)
+for child in repo.iterdir():
+    if child.is_dir() and not child.is_symlink():
+        shutil.rmtree(child)
+    else:
+        child.unlink()
+fd = os.open(repo, os.O_RDONLY)
+try:
+    os.fsync(fd)
+finally:
+    os.close(fd)
+PY"
+}
+
+deploy_with_rsync() {
+  ssh "$target" "mkdir -p ${remote_dir_quoted}"
+  rsync -az --delete \
+    --exclude '.git/' \
+    --exclude '__pycache__/' \
+    --exclude '*.pyc' \
+    --exclude '.pytest_cache/' \
+    --exclude 'charts/' \
+    "${repo_root}/" "${target}:${remote_dir}/"
+}
+
+deploy_with_tar() {
+  clean_remote_deploy_dir "$remote_dir"
+  (
+    cd "$repo_root"
+    tar \
+      --exclude='./.git' \
+      --exclude='./__pycache__' \
+      --exclude='*/__pycache__' \
+      --exclude='*.pyc' \
+      --exclude='./.pytest_cache' \
+      --exclude='*/.pytest_cache' \
+      --exclude='./charts' \
+      --exclude='*/charts' \
+      -czf - .
+  ) | ssh "$target" "tar -xzf - -C ${remote_dir_quoted}"
+}
+
+deploy_sources() {
+  local rsync_status
+
+  if local_command_exists rsync; then
+    if remote_command_exists rsync; then
+      deploy_with_rsync
+      return 0
+    fi
+    rsync_status="$?"
+    if [[ "$rsync_status" -eq 255 ]]; then
+      cat >&2 <<'EOF'
+Could not connect to the Pi over SSH while checking for rsync.
+Confirm SSH works, then rerun this script.
+EOF
+      exit 2
+    fi
+    echo "Remote rsync is unavailable; bootstrapping copy with tar over SSH." >&2
+  else
+    echo "Local rsync is unavailable; bootstrapping copy with tar over SSH." >&2
+  fi
+
+  require_local_command tar
+  require_remote_command_available tar
+  deploy_with_tar
+}
+
+deploy_sources
 write_remote_source_revision "$remote_dir" "$source_revision"
 
 remote_install_args=()

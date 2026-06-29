@@ -26,6 +26,7 @@ from pathlib import Path
 import re
 
 scripts = [
+    Path("scripts/deploy_to_pi.sh"),
     Path("scripts/install_raspberry_pi.sh"),
     Path("scripts/verify_pi.sh"),
     Path("scripts/start_chartplotter.sh"),
@@ -36,6 +37,7 @@ scripts = [
 for path in scripts:
     lines = path.read_text(encoding="utf-8").splitlines()
     index = 0
+    terminator = re.compile(r'^PY"?$')
     while index < len(lines):
         line = lines[index]
         if not re.search(r"<<\s*'PY'\s*$", line):
@@ -44,7 +46,7 @@ for path in scripts:
         start = index + 1
         block = []
         index += 1
-        while index < len(lines) and lines[index] != "PY":
+        while index < len(lines) and not terminator.fullmatch(lines[index]):
             block.append(lines[index])
             index += 1
         if index >= len(lines):
@@ -85,8 +87,17 @@ grep -q -- '--gps-seconds "$gps_seconds"' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q 'write_remote_source_revision' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
-grep -q 'require_local_command rsync' scripts/deploy_to_pi.sh
-grep -q 'require_remote_command rsync' scripts/deploy_to_pi.sh
+grep -q 'local_command_exists rsync' scripts/deploy_to_pi.sh
+grep -q 'remote_command_exists rsync' scripts/deploy_to_pi.sh
+grep -q 'require_remote_command_available python3' scripts/deploy_to_pi.sh
+grep -q 'require_remote_command_available tar' scripts/deploy_to_pi.sh
+grep -q 'deploy_with_rsync' scripts/deploy_to_pi.sh
+grep -q 'deploy_with_tar' scripts/deploy_to_pi.sh
+grep -q 'clean_remote_deploy_dir' scripts/deploy_to_pi.sh
+grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
+grep -q 'Refusing to clean unexpected deployment directory' scripts/deploy_to_pi.sh
+grep -q -- "--exclude='./.git'" scripts/deploy_to_pi.sh
+grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
 grep -q 'require_local_command ssh' scripts/verify_pi.sh
@@ -97,6 +108,8 @@ grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q 'validate_remote_dir' scripts/deploy_to_pi.sh
+grep -q 'quote_remote_dir_for_shell' scripts/deploy_to_pi.sh
+grep -Fq 'printf '\''~/%s'\''' scripts/deploy_to_pi.sh
 grep -q 'validate_remote_dir' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/deploy_to_pi.sh
 grep -q 'validate_ssh_target' scripts/dock_test_pi.sh

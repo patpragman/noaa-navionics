@@ -13,7 +13,7 @@ This project is the chart-data, GPS-check, and operations wrapper for a Raspberr
 - Raspberry Pi OS with Desktop/LightDM for unattended OpenCPN startup
 
 Run the install, deploy, GPS setup, provisioning, verification, and dock-test scripts as the Pi desktop user, not `root`. The scripts reject root-owned workflows so user services, charts, GPX tracks, and LightDM autologin are tied to the real helm account.
-Use an explicit plain `user@host` SSH target for deployment, verification, and dock tests; do not use scp-style `user@host:path` targets or append ports. If you override the SSH deploy directory, use a dedicated `noaa-navionics` directory. The deploy scripts reject broad paths such as `/`, `~`, `/home`, or unrelated directory names because deployment uses `rsync --delete`.
+Use an explicit plain `user@host` SSH target for deployment, verification, and dock tests; do not use scp-style `user@host:path` targets or append ports. If you override the SSH deploy directory, use a dedicated `noaa-navionics` directory. The deploy scripts reject broad paths such as `/`, `~`, `/home`, or unrelated directory names because deployment keeps that remote copy exact, using `rsync --delete` when available and a guarded tar-over-SSH bootstrap copy otherwise.
 
 ## Install Packages
 
@@ -30,7 +30,7 @@ scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
 The deploy script copies this repo to the Raspberry Pi and runs the installer on the Pi. It does not install or enable services on the computer you run it from.
-It refuses a dirty local worktree by default so the Pi's recorded source revision matches the source you are verifying. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script checks for local `ssh` and `rsync`, checks that `rsync` is available on the Pi before copying, and writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
+It refuses a dirty local worktree by default so the Pi's recorded source revision matches the source you are verifying. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script checks for local `ssh` and remote `python3`, prefers `rsync` when it is available on both machines, and otherwise bootstraps the repo with local and remote `tar`. The tar bootstrap clears only a validated dedicated `noaa-navionics` deployment directory before extraction. The script writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
 
 Deploy and run the full onboard provisioning sequence:
 
