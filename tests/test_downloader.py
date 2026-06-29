@@ -2817,6 +2817,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["opencpn_config"]["path"], str(opencpn_config))
             self.assertEqual(report["opencpn_config"]["exists"], True)
             self.assertEqual(report["opencpn_config"]["is_symlink"], False)
+            self.assertEqual(report["opencpn_config"]["directory_is_symlink"], False)
             self.assertEqual(report["opencpn_config"]["chart_directories"], [str(charts.resolve())])
             self.assertTrue(report["opencpn_config"]["data_connections"])
             self.assertEqual(report["desktop"]["autostart"]["path"], str(autostart))
@@ -2854,6 +2855,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("OpenCPN Config:", text)
             self.assertIn(f"path={opencpn_config}", text)
             self.assertIn("is_symlink=False", text)
+            self.assertIn("directory_is_symlink=False", text)
             self.assertIn("Desktop Startup:", text)
             self.assertIn(f"autostart={autostart}", text)
             self.assertIn("is_symlink=False", text)
@@ -2963,6 +2965,32 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["exists"], True)
             self.assertEqual(summary["is_symlink"], True)
             self.assertIn("OpenCPN config path is a symlink", summary["error"])
+            self.assertNotIn("chart_directories", summary)
+            self.assertNotIn("data_connections", summary)
+
+    def test_opencpn_config_summary_rejects_symlinked_config_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            real_config_dir = root / "real-opencpn"
+            real_config_dir.mkdir()
+            real_config = real_config_dir / "opencpn.conf"
+            configure_chart_directory(charts, config_path=real_config)
+            link_config_dir = root / "opencpn-link"
+            try:
+                link_config_dir.symlink_to(real_config_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            config = link_config_dir / "opencpn.conf"
+
+            summary = report_module._opencpn_config_summary(config)
+
+            self.assertEqual(summary["path"], str(config))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], False)
+            self.assertEqual(summary["directory_is_symlink"], True)
+            self.assertIn("OpenCPN config directory is a symlink", summary["error"])
             self.assertNotIn("chart_directories", summary)
             self.assertNotIn("data_connections", summary)
 

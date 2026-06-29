@@ -330,6 +330,7 @@ def format_status_text(report: dict[str, object]) -> str:
             f"path={opencpn_config.get('path', '')} "
             f"exists={opencpn_config.get('exists', '')} "
             f"is_symlink={opencpn_config.get('is_symlink', '')} "
+            f"directory_is_symlink={opencpn_config.get('directory_is_symlink', '')} "
             f"chart_directories={chart_dir_text} data_connections={connection_count}".rstrip()
         )
     desktop = report.get("desktop", {})
@@ -795,9 +796,13 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
         "path": str(config_path),
         "exists": config_path.is_file(),
         "is_symlink": config_path.is_symlink(),
+        "directory_is_symlink": config_path.parent.is_symlink(),
     }
     if config_path.is_symlink():
         summary["error"] = f"OpenCPN config path is a symlink: {config_path}"
+        return summary
+    if config_path.parent.is_symlink():
+        summary["error"] = f"OpenCPN config directory is a symlink: {config_path.parent}"
         return summary
     if not config_path.exists():
         return summary

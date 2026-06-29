@@ -695,6 +695,8 @@ if expected_config_path:
         raise SystemExit(f"status report OpenCPN config does not exist: {opencpn_config_path}")
     if opencpn_config.get("is_symlink") is True:
         raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_path}")
+    if opencpn_config.get("directory_is_symlink") is True:
+        raise SystemExit(f"status report OpenCPN config directory is a symlink: {Path(opencpn_config_path).expanduser().parent}")
     if str(opencpn_config.get("error", "")).strip():
         raise SystemExit(
             f"status report OpenCPN config has parse error at {opencpn_config_path}: {opencpn_config.get('error')}"
