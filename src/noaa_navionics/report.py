@@ -649,9 +649,13 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
         "path": str(manifest_path),
         "exists": manifest_path.exists(),
         "is_symlink": manifest_path.is_symlink(),
+        "directory_is_symlink": manifest_path.parent.is_symlink(),
     }
     if manifest_path.is_symlink():
         summary["error"] = f"manifest path is a symlink: {manifest_path}"
+        return summary
+    if manifest_path.parent.is_symlink():
+        summary["error"] = f"manifest directory is a symlink: {manifest_path.parent}"
         return summary
     if not manifest_path.exists():
         return summary

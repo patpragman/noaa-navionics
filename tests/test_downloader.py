@@ -2835,6 +2835,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["is_symlink"], False)
+            self.assertEqual(report["manifest"]["directory_is_symlink"], False)
             self.assertEqual(report["manifest"]["created_at"], now)
             self.assertEqual(report["manifest"]["created_at_source"], "download")
             self.assertEqual(report["manifest"]["package"], "Test")
@@ -3052,7 +3053,32 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["path"], str(manifest))
             self.assertEqual(summary["exists"], True)
             self.assertEqual(summary["is_symlink"], True)
+            self.assertEqual(summary["directory_is_symlink"], False)
             self.assertIn("manifest path is a symlink", summary["error"])
+            self.assertNotIn("created_at", summary)
+
+    def test_manifest_summary_rejects_symlinked_manifest_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_charts = root / "real-charts"
+            real_charts.mkdir()
+            (real_charts / MANIFEST_NAME).write_text(
+                '{"created_at":"2000-01-01T00:00:00Z","package":{"label":"Old"},"download":{},"extract":{}}\n',
+                encoding="utf-8",
+            )
+            link_charts = root / "charts-link"
+            try:
+                link_charts.symlink_to(real_charts, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = report_module._manifest_summary(link_charts)
+
+            self.assertEqual(summary["path"], str(link_charts / MANIFEST_NAME))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], False)
+            self.assertEqual(summary["directory_is_symlink"], True)
+            self.assertIn("manifest directory is a symlink", summary["error"])
             self.assertNotIn("created_at", summary)
 
     def test_manifest_summary_marks_symlinked_recorded_paths(self):

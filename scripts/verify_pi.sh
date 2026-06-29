@@ -865,6 +865,10 @@ if expected_config_path:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
     if manifest.get("is_symlink") is True:
         raise SystemExit(f"status report manifest path is a symlink: {expected_manifest_path}")
+    if manifest.get("directory_is_symlink") is not False:
+        raise SystemExit(
+            f"status report manifest directory is a symlink or missing symlink status: {expected_manifest_path.parent}"
+        )
     for key in ("created_at", "package", "package_filename", "url", "download_path", "download_url", "sha256", "extract_path"):
         if not str(manifest.get(key, "")).strip():
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
@@ -878,6 +882,8 @@ if expected_config_path:
     manifest_file_path = Path(expected_manifest_path).expanduser()
     if manifest_file_path.is_symlink():
         raise SystemExit(f"status report manifest path is a symlink: {manifest_file_path}")
+    if manifest_file_path.parent.is_symlink():
+        raise SystemExit(f"status report manifest directory is a symlink: {manifest_file_path.parent}")
     with manifest_file_path.open(encoding="utf-8") as manifest_handle:
         manifest_file = json.load(manifest_handle)
     package_section = manifest_file.get("package", {})
