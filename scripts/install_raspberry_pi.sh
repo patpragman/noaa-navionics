@@ -249,7 +249,56 @@ import tempfile
 target = Path(sys.argv[1])
 mode = int(sys.argv[2], 8)
 text = sys.argv[3]
-target.parent.mkdir(parents=True, exist_ok=True)
+parent = target.parent
+
+if target.is_symlink():
+    raise SystemExit(f"root text target is a symlink: {target}")
+if target.exists() and not target.is_file():
+    raise SystemExit(f"root text target is not a regular file: {target}")
+if parent.is_symlink():
+    raise SystemExit(f"root text target directory is a symlink: {parent}")
+
+if parent.exists():
+    if not parent.is_dir():
+        raise SystemExit(f"root text target parent is not a directory: {parent}")
+    parent_stat = parent.stat()
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_stat.st_uid != 0:
+        raise SystemExit(f"root text target directory {parent} is owned by uid {parent_stat.st_uid}, expected root")
+    if parent_mode & 0o022:
+        raise SystemExit(
+            f"root text target directory {parent} has permissions {parent_mode:04o}, "
+            "expected no group/other write bits"
+        )
+else:
+    ancestor = parent.parent
+    if ancestor.is_symlink():
+        raise SystemExit(f"root text target parent directory is below a symlink: {ancestor}")
+    if not ancestor.exists() or not ancestor.is_dir():
+        raise SystemExit(f"root text target parent ancestor is not a directory: {ancestor}")
+    ancestor_stat = ancestor.stat()
+    ancestor_mode = ancestor_stat.st_mode & 0o777
+    if ancestor_stat.st_uid != 0:
+        raise SystemExit(
+            f"root text target parent ancestor {ancestor} is owned by uid {ancestor_stat.st_uid}, expected root"
+        )
+    if ancestor_mode & 0o022:
+        raise SystemExit(
+            f"root text target parent ancestor {ancestor} has permissions {ancestor_mode:04o}, "
+            "expected no group/other write bits"
+        )
+    parent.mkdir(parents=True, exist_ok=True)
+
+if target.exists():
+    target_stat = target.stat()
+    target_mode = target_stat.st_mode & 0o777
+    if target_stat.st_uid != 0:
+        raise SystemExit(f"root text target {target} is owned by uid {target_stat.st_uid}, expected root")
+    if target_mode & 0o022:
+        raise SystemExit(
+            f"root text target {target} has permissions {target_mode:04o}, expected no group/other write bits"
+        )
+
 tmp_path = None
 try:
     with tempfile.NamedTemporaryFile(
