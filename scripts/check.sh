@@ -238,6 +238,7 @@ grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
+grep -q 'unexpected ENC chart directories' src/noaa_navionics/health.py
 grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'positive download byte count' src/noaa_navionics/health.py

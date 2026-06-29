@@ -366,6 +366,15 @@ def check_chart_manifest(
             False,
             f"manifest recorded {manifest_cell_count} ENC cells but only {actual_cell_count} remain at {extract_path}",
         )
+    stale_chart_dirs = _unexpected_enc_dirs(path, extract_path)
+    if stale_chart_dirs:
+        names = ", ".join(str(chart_dir) for chart_dir in stale_chart_dirs[:5])
+        suffix = "" if len(stale_chart_dirs) <= 5 else f", and {len(stale_chart_dirs) - 5} more"
+        return CheckResult(
+            "Manifest",
+            False,
+            f"unexpected ENC chart directories outside manifest extract path: {names}{suffix}",
+        )
     package = manifest.get("package", {})
     label = package.get("label", "unknown package") if isinstance(package, dict) else "unknown package"
     expected_filename = _expected_manifest_filename(expected_package, expected_value)
@@ -446,6 +455,36 @@ def _expected_manifest_filename(package: str, value: str = "") -> str:
         return package_for(**kwargs).filename
     except ValueError:
         return ""
+
+
+def _unexpected_enc_dirs(chart_dir: Path, extract_path: Path) -> list[Path]:
+    try:
+        chart_root = Path(chart_dir).expanduser().resolve()
+        extract_root = Path(extract_path).expanduser().resolve()
+    except OSError:
+        return []
+    try:
+        relative_extract = extract_root.relative_to(chart_root)
+    except ValueError:
+        return []
+    protected = chart_root / relative_extract.parts[0] if relative_extract.parts else chart_root
+    try:
+        children = sorted(chart_root.iterdir())
+    except OSError:
+        return []
+    unexpected = []
+    for child in children:
+        if child.name.startswith(".") or not child.is_dir():
+            continue
+        try:
+            child_root = child.resolve()
+        except OSError:
+            continue
+        if child_root == protected:
+            continue
+        if _limited_find(child_root, suffix=".000", limit=1):
+            unexpected.append(child)
+    return unexpected
 
 
 def check_disk_space(chart_dir: Path, *, name: str = "Disk") -> CheckResult:

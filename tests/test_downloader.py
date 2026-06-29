@@ -793,6 +793,32 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("does not match configured CA_ENCs.zip", result.detail)
 
+    def test_manifest_fails_when_other_extracted_enc_directory_remains(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            current_cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            current_cell.parent.mkdir(parents=True)
+            current_cell.write_text("cell", encoding="ascii")
+            stale_cell = root / "CA_ENCs" / "US5CA99M" / "US5CA99M.000"
+            stale_cell.parent.mkdir(parents=True)
+            stale_cell.write_text("old", encoding="ascii")
+            (root / "tracks").mkdir()
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("unexpected ENC chart directories", result.detail)
+            self.assertIn("CA_ENCs", result.detail)
+
     def test_manifest_archive_sha_mismatch_fails_when_zip_exists(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
