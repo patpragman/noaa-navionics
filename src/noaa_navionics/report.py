@@ -22,6 +22,7 @@ from . import __version__
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
+        "ExecStart",
         "TimeoutStartUSec",
         "Restart",
         "RestartUSec",
@@ -33,6 +34,7 @@ USER_UNIT_PROPERTIES = {
         "Persistent",
     ],
     "noaa-navionics-track.service": [
+        "ExecStart",
         "StandardOutput",
         "Restart",
         "RestartUSec",
@@ -40,6 +42,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
     ],
     "noaa-navionics-preflight.service": [
+        "ExecStart",
         "EnvironmentFiles",
         "RestartUSec",
         "StartLimitIntervalUSec",
@@ -323,6 +326,9 @@ def _service_readiness_checks(
                         "StartLimitIntervalUSec": "6h",
                         "StartLimitBurst": "3",
                     },
+                    contains={
+                        "ExecStart": "noaa-navionics sync-charts",
+                    },
                 ),
                 _unit_properties_check(
                     services,
@@ -342,6 +348,9 @@ def _service_readiness_checks(
                         "StartLimitIntervalUSec": "10min",
                         "StartLimitBurst": "60",
                     },
+                    contains={
+                        "ExecStart": "noaa-navionics log-track",
+                    },
                 ),
                 _unit_properties_check(
                     services,
@@ -352,7 +361,10 @@ def _service_readiness_checks(
                         "StartLimitIntervalUSec": "5min",
                         "StartLimitBurst": "5",
                     },
-                    contains={"EnvironmentFiles": "noaa-navionics/launcher.env"},
+                    contains={
+                        "ExecStart": "noaa-navionics status-report",
+                        "EnvironmentFiles": "noaa-navionics/launcher.env",
+                    },
                 ),
             ]
         )

@@ -111,6 +111,7 @@ grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
+grep -q 'chart service loaded sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
 grep -q 'chart service loaded restart' scripts/verify_pi.sh
 grep -q 'chart service loaded restart delay' scripts/verify_pi.sh
@@ -119,6 +120,7 @@ grep -q 'chart service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
 grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
+grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded restart' scripts/verify_pi.sh
@@ -130,6 +132,7 @@ grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
 grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service loaded status report' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
@@ -213,6 +216,9 @@ grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
+grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
+grep -q 'noaa-navionics log-track' src/noaa_navionics/report.py
+grep -q 'noaa-navionics status-report' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'Chrony Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py

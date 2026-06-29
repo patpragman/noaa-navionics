@@ -1070,6 +1070,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "static",
                 "active": "inactive",
                 "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
                     "RestartUSec": "30min",
@@ -1089,6 +1090,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "StandardOutput": "null",
                     "Restart": "on-failure",
                     "RestartUSec": "10s",
@@ -1100,6 +1102,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
                     "RestartUSec": "30s",
                     "StartLimitIntervalUSec": "5min",

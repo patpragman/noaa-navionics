@@ -534,6 +534,7 @@ track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 check "chart service file" test -f "$chart_service"
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
+check "chart service loaded sync command" sh -c 'systemctl --user show noaa-navionics.service -p ExecStart 2>/dev/null | grep -Fq "noaa-navionics sync-charts"'
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
 check "chart service loaded timeout" sh -c 'systemctl --user show noaa-navionics.service -p TimeoutStartUSec 2>/dev/null | grep -Fxq TimeoutStartUSec=2h'
 check "chart service restart" grep -Fxq 'Restart=on-failure' "$chart_service"
@@ -549,6 +550,7 @@ check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.ti
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
 check "track service file" test -f "$track_service"
 check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
+check "track service loaded rotate daily" sh -c 'systemctl --user show noaa-navionics-track.service -p ExecStart 2>/dev/null | grep -Fq "noaa-navionics log-track"'
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
 check "track service loaded quiet stdout" sh -c 'systemctl --user show noaa-navionics-track.service -p StandardOutput 2>/dev/null | grep -Fxq StandardOutput=null'
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
@@ -562,6 +564,7 @@ check "preflight service file" test -f "$preflight_service"
 check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=10' "$preflight_service"
 check "preflight service GPS wait config" grep -Fxq 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' "$preflight_service"
 check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS} --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
+check "preflight service loaded status report" sh -c 'systemctl --user show noaa-navionics-preflight.service -p ExecStart 2>/dev/null | grep -Fq "noaa-navionics status-report"'
 check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
 check "preflight service loaded GPS wait config" sh -c 'systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fq "noaa-navionics/launcher.env"'
 check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
