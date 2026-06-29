@@ -5743,6 +5743,24 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("is a symlink", result.detail)
 
+    def test_disk_check_rejects_storage_under_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target_parent = root / "real-storage"
+            charts = target_parent / "charts"
+            charts.mkdir(parents=True)
+            link_parent = root / "storage-link"
+            try:
+                link_parent.symlink_to(target_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_disk_space(link_parent / "charts")
+
+            self.assertFalse(result.ok)
+            self.assertIn("storage-link", result.detail)
+            self.assertIn("is a symlink", result.detail)
+
     def test_disk_check_rejects_missing_parent_storage(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "missing-mount" / "charts"
