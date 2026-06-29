@@ -150,13 +150,27 @@ def opencpn_running() -> bool:
     proc = Path("/proc")
     if not proc.exists():
         return False
-    for comm in proc.glob("[0-9]*/comm"):
+    current_uid = os.getuid()
+    for process in proc.glob("[0-9]*"):
         try:
-            if comm.read_text(encoding="utf-8", errors="ignore").strip() == "opencpn":
+            if process.stat().st_uid != current_uid:
+                continue
+            state = _process_state_from_stat_text((process / "stat").read_text(encoding="ascii", errors="ignore"))
+            if state == "Z":
+                continue
+            if (process / "comm").read_text(encoding="utf-8", errors="ignore").strip() == "opencpn":
                 return True
         except OSError:
             continue
     return False
+
+
+def _process_state_from_stat_text(text: str) -> str:
+    _, separator, after_command = text.rpartition(") ")
+    if not separator:
+        return ""
+    parts = after_command.split(maxsplit=1)
+    return parts[0] if parts else ""
 
 
 def _write_backup(target: Path) -> Path:

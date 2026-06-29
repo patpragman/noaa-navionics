@@ -125,11 +125,28 @@ keep_display_awake() {
 }
 
 opencpn_running() {
+  local pid
   if command -v pgrep >/dev/null 2>&1; then
-    pgrep -u "$(id -u)" -x opencpn >/dev/null 2>&1
-  else
+    while IFS= read -r pid; do
+      if opencpn_process_active "$pid"; then
+        return 0
+      fi
+    done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
+  fi
+  return 1
+}
+
+opencpn_process_active() {
+  local pid="$1"
+  local stat_line
+  local state
+  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/stat" ]]; then
     return 1
   fi
+  stat_line="$(cat "/proc/${pid}/stat" 2>/dev/null || true)"
+  state="${stat_line##*) }"
+  state="${state%% *}"
+  [[ -n "$state" && "$state" != "Z" ]]
 }
 
 process_looks_like_launcher() {

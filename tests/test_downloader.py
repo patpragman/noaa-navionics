@@ -498,6 +498,11 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertFalse(list(root.glob(".opencpn.conf.*.part")))
             self.assertGreaterEqual(len(calls), 2)
 
+    def test_process_state_from_stat_text(self):
+        self.assertEqual(opencpn_module._process_state_from_stat_text("123 (opencpn) S 1 2 3"), "S")
+        self.assertEqual(opencpn_module._process_state_from_stat_text("123 (opencpn) Z 1 2 3"), "Z")
+        self.assertEqual(opencpn_module._process_state_from_stat_text("malformed"), "")
+
     def test_check_opencpn_gpsd_config_reports_missing_and_configured(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "opencpn.conf"

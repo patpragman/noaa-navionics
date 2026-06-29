@@ -177,7 +177,7 @@ noaa-navionics-start-chartplotter
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`, including OpenCPN's exit status if the chartplotter process stops.
 The launcher rotates that log once it exceeds 1 MB and syncs the rotated file and directory entry so repeated unattended boots do not grow the cache indefinitely.
 It reads `NOAA_NAVIONICS_GPS_SECONDS`, optional `NOAA_NAVIONICS_WARNING_SECONDS`, optional `NOAA_NAVIONICS_READINESS_ATTEMPTS`, optional `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, and optional `NOAA_NAVIONICS_START_ON_FAILED_READINESS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
-If OpenCPN is already running for the same user, a repeated launcher invocation leaves the existing chartplotter instance in place instead of starting a second one.
+If OpenCPN is already running for the same user, a repeated launcher invocation leaves the existing chartplotter instance in place instead of starting a second one; defunct zombie processes do not count as running.
 The launcher also keeps a synced cache-directory lock for the supervised OpenCPN session so overlapping desktop startup attempts cannot race each other while OpenCPN is still starting or running; if an old lock points at an unrelated reused PID, it clears and syncs the stale lock cleanup before continuing startup.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.

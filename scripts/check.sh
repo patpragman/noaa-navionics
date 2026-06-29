@@ -58,6 +58,8 @@ for path in scripts:
 PY
 
 grep -q 'status-report' systemd/noaa-navionics-preflight.service
+grep -q 'def _process_state_from_stat_text' src/noaa_navionics/opencpn.py
+grep -q '_process_state_from_stat_text' tests/test_downloader.py
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
 grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-preflight.service
@@ -86,7 +88,10 @@ grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
+grep -q 'opencpn_process_active' scripts/start_chartplotter.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
+grep -Fq 'state="${stat_line##*) }"' scripts/start_chartplotter.sh
+grep -Fq '[[ -n "$state" && "$state" != "Z" ]]' scripts/start_chartplotter.sh
 grep -q 'OpenCPN is already running' scripts/start_chartplotter.sh
 grep -q 'OpenCPN exited with status' scripts/start_chartplotter.sh
 grep -q 'show_preflight_warning' scripts/start_chartplotter.sh
@@ -298,6 +303,9 @@ grep -q 'launcher failed to disable one or more display power settings' scripts/
 grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/verify_pi.sh
 grep -q 'launcher log does not contain OpenCPN launch or duplicate marker' scripts/verify_pi.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/verify_pi.sh
+grep -q 'opencpn_process_active' scripts/verify_pi.sh
+grep -Fq 'state="${stat_line##*) }"' scripts/verify_pi.sh
+grep -Fq '[[ -n "$state" && "$state" != "Z" ]]' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh
@@ -1830,10 +1838,24 @@ grep -q 'Another NOAA Navionics chartplotter launcher is already running' "$laun
 launcher_duplicate_home="$tmpdir/launcher-duplicate-home"
 mkdir -p "$launcher_duplicate_home/.local/bin" "$launcher_duplicate_home/.cache/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_duplicate_home/.local/bin/noaa-navionics"
-printf '#!/usr/bin/env bash\nexit 0\n' >"$tmpdir/pgrep"
+bash -c 'while :; do sleep 1; done' opencpn &
+duplicate_opencpn_pid=$!
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" '"$duplicate_opencpn_pid"'\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho "opencpn should not be launched" >&2\nexit 9\n' >"$tmpdir/opencpn"
 chmod +x "$launcher_duplicate_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
 HOME="$launcher_duplicate_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+kill "$duplicate_opencpn_pid" 2>/dev/null || true
+wait "$duplicate_opencpn_pid" 2>/dev/null || true
 grep -q 'OpenCPN is already running' "$launcher_duplicate_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_empty_pgrep_home="$tmpdir/launcher-empty-pgrep-home"
+mkdir -p "$launcher_empty_pgrep_home/.local/bin" "$launcher_empty_pgrep_home/.cache/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_empty_pgrep_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$tmpdir/pgrep"
+printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_empty_pgrep_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+HOME="$launcher_empty_pgrep_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_empty_pgrep_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN exited with status 0' "$launcher_empty_pgrep_home/.cache/noaa-navionics/chartplotter.log"
 
 echo "All checks passed."
