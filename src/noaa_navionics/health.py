@@ -419,11 +419,15 @@ def check_gps_device_path(device: str) -> CheckResult:
         )
     if _stable_gps_device_path(path_text):
         return CheckResult("GPS Device", True, f"{path} -> {resolved}")
-    return CheckResult("GPS Device", True, f"{path} exists")
+    return CheckResult(
+        "GPS Device",
+        False,
+        f"{path} exists but is not a recognized stable GPS path; use /dev/serial/by-id/, /dev/serial0, /dev/serial1, or /dev/gps",
+    )
 
 
 def _stable_gps_device_path(path: str) -> bool:
-    return path.startswith("/dev/serial/by-id/") or path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+    return "/dev/serial/by-id/" in path or path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
 def _volatile_usb_device_path(path: str) -> bool:

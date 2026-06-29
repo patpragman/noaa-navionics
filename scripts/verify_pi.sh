@@ -360,7 +360,8 @@ if [[ -r /etc/default/gpsd ]]; then
       printf 'FAIL GPSD device path %s is volatile; use /dev/serial/by-id/ or a Raspberry Pi serial alias\n' "$gpsd_device"
       failures=$((failures + 1))
     else
-      printf 'WARN GPSD device path %s is not a recognized stable GPS path\n' "$gpsd_device"
+      printf 'FAIL GPSD device path %s is not a recognized stable GPS path\n' "$gpsd_device"
+      failures=$((failures + 1))
     fi
   fi
 else

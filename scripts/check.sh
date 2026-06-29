@@ -82,6 +82,7 @@ grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.s
 grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
+grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -97,6 +98,7 @@ grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
 grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
+grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
@@ -275,6 +277,16 @@ set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
   echo "expected configure_gpsd.sh to reject volatile GPS device paths with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device /dev/ttyAMA0 >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject unrecognized GPS device paths with exit 2" >&2
   exit 1
 fi
 

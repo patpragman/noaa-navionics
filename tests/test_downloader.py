@@ -1389,6 +1389,16 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("not stable", result.detail)
 
+    def test_check_gps_device_path_rejects_unrecognized_existing_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device = Path(tmpdir) / "ttyS0"
+            device.write_text("", encoding="ascii")
+
+            result = check_gps_device_path(str(device))
+
+            self.assertFalse(result.ok)
+            self.assertIn("recognized stable", result.detail)
+
     def test_chart_check_requires_extracted_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

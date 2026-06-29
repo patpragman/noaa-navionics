@@ -54,6 +54,17 @@ volatile_usb_device_path() {
   esac
 }
 
+stable_gps_device_path() {
+  case "$1" in
+    /dev/serial/by-id/*|/dev/serial0|/dev/serial1|/dev/gps)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -120,6 +131,14 @@ if volatile_usb_device_path "$device"; then
   cat >&2 <<EOF
 GPS device path is volatile: $device
 Use /dev/serial/by-id/... for USB GPS receivers, or a stable Raspberry Pi serial alias such as /dev/serial0.
+EOF
+  exit 2
+fi
+
+if ! stable_gps_device_path "$device"; then
+  cat >&2 <<EOF
+GPS device path is not a recognized stable path: $device
+Use /dev/serial/by-id/... for USB GPS receivers, /dev/serial0 or /dev/serial1 for Raspberry Pi UART GPS, or /dev/gps for a managed stable alias.
 EOF
   exit 2
 fi
