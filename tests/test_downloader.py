@@ -1641,6 +1641,56 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
             self.assertTrue(check_chart_manifest(output).ok)
 
+    def test_forced_download_rejects_bad_zip_before_replacing_archive(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            good_zip = root / "good.zip"
+            with zipfile.ZipFile(good_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", good_zip.as_uri(), "AK_ENCs.zip")
+            first = download_package(package, output, extract=True, keep_zip=True, force=True)
+            archive_path = output / "AK_ENCs.zip"
+            original_archive_bytes = archive_path.read_bytes()
+            original_manifest = read_manifest(output)
+            bad_zip = root / "bad.zip"
+            bad_zip.write_bytes(b"not a zip")
+            bad_package = Package("State AK", bad_zip.as_uri(), "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "downloaded ZIP is not a valid archive"):
+                download_package(bad_package, output, extract=True, keep_zip=True, force=True)
+
+            self.assertEqual(archive_path.read_bytes(), original_archive_bytes)
+            self.assertEqual(read_manifest(output), original_manifest)
+            self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
+            self.assertFalse((output / "AK_ENCs.zip.part").exists())
+            self.assertTrue(first.sha256)
+
+    def test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            good_zip = root / "good.zip"
+            with zipfile.ZipFile(good_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", good_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
+            archive_path = output / "AK_ENCs.zip"
+            original_archive_bytes = archive_path.read_bytes()
+            original_manifest = read_manifest(output)
+            empty_zip = root / "empty.zip"
+            with zipfile.ZipFile(empty_zip, "w") as archive:
+                archive.writestr("README.txt", "not chart data")
+            empty_package = Package("State AK", empty_zip.as_uri(), "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "downloaded ZIP contains no ENC"):
+                download_package(empty_package, output, extract=True, keep_zip=True, force=True)
+
+            self.assertEqual(archive_path.read_bytes(), original_archive_bytes)
+            self.assertEqual(read_manifest(output), original_manifest)
+            self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
+            self.assertFalse((output / "AK_ENCs.zip.part").exists())
+
     def test_download_manifest_records_final_response_url(self):
         original = downloader_module.urlopen
 

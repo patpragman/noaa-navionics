@@ -319,6 +319,15 @@ def _download_package_unlocked(
         digest = hasher.hexdigest()
         break
 
+    if extract and destination.suffix.lower() == ".zip":
+        try:
+            _validate_downloaded_zip(tmp_path)
+        except Exception:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
+            raise
     os.replace(tmp_path, destination)
     _fsync_directory(output_path)
     extracted_to = None
@@ -379,6 +388,23 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         _remove_path(previous, missing_ok=True)
         _fsync_directory(parent)
     return destination
+
+
+def _validate_downloaded_zip(zip_path: Path) -> None:
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            bad_member = archive.testzip()
+            if bad_member is not None:
+                raise RuntimeError(f"downloaded ZIP has a failed CRC member: {bad_member}")
+            enc_cell_count = sum(
+                1
+                for member in archive.infolist()
+                if not member.is_dir() and member.filename.lower().endswith(".000")
+            )
+    except zipfile.BadZipFile as exc:
+        raise RuntimeError(f"downloaded ZIP is not a valid archive: {zip_path}") from exc
+    if enc_cell_count <= 0:
+        raise RuntimeError(f"downloaded ZIP contains no ENC .000 cells: {zip_path}")
 
 
 def sha256_file(path: Path) -> str:
