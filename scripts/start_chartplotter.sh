@@ -105,8 +105,7 @@ acquire_launcher_lock() {
     echo "Launcher lock PID ${owner_pid} is not a chartplotter launcher; treating lock as stale."
   fi
   echo "Removing stale chartplotter launcher lock."
-  rm -f "${launcher_lock_dir}/pid"
-  rmdir "$launcher_lock_dir" 2>/dev/null || true
+  rm -rf "$launcher_lock_dir"
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
     printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
     lock_acquired=1
