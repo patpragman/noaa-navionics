@@ -343,6 +343,7 @@ grep -q '"Track Logger Install"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Settings"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Run"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Install"' scripts/verify_pi.sh
+grep -q '"Launcher Settings"' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
@@ -717,6 +718,8 @@ grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Install' src/noaa_navionics/report.py
+grep -q 'Launcher Settings' src/noaa_navionics/report.py
+grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
 grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
 grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py

@@ -526,6 +526,7 @@ required_service_checks = {
     "Boot Readiness Install",
     "Boot Readiness Settings",
     "Boot Readiness Run",
+    "Launcher Settings",
     "GPSD Socket",
     "GPSD Service",
     "Chrony Service",

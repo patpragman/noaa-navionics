@@ -95,6 +95,7 @@ from noaa_navionics.report import (
     format_status_text,
     write_status_report,
     _install_wanted_by_targets,
+    _launcher_settings_check,
     _service_readiness_checks,
 )
 
@@ -2360,14 +2361,19 @@ class StatusReportTests(unittest.TestCase):
             revision.write_text("abc123\n", encoding="utf-8")
             boot_id = root / "boot_id"
             boot_id.write_text("boot-abc\n", encoding="ascii")
+            launcher_env = root / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=10\n", encoding="ascii")
             original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
             original_boot_id_path = report_module.BOOT_ID_PATH
+            original_launcher_env_path = report_module.DEFAULT_LAUNCHER_ENV_PATH
             os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
             report_module.BOOT_ID_PATH = boot_id
+            report_module.DEFAULT_LAUNCHER_ENV_PATH = launcher_env
             try:
                 report = build_status_report(config_path=config, gps_sample=sample)
             finally:
                 report_module.BOOT_ID_PATH = original_boot_id_path
+                report_module.DEFAULT_LAUNCHER_ENV_PATH = original_launcher_env_path
                 if original_revision_path is None:
                     os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
                 else:
@@ -2376,6 +2382,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("services", report)
             self.assertIn("system_services", report)
             self.assertIn("unit_files", report)
+            self.assertIn("launcher_settings", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["config"]["extract"], True)
@@ -2383,6 +2390,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["config"]["force"], True)
             self.assertEqual(report["config"]["min_free_gb"], 3.5)
             self.assertEqual(report["host"]["boot_id"], "boot-abc")
+            self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
+            self.assertEqual(report["launcher_settings"]["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "10")
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["created_at"], now)
@@ -2412,6 +2421,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Service Checks:", text)
             self.assertIn("System Services:", text)
             self.assertIn("User Unit Files:", text)
+            self.assertIn("Launcher Settings:", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
@@ -2588,6 +2598,83 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertEqual(len(install_checks), 3)
         self.assertTrue(all(check.ok for check in install_checks))
+
+    def test_launcher_settings_check_accepts_fail_closed_settings(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "values": {
+                    "NOAA_NAVIONICS_GPS_SECONDS": "30",
+                    "NOAA_NAVIONICS_READINESS_ATTEMPTS": "3",
+                    "NOAA_NAVIONICS_READINESS_RETRY_DELAY": "10",
+                    "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "no",
+                },
+            }
+        )
+
+        self.assertTrue(check.ok)
+        self.assertIn("fail-closed", check.detail)
+
+    def test_launcher_settings_check_fails_fail_open_override(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "values": {
+                    "NOAA_NAVIONICS_GPS_SECONDS": "30",
+                    "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "yes",
+                },
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("START_ON_FAILED_READINESS is enabled", check.detail)
+
+    def test_launcher_settings_check_fails_missing_gps_wait(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "values": {},
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("NOAA_NAVIONICS_GPS_SECONDS=<missing>", check.detail)
+
+    def test_service_readiness_checks_include_launcher_settings(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(
+            services,
+            system_services,
+            launcher_settings={
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "values": {
+                    "NOAA_NAVIONICS_GPS_SECONDS": "10",
+                    "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "yes",
+                },
+            },
+            gps_mode="gpsd",
+        )
+        launcher_check = next(check for check in checks if check.name == "Launcher Settings")
+
+        self.assertFalse(launcher_check.ok)
+        self.assertIn("START_ON_FAILED_READINESS is enabled", launcher_check.detail)
 
     def test_service_readiness_checks_fail_stale_unit_file_install_target(self):
         services = {

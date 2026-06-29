@@ -20,6 +20,7 @@ from . import __version__
 
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
+DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
@@ -101,10 +102,12 @@ def build_status_report(
     services = _service_summary()
     system_services = _system_service_summary()
     unit_files = _user_unit_file_summary()
+    launcher_settings = _launcher_settings_summary()
     service_checks = _service_readiness_checks(
         services,
         system_services,
         unit_files=unit_files,
+        launcher_settings=launcher_settings,
         gps_mode=gps_mode,
     )
     return {
@@ -124,6 +127,7 @@ def build_status_report(
         "services": services,
         "system_services": system_services,
         "unit_files": unit_files,
+        "launcher_settings": launcher_settings,
         "service_checks": [asdict(check) for check in service_checks],
         "checks": check_rows,
     }
@@ -236,6 +240,17 @@ def format_status_text(report: dict[str, object]) -> str:
                 else:
                     wanted_by_text = str(wanted_by)
                 lines.append(f"{name}: exists={state.get('exists', '')} wanted_by={wanted_by_text}")
+    launcher_settings = report.get("launcher_settings", {})
+    if isinstance(launcher_settings, dict) and launcher_settings:
+        lines.extend(["", "Launcher Settings:"])
+        values = launcher_settings.get("values", {})
+        if isinstance(values, dict):
+            value_text = " ".join(f"{key}={value}" for key, value in sorted(values.items()))
+        else:
+            value_text = ""
+        lines.append(
+            f"path={launcher_settings.get('path', '')} exists={launcher_settings.get('exists', '')} {value_text}".rstrip()
+        )
     return "\n".join(lines)
 
 
@@ -367,6 +382,27 @@ def _user_unit_file_summary() -> dict[str, object]:
     return summary
 
 
+def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]:
+    launcher_env = Path(path or DEFAULT_LAUNCHER_ENV_PATH).expanduser()
+    summary: dict[str, object] = {"path": str(launcher_env), "exists": launcher_env.is_file()}
+    if not launcher_env.exists():
+        return summary
+    try:
+        lines = launcher_env.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        summary["error"] = str(exc)
+        return summary
+    values: dict[str, str] = {}
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip()
+    summary["values"] = values
+    return summary
+
+
 def _install_wanted_by_targets(lines: list[str]) -> list[str]:
     targets: list[str] = []
     section = ""
@@ -388,6 +424,7 @@ def _service_readiness_checks(
     system_services: dict[str, object],
     *,
     unit_files: Optional[dict[str, object]] = None,
+    launcher_settings: Optional[dict[str, object]] = None,
     gps_mode: str,
 ) -> list[CheckResult]:
     checks = [
@@ -532,6 +569,8 @@ def _service_readiness_checks(
                 ),
             ]
         )
+    if launcher_settings is not None:
+        checks.append(_launcher_settings_check(launcher_settings))
     if gps_mode == "gpsd":
         checks.append(
             _unit_check(
@@ -561,6 +600,37 @@ def _service_readiness_checks(
             )
         )
     return checks
+
+
+def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
+    path = str(summary.get("path", DEFAULT_LAUNCHER_ENV_PATH.expanduser()))
+    if summary.get("exists") is not True:
+        return CheckResult("Launcher Settings", False, f"launcher environment is missing: {path}")
+    error = str(summary.get("error", ""))
+    if error:
+        return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")
+    values = summary.get("values", {})
+    if not isinstance(values, dict):
+        return CheckResult("Launcher Settings", False, f"launcher environment values were not parsed: {path}")
+
+    failures = []
+    gps_seconds = str(values.get("NOAA_NAVIONICS_GPS_SECONDS", "")).strip()
+    if not gps_seconds.isdigit() or int(gps_seconds) <= 0:
+        failures.append(f"NOAA_NAVIONICS_GPS_SECONDS={gps_seconds or '<missing>'} expected positive integer")
+    attempts = str(values.get("NOAA_NAVIONICS_READINESS_ATTEMPTS", "")).strip()
+    if attempts and (not attempts.isdigit() or int(attempts) <= 0):
+        failures.append(f"NOAA_NAVIONICS_READINESS_ATTEMPTS={attempts} expected positive integer")
+    retry_delay = str(values.get("NOAA_NAVIONICS_READINESS_RETRY_DELAY", "")).strip()
+    if retry_delay and (not retry_delay.isdigit() or int(retry_delay) < 0):
+        failures.append(f"NOAA_NAVIONICS_READINESS_RETRY_DELAY={retry_delay} expected non-negative integer")
+    fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
+    if fail_open in {"1", "yes", "true", "on"}:
+        failures.append("NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled")
+    elif fail_open and fail_open not in {"0", "no", "false", "off"}:
+        failures.append(f"NOAA_NAVIONICS_START_ON_FAILED_READINESS={fail_open} expected yes/no")
+    if failures:
+        return CheckResult("Launcher Settings", False, f"{path}: " + "; ".join(failures))
+    return CheckResult("Launcher Settings", True, f"{path} keeps chartplotter startup fail-closed")
 
 
 def _unit_file_install_target_check(
