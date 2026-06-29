@@ -2868,6 +2868,33 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(fix.valid)
         self.assertEqual(list(iter_fixes([sentence])), [])
 
+    def test_iter_fixes_rejects_gga_with_malformed_fix_quality(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,bad,08,0.9,545.4,M,46.9,M,,"
+        fix = parse_nmea_sentence(sentence)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertIsNone(fix.fix_quality)
+        self.assertFalse(fix.valid)
+        self.assertEqual(list(iter_fixes([sentence])), [])
+
+    def test_parse_nmea_ignores_non_finite_optional_numbers(self):
+        gga = "$GPGGA,123519,4807.038,N,01131.000,E,1,NaN,Infinity,-Infinity,M,46.9,M,,"
+        rmc = "$GPRMC,123519,A,4807.038,N,01131.000,E,NaN,Infinity,230394,003.1,W"
+
+        gga_fix = parse_nmea_sentence(gga)
+        rmc_fix = parse_nmea_sentence(rmc)
+
+        self.assertIsNotNone(gga_fix)
+        self.assertIsNotNone(rmc_fix)
+        assert gga_fix is not None
+        assert rmc_fix is not None
+        self.assertIsNone(gga_fix.satellites)
+        self.assertIsNone(gga_fix.hdop)
+        self.assertIsNone(gga_fix.altitude_m)
+        self.assertIsNone(rmc_fix.speed_knots)
+        self.assertIsNone(rmc_fix.course_degrees)
+
     def test_gga_time_without_date_uses_nearest_utc_day(self):
         before_midnight = _parse_time_today("000010", now=datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
         after_midnight = _parse_time_today("235950", now=datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))

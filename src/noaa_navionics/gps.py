@@ -516,13 +516,13 @@ def _time_parts(value: str) -> Optional[tuple[int, int, int, int, int]]:
 def _float_or_none(value: str) -> Optional[float]:
     if value == "":
         return None
-    return float(value)
+    return _finite_float_or_none(value)
 
 
 def _int_or_none(value: str) -> Optional[int]:
     if value == "":
         return None
-    return int(value)
+    return _non_negative_int_or_none(value)
 
 
 _HALF_DAY = timedelta(hours=12)
