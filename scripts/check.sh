@@ -243,6 +243,10 @@ grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
+grep -q -- '--expected-gps-device' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
+grep -q 'check_expected_gps_device_matches' scripts/verify_pi.sh
+grep -q 'GPSD device matches expected' scripts/verify_pi.sh
 grep -q 'Do not verify root@' scripts/verify_pi.sh
 grep -q 'verification user is not root' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
@@ -724,6 +728,7 @@ grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
+grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
 grep -q -- '--skip-autologin cannot be used for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 
@@ -1032,6 +1037,17 @@ if [[ "$verify_code" -ne 2 ]]; then
   echo "expected verify_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/verify_pi.sh --expected-gps-device >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject missing --expected-gps-device value with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--expected-gps-device requires a value' "$verify_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --gps-seconds nope >"$dock_output" 2>&1

@@ -3,12 +3,13 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] user@raspberrypi.local
+Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--expected-gps-device PATH] user@raspberrypi.local
 
 Runs onboard verification on the Raspberry Pi over SSH.
 With --require-chartplotter-started, also requires a post-boot launcher log
 and a running OpenCPN process.
 Use --gps-seconds to allow a longer GPS fix wait during the status report.
+Use --expected-gps-device to assert GPSD and the onboard config use a specific receiver.
 Nothing is installed or enabled on the local computer.
 EOF
 }
@@ -16,6 +17,7 @@ EOF
 target=""
 require_chartplotter_started=0
 gps_seconds=10
+expected_gps_device=""
 
 require_positive_integer() {
   local name="$1"
@@ -89,6 +91,14 @@ while [[ $# -gt 0 ]]; do
       gps_seconds="${2:-}"
       shift 2
       ;;
+    --expected-gps-device)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      expected_gps_device="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -122,8 +132,9 @@ fi
 expected_revision_quoted="$(printf '%q' "$expected_revision")"
 require_chartplotter_started_quoted="$(printf '%q' "$require_chartplotter_started")"
 gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
+expected_gps_device_quoted="$(printf '%q' "$expected_gps_device")"
 
-ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} bash -s" <<'REMOTE'
+ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
@@ -528,6 +539,32 @@ if not configured_device:
     raise SystemExit("gps.device is empty in config")
 if configured_device != gpsd_device:
     raise SystemExit(f"config gps.device {configured_device} does not match GPSD device {gpsd_device}")
+PY
+}
+
+check_expected_gps_device_matches() {
+  local config_path="$1"
+  local gpsd_device="$2"
+  local expected_device="${NOAA_NAVIONICS_EXPECTED_GPS_DEVICE:-}"
+  if [[ -z "$expected_device" ]]; then
+    return 0
+  fi
+  python3 - "$config_path" "$gpsd_device" "$expected_device" <<'PY'
+from configparser import ConfigParser
+from pathlib import Path
+import sys
+
+config_path = Path(sys.argv[1]).expanduser()
+gpsd_device = sys.argv[2]
+expected_device = sys.argv[3]
+parser = ConfigParser()
+if not parser.read(config_path):
+    raise SystemExit(f"could not read config: {config_path}")
+configured_device = parser.get("gps", "device", fallback="").strip()
+if configured_device != expected_device:
+    raise SystemExit(f"config gps.device {configured_device} does not match expected GPS device {expected_device}")
+if gpsd_device != expected_device:
+    raise SystemExit(f"GPSD device {gpsd_device} does not match expected GPS device {expected_device}")
 PY
 }
 
@@ -960,6 +997,9 @@ if [[ -r /etc/default/gpsd ]]; then
     check "GPSD device is not directory" test ! -d "$gpsd_device"
     check "GPSD device is character device" test -c "$gpsd_device"
     check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"
+    if [[ -n "${NOAA_NAVIONICS_EXPECTED_GPS_DEVICE:-}" ]]; then
+      check "GPSD device matches expected" check_expected_gps_device_matches "$config" "$gpsd_device"
+    fi
     if stable_gps_device_path "$gpsd_device"; then
       printf 'OK   GPSD stable device path %s\n' "$gpsd_device"
     elif volatile_usb_device_path "$gpsd_device"; then

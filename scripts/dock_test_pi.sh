@@ -151,6 +151,7 @@ while [[ $# -gt 0 ]]; do
       fi
       device="$2"
       provision_args+=("--device" "$device")
+      verify_args+=("--expected-gps-device" "$device")
       shift 2
       ;;
     --gps-seconds)
