@@ -7,7 +7,7 @@ from typing import Optional
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .config import DEFAULT_CONFIG_PATH, package_kwargs, read_config
+from .config import DEFAULT_CONFIG_PATH, AppConfig, package_kwargs, read_config
 from .downloader import download_package, package_for
 from .health import run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
@@ -16,6 +16,30 @@ from .report import build_status_report, format_status_text, write_status_report
 
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
 PACKAGE_KINDS = {"state", "updates", "cgd", "region", "chart", "all", "catalog"}
+
+
+def run_configured_preflight(
+    app_config: AppConfig,
+    *,
+    gpsd_enabled: Optional[bool] = None,
+    gps_device: Optional[str] = None,
+    gps_seconds: float = 10.0,
+):
+    use_gpsd = app_config.gps_mode == "gpsd" if gpsd_enabled is None else gpsd_enabled
+    serial_device = None if use_gpsd else (gps_device or app_config.gps_device)
+    return run_preflight(
+        chart_dir=app_config.chart_output,
+        chart_package=app_config.chart_package,
+        chart_value=app_config.chart_value,
+        gpsd=use_gpsd,
+        gpsd_host=app_config.gpsd_host,
+        gpsd_port=app_config.gpsd_port,
+        gps_device=app_config.gps_device if use_gpsd else serial_device,
+        gps_baud=app_config.gps_baud,
+        gps_seconds=gps_seconds,
+        max_chart_age_days=app_config.max_chart_age_days,
+        track_output=app_config.track_output,
+    )
 
 
 class DownloaderApp(tk.Tk):
@@ -293,17 +317,10 @@ class DownloaderApp(tk.Tk):
     def _preflight_worker(self) -> None:
         try:
             app_config = read_config(self._config_path())
-            results = run_preflight(
-                chart_dir=Path(self.output.get()),
-                chart_package=self.kind.get(),
-                chart_value=self.value.get(),
-                gpsd=self.use_gpsd.get(),
-                gpsd_host="127.0.0.1",
-                gpsd_port=2947,
-                gps_device=None if self.use_gpsd.get() else self.gps_device.get().strip() or None,
-                gps_baud=app_config.gps_baud,
-                gps_seconds=5.0,
-                track_output=app_config.track_output,
+            results = run_configured_preflight(
+                app_config,
+                gpsd_enabled=self.use_gpsd.get(),
+                gps_device=self.gps_device.get().strip() or None,
             )
             self.queue.put(("preflight", results))
         except Exception as exc:

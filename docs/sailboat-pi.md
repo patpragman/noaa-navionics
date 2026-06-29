@@ -174,7 +174,7 @@ Maintenance GUI:
 noaa-navionics-gui
 ```
 
-The GUI can load `~/.config/noaa-navionics/config.ini`, sync the configured chart package, write `~/.cache/noaa-navionics/status.json`, run preflight checks, and register the configured chart/GPSD connection with OpenCPN. Close OpenCPN before using the GUI's OpenCPN configuration button.
+The GUI can load `~/.config/noaa-navionics/config.ini`, sync the configured chart package, write `~/.cache/noaa-navionics/status.json`, run preflight checks with the configured chart, GPSD, baud, chart-age, and track-storage values, and register the configured chart/GPSD connection with OpenCPN. Close OpenCPN before using the GUI's OpenCPN configuration button.
 
 ## Charts
 

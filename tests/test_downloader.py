@@ -21,6 +21,7 @@ from noaa_navionics import config as config_module
 from noaa_navionics import downloader as downloader_module
 from noaa_navionics import gps as gps_module
 from noaa_navionics import cli as cli_module
+from noaa_navionics import gui as gui_module
 from noaa_navionics import opencpn as opencpn_module
 from noaa_navionics import report as report_module
 from noaa_navionics.downloader import (
@@ -33,7 +34,7 @@ from noaa_navionics.downloader import (
     read_manifest,
     search_catalog,
 )
-from noaa_navionics.config import package_kwargs, read_config, write_default_config
+from noaa_navionics.config import AppConfig, package_kwargs, read_config, write_default_config
 from noaa_navionics.cli import (
     _TrackLoggerStop,
     _log_rotating_tracks,
@@ -589,6 +590,52 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False)])
             self.assertFalse(configured_output.exists())
             self.assertTrue((explicit_output / "tracks" / "track-20260629.gpx").exists())
+
+
+class GuiTests(unittest.TestCase):
+    def test_configured_preflight_uses_onboard_config_values(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            gps_mode="gpsd",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="192.0.2.10",
+            gpsd_port=2948,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+        )
+        calls = []
+        original = gui_module.run_preflight
+
+        def fake_run_preflight(**kwargs):
+            calls.append(kwargs)
+            return [health_module.CheckResult("Test", True, "ok")]
+
+        try:
+            gui_module.run_preflight = fake_run_preflight
+            results = gui_module.run_configured_preflight(app_config)
+        finally:
+            gui_module.run_preflight = original
+
+        self.assertEqual(results, [health_module.CheckResult("Test", True, "ok")])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["chart_dir"], Path("/charts/noaa"))
+        self.assertEqual(calls[0]["chart_package"], "state")
+        self.assertEqual(calls[0]["chart_value"], "AK")
+        self.assertEqual(calls[0]["gpsd"], True)
+        self.assertEqual(calls[0]["gpsd_host"], "192.0.2.10")
+        self.assertEqual(calls[0]["gpsd_port"], 2948)
+        self.assertEqual(calls[0]["gps_device"], "/dev/serial/by-id/mock-gps")
+        self.assertEqual(calls[0]["gps_baud"], 9600)
+        self.assertEqual(calls[0]["gps_seconds"], 10.0)
+        self.assertEqual(calls[0]["max_chart_age_days"], 12)
+        self.assertEqual(calls[0]["track_output"], Path("/tracks/noaa"))
 
 
 class CLIValidationTests(unittest.TestCase):
