@@ -1254,6 +1254,8 @@ grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges=true' systemd/noaa-navionics.service
 grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
+grep -q 'UMask=0077' systemd/noaa-navionics.service
+grep -q 'UMask=0077' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
@@ -1263,9 +1265,14 @@ import sys
 sys.path.insert(0, "src")
 from noaa_navionics import report
 
-properties = report.USER_UNIT_PROPERTIES["noaa-navionics-track.service"]
-if "UMask" not in properties:
-    raise SystemExit("status report must query loaded track logger UMask")
+for unit in (
+    "noaa-navionics.service",
+    "noaa-navionics-track.service",
+    "noaa-navionics-preflight.service",
+):
+    properties = report.USER_UNIT_PROPERTIES[unit]
+    if "UMask" not in properties:
+        raise SystemExit(f"status report must query loaded {unit} UMask")
 PY
 grep -q 'FragmentPath' src/noaa_navionics/report.py
 grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
@@ -1288,8 +1295,12 @@ grep -q 'preflight service loaded type' scripts/verify_pi.sh
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'UMask=0077' systemd/noaa-navionics-track.service
+grep -q 'chart service private files' scripts/verify_pi.sh
+grep -q 'chart service loaded private files' scripts/verify_pi.sh
 grep -q 'track service private track files' scripts/verify_pi.sh
 grep -q 'track service loaded private track files' scripts/verify_pi.sh
+grep -q 'preflight service private files' scripts/verify_pi.sh
+grep -q 'preflight service loaded private files' scripts/verify_pi.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL' src/noaa_navionics/gps.py
 grep -q '0o600' src/noaa_navionics/gps.py
 grep -q 'mode=0o700' src/noaa_navionics/gps.py

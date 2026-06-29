@@ -79,6 +79,7 @@ USER_UNIT_PROPERTIES = {
         "StartLimitBurst",
         "NoNewPrivileges",
         "PrivateTmp",
+        "UMask",
     ],
 }
 USER_UNIT_INSTALL_TARGETS = {
@@ -1047,6 +1048,7 @@ def _service_readiness_checks(
                             "StartLimitBurst": "3",
                             "NoNewPrivileges": "yes",
                             "PrivateTmp": "yes",
+                            "UMask": "0077",
                         },
                         unit_files,
                         "noaa-navionics.service",
@@ -1121,6 +1123,7 @@ def _service_readiness_checks(
                             "StartLimitBurst": "60",
                             "NoNewPrivileges": "yes",
                             "PrivateTmp": "yes",
+                            "UMask": "0077",
                         },
                         unit_files,
                         "noaa-navionics-preflight.service",

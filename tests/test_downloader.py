@@ -2964,7 +2964,13 @@ class ManifestTests(unittest.TestCase):
 
 class StatusReportTests(unittest.TestCase):
     def test_status_report_queries_track_logger_umask(self):
-        self.assertIn("UMask", report_module.USER_UNIT_PROPERTIES["noaa-navionics-track.service"])
+        for unit in (
+            "noaa-navionics.service",
+            "noaa-navionics-track.service",
+            "noaa-navionics-preflight.service",
+        ):
+            with self.subTest(unit=unit):
+                self.assertIn("UMask", report_module.USER_UNIT_PROPERTIES[unit])
 
     def test_build_and_write_status_report(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -4066,6 +4072,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "3",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "UMask": "0077",
                 },
             },
             "noaa-navionics.timer": {
@@ -4116,6 +4123,7 @@ class StatusReportTests(unittest.TestCase):
                     "StartLimitBurst": "60",
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
+                    "UMask": "0077",
                 },
             },
         }

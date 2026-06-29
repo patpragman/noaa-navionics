@@ -12,3 +12,4 @@ Restart=on-failure
 RestartSec=30min
 NoNewPrivileges=true
 PrivateTmp=true
+UMask=0077

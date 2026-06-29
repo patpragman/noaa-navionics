@@ -2589,6 +2589,8 @@ check "chart service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$chart
 check "chart service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
 check "chart service private tmp" grep -Fxq 'PrivateTmp=true' "$chart_service"
 check "chart service loaded private tmp" sh -c 'systemctl --user show noaa-navionics.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
+check "chart service private files" grep -Fxq 'UMask=0077' "$chart_service"
+check "chart service loaded private files" sh -c 'systemctl --user show noaa-navionics.service -p UMask 2>/dev/null | grep -Fxq UMask=0077'
 check "chart service start limit interval" grep -Fxq 'StartLimitIntervalSec=6h' "$chart_service"
 check "chart service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=6h'
 check "chart service start limit burst" grep -Fxq 'StartLimitBurst=3' "$chart_service"
@@ -2654,6 +2656,8 @@ check "preflight service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$p
 check "preflight service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics-preflight.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
 check "preflight service private tmp" grep -Fxq 'PrivateTmp=true' "$preflight_service"
 check "preflight service loaded private tmp" sh -c 'systemctl --user show noaa-navionics-preflight.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
+check "preflight service private files" grep -Fxq 'UMask=0077' "$preflight_service"
+check "preflight service loaded private files" sh -c 'systemctl --user show noaa-navionics-preflight.service -p UMask 2>/dev/null | grep -Fxq UMask=0077'
 check "preflight service loaded GPS wait config" sh -c 'systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fq "noaa-navionics/launcher.env"'
 check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
 check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=30min' "$preflight_service"
