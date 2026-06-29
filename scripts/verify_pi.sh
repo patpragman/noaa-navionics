@@ -1816,12 +1816,46 @@ check_chartplotter_log_after_boot() {
   python3 - "$path" <<'PY'
 from pathlib import Path
 from datetime import datetime, timezone
+import os
 import sys
 import time
 
 path = Path(sys.argv[1]).expanduser()
+if path.is_symlink():
+    raise SystemExit(f"launcher log is a symlink: {path}")
+cache_dir = path.parent
+if cache_dir.is_symlink():
+    raise SystemExit(f"launcher log cache directory is a symlink: {cache_dir}")
+if cache_dir.parent.is_symlink():
+    raise SystemExit(f"launcher log cache parent directory is a symlink: {cache_dir.parent}")
+current = cache_dir.parent
+for candidate in [current, *current.parents]:
+    if candidate.is_symlink():
+        raise SystemExit(f"launcher log cache path contains a symlink: {candidate}")
 if not path.exists():
     raise SystemExit(f"missing launcher log: {path}")
+if not path.is_file():
+    raise SystemExit(f"launcher log is not a regular file: {path}")
+try:
+    cache_stat = cache_dir.stat()
+    log_stat = path.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect launcher log path {path}: {exc}") from exc
+expected_uid = os.getuid()
+if cache_stat.st_uid != expected_uid:
+    raise SystemExit(
+        f"launcher log cache directory is owned by uid {cache_stat.st_uid}, expected {expected_uid}: {cache_dir}"
+    )
+cache_mode = cache_stat.st_mode & 0o777
+if cache_mode != 0o700:
+    raise SystemExit(
+        f"launcher log cache directory has permissions {cache_mode:04o}, expected private 0700: {cache_dir}"
+    )
+if log_stat.st_uid != expected_uid:
+    raise SystemExit(f"launcher log is owned by uid {log_stat.st_uid}, expected {expected_uid}: {path}")
+log_mode = log_stat.st_mode & 0o777
+if log_mode != 0o600:
+    raise SystemExit(f"launcher log has permissions {log_mode:04o}, expected private 0600: {path}")
 text = path.read_text(encoding="utf-8", errors="replace")
 startup_marker = "Starting NOAA Navionics chartplotter launcher"
 launch_marker = "Launching OpenCPN with ENC processing."

@@ -349,6 +349,9 @@ grep -q 'GPSD device matches expected' scripts/verify_pi.sh
 grep -q 'Do not verify root@' scripts/verify_pi.sh
 grep -q 'verification user is not root' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
+grep -q 'launcher log cache directory is a symlink' scripts/verify_pi.sh
+grep -q 'launcher log has permissions' scripts/verify_pi.sh
+grep -q 'launcher log cache path contains a symlink' scripts/verify_pi.sh
 grep -q 'rotated_log_file="${log_file}.1"' scripts/verify_pi.sh
 grep -q 'check_optional_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher log file integrity' scripts/verify_pi.sh
