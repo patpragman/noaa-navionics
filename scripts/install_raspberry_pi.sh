@@ -11,6 +11,22 @@ revision_file="${data_dir}/source-revision"
 skip_apt=0
 allow_non_pi=0
 
+usage() {
+  cat >&2 <<'EOF'
+Usage: scripts/install_raspberry_pi.sh [options]
+
+Options:
+  --skip-apt        Do not install system packages
+  --allow-non-pi   Allow development smoke tests on non-Raspberry Pi hosts
+  --no-services    Accepted for deploy-script compatibility
+  --skip-autologin Accepted for deploy-script compatibility
+
+Installs NOAA Navionics into a private user virtual environment on the
+Raspberry Pi. User services and desktop autostart are enabled later by
+provisioning after GPSD, charts, and the onboard config are commissioned.
+EOF
+}
+
 sync_paths() {
   python3 - "$@" <<'PY'
 from pathlib import Path
@@ -272,6 +288,10 @@ ensure_vcgencmd() {
 
 for arg in "$@"; do
   case "$arg" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
     --skip-apt)
       skip_apt=1
       ;;
@@ -284,6 +304,7 @@ for arg in "$@"; do
       ;;
     *)
       echo "Unknown argument: $arg" >&2
+      usage
       exit 2
       ;;
   esac

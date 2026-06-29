@@ -197,6 +197,7 @@ grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.s
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
 grep -q 'shutil.rmtree(venv)' scripts/install_raspberry_pi.sh
+grep -q 'usage()' scripts/install_raspberry_pi.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
@@ -863,6 +864,17 @@ scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" -
 grep -q 'autologin-session=LXDE-pi' "$install_output"
 grep -q 'Configured graphical autologin for' "$install_output"
 grep -q 'using X11 session LXDE-pi' "$install_output"
+
+set +e
+scripts/install_raspberry_pi.sh --help >"$install_output" 2>&1
+install_code=$?
+set -e
+if [[ "$install_code" -ne 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected install_raspberry_pi.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/install_raspberry_pi.sh' "$install_output"
 
 set +e
 scripts/install_raspberry_pi.sh --bad-option >"$install_output" 2>&1
