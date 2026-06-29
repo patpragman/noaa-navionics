@@ -483,6 +483,8 @@ grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'gpsd_connect_retry=use_gpsd and deadline is None and not args.sample' src/noaa_navionics/cli.py
+grep -q 'yielded_fix = True' src/noaa_navionics/cli.py
+grep -q 'or yielded_fix' src/noaa_navionics/cli.py
 grep -q 'GPSD unavailable at' src/noaa_navionics/cli.py
 grep -q 'retrying in' src/noaa_navionics/cli.py
 grep -q 'PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")' src/noaa_navionics/gui.py

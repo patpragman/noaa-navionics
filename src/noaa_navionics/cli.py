@@ -472,6 +472,7 @@ def _read_fixes(
         if deadline is not None:
             timeout = max(0.1, deadline - time.monotonic())
             max_duration = timeout
+        yielded_fix = False
         while True:
             try:
                 for fix in iter_gpsd_fixes(
@@ -482,10 +483,11 @@ def _read_fixes(
                 ):
                     if deadline is not None and time.monotonic() > deadline:
                         break
+                    yielded_fix = True
                     yield fix
                 return
             except OSError as exc:
-                if not gpsd_connect_retry or deadline is not None:
+                if not gpsd_connect_retry or deadline is not None or yielded_fix:
                     raise
                 print(
                     f"GPSD unavailable at {gpsd_host}:{gpsd_port}: {exc}; "

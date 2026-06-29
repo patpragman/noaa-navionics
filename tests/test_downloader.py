@@ -816,6 +816,48 @@ class OpenCPNConfigTests(unittest.TestCase):
         self.assertEqual(sleeps, [0.1])
         self.assertIn("GPSD unavailable at 127.0.0.1:2947", stderr.getvalue())
 
+    def test_read_fixes_does_not_retry_gpsd_failure_after_fix(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        calls = []
+        sleeps = []
+        original_iter = cli_module.iter_gpsd_fixes
+        original_sleep = cli_module.time.sleep
+
+        def failing_stream():
+            yield fix
+            raise OSError("gpsd stream reset")
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            calls.append((host, port, timeout, max_duration))
+            return failing_stream()
+
+        try:
+            cli_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            cli_module.time.sleep = lambda seconds: sleeps.append(seconds)
+            fixes = cli_module._read_fixes(
+                "/dev/serial/by-id/mock-gps",
+                4800,
+                None,
+                gpsd=True,
+                gpsd_connect_retry=True,
+                gpsd_retry_delay=0.1,
+            )
+            self.assertEqual(next(fixes), fix)
+            with self.assertRaisesRegex(OSError, "gpsd stream reset"):
+                next(fixes)
+        finally:
+            cli_module.iter_gpsd_fixes = original_iter
+            cli_module.time.sleep = original_sleep
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sleeps, [])
+
 
 class GuiTests(unittest.TestCase):
     def test_gui_package_options_are_complete_onboard_chart_sources(self):
