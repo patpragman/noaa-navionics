@@ -90,6 +90,9 @@ grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--skip-gps-time' scripts/deploy_to_pi.sh
 grep -q -- '--skip-gps-time' scripts/dock_test_pi.sh
+grep -q 'install_args+=("--no-services")' scripts/deploy_to_pi.sh
+grep -q 'install_args+=("$1")' scripts/deploy_to_pi.sh
+grep -Fq 'scripts/install_raspberry_pi.sh ${remote_install_args[*]}' scripts/deploy_to_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh

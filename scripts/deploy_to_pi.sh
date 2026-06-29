@@ -18,6 +18,7 @@ shift
 remote_dir="~/noaa-navionics"
 provision=0
 provision_args=()
+install_args=()
 saw_provision_option=0
 allow_dirty=0
 
@@ -85,7 +86,19 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
-    --skip-gpsd|--skip-sync|--skip-services|--skip-autologin|--skip-gps-time|--no-device-check)
+    --skip-services)
+      saw_provision_option=1
+      provision_args+=("$1")
+      install_args+=("--no-services")
+      shift
+      ;;
+    --skip-autologin)
+      saw_provision_option=1
+      provision_args+=("$1")
+      install_args+=("$1")
+      shift
+      ;;
+    --skip-gpsd|--skip-sync|--skip-gps-time|--no-device-check)
       saw_provision_option=1
       provision_args+=("$1")
       shift
@@ -172,7 +185,11 @@ rsync -az --delete \
   "${repo_root}/" "${target}:${remote_dir}/"
 write_remote_source_revision "$remote_dir" "$source_revision"
 
-ssh -t "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh"
+remote_install_args=()
+for arg in "${install_args[@]}"; do
+  remote_install_args+=("$(printf '%q' "$arg")")
+done
+ssh -t "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
 
 if [[ "$provision" -eq 1 ]]; then
   remote_args=()

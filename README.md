@@ -117,6 +117,7 @@ Provisioning persists the chosen GPS wait in `~/.config/noaa-navionics/launcher.
 Provisioning also configures chrony to use GPSD's message-based `SHM 0` time source so a Pi without an RTC can synchronize its clock from the GPS when network time is unavailable. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present.
 Onboard config chart and track output paths must be absolute or start with `~` so unattended systemd services never depend on a process working directory.
 For production provisioning, use the default onboard config at `~/.config/noaa-navionics/config.ini`; custom `--config` paths are rejected unless both services and desktop autostart are deliberately skipped for manual testing.
+When `deploy_to_pi.sh --provision` is run with `--skip-services` or `--skip-autologin`, those choices are applied to both installation and provisioning so the Pi is not partly configured for unattended startup.
 
 Verify the Raspberry Pi after deployment:
 
