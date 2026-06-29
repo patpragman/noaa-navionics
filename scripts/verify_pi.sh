@@ -521,7 +521,13 @@ check "chart service file" test -f "$chart_service"
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
 check "chart service loaded timeout" sh -c 'systemctl --user show noaa-navionics.service -p TimeoutStartUSec 2>/dev/null | grep -Fxq TimeoutStartUSec=2h'
+check "chart service restart" grep -Fxq 'Restart=on-failure' "$chart_service"
+check "chart service loaded restart" sh -c 'systemctl --user show noaa-navionics.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
 check "chart service loaded restart delay" sh -c 'systemctl --user show noaa-navionics.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30min'
+check "chart service start limit interval" grep -Fxq 'StartLimitIntervalSec=6h' "$chart_service"
+check "chart service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=6h'
+check "chart service start limit burst" grep -Fxq 'StartLimitBurst=3' "$chart_service"
+check "chart service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=3'
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'

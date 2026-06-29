@@ -102,7 +102,10 @@ grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
+grep -q 'chart service loaded restart' scripts/verify_pi.sh
 grep -q 'chart service loaded restart delay' scripts/verify_pi.sh
+grep -q 'chart service loaded start limit interval' scripts/verify_pi.sh
+grep -q 'chart service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
 grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
