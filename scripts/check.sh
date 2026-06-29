@@ -410,8 +410,8 @@ grep -q 'chartplotter launcher lock pid is not a regular file' scripts/verify_pi
 grep -q 'chartplotter launcher lock boot ID is not a regular file' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock pid file is owned by uid' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID file is owned by uid' scripts/verify_pi.sh
-grep -q 'chartplotter launcher live environment enables NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/verify_pi.sh
-grep -q 'chartplotter launcher live environment has invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/verify_pi.sh
+grep -q 'chartplotter launcher live environment overrides' scripts/verify_pi.sh
+grep -q 'production verification requires launcher settings from' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
@@ -595,7 +595,7 @@ grep -q 'chartplotter launcher previous-boot lock recovery' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock sync create' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock sync cleanup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
-grep -q 'production verification requires fail-closed startup' scripts/verify_pi.sh
+grep -q 'production verification requires launcher settings from' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
