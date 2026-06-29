@@ -72,6 +72,8 @@ revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 status_attempts=3
 status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
+chartplotter_start_timeout=120
+chartplotter_start_interval=5
 
 check() {
   local name="$1"
@@ -207,6 +209,33 @@ if mtime + 5 < boot_epoch:
 PY
 }
 
+opencpn_running() {
+  pgrep -x opencpn >/dev/null
+}
+
+wait_for_chartplotter_started() {
+  local deadline=$((SECONDS + chartplotter_start_timeout))
+  local last_detail=""
+  local check_output
+  check_output="$(mktemp)"
+  trap 'rm -f "$check_output"' RETURN
+  while true; do
+    if check_chartplotter_log_after_boot "$log_file" >"$check_output" 2>&1; then
+      if opencpn_running; then
+        return 0
+      fi
+      last_detail="OpenCPN is not running yet"
+    else
+      last_detail="$(cat "$check_output" 2>/dev/null || true)"
+    fi
+    if [[ "$SECONDS" -ge "$deadline" ]]; then
+      printf '%s\n' "${last_detail:-chartplotter did not start before timeout}" >&2
+      return 1
+    fi
+    sleep "$chartplotter_start_interval"
+  done
+}
+
 arch="$(uname -m)"
 case "$arch" in
   armv7l|aarch64)
@@ -244,8 +273,12 @@ if [[ -f "$lightdm_autologin" ]]; then
 fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
-  check "chartplotter log after boot" check_chartplotter_log_after_boot "$log_file"
-  check "OpenCPN running" sh -c 'pgrep -x opencpn >/dev/null'
+  check "chartplotter started after boot" wait_for_chartplotter_started
+  if opencpn_running; then
+    check "OpenCPN running" true
+  else
+    check "OpenCPN running" false
+  fi
 fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "$revision_file"

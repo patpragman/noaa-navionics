@@ -40,6 +40,8 @@ grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
+grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
+grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
