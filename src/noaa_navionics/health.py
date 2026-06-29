@@ -660,6 +660,8 @@ def check_gps_device_path(device: str) -> CheckResult:
             f"{path} exists but is not stable; use /dev/serial/by-id/ or a Raspberry Pi serial alias",
         )
     if _stable_gps_device_path(path_text):
+        if not path.is_char_device():
+            return CheckResult("GPS Device", False, f"{path} exists but is not a character device")
         return CheckResult("GPS Device", True, f"{path} -> {resolved}")
     return CheckResult(
         "GPS Device",

@@ -170,6 +170,11 @@ if [[ "$check_device" -eq 1 && -d "$device" ]]; then
   exit 2
 fi
 
+if [[ "$check_device" -eq 1 && ! -c "$device" ]]; then
+  echo "GPS device path is not a character device: $device" >&2
+  exit 2
+fi
+
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 

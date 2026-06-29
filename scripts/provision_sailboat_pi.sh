@@ -136,6 +136,8 @@ if check_device and not path.exists():
     raise SystemExit(f"GPS device does not exist: {path}")
 if check_device and path.is_dir():
     raise SystemExit(f"GPS device path is a directory, not a GPS device: {path}")
+if check_device and not path.is_char_device():
+    raise SystemExit(f"GPS device path is not a character device: {path}")
 PY
   then
     exit 2

@@ -235,6 +235,7 @@ grep -q 'preflight service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
+grep -q 'GPSD device is character device' scripts/verify_pi.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh
 grep -Fq '"$suffix" != */*' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
@@ -250,6 +251,7 @@ grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
+grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
@@ -261,6 +263,7 @@ grep -q 'Existing config is required when --skip-gpsd is used with unattended st
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
+grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
@@ -314,6 +317,7 @@ grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py
 grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
 grep -q 'is a directory, not a GPS device' src/noaa_navionics/health.py
+grep -q 'is not a character device' src/noaa_navionics/health.py
 grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
