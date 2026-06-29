@@ -302,8 +302,11 @@ def _parse_rmc_timestamp(time_value: str, date_value: str) -> Optional[datetime]
     month = int(date_value[2:4])
     year_value = int(date_value[4:6])
     year = 1900 + year_value if year_value >= 80 else 2000 + year_value
-    hour, minute, second, microsecond = parsed_time
-    return datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    hour, minute, second, microsecond, day_carry = parsed_time
+    base = datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    if day_carry:
+        base += timedelta(days=day_carry)
+    return base
 
 
 def _parse_time_today(value: str, *, now: Optional[datetime] = None) -> Optional[datetime]:
@@ -311,8 +314,10 @@ def _parse_time_today(value: str, *, now: Optional[datetime] = None) -> Optional
     if parsed_time is None:
         return None
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    hour, minute, second, microsecond = parsed_time
+    hour, minute, second, microsecond, day_carry = parsed_time
     candidate = datetime(now.year, now.month, now.day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    if day_carry:
+        candidate += timedelta(days=day_carry)
     if candidate - now > _HALF_DAY:
         return candidate - _ONE_DAY
     if now - candidate > _HALF_DAY:
@@ -328,7 +333,7 @@ def _parse_iso_time(value: str) -> Optional[datetime]:
         return None
 
 
-def _time_parts(value: str) -> Optional[tuple[int, int, int, int]]:
+def _time_parts(value: str) -> Optional[tuple[int, int, int, int, int]]:
     if len(value) < 6:
         return None
     hour = int(value[0:2])
@@ -336,7 +341,20 @@ def _time_parts(value: str) -> Optional[tuple[int, int, int, int]]:
     seconds = float(value[4:])
     whole_seconds = int(seconds)
     microsecond = int(round((seconds - whole_seconds) * 1_000_000))
-    return hour, minute, whole_seconds, microsecond
+    if microsecond >= 1_000_000:
+        whole_seconds += 1
+        microsecond -= 1_000_000
+    if whole_seconds >= 60:
+        minute += whole_seconds // 60
+        whole_seconds %= 60
+    if minute >= 60:
+        hour += minute // 60
+        minute %= 60
+    day_carry = 0
+    if hour >= 24:
+        day_carry = hour // 24
+        hour %= 24
+    return hour, minute, whole_seconds, microsecond, day_carry
 
 
 def _float_or_none(value: str) -> Optional[float]:

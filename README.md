@@ -201,6 +201,7 @@ noaa-navionics gps-monitor --gpsd --once
 ```
 
 For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`. Direct serial readiness rejects stale or future-dated timestamped NMEA fixes too.
+NMEA fractional timestamps are normalized across second, minute, and UTC day rollovers before freshness checks and GPX logging.
 
 Track logging:
 

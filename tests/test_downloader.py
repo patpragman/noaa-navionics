@@ -1107,6 +1107,11 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(before_midnight, datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))
         self.assertEqual(after_midnight, datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
 
+    def test_gga_fractional_time_rounds_across_midnight(self):
+        rounded = _parse_time_today("235959.9999999", now=datetime(2026, 6, 29, 23, 59, 59, tzinfo=timezone.utc))
+
+        self.assertEqual(rounded, datetime(2026, 6, 30, 0, 0, 0, tzinfo=timezone.utc))
+
     def test_parse_rmc_sentence(self):
         sentence = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
         fix = parse_nmea_sentence(sentence)
@@ -1115,6 +1120,14 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.timestamp.year, 1994)
         self.assertEqual(fix.speed_knots, 22.4)
         self.assertEqual(fix.course_degrees, 84.4)
+
+    def test_parse_rmc_fractional_time_rounds_across_date(self):
+        sentence = "$GPRMC,235959.9999999,A,4807.038,N,01131.000,E,0.0,0.0,290626,003.1,W"
+        fix = parse_nmea_sentence(sentence)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.timestamp, datetime(2026, 6, 30, 0, 0, 0, tzinfo=timezone.utc))
 
     def test_iter_fixes_merges_gga_and_rmc(self):
         fixes = list(

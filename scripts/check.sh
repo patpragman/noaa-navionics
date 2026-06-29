@@ -90,6 +90,7 @@ grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_tree' src/noaa_navionics/downloader.py
 grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
+grep -q 'day_carry' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
