@@ -345,6 +345,12 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk") -> CheckResult:
 def check_pi_throttling() -> CheckResult:
     vcgencmd = shutil.which("vcgencmd")
     if vcgencmd is None:
+        if _is_raspberry_pi():
+            return CheckResult(
+                "Pi Power",
+                False,
+                "vcgencmd not found on Raspberry Pi; install the Raspberry Pi firmware utilities",
+            )
         return CheckResult("Pi Power", True, "vcgencmd not found; skipping Raspberry Pi throttling check")
     try:
         completed = subprocess.run(
@@ -376,6 +382,14 @@ def check_pi_throttling() -> CheckResult:
     if historical:
         return CheckResult("Pi Power", True, "healthy now; historical events: " + ", ".join(historical))
     return CheckResult("Pi Power", True, "no under-voltage or throttling reported")
+
+
+def _is_raspberry_pi() -> bool:
+    model_path = Path("/proc/device-tree/model")
+    try:
+        return "Raspberry Pi" in model_path.read_text(encoding="ascii", errors="ignore")
+    except OSError:
+        return False
 
 
 def check_pi_temperature(*, warn_c: float = 70.0, fail_c: float = 80.0) -> CheckResult:

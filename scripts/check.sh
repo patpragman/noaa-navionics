@@ -58,6 +58,7 @@ grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
+grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter autostart name' scripts/verify_pi.sh
@@ -97,6 +98,7 @@ grep -q 'manifest download path is outside chart directory' src/noaa_navionics/h
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
 grep -q 'Display Power' src/noaa_navionics/health.py
+grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py
 grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
 grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py

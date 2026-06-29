@@ -342,6 +342,7 @@ if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "
 fi
 check "OpenCPN command" command -v opencpn
 check "display power command" command -v xset
+check "Pi power command" command -v vcgencmd
 check "GPSD command" command -v gpsd
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD config" test -f /etc/default/gpsd

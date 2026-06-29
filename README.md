@@ -122,7 +122,7 @@ scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
 Use `--gps-seconds N` here too if the GPS receiver needs a longer fix window.
-Verification also checks that the chartplotter launcher contains the readiness gate and OpenCPN ENC parsing command, that the persisted launcher GPS wait matches the verification wait, that the desktop autostart entry is enabled, that LightDM autologin and the graphical boot target are configured for the deployed user, that the installed user systemd units contain the expected commands, and that GPSD is enabled for boot, startup options, GPSD device path, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
+Verification also checks that the chartplotter launcher contains the readiness gate and OpenCPN ENC parsing command, that the persisted launcher GPS wait matches the verification wait, that the desktop autostart entry is enabled, that LightDM autologin and the graphical boot target are configured for the deployed user, that Raspberry Pi power diagnostics are available, that the installed user systemd units contain the expected commands, and that GPSD is enabled for boot, startup options, GPSD device path, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
 
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 

@@ -1528,6 +1528,20 @@ class PiHealthTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("historical", result.detail)
 
+    def test_check_pi_throttling_reports_missing_command_on_pi(self):
+        original_path = os.environ.get("PATH", "")
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            os.environ["PATH"] = "/nonexistent"
+            health_module._is_raspberry_pi = lambda: True
+            result = check_pi_throttling()
+        finally:
+            os.environ["PATH"] = original_path
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("vcgencmd", result.detail)
+
 
 if __name__ == "__main__":
     unittest.main()
