@@ -79,6 +79,7 @@ from noaa_navionics.health import (
     check_source_revision,
     check_system_clock,
     check_time_synchronization,
+    _parse_vcgencmd_temperature,
     _parse_throttled_value,
 )
 from noaa_navionics.opencpn import (
@@ -4760,6 +4761,39 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("skipping", result.detail)
+
+    def test_parse_vcgencmd_temperature(self):
+        self.assertEqual(_parse_vcgencmd_temperature("temp=42.5'C"), 42.5)
+        self.assertEqual(_parse_vcgencmd_temperature("temp=47'C"), 47.0)
+        self.assertIsNone(_parse_vcgencmd_temperature("temperature unavailable"))
+
+    def test_read_sysfs_pi_temperature(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_file = Path(tmpdir) / "temp"
+            temp_file.write_text("42500\n", encoding="ascii")
+
+            self.assertEqual(health_module._read_sysfs_pi_temperature(temp_file), 42.5)
+
+    def test_read_pi_temperature_falls_back_to_vcgencmd(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir)
+            fake = bin_dir / "vcgencmd"
+            fake.write_text(
+                "#!/bin/sh\n"
+                "test \"$1\" = measure_temp || exit 2\n"
+                "echo \"temp=43.7'C\"\n",
+                encoding="ascii",
+            )
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_sysfs_reader = health_module._read_sysfs_pi_temperature
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._read_sysfs_pi_temperature = lambda path: None
+                self.assertEqual(health_module._read_pi_temperature(), 43.7)
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._read_sysfs_pi_temperature = original_sysfs_reader
 
 
 if __name__ == "__main__":

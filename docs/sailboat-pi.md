@@ -267,7 +267,7 @@ Expected checks:
 - Configured local GPS device path exists when GPSD is using a local receiver
 - At least `[charts] min_free_gb` free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path; `/mnt`, `/media`, and `/run/media` storage paths must actually be mounted
 - No active Raspberry Pi under-voltage or throttling
-- Raspberry Pi thermal sensor readable and temperature below the hard limit
+- Raspberry Pi thermal sensor or `vcgencmd measure_temp` readable, and temperature below the hard limit
 - Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode
 - Chart refresh timer, track logger, boot readiness service, GPSD socket/service, and chrony service are in the expected state
 - During the dock test after reboot, the status report and chartplotter launcher ran during the current boot and OpenCPN is running

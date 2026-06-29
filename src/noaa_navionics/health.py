@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 import importlib.util
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -999,12 +1000,48 @@ def _parse_throttled_value(output: str) -> Optional[int]:
 
 
 def _read_pi_temperature() -> Optional[float]:
-    path = Path("/sys/class/thermal/thermal_zone0/temp")
+    sysfs_temperature = _read_sysfs_pi_temperature(Path("/sys/class/thermal/thermal_zone0/temp"))
+    if sysfs_temperature is not None:
+        return sysfs_temperature
+    return _read_vcgencmd_temperature()
+
+
+def _read_sysfs_pi_temperature(path: Path) -> Optional[float]:
     try:
         raw = path.read_text(encoding="ascii").strip()
     except OSError:
         return None
     try:
         return float(raw) / 1000
+    except ValueError:
+        return None
+
+
+def _read_vcgencmd_temperature() -> Optional[float]:
+    vcgencmd = shutil.which("vcgencmd")
+    if vcgencmd is None:
+        return None
+    try:
+        completed = subprocess.run(
+            [vcgencmd, "measure_temp"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception:
+        return None
+    if completed.returncode != 0:
+        return None
+    return _parse_vcgencmd_temperature(completed.stdout.strip() or completed.stderr.strip())
+
+
+def _parse_vcgencmd_temperature(output: str) -> Optional[float]:
+    match = re.search(r"temp=([+-]?(?:\d+(?:\.\d*)?|\.\d+))", output.strip())
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
     except ValueError:
         return None
