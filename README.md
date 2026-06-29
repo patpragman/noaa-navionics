@@ -244,8 +244,7 @@ The provisioning script also configures the Pi to boot to `graphical.target` and
 The included chart sync service retries transient network failures, allows up to two hours for slow NOAA downloads, runs with basic user-service hardening, and asks systemd for delayed retry attempts if the whole run still fails.
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp systemd/noaa-navionics.service systemd/noaa-navionics.timer ~/.config/systemd/user/
+scripts/install_raspberry_pi.sh --skip-apt
 systemctl --user daemon-reload
 systemctl --user enable --now noaa-navionics.timer
 ```

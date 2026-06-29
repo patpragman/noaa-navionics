@@ -293,8 +293,7 @@ The track logger service uses a generous start-limit window so delayed GPSD or G
 Systemd user service:
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp systemd/noaa-navionics-track.service ~/.config/systemd/user/
+scripts/install_raspberry_pi.sh --skip-apt
 systemctl --user daemon-reload
 systemctl --user enable --now noaa-navionics-track.service
 ```
@@ -306,8 +305,7 @@ The service reads `~/.config/noaa-navionics/config.ini`.
 Install the weekly chart refresh timer:
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp systemd/noaa-navionics.service systemd/noaa-navionics.timer ~/.config/systemd/user/
+scripts/install_raspberry_pi.sh --skip-apt
 systemctl --user daemon-reload
 systemctl --user enable --now noaa-navionics.timer
 ```
@@ -319,7 +317,7 @@ Edit `~/.config/noaa-navionics/config.ini` if your cruising region is not Alaska
 Install a user service that writes the same readiness report at login:
 
 ```bash
-cp systemd/noaa-navionics-preflight.service ~/.config/systemd/user/
+scripts/install_raspberry_pi.sh --skip-apt
 systemctl --user daemon-reload
 systemctl --user enable noaa-navionics-preflight.service
 ```

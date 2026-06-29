@@ -232,6 +232,7 @@ grep -q 'noaa-navionics-configure-gps-time' scripts/install_raspberry_pi.sh
 grep -q 'User systemd unit files were installed but not enabled' scripts/install_raspberry_pi.sh
 grep -q 'Desktop autologin and chartplotter autostart are also configured by provisioning' scripts/install_raspberry_pi.sh
 ! grep -q -- '--no-services requires --skip-autologin' scripts/install_raspberry_pi.sh
+! grep -q '^cp systemd/' README.md docs/sailboat-pi.md
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
