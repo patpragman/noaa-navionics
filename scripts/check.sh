@@ -428,6 +428,9 @@ grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'process lookup command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
+grep -q 'local bin directory integrity' scripts/verify_pi.sh
+grep -q 'app data directory integrity' scripts/verify_pi.sh
+grep -q 'app config directory integrity' scripts/verify_pi.sh
 grep -q 'private venv directory integrity' scripts/verify_pi.sh
 grep -q 'check_command_symlink_to_private_venv' scripts/verify_pi.sh
 grep -q 'noaa-navionics command symlink' scripts/verify_pi.sh
@@ -435,6 +438,8 @@ grep -q 'noaa-navionics GUI command symlink' scripts/verify_pi.sh
 grep -q 'chartplotter launcher file integrity' scripts/verify_pi.sh
 grep -q 'desktop autologin helper file integrity' scripts/verify_pi.sh
 grep -q 'GPS time helper file integrity' scripts/verify_pi.sh
+grep -q 'desktop autostart directory integrity' scripts/verify_pi.sh
+grep -q 'systemd user directory integrity' scripts/verify_pi.sh
 grep -q 'resolves outside private venv' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
 grep -q 'GPSD service active' scripts/verify_pi.sh

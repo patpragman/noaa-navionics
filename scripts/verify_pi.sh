@@ -202,6 +202,11 @@ ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} N
 set -euo pipefail
 
 failures=0
+bin_dir="${HOME}/.local/bin"
+data_dir="${HOME}/.local/share/noaa-navionics"
+config_dir="${HOME}/.config/noaa-navionics"
+autostart_dir="${HOME}/.config/autostart"
+systemd_user_dir="${HOME}/.config/systemd/user"
 config="${HOME}/.config/noaa-navionics/config.ini"
 bin="${HOME}/.local/bin/noaa-navionics"
 gui_bin="${HOME}/.local/bin/noaa-navionics-gui"
@@ -1919,6 +1924,9 @@ case "$arch" in
 esac
 
 check "verification user is not root" check_not_root_user
+check "local bin directory integrity" check_user_private_directory_integrity "$bin_dir" "local command directory"
+check "app data directory integrity" check_user_private_directory_integrity "$data_dir" "NOAA Navionics data directory"
+check "app config directory integrity" check_user_private_directory_integrity "$config_dir" "NOAA Navionics config directory"
 check "noaa-navionics command" test -x "$bin"
 check "private venv directory integrity" check_user_private_directory_integrity "$venv_dir" "private virtual environment"
 check "noaa-navionics command symlink" check_command_symlink_to_private_venv "$bin" "noaa-navionics command" "${venv_dir}/bin/noaa-navionics"
@@ -1967,6 +1975,7 @@ check "chartplotter launcher OpenCPN restart delay persisted" grep -Fxq "NOAA_NA
 check "chartplotter launcher env file integrity" check_user_regular_file_integrity "$launcher_env" "chartplotter launcher environment"
 check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
 set_chartplotter_start_timeout_from_launcher_env
+check "desktop autostart directory integrity" check_user_private_directory_integrity "$autostart_dir" "desktop autostart directory"
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then
   check "chartplotter autostart file integrity" check_user_regular_file_integrity "$autostart" "chartplotter autostart file"
@@ -2073,11 +2082,11 @@ check_output "configured packages" "$bin" list-packages
 
 printf '\n[systemd user units]\n'
 systemctl --user --no-pager list-unit-files 'noaa-navionics*' || failures=$((failures + 1))
-systemd_user_dir="${HOME}/.config/systemd/user"
 chart_service="${systemd_user_dir}/noaa-navionics.service"
 chart_timer="${systemd_user_dir}/noaa-navionics.timer"
 track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
+check "systemd user directory integrity" check_user_private_directory_integrity "$systemd_user_dir" "systemd user unit directory"
 check "chart service file" test -f "$chart_service"
 if [[ -f "$chart_service" ]]; then
   check "chart service file integrity" check_user_regular_file_integrity "$chart_service" "chart service unit file"
