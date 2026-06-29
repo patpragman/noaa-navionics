@@ -120,6 +120,9 @@ grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
 grep -q 'require_local_command ssh' scripts/verify_pi.sh
 grep -Fq 'ssh -T "$target"' scripts/verify_pi.sh
+grep -Fq 'ssh -T "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
+grep -Fq 'ssh -T "$target" "cd ${remote_dir_quoted} && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
+! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/deploy_to_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
 grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh

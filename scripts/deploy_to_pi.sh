@@ -532,7 +532,7 @@ remote_install_args=()
 for arg in "${install_args[@]}"; do
   remote_install_args+=("$(printf '%q' "$arg")")
 done
-ssh -t "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
+ssh -T "$target" "cd ${remote_dir_quoted} && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
 
 if [[ "$provision" -eq 1 ]]; then
   remote_args=()
@@ -540,5 +540,5 @@ if [[ "$provision" -eq 1 ]]; then
     [[ "$arg" == "--provision" ]] && continue
     remote_args+=("$(printf '%q' "$arg")")
   done
-  ssh -t "$target" "cd ${remote_dir_quoted} && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
+  ssh -T "$target" "cd ${remote_dir_quoted} && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
 fi
