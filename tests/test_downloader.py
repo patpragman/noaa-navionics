@@ -1142,6 +1142,46 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(result.skipped)
             self.assertFalse(lock.exists())
 
+    def test_old_download_lock_with_live_owner_is_not_replaced(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("pid=1234 boot_id=current-boot created_at=old\n", encoding="ascii")
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(lock, (old_time, old_time))
+            original_boot_id = downloader_module._current_boot_id
+            original_pid_is_running = downloader_module._pid_is_running
+            try:
+                downloader_module._current_boot_id = lambda: "current-boot"
+                downloader_module._pid_is_running = lambda pid: pid == 1234
+
+                stale = downloader_module._lock_is_stale(lock)
+            finally:
+                downloader_module._current_boot_id = original_boot_id
+                downloader_module._pid_is_running = original_pid_is_running
+
+            self.assertFalse(stale)
+            self.assertEqual(lock.read_text(encoding="ascii"), "pid=1234 boot_id=current-boot created_at=old\n")
+
+    def test_old_download_lock_from_previous_boot_is_stale_even_if_pid_exists(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock = Path(tmpdir) / DOWNLOAD_LOCK_NAME
+            lock.write_text("pid=1234 boot_id=previous-boot created_at=old\n", encoding="ascii")
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(lock, (old_time, old_time))
+            original_boot_id = downloader_module._current_boot_id
+            original_pid_is_running = downloader_module._pid_is_running
+            try:
+                downloader_module._current_boot_id = lambda: "current-boot"
+                downloader_module._pid_is_running = lambda pid: True
+
+                stale = downloader_module._lock_is_stale(lock)
+            finally:
+                downloader_module._current_boot_id = original_boot_id
+                downloader_module._pid_is_running = original_pid_is_running
+
+            self.assertTrue(stale)
+
     def test_download_lock_cleanup_preserves_replaced_lock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

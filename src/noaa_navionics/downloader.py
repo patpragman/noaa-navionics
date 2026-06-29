@@ -421,7 +421,11 @@ def _fsync_directory(path: Path) -> None:
 def _chart_update_lock(output_path: Path):
     lock_path = Path(output_path) / DOWNLOAD_LOCK_NAME
     lock_fd: Optional[int] = None
-    lock_text = f"pid={os.getpid()} created_at={datetime.now(timezone.utc).isoformat()}\n"
+    lock_text = (
+        f"pid={os.getpid()} "
+        f"boot_id={_current_boot_id()} "
+        f"created_at={datetime.now(timezone.utc).isoformat()}\n"
+    )
     while True:
         try:
             lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
@@ -454,7 +458,48 @@ def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_
         age_seconds = time.time() - lock_path.stat().st_mtime
     except OSError:
         return False
-    return age_seconds > stale_seconds
+    if age_seconds <= stale_seconds:
+        return False
+    try:
+        lock_text = lock_path.read_text(encoding="ascii", errors="ignore")
+    except OSError:
+        return False
+    owner_pid = _lock_field(lock_text, "pid")
+    owner_boot_id = _lock_field(lock_text, "boot_id")
+    if owner_pid and owner_pid.isdigit():
+        current_boot_id = _current_boot_id()
+        if owner_boot_id and current_boot_id and owner_boot_id != current_boot_id:
+            return True
+        if _pid_is_running(int(owner_pid)):
+            return False
+    return True
+
+
+def _lock_field(lock_text: str, name: str) -> str:
+    prefix = f"{name}="
+    for field in lock_text.split():
+        if field.startswith(prefix):
+            return field[len(prefix) :].strip()
+    return ""
+
+
+def _current_boot_id() -> str:
+    try:
+        return Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+    except OSError:
+        return "unknown"
+
+
+def _pid_is_running(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def write_manifest(output_dir: Union[Path, str], package: Package, result: DownloadResult) -> Path:
