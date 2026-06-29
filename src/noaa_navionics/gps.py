@@ -181,7 +181,7 @@ class GPXTrackLogger:
 
     def __enter__(self) -> "GPXTrackLogger":
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.file = self.path.open("w", encoding="utf-8")
+        self.file = self.path.open("x", encoding="utf-8")
         self.file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         self.file.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')
         self.file.write(f"  <trk><name>{escape(self.name)}</name><trkseg>\n")

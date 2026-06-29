@@ -351,7 +351,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 )
                 print(f"Saved {count} fixes to {', '.join(str(path) for path in outputs)}")
             else:
-                output = Path(args.file).expanduser() if args.file else default_track_path(base_output)
+                output = Path(args.file).expanduser() if args.file else _available_track_path(default_track_path(base_output))
                 count = _log_single_track(fixes, output, deadline=deadline, sample=bool(args.sample))
                 print(f"Saved {count} fixes to {output}")
             return 0
