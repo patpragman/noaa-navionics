@@ -225,7 +225,7 @@ The track logger service uses a generous start-limit window so delayed GPSD or G
 ## Raspberry Pi Automation
 
 A user-level systemd timer is included in `systemd/`.
-The installer enables the track logger for future boots but does not start it before GPSD is configured. The Pi provisioning script enables user lingering, reloads refreshed unit files, clears stale failed states for the track logger and boot readiness service, and restarts the track logger after GPSD setup so updated service settings are applied and the timer and track logger can run after reboot without an interactive login.
+The installer enables the track logger for future boots but does not start it before GPSD is configured. The Pi provisioning script enables user lingering, reloads refreshed unit files, clears stale failed states for the track logger and boot readiness service, restarts the track logger after GPSD setup, and starts the boot readiness service immediately so updated service settings are applied and the timer, readiness service, and track logger can run after reboot without an interactive login.
 The installer and provisioning script also configure the Pi to boot to `graphical.target` and autologin through LightDM as the deployed user, so the desktop autostart entry can bring up OpenCPN after a power cycle.
 The included chart sync service retries transient network failures, allows up to two hours for slow NOAA downloads, and asks systemd for delayed retry attempts if the whole run still fails.
 
