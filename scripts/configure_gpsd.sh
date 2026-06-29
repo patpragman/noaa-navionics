@@ -146,6 +146,26 @@ if app_config.gpsd_host != "127.0.0.1" or app_config.gpsd_port != 2947:
 PY
 }
 
+prepare_app_config_path() {
+  python3 - "$repo_root" "$config" "$dry_run" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+repo_root = Path(sys.argv[1])
+config_path = Path(sys.argv[2]).expanduser()
+dry_run = sys.argv[3] == "1"
+
+sys.path.insert(0, str(repo_root / "src"))
+from noaa_navionics.config import _prepare_config_parent
+
+parent = config_path.parent
+if dry_run and not parent.exists() and not parent.is_symlink():
+    raise SystemExit(0)
+_prepare_config_parent(config_path)
+PY
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -259,6 +279,7 @@ if [[ "$check_device" -eq 1 && ! -c "$device" ]]; then
   exit 2
 fi
 
+prepare_app_config_path
 validate_updated_app_config
 
 tmp="$(mktemp)"
@@ -291,16 +312,21 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now gpsd.socket gpsd.service
 sudo systemctl restart gpsd.socket gpsd.service
 
-mkdir -p "$(dirname "$config")"
-python3 - "$config" "$device" <<'PY'
+python3 - "$repo_root" "$config" "$device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
 import os
 import sys
 import tempfile
 
-config_path = Path(sys.argv[1]).expanduser()
-device = sys.argv[2]
+repo_root = Path(sys.argv[1])
+config_path = Path(sys.argv[2]).expanduser()
+device = sys.argv[3]
+
+sys.path.insert(0, str(repo_root / "src"))
+from noaa_navionics.config import _prepare_config_parent
+
+_prepare_config_parent(config_path)
 parser = ConfigParser()
 if config_path.exists():
     parser.read(config_path)
@@ -323,6 +349,7 @@ try:
         tmp_path = Path(handle.name)
         parser.write(handle)
         handle.flush()
+        os.chmod(tmp_path, 0o600)
         os.fsync(handle.fileno())
     os.replace(tmp_path, config_path)
     try:

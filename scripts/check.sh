@@ -588,7 +588,9 @@ grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
+grep -q 'prepare_app_config_path' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import read_config' scripts/configure_gpsd.sh
+grep -q 'from noaa_navionics.config import _prepare_config_parent' scripts/configure_gpsd.sh
 grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
@@ -599,6 +601,7 @@ grep -q 'systemctl enable --now gpsd.socket gpsd.service' scripts/configure_gpsd
 grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
+grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
   grep -q 'install_root_file_atomic' "$script"
@@ -1759,6 +1762,48 @@ if [[ "$gpsd_code" -eq 0 ]]; then
   exit 1
 fi
 grep -q 'charts.output must be a dedicated storage directory' "$gpsd_output"
+! grep -q 'Would write /etc/default/gpsd' "$gpsd_output"
+
+unsafe_gpsd_config_parent="$tmpdir/unsafe-gpsd-config-parent"
+mkdir -p "$unsafe_gpsd_config_parent"
+chmod 0777 "$unsafe_gpsd_config_parent"
+set +e
+scripts/configure_gpsd.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --config "$unsafe_gpsd_config_parent/config.ini" \
+  --device /dev/serial/by-id/mock-gps >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+chmod 0700 "$unsafe_gpsd_config_parent"
+if [[ "$gpsd_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject an unsafe app config directory before GPSD setup" >&2
+  exit 1
+fi
+grep -q 'expected no group/other write bits' "$gpsd_output"
+! grep -q 'Would write /etc/default/gpsd' "$gpsd_output"
+
+gpsd_config_real_parent="$tmpdir/real-gpsd-config-parent"
+gpsd_config_link_parent="$tmpdir/link-gpsd-config-parent"
+mkdir -p "$gpsd_config_real_parent"
+ln -s "$gpsd_config_real_parent" "$gpsd_config_link_parent"
+set +e
+scripts/configure_gpsd.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --config "$gpsd_config_link_parent/config.ini" \
+  --device /dev/serial/by-id/mock-gps >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject a symlinked app config directory before GPSD setup" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics config directory is a symlink' "$gpsd_output"
 ! grep -q 'Would write /etc/default/gpsd' "$gpsd_output"
 
 scripts/provision_sailboat_pi.sh \
