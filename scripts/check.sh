@@ -111,6 +111,8 @@ grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded restart' scripts/verify_pi.sh
 grep -q 'track service loaded restart delay' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
+grep -q 'track service loaded start limit interval' scripts/verify_pi.sh
+grep -q 'track service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
