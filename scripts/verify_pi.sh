@@ -172,6 +172,7 @@ if expected_config_path:
     if not parser.read(Path(expected_config_path).expanduser()):
         raise SystemExit(f"could not read expected config: {expected_config_path}")
     chart_output = Path(parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()).expanduser()
+    expected_manifest_path = str(chart_output / "noaa-navionics-manifest.json")
     expected_config = {
         "chart_package": parser.get("charts", "package", fallback="state").strip().lower(),
         "chart_value": parser.get("charts", "value", fallback="AK").strip(),
@@ -198,6 +199,16 @@ if expected_config_path:
             mismatches.append(f"{key}={actual!r}, expected {expected!r}")
     if mismatches:
         raise SystemExit("status report config values do not match current config: " + "; ".join(mismatches))
+    manifest = report.get("manifest")
+    if not isinstance(manifest, dict):
+        raise SystemExit("status report has no manifest section")
+    actual_manifest_path = str(manifest.get("path", "")).strip()
+    if actual_manifest_path != expected_manifest_path:
+        raise SystemExit(
+            f"status report manifest path {actual_manifest_path} does not match {expected_manifest_path}"
+        )
+    if manifest.get("exists") is not True:
+        raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {

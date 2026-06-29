@@ -1017,6 +1017,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["config"]["keep_zip"], True)
             self.assertEqual(report["config"]["force"], True)
             self.assertEqual(report["host"]["boot_id"], "boot-abc")
+            self.assertEqual(report["manifest"]["path"], str(manifest))
+            self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertFalse(report["ok"])
             text = format_status_text(report)
