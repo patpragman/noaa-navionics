@@ -320,7 +320,8 @@ def format_status_text(report: dict[str, object]) -> str:
             value_text = ""
         symlink_text = (
             f"is_symlink={launcher_settings.get('is_symlink', '')} "
-            f"directory_is_symlink={launcher_settings.get('directory_is_symlink', '')}"
+            f"directory_is_symlink={launcher_settings.get('directory_is_symlink', '')} "
+            f"launcher_settings_symlink_component={launcher_settings.get('launcher_settings_symlink_component', '')}"
         )
         lines.append(
             f"path={launcher_settings.get('path', '')} "
@@ -834,17 +835,19 @@ def _user_unit_file_summary() -> dict[str, object]:
 
 def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]:
     launcher_env = Path(path or DEFAULT_LAUNCHER_ENV_PATH).expanduser()
+    symlink_component = _first_symlink_ancestor(launcher_env.parent)
     summary: dict[str, object] = {
         "path": str(launcher_env),
         "exists": launcher_env.is_file(),
         "is_symlink": launcher_env.is_symlink(),
         "directory_is_symlink": launcher_env.parent.is_symlink(),
+        "launcher_settings_symlink_component": str(symlink_component) if symlink_component is not None else "",
     }
     if launcher_env.is_symlink():
         summary["error"] = f"launcher environment path is a symlink: {launcher_env}"
         return summary
-    if launcher_env.parent.is_symlink():
-        summary["error"] = f"launcher environment directory is a symlink: {launcher_env.parent}"
+    if symlink_component is not None:
+        summary["error"] = f"launcher environment directory is a symlink: {symlink_component}"
         return summary
     if not launcher_env.exists():
         return summary
@@ -1201,6 +1204,13 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     if summary.get("directory_is_symlink") is True:
         directory = str(Path(path).parent)
         return CheckResult("Launcher Settings", False, f"launcher environment directory is a symlink: {directory}")
+    symlink_component = str(summary.get("launcher_settings_symlink_component", "")).strip()
+    if symlink_component:
+        return CheckResult(
+            "Launcher Settings",
+            False,
+            f"launcher environment directory is a symlink: {symlink_component}",
+        )
     error = str(summary.get("error", ""))
     if error:
         return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")

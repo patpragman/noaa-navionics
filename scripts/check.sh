@@ -1113,8 +1113,10 @@ grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
 grep -q '"manifest_symlink_component"' src/noaa_navionics/report.py
 grep -q '"download_path_symlink_component"' src/noaa_navionics/report.py
 grep -q '"extract_path_symlink_component"' src/noaa_navionics/report.py
+grep -q '"launcher_settings_symlink_component"' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
+grep -q 'status report launcher settings path contains a symlink' scripts/verify_pi.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest path contains a symlink' scripts/verify_pi.sh
@@ -1123,12 +1125,16 @@ grep -q 'status report manifest extract path contains a symlink' scripts/verify_
 grep -q 'status report desktop autostart directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config directory is a symlink' scripts/verify_pi.sh
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_directory' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_ancestor' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_symlinked_environment_ancestor' tests/test_downloader.py
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_ancestor' tests/test_downloader.py
 grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'Status reports and Pi verification also reject symlinked manifest' README.md
 grep -q 'Status reports and Pi verification also reject symlinked manifest' docs/sailboat-pi.md
+grep -q 'launcher environment path components' README.md
+grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
@@ -1263,8 +1269,8 @@ grep -q 'preflights noninteractive sudo reboot access before deploying or provis
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
-grep -q 'only after rejecting symlinked launcher environment files or directories' README.md
-grep -q 'only after rejecting symlinked launcher environment files or directories' docs/sailboat-pi.md
+grep -q 'only after rejecting symlinked launcher environment files or path components' README.md
+grep -q 'only after rejecting symlinked launcher environment files or path components' docs/sailboat-pi.md
 
 python3 - <<'PY'
 from pathlib import Path

@@ -2958,6 +2958,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
             self.assertEqual(report["launcher_settings"]["directory_is_symlink"], False)
+            self.assertEqual(report["launcher_settings"]["launcher_settings_symlink_component"], "")
             self.assertEqual(report["launcher_settings"]["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "10")
             self.assertEqual(report["opencpn_config"]["path"], str(opencpn_config))
             self.assertEqual(report["opencpn_config"]["exists"], True)
@@ -3035,6 +3036,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("User Unit Files:", text)
             self.assertIn("Launcher Settings:", text)
             self.assertIn("is_symlink=False", text)
+            self.assertIn("launcher_settings_symlink_component=", text)
             self.assertIn("Track Log:", text)
             self.assertIn(f"track_output={charts}", text)
             self.assertIn("track_output_is_symlink=False", text)
@@ -3119,6 +3121,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["exists"], True)
             self.assertEqual(summary["is_symlink"], True)
             self.assertEqual(summary["directory_is_symlink"], False)
+            self.assertEqual(summary["launcher_settings_symlink_component"], "")
             self.assertIn("launcher environment path is a symlink", summary["error"])
             self.assertNotIn("values", summary)
 
@@ -3142,8 +3145,49 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["exists"], True)
             self.assertEqual(summary["is_symlink"], False)
             self.assertEqual(summary["directory_is_symlink"], True)
+            self.assertEqual(summary["launcher_settings_symlink_component"], str(link_config))
             self.assertIn("launcher environment directory is a symlink", summary["error"])
             self.assertNotIn("values", summary)
+
+    def test_launcher_settings_summary_rejects_symlinked_environment_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_home = root / "real-home"
+            real_config = real_home / ".config" / "noaa-navionics"
+            real_config.mkdir(parents=True)
+            real_env = real_config / "launcher.env"
+            real_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=10\n", encoding="ascii")
+            link_home = root / "home-link"
+            try:
+                link_home.symlink_to(real_home, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            link_env = link_home / ".config" / "noaa-navionics" / "launcher.env"
+
+            summary = _launcher_settings_summary(link_env)
+
+            self.assertEqual(summary["path"], str(link_env))
+            self.assertEqual(summary["exists"], True)
+            self.assertEqual(summary["is_symlink"], False)
+            self.assertEqual(summary["directory_is_symlink"], False)
+            self.assertEqual(summary["launcher_settings_symlink_component"], str(link_home))
+            self.assertIn("launcher environment directory is a symlink", summary["error"])
+            self.assertNotIn("values", summary)
+
+    def test_launcher_settings_check_fails_symlinked_environment_ancestor(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "directory_is_symlink": False,
+                "launcher_settings_symlink_component": "/home/pi",
+                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("launcher environment directory is a symlink: /home/pi", check.detail)
 
     def test_key_value_file_summary_rejects_symlinked_startup_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:

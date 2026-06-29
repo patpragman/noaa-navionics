@@ -522,8 +522,22 @@ if expected_launcher_env_path:
             "status report launcher settings directory is a symlink or missing symlink status: "
             f"{launcher_env_file.parent}"
         )
+    launcher_settings_symlink_component = str(
+        launcher_settings.get("launcher_settings_symlink_component", "")
+    ).strip()
+    if launcher_settings_symlink_component:
+        raise SystemExit(
+            "status report launcher settings path contains a symlink: "
+            f"{launcher_settings_symlink_component}"
+        )
     if launcher_env_file.parent.is_symlink():
         raise SystemExit(f"status report launcher settings directory is a symlink: {launcher_env_file.parent}")
+    live_launcher_settings_symlink_component = first_symlink_ancestor(launcher_env_file.parent)
+    if live_launcher_settings_symlink_component is not None:
+        raise SystemExit(
+            "status report launcher settings path contains a symlink: "
+            f"{live_launcher_settings_symlink_component}"
+        )
     values = launcher_settings.get("values")
     if not isinstance(values, dict):
         raise SystemExit(f"status report launcher settings values were not parsed: {expected_launcher_env_path}")
