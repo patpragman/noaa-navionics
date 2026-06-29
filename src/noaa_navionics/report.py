@@ -25,6 +25,7 @@ DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
+        "FragmentPath",
         "ExecStart",
         "Type",
         "TimeoutStartUSec",
@@ -36,11 +37,13 @@ USER_UNIT_PROPERTIES = {
         "PrivateTmp",
     ],
     "noaa-navionics.timer": [
+        "FragmentPath",
         "TimersCalendar",
         "Persistent",
         "RandomizedDelayUSec",
     ],
     "noaa-navionics-track.service": [
+        "FragmentPath",
         "ExecStart",
         "Type",
         "StandardOutput",
@@ -52,6 +55,7 @@ USER_UNIT_PROPERTIES = {
         "PrivateTmp",
     ],
     "noaa-navionics-preflight.service": [
+        "FragmentPath",
         "ExecStart",
         "Type",
         "Environment",
@@ -388,7 +392,7 @@ def _system_service_summary() -> dict[str, object]:
 def _user_unit_file_summary() -> dict[str, object]:
     unit_dir = Path.home() / ".config/systemd/user"
     summary: dict[str, object] = {"directory": str(unit_dir)}
-    for unit in USER_UNIT_INSTALL_TARGETS:
+    for unit in USER_UNIT_PROPERTIES:
         path = unit_dir / unit
         state: dict[str, object] = {"path": str(path), "exists": path.is_file()}
         if path.is_file():
@@ -495,16 +499,20 @@ def _service_readiness_checks(
                     services,
                     "noaa-navionics.service",
                     "Chart Sync Settings",
-                    exact={
-                        "Type": "oneshot",
-                        "TimeoutStartUSec": "2h",
-                        "Restart": "on-failure",
-                        "RestartUSec": "30min",
-                        "StartLimitIntervalUSec": "6h",
-                        "StartLimitBurst": "3",
-                        "NoNewPrivileges": "yes",
-                        "PrivateTmp": "yes",
-                    },
+                    exact=_with_loaded_fragment_path(
+                        {
+                            "Type": "oneshot",
+                            "TimeoutStartUSec": "2h",
+                            "Restart": "on-failure",
+                            "RestartUSec": "30min",
+                            "StartLimitIntervalUSec": "6h",
+                            "StartLimitBurst": "3",
+                            "NoNewPrivileges": "yes",
+                            "PrivateTmp": "yes",
+                        },
+                        unit_files,
+                        "noaa-navionics.service",
+                    ),
                     contains={
                         "ExecStart": [
                             "noaa-navionics sync-charts",
@@ -519,23 +527,31 @@ def _service_readiness_checks(
                     services,
                     "noaa-navionics.timer",
                     "Chart Timer Settings",
-                    exact={"Persistent": "yes", "RandomizedDelayUSec": "30min"},
+                    exact=_with_loaded_fragment_path(
+                        {"Persistent": "yes", "RandomizedDelayUSec": "30min"},
+                        unit_files,
+                        "noaa-navionics.timer",
+                    ),
                     contains={"TimersCalendar": "OnCalendar=weekly"},
                 ),
                 _unit_properties_check(
                     services,
                     "noaa-navionics-track.service",
                     "Track Logger Settings",
-                    exact={
-                        "Type": "simple",
-                        "StandardOutput": "null",
-                        "Restart": "on-failure",
-                        "RestartUSec": "10s",
-                        "StartLimitIntervalUSec": "10min",
-                        "StartLimitBurst": "60",
-                        "NoNewPrivileges": "yes",
-                        "PrivateTmp": "yes",
-                    },
+                    exact=_with_loaded_fragment_path(
+                        {
+                            "Type": "simple",
+                            "StandardOutput": "null",
+                            "Restart": "on-failure",
+                            "RestartUSec": "10s",
+                            "StartLimitIntervalUSec": "10min",
+                            "StartLimitBurst": "60",
+                            "NoNewPrivileges": "yes",
+                            "PrivateTmp": "yes",
+                        },
+                        unit_files,
+                        "noaa-navionics-track.service",
+                    ),
                     contains={
                         "ExecStart": [
                             "noaa-navionics log-track",
@@ -549,16 +565,20 @@ def _service_readiness_checks(
                     services,
                     "noaa-navionics-preflight.service",
                     "Boot Readiness Settings",
-                    exact={
-                        "Type": "oneshot",
-                        "TimeoutStartUSec": "infinity",
-                        "Restart": "on-failure",
-                        "RestartUSec": "30s",
-                        "StartLimitIntervalUSec": "30min",
-                        "StartLimitBurst": "60",
-                        "NoNewPrivileges": "yes",
-                        "PrivateTmp": "yes",
-                    },
+                    exact=_with_loaded_fragment_path(
+                        {
+                            "Type": "oneshot",
+                            "TimeoutStartUSec": "infinity",
+                            "Restart": "on-failure",
+                            "RestartUSec": "30s",
+                            "StartLimitIntervalUSec": "30min",
+                            "StartLimitBurst": "60",
+                            "NoNewPrivileges": "yes",
+                            "PrivateTmp": "yes",
+                        },
+                        unit_files,
+                        "noaa-navionics-preflight.service",
+                    ),
                     contains={
                         "ExecStart": [
                             "noaa-navionics status-report",
@@ -698,6 +718,23 @@ def _summary_has_loaded_properties(summary: dict[str, object]) -> bool:
         isinstance(state, dict) and isinstance(state.get("properties"), dict)
         for state in summary.values()
     )
+
+
+def _with_loaded_fragment_path(
+    exact: dict[str, str],
+    unit_files: Optional[dict[str, object]],
+    unit: str,
+) -> dict[str, str]:
+    expected = dict(exact)
+    if unit_files is None:
+        return expected
+    state = unit_files.get(unit)
+    if not isinstance(state, dict):
+        return expected
+    path = str(state.get("path", "")).strip()
+    if path:
+        expected["FragmentPath"] = path
+    return expected
 
 
 def _unit_properties_check(

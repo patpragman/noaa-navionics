@@ -2518,6 +2518,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "static",
                 "active": "inactive",
                 "properties": {
+                    "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.service",
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
@@ -2533,6 +2534,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
+                    "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.timer",
                     "TimersCalendar": "{ OnCalendar=weekly ; NextElapseUSecRealtime=Mon 2026-07-06 00:00:00 UTC }",
                     "Persistent": "yes",
                     "RandomizedDelayUSec": "30min",
@@ -2542,6 +2544,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
+                    "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
@@ -2557,6 +2560,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
+                    "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "Environment": "NOAA_NAVIONICS_GPS_SECONDS=10",
@@ -2580,14 +2584,60 @@ class StatusReportTests(unittest.TestCase):
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
+        unit_files = {
+            "noaa-navionics.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics.service", "exists": True, "wanted_by": []},
+            "noaa-navionics.timer": {"path": "/home/pi/.config/systemd/user/noaa-navionics.timer", "exists": True, "wanted_by": ["timers.target"]},
+            "noaa-navionics-track.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-track.service", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics-preflight.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service", "exists": True, "wanted_by": ["default.target"]},
+        }
 
-        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
         settings_checks = [check for check in checks if check.name.endswith("Settings")]
         run_check = next(check for check in checks if check.name == "Boot Readiness Run")
 
         self.assertEqual(len(settings_checks), 4)
         self.assertTrue(all(check.ok for check in settings_checks))
         self.assertTrue(run_check.ok)
+
+    def test_service_readiness_checks_fail_stale_loaded_unit_fragment_path(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {
+                "enabled": "static",
+                "active": "inactive",
+                "properties": {
+                    "FragmentPath": "/tmp/noaa-navionics.service",
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "Type": "oneshot",
+                    "TimeoutStartUSec": "2h",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30min",
+                    "StartLimitIntervalUSec": "6h",
+                    "StartLimitBurst": "3",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_files = {
+            "noaa-navionics.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics.service", "exists": True, "wanted_by": []},
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        chart_settings = next(check for check in checks if check.name == "Chart Sync Settings")
+
+        self.assertFalse(chart_settings.ok)
+        self.assertIn("FragmentPath=/tmp/noaa-navionics.service", chart_settings.detail)
+        self.assertIn("expected /home/pi/.config/systemd/user/noaa-navionics.service", chart_settings.detail)
 
     def test_service_readiness_checks_accept_unit_file_install_targets(self):
         services = {

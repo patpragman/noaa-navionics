@@ -391,6 +391,7 @@ grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
 grep -q '/usr/share/xsessions' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
+grep -q 'chart service loaded fragment path' scripts/verify_pi.sh
 grep -q 'chart service loaded sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
 grep -q 'chart service loaded restart' scripts/verify_pi.sh
@@ -398,12 +399,14 @@ grep -q 'chart service loaded restart delay' scripts/verify_pi.sh
 grep -q 'chart service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'chart service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
+grep -q 'chart timer loaded fragment path' scripts/verify_pi.sh
 grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'chart timer loaded randomized delay' scripts/verify_pi.sh
 grep -q 'chart timer install target' scripts/verify_pi.sh
 grep -q 'check_unit_install_target' scripts/verify_pi.sh
 grep -q 'section == "Install"' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
+grep -q 'track service loaded fragment path' scripts/verify_pi.sh
 grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
@@ -416,6 +419,7 @@ grep -q 'track service install target' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
 grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service loaded fragment path' scripts/verify_pi.sh
 grep -q 'preflight service loaded GPS wait default' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart' scripts/verify_pi.sh
 grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
@@ -761,6 +765,8 @@ grep -q 'NoNewPrivileges=true' systemd/noaa-navionics.service
 grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
+grep -q 'FragmentPath' src/noaa_navionics/report.py
+grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
 grep -q 'loaded no new privileges' scripts/verify_pi.sh
 grep -q 'loaded private tmp' scripts/verify_pi.sh
 grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py

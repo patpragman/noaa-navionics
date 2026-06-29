@@ -1281,6 +1281,7 @@ chart_timer="${systemd_user_dir}/noaa-navionics.timer"
 track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 check "chart service file" test -f "$chart_service"
+check "chart service loaded fragment path" sh -c 'systemctl --user show noaa-navionics.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_service"
 check "chart service type" grep -Fxq 'Type=oneshot' "$chart_service"
 check "chart service loaded type" sh -c 'systemctl --user show noaa-navionics.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
@@ -1299,6 +1300,7 @@ check "chart service loaded start limit interval" sh -c 'systemctl --user show n
 check "chart service start limit burst" grep -Fxq 'StartLimitBurst=3' "$chart_service"
 check "chart service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=3'
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
+check "chart timer loaded fragment path" sh -c 'systemctl --user show noaa-navionics.timer -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer randomized delay" grep -Fxq 'RandomizedDelaySec=30min' "$chart_timer"
 check "chart timer install target" check_unit_install_target "$chart_timer" timers.target
@@ -1306,6 +1308,7 @@ check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.ti
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
 check "chart timer loaded randomized delay" sh -c 'systemctl --user show noaa-navionics.timer -p RandomizedDelayUSec 2>/dev/null | grep -Fxq RandomizedDelayUSec=30min'
 check "track service file" test -f "$track_service"
+check "track service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-track.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$track_service"
 check "track service type" grep -Fxq 'Type=simple' "$track_service"
 check "track service loaded type" sh -c 'systemctl --user show noaa-navionics-track.service -p Type 2>/dev/null | grep -Fxq Type=simple'
 check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
@@ -1325,6 +1328,7 @@ check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_s
 check "track service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
 check "track service install target" check_unit_install_target "$track_service" default.target
 check "preflight service file" test -f "$preflight_service"
+check "preflight service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-preflight.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$preflight_service"
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
 check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=10' "$preflight_service"
