@@ -306,6 +306,7 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher ENC parse" grep -Fq 'opencpn -parse_all_enc' "$launcher"
   check "chartplotter launcher display awake" grep -Fq 'keep_display_awake' "$launcher"
   check "chartplotter launcher display failure logging" grep -Fq 'xset command(s) failed' "$launcher"
+  check "chartplotter launcher readiness warning" grep -Fq 'show_preflight_warning' "$launcher"
 fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
 check "chartplotter autostart" test -f "$autostart"

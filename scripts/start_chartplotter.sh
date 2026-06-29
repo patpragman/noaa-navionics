@@ -8,6 +8,7 @@ log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 gps_seconds=10
+warning_seconds=8
 
 load_launcher_settings() {
   local key
@@ -18,13 +19,21 @@ load_launcher_settings() {
         NOAA_NAVIONICS_GPS_SECONDS)
           gps_seconds="$value"
           ;;
+        NOAA_NAVIONICS_WARNING_SECONDS)
+          warning_seconds="$value"
+          ;;
       esac
     done <"$launcher_env"
   fi
   gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-$gps_seconds}"
+  warning_seconds="${NOAA_NAVIONICS_WARNING_SECONDS:-$warning_seconds}"
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
     echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 10 seconds." >&2
     gps_seconds=10
+  fi
+  if [[ ! "$warning_seconds" =~ ^[0-9]+$ ]]; then
+    echo "Invalid NOAA_NAVIONICS_WARNING_SECONDS=${warning_seconds}; using 8 seconds." >&2
+    warning_seconds=8
   fi
 }
 
@@ -43,6 +52,54 @@ keep_display_awake() {
     echo "Display session found, but xset is unavailable; leaving display power settings unchanged."
   fi
   return 0
+}
+
+show_preflight_warning() {
+  if [[ "$warning_seconds" -eq 0 ]]; then
+    echo "Readiness warning timeout is 0 seconds; continuing immediately."
+    return 0
+  fi
+  if [[ -z "${DISPLAY:-}" ]]; then
+    echo "No display session found for readiness warning; waiting ${warning_seconds}s before OpenCPN."
+    sleep "$warning_seconds"
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is unavailable for readiness warning; waiting ${warning_seconds}s before OpenCPN." >&2
+    sleep "$warning_seconds"
+    return 0
+  fi
+  if python3 - "$status_report" "$warning_seconds" <<'PY'
+from pathlib import Path
+import sys
+import tkinter as tk
+
+status_report = Path(sys.argv[1]).expanduser()
+seconds = int(sys.argv[2])
+root = tk.Tk()
+root.title("NOAA Navionics Readiness")
+root.attributes("-topmost", True)
+root.resizable(False, False)
+message = (
+    "NOAA Navionics readiness failed.\n\n"
+    f"Status report:\n{status_report}\n\n"
+    "OpenCPN will start anyway. Keep backup navigation available."
+)
+frame = tk.Frame(root, padx=24, pady=20)
+frame.pack(fill="both", expand=True)
+label = tk.Label(frame, text=message, justify="left", wraplength=520)
+label.pack(pady=(0, 16))
+button = tk.Button(frame, text="Start OpenCPN", command=root.destroy)
+button.pack()
+root.after(seconds * 1000, root.destroy)
+root.mainloop()
+PY
+  then
+    echo "Readiness warning displayed for ${warning_seconds}s."
+  else
+    echo "Readiness warning dialog unavailable; waiting ${warning_seconds}s before OpenCPN." >&2
+    sleep "$warning_seconds"
+  fi
 }
 
 if [[ ! -x "$bin" ]]; then
@@ -68,7 +125,7 @@ if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output
 else
   echo "NOAA Navionics preflight failed. Status report: $status_report" >&2
   echo "Starting OpenCPN anyway; keep backup navigation available." >&2
-  sleep 8
+  show_preflight_warning
 fi
 
 if ! command -v opencpn >/dev/null 2>&1; then

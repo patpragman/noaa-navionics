@@ -26,6 +26,10 @@ grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
+grep -q 'show_preflight_warning' scripts/start_chartplotter.sh
+grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' scripts/start_chartplotter.sh
+grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
+grep -q 'Readiness warning displayed' scripts/start_chartplotter.sh
 grep -q 'xset s noblank' scripts/start_chartplotter.sh
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
 grep -q 'launcher.env' scripts/start_chartplotter.sh
@@ -76,6 +80,7 @@ grep -q 'chartplotter autostart name' scripts/verify_pi.sh
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
+grep -q 'chartplotter launcher readiness warning' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
@@ -369,6 +374,15 @@ grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q -- '--gps-seconds 17' "$launcher_home/.cache/noaa-navionics/noaa.log"
+
+launcher_preflight_fail_home="$tmpdir/launcher-preflight-fail-home"
+mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_preflight_fail_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_preflight_fail_home/.local/bin/noaa-navionics"
+HOME="$launcher_preflight_fail_home" NOAA_NAVIONICS_WARNING_SECONDS=0 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+grep -q 'NOAA Navionics preflight failed' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Readiness warning timeout is 0 seconds' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_fail_home="$tmpdir/launcher-fail-home"
 mkdir -p "$launcher_fail_home/.local/bin" "$launcher_fail_home/.cache/noaa-navionics"

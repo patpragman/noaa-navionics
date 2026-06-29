@@ -162,9 +162,10 @@ noaa-navionics-start-chartplotter
 
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
 The launcher rotates that log once it exceeds 1 MB so repeated unattended boots do not grow the cache indefinitely.
-It reads `NOAA_NAVIONICS_GPS_SECONDS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
+It reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
+If readiness fails in a desktop session, the launcher shows a Tkinter warning with the status report path before starting OpenCPN anyway.
 If those display power commands fail during chartplotter autostart, the launcher records the failure and the strict Pi startup verifier fails the dock test.
 The installer and provisioning script configure LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Use `--skip-autologin` only for deliberate headless or development deployments.
 
