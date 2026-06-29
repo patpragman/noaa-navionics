@@ -48,7 +48,7 @@ from noaa_navionics.opencpn import (
     read_data_connections,
     read_chart_directories,
 )
-from noaa_navionics.report import build_status_report, format_status_text, write_status_report
+from noaa_navionics.report import build_status_report, format_status_text, write_status_report, _service_readiness_checks
 
 
 class PackageForTests(unittest.TestCase):
@@ -495,16 +495,46 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("checks", report)
             self.assertIn("services", report)
             self.assertIn("system_services", report)
+            self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertFalse(report["ok"])
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
             self.assertIn("revision abc123", text)
+            self.assertIn("Service Checks:", text)
             self.assertIn("System Services:", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
+
+    def test_service_readiness_checks_accept_expected_onboard_units(self):
+        services = {
+            "available": True,
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+
+        self.assertTrue(all(check.ok for check in checks))
+
+    def test_service_readiness_checks_fail_disabled_chart_timer(self):
+        services = {
+            "available": True,
+            "noaa-navionics.timer": {"enabled": "disabled", "active": "inactive"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        timer_check = next(check for check in checks if check.name == "Chart Timer")
+
+        self.assertFalse(timer_check.ok)
+        self.assertIn("disabled", timer_check.detail)
 
 
 class GpsTests(unittest.TestCase):

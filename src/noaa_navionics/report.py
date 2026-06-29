@@ -14,7 +14,7 @@ import sys
 
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
-from .health import run_preflight
+from .health import CheckResult, run_preflight
 from . import __version__
 
 
@@ -43,9 +43,16 @@ def build_status_report(
         max_chart_age_days=app_config.max_chart_age_days,
     )
     check_rows = [asdict(check) for check in checks]
+    services = _service_summary()
+    system_services = _system_service_summary()
+    service_checks = _service_readiness_checks(
+        services,
+        system_services,
+        gps_mode=gps_mode,
+    )
     return {
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "ok": all(check.ok for check in checks),
+        "ok": all(check.ok for check in checks) and all(check.ok for check in service_checks),
         "host": {
             "name": socket.gethostname(),
             "platform": platform.platform(),
@@ -56,8 +63,9 @@ def build_status_report(
         "config_path": str(Path(config_path).expanduser()),
         "config": _config_summary(app_config),
         "manifest": _manifest_summary(app_config.chart_output),
-        "services": _service_summary(),
-        "system_services": _system_service_summary(),
+        "services": services,
+        "system_services": system_services,
+        "service_checks": [asdict(check) for check in service_checks],
         "checks": check_rows,
     }
 
@@ -86,6 +94,14 @@ def format_status_text(report: dict[str, object]) -> str:
             continue
         mark = "OK" if check.get("ok") else "FAIL"
         lines.append(f"{mark:4} {check.get('name', ''):10} {check.get('detail', '')}")
+    service_checks = report.get("service_checks", [])
+    if isinstance(service_checks, list) and service_checks:
+        lines.extend(["", "Service Checks:"])
+        for check in service_checks:
+            if not isinstance(check, dict):
+                continue
+            mark = "OK" if check.get("ok") else "FAIL"
+            lines.append(f"{mark:4} {check.get('name', ''):18} {check.get('detail', '')}")
     manifest = report.get("manifest", {})
     if isinstance(manifest, dict) and manifest:
         lines.extend(["", "Manifest:"])
@@ -195,6 +211,70 @@ def _system_service_summary() -> dict[str, object]:
             "active": _systemctl_system(["is-active", unit]),
         }
     return summary
+
+
+def _service_readiness_checks(
+    services: dict[str, object],
+    system_services: dict[str, object],
+    *,
+    gps_mode: str,
+) -> list[CheckResult]:
+    checks = [
+        _unit_check(
+            services,
+            "noaa-navionics.timer",
+            "Chart Timer",
+            require_enabled=True,
+            require_active=True,
+        ),
+        _unit_check(
+            services,
+            "noaa-navionics-track.service",
+            "Track Logger",
+            require_enabled=True,
+            require_active=True,
+        ),
+        _unit_check(
+            services,
+            "noaa-navionics-preflight.service",
+            "Boot Readiness",
+            require_enabled=True,
+            require_active=False,
+        ),
+    ]
+    if gps_mode == "gpsd":
+        checks.append(
+            _unit_check(
+                system_services,
+                "gpsd.service",
+                "GPSD Service",
+                require_enabled=False,
+                require_active=True,
+            )
+        )
+    return checks
+
+
+def _unit_check(
+    summary: dict[str, object],
+    unit: str,
+    name: str,
+    *,
+    require_enabled: bool,
+    require_active: bool,
+) -> CheckResult:
+    if summary.get("available") is False:
+        return CheckResult(name, False, str(summary.get("detail", "systemctl not available")))
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from status report")
+    enabled = str(state.get("enabled", ""))
+    active = str(state.get("active", ""))
+    enabled_ok = not require_enabled or enabled in {"enabled", "static", "generated"}
+    active_ok = not require_active or active in {"active", "activating"}
+    ok = enabled_ok and active_ok
+    detail = f"{unit} enabled={enabled} active={active}"
+    return CheckResult(name, ok, detail)
 
 
 def _systemctl_user(args: list[str]) -> str:

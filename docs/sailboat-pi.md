@@ -199,7 +199,7 @@ Save a status report for troubleshooting:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
-The status report includes readiness checks, NOAA Navionics user units, and the GPSD system service state.
+The status report includes readiness checks, NOAA Navionics user unit checks, and GPSD service state checks.
 It also records the installed source revision so you can confirm the Pi is running the expected deployment.
 
 Expected checks:
@@ -218,6 +218,7 @@ Expected checks:
 - No active Raspberry Pi under-voltage or throttling
 - Raspberry Pi temperature below the hard limit
 - Valid GPSD fix
+- Chart refresh timer, track logger, boot readiness service, and GPSD service are in the expected state
 
 If any check fails, treat the Pi as not ready.
 
