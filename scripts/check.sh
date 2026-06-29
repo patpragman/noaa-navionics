@@ -340,6 +340,11 @@ grep -q 'NOAA_NAVIONICS_READINESS_RETRY_DELAY 10' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS 8' scripts/verify_pi.sh
 grep -q 'gps_seconds \* readiness_attempts' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
+grep -q 'check_live_display_power_disabled' scripts/verify_pi.sh
+grep -q 'display power disabled after boot' scripts/verify_pi.sh
+grep -q 'xset q failed for chartplotter display' scripts/verify_pi.sh
+grep -q 'display screen saver timeout is not disabled' scripts/verify_pi.sh
+grep -q 'display DPMS is not disabled' scripts/verify_pi.sh
 grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/verify_pi.sh
 grep -q 'launcher log does not contain OpenCPN launch or duplicate marker' scripts/verify_pi.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/verify_pi.sh

@@ -1422,6 +1422,70 @@ check_launcher_lock_live() {
   fi
 }
 
+check_live_display_power_disabled() {
+  local owner_pid=""
+  local key
+  local value
+  local display=""
+  local xauthority=""
+  local output=""
+
+  if [[ ! -r "${launcher_lock}/pid" ]]; then
+    printf 'chartplotter launcher lock pid is unreadable: %s\n' "${launcher_lock}/pid" >&2
+    return 1
+  fi
+  read -r owner_pid <"${launcher_lock}/pid" || owner_pid=""
+  if [[ ! "$owner_pid" =~ ^[0-9]+$ || ! -r "/proc/${owner_pid}/environ" ]]; then
+    printf 'chartplotter launcher environment is unreadable for pid: %s\n' "${owner_pid:-<empty>}" >&2
+    return 1
+  fi
+  while IFS='=' read -r key value; do
+    case "$key" in
+      DISPLAY)
+        display="$value"
+        ;;
+      XAUTHORITY)
+        xauthority="$value"
+        ;;
+    esac
+  done < <(tr '\0' '\n' <"/proc/${owner_pid}/environ" 2>/dev/null || true)
+  if [[ -z "$display" ]]; then
+    printf 'chartplotter launcher has no DISPLAY environment; cannot verify live display power settings\n' >&2
+    return 1
+  fi
+  if [[ -n "$xauthority" ]]; then
+    output="$(DISPLAY="$display" XAUTHORITY="$xauthority" xset q 2>&1)" || {
+      printf 'xset q failed for chartplotter display %s: %s\n' "$display" "$output" >&2
+      return 1
+    }
+  else
+    output="$(DISPLAY="$display" xset q 2>&1)" || {
+      printf 'xset q failed for chartplotter display %s: %s\n' "$display" "$output" >&2
+      return 1
+    }
+  fi
+  if ! printf '%s\n' "$output" | grep -Eq 'timeout:[[:space:]]*0([[:space:]]|$)'; then
+    printf 'display screen saver timeout is not disabled on %s:\n%s\n' "$display" "$output" >&2
+    return 1
+  fi
+  if ! printf '%s\n' "$output" | grep -Eq 'prefer blanking:[[:space:]]*no'; then
+    printf 'display blanking preference is not disabled on %s:\n%s\n' "$display" "$output" >&2
+    return 1
+  fi
+  if printf '%s\n' "$output" | grep -Fq 'Server does not have the DPMS Extension'; then
+    return 0
+  fi
+  if printf '%s\n' "$output" | grep -Fq 'DPMS'; then
+    if ! printf '%s\n' "$output" | grep -Fq 'DPMS is Disabled'; then
+      printf 'display DPMS is not disabled on %s:\n%s\n' "$display" "$output" >&2
+      return 1
+    fi
+  else
+    printf 'display DPMS state is not reported on %s:\n%s\n' "$display" "$output" >&2
+    return 1
+  fi
+}
+
 wait_for_chartplotter_started() {
   local deadline=$((SECONDS + chartplotter_start_timeout))
   local last_detail=""
@@ -1714,6 +1778,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   check "LightDM active after boot" systemctl is-active --quiet lightdm.service
   check "chartplotter started after boot" wait_for_chartplotter_started
   check "chartplotter launcher lock live" check_launcher_lock_live
+  check "display power disabled after boot" check_live_display_power_disabled
   if opencpn_running; then
     check "OpenCPN running" true
   else
