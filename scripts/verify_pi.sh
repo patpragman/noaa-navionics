@@ -185,6 +185,22 @@ check_output "configured packages" "$bin" list-packages
 
 printf '\n[systemd user units]\n'
 systemctl --user --no-pager list-unit-files 'noaa-navionics*' || failures=$((failures + 1))
+systemd_user_dir="${HOME}/.config/systemd/user"
+chart_service="${systemd_user_dir}/noaa-navionics.service"
+chart_timer="${systemd_user_dir}/noaa-navionics.timer"
+track_service="${systemd_user_dir}/noaa-navionics-track.service"
+preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
+check "chart service file" test -f "$chart_service"
+check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
+check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
+check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
+check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
+check "track service file" test -f "$track_service"
+check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
+check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
+check "preflight service file" test -f "$preflight_service"
+check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds 10 --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
+check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
 check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
 check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
