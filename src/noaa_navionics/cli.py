@@ -156,6 +156,7 @@ def build_parser() -> argparse.ArgumentParser:
     gps.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
     gps.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     gps.add_argument("--once", action="store_true", help="exit after the first valid fix")
+    gps.add_argument("--seconds", type=_positive_float, help="stop after this many seconds if no fix is read")
 
     track = subparsers.add_parser("log-track", help="record GPS fixes to a GPX track")
     track.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -374,6 +375,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             app_config = read_config(Path(args.config))
             use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
             count = 0
+            deadline = time.monotonic() + args.seconds if args.seconds else None
             for fix in _read_fixes(
                 args.device or app_config.gps_device,
                 args.baud or app_config.gps_baud,
@@ -381,6 +383,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd=use_gpsd,
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
+                deadline=deadline,
             ):
                 print(_format_fix(fix))
                 count += 1

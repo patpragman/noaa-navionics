@@ -217,10 +217,10 @@ Preflight check. By default this uses `[charts].output`; pass `--charts PATH` to
 noaa-navionics preflight
 ```
 
-Live GPS check. GPSD readiness is bounded by the configured wait time and rejects stale, future-dated, and untimestamped fixes:
+Live GPS check. Add `--seconds N` during dock diagnostics so the command exits non-zero instead of waiting forever when GPSD is connected but no fix arrives. GPSD readiness checks are bounded by the configured wait time and reject stale, future-dated, and untimestamped fixes:
 
 ```bash
-noaa-navionics gps-monitor --gpsd --once
+noaa-navionics gps-monitor --gpsd --once --seconds 30
 ```
 
 For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`. Direct serial readiness rejects stale, future-dated, and untimestamped NMEA fixes too.

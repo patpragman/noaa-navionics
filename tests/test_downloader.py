@@ -738,6 +738,96 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertFalse(configured_output.exists())
             self.assertTrue((explicit_output / "tracks" / "track-20260629.gpx").exists())
 
+    def test_cli_gps_monitor_seconds_bounds_gpsd_wait(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+                latitude=1.0,
+                longitude=2.0,
+                satellites=8,
+                hdop=1.2,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+            ):
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, deadline, gpsd_connect_retry))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(["gps-monitor", "--config", str(app_config), "--once", "--seconds", "0.1"])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][:6], ("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947))
+            self.assertIsNotNone(calls[0][6])
+            self.assertFalse(calls[0][7])
+
+    def test_cli_gps_monitor_seconds_returns_nonzero_without_fix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n",
+                encoding="utf-8",
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+            ):
+                calls.append((device, baud, sample, gpsd, deadline))
+                return iter([])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(["gps-monitor", "--config", str(app_config), "--once", "--seconds", "0.1"])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][:4], ("/dev/serial/by-id/mock-gps", 4800, None, False))
+            self.assertIsNotNone(calls[0][4])
+
     def test_cli_log_track_seconds_fails_when_no_usable_fix_is_written(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1203,6 +1293,7 @@ class CLIValidationTests(unittest.TestCase):
     def test_gps_waits_reject_negative_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])
+        self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
 
     def test_track_logger_rejects_non_positive_duration(self):
         self.assert_parse_error(["log-track", "--seconds", "0"])
