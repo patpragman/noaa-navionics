@@ -42,6 +42,7 @@ grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/he
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'self.path.open("x", encoding="utf-8")' src/noaa_navionics/gps.py
+grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py

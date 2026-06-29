@@ -4,6 +4,7 @@ from contextlib import redirect_stdout
 from io import BytesIO, StringIO
 from urllib.error import URLError
 import sys
+import signal
 import tempfile
 import textwrap
 import time
@@ -27,7 +28,7 @@ from noaa_navionics.downloader import (
     search_catalog,
 )
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
-from noaa_navionics.cli import _log_rotating_tracks
+from noaa_navionics.cli import _TrackLoggerStop, _log_rotating_tracks, _log_single_track, _raise_track_logger_stop
 from noaa_navionics.gps import (
     GPSFix,
     GPXTrackLogger,
@@ -876,6 +877,25 @@ class GpsTests(unittest.TestCase):
             self.assertEqual([path.name for path in outputs], ["track-20260629.gpx", "track-20260630.gpx"])
             self.assertIn('lat="1.00000000"', outputs[0].read_text(encoding="utf-8"))
             self.assertIn('lat="3.00000000"', outputs[1].read_text(encoding="utf-8"))
+
+    def test_log_single_track_closes_gpx_on_stop_signal_exception(self):
+        def fixes():
+            yield GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+            raise _TrackLoggerStop("SIGTERM")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "track.gpx"
+            with redirect_stdout(StringIO()):
+                with self.assertRaises(_TrackLoggerStop):
+                    _log_single_track(fixes(), output, deadline=None, sample=False)
+
+            text = output.read_text(encoding="utf-8")
+            self.assertIn('lat="1.00000000"', text)
+            self.assertTrue(text.endswith("</gpx>\n"))
+
+    def test_track_signal_handler_raises_stop_exception(self):
+        with self.assertRaisesRegex(_TrackLoggerStop, "SIGTERM"):
+            _raise_track_logger_stop(signal.SIGTERM, None)
 
     def test_log_rotating_tracks_does_not_overwrite_existing_daily_file(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)

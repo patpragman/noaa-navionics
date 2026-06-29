@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 import argparse
 import json
+import signal
 import time
 import sys
 
@@ -338,22 +339,32 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
             )
-            if args.rotate_daily and not args.file:
-                retention_days = args.retention_days
-                if retention_days is None:
-                    retention_days = app_config.track_retention_days
-                count, outputs = _log_rotating_tracks(
-                    fixes,
-                    base_output,
-                    deadline=deadline,
-                    sample=bool(args.sample),
-                    retention_days=retention_days,
-                )
-                print(f"Saved {count} fixes to {', '.join(str(path) for path in outputs)}")
-            else:
-                output = Path(args.file).expanduser() if args.file else _available_track_path(default_track_path(base_output))
-                count = _log_single_track(fixes, output, deadline=deadline, sample=bool(args.sample))
-                print(f"Saved {count} fixes to {output}")
+            previous_handlers = _install_track_stop_handlers()
+            try:
+                if args.rotate_daily and not args.file:
+                    retention_days = args.retention_days
+                    if retention_days is None:
+                        retention_days = app_config.track_retention_days
+                    count, outputs = _log_rotating_tracks(
+                        fixes,
+                        base_output,
+                        deadline=deadline,
+                        sample=bool(args.sample),
+                        retention_days=retention_days,
+                    )
+                    print(f"Saved {count} fixes to {', '.join(str(path) for path in outputs)}")
+                else:
+                    output = (
+                        Path(args.file).expanduser()
+                        if args.file
+                        else _available_track_path(default_track_path(base_output))
+                    )
+                    count = _log_single_track(fixes, output, deadline=deadline, sample=bool(args.sample))
+                    print(f"Saved {count} fixes to {output}")
+            except _TrackLoggerStop as exc:
+                print(f"Stopped track logger: {exc}")
+            finally:
+                _restore_signal_handlers(previous_handlers)
             return 0
 
     except Exception as exc:
@@ -393,6 +404,31 @@ def _read_fixes(
         return
     with open_nmea_stream(device, baud=baud) as stream:
         yield from iter_fixes(read_nmea_lines(stream))
+
+
+class _TrackLoggerStop(Exception):
+    pass
+
+
+def _install_track_stop_handlers():
+    previous = {}
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        previous[sig] = signal.getsignal(sig)
+        signal.signal(sig, _raise_track_logger_stop)
+    return previous
+
+
+def _restore_signal_handlers(previous) -> None:
+    for sig, handler in previous.items():
+        signal.signal(sig, handler)
+
+
+def _raise_track_logger_stop(signum, frame) -> None:
+    try:
+        name = signal.Signals(signum).name
+    except ValueError:
+        name = str(signum)
+    raise _TrackLoggerStop(name)
 
 
 def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:

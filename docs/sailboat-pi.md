@@ -244,7 +244,7 @@ or, using the onboard config:
 noaa-navionics log-track
 ```
 
-The generated GPX files are stored under `~/charts/noaa-enc/tracks/`. The systemd service writes one file per UTC day, such as `track-20260629.gpx`; if the service restarts on the same day it uses a numeric suffix instead of overwriting the earlier file. GPX files are created exclusively, so an explicit existing output file fails instead of being truncated. By default, rotated track logs older than 90 days are pruned; set `[tracking] retention_days = 0` to disable pruning.
+The generated GPX files are stored under `~/charts/noaa-enc/tracks/`. The systemd service writes one file per UTC day, such as `track-20260629.gpx`; if the service restarts on the same day it uses a numeric suffix instead of overwriting the earlier file. GPX files are created exclusively, so an explicit existing output file fails instead of being truncated. When systemd stops the logger during reboot or shutdown, SIGTERM handling closes the current GPX file before exit. By default, rotated track logs older than 90 days are pruned; set `[tracking] retention_days = 0` to disable pruning.
 
 Systemd user service:
 
