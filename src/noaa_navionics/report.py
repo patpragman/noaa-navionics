@@ -52,6 +52,7 @@ USER_UNIT_PROPERTIES = {
     "noaa-navionics-preflight.service": [
         "ExecStart",
         "Type",
+        "Environment",
         "EnvironmentFiles",
         "Result",
         "ExecMainStatus",
@@ -444,6 +445,7 @@ def _service_readiness_checks(
                             "--output",
                             "noaa-navionics/status.json",
                         ],
+                        "Environment": "NOAA_NAVIONICS_GPS_SECONDS=10",
                         "EnvironmentFiles": "noaa-navionics/launcher.env",
                     },
                 ),

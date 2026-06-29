@@ -2037,6 +2037,7 @@ class StatusReportTests(unittest.TestCase):
                 "properties": {
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
+                    "Environment": "NOAA_NAVIONICS_GPS_SECONDS=10",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
                     "Result": "success",
                     "ExecMainStatus": "0",
@@ -2205,6 +2206,46 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("Type=simple", boot_settings.detail)
         self.assertIn("TimeoutStartUSec=90s", boot_settings.detail)
         self.assertIn("Restart=no", boot_settings.detail)
+
+    def test_service_readiness_checks_fail_stale_boot_readiness_gps_wait_default(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "Type": "oneshot",
+                    "Environment": "NOAA_NAVIONICS_GPS_SECONDS=2",
+                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Result": "success",
+                    "ExecMainStatus": "0",
+                    "ExecMainStartTimestampMonotonic": "123456789",
+                    "TimeoutStartUSec": "infinity",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        boot_settings = next(check for check in checks if check.name == "Boot Readiness Settings")
+
+        self.assertFalse(boot_settings.ok)
+        self.assertIn("Environment=NOAA_NAVIONICS_GPS_SECONDS=2", boot_settings.detail)
+        self.assertIn("missing NOAA_NAVIONICS_GPS_SECONDS=10", boot_settings.detail)
 
     def test_service_readiness_checks_fail_boot_readiness_never_ran(self):
         services = {
