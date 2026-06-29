@@ -1,0 +1,12 @@
+[Unit]
+Description=Log GPSD fixes to GPX with NOAA Navionics
+After=gpsd.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/noaa-navionics log-track --gpsd --output %h/charts/noaa-enc
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

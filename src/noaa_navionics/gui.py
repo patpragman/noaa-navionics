@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from .downloader import download_package, package_for
+from .health import run_preflight
 
 
 class DownloaderApp(tk.Tk):
@@ -26,6 +27,8 @@ class DownloaderApp(tk.Tk):
         self.keep_zip = tk.BooleanVar(value=True)
         self.force = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="Ready")
+        self.gps_device = tk.StringVar(value="/dev/ttyUSB0")
+        self.use_gpsd = tk.BooleanVar(value=True)
 
         self._build()
         self.after(150, self._poll_queue)
@@ -34,7 +37,7 @@ class DownloaderApp(tk.Tk):
         root = ttk.Frame(self, padding=16)
         root.pack(fill=tk.BOTH, expand=True)
         root.columnconfigure(1, weight=1)
-        root.rowconfigure(6, weight=1)
+        root.rowconfigure(7, weight=1)
 
         ttk.Label(root, text="Package").grid(row=0, column=0, sticky=tk.W, pady=(0, 8))
         kind = ttk.Combobox(
@@ -69,17 +72,25 @@ class DownloaderApp(tk.Tk):
         ttk.Checkbutton(options, text="Keep ZIP", variable=self.keep_zip).grid(row=0, column=1, sticky=tk.W, padx=(16, 0))
         ttk.Checkbutton(options, text="Overwrite", variable=self.force).grid(row=0, column=2, sticky=tk.W, padx=(16, 0))
 
+        gps_row = ttk.Frame(root)
+        gps_row.grid(row=4, column=1, sticky=tk.EW, pady=(0, 12))
+        gps_row.columnconfigure(1, weight=1)
+        ttk.Label(gps_row, text="GPS").grid(row=0, column=0, sticky=tk.W)
+        ttk.Entry(gps_row, textvariable=self.gps_device, width=18).grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
+        ttk.Checkbutton(gps_row, text="GPSD", variable=self.use_gpsd).grid(row=0, column=2, sticky=tk.W, padx=(10, 0))
+        ttk.Button(gps_row, text="Preflight", command=self._start_preflight).grid(row=0, column=3, padx=(10, 0))
+
         action_row = ttk.Frame(root)
-        action_row.grid(row=4, column=1, sticky=tk.EW, pady=(0, 12))
+        action_row.grid(row=5, column=1, sticky=tk.EW, pady=(0, 12))
         self.download_button = ttk.Button(action_row, text="Download", command=self._start_download)
         self.download_button.pack(side=tk.LEFT)
         ttk.Button(action_row, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
 
         self.progress = ttk.Progressbar(root, mode="determinate", maximum=100)
-        self.progress.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=(0, 8))
+        self.progress.grid(row=6, column=0, columnspan=2, sticky=tk.EW, pady=(0, 8))
 
         log_frame = ttk.LabelFrame(root, text="Log")
-        log_frame.grid(row=6, column=0, columnspan=2, sticky=tk.NSEW)
+        log_frame.grid(row=7, column=0, columnspan=2, sticky=tk.NSEW)
         log_frame.rowconfigure(0, weight=1)
         log_frame.columnconfigure(0, weight=1)
         self.log = tk.Text(log_frame, height=12, wrap=tk.WORD)
@@ -88,7 +99,7 @@ class DownloaderApp(tk.Tk):
         scroll.grid(row=0, column=1, sticky=tk.NS)
         self.log.configure(yscrollcommand=scroll.set)
 
-        ttk.Label(root, textvariable=self.status).grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+        ttk.Label(root, textvariable=self.status).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
         self._kind_changed()
 
     def _browse(self) -> None:
@@ -135,6 +146,15 @@ class DownloaderApp(tk.Tk):
         self.worker = Thread(target=self._download_worker, args=(package,), daemon=True)
         self.worker.start()
 
+    def _start_preflight(self) -> None:
+        if self.worker and self.worker.is_alive():
+            return
+        self.download_button.configure(state=tk.DISABLED)
+        self.status.set("Running preflight")
+        self._log("Running preflight checks")
+        self.worker = Thread(target=self._preflight_worker, daemon=True)
+        self.worker.start()
+
     def _selected_package(self):
         kind = self.kind.get()
         value = self.value.get().strip()
@@ -165,6 +185,18 @@ class DownloaderApp(tk.Tk):
         except Exception as exc:
             self.queue.put(("error", exc))
 
+    def _preflight_worker(self) -> None:
+        try:
+            results = run_preflight(
+                chart_dir=Path(self.output.get()),
+                gpsd=self.use_gpsd.get(),
+                gps_device=None if self.use_gpsd.get() else self.gps_device.get().strip() or None,
+                gps_seconds=5.0,
+            )
+            self.queue.put(("preflight", results))
+        except Exception as exc:
+            self.queue.put(("error", exc))
+
     def _poll_queue(self) -> None:
         try:
             while True:
@@ -188,6 +220,14 @@ class DownloaderApp(tk.Tk):
                     if result.extracted_to:
                         self._log(f"Extracted to: {result.extracted_to}")
                     self.status.set("Done")
+                elif kind == "preflight":
+                    self.download_button.configure(state=tk.NORMAL)
+                    ok = True
+                    for result in payload:
+                        ok = ok and result.ok
+                        mark = "OK" if result.ok else "FAIL"
+                        self._log(f"{mark:4} {result.name:10} {result.detail}")
+                    self.status.set("Preflight passed" if ok else "Preflight needs attention")
                 elif kind == "error":
                     self.download_button.configure(state=tk.NORMAL)
                     self.status.set("Error")

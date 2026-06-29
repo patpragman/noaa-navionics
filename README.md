@@ -79,6 +79,34 @@ Download one individual ENC:
 noaa-navionics download --chart US5AK3CM --output ~/charts/noaa-enc --extract
 ```
 
+## Sailboat Raspberry Pi Use
+
+For a production-style Raspberry Pi chartplotter setup, use this project with OpenCPN and GPSD:
+
+- OpenCPN renders and navigates with NOAA ENC charts.
+- GPSD shares one GPS peripheral between OpenCPN and this tool.
+- `noaa-navionics` downloads NOAA charts, checks readiness, monitors GPS, and logs GPX tracks.
+
+See [docs/sailboat-pi.md](docs/sailboat-pi.md).
+
+Preflight check:
+
+```bash
+noaa-navionics preflight --charts ~/charts/noaa-enc --gpsd
+```
+
+Live GPS check:
+
+```bash
+noaa-navionics gps-monitor --gpsd --once
+```
+
+Track logging:
+
+```bash
+noaa-navionics log-track --gpsd --output ~/charts/noaa-enc
+```
+
 ## Raspberry Pi Automation
 
 A user-level systemd timer is included in `systemd/`.
@@ -94,4 +122,4 @@ Edit `~/.config/systemd/user/noaa-navionics.service` if you want a bundle other 
 
 ## Navigation Safety
 
-This tool only downloads and extracts chart data. It does not validate suitability for navigation, provide route planning, apply corrections to third-party plotters, or replace official navigation practices.
+This tool downloads and extracts chart data, checks GPS/chart readiness, and can log GPX tracks. OpenCPN should be used for ENC rendering and navigation workflows. This project is not certified navigation equipment and does not replace official navigation practices.

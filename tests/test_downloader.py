@@ -7,6 +7,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from noaa_navionics.downloader import package_for, search_catalog
+from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
+from noaa_navionics.health import check_chart_dir, check_gps_sample
 
 
 class PackageForTests(unittest.TestCase):
@@ -84,6 +86,86 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(len(matches), 1)
             self.assertEqual(matches[0].name, "US5AK3CM")
             self.assertEqual(matches[0].states, ("AK",))
+
+
+class GpsTests(unittest.TestCase):
+    def test_parse_gga_sentence(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
+        fix = parse_nmea_sentence(sentence)
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertAlmostEqual(fix.latitude, 48.1173, places=4)
+        self.assertAlmostEqual(fix.longitude, 11.5166667, places=4)
+        self.assertEqual(fix.satellites, 8)
+        self.assertEqual(fix.altitude_m, 545.4)
+
+    def test_parse_rmc_sentence(self):
+        sentence = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
+        fix = parse_nmea_sentence(sentence)
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.timestamp.year, 1994)
+        self.assertEqual(fix.speed_knots, 22.4)
+        self.assertEqual(fix.course_degrees, 84.4)
+
+    def test_iter_fixes_merges_gga_and_rmc(self):
+        fixes = list(
+            iter_fixes(
+                [
+                    "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47",
+                    "$GPRMC,123520,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*60",
+                ]
+            )
+        )
+        self.assertGreaterEqual(len(fixes), 1)
+        self.assertEqual(fixes[-1].satellites, 8)
+        self.assertEqual(fixes[-1].speed_knots, 22.4)
+
+    def test_gpx_logger_writes_trackpoint(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
+        fix = parse_nmea_sentence(sentence)
+        assert fix is not None
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "track.gpx"
+            with GPXTrackLogger(path, name="Test") as logger:
+                logger.append(fix)
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("<trkpt lat=\"48.11730000\" lon=\"11.51666667\">", text)
+            self.assertIn("<ele>545.40</ele>", text)
+
+    def test_parse_gpsd_tpv(self):
+        payload = (
+            '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+            '"lat":61.2181,"lon":-149.9003,"speed":2.0,"track":180.5,"alt":12.3}'
+        )
+        fix = parse_gpsd_tpv(payload)
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertAlmostEqual(fix.latitude, 61.2181)
+        self.assertAlmostEqual(fix.longitude, -149.9003)
+        self.assertAlmostEqual(fix.speed_knots, 3.887688984)
+        self.assertEqual(fix.course_degrees, 180.5)
+
+    def test_check_gps_sample(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.nmea"
+            path.write_text(sentence, encoding="ascii")
+            result = check_gps_sample(path)
+            self.assertTrue(result.ok)
+            self.assertIn("48.117300", result.detail)
+
+    def test_chart_check_requires_extracted_cells(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "AK_ENCs.zip").write_bytes(b"not a real zip")
+            zip_result = check_chart_dir(root)
+            self.assertFalse(zip_result.ok)
+            cell = root / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("", encoding="ascii")
+            extracted_result = check_chart_dir(root)
+            self.assertTrue(extracted_result.ok)
 
 
 if __name__ == "__main__":
