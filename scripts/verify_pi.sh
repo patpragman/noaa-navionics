@@ -827,6 +827,8 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher readiness warning" grep -Fq 'show_preflight_warning' "$launcher"
   check "chartplotter launcher duplicate guard" grep -Fq 'OpenCPN is already running' "$launcher"
   check "chartplotter launcher lock" grep -Fq 'chartplotter.launch.lock' "$launcher"
+  check "chartplotter launcher lock sync create" grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "$launcher_lock_dir"' "$launcher"
+  check "chartplotter launcher lock sync cleanup" grep -Fq 'sync_paths "$launcher_lock_dir"' "$launcher"
   check "chartplotter launcher stale lock recovery" grep -Fq 'is not a chartplotter launcher; treating lock as stale' "$launcher"
 fi
 check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"

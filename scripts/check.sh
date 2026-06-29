@@ -285,6 +285,8 @@ grep -q 'chartplotter launcher readiness warning' scripts/verify_pi.sh
 grep -q 'launcher reported failed readiness before OpenCPN startup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher duplicate guard' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock sync create' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock sync cleanup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
