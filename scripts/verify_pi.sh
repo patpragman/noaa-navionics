@@ -480,6 +480,7 @@ if [[ -f "$autostart" ]]; then
   check "chartplotter autostart exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' "$autostart"
   check "chartplotter autostart terminal" grep -Fxq 'Terminal=false' "$autostart"
   check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
+  check "chartplotter autostart not disabled" sh -c '! grep -Eq "^(Hidden=true|X-GNOME-Autostart-enabled=false)$" "$1"' sh "$autostart"
 fi
 check "graphical boot target" sh -c 'systemctl get-default 2>/dev/null | grep -qx graphical.target'
 check "LightDM unit installed" sh -c 'systemctl --no-pager --no-legend list-unit-files lightdm.service 2>/dev/null | grep -q "^lightdm.service"'

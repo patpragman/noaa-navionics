@@ -111,6 +111,7 @@ grep -q 'chartplotter launcher readiness warning' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
+grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
