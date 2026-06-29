@@ -394,6 +394,6 @@ fi
 printf 'OK   boot ID changed after reboot\n'
 
 printf '\n[verify after reboot]\n'
-"${repo_root}/scripts/verify_pi.sh" --require-chartplotter-started "${verify_args[@]}" "$target"
+"${repo_root}/scripts/verify_pi.sh" --require-chartplotter-started --expected-boot-id "$after_boot_id" "${verify_args[@]}" "$target"
 
 printf '\nDock test passed after reboot.\n'

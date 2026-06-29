@@ -324,6 +324,9 @@ grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
+grep -q -- '--expected-boot-id' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
+grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
 grep -q -- '--expected-gps-device' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
@@ -1127,6 +1130,7 @@ grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
+grep -q -- '--expected-boot-id "$after_boot_id"' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
 grep -q -- '--device is required for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
@@ -1134,6 +1138,8 @@ grep -q -- '--skip-autologin cannot be used for the dock acceptance test' script
 grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' README.md
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
+grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
+grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
 
 python3 - <<'PY'
 from pathlib import Path
@@ -1791,6 +1797,28 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is volatile' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --expected-boot-id >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject missing --expected-boot-id value with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--expected-boot-id requires a value' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --expected-boot-id not-a-boot-id pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject invalid --expected-boot-id values with exit 2" >&2
+  exit 1
+fi
+grep -q 'boot ID must be the Linux boot_id value' "$verify_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --gps-seconds nope >"$dock_output" 2>&1

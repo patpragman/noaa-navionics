@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--opencpn-restarts N] [--opencpn-restart-delay N] [--expected-gps-device PATH] user@raspberrypi.local
+Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--opencpn-restarts N] [--opencpn-restart-delay N] [--expected-gps-device PATH] [--expected-boot-id ID] user@raspberrypi.local
 
 Runs onboard verification on the Raspberry Pi over SSH.
 With --require-chartplotter-started, also requires a post-boot launcher log
@@ -12,6 +12,7 @@ Use --gps-seconds to allow a longer GPS fix wait during the status report.
 Use --opencpn-restarts and --opencpn-restart-delay to assert the persisted
 OpenCPN supervision policy.
 Use --expected-gps-device to assert GPSD and the onboard config use a specific receiver.
+Use --expected-boot-id after reboot to assert verification ran against that boot.
 Nothing is installed or enabled on the local computer.
 EOF
 }
@@ -22,6 +23,7 @@ gps_seconds=60
 opencpn_restarts=3
 opencpn_restart_delay=5
 expected_gps_device=""
+expected_boot_id=""
 
 require_positive_integer() {
   local name="$1"
@@ -119,6 +121,18 @@ validate_gps_device_path_arg() {
   exit 2
 }
 
+validate_boot_id_arg() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    echo "boot ID is required" >&2
+    exit 2
+  fi
+  if [[ ! "$value" =~ ^[0-9a-fA-F-]{32,40}$ ]]; then
+    echo "boot ID must be the Linux boot_id value from /proc/sys/kernel/random/boot_id: $value" >&2
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --require-chartplotter-started)
@@ -161,6 +175,15 @@ while [[ $# -gt 0 ]]; do
       expected_gps_device="${2:-}"
       shift 2
       ;;
+    --expected-boot-id)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      validate_boot_id_arg "${2:-}"
+      expected_boot_id="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -197,8 +220,9 @@ gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
 opencpn_restarts_quoted="$(printf '%q' "$opencpn_restarts")"
 opencpn_restart_delay_quoted="$(printf '%q' "$opencpn_restart_delay")"
 expected_gps_device_quoted="$(printf '%q' "$expected_gps_device")"
+expected_boot_id_quoted="$(printf '%q' "$expected_boot_id")"
 
-ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} bash -s" <<'REMOTE'
+ssh -T "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} NOAA_NAVIONICS_EXPECTED_BOOT_ID=${expected_boot_id_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
@@ -1018,6 +1042,11 @@ if require_current_boot:
         current_boot_id = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
     except OSError as exc:
         raise SystemExit(f"could not read current boot ID: {exc}") from exc
+    expected_boot_id = os.environ.get("NOAA_NAVIONICS_EXPECTED_BOOT_ID", "").strip()
+    if expected_boot_id and current_boot_id != expected_boot_id:
+        raise SystemExit(
+            f"current boot ID {current_boot_id} does not match expected reboot boot ID {expected_boot_id}"
+        )
     if report_boot_id != current_boot_id:
         raise SystemExit(
             f"status report boot ID {report_boot_id} does not match current boot {current_boot_id}"
