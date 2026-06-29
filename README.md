@@ -25,8 +25,8 @@ On Raspberry Pi OS or Debian:
 
 ```bash
 sudo apt update
-sudo apt install python3 python3-tk
-python3 -m pip install --user .
+sudo apt install python3 python3-venv python3-tk
+scripts/install_raspberry_pi.sh
 ```
 
 For headless use, `python3-tk` is optional.

@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 config_dir="${HOME}/.config/noaa-navionics"
 systemd_user_dir="${HOME}/.config/systemd/user"
 autostart_dir="${HOME}/.config/autostart"
+venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 
 skip_apt=0
 enable_services=1
@@ -44,11 +45,14 @@ if [[ "$skip_apt" -eq 0 ]]; then
     echo 'deb https://deb.debian.org/debian bookworm-backports main' | sudo tee -a /etc/apt/sources.list >/dev/null
     sudo apt update
   fi
-  sudo apt install -y python3 python3-tk opencpn gpsd gpsd-clients
+  sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients
 fi
 
-python3 -m pip install --user "${repo_root}"
-mkdir -p "${HOME}/.local/bin"
+mkdir -p "${HOME}/.local/bin" "$(dirname "$venv_dir")"
+python3 -m venv "$venv_dir"
+"${venv_dir}/bin/python" -m pip install "${repo_root}"
+ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
+ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 cp "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 
 mkdir -p "$config_dir" "$systemd_user_dir" "$autostart_dir"
