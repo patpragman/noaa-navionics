@@ -39,6 +39,7 @@ def run_preflight(
 ) -> list[CheckResult]:
     results = [
         check_python(),
+        check_system_clock(),
         check_tkinter(),
         check_opencpn(),
         check_chart_package(chart_package, chart_value),
@@ -67,6 +68,17 @@ def check_python() -> CheckResult:
     version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     ok = sys.version_info >= (3, 9)
     return CheckResult("Python", ok, f"running Python {version}")
+
+
+def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) -> CheckResult:
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    if current.year < min_year:
+        return CheckResult(
+            "Clock",
+            False,
+            f"system clock is {current.isoformat()}; set time or enable time sync before relying on chart age checks",
+        )
+    return CheckResult("Clock", True, current.isoformat())
 
 
 def check_tkinter() -> CheckResult:

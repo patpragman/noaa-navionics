@@ -37,6 +37,7 @@ from noaa_navionics.health import (
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
     check_pi_throttling,
+    check_system_clock,
     _parse_throttled_value,
 )
 from noaa_navionics.opencpn import (
@@ -660,6 +661,15 @@ class GpsTests(unittest.TestCase):
 
 
 class PiHealthTests(unittest.TestCase):
+    def test_check_system_clock_rejects_epoch_like_time(self):
+        result = check_system_clock(datetime(1970, 1, 1, tzinfo=timezone.utc))
+        self.assertFalse(result.ok)
+        self.assertIn("system clock", result.detail)
+
+    def test_check_system_clock_accepts_modern_time(self):
+        result = check_system_clock(datetime(2026, 6, 29, tzinfo=timezone.utc))
+        self.assertTrue(result.ok)
+
     def test_parse_throttled_value(self):
         self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)
         self.assertEqual(_parse_throttled_value("throttled=3"), 3)

@@ -204,6 +204,7 @@ The status report includes readiness checks, NOAA Navionics user units, and the 
 Expected checks:
 
 - Python 3.9+
+- System clock has a sane modern UTC date
 - Tkinter available for the GUI
 - OpenCPN installed
 - Configured chart package is a complete chart source, not an updates-only bundle

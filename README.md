@@ -161,6 +161,7 @@ noaa-navionics configure-opencpn
 ```
 
 `sync-charts` writes `noaa-navionics-manifest.json` with SHA-256, source URL, extraction path, ENC cell count, and sync time. `preflight` checks that the manifest is current and that the recorded extraction still contains ENC cells before the boat leaves the dock.
+Preflight also checks for a sane system clock because chart freshness and GPX timestamps depend on UTC time.
 
 Preflight check:
 
