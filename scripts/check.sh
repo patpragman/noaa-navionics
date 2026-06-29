@@ -265,6 +265,7 @@ grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
 grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
+grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
@@ -290,6 +291,7 @@ grep -q -- '--no-device-check cannot be used while unattended startup is enabled
 grep -q 'pass both --skip-services and --skip-autologin for manual testing' scripts/provision_sailboat_pi.sh
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
+grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
 grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py

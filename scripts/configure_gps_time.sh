@@ -76,6 +76,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+Do not configure GPS time as root.
+Run this as the Pi desktop user; the script uses sudo only for system chrony changes.
+EOF
+  exit 2
+fi
+
 case "$chrony_conf" in
   /*)
     ;;

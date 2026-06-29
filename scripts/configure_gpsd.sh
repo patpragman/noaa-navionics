@@ -118,6 +118,14 @@ if [[ -z "$device" ]]; then
   exit 2
 fi
 
+if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+Do not configure GPSD as root.
+Run this as the Pi desktop user; the script uses sudo only for system GPSD changes.
+EOF
+  exit 2
+fi
+
 case "$device" in
   /dev/*)
     ;;
