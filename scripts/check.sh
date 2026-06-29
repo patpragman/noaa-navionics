@@ -237,6 +237,8 @@ grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
+grep -q 'positive download byte count' src/noaa_navionics/health.py
+grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
 grep -q 'create or mount the configured storage path' src/noaa_navionics/health.py
 grep -q 'Chart Update Debris' src/noaa_navionics/health.py
