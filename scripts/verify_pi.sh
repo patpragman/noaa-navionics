@@ -218,6 +218,7 @@ status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
 gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-60}"
 chartplotter_start_timeout=120
+chartplotter_start_timeout_floor=120
 chartplotter_start_interval=5
 opencpn_stability_seconds=10
 
@@ -1022,6 +1023,69 @@ if normalized not in {"0", "no", "false", "off"}:
 PY
 }
 
+launcher_env_value() {
+  local key="$1"
+  local default="$2"
+  python3 - "$launcher_env" "$key" "$default" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+key = sys.argv[2]
+default = sys.argv[3]
+try:
+    lines = path.read_text(encoding="utf-8").splitlines()
+except OSError:
+    print(default)
+    raise SystemExit(0)
+for raw_line in lines:
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    found_key, value = line.split("=", 1)
+    if found_key.strip() == key:
+        print(value.strip())
+        raise SystemExit(0)
+print(default)
+PY
+}
+
+positive_integer_or_default() {
+  local value="$1"
+  local default="$2"
+  if [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$default"
+  fi
+}
+
+non_negative_integer_or_default() {
+  local value="$1"
+  local default="$2"
+  if [[ "$value" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$default"
+  fi
+}
+
+set_chartplotter_start_timeout_from_launcher_env() {
+  local readiness_attempts
+  local readiness_retry_delay
+  local warning_seconds
+  local calculated_timeout
+  readiness_attempts="$(positive_integer_or_default "$(launcher_env_value NOAA_NAVIONICS_READINESS_ATTEMPTS 3)" 3)"
+  readiness_retry_delay="$(non_negative_integer_or_default "$(launcher_env_value NOAA_NAVIONICS_READINESS_RETRY_DELAY 10)" 10)"
+  warning_seconds="$(non_negative_integer_or_default "$(launcher_env_value NOAA_NAVIONICS_WARNING_SECONDS 8)" 8)"
+  calculated_timeout=$((gps_seconds * readiness_attempts + readiness_retry_delay * (readiness_attempts - 1) + warning_seconds + 60))
+  if [[ "$calculated_timeout" -gt "$chartplotter_start_timeout_floor" ]]; then
+    chartplotter_start_timeout="$calculated_timeout"
+  else
+    chartplotter_start_timeout="$chartplotter_start_timeout_floor"
+  fi
+}
+
 stable_gps_device_path() {
   case "$1" in
     /dev/serial/by-id/*)
@@ -1460,6 +1524,7 @@ check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_S
 check "chartplotter launcher OpenCPN restarts persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTARTS=${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$launcher_env"
 check "chartplotter launcher OpenCPN restart delay persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$launcher_env"
 check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
+set_chartplotter_start_timeout_from_launcher_env
 check "chartplotter autostart" test -f "$autostart"
 if [[ -f "$autostart" ]]; then
   check "chartplotter autostart type" grep -Fxq 'Type=Application' "$autostart"

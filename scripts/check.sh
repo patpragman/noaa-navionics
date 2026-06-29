@@ -322,6 +322,12 @@ grep -q 'expected {os.getuid()}' scripts/verify_pi.sh
 grep -q 'tracking.output' scripts/verify_pi.sh
 grep -q '<trkpt\\b' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
+grep -q 'chartplotter_start_timeout_floor=120' scripts/verify_pi.sh
+grep -q 'set_chartplotter_start_timeout_from_launcher_env' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS 3' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_READINESS_RETRY_DELAY 10' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_WARNING_SECONDS 8' scripts/verify_pi.sh
+grep -q 'gps_seconds \* readiness_attempts' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
 grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/verify_pi.sh
 grep -q 'launcher log does not contain OpenCPN launch or duplicate marker' scripts/verify_pi.sh
