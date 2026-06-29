@@ -94,13 +94,15 @@ grep -q 'require_remote_command_available python3' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available tar' scripts/deploy_to_pi.sh
 grep -q 'deploy_with_rsync' scripts/deploy_to_pi.sh
 grep -q 'deploy_with_tar' scripts/deploy_to_pi.sh
-grep -q 'prepare_remote_tar_staging' scripts/deploy_to_pi.sh
-grep -q 'promote_remote_tar_staging' scripts/deploy_to_pi.sh
+grep -q 'prepare_remote_deploy_staging' scripts/deploy_to_pi.sh
+grep -q 'promote_remote_deploy_staging' scripts/deploy_to_pi.sh
+grep -q '"${target}:${remote_staging_dir}/"' scripts/deploy_to_pi.sh
+grep -q 'promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"' scripts/deploy_to_pi.sh
 grep -q 'remote_staging_dir="${remote_dir_trimmed}.deploying"' scripts/deploy_to_pi.sh
 grep -q 'remote_previous_dir="${remote_dir_trimmed}.previous"' scripts/deploy_to_pi.sh
 grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
-grep -q 'Tar staging directory is not ready' scripts/deploy_to_pi.sh
+grep -q 'Deployment staging directory is not ready' scripts/deploy_to_pi.sh
 grep -q 'Refusing to promote deployment staging outside deployment parent' scripts/deploy_to_pi.sh
 grep -q 'previous.rename(repo)' scripts/deploy_to_pi.sh
 grep -q -- "--exclude='./.git'" scripts/deploy_to_pi.sh

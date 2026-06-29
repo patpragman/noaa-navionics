@@ -326,7 +326,7 @@ finally:
 PY"
 }
 
-prepare_remote_tar_staging() {
+prepare_remote_deploy_staging() {
   local remote_dir_value="$1"
   local staging_dir_value="$2"
   local previous_dir_value="$3"
@@ -381,7 +381,7 @@ finally:
 PY"
 }
 
-promote_remote_tar_staging() {
+promote_remote_deploy_staging() {
   local remote_dir_value="$1"
   local staging_dir_value="$2"
   local previous_dir_value="$3"
@@ -407,7 +407,7 @@ def remove_path(path: Path) -> None:
         path.unlink()
 
 if not staging.exists() or not staging.is_dir() or staging.is_symlink():
-    raise SystemExit(f'Tar staging directory is not ready: {staging}')
+    raise SystemExit(f'Deployment staging directory is not ready: {staging}')
 if staging.parent != repo.parent or previous.parent != repo.parent:
     raise SystemExit('Refusing to promote deployment staging outside deployment parent')
 if not staging.name.startswith(repo.name + '.') or not previous.name.startswith(repo.name + '.'):
@@ -446,18 +446,19 @@ PY"
 }
 
 deploy_with_rsync() {
-  ssh "$target" "mkdir -p ${remote_dir_quoted}"
+  prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
   rsync -az --delete \
     --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
     --exclude '.pytest_cache/' \
     --exclude 'charts/' \
-    "${repo_root}/" "${target}:${remote_dir}/"
+    "${repo_root}/" "${target}:${remote_staging_dir}/"
+  promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
 
 deploy_with_tar() {
-  prepare_remote_tar_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
+  prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
   (
     cd "$repo_root"
     tar \
@@ -471,7 +472,7 @@ deploy_with_tar() {
       --exclude='*/charts' \
       -czf - .
   ) | ssh "$target" "tar -xzf - -C ${remote_staging_dir_quoted}"
-  promote_remote_tar_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
+  promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
 
 deploy_sources() {
