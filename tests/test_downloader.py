@@ -1327,12 +1327,16 @@ class ManifestTests(unittest.TestCase):
             root = Path(tmpdir)
             (root / ".AK_ENCs.previous").mkdir()
             (root / ".CA_ENCs.abcd.extracting").mkdir()
+            (root / "AK_ENCs.zip.part").write_text("partial zip\n", encoding="ascii")
+            (root / ".noaa-navionics-manifest.json.abcd.part").write_text("partial manifest\n", encoding="ascii")
 
             result = check_chart_update_debris(root)
 
             self.assertFalse(result.ok)
             self.assertIn(".AK_ENCs.previous", result.detail)
             self.assertIn(".CA_ENCs.abcd.extracting", result.detail)
+            self.assertIn("AK_ENCs.zip.part", result.detail)
+            self.assertIn(".noaa-navionics-manifest.json.abcd.part", result.detail)
 
     def test_chart_update_debris_ignores_download_lock(self):
         with tempfile.TemporaryDirectory() as tmpdir:

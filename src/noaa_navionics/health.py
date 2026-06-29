@@ -331,7 +331,13 @@ def check_chart_update_debris(chart_dir: Path) -> CheckResult:
         debris = sorted(
             child
             for child in path.iterdir()
-            if child.name.startswith(".") and (child.name.endswith(".extracting") or child.name.endswith(".previous"))
+            if (
+                child.name.endswith(".part")
+                or (
+                    child.name.startswith(".")
+                    and (child.name.endswith(".extracting") or child.name.endswith(".previous"))
+                )
+            )
         )
     except OSError as exc:
         return CheckResult("Chart Update Debris", False, f"cannot inspect chart directory: {exc}")

@@ -313,6 +313,7 @@ grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
 grep -q 'create or mount the configured storage path' src/noaa_navionics/health.py
 grep -q 'Chart Update Debris' src/noaa_navionics/health.py
+grep -q 'endswith(".part")' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
 grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py
