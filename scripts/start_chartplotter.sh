@@ -156,13 +156,7 @@ load_launcher_settings() {
       esac
     done <"$launcher_env"
   fi
-  gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-$gps_seconds}"
-  warning_seconds="${NOAA_NAVIONICS_WARNING_SECONDS:-$warning_seconds}"
-  readiness_attempts="${NOAA_NAVIONICS_READINESS_ATTEMPTS:-$readiness_attempts}"
-  readiness_retry_delay="${NOAA_NAVIONICS_READINESS_RETRY_DELAY:-$readiness_retry_delay}"
-  opencpn_restarts="${NOAA_NAVIONICS_OPENCPN_RESTARTS:-$opencpn_restarts}"
-  opencpn_restart_delay="${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-$opencpn_restart_delay}"
-  start_on_failed_text="${NOAA_NAVIONICS_START_ON_FAILED_READINESS:-${start_on_failed_text:-no}}"
+  start_on_failed_text="${start_on_failed_text:-no}"
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
     echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 60 seconds." >&2
     gps_seconds=60
@@ -240,6 +234,22 @@ validate_launcher_env_path() {
   if [[ "$env_mode" != "600" && "$env_mode" != "0600" ]]; then
     echo "NOAA Navionics launcher environment has permissions ${env_mode}, expected private 0600: $launcher_env" >&2
     exit 1
+  fi
+}
+
+drop_ambient_launcher_settings() {
+  local key
+  local removed=0
+  while IFS='=' read -r key _; do
+    case "$key" in
+      NOAA_NAVIONICS_*)
+        unset "$key" 2>/dev/null || true
+        removed=$((removed + 1))
+        ;;
+    esac
+  done < <(env)
+  if [[ "$removed" -gt 0 ]]; then
+    echo "Ignored ${removed} ambient NOAA_NAVIONICS_* environment variable(s); using $launcher_env for launcher settings."
   fi
 }
 
@@ -592,6 +602,7 @@ exec > >(tee -a "$log_file") 2>&1
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 acquire_launcher_lock
 validate_launcher_env_path
+drop_ambient_launcher_settings
 load_launcher_settings
 keep_display_awake
 

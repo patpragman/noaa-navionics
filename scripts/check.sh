@@ -127,6 +127,24 @@ grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/start_chartplotter.sh
+grep -q 'drop_ambient_launcher_settings' scripts/start_chartplotter.sh
+grep -q 'using $launcher_env for launcher settings' scripts/start_chartplotter.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/start_chartplotter.sh").read_text(encoding="utf-8")
+for key in (
+    "NOAA_NAVIONICS_GPS_SECONDS",
+    "NOAA_NAVIONICS_WARNING_SECONDS",
+    "NOAA_NAVIONICS_READINESS_ATTEMPTS",
+    "NOAA_NAVIONICS_READINESS_RETRY_DELAY",
+    "NOAA_NAVIONICS_OPENCPN_RESTARTS",
+    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY",
+    "NOAA_NAVIONICS_START_ON_FAILED_READINESS",
+):
+    if f"${{{key}:-" in text:
+        raise SystemExit(f"launcher must not apply ambient {key} overrides")
+PY
 grep -q 'Malformed launcher environment line' scripts/start_chartplotter.sh
 grep -q 'Unknown launcher environment key' scripts/start_chartplotter.sh
 grep -q 'run_opencpn_supervised' scripts/start_chartplotter.sh
@@ -2820,11 +2838,13 @@ grep -q 'NOAA_NAVIONICS_GPS_SECONDS 17' "$launcher_malformed_env_home/.cache/noa
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_malformed_env_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_preflight_fail_home="$tmpdir/launcher-preflight-fail-home"
-mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics"
+mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics" "$launcher_preflight_fail_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=1\n' >"$launcher_preflight_fail_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_preflight_fail_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_preflight_fail_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_preflight_fail_home/.local/bin/noaa-navionics"
 set +e
-HOME="$launcher_preflight_fail_home" NOAA_NAVIONICS_WARNING_SECONDS=0 NOAA_NAVIONICS_READINESS_ATTEMPTS=1 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+HOME="$launcher_preflight_fail_home" NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes NOAA_NAVIONICS_READINESS_ATTEMPTS=2 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 launcher_preflight_code=$?
 set -e
 if [[ "$launcher_preflight_code" -eq 0 ]]; then
@@ -2832,22 +2852,27 @@ if [[ "$launcher_preflight_code" -eq 0 ]]; then
   echo "expected chartplotter launcher to fail closed when readiness fails" >&2
   exit 1
 fi
+grep -q 'Ignored 2 ambient NOAA_NAVIONICS_\* environment variable(s); using' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'NOAA Navionics preflight failed on attempt 1/1' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Readiness warning timeout is 0 seconds' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Not starting OpenCPN automatically because readiness failed' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_preflight_fail_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_preflight_override_home="$tmpdir/launcher-preflight-override-home"
-mkdir -p "$launcher_preflight_override_home/.local/bin" "$launcher_preflight_override_home/.cache/noaa-navionics"
+mkdir -p "$launcher_preflight_override_home/.local/bin" "$launcher_preflight_override_home/.cache/noaa-navionics" "$launcher_preflight_override_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=1\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_preflight_override_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_preflight_override_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_preflight_override_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_preflight_override_home/.local/bin/noaa-navionics"
-HOME="$launcher_preflight_override_home" NOAA_NAVIONICS_WARNING_SECONDS=0 NOAA_NAVIONICS_READINESS_ATTEMPTS=1 NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+HOME="$launcher_preflight_override_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 grep -q 'Starting OpenCPN despite failed readiness because NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' "$launcher_preflight_override_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_preflight_override_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited with status 0' "$launcher_preflight_override_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_retry_home="$tmpdir/launcher-retry-home"
-mkdir -p "$launcher_retry_home/.local/bin" "$launcher_retry_home/.cache/noaa-navionics"
+mkdir -p "$launcher_retry_home/.local/bin" "$launcher_retry_home/.cache/noaa-navionics" "$launcher_retry_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_READINESS_ATTEMPTS=2\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=0\n' >"$launcher_retry_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_retry_home/.config/noaa-navionics/launcher.env"
 cat >"$launcher_retry_home/.local/bin/noaa-navionics" <<'EOF'
 #!/usr/bin/env bash
 count_file="$HOME/.cache/noaa-navionics/readiness-count"
@@ -2863,7 +2888,7 @@ fi
 exit 0
 EOF
 chmod +x "$launcher_retry_home/.local/bin/noaa-navionics"
-HOME="$launcher_retry_home" NOAA_NAVIONICS_READINESS_ATTEMPTS=2 NOAA_NAVIONICS_READINESS_RETRY_DELAY=0 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+HOME="$launcher_retry_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 grep -q 'NOAA Navionics preflight failed on attempt 1/2' "$launcher_retry_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Retrying readiness in 0s' "$launcher_retry_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'NOAA Navionics preflight passed on attempt 2/2' "$launcher_retry_home/.cache/noaa-navionics/chartplotter.log"
@@ -2871,7 +2896,9 @@ grep -q 'Launching OpenCPN with ENC processing.' "$launcher_retry_home/.cache/no
 test "$(cat "$launcher_retry_home/.cache/noaa-navionics/readiness-count")" -eq 2
 
 launcher_opencpn_restart_home="$tmpdir/launcher-opencpn-restart-home"
-mkdir -p "$launcher_opencpn_restart_home/.local/bin" "$launcher_opencpn_restart_home/.cache/noaa-navionics"
+mkdir -p "$launcher_opencpn_restart_home/.local/bin" "$launcher_opencpn_restart_home/.cache/noaa-navionics" "$launcher_opencpn_restart_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_OPENCPN_RESTARTS=2\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_opencpn_restart_home/.local/bin/noaa-navionics"
 cat >"$tmpdir/opencpn" <<'EOF'
 #!/usr/bin/env bash
@@ -2889,7 +2916,7 @@ exit 0
 EOF
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 chmod +x "$launcher_opencpn_restart_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
-HOME="$launcher_opencpn_restart_home" NOAA_NAVIONICS_OPENCPN_RESTARTS=2 NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+HOME="$launcher_opencpn_restart_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 test "$(cat "$launcher_opencpn_restart_home/.cache/noaa-navionics/opencpn-count")" -eq 3
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 2/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
