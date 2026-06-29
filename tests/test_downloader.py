@@ -278,6 +278,21 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory is a symlink"):
                 read_config(link_parent / "config.ini")
 
+    def test_read_config_rejects_symlinked_parent_when_config_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_parent = root / "real-config"
+            real_parent.mkdir()
+            link_parent = root / ".config" / "noaa-navionics"
+            link_parent.parent.mkdir()
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory is a symlink"):
+                read_config(link_parent / "missing.ini")
+
     def test_write_default_config_uses_unique_synced_temp_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

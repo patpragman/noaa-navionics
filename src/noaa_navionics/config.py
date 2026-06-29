@@ -101,9 +101,9 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     parser = ConfigParser()
     if cfg_path.is_symlink():
         raise RuntimeError(f"NOAA Navionics config is a symlink: {cfg_path}")
+    if cfg_path.parent.is_symlink():
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {cfg_path.parent}")
     if cfg_path.exists():
-        if cfg_path.parent.is_symlink():
-            raise RuntimeError(f"NOAA Navionics config directory is a symlink: {cfg_path.parent}")
         parser.read(cfg_path)
 
     charts = parser["charts"] if parser.has_section("charts") else {}
