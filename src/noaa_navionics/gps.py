@@ -160,17 +160,55 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
     )
 
 
+def parse_gpsd_sky(payload: str) -> Optional[GPSFix]:
+    data = json.loads(payload)
+    if data.get("class") != "SKY":
+        return None
+    satellites = _gpsd_used_satellites(data)
+    hdop = data.get("hdop")
+    return GPSFix(
+        satellites=satellites,
+        hdop=float(hdop) if hdop is not None else None,
+        source_sentence=payload.strip(),
+    )
+
+
 def iter_gpsd_fixes(host: str = "127.0.0.1", port: int = 2947, timeout: float = 10.0) -> Iterator[GPSFix]:
+    latest_sky: Optional[GPSFix] = None
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.sendall(b'?WATCH={"enable":true,"json":true};\n')
         with sock.makefile("r", encoding="utf-8", errors="ignore") as handle:
             for line in handle:
                 try:
+                    sky = parse_gpsd_sky(line)
+                    if sky is not None:
+                        latest_sky = sky
+                        continue
                     fix = parse_gpsd_tpv(line)
                 except (json.JSONDecodeError, ValueError, TypeError):
                     continue
                 if fix and fix.valid:
-                    yield fix
+                    yield merge_fixes(latest_sky, fix) if latest_sky is not None else fix
+
+
+def _gpsd_used_satellites(data: dict[str, object]) -> Optional[int]:
+    usat = data.get("uSat")
+    if usat is not None:
+        return int(usat)
+    satellites = data.get("satellites")
+    if not isinstance(satellites, list):
+        return None
+    used = 0
+    saw_used = False
+    for satellite in satellites:
+        if not isinstance(satellite, dict):
+            continue
+        if "used" not in satellite:
+            continue
+        saw_used = True
+        if satellite.get("used") is True:
+            used += 1
+    return used if saw_used else None
 
 
 class GPXTrackLogger:

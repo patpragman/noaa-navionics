@@ -40,6 +40,8 @@ from noaa_navionics.gps import (
     _parse_time_today,
     daily_track_path,
     iter_fixes,
+    iter_gpsd_fixes,
+    parse_gpsd_sky,
     parse_gpsd_tpv,
     parse_nmea_sentence,
 )
@@ -1278,6 +1280,55 @@ class GpsTests(unittest.TestCase):
         self.assertAlmostEqual(fix.longitude, -149.9003)
         self.assertAlmostEqual(fix.speed_knots, 3.887688984)
         self.assertEqual(fix.course_degrees, 180.5)
+
+    def test_parse_gpsd_sky_uses_usat_and_hdop(self):
+        payload = '{"class":"SKY","uSat":7,"nSat":11,"hdop":1.4}'
+        fix = parse_gpsd_sky(payload)
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.satellites, 7)
+        self.assertEqual(fix.hdop, 1.4)
+
+    def test_parse_gpsd_sky_counts_used_satellites(self):
+        payload = (
+            '{"class":"SKY","hdop":2.1,"satellites":['
+            '{"PRN":1,"used":true},{"PRN":2,"used":false},{"PRN":3,"used":true}]}'
+        )
+        fix = parse_gpsd_sky(payload)
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.satellites, 2)
+        self.assertEqual(fix.hdop, 2.1)
+
+    def test_iter_gpsd_fixes_merges_sky_quality_into_tpv(self):
+        original = gps_module.socket.create_connection
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"SKY","uSat":5,"hdop":1.8}\n'
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":61.2181,"lon":-149.9003}\n'
+                )
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            fix = next(iter_gpsd_fixes(timeout=1))
+        finally:
+            gps_module.socket.create_connection = original
+
+        self.assertEqual(fix.satellites, 5)
+        self.assertEqual(fix.hdop, 1.8)
+        self.assertAlmostEqual(fix.latitude, 61.2181)
 
     def test_check_gps_sample(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
