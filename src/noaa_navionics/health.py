@@ -43,6 +43,7 @@ def run_preflight(
         check_system_clock(),
         check_tkinter(),
         check_opencpn(),
+        check_display_power_tool(),
         check_chart_package(chart_package, chart_value),
         check_chart_dir(chart_dir),
         check_chart_manifest(
@@ -97,6 +98,15 @@ def check_tkinter() -> CheckResult:
 def check_opencpn() -> CheckResult:
     path = shutil.which("opencpn")
     return CheckResult("OpenCPN", path is not None, path or "missing; install opencpn for chart display")
+
+
+def check_display_power_tool() -> CheckResult:
+    path = shutil.which("xset")
+    return CheckResult(
+        "Display Power",
+        path is not None,
+        path or "missing; install x11-xserver-utils so the launcher can disable display blanking",
+    )
 
 
 def check_chart_package(package: str, value: str = "") -> CheckResult:

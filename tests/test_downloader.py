@@ -52,6 +52,7 @@ from noaa_navionics.health import (
     check_gps_device_path,
     check_gpsd,
     check_gps_sample,
+    check_display_power_tool,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
     check_pi_throttling,
@@ -1431,6 +1432,16 @@ class PiHealthTests(unittest.TestCase):
     def test_check_system_clock_accepts_modern_time(self):
         result = check_system_clock(datetime(2026, 6, 29, tzinfo=timezone.utc))
         self.assertTrue(result.ok)
+
+    def test_check_display_power_tool_reports_missing_xset(self):
+        original_path = os.environ.get("PATH", "")
+        try:
+            os.environ["PATH"] = "/nonexistent"
+            result = check_display_power_tool()
+        finally:
+            os.environ["PATH"] = original_path
+        self.assertFalse(result.ok)
+        self.assertIn("x11-xserver-utils", result.detail)
 
     def test_parse_throttled_value(self):
         self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)

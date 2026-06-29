@@ -46,6 +46,7 @@ grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
+grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
@@ -74,6 +75,8 @@ grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
+grep -q 'Display Power' src/noaa_navionics/health.py
+grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py

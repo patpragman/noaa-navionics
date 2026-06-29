@@ -287,6 +287,7 @@ if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "
   check "source revision matches" test "$installed_revision" = "$NOAA_NAVIONICS_EXPECTED_REVISION"
 fi
 check "OpenCPN command" command -v opencpn
+check "display power command" command -v xset
 check "GPSD command" command -v gpsd
 check "GPSD config" test -f /etc/default/gpsd
 if [[ -r /etc/default/gpsd ]]; then
