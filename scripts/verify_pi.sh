@@ -846,8 +846,18 @@ if expected_config_path:
             "status report desktop autostart directory is a symlink or missing symlink status: "
             f"{autostart_file.parent}"
         )
+    autostart_symlink_component = str(autostart.get("path_symlink_component", "")).strip()
+    if autostart_symlink_component:
+        raise SystemExit(
+            f"status report desktop autostart path contains a symlink: {autostart_symlink_component}"
+        )
     if autostart_file.parent.is_symlink():
         raise SystemExit(f"status report desktop autostart directory is a symlink: {autostart_file.parent}")
+    live_autostart_symlink_component = first_symlink_ancestor(autostart_file.parent)
+    if live_autostart_symlink_component is not None:
+        raise SystemExit(
+            f"status report desktop autostart path contains a symlink: {live_autostart_symlink_component}"
+        )
     autostart_values = autostart.get("values")
     if not isinstance(autostart_values, dict):
         raise SystemExit(f"status report desktop autostart values were not parsed: {autostart_path}")
@@ -883,8 +893,18 @@ if expected_config_path:
             "status report LightDM autologin config directory is a symlink or missing symlink status: "
             f"{lightdm_file.parent}"
         )
+    lightdm_symlink_component = str(lightdm.get("path_symlink_component", "")).strip()
+    if lightdm_symlink_component:
+        raise SystemExit(
+            f"status report LightDM autologin config path contains a symlink: {lightdm_symlink_component}"
+        )
     if lightdm_file.parent.is_symlink():
         raise SystemExit(f"status report LightDM autologin config directory is a symlink: {lightdm_file.parent}")
+    live_lightdm_symlink_component = first_symlink_ancestor(lightdm_file.parent)
+    if live_lightdm_symlink_component is not None:
+        raise SystemExit(
+            f"status report LightDM autologin config path contains a symlink: {live_lightdm_symlink_component}"
+        )
     lightdm_values = lightdm.get("values")
     lightdm_sections = lightdm.get("sections")
     if not isinstance(lightdm_values, dict) or not isinstance(lightdm_sections, list):

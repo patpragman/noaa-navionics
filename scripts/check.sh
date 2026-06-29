@@ -1043,10 +1043,13 @@ grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
+grep -q '"path_symlink_component"' src/noaa_navionics/report.py
 grep -q 'desktop autostart path is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart directory is a symlink' src/noaa_navionics/report.py
+grep -q 'desktop autostart path contains a symlink' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config path is a symlink' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config directory is a symlink' src/noaa_navionics/report.py
+grep -q 'LightDM autologin config path contains a symlink' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' src/noaa_navionics/report.py
@@ -1060,7 +1063,9 @@ grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_do
 grep -q 'test_launcher_settings_check_fails_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_file' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_directory' tests/test_downloader.py
+grep -q 'test_key_value_file_summary_rejects_symlinked_startup_ancestor' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_directories' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_ancestors' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config_directory' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_files' tests/test_downloader.py
@@ -1124,6 +1129,8 @@ grep -q 'status report manifest download path contains a symlink' scripts/verify
 grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report desktop autostart directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report desktop autostart path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report LightDM autologin config path contains a symlink' scripts/verify_pi.sh
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_directory' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_ancestor' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment_ancestor' tests/test_downloader.py
@@ -1131,10 +1138,14 @@ grep -q 'test_manifest_summary_rejects_symlinked_manifest_ancestor' tests/test_d
 grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
-grep -q 'Status reports and Pi verification also reject symlinked manifest' README.md
-grep -q 'Status reports and Pi verification also reject symlinked manifest' docs/sailboat-pi.md
+grep -q 'manifest, retained-download, or extract path components' README.md
+grep -q 'manifest, retained-download, or extract path components' docs/sailboat-pi.md
 grep -q 'launcher environment path components' README.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
+grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
+grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification also reject symlinked desktop autostart' README.md
+grep -q 'Status reports and Pi verification also reject symlinked desktop autostart' docs/sailboat-pi.md
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
