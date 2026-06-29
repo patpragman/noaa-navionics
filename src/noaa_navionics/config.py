@@ -13,6 +13,7 @@ CHART_PACKAGES = {"state", "cgd", "region", "chart", "all"}
 CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "chart"}
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,10 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     gps_device = gps.get("device", defaults.gps_device).strip()
     if gps_mode in {"gpsd", "serial"} and not gps_device:
         raise ValueError(f"gps.device is required when gps.mode is {gps_mode}")
+    if gps_device and not _stable_gps_device_path(gps_device):
+        if _volatile_usb_device_path(gps_device):
+            raise ValueError("gps.device uses a volatile USB name; use /dev/serial/by-id/... instead")
+        raise ValueError("gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
     gpsd_host = _get_required_text(gps, "gpsd_host", defaults.gpsd_host, label="gps.gpsd_host")
     if any(separator in gpsd_host for separator in (";", "|")) or any(char.isspace() for char in gpsd_host):
         raise ValueError("gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")
@@ -153,6 +158,7 @@ def default_config_text() -> str:
         "[gps]\n"
         "# mode can be gpsd or serial. Use gpsd for onboard production so OpenCPN can share the GPS.\n"
         f"mode = {defaults.gps_mode}\n"
+        "# Use /dev/serial/by-id/... for USB GPS, or a documented stable alias.\n"
         f"device = {defaults.gps_device}\n"
         f"baud = {defaults.gps_baud}\n"
         f"gpsd_host = {defaults.gpsd_host}\n"
@@ -249,6 +255,16 @@ def _get_required_text(section: object, key: str, default: str, *, label: Option
 def _require_absolute_path(path: Path, *, label: str) -> None:
     if not path.is_absolute():
         raise ValueError(f"{label} must be an absolute path or start with ~")
+
+
+def _stable_gps_device_path(path: str) -> bool:
+    by_id_prefix = "/dev/serial/by-id/"
+    return (path.startswith(by_id_prefix) and path != by_id_prefix) or path in STABLE_GPS_DEVICE_PATHS
+
+
+def _volatile_usb_device_path(path: str) -> bool:
+    name = Path(path).name
+    return name.startswith("ttyUSB") or name.startswith("ttyACM")
 
 
 def _get_int(

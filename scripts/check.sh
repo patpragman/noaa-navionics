@@ -325,6 +325,10 @@ grep -q 'gps.gpsd_host must be local for onboard gpsd mode' src/noaa_navionics/c
 grep -q 'GPSD_LOCAL_HOSTS' src/noaa_navionics/config.py
 grep -q 'gps.mode must be either gpsd or serial' src/noaa_navionics/config.py
 grep -q 'gps.device is required when gps.mode is' src/noaa_navionics/config.py
+grep -q 'STABLE_GPS_DEVICE_PATHS' src/noaa_navionics/config.py
+grep -q 'def _stable_gps_device_path' src/noaa_navionics/config.py
+grep -q 'volatile USB name' src/noaa_navionics/config.py
+grep -q 'gps.device must be /dev/serial/by-id/' src/noaa_navionics/config.py
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
 grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py

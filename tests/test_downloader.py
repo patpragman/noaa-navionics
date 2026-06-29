@@ -211,7 +211,7 @@ class ConfigTests(unittest.TestCase):
                 "\n"
                 "[gps]\n"
                 "mode = serial\n"
-                "device = /dev/ttyACM0\n"
+                "device = /dev/serial/by-id/mock-gps\n"
                 "baud = 9600\n"
                 "gpsd_host = 192.168.1.10\n"
                 "gpsd_port = 2947\n"
@@ -222,7 +222,7 @@ class ConfigTests(unittest.TestCase):
             config = read_config(path)
             self.assertEqual(package_kwargs(config), {"cgd": "17"})
             self.assertEqual(config.gps_mode, "serial")
-            self.assertEqual(config.gps_device, "/dev/ttyACM0")
+            self.assertEqual(config.gps_device, "/dev/serial/by-id/mock-gps")
             self.assertEqual(config.gps_baud, 9600)
             self.assertEqual(config.max_chart_age_days, 14)
             self.assertEqual(config.track_retention_days, 14)
@@ -249,6 +249,10 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\nextract = maybe\n", "charts.extract"),
             ("[gps]\nmode = serial\ndevice =\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice =\n", "gps.device"),
+            ("[gps]\nmode = serial\ndevice = /dev/ttyACM0\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/ttyUSB0\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/ttyAMA0\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/\n", "gps.device"),
             ("[gps]\nbaud = 12345\n", "gps.baud"),
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
             ("[gps]\nmode = gpsd\ngpsd_host = 192.168.1.10\n", "gps.gpsd_host"),
@@ -429,7 +433,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 "\n"
                 "[gps]\n"
                 "mode = serial\n"
-                "device = /dev/ttyUSB0\n",
+                "device = /dev/serial/by-id/mock-gps\n",
                 encoding="utf-8",
             )
 
