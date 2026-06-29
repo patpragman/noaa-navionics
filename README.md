@@ -176,6 +176,14 @@ systemctl --user enable --now noaa-navionics.timer
 
 Edit `~/.config/noaa-navionics/config.ini` if you want a bundle other than Alaska.
 
+## Development Checks
+
+Run the source and script checks without installing anything locally:
+
+```bash
+scripts/check.sh
+```
+
 ## Navigation Safety
 
 This tool downloads and extracts chart data, checks GPS/chart readiness, and can log GPX tracks. OpenCPN should be used for ENC rendering and navigation workflows. This project is not certified navigation equipment and does not replace official navigation practices.
