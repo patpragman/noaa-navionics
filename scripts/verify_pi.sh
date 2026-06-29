@@ -99,6 +99,30 @@ if any(not isinstance(check, dict) or check.get("ok") is not True for check in s
 PY
 }
 
+check_gpsd_device_matches_config() {
+  local config_path="$1"
+  local gpsd_device="$2"
+  python3 - "$config_path" "$gpsd_device" <<'PY'
+from configparser import ConfigParser
+from pathlib import Path
+import sys
+
+config_path = Path(sys.argv[1]).expanduser()
+gpsd_device = sys.argv[2]
+parser = ConfigParser()
+if not parser.read(config_path):
+    raise SystemExit(f"could not read config: {config_path}")
+mode = parser.get("gps", "mode", fallback="gpsd").strip().lower()
+configured_device = parser.get("gps", "device", fallback="").strip()
+if mode != "gpsd":
+    raise SystemExit(f"gps.mode is {mode}, expected gpsd for GPSD verification")
+if not configured_device:
+    raise SystemExit("gps.device is empty in config")
+if configured_device != gpsd_device:
+    raise SystemExit(f"config gps.device {configured_device} does not match GPSD device {gpsd_device}")
+PY
+}
+
 arch="$(uname -m)"
 case "$arch" in
   armv7l|aarch64)
@@ -134,6 +158,7 @@ if [[ -r /etc/default/gpsd ]]; then
   gpsd_device="$(sed -n 's/^DEVICES="\([^"]*\)".*/\1/p' /etc/default/gpsd | awk '{print $1}')"
   if [[ -n "$gpsd_device" ]]; then
     check "GPSD device exists" test -e "$gpsd_device"
+    check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"
     case "$gpsd_device" in
       /dev/serial/by-id/*)
         printf 'OK   GPSD stable device path %s\n' "$gpsd_device"

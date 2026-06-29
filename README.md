@@ -119,7 +119,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-Verification also checks that the chartplotter launcher, desktop autostart entry, GPSD startup options, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
+Verification also checks that the chartplotter launcher, desktop autostart entry, GPSD startup options, GPSD device path, deployed source revision, and generated JSON readiness artifact match the repo you are verifying from, including the artifact's embedded source revision and a `-dirty` suffix for deliberate dirty test deployments. The final status report retries briefly while GPSD gets its first fix.
 
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 
