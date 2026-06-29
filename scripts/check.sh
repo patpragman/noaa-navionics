@@ -17,6 +17,9 @@ bash -n \
   scripts/dock_test_pi.sh \
   scripts/check.sh
 
+grep -q 'status-report' systemd/noaa-navionics-preflight.service
+grep -q 'status.json' systemd/noaa-navionics-preflight.service
+
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
 trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output"' EXIT

@@ -41,7 +41,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-The verify script runs checks on the Pi over SSH, including architecture, installed commands, user units, config, and `noaa-navionics preflight`.
+The verify script runs checks on the Pi over SSH, including architecture, installed commands, user units, config, and `noaa-navionics status-report`.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:
@@ -131,7 +131,7 @@ After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboar
 scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables user linger, enables the user timer and track/preflight services, and writes `~/.cache/noaa-navionics/status.json`.
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
 
 ## Startup
 
@@ -243,15 +243,17 @@ systemctl --user enable --now noaa-navionics.timer
 
 Edit `~/.config/noaa-navionics/config.ini` if your cruising region is not Alaska.
 
-## Boot-Time Preflight
+## Boot-Time Readiness Report
 
-Install a user service that runs the same readiness check at login:
+Install a user service that writes the same readiness report at login:
 
 ```bash
 cp systemd/noaa-navionics-preflight.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable noaa-navionics-preflight.service
 ```
+
+The service writes `~/.cache/noaa-navionics/status.json` and retries briefly if GPSD is not producing a valid fix yet.
 
 ## Operational Notes
 

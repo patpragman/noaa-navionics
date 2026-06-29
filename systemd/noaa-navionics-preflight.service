@@ -1,9 +1,13 @@
 [Unit]
-Description=Run NOAA Navionics preflight checks
+Description=Write NOAA Navionics readiness report
+StartLimitIntervalSec=5min
+StartLimitBurst=5
 
 [Service]
 Type=oneshot
-ExecStart=%h/.local/bin/noaa-navionics preflight --config %h/.config/noaa-navionics/config.ini
+ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds 10 --output %h/.cache/noaa-navionics/status.json
+Restart=on-failure
+RestartSec=30
 
 [Install]
 WantedBy=default.target
