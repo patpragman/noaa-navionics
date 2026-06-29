@@ -378,6 +378,9 @@ grep -q 'production dock verification requires fail-closed chartplotter startup'
 grep -q 'status report launcher settings values' scripts/verify_pi.sh
 grep -q 'do not match launcher environment' scripts/verify_pi.sh
 grep -q 'status report launcher GPS wait' scripts/verify_pi.sh
+grep -q 'status report OpenCPN chart directories' scripts/verify_pi.sh
+grep -q 'do not match live OpenCPN config' scripts/verify_pi.sh
+grep -q 'does not contain enabled GPSD connection' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh

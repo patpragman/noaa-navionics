@@ -2363,17 +2363,26 @@ class StatusReportTests(unittest.TestCase):
             boot_id.write_text("boot-abc\n", encoding="ascii")
             launcher_env = root / "launcher.env"
             launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=10\n", encoding="ascii")
+            opencpn_config = root / "opencpn.conf"
+            configure_chart_directory(charts, config_path=opencpn_config)
+            configure_gpsd_connection(config_path=opencpn_config)
             original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
             original_boot_id_path = report_module.BOOT_ID_PATH
             original_launcher_env_path = report_module.DEFAULT_LAUNCHER_ENV_PATH
+            original_opencpn_config_path = opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH
+            original_flatpak_opencpn_config_path = opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH
             os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
             report_module.BOOT_ID_PATH = boot_id
             report_module.DEFAULT_LAUNCHER_ENV_PATH = launcher_env
+            opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = opencpn_config
+            opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH = root / "missing-flatpak-opencpn.conf"
             try:
                 report = build_status_report(config_path=config, gps_sample=sample)
             finally:
                 report_module.BOOT_ID_PATH = original_boot_id_path
                 report_module.DEFAULT_LAUNCHER_ENV_PATH = original_launcher_env_path
+                opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = original_opencpn_config_path
+                opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH = original_flatpak_opencpn_config_path
                 if original_revision_path is None:
                     os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
                 else:
@@ -2383,6 +2392,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("system_services", report)
             self.assertIn("unit_files", report)
             self.assertIn("launcher_settings", report)
+            self.assertIn("opencpn_config", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["config"]["extract"], True)
@@ -2392,6 +2402,10 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["host"]["boot_id"], "boot-abc")
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "10")
+            self.assertEqual(report["opencpn_config"]["path"], str(opencpn_config))
+            self.assertEqual(report["opencpn_config"]["exists"], True)
+            self.assertEqual(report["opencpn_config"]["chart_directories"], [str(charts.resolve())])
+            self.assertTrue(report["opencpn_config"]["data_connections"])
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["created_at"], now)
@@ -2411,6 +2425,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Ready: no", text)
             self.assertIn("Boot ID: boot-abc", text)
             self.assertIn("revision abc123", text)
+            self.assertIn("OpenCPN Config:", text)
+            self.assertIn(f"path={opencpn_config}", text)
             self.assertIn("created_at_source: download", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)

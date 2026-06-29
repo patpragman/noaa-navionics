@@ -16,6 +16,7 @@ import tempfile
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
 from .health import CheckResult, run_preflight
+from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
 from . import __version__
 
 
@@ -103,6 +104,7 @@ def build_status_report(
     system_services = _system_service_summary()
     unit_files = _user_unit_file_summary()
     launcher_settings = _launcher_settings_summary()
+    opencpn_config = _opencpn_config_summary()
     service_checks = _service_readiness_checks(
         services,
         system_services,
@@ -128,6 +130,7 @@ def build_status_report(
         "system_services": system_services,
         "unit_files": unit_files,
         "launcher_settings": launcher_settings,
+        "opencpn_config": opencpn_config,
         "service_checks": [asdict(check) for check in service_checks],
         "checks": check_rows,
     }
@@ -250,6 +253,23 @@ def format_status_text(report: dict[str, object]) -> str:
             value_text = ""
         lines.append(
             f"path={launcher_settings.get('path', '')} exists={launcher_settings.get('exists', '')} {value_text}".rstrip()
+        )
+    opencpn_config = report.get("opencpn_config", {})
+    if isinstance(opencpn_config, dict) and opencpn_config:
+        lines.extend(["", "OpenCPN Config:"])
+        chart_dirs = opencpn_config.get("chart_directories", [])
+        if isinstance(chart_dirs, list):
+            chart_dir_text = ",".join(str(value) for value in chart_dirs)
+        else:
+            chart_dir_text = ""
+        data_connections = opencpn_config.get("data_connections", [])
+        if isinstance(data_connections, list):
+            connection_count = len(data_connections)
+        else:
+            connection_count = 0
+        lines.append(
+            f"path={opencpn_config.get('path', '')} exists={opencpn_config.get('exists', '')} "
+            f"chart_directories={chart_dir_text} data_connections={connection_count}".rstrip()
         )
     return "\n".join(lines)
 
@@ -400,6 +420,19 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip()
     summary["values"] = values
+    return summary
+
+
+def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
+    config_path = opencpn_config_path(path)
+    summary: dict[str, object] = {"path": str(config_path), "exists": config_path.is_file()}
+    if not config_path.exists():
+        return summary
+    try:
+        summary["chart_directories"] = [str(chart_dir) for chart_dir in read_chart_directories(config_path)]
+        summary["data_connections"] = read_data_connections(config_path)
+    except OSError as exc:
+        summary["error"] = str(exc)
     return summary
 
 

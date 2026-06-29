@@ -227,6 +227,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 import json
 import os
+import re
 import sys
 
 def config_bool(parser, section, key, fallback):
@@ -274,6 +275,52 @@ def parse_manifest_int(value, field, source):
         return int(value)
     except (TypeError, ValueError) as exc:
         raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}") from exc
+
+def normalize_path(value):
+    return str(Path(value).expanduser().resolve(strict=False))
+
+def normalize_host(value):
+    value = value.strip().lower()
+    return "127.0.0.1" if value == "localhost" else value
+
+def parse_opencpn_config(path):
+    try:
+        text = Path(path).expanduser().read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        raise SystemExit(f"could not read OpenCPN config {path}: {exc}") from exc
+    section = ""
+    chart_directories = []
+    data_connections = []
+    for raw_line in text.splitlines():
+        section_match = re.match(r"^\s*\[([^\]]+)\]\s*$", raw_line)
+        if section_match:
+            section = section_match.group(1).strip().lower()
+            continue
+        if section == "chartdirectories":
+            chart_match = re.match(r"^\s*ChartDir\d+\s*=\s*(.*?)\s*$", raw_line)
+            if chart_match:
+                chart_directories.append(normalize_path(chart_match.group(1).strip()))
+        elif section == "settings/nmeadatasource":
+            data_match = re.match(r"^\s*DataConnections\s*=\s*(.*?)\s*$", raw_line)
+            if data_match:
+                data_connections = [part for part in data_match.group(1).strip().split("|") if part]
+    return chart_directories, data_connections
+
+def gpsd_connection_present(data_connections, host, port):
+    expected_host = normalize_host(host)
+    for connection in data_connections:
+        fields = connection.split(";")
+        if len(fields) < 18:
+            continue
+        if fields[0] != "1" or fields[1] != "2":
+            continue
+        try:
+            configured_port = int(fields[3])
+        except ValueError:
+            continue
+        if normalize_host(fields[2]) == expected_host and configured_port == port and fields[17] == "1":
+            return True
+    return False
 
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
@@ -392,6 +439,48 @@ if expected_config_path:
             mismatches.append(f"{key}={actual!r}, expected {expected!r}")
     if mismatches:
         raise SystemExit("status report config values do not match current config: " + "; ".join(mismatches))
+    opencpn_config = report.get("opencpn_config")
+    if not isinstance(opencpn_config, dict):
+        raise SystemExit("status report has no opencpn_config section")
+    opencpn_config_path = str(opencpn_config.get("path", "")).strip()
+    if not opencpn_config_path:
+        raise SystemExit("status report OpenCPN config path is empty")
+    if opencpn_config.get("exists") is not True:
+        raise SystemExit(f"status report OpenCPN config does not exist: {opencpn_config_path}")
+    if str(opencpn_config.get("error", "")).strip():
+        raise SystemExit(
+            f"status report OpenCPN config has parse error at {opencpn_config_path}: {opencpn_config.get('error')}"
+        )
+    status_chart_directories = opencpn_config.get("chart_directories")
+    status_data_connections = opencpn_config.get("data_connections")
+    if not isinstance(status_chart_directories, list):
+        raise SystemExit(f"status report OpenCPN chart directories were not parsed: {opencpn_config_path}")
+    if not isinstance(status_data_connections, list):
+        raise SystemExit(f"status report OpenCPN data connections were not parsed: {opencpn_config_path}")
+    live_chart_directories, live_data_connections = parse_opencpn_config(opencpn_config_path)
+    normalized_status_chart_directories = [normalize_path(str(value)) for value in status_chart_directories]
+    normalized_status_data_connections = [str(value) for value in status_data_connections]
+    if normalized_status_chart_directories != live_chart_directories:
+        raise SystemExit(
+            f"status report OpenCPN chart directories {normalized_status_chart_directories!r} "
+            f"do not match live OpenCPN config {live_chart_directories!r}"
+        )
+    if normalized_status_data_connections != live_data_connections:
+        raise SystemExit("status report OpenCPN data connections do not match live OpenCPN config")
+    normalized_chart_output = normalize_path(expected_config["chart_output"])
+    if normalized_chart_output not in live_chart_directories:
+        raise SystemExit(
+            f"OpenCPN config {opencpn_config_path} does not list configured chart output {normalized_chart_output}"
+        )
+    if expected_config["gps_mode"] == "gpsd" and not gpsd_connection_present(
+        live_data_connections,
+        expected_config["gpsd_host"],
+        expected_config["gpsd_port"],
+    ):
+        raise SystemExit(
+            f"OpenCPN config {opencpn_config_path} does not contain enabled GPSD connection "
+            f"{expected_config['gpsd_host']}:{expected_config['gpsd_port']}"
+        )
     manifest = report.get("manifest")
     if not isinstance(manifest, dict):
         raise SystemExit("status report has no manifest section")
