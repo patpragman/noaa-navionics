@@ -61,6 +61,20 @@ if [[ -z "$device" ]]; then
   exit 2
 fi
 
+case "$device" in
+  /dev/*)
+    ;;
+  *)
+    echo "GPS device must be an absolute /dev path: $device" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$device" =~ [[:space:]\"\'] ]]; then
+  echo "GPS device path must not contain whitespace or quotes: $device" >&2
+  exit 2
+fi
+
 arch="$(uname -m)"
 if [[ "$allow_non_pi" -eq 0 && "$arch" != armv7l && "$arch" != aarch64 ]]; then
   cat >&2 <<EOF
