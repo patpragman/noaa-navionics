@@ -165,6 +165,28 @@ if configured_device != gpsd_device:
 PY
 }
 
+stable_gps_device_path() {
+  case "$1" in
+    /dev/serial/by-id/*|/dev/serial0|/dev/serial1|/dev/gps)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+volatile_usb_device_path() {
+  case "$(basename "$1")" in
+    ttyUSB*|ttyACM*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 check_chartplotter_log_after_boot() {
   local path="$1"
   python3 - "$path" <<'PY'
@@ -299,14 +321,14 @@ if [[ -r /etc/default/gpsd ]]; then
   if [[ -n "$gpsd_device" ]]; then
     check "GPSD device exists" test -e "$gpsd_device"
     check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"
-    case "$gpsd_device" in
-      /dev/serial/by-id/*)
-        printf 'OK   GPSD stable device path %s\n' "$gpsd_device"
-        ;;
-      *)
-        printf 'WARN GPSD device path %s is not under /dev/serial/by-id/\n' "$gpsd_device"
-        ;;
-    esac
+    if stable_gps_device_path "$gpsd_device"; then
+      printf 'OK   GPSD stable device path %s\n' "$gpsd_device"
+    elif volatile_usb_device_path "$gpsd_device"; then
+      printf 'FAIL GPSD device path %s is volatile; use /dev/serial/by-id/ or a Raspberry Pi serial alias\n' "$gpsd_device"
+      failures=$((failures + 1))
+    else
+      printf 'WARN GPSD device path %s is not a recognized stable GPS path\n' "$gpsd_device"
+    fi
   fi
 else
   printf 'FAIL GPSD config readable\n'

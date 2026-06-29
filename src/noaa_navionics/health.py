@@ -404,9 +404,25 @@ def check_gps_device_path(device: str) -> CheckResult:
         resolved = path.resolve()
     except OSError:
         resolved = path
-    if "/dev/serial/by-id/" in str(path):
+    path_text = str(path)
+    if _volatile_usb_device_path(path_text):
+        return CheckResult(
+            "GPS Device",
+            False,
+            f"{path} exists but is not stable; use /dev/serial/by-id/ or a Raspberry Pi serial alias",
+        )
+    if _stable_gps_device_path(path_text):
         return CheckResult("GPS Device", True, f"{path} -> {resolved}")
-    return CheckResult("GPS Device", True, f"{path} exists; prefer a stable /dev/serial/by-id/ path")
+    return CheckResult("GPS Device", True, f"{path} exists")
+
+
+def _stable_gps_device_path(path: str) -> bool:
+    return path.startswith("/dev/serial/by-id/") or path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+
+
+def _volatile_usb_device_path(path: str) -> bool:
+    name = Path(path).name
+    return name.startswith("ttyUSB") or name.startswith("ttyACM")
 
 
 def check_gps_device(
