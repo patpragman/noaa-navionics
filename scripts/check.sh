@@ -62,6 +62,7 @@ grep -q 'def _process_state_from_stat_text' src/noaa_navionics/opencpn.py
 grep -q '_process_state_from_stat_text' tests/test_downloader.py
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
+grep -q 'Environment=NOAA_NAVIONICS_GPS_SECONDS=60' systemd/noaa-navionics-preflight.service
 grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-preflight.service
 grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh

@@ -8,7 +8,7 @@ log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 launcher_lock_dir="${HOME}/.cache/noaa-navionics/chartplotter.launch.lock"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
-gps_seconds=10
+gps_seconds=60
 warning_seconds=8
 readiness_attempts=3
 readiness_retry_delay=10
@@ -88,8 +88,8 @@ load_launcher_settings() {
   opencpn_restart_delay="${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-$opencpn_restart_delay}"
   start_on_failed_text="${NOAA_NAVIONICS_START_ON_FAILED_READINESS:-${start_on_failed_text:-no}}"
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 10 seconds." >&2
-    gps_seconds=10
+    echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 60 seconds." >&2
+    gps_seconds=60
   fi
   if [[ ! "$warning_seconds" =~ ^[0-9]+$ ]]; then
     echo "Invalid NOAA_NAVIONICS_WARNING_SECONDS=${warning_seconds}; using 8 seconds." >&2

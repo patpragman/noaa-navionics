@@ -869,7 +869,7 @@ def _service_readiness_checks(
                             "--output",
                             "noaa-navionics/status.json",
                         ],
-                        "Environment": "NOAA_NAVIONICS_GPS_SECONDS=10",
+                        "Environment": "NOAA_NAVIONICS_GPS_SECONDS=60",
                         "EnvironmentFiles": "noaa-navionics/launcher.env",
                     },
                 ),

@@ -18,7 +18,7 @@ EOF
 
 target=""
 require_chartplotter_started=0
-gps_seconds=10
+gps_seconds=60
 opencpn_restarts=3
 opencpn_restart_delay=5
 expected_gps_device=""
@@ -216,7 +216,7 @@ launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_attempts=3
 status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
-gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-10}"
+gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-60}"
 chartplotter_start_timeout=120
 chartplotter_start_interval=5
 opencpn_stability_seconds=10
@@ -433,10 +433,10 @@ if expected_launcher_env_path:
             f"status report launcher settings values {values!r} do not match launcher environment {actual_values!r}"
         )
     gps_wait = str(values.get("NOAA_NAVIONICS_GPS_SECONDS", "")).strip()
-    if gps_wait != os.environ.get("NOAA_NAVIONICS_GPS_SECONDS", "10"):
+    if gps_wait != os.environ.get("NOAA_NAVIONICS_GPS_SECONDS", "60"):
         raise SystemExit(
             f"status report launcher GPS wait {gps_wait} does not match verification wait "
-            f"{os.environ.get('NOAA_NAVIONICS_GPS_SECONDS', '10')}"
+            f"{os.environ.get('NOAA_NAVIONICS_GPS_SECONDS', '60')}"
         )
     restart_attempts = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "")).strip()
     expected_restart_attempts = os.environ.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "3")
@@ -1612,8 +1612,8 @@ check "preflight service loaded wants track logger" sh -c 'systemctl --user show
 check "preflight service loaded after track logger" sh -c 'systemctl --user show noaa-navionics-preflight.service -p After 2>/dev/null | grep -Fq noaa-navionics-track.service'
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
-check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=10' "$preflight_service"
-check "preflight service loaded GPS wait default" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Environment 2>/dev/null | grep -Fq "NOAA_NAVIONICS_GPS_SECONDS=10"'
+check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=60' "$preflight_service"
+check "preflight service loaded GPS wait default" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Environment 2>/dev/null | grep -Fq "NOAA_NAVIONICS_GPS_SECONDS=60"'
 check "preflight service GPS wait config" grep -Fxq 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' "$preflight_service"
 check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS} --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
 check "preflight service loaded status report" sh -c 'loaded="$(systemctl --user show noaa-navionics-preflight.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics status-report" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--gps-seconds" && printf "%s\n" "$loaded" | grep -Fq -- "--output" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/status.json"'
