@@ -893,6 +893,11 @@ grep -q 'track service loaded type' scripts/verify_pi.sh
 grep -q 'preflight service loaded type' scripts/verify_pi.sh
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
+grep -q 'UMask=0077' systemd/noaa-navionics-track.service
+grep -q 'track service private track files' scripts/verify_pi.sh
+grep -q 'track service loaded private track files' scripts/verify_pi.sh
+grep -q 'service-created track files use a private `0077` umask' README.md
+grep -q 'service-created track files use a private `0077` umask' docs/sailboat-pi.md
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
