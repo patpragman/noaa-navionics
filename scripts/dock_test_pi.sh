@@ -40,6 +40,7 @@ remote_dir="~/noaa-navionics"
 device=""
 skip_deploy=0
 no_reboot=0
+skip_autologin=0
 timeout=180
 deploy_args=()
 provision_args=()
@@ -115,7 +116,12 @@ while [[ $# -gt 0 ]]; do
       skip_deploy=1
       shift
       ;;
-    --skip-autologin|--skip-gps-time)
+    --skip-autologin)
+      skip_autologin=1
+      provision_args+=("$1")
+      shift
+      ;;
+    --skip-gps-time)
       provision_args+=("$1")
       shift
       ;;
@@ -147,6 +153,14 @@ require_positive_integer "--timeout" "$timeout"
 
 if [[ "$skip_deploy" -eq 0 && -z "$device" ]]; then
   echo "--device is required unless --skip-deploy is used" >&2
+  exit 2
+fi
+
+if [[ "$skip_autologin" -eq 1 && "$no_reboot" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+--skip-autologin cannot be used for the rebooted dock acceptance test.
+Use --no-reboot for a pre-reboot smoke check, or let provisioning configure desktop autologin so chartplotter autostart can be proven after reboot.
+EOF
   exit 2
 fi
 

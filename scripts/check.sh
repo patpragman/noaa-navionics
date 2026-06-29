@@ -433,6 +433,7 @@ grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.s
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
+grep -q -- '--skip-autologin cannot be used for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 
 install_output="$(mktemp)"
 provision_output="$(mktemp)"
@@ -559,6 +560,17 @@ if [[ "$dock_code" -ne 2 ]]; then
   echo "expected dock_test_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --skip-autologin >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject --skip-autologin for rebooted dock test with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--skip-autologin cannot be used for the rebooted dock acceptance test' "$dock_output"
 
 set +e
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf relative.conf >"$gpsd_output" 2>&1
