@@ -2905,6 +2905,14 @@ class GpsTests(unittest.TestCase):
             [],
         )
 
+    def test_parse_nmea_rejects_malformed_coordinate_numbers(self):
+        bad_minutes = "$GPGGA,123519,4867.000,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+        bad_number = "$GPRMC,123519,A,48XX.038,N,01131.000,E,022.4,084.4,230394,003.1,W"
+
+        self.assertIsNone(parse_nmea_sentence(bad_minutes))
+        self.assertIsNone(parse_nmea_sentence(bad_number))
+        self.assertEqual(list(iter_fixes([bad_minutes, bad_number])), [])
+
     def test_iter_fixes_merges_gga_and_rmc(self):
         fixes = list(
             iter_fixes(

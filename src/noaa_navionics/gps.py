@@ -409,8 +409,13 @@ def _parse_lat_lon(value: str, hemisphere: str, *, latitude: bool) -> Optional[f
         if hemisphere not in ("E", "W"):
             return None
         split_at = 3
-    degrees = float(value[:split_at])
-    minutes = float(value[split_at:])
+    try:
+        degrees = float(value[:split_at])
+        minutes = float(value[split_at:])
+    except ValueError:
+        return None
+    if minutes < 0.0 or minutes >= 60.0:
+        return None
     decimal = degrees + minutes / 60
     if hemisphere in ("S", "W"):
         decimal = -decimal
