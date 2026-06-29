@@ -19,6 +19,40 @@ bash -n \
   scripts/dock_test_pi.sh \
   scripts/check.sh
 
+grep -q 'unterminated Python heredoc' scripts/check.sh
+
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+scripts = [
+    Path("scripts/install_raspberry_pi.sh"),
+    Path("scripts/verify_pi.sh"),
+    Path("scripts/start_chartplotter.sh"),
+    Path("scripts/configure_gpsd.sh"),
+    Path("scripts/configure_gps_time.sh"),
+]
+for path in scripts:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if not re.search(r"<<\s*'PY'\s*$", line):
+            index += 1
+            continue
+        start = index + 1
+        block = []
+        index += 1
+        while index < len(lines) and lines[index] != "PY":
+            block.append(lines[index])
+            index += 1
+        if index >= len(lines):
+            raise SystemExit(f"{path}:{start}: unterminated Python heredoc")
+        source = "\n".join(block) + "\n"
+        compile(source, f"{path}:heredoc:{start + 1}", "exec")
+        index += 1
+PY
+
 grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
