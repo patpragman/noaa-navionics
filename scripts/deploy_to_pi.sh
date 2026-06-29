@@ -51,6 +51,10 @@ validate_ssh_target() {
     echo "SSH target must be user@host: $value" >&2
     exit 2
   fi
+  if [[ "$host_part" == *:* || "$host_part" == */* ]]; then
+    echo "SSH target must be plain user@host without paths or ports: $value" >&2
+    exit 2
+  fi
   if [[ "$user_part" == "root" ]]; then
     cat >&2 <<'EOF'
 Do not deploy to root@.

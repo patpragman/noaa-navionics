@@ -13,7 +13,7 @@ This project is the chart-data, GPS-check, and operations wrapper for a Raspberr
 - Raspberry Pi OS with Desktop/LightDM for unattended OpenCPN startup
 
 Run the install, deploy, GPS setup, provisioning, verification, and dock-test scripts as the Pi desktop user, not `root`. The scripts reject root-owned workflows so user services, charts, GPX tracks, and LightDM autologin are tied to the real helm account.
-Use an explicit `user@host` SSH target for deployment, verification, and dock tests. If you override the SSH deploy directory, use a dedicated `noaa-navionics` directory. The deploy scripts reject broad paths such as `/`, `~`, `/home`, or unrelated directory names because deployment uses `rsync --delete`.
+Use an explicit plain `user@host` SSH target for deployment, verification, and dock tests; do not use scp-style `user@host:path` targets or append ports. If you override the SSH deploy directory, use a dedicated `noaa-navionics` directory. The deploy scripts reject broad paths such as `/`, `~`, `/home`, or unrelated directory names because deployment uses `rsync --delete`.
 
 ## Install Packages
 
