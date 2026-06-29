@@ -486,7 +486,7 @@ def _check_manifest_download_url(manifest: dict[str, object]) -> Optional[CheckR
         return CheckResult(
             "Manifest",
             False,
-            f"manifest download URL {download_url} does not match package filename from {package_url}",
+            f"manifest download URL {download_url} does not match package filename from {package_url} or uses a non-HTTPS redirect",
         )
     return None
 
@@ -496,7 +496,7 @@ def _download_url_matches_package(download_url: str, package_url: str) -> bool:
         return True
     parsed_download = urlparse(download_url)
     parsed_package = urlparse(package_url)
-    if parsed_download.scheme.lower() not in {"http", "https"}:
+    if parsed_download.scheme.lower() != "https":
         return False
     download_filename = Path(parsed_download.path).name
     package_filename = Path(parsed_package.path).name

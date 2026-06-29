@@ -262,7 +262,7 @@ def download_url_matches_package(download_url, package_url):
         return True
     parsed_download = urlparse(download_url)
     parsed_package = urlparse(package_url)
-    if parsed_download.scheme.lower() not in {"http", "https"}:
+    if parsed_download.scheme.lower() != "https":
         return False
     download_filename = Path(parsed_download.path).name
     package_filename = Path(parsed_package.path).name
@@ -462,7 +462,7 @@ if expected_config_path:
     ):
         raise SystemExit(
             f"status report manifest download URL {manifest_download_url} "
-            f"does not match configured package filename from {expected_package_source_url}"
+            f"does not match configured package filename from {expected_package_source_url} or uses a non-HTTPS redirect"
         )
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
     if download_path.name != manifest_package_filename:
