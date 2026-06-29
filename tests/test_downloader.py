@@ -2523,6 +2523,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("services", report)
             self.assertIn("system_services", report)
             self.assertIn("unit_files", report)
+            self.assertIn("user", report)
             self.assertIn("launcher_settings", report)
             self.assertIn("opencpn_config", report)
             self.assertIn("desktop", report)
@@ -2579,6 +2580,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn(f"extract_path: {cell.parent}", text)
             self.assertIn("Service Checks:", text)
             self.assertIn("System Services:", text)
+            self.assertIn("User:", text)
             self.assertIn("User Unit Files:", text)
             self.assertIn("Launcher Settings:", text)
             self.assertIn("Track Log:", text)
@@ -3051,6 +3053,32 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(launcher_check.ok)
         self.assertIn("START_ON_FAILED_READINESS is enabled", launcher_check.detail)
+
+    def test_service_readiness_checks_include_user_linger(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(
+            services,
+            system_services,
+            user={"name": "pi", "uid": 1000, "linger": "no"},
+            gps_mode="gpsd",
+        )
+        linger_check = next(check for check in checks if check.name == "User Linger")
+
+        self.assertFalse(linger_check.ok)
+        self.assertIn("linger=no", linger_check.detail)
 
     def test_service_readiness_checks_include_desktop_startup(self):
         services = {

@@ -840,6 +840,12 @@ grep -q 'RandomizedDelayUSec.*30min' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Track Log' src/noaa_navionics/report.py
+grep -q 'def _user_summary' src/noaa_navionics/report.py
+grep -q 'loginctl", "show-user"' src/noaa_navionics/report.py
+grep -q 'User Linger' src/noaa_navionics/report.py
+grep -q 'status report user linger' scripts/verify_pi.sh
+grep -q '"User Linger"' scripts/verify_pi.sh
+grep -q 'test_service_readiness_checks_include_user_linger' tests/test_downloader.py
 grep -q 'def _track_log_summary' src/noaa_navionics/report.py
 grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py

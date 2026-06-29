@@ -502,6 +502,17 @@ if expected_launcher_env_path:
         value = str(values.get(key, "")).strip()
         if value and (not value.isdigit() or int(value) < 0):
             raise SystemExit(f"status report launcher settings contain invalid {key}={value}")
+user = report.get("user")
+if not isinstance(user, dict):
+    raise SystemExit("status report has no user section")
+status_user = str(user.get("name", "")).strip()
+if status_user != os.environ.get("USER", ""):
+    raise SystemExit(
+        f"status report user {status_user or '<missing>'} does not match {os.environ.get('USER', '')}"
+    )
+status_linger = str(user.get("linger", "")).strip()
+if status_linger != "yes":
+    raise SystemExit(f"status report user linger={status_linger or '<missing>'}, expected yes")
 if expected_config_path:
     parser = ConfigParser()
     if not parser.read(Path(expected_config_path).expanduser()):
@@ -901,6 +912,7 @@ required_service_checks = {
     "Boot Readiness Run",
     "Desktop Startup",
     "Launcher Settings",
+    "User Linger",
     "GPSD Socket",
     "GPSD Service",
     "Chrony Service",

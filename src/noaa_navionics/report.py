@@ -116,6 +116,7 @@ def build_status_report(
     services = _service_summary()
     system_services = _system_service_summary()
     unit_files = _user_unit_file_summary()
+    user = _user_summary()
     launcher_settings = _launcher_settings_summary()
     opencpn_config = _opencpn_config_summary()
     desktop = _desktop_summary()
@@ -127,6 +128,7 @@ def build_status_report(
         services,
         system_services,
         unit_files=unit_files,
+        user=user,
         launcher_settings=launcher_settings,
         desktop=desktop,
         gps_mode=gps_mode,
@@ -146,6 +148,7 @@ def build_status_report(
         "config_path": str(Path(config_path).expanduser()),
         "config": _config_summary(app_config),
         "manifest": _manifest_summary(app_config.chart_output),
+        "user": user,
         "services": services,
         "system_services": system_services,
         "unit_files": unit_files,
@@ -259,6 +262,12 @@ def format_status_text(report: dict[str, object]) -> str:
         ):
             if key in manifest:
                 lines.append(f"{key}: {manifest[key]}")
+    user = report.get("user", {})
+    if isinstance(user, dict) and user:
+        lines.extend(["", "User:"])
+        lines.append(
+            f"name={user.get('name', '')} uid={user.get('uid', '')} linger={user.get('linger', '')}".rstrip()
+        )
     services = report.get("services", {})
     if isinstance(services, dict) and services:
         lines.extend(["", "Services:"])
@@ -656,6 +665,40 @@ def _system_service_summary() -> dict[str, object]:
     return summary
 
 
+def _user_summary() -> dict[str, object]:
+    name = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+    summary: dict[str, object] = {"name": name, "uid": os.getuid()}
+    if not name:
+        summary["error"] = "USER is not set"
+        return summary
+    if shutil.which("loginctl") is None:
+        summary["error"] = "loginctl not found"
+        return summary
+    try:
+        completed = subprocess.run(
+            ["loginctl", "show-user", name, "-p", "Linger"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except Exception as exc:
+        summary["error"] = str(exc)
+        return summary
+    output = completed.stdout.strip() or completed.stderr.strip()
+    if completed.returncode != 0:
+        summary["error"] = output or f"exit {completed.returncode}"
+        return summary
+    for line in completed.stdout.splitlines():
+        if line.startswith("Linger="):
+            summary["linger"] = line.split("=", 1)[1].strip()
+            break
+    if "linger" not in summary:
+        summary["error"] = output or "loginctl did not report Linger"
+    return summary
+
+
 def _user_unit_file_summary() -> dict[str, object]:
     unit_dir = Path.home() / ".config/systemd/user"
     summary: dict[str, object] = {"directory": str(unit_dir)}
@@ -777,6 +820,7 @@ def _service_readiness_checks(
     system_services: dict[str, object],
     *,
     unit_files: Optional[dict[str, object]] = None,
+    user: Optional[dict[str, object]] = None,
     launcher_settings: Optional[dict[str, object]] = None,
     desktop: Optional[dict[str, object]] = None,
     gps_mode: str,
@@ -926,6 +970,8 @@ def _service_readiness_checks(
                 ),
             ]
         )
+    if user is not None:
+        checks.append(_user_linger_check(user))
     if unit_files is not None:
         checks.extend(
             [
@@ -982,6 +1028,17 @@ def _service_readiness_checks(
             )
         )
     return checks
+
+
+def _user_linger_check(summary: dict[str, object]) -> CheckResult:
+    name = str(summary.get("name", "")).strip()
+    error = str(summary.get("error", "")).strip()
+    if error:
+        return CheckResult("User Linger", False, f"{name or '<unknown>'}: {error}")
+    linger = str(summary.get("linger", "")).strip()
+    if linger != "yes":
+        return CheckResult("User Linger", False, f"{name or '<unknown>'} linger={linger or '<missing>'}, expected yes")
+    return CheckResult("User Linger", True, f"{name} has linger enabled for reboot-persistent user services")
 
 
 def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
