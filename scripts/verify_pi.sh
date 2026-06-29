@@ -733,6 +733,7 @@ required_service_checks = {
     "Chart Timer",
     "Chart Timer Install",
     "Chart Timer Settings",
+    "Track Log",
     "Track Logger",
     "Track Logger Install",
     "Track Logger Settings",
@@ -778,6 +779,18 @@ if any(not isinstance(check, dict) or check.get("ok") is not True for check in c
     raise SystemExit("status report contains a failed readiness check")
 if any(not isinstance(check, dict) or check.get("ok") is not True for check in service_checks):
     raise SystemExit("status report contains a failed service check")
+track_log = report.get("track_log")
+if not isinstance(track_log, dict):
+    raise SystemExit("status report has no track_log section")
+if track_log.get("ok") is not True:
+    raise SystemExit(f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")
+latest_track_path = str(track_log.get("latest_path", "")).strip()
+if not latest_track_path:
+    raise SystemExit("status report track_log has no latest_path")
+for field in ("latest_latitude", "latest_longitude", "age_seconds"):
+    value = track_log.get(field)
+    if not isinstance(value, (int, float)):
+        raise SystemExit(f"status report track_log {field} is not numeric: {value!r}")
 PY
 }
 

@@ -757,6 +757,9 @@ grep -q 'Chart Timer Install' src/noaa_navionics/report.py
 grep -q 'RandomizedDelayUSec.*30min' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Track Logger Install' src/noaa_navionics/report.py
+grep -q 'Track Log' src/noaa_navionics/report.py
+grep -q 'def _track_log_summary' src/noaa_navionics/report.py
+grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Install' src/noaa_navionics/report.py

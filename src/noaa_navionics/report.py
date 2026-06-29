@@ -7,11 +7,13 @@ from typing import Optional
 import json
 import os
 import platform
+import re
 import shutil
 import socket
 import subprocess
 import sys
 import tempfile
+import time
 
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
@@ -112,6 +114,7 @@ def build_status_report(
     launcher_settings = _launcher_settings_summary()
     opencpn_config = _opencpn_config_summary()
     desktop = _desktop_summary()
+    track_log = _track_log_summary(app_config.track_output)
     service_checks = _service_readiness_checks(
         services,
         system_services,
@@ -120,6 +123,7 @@ def build_status_report(
         desktop=desktop,
         gps_mode=gps_mode,
     )
+    service_checks.append(_track_log_readiness_check(track_log))
     return {
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "ok": all(check.ok for check in checks) and all(check.ok for check in service_checks),
@@ -140,6 +144,7 @@ def build_status_report(
         "launcher_settings": launcher_settings,
         "opencpn_config": opencpn_config,
         "desktop": desktop,
+        "track_log": track_log,
         "service_checks": [asdict(check) for check in service_checks],
         "checks": check_rows,
     }
@@ -297,6 +302,17 @@ def format_status_text(report: dict[str, object]) -> str:
             f"graphical_target={desktop.get('graphical_target', '')} "
             f"lightdm_enabled={desktop.get('lightdm_enabled', '')}"
         )
+    track_log = report.get("track_log", {})
+    if isinstance(track_log, dict) and track_log:
+        lines.extend(["", "Track Log:"])
+        latest = track_log.get("latest_path", "")
+        coordinates = ""
+        if "latest_latitude" in track_log and "latest_longitude" in track_log:
+            coordinates = f" {track_log.get('latest_latitude')},{track_log.get('latest_longitude')}"
+        lines.append(
+            f"tracks_dir={track_log.get('tracks_dir', '')} ok={track_log.get('ok', '')} "
+            f"latest={latest}{coordinates} detail={track_log.get('detail', '')}".rstrip()
+        )
     return "\n".join(lines)
 
 
@@ -348,6 +364,159 @@ def _boot_id() -> str:
     except OSError:
         return "unknown"
     return value or "unknown"
+
+
+def _current_boot_epoch() -> Optional[float]:
+    try:
+        uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
+    except (OSError, ValueError, IndexError):
+        return None
+    return time.time() - uptime_seconds
+
+
+def _track_log_summary(
+    track_output: Path,
+    *,
+    max_age_seconds: float = 600.0,
+    now: Optional[datetime] = None,
+    boot_epoch: Optional[float] = None,
+    expected_uid: Optional[int] = None,
+) -> dict[str, object]:
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    current = current.astimezone(timezone.utc)
+    expected_owner = os.getuid() if expected_uid is None else expected_uid
+    boot_time = _current_boot_epoch() if boot_epoch is None else boot_epoch
+    tracks_dir = Path(track_output).expanduser() / "tracks"
+    summary: dict[str, object] = {
+        "tracks_dir": str(tracks_dir),
+        "exists": tracks_dir.exists(),
+        "ok": False,
+        "max_age_seconds": max_age_seconds,
+    }
+    if not tracks_dir.exists():
+        summary["detail"] = f"{tracks_dir} does not exist"
+        return summary
+    try:
+        resolved_tracks_dir = tracks_dir.resolve(strict=True)
+    except OSError as exc:
+        summary["detail"] = f"could not resolve GPX tracks directory {tracks_dir}: {exc}"
+        return summary
+    candidates = []
+    last_detail = ""
+    for path in tracks_dir.glob("track-*.gpx"):
+        if path.is_symlink():
+            last_detail = f"{path} is a symlink, expected a regular GPX track file"
+            continue
+        if not path.is_file():
+            last_detail = f"{path} is not a regular GPX track file"
+            continue
+        try:
+            stat = path.stat()
+            path.resolve(strict=True).relative_to(resolved_tracks_dir)
+        except OSError as exc:
+            last_detail = f"could not inspect {path}: {exc}"
+            continue
+        except ValueError:
+            last_detail = f"{path} resolves outside GPX tracks directory"
+            continue
+        if stat.st_uid != expected_owner:
+            last_detail = f"{path} is owned by uid {stat.st_uid}, expected {expected_owner}"
+            continue
+        candidates.append((stat.st_mtime, path, stat))
+    candidates.sort(reverse=True)
+    for _mtime, path, stat in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            last_detail = f"could not read {path}: {exc}"
+            continue
+        if boot_time is not None and stat.st_mtime + 5 < boot_time:
+            last_detail = f"{path} is older than current boot"
+            continue
+        trackpoints = re.findall(r"<trkpt\b.*?</trkpt>", text, flags=re.DOTALL)
+        if not trackpoints:
+            last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
+            continue
+        newest_time = None
+        newest_position = None
+        for trackpoint in trackpoints:
+            position, position_error = _gpx_trackpoint_position(trackpoint)
+            if position is None:
+                last_detail = f"{path} {position_error}"
+                continue
+            match = re.search(r"<time>([^<]+)</time>", trackpoint)
+            if not match:
+                last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
+                continue
+            timestamp_text = match.group(1).strip()
+            try:
+                track_time = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")).astimezone(timezone.utc)
+            except ValueError:
+                last_detail = f"{path} has an invalid GPX trackpoint timestamp: {timestamp_text}"
+                continue
+            if newest_time is None or track_time > newest_time:
+                newest_time = track_time
+                newest_position = position
+        if newest_time is None or newest_position is None:
+            last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped position yet"
+            continue
+        track_epoch = newest_time.timestamp()
+        if boot_time is not None and track_epoch + 5 < boot_time:
+            last_detail = f"{path} newest GPX trackpoint is older than current boot"
+            continue
+        age = current.timestamp() - track_epoch
+        if age < -30:
+            last_detail = f"{path} newest GPX trackpoint timestamp is in the future by {-age:.0f}s"
+            continue
+        if age > max_age_seconds:
+            last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
+            continue
+        latitude, longitude = newest_position
+        summary.update(
+            {
+                "ok": True,
+                "latest_path": str(path),
+                "latest_time": newest_time.isoformat().replace("+00:00", "Z"),
+                "latest_latitude": latitude,
+                "latest_longitude": longitude,
+                "age_seconds": age,
+                "detail": f"{path} {latitude:.6f},{longitude:.6f}",
+            }
+        )
+        return summary
+    summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
+    return summary
+
+
+def _gpx_trackpoint_position(trackpoint: str) -> tuple[Optional[tuple[float, float]], str]:
+    tag_match = re.search(r"<trkpt\b([^>]*)>", trackpoint)
+    if not tag_match:
+        return None, "GPX trackpoint has no opening trkpt tag"
+    attrs = tag_match.group(1)
+    lat_match = re.search(r'\blat="([^"]+)"', attrs)
+    lon_match = re.search(r'\blon="([^"]+)"', attrs)
+    if not lat_match or not lon_match:
+        return None, "GPX trackpoint is missing latitude or longitude"
+    try:
+        latitude = float(lat_match.group(1))
+        longitude = float(lon_match.group(1))
+    except ValueError:
+        return None, f"GPX trackpoint has non-numeric coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+    if not (-90.0 <= latitude <= 90.0):
+        return None, f"GPX trackpoint latitude is outside -90..90: {latitude}"
+    if not (-180.0 <= longitude <= 180.0):
+        return None, f"GPX trackpoint longitude is outside -180..180: {longitude}"
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        return None, "GPX trackpoint has invalid 0,0 coordinates"
+    return (latitude, longitude), ""
+
+
+def _track_log_readiness_check(track_log: dict[str, object]) -> CheckResult:
+    if track_log.get("ok") is True:
+        return CheckResult("Track Log", True, str(track_log.get("detail", "recent GPX trackpoint found")))
+    return CheckResult("Track Log", False, str(track_log.get("detail", "no recent GPX trackpoint found")))
 
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:

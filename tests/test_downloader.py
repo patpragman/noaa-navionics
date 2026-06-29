@@ -97,6 +97,8 @@ from noaa_navionics.report import (
     _install_wanted_by_targets,
     _launcher_settings_check,
     _service_readiness_checks,
+    _track_log_readiness_check,
+    _track_log_summary,
 )
 
 
@@ -2471,6 +2473,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("launcher_settings", report)
             self.assertIn("opencpn_config", report)
             self.assertIn("desktop", report)
+            self.assertIn("track_log", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["config"]["extract"], True)
@@ -2490,6 +2493,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["lightdm_autologin"]["values"]["autologin-user-timeout"], "0")
             self.assertEqual(report["desktop"]["graphical_target"], "graphical.target")
             self.assertEqual(report["desktop"]["lightdm_enabled"], "enabled")
+            self.assertEqual(report["track_log"]["tracks_dir"], str(charts / "tracks"))
             self.assertEqual(report["manifest"]["path"], str(manifest))
             self.assertEqual(report["manifest"]["exists"], True)
             self.assertEqual(report["manifest"]["created_at"], now)
@@ -2524,9 +2528,69 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("System Services:", text)
             self.assertIn("User Unit Files:", text)
             self.assertIn("Launcher Settings:", text)
+            self.assertIn("Track Log:", text)
             output = root / "status.json"
             write_status_report(report, output)
             self.assertTrue(output.exists())
+
+    def test_track_log_summary_accepts_recent_valid_trackpoint(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "tracks" / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertTrue(summary["ok"])
+            self.assertEqual(summary["latest_path"], str(track_path))
+            self.assertAlmostEqual(summary["latest_latitude"], 61.2181)
+            self.assertAlmostEqual(summary["latest_longitude"], -149.9003)
+            self.assertTrue(check.ok)
+            self.assertIn("61.218100", check.detail)
+
+    def test_track_log_summary_rejects_stale_trackpoint(self):
+        timestamp = datetime.now(timezone.utc) - timedelta(seconds=700)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "tracks" / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+
+            summary = _track_log_summary(root, now=timestamp + timedelta(seconds=700), boot_epoch=None)
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("stale", check.detail)
+
+    def test_track_log_summary_rejects_symlinked_track_file(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            real_track = root / "real.gpx"
+            with GPXTrackLogger(real_track) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+            symlink_track = tracks / "track-20260629.gpx"
+            try:
+                symlink_track.symlink_to(real_track)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            summary = _track_log_summary(root, now=timestamp + timedelta(seconds=5), boot_epoch=None)
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("symlink", check.detail)
 
     def test_write_status_report_does_not_reuse_fixed_part_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
