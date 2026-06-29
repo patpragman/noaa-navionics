@@ -85,6 +85,52 @@ install_root_file_atomic() {
   sync_path "$target"
 }
 
+validate_lightdm_autologin_path() {
+  python3 - "$lightdm_dir" "$lightdm_conf_dir" "$autologin_conf" "$dry_run" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+lightdm_dir = Path(sys.argv[1])
+conf_dir = Path(sys.argv[2])
+target = Path(sys.argv[3])
+dry_run = sys.argv[4] == "1"
+
+def check_directory(path: Path, label: str, *, required: bool) -> None:
+    if path.is_symlink():
+        raise SystemExit(f"{label} is a symlink: {path}")
+    if not path.exists():
+        if required:
+            raise SystemExit(f"{label} does not exist: {path}")
+        return
+    if not path.is_dir():
+        raise SystemExit(f"{label} is not a directory: {path}")
+    stat_result = path.stat()
+    mode = stat_result.st_mode & 0o777
+    if not dry_run and stat_result.st_uid != 0:
+        raise SystemExit(f"{label} {path} is owned by uid {stat_result.st_uid}, expected root")
+    if mode & 0o022:
+        raise SystemExit(f"{label} {path} has permissions {mode:04o}, expected no group/other write bits")
+
+check_directory(lightdm_dir, "LightDM config directory", required=not dry_run)
+check_directory(conf_dir, "LightDM autologin directory", required=False)
+if target.is_symlink():
+    raise SystemExit(f"LightDM autologin config is a symlink: {target}")
+if target.exists():
+    if not target.is_file():
+        raise SystemExit(f"LightDM autologin config is not a regular file: {target}")
+    stat_result = target.stat()
+    mode = stat_result.st_mode & 0o777
+    if not dry_run and stat_result.st_uid != 0:
+        raise SystemExit(f"LightDM autologin config {target} is owned by uid {stat_result.st_uid}, expected root")
+    if mode & 0o022:
+        raise SystemExit(
+            f"LightDM autologin config {target} has permissions {mode:04o}, "
+            "expected no group/other write bits"
+        )
+PY
+}
+
 session_is_safe() {
   [[ "$1" =~ ^[A-Za-z0-9._+-]+$ ]]
 }
@@ -228,7 +274,7 @@ PY
   fi
 fi
 
-lightdm_dir="/etc/lightdm"
+lightdm_dir="${NOAA_NAVIONICS_LIGHTDM_DIR:-/etc/lightdm}"
 lightdm_conf_dir="${lightdm_dir}/lightdm.conf.d"
 autologin_conf="${lightdm_conf_dir}/50-noaa-navionics-autologin.conf"
 
@@ -240,6 +286,7 @@ EOF
   exit 2
 fi
 
+validate_lightdm_autologin_path
 choose_xsession
 
 tmp="$(mktemp)"

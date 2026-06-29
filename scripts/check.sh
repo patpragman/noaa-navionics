@@ -578,6 +578,9 @@ grep -q 'Refusing to configure graphical autologin for root' scripts/configure_d
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
+grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
+grep -q 'has permissions {mode:04o}, expected no group/other write bits' scripts/configure_desktop_autologin.sh
+grep -q 'LightDM autologin config is a symlink' scripts/configure_desktop_autologin.sh
 grep -q 'pwd.getpwnam' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user home does not exist' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user does not own home directory' scripts/configure_desktop_autologin.sh
@@ -1185,6 +1188,41 @@ grep -q 'Configured graphical autologin for' "$install_output"
 grep -q 'strict chartplotter-started mode, verification also requires LightDM to be active' README.md
 grep -q 'requires LightDM to be active' docs/sailboat-pi.md
 grep -q 'using X11 session LXDE-pi' "$install_output"
+
+unsafe_lightdm_dir="$tmpdir/unsafe-lightdm"
+mkdir -p "$unsafe_lightdm_dir/lightdm.conf.d"
+chmod 0777 "$unsafe_lightdm_dir/lightdm.conf.d"
+set +e
+NOAA_NAVIONICS_LIGHTDM_DIR="$unsafe_lightdm_dir" \
+  scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" --session LXDE-pi >"$install_output" 2>&1
+desktop_code=$?
+set -e
+chmod 0755 "$unsafe_lightdm_dir/lightdm.conf.d"
+if [[ "$desktop_code" -eq 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh to reject an unsafe LightDM autologin directory" >&2
+  exit 1
+fi
+grep -q 'expected no group/other write bits' "$install_output"
+! grep -q 'Would write' "$install_output"
+
+lightdm_real_conf="$tmpdir/lightdm-real.conf"
+lightdm_link_dir="$tmpdir/lightdm-link"
+mkdir -p "$lightdm_link_dir/lightdm.conf.d"
+printf '[Seat:*]\n' >"$lightdm_real_conf"
+ln -s "$lightdm_real_conf" "$lightdm_link_dir/lightdm.conf.d/50-noaa-navionics-autologin.conf"
+set +e
+NOAA_NAVIONICS_LIGHTDM_DIR="$lightdm_link_dir" \
+  scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" --session LXDE-pi >"$install_output" 2>&1
+desktop_code=$?
+set -e
+if [[ "$desktop_code" -eq 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh to reject a symlinked LightDM autologin config" >&2
+  exit 1
+fi
+grep -q 'LightDM autologin config is a symlink' "$install_output"
+! grep -q 'Would write' "$install_output"
 
 set +e
 scripts/provision_sailboat_pi.sh --help >"$provision_output" 2>&1
