@@ -299,6 +299,14 @@ EOF
   exit 2
 fi
 
+if [[ "$skip_autologin" -eq 1 && "$skip_services" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+--skip-autologin requires --skip-services.
+Readiness verifies desktop startup, so services and chartplotter autostart must be deployed together for unattended startup.
+EOF
+  exit 2
+fi
+
 validate_remote_dir "$remote_dir"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

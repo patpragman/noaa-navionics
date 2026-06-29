@@ -182,6 +182,7 @@ grep -q -- '--skip-gps-time' scripts/dock_test_pi.sh
 grep -q 'install_args+=("--no-services")' scripts/deploy_to_pi.sh
 grep -q 'install_args+=("$1")' scripts/deploy_to_pi.sh
 grep -q -- '--skip-services requires --skip-autologin' scripts/deploy_to_pi.sh
+grep -q -- '--skip-autologin requires --skip-services' scripts/deploy_to_pi.sh
 grep -Fq 'scripts/install_raspberry_pi.sh ${remote_install_args[*]}' scripts/deploy_to_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
@@ -802,6 +803,7 @@ grep -q 'Custom --config path does not match the unattended onboard config' scri
 grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
 grep -q -- '--skip-services requires --skip-autologin' scripts/provision_sailboat_pi.sh
+grep -q -- '--skip-autologin requires --skip-services' scripts/provision_sailboat_pi.sh
 grep -q 'configure_gps_time.sh' scripts/provision_sailboat_pi.sh
 grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
@@ -1208,6 +1210,17 @@ fi
 grep -q -- '--skip-services requires --skip-autologin' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --skip-autologin >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject --skip-autologin without --skip-services with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--skip-autologin requires --skip-services' "$deploy_output"
+
+set +e
 scripts/provision_sailboat_pi.sh --device /dev/ttyUSB0 >"$provision_output" 2>&1
 provision_code=$?
 set -e
@@ -1499,9 +1512,23 @@ set +e
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
-  --no-device-check \
   --device /dev/serial/by-id/mock-gps \
   --skip-autologin >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-autologin without --skip-services with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--skip-autologin requires --skip-services' "$provision_output"
+
+set +e
+scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
 provision_code=$?
 set -e
 if [[ "$provision_code" -ne 2 ]]; then
@@ -1518,8 +1545,7 @@ HOME="$skip_gpsd_home" scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
   --skip-gpsd \
-  --skip-sync \
-  --skip-autologin >"$provision_output" 2>&1
+  --skip-sync >"$provision_output" 2>&1
 provision_code=$?
 set -e
 if [[ "$provision_code" -ne 2 ]]; then
@@ -1558,8 +1584,7 @@ HOME="$skip_gpsd_mismatch_home" scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
   --skip-gpsd \
-  --device /dev/serial/by-id/mock-gps \
-  --skip-autologin >"$provision_output" 2>&1
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
 provision_code=$?
 set -e
 if [[ "$provision_code" -ne 2 ]]; then
@@ -1579,8 +1604,7 @@ HOME="$skip_gps_time_home" scripts/provision_sailboat_pi.sh \
   --dry-run \
   --device /dev/serial/by-id/mock-gps \
   --skip-gps-time \
-  --skip-sync \
-  --skip-autologin >"$provision_output" 2>&1
+  --skip-sync >"$provision_output" 2>&1
 provision_code=$?
 set -e
 if [[ "$provision_code" -ne 2 ]]; then
@@ -1599,8 +1623,7 @@ HOME="$skip_sync_home" scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
   --device /dev/serial/by-id/mock-gps \
-  --skip-sync \
-  --skip-autologin >"$provision_output" 2>&1
+  --skip-sync >"$provision_output" 2>&1
 provision_code=$?
 set -e
 if [[ "$provision_code" -ne 2 ]]; then

@@ -58,7 +58,8 @@ Options:
   --skip-gpsd         Do not configure GPSD
   --skip-sync         Do not download charts
   --skip-services     Do not enable user systemd services
-  --skip-autologin    Do not configure desktop graphical autologin
+  --skip-autologin    Do not configure desktop graphical autologin; requires
+                      --skip-services
   --skip-gps-time     Do not configure chrony to use GPSD time
   --no-device-check   Do not require the GPS device path to exist now; requires
                       --skip-services and --skip-autologin
@@ -346,6 +347,14 @@ if [[ "$skip_services" -eq 1 && "$skip_autologin" -eq 0 ]]; then
   cat >&2 <<'EOF'
 --skip-services requires --skip-autologin.
 Skipping only user services can leave desktop chartplotter autostart enabled without the readiness and track-logging services.
+EOF
+  exit 2
+fi
+
+if [[ "$skip_autologin" -eq 1 && "$skip_services" -eq 0 ]]; then
+  cat >&2 <<'EOF'
+--skip-autologin requires --skip-services.
+Readiness now verifies desktop startup, so services and chartplotter autostart must be provisioned together for unattended startup.
 EOF
   exit 2
 fi
