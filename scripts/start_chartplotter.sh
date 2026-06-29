@@ -13,6 +13,8 @@ warning_seconds=8
 readiness_attempts=3
 readiness_retry_delay=10
 start_on_failed_readiness=0
+opencpn_restarts=3
+opencpn_restart_delay=5
 lock_acquired=0
 
 sync_paths() {
@@ -69,6 +71,12 @@ load_launcher_settings() {
         NOAA_NAVIONICS_START_ON_FAILED_READINESS)
           start_on_failed_text="$value"
           ;;
+        NOAA_NAVIONICS_OPENCPN_RESTARTS)
+          opencpn_restarts="$value"
+          ;;
+        NOAA_NAVIONICS_OPENCPN_RESTART_DELAY)
+          opencpn_restart_delay="$value"
+          ;;
       esac
     done <"$launcher_env"
   fi
@@ -76,6 +84,8 @@ load_launcher_settings() {
   warning_seconds="${NOAA_NAVIONICS_WARNING_SECONDS:-$warning_seconds}"
   readiness_attempts="${NOAA_NAVIONICS_READINESS_ATTEMPTS:-$readiness_attempts}"
   readiness_retry_delay="${NOAA_NAVIONICS_READINESS_RETRY_DELAY:-$readiness_retry_delay}"
+  opencpn_restarts="${NOAA_NAVIONICS_OPENCPN_RESTARTS:-$opencpn_restarts}"
+  opencpn_restart_delay="${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-$opencpn_restart_delay}"
   start_on_failed_text="${NOAA_NAVIONICS_START_ON_FAILED_READINESS:-${start_on_failed_text:-no}}"
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
     echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 10 seconds." >&2
@@ -92,6 +102,14 @@ load_launcher_settings() {
   if [[ ! "$readiness_retry_delay" =~ ^[0-9]+$ ]]; then
     echo "Invalid NOAA_NAVIONICS_READINESS_RETRY_DELAY=${readiness_retry_delay}; using 10 seconds." >&2
     readiness_retry_delay=10
+  fi
+  if [[ ! "$opencpn_restarts" =~ ^[0-9]+$ ]]; then
+    echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts}; using 3 restarts." >&2
+    opencpn_restarts=3
+  fi
+  if [[ ! "$opencpn_restart_delay" =~ ^[0-9]+$ ]]; then
+    echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay}; using 5 seconds." >&2
+    opencpn_restart_delay=5
   fi
   case "${start_on_failed_text,,}" in
     1|yes|true|on)
@@ -348,6 +366,43 @@ run_readiness_report() {
   return 1
 }
 
+run_opencpn_supervised() {
+  local restart_count=0
+  local opencpn_pid
+  local opencpn_status
+  while true; do
+    if opencpn_running; then
+      echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
+      return 0
+    fi
+    echo "Launching OpenCPN with ENC processing."
+    opencpn -parse_all_enc &
+    opencpn_pid=$!
+    for _ in 1 2 3 4 5; do
+      if opencpn_running || ! kill -0 "$opencpn_pid" 2>/dev/null; then
+        break
+      fi
+      sleep 1
+    done
+    set +e
+    wait "$opencpn_pid"
+    opencpn_status=$?
+    set -e
+    printf '[%s] OpenCPN exited with status %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$opencpn_status"
+    if [[ "$opencpn_status" -eq 0 ]]; then
+      echo "OpenCPN exited cleanly; not restarting."
+      return 0
+    fi
+    if [[ "$restart_count" -ge "$opencpn_restarts" ]]; then
+      echo "OpenCPN exited with status ${opencpn_status} after ${restart_count} restart(s); no restart attempts remain." >&2
+      return "$opencpn_status"
+    fi
+    restart_count=$((restart_count + 1))
+    echo "Restarting OpenCPN after nonzero exit status ${opencpn_status} (restart ${restart_count}/${opencpn_restarts}) in ${opencpn_restart_delay}s." >&2
+    sleep "$opencpn_restart_delay"
+  done
+}
+
 if [[ ! -x "$bin" ]]; then
   echo "noaa-navionics is not installed at $bin" >&2
   exit 127
@@ -383,23 +438,4 @@ if ! command -v opencpn >/dev/null 2>&1; then
   exit 127
 fi
 
-if opencpn_running; then
-  echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
-  exit 0
-fi
-
-echo "Launching OpenCPN with ENC processing."
-opencpn -parse_all_enc &
-opencpn_pid=$!
-for _ in 1 2 3 4 5; do
-  if opencpn_running || ! kill -0 "$opencpn_pid" 2>/dev/null; then
-    break
-  fi
-  sleep 1
-done
-set +e
-wait "$opencpn_pid"
-opencpn_status=$?
-set -e
-printf '[%s] OpenCPN exited with status %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$opencpn_status"
-exit "$opencpn_status"
+run_opencpn_supervised

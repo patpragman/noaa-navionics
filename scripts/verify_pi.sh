@@ -1394,6 +1394,8 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher fail-open warning label" grep -Fq 'button_text="Start OpenCPN"' "$launcher"
   check "chartplotter launcher dynamic warning button" grep -Fq 'text=button_text' "$launcher"
   check "chartplotter launcher duplicate guard" grep -Fq 'OpenCPN is already running' "$launcher"
+  check "chartplotter launcher OpenCPN restart setting" grep -Fq 'NOAA_NAVIONICS_OPENCPN_RESTARTS' "$launcher"
+  check "chartplotter launcher OpenCPN restart loop" grep -Fq 'Restarting OpenCPN after nonzero exit status' "$launcher"
   check "chartplotter launcher lock" grep -Fq 'chartplotter.launch.lock' "$launcher"
   check "chartplotter launcher lock boot ID" grep -Fq 'current_boot_id' "$launcher"
   check "chartplotter launcher previous-boot lock recovery" grep -Fq 'Launcher lock is from a previous boot; treating lock as stale' "$launcher"
