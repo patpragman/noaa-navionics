@@ -753,6 +753,7 @@ if autologin_index < status_index:
 PY
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'Do not deploy to root@' scripts/deploy_to_pi.sh
+grep -q 'usage()' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
@@ -873,6 +874,17 @@ if [[ "$install_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Unknown argument: --bad-option' "$install_output"
+
+set +e
+scripts/deploy_to_pi.sh --help >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 0 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/deploy_to_pi.sh' "$deploy_output"
 
 set +e
 scripts/deploy_to_pi.sh root@example.invalid --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1

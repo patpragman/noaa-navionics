@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 1 ]]; then
+usage() {
   cat >&2 <<'EOF'
 Usage: scripts/deploy_to_pi.sh user@raspberrypi.local [remote-dir] [--provision --device /dev/serial/by-id/YOUR_GPS]
 
@@ -10,7 +10,16 @@ With --provision, also runs the onboard commissioning sequence on the Pi.
 Refuses a dirty local worktree unless --allow-dirty is passed.
 Nothing is installed or enabled on the local computer.
 EOF
+}
+
+if [[ $# -lt 1 ]]; then
+  usage
   exit 2
+fi
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  usage
+  exit 0
 fi
 
 target="$1"
