@@ -364,7 +364,14 @@ grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised' scripts/verify_pi.sh
+grep -q 'chartplotter launcher cache directory is owned by uid' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock directory is owned by uid' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock is not a directory' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock exists without a readable boot ID file' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock pid is not a regular file' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock boot ID is not a regular file' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock pid file is owned by uid' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock boot ID file is owned by uid' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh

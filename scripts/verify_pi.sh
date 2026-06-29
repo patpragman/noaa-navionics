@@ -1969,6 +1969,9 @@ check_opencpn_stable() {
 
 check_launcher_lock_live() {
   local cache_dir
+  local expected_uid
+  local stat_output
+  local owner_uid
   local cache_mode
   local lock_mode
   local pid_mode
@@ -1978,11 +1981,18 @@ check_launcher_lock_live() {
   local current_boot_id=""
   local lock_boot_id=""
   cache_dir="$(dirname "$launcher_lock")"
+  expected_uid="$(id -u)"
   if [[ -L "$cache_dir" || -L "$launcher_lock" || -L "${launcher_lock}/pid" || -L "${launcher_lock}/boot_id" ]]; then
     printf 'chartplotter launcher lock path contains a symlink: %s\n' "$launcher_lock" >&2
     return 1
   fi
-  cache_mode="$(stat -c '%a' "$cache_dir" 2>/dev/null || true)"
+  stat_output="$(stat -c '%u %a' "$cache_dir" 2>/dev/null || true)"
+  owner_uid="${stat_output%% *}"
+  cache_mode="${stat_output#* }"
+  if [[ -z "$stat_output" || "$owner_uid" != "$expected_uid" ]]; then
+    printf 'chartplotter launcher cache directory is owned by uid %s, expected %s: %s\n' "${owner_uid:-<missing>}" "$expected_uid" "$cache_dir" >&2
+    return 1
+  fi
   if [[ "$cache_mode" != "700" ]]; then
     printf 'chartplotter launcher cache directory has permissions %s, expected 700: %s\n' "${cache_mode:-<missing>}" "$cache_dir" >&2
     return 1
@@ -1991,7 +2001,17 @@ check_launcher_lock_live() {
     printf 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised: %s\n' "$launcher_lock" >&2
     return 1
   fi
-  lock_mode="$(stat -c '%a' "$launcher_lock" 2>/dev/null || true)"
+  if [[ ! -d "$launcher_lock" ]]; then
+    printf 'chartplotter launcher lock is not a directory: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$launcher_lock" 2>/dev/null || true)"
+  owner_uid="${stat_output%% *}"
+  lock_mode="${stat_output#* }"
+  if [[ -z "$stat_output" || "$owner_uid" != "$expected_uid" ]]; then
+    printf 'chartplotter launcher lock directory is owned by uid %s, expected %s: %s\n' "${owner_uid:-<missing>}" "$expected_uid" "$launcher_lock" >&2
+    return 1
+  fi
   if [[ "$lock_mode" != "700" ]]; then
     printf 'chartplotter launcher lock directory has permissions %s, expected 700: %s\n' "${lock_mode:-<missing>}" "$launcher_lock" >&2
     return 1
@@ -2004,12 +2024,32 @@ check_launcher_lock_live() {
     printf 'chartplotter launcher lock exists without a readable boot ID file: %s\n' "$launcher_lock" >&2
     return 1
   fi
-  pid_mode="$(stat -c '%a' "${launcher_lock}/pid" 2>/dev/null || true)"
+  if [[ ! -f "${launcher_lock}/pid" ]]; then
+    printf 'chartplotter launcher lock pid is not a regular file: %s\n' "${launcher_lock}/pid" >&2
+    return 1
+  fi
+  if [[ ! -f "${launcher_lock}/boot_id" ]]; then
+    printf 'chartplotter launcher lock boot ID is not a regular file: %s\n' "${launcher_lock}/boot_id" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "${launcher_lock}/pid" 2>/dev/null || true)"
+  owner_uid="${stat_output%% *}"
+  pid_mode="${stat_output#* }"
+  if [[ -z "$stat_output" || "$owner_uid" != "$expected_uid" ]]; then
+    printf 'chartplotter launcher lock pid file is owned by uid %s, expected %s: %s\n' "${owner_uid:-<missing>}" "$expected_uid" "${launcher_lock}/pid" >&2
+    return 1
+  fi
   if [[ "$pid_mode" != "600" ]]; then
     printf 'chartplotter launcher lock pid file has permissions %s, expected 600: %s\n' "${pid_mode:-<missing>}" "${launcher_lock}/pid" >&2
     return 1
   fi
-  boot_id_mode="$(stat -c '%a' "${launcher_lock}/boot_id" 2>/dev/null || true)"
+  stat_output="$(stat -c '%u %a' "${launcher_lock}/boot_id" 2>/dev/null || true)"
+  owner_uid="${stat_output%% *}"
+  boot_id_mode="${stat_output#* }"
+  if [[ -z "$stat_output" || "$owner_uid" != "$expected_uid" ]]; then
+    printf 'chartplotter launcher lock boot ID file is owned by uid %s, expected %s: %s\n' "${owner_uid:-<missing>}" "$expected_uid" "${launcher_lock}/boot_id" >&2
+    return 1
+  fi
   if [[ "$boot_id_mode" != "600" ]]; then
     printf 'chartplotter launcher lock boot ID file has permissions %s, expected 600: %s\n' "${boot_id_mode:-<missing>}" "${launcher_lock}/boot_id" >&2
     return 1
