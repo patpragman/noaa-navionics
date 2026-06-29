@@ -173,8 +173,15 @@ def parse_gpsd_sky(payload: str) -> Optional[GPSFix]:
     )
 
 
-def iter_gpsd_fixes(host: str = "127.0.0.1", port: int = 2947, timeout: float = 10.0) -> Iterator[GPSFix]:
+def iter_gpsd_fixes(
+    host: str = "127.0.0.1",
+    port: int = 2947,
+    timeout: float = 10.0,
+    *,
+    sky_max_age_seconds: float = 10.0,
+) -> Iterator[GPSFix]:
     latest_sky: Optional[GPSFix] = None
+    latest_sky_monotonic: Optional[float] = None
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.sendall(b'?WATCH={"enable":true,"json":true};\n')
         with sock.makefile("r", encoding="utf-8", errors="ignore") as handle:
@@ -183,12 +190,20 @@ def iter_gpsd_fixes(host: str = "127.0.0.1", port: int = 2947, timeout: float = 
                     sky = parse_gpsd_sky(line)
                     if sky is not None:
                         latest_sky = sky
+                        latest_sky_monotonic = time.monotonic()
                         continue
                     fix = parse_gpsd_tpv(line)
                 except (json.JSONDecodeError, ValueError, TypeError):
                     continue
                 if fix and fix.valid:
-                    yield merge_fixes(latest_sky, fix) if latest_sky is not None else fix
+                    if (
+                        latest_sky is not None
+                        and latest_sky_monotonic is not None
+                        and time.monotonic() - latest_sky_monotonic <= sky_max_age_seconds
+                    ):
+                        yield merge_fixes(latest_sky, fix)
+                    else:
+                        yield fix
 
 
 def _gpsd_used_satellites(data: dict[str, object]) -> Optional[int]:

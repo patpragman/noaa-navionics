@@ -1330,6 +1330,40 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.hdop, 1.8)
         self.assertAlmostEqual(fix.latitude, 61.2181)
 
+    def test_iter_gpsd_fixes_ignores_stale_sky_quality(self):
+        original_socket = gps_module.socket.create_connection
+        original_monotonic = gps_module.time.monotonic
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"SKY","uSat":3,"hdop":9.9}\n'
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":61.2181,"lon":-149.9003}\n'
+                )
+
+        clock_values = iter([100.0, 121.0])
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            gps_module.time.monotonic = lambda: next(clock_values)
+            fix = next(iter_gpsd_fixes(timeout=1, sky_max_age_seconds=10.0))
+        finally:
+            gps_module.socket.create_connection = original_socket
+            gps_module.time.monotonic = original_monotonic
+
+        self.assertIsNone(fix.satellites)
+        self.assertIsNone(fix.hdop)
+        self.assertAlmostEqual(fix.latitude, 61.2181)
+
     def test_check_gps_sample(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
         with tempfile.TemporaryDirectory() as tmpdir:
