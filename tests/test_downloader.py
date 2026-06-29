@@ -593,8 +593,9 @@ class OpenCPNConfigTests(unittest.TestCase):
                 gpsd_host="127.0.0.1",
                 gpsd_port=2947,
                 deadline=None,
+                gpsd_connect_retry=False,
             ):
-                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port))
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, gpsd_connect_retry))
                 return iter([fix])
 
             try:
@@ -606,7 +607,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 1)
-            self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947)])
+            self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947, True)])
             self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 
@@ -645,8 +646,10 @@ class OpenCPNConfigTests(unittest.TestCase):
                 gpsd_host="127.0.0.1",
                 gpsd_port=2947,
                 deadline=None,
+                gpsd_connect_retry=False,
             ):
                 self.assertIsNotNone(deadline)
+                self.assertFalse(gpsd_connect_retry)
                 return iter([fix])
 
             try:
@@ -696,8 +699,9 @@ class OpenCPNConfigTests(unittest.TestCase):
                 gpsd_host="127.0.0.1",
                 gpsd_port=2947,
                 deadline=None,
+                gpsd_connect_retry=False,
             ):
-                calls.append((device, baud, sample, gpsd))
+                calls.append((device, baud, sample, gpsd, gpsd_connect_retry))
                 return iter([fix])
 
             try:
@@ -723,7 +727,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 0)
-            self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False)])
+            self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False, False)])
             self.assertFalse(configured_output.exists())
             self.assertTrue((explicit_output / "tracks" / "track-20260629.gpx").exists())
 
@@ -768,6 +772,49 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("Saved 0 fixes", stdout.getvalue())
             self.assertIn("No usable GPS fixes", stderr.getvalue())
             self.assertFalse(track_output.exists())
+
+    def test_read_fixes_retries_initial_gpsd_connection_for_live_logger(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        calls = []
+        sleeps = []
+        original_iter = cli_module.iter_gpsd_fixes
+        original_sleep = cli_module.time.sleep
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            calls.append((host, port, timeout, max_duration))
+            if len(calls) == 1:
+                raise OSError("connection refused")
+            return iter([fix])
+
+        try:
+            cli_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            cli_module.time.sleep = lambda seconds: sleeps.append(seconds)
+            stderr = StringIO()
+            with redirect_stderr(stderr):
+                fixes = list(
+                    cli_module._read_fixes(
+                        "/dev/serial/by-id/mock-gps",
+                        4800,
+                        None,
+                        gpsd=True,
+                        gpsd_connect_retry=True,
+                        gpsd_retry_delay=0.1,
+                    )
+                )
+        finally:
+            cli_module.iter_gpsd_fixes = original_iter
+            cli_module.time.sleep = original_sleep
+
+        self.assertEqual(fixes, [fix])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(sleeps, [0.1])
+        self.assertIn("GPSD unavailable at 127.0.0.1:2947", stderr.getvalue())
 
 
 class GuiTests(unittest.TestCase):

@@ -395,6 +395,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
                 deadline=deadline,
+                gpsd_connect_retry=use_gpsd and deadline is None and not args.sample,
             )
             fixes = _trackable_fixes(fixes)
             previous_handlers = _install_track_stop_handlers()
@@ -462,6 +463,8 @@ def _read_fixes(
     gpsd_host: str = "127.0.0.1",
     gpsd_port: int = 2947,
     deadline: Optional[float] = None,
+    gpsd_connect_retry: bool = False,
+    gpsd_retry_delay: float = 5.0,
 ):
     if gpsd:
         timeout = 10.0
@@ -469,15 +472,27 @@ def _read_fixes(
         if deadline is not None:
             timeout = max(0.1, deadline - time.monotonic())
             max_duration = timeout
-        for fix in iter_gpsd_fixes(
-            host=gpsd_host,
-            port=gpsd_port,
-            timeout=timeout,
-            max_duration=max_duration,
-        ):
-            if deadline is not None and time.monotonic() > deadline:
-                break
-            yield fix
+        while True:
+            try:
+                for fix in iter_gpsd_fixes(
+                    host=gpsd_host,
+                    port=gpsd_port,
+                    timeout=timeout,
+                    max_duration=max_duration,
+                ):
+                    if deadline is not None and time.monotonic() > deadline:
+                        break
+                    yield fix
+                return
+            except OSError as exc:
+                if not gpsd_connect_retry or deadline is not None:
+                    raise
+                print(
+                    f"GPSD unavailable at {gpsd_host}:{gpsd_port}: {exc}; "
+                    f"retrying in {gpsd_retry_delay:g}s",
+                    file=sys.stderr,
+                )
+                time.sleep(max(0.1, gpsd_retry_delay))
         return
     if sample:
         with Path(sample).expanduser().open(encoding="ascii", errors="ignore") as handle:
