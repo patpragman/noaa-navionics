@@ -994,11 +994,16 @@ class StatusReportTests(unittest.TestCase):
 
             revision = root / "source-revision"
             revision.write_text("abc123\n", encoding="utf-8")
+            boot_id = root / "boot_id"
+            boot_id.write_text("boot-abc\n", encoding="ascii")
             original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+            original_boot_id_path = report_module.BOOT_ID_PATH
             os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
+            report_module.BOOT_ID_PATH = boot_id
             try:
                 report = build_status_report(config_path=config, gps_sample=sample)
             finally:
+                report_module.BOOT_ID_PATH = original_boot_id_path
                 if original_revision_path is None:
                     os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
                 else:
@@ -1008,10 +1013,12 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("system_services", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
+            self.assertEqual(report["host"]["boot_id"], "boot-abc")
             self.assertEqual(report["manifest"]["package"], "Test")
             self.assertFalse(report["ok"])
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
+            self.assertIn("Boot ID: boot-abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("Service Checks:", text)
             self.assertIn("System Services:", text)

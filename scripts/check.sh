@@ -77,6 +77,8 @@ grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
 grep -q 'launcher failed to disable one or more display power settings' scripts/verify_pi.sh
 grep -q 'OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
+grep -q 'boot status report JSON ready' scripts/verify_pi.sh
+grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report missing readiness checks' scripts/verify_pi.sh
 grep -q '"Time Sync"' scripts/verify_pi.sh
@@ -180,6 +182,8 @@ grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
 grep -q 'not a recognized stable GPS path' src/noaa_navionics/health.py
 grep -q 'x11-xserver-utils' src/noaa_navionics/health.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/report.py
+grep -q 'boot_id' src/noaa_navionics/report.py
+grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'if not keep_zip' src/noaa_navionics/downloader.py

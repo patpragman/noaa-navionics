@@ -123,13 +123,16 @@ check_output() {
 
 check_status_report_json() {
   local path="$1"
-  python3 - "$path" <<'PY'
+  local require_current_boot="${2:-0}"
+  python3 - "$path" "$require_current_boot" <<'PY'
+from pathlib import Path
 from datetime import datetime, timezone
 import json
 import os
 import sys
 
 path = sys.argv[1]
+require_current_boot = sys.argv[2] == "1"
 with open(path, encoding="utf-8") as handle:
     report = json.load(handle)
 if report.get("ok") is not True:
@@ -197,6 +200,21 @@ if not isinstance(app, dict):
 actual_revision = str(app.get("source_revision", "unknown"))
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")
+if require_current_boot:
+    host = report.get("host")
+    if not isinstance(host, dict):
+        raise SystemExit("status report has no host section")
+    report_boot_id = str(host.get("boot_id", "")).strip()
+    if not report_boot_id or report_boot_id == "unknown":
+        raise SystemExit("status report has no current boot ID")
+    try:
+        current_boot_id = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+    except OSError as exc:
+        raise SystemExit(f"could not read current boot ID: {exc}") from exc
+    if report_boot_id != current_boot_id:
+        raise SystemExit(
+            f"status report boot ID {report_boot_id} does not match current boot {current_boot_id}"
+        )
 if any(not isinstance(check, dict) or check.get("ok") is not True for check in checks):
     raise SystemExit("status report contains a failed readiness check")
 if any(not isinstance(check, dict) or check.get("ok") is not True for check in service_checks):
@@ -480,6 +498,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   else
     check "OpenCPN running" false
   fi
+  check "boot status report JSON ready" check_status_report_json "$status_report" 1
 fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "$revision_file"

@@ -20,6 +20,7 @@ from . import __version__
 
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
+BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
         "ExecStart",
@@ -89,6 +90,7 @@ def build_status_report(
             "platform": platform.platform(),
             "machine": platform.machine(),
             "python": sys.version.split()[0],
+            "boot_id": _boot_id(),
         },
         "app": _app_summary(),
         "config_path": str(Path(config_path).expanduser()),
@@ -146,6 +148,7 @@ def format_status_text(report: dict[str, object]) -> str:
     lines = [
         f"Generated: {report.get('generated_at', '')}",
         f"Host: {report.get('host', {}).get('name', '')}",
+        f"Boot ID: {report.get('host', {}).get('boot_id', '')}",
         f"App: {report.get('app', {}).get('version', '')} revision {report.get('app', {}).get('source_revision', '')}",
         f"Config: {report.get('config_path', '')}",
         f"Ready: {'yes' if report.get('ok') else 'no'}",
@@ -222,6 +225,14 @@ def _source_revision() -> str:
 def _source_revision_path() -> Path:
     override = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
     return Path(override).expanduser() if override else DEFAULT_SOURCE_REVISION_PATH.expanduser()
+
+
+def _boot_id() -> str:
+    try:
+        value = BOOT_ID_PATH.read_text(encoding="ascii").strip()
+    except OSError:
+        return "unknown"
+    return value or "unknown"
 
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:
