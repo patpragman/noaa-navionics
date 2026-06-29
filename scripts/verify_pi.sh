@@ -511,6 +511,7 @@ required_service_checks = {
     "Boot Readiness Install",
     "Boot Readiness Settings",
     "Boot Readiness Run",
+    "GPSD Socket",
     "GPSD Service",
     "Chrony Service",
 }
@@ -1011,6 +1012,8 @@ check "Chrony service active" systemctl is-active --quiet chrony
 check "Chrony GPSD time source" grep -Fq 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' /etc/chrony/chrony.conf
 check "Chrony usable GPS source" wait_for_chrony_gps_source
 check "GPSD command" command -v gpsd
+check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket
+check "GPSD socket active" systemctl is-active --quiet gpsd.socket
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
 check "GPSD service active" systemctl is-active --quiet gpsd
 check "GPSD config" test -f /etc/default/gpsd

@@ -2145,6 +2145,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2219,6 +2220,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2241,6 +2243,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2266,6 +2269,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2346,6 +2350,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2378,6 +2383,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2411,6 +2417,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2452,6 +2459,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2489,6 +2497,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2525,6 +2534,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2562,6 +2572,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2595,6 +2606,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2616,6 +2628,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2636,6 +2649,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2659,6 +2673,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2679,6 +2694,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2699,6 +2715,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2719,6 +2736,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2739,6 +2757,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "disabled", "active": "active"},
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
@@ -2748,6 +2767,27 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(gpsd_check.ok)
         self.assertIn("disabled", gpsd_check.detail)
+
+    def test_service_readiness_checks_fail_disabled_gpsd_socket(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "disabled", "active": "inactive"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        gpsd_socket_check = next(check for check in checks if check.name == "GPSD Socket")
+
+        self.assertFalse(gpsd_socket_check.ok)
+        self.assertIn("disabled", gpsd_socket_check.detail)
 
     def test_service_readiness_checks_fail_disabled_chrony_service(self):
         services = {
@@ -2759,6 +2799,7 @@ class StatusReportTests(unittest.TestCase):
         }
         system_services = {
             "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
             "gpsd.service": {"enabled": "enabled", "active": "active"},
             "chrony.service": {"enabled": "disabled", "active": "inactive"},
         }

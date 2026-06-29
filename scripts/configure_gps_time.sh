@@ -213,7 +213,7 @@ install_root_file_atomic "$tmp" "$chrony_conf" 0644
 sudo systemctl enable --now chrony
 sudo systemctl restart chrony
 if [[ "$restart_gpsd" -eq 1 ]]; then
-  sudo systemctl restart gpsd
+  sudo systemctl restart gpsd.socket gpsd.service
 fi
 
 cat <<EOF

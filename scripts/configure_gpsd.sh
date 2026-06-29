@@ -235,8 +235,9 @@ if [[ -e /etc/default/gpsd ]]; then
 fi
 
 install_root_file_atomic "$tmp" /etc/default/gpsd 0644
-sudo systemctl enable --now gpsd
-sudo systemctl restart gpsd
+sudo systemctl daemon-reload
+sudo systemctl enable --now gpsd.socket gpsd.service
+sudo systemctl restart gpsd.socket gpsd.service
 
 mkdir -p "$(dirname "$config")"
 python3 - "$config" "$device" <<'PY'

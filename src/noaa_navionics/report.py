@@ -340,7 +340,7 @@ def _service_summary() -> dict[str, object]:
 def _system_service_summary() -> dict[str, object]:
     if shutil.which("systemctl") is None:
         return {"available": False, "detail": "systemctl not found"}
-    units = ["gpsd.service", "chrony.service"]
+    units = ["gpsd.socket", "gpsd.service", "chrony.service"]
     summary: dict[str, object] = {"available": True}
     for unit in units:
         summary[unit] = {
@@ -533,6 +533,15 @@ def _service_readiness_checks(
             ]
         )
     if gps_mode == "gpsd":
+        checks.append(
+            _unit_check(
+                system_services,
+                "gpsd.socket",
+                "GPSD Socket",
+                require_enabled=True,
+                require_active=True,
+            )
+        )
         checks.append(
             _unit_check(
                 system_services,

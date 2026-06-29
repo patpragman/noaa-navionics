@@ -397,9 +397,13 @@ grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
 grep -q 'GPSD device is character device' scripts/verify_pi.sh
+grep -q 'GPSD socket enabled' scripts/verify_pi.sh
+grep -q 'GPSD socket active' scripts/verify_pi.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh
 grep -Fq '"$suffix" != */*' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
+grep -q '"gpsd.socket"' src/noaa_navionics/report.py
+grep -q '"GPSD Socket"' src/noaa_navionics/report.py
 grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
 grep -q 'must contain exactly' src/noaa_navionics/health.py
@@ -426,6 +430,9 @@ grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
 grep -q 'install_root_file_atomic "$tmp" /etc/default/gpsd 0644' scripts/configure_gpsd.sh
+grep -q 'systemctl daemon-reload' scripts/configure_gpsd.sh
+grep -q 'systemctl enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
+grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
@@ -448,6 +455,7 @@ grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
 grep -q 'safe_by_id_chars' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service chrony.service chrony --skip-gps-time' scripts/provision_sailboat_pi.sh
