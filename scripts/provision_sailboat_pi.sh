@@ -15,6 +15,33 @@ gps_seconds=10
 sync_retries=5
 sync_retry_delay=30
 
+sync_paths() {
+  python3 - "$@" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+synced_dirs: set[Path] = set()
+for arg in sys.argv[1:]:
+    path = Path(arg).expanduser()
+    try:
+        with path.open("rb") as handle:
+            os.fsync(handle.fileno())
+    except OSError:
+        continue
+    synced_dirs.add(path.parent)
+for directory in synced_dirs:
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        continue
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+PY
+}
+
 usage() {
   cat >&2 <<'EOF'
 Usage: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS [options]
@@ -187,6 +214,10 @@ run() {
 
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 systemd_user_dir="${HOME}/.config/systemd/user"
+chart_service="${systemd_user_dir}/noaa-navionics.service"
+chart_timer="${systemd_user_dir}/noaa-navionics.timer"
+track_service="${systemd_user_dir}/noaa-navionics-track.service"
+preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 
 run mkdir -p "$(dirname "$config")"
 if [[ ! -f "$config" ]]; then
@@ -231,6 +262,7 @@ if [[ "$skip_services" -eq 0 ]]; then
          "${repo_root}/systemd/noaa-navionics-track.service" \
          "${repo_root}/systemd/noaa-navionics-preflight.service" \
          "$systemd_user_dir/"
+  run sync_paths "$chart_service" "$chart_timer" "$track_service" "$preflight_service"
   run systemctl --user daemon-reload
   run sudo loginctl enable-linger "$USER"
   run systemctl --user enable --now noaa-navionics.timer

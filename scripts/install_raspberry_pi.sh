@@ -14,6 +14,33 @@ enable_services=1
 allow_non_pi=0
 configure_autologin=1
 
+sync_paths() {
+  python3 - "$@" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+synced_dirs: set[Path] = set()
+for arg in sys.argv[1:]:
+    path = Path(arg).expanduser()
+    try:
+        with path.open("rb") as handle:
+            os.fsync(handle.fileno())
+    except OSError:
+        continue
+    synced_dirs.add(path.parent)
+for directory in synced_dirs:
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        continue
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+PY
+}
+
 for arg in "$@"; do
   case "$arg" in
     --skip-apt)
@@ -69,6 +96,9 @@ ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
 install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 install -m 0755 "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
+sync_paths \
+  "${HOME}/.local/bin/noaa-navionics-start-chartplotter" \
+  "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 
 if [[ -f "${repo_root}/.source-revision" ]]; then
   cp "${repo_root}/.source-revision" "$revision_file"
@@ -77,6 +107,7 @@ elif revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null)"; then
 else
   printf 'unknown\n' >"$revision_file"
 fi
+sync_paths "$revision_file"
 
 mkdir -p "$config_dir" "$systemd_user_dir" "$autostart_dir"
 if [[ ! -f "${config_dir}/config.ini" ]]; then
@@ -90,6 +121,12 @@ cp "${repo_root}/systemd/noaa-navionics.service" \
    "$systemd_user_dir/"
 
 install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
+sync_paths \
+  "${systemd_user_dir}/noaa-navionics.service" \
+  "${systemd_user_dir}/noaa-navionics.timer" \
+  "${systemd_user_dir}/noaa-navionics-track.service" \
+  "${systemd_user_dir}/noaa-navionics-preflight.service" \
+  "${autostart_dir}/noaa-navionics-chartplotter.desktop"
 
 if [[ "$configure_autologin" -eq 1 ]]; then
   autologin_args=()

@@ -66,7 +66,7 @@ scripts/install_raspberry_pi.sh --skip-apt
 
 On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
-The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, and configures LightDM graphical autologin for the installing user. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
+The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, and configures LightDM graphical autologin for the installing user. It syncs the installed launchers, source revision file, desktop autostart entry, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 ## Onboard Config
 
@@ -143,7 +143,7 @@ After `scripts/install_raspberry_pi.sh` has run on the Pi, commission the onboar
 scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
+This runs the same sequence expected before departure: initializes config if needed, configures GPSD, downloads the configured NOAA chart package, registers charts and GPSD in OpenCPN, configures graphical autologin, syncs refreshed user systemd unit files, enables user linger, enables the user timer and track/readiness services, and writes `~/.cache/noaa-navionics/status.json`.
 The initial chart download uses retry defaults for unreliable marina Wi-Fi. Add `--sync-retries N --sync-retry-delay N` when commissioning from a slower hotspot or remote dock network.
 
 ## Startup
