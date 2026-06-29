@@ -1150,6 +1150,7 @@ check_recent_track_log() {
 from configparser import ConfigParser
 from datetime import datetime, timezone
 from pathlib import Path
+import os
 import re
 import sys
 import time
@@ -1197,14 +1198,34 @@ def trackpoint_position(trackpoint):
 while True:
     now = time.time()
     if tracks_dir.exists():
+        try:
+            resolved_tracks_dir = tracks_dir.resolve(strict=True)
+        except OSError as exc:
+            last_detail = f"could not resolve GPX tracks directory {tracks_dir}: {exc}"
+            resolved_tracks_dir = None
         candidates = []
-        for path in tracks_dir.glob("track-*.gpx"):
-            try:
-                stat = path.stat()
-            except OSError as exc:
-                last_detail = f"could not inspect {path}: {exc}"
-                continue
-            candidates.append((stat.st_mtime, path, stat))
+        if resolved_tracks_dir is not None:
+            for path in tracks_dir.glob("track-*.gpx"):
+                if path.is_symlink():
+                    last_detail = f"{path} is a symlink, expected a regular GPX track file"
+                    continue
+                if not path.is_file():
+                    last_detail = f"{path} is not a regular GPX track file"
+                    continue
+                try:
+                    stat = path.stat()
+                    resolved_track = path.resolve(strict=True)
+                    resolved_track.relative_to(resolved_tracks_dir)
+                except OSError as exc:
+                    last_detail = f"could not inspect {path}: {exc}"
+                    continue
+                except ValueError:
+                    last_detail = f"{path} resolves outside GPX tracks directory"
+                    continue
+                if stat.st_uid != os.getuid():
+                    last_detail = f"{path} is owned by uid {stat.st_uid}, expected {os.getuid()}"
+                    continue
+                candidates.append((stat.st_mtime, path, stat))
         candidates.sort(reverse=True)
         for _mtime, path, stat in candidates:
             try:
