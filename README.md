@@ -225,7 +225,7 @@ noaa-navionics gps-monitor --gpsd --once
 
 For direct serial checks, `preflight --gps-device` accepts `--gps-baud`; `status-report` uses the baud from `~/.config/noaa-navionics/config.ini`. Direct serial readiness rejects stale, future-dated, and untimestamped NMEA fixes too.
 GPS readiness rejects missing fix-quality, missing coordinates, non-finite, out-of-range, malformed numeric/hemisphere NMEA, and invalid `0,0` coordinates. NMEA and GPSD parsing reject malformed or non-finite required fix fields and ignore malformed or non-finite optional speed, course, altitude, satellite-count, or HDOP values. When a receiver reports quality fields, it also rejects weak fixes with fewer than four satellites or HDOP above 5. GPSD readiness merges recent SKY satellite/HDOP reports with TPV position fixes before applying that gate, and it still exits inside the wait window if GPSD only streams non-fix status messages.
-NMEA fractional timestamps are normalized across second, minute, and UTC day rollovers before freshness checks and GPX logging.
+NMEA fractional timestamps are normalized across second, minute, and UTC day rollovers before freshness checks and GPX logging. Malformed or non-finite NMEA timestamps are treated as missing timestamps, so readiness still rejects those fixes when freshness is required.
 
 Track logging:
 

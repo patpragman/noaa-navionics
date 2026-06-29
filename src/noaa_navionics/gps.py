@@ -454,12 +454,18 @@ def _parse_rmc_timestamp(time_value: str, date_value: str) -> Optional[datetime]
     parsed_time = _time_parts(time_value)
     if parsed_time is None:
         return None
-    day = int(date_value[0:2])
-    month = int(date_value[2:4])
-    year_value = int(date_value[4:6])
+    try:
+        day = int(date_value[0:2])
+        month = int(date_value[2:4])
+        year_value = int(date_value[4:6])
+    except ValueError:
+        return None
     year = 1900 + year_value if year_value >= 80 else 2000 + year_value
     hour, minute, second, microsecond, day_carry = parsed_time
-    base = datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    try:
+        base = datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+    except ValueError:
+        return None
     if day_carry:
         base += timedelta(days=day_carry)
     return base
@@ -492,9 +498,14 @@ def _parse_iso_time(value: str) -> Optional[datetime]:
 def _time_parts(value: str) -> Optional[tuple[int, int, int, int, int]]:
     if len(value) < 6:
         return None
-    hour = int(value[0:2])
-    minute = int(value[2:4])
-    seconds = float(value[4:])
+    try:
+        hour = int(value[0:2])
+        minute = int(value[2:4])
+        seconds = float(value[4:])
+    except ValueError:
+        return None
+    if hour < 0 or minute < 0 or seconds < 0.0 or not math.isfinite(seconds):
+        return None
     whole_seconds = int(seconds)
     microsecond = int(round((seconds - whole_seconds) * 1_000_000))
     if microsecond >= 1_000_000:

@@ -559,6 +559,9 @@ grep -q 'mode = _non_negative_int_or_none' src/noaa_navionics/gps.py
 grep -q 'return _finite_float_or_none(value)' src/noaa_navionics/gps.py
 grep -q 'return _non_negative_int_or_none(value)' src/noaa_navionics/gps.py
 grep -q 'day_carry' src/noaa_navionics/gps.py
+grep -q 'not math.isfinite(seconds)' src/noaa_navionics/gps.py
+grep -q 'Malformed or non-finite NMEA timestamps are treated as missing timestamps' README.md
+grep -q 'Malformed or non-finite NMEA timestamps are treated as missing timestamps' docs/sailboat-pi.md
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
 grep -q 'pending_without_quality' src/noaa_navionics/cli.py

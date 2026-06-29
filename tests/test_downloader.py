@@ -2907,6 +2907,18 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual(rounded, datetime(2026, 6, 30, 0, 0, 0, tzinfo=timezone.utc))
 
+    def test_parse_gga_malformed_time_is_untimestamped(self):
+        for time_value in ("badtime", "NaN000", "-123519"):
+            with self.subTest(time_value=time_value):
+                fix = parse_nmea_sentence(
+                    f"$GPGGA,{time_value},4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+                )
+
+                self.assertIsNotNone(fix)
+                assert fix is not None
+                self.assertIsNone(fix.timestamp)
+                self.assertTrue(fix.valid)
+
     def test_parse_rmc_sentence(self):
         sentence = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
         fix = parse_nmea_sentence(sentence)
@@ -2923,6 +2935,24 @@ class GpsTests(unittest.TestCase):
         self.assertIsNotNone(fix)
         assert fix is not None
         self.assertEqual(fix.timestamp, datetime(2026, 6, 30, 0, 0, 0, tzinfo=timezone.utc))
+
+    def test_parse_rmc_malformed_timestamp_is_untimestamped(self):
+        for time_value, date_value in (
+            ("badtime", "230394"),
+            ("123519", "badate"),
+            ("123519", "310226"),
+            ("NaN000", "230394"),
+            ("-123519", "230394"),
+        ):
+            with self.subTest(time_value=time_value, date_value=date_value):
+                fix = parse_nmea_sentence(
+                    f"$GPRMC,{time_value},A,4807.038,N,01131.000,E,022.4,084.4,{date_value},003.1,W"
+                )
+
+                self.assertIsNotNone(fix)
+                assert fix is not None
+                self.assertIsNone(fix.timestamp)
+                self.assertTrue(fix.valid)
 
     def test_parse_nmea_rejects_bad_coordinate_hemispheres(self):
         gga = parse_nmea_sentence("$GPGGA,123519,4807.038,X,01131.000,E,1,08,0.9,545.4,M,46.9,M,,")
