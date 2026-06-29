@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${HOME}/.config/noaa-navionics/config.ini"
 device=""
 allow_non_pi=0
@@ -94,6 +95,55 @@ stable_gps_device_path() {
       return 1
       ;;
   esac
+}
+
+validate_updated_app_config() {
+  python3 - "$repo_root" "$config" "$device" <<'PY'
+from configparser import ConfigParser
+from pathlib import Path
+import os
+import sys
+import tempfile
+
+repo_root = Path(sys.argv[1])
+config_path = Path(sys.argv[2]).expanduser()
+device = sys.argv[3]
+
+sys.path.insert(0, str(repo_root / "src"))
+from noaa_navionics.config import read_config
+
+parser = ConfigParser()
+if config_path.exists() and not parser.read(config_path):
+    raise SystemExit(f"could not read config: {config_path}")
+if not parser.has_section("gps"):
+    parser.add_section("gps")
+parser.set("gps", "mode", "gpsd")
+parser.set("gps", "device", device)
+parser.set("gps", "gpsd_host", "127.0.0.1")
+parser.set("gps", "gpsd_port", "2947")
+
+tmp_path = None
+try:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+        tmp_path = Path(handle.name)
+        parser.write(handle)
+        handle.flush()
+        os.fsync(handle.fileno())
+    app_config = read_config(tmp_path)
+finally:
+    if tmp_path is not None:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+
+if app_config.gps_mode != "gpsd":
+    raise SystemExit("updated config did not set gps.mode=gpsd")
+if app_config.gps_device != device:
+    raise SystemExit(f"updated config GPS device mismatch: {app_config.gps_device} != {device}")
+if app_config.gpsd_host != "127.0.0.1" or app_config.gpsd_port != 2947:
+    raise SystemExit("updated config did not set local GPSD host and port")
+PY
 }
 
 while [[ $# -gt 0 ]]; do
@@ -208,6 +258,8 @@ if [[ "$check_device" -eq 1 && ! -c "$device" ]]; then
   echo "GPS device path is not a character device: $device" >&2
   exit 2
 fi
+
+validate_updated_app_config
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT

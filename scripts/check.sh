@@ -439,6 +439,9 @@ grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd
 grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
+grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
+grep -q 'from noaa_navionics.config import read_config' scripts/configure_gpsd.sh
+grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
@@ -1390,6 +1393,27 @@ if [[ "$gpsd_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is not a recognized stable path' "$gpsd_output"
+
+cat >"$tmpdir/unsafe-gpsd-config.ini" <<'EOF'
+[charts]
+output = /tmp
+EOF
+set +e
+scripts/configure_gpsd.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --config "$tmpdir/unsafe-gpsd-config.ini" \
+  --device /dev/serial/by-id/mock-gps >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject an unsafe existing app config before GPSD setup" >&2
+  exit 1
+fi
+grep -q 'charts.output must be a dedicated storage directory' "$gpsd_output"
+! grep -q 'Would write /etc/default/gpsd' "$gpsd_output"
 
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
