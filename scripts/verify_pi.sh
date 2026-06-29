@@ -145,6 +145,7 @@ def config_bool(parser, section, key, fallback):
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
+require_track_disk_check = False
 with open(path, encoding="utf-8") as handle:
     report = json.load(handle)
 if report.get("ok") is not True:
@@ -190,6 +191,10 @@ if expected_config_path:
         "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
         "track_retention_days": int(parser.get("tracking", "retention_days", fallback="90").strip()),
     }
+    try:
+        require_track_disk_check = Path(expected_config["track_output"]).resolve() != chart_output.resolve()
+    except OSError:
+        require_track_disk_check = Path(expected_config["track_output"]) != chart_output
     report_config = report.get("config")
     if not isinstance(report_config, dict):
         raise SystemExit("status report has no config section")
@@ -250,6 +255,8 @@ required_checks = {
     "GPSD",
     "GPS Time Source",
 }
+if require_track_disk_check:
+    required_checks.add("Track Disk")
 required_service_checks = {
     "Chart Sync",
     "Chart Sync Settings",

@@ -125,6 +125,8 @@ grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
+grep -q 'require_track_disk_check' scripts/verify_pi.sh
+grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
 grep -q 'status report manifest missing' scripts/verify_pi.sh
