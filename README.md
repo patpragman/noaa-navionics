@@ -141,7 +141,7 @@ On the Pi, `status-report` writes a JSON readiness artifact:
 noaa-navionics status-report --output ~/.cache/noaa-navionics/status.json
 ```
 
-The installed boot-time readiness service writes the same status report after login and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, flags a failed chart sync service, and checks GPSD service state in addition to recording raw service diagnostics.
+The installed boot-time readiness service writes the same status report after login and retries briefly while the GPS gets its first fix. The report checks the NOAA Navionics user units, fails readiness on failed units, and checks GPSD service state in addition to recording raw service diagnostics.
 Deploy/install records the source revision so status reports show which code is running on the Pi.
 
 Start the Pi chartplotter launcher:

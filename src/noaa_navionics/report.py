@@ -289,6 +289,8 @@ def _unit_check(
         return CheckResult(name, False, f"{unit} missing from status report")
     enabled = str(state.get("enabled", ""))
     active = str(state.get("active", ""))
+    if active == "failed":
+        return CheckResult(name, False, f"{unit} enabled={enabled} active={active}")
     enabled_ok = not require_enabled or enabled in {"enabled", "static", "generated"}
     active_ok = not require_active or active in {"active", "activating"}
     ok = enabled_ok and active_ok

@@ -779,6 +779,22 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(sync_check.ok)
         self.assertIn("failed", sync_check.detail)
 
+    def test_service_readiness_checks_fail_failed_boot_readiness_service(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "failed"},
+        }
+        system_services = {"available": True, "gpsd.service": {"enabled": "enabled", "active": "active"}}
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        boot_check = next(check for check in checks if check.name == "Boot Readiness")
+
+        self.assertFalse(boot_check.ok)
+        self.assertIn("failed", boot_check.detail)
+
 
 class GpsTests(unittest.TestCase):
     def test_parse_gga_sentence(self):

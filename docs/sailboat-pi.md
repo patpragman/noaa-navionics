@@ -280,7 +280,7 @@ systemctl --user daemon-reload
 systemctl --user enable noaa-navionics-preflight.service
 ```
 
-The service writes `~/.cache/noaa-navionics/status.json`, flags a failed chart sync service, and retries briefly if GPSD is not producing a valid fix yet.
+The service writes `~/.cache/noaa-navionics/status.json`, fails readiness on failed NOAA Navionics units, and retries briefly if GPSD is not producing a valid fix yet.
 
 ## Operational Notes
 
