@@ -97,6 +97,7 @@ grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
+grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
@@ -185,6 +186,7 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
+grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh

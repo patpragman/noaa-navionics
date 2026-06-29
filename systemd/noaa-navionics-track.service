@@ -6,6 +6,7 @@ StartLimitBurst=60
 [Service]
 Type=simple
 ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily
+StandardOutput=null
 Restart=on-failure
 RestartSec=10
 
