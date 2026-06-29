@@ -14,6 +14,7 @@ CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "chart"}
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 UNSAFE_STORAGE_NAMES = {
     "",
     ".cache",
@@ -325,8 +326,12 @@ def _stable_gps_device_path(path: str) -> bool:
     by_id_prefix = "/dev/serial/by-id/"
     if path.startswith(by_id_prefix):
         suffix = path[len(by_id_prefix) :]
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."}
+        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and _safe_gps_by_id_suffix(suffix)
     return path in STABLE_GPS_DEVICE_PATHS
+
+
+def _safe_gps_by_id_suffix(suffix: str) -> bool:
+    return bool(suffix) and all(char in GPS_BY_ID_SAFE_CHARS for char in suffix)
 
 
 def _volatile_usb_device_path(path: str) -> bool:

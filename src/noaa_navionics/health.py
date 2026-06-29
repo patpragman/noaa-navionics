@@ -26,6 +26,7 @@ from .opencpn import chart_directory_configured, gpsd_connection_configured, ope
 
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
+GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 
 
 @dataclass(frozen=True)
@@ -658,6 +659,13 @@ def check_gps_device_path(device: str) -> CheckResult:
     if not device:
         return CheckResult("GPS Device", False, "no GPS device configured")
     path = Path(device).expanduser()
+    path_text = str(path)
+    if path_text.startswith("/dev/serial/by-id/") and not _stable_gps_device_path(path_text):
+        return CheckResult(
+            "GPS Device",
+            False,
+            f"{path} is not a safe /dev/serial/by-id/ GPS path",
+        )
     if not path.exists():
         return CheckResult("GPS Device", False, f"{path} does not exist")
     if path.is_dir():
@@ -666,7 +674,6 @@ def check_gps_device_path(device: str) -> CheckResult:
         resolved = path.resolve()
     except OSError:
         resolved = path
-    path_text = str(path)
     if _volatile_usb_device_path(path_text):
         return CheckResult(
             "GPS Device",
@@ -688,6 +695,8 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
     expected_device = str(device).strip()
     if not expected_device:
         return CheckResult("GPSD Config", False, "no expected GPSD device configured")
+    if not _stable_gps_device_path(expected_device):
+        return CheckResult("GPSD Config", False, f"expected GPSD device is not a safe stable path: {expected_device}")
     path = Path(config_path).expanduser()
     try:
         values = _read_gpsd_default_config(path)
@@ -739,8 +748,12 @@ def _stable_gps_device_path(path: str) -> bool:
     by_id_prefix = "/dev/serial/by-id/"
     if path.startswith(by_id_prefix):
         suffix = path[len(by_id_prefix) :]
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."}
+        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and _safe_gps_by_id_suffix(suffix)
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+
+
+def _safe_gps_by_id_suffix(suffix: str) -> bool:
+    return bool(suffix) and all(char in GPS_BY_ID_SAFE_CHARS for char in suffix)
 
 
 def _volatile_usb_device_path(path: str) -> bool:

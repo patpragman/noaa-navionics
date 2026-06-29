@@ -121,9 +121,12 @@ device = parser.get("gps", "device", fallback="").strip()
 if not device or device == "/dev/serial/by-id/YOUR_GPS_DEVICE":
     raise SystemExit("gps.device must name the already configured GPS receiver when --skip-gpsd is used")
 by_id_prefix = "/dev/serial/by-id/"
+safe_by_id_chars = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 if device.startswith(by_id_prefix):
     suffix = device[len(by_id_prefix):]
-    stable = bool(suffix) and "/" not in suffix and suffix not in {".", ".."}
+    stable = bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+        char in safe_by_id_chars for char in suffix
+    )
 else:
     stable = device in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 name = Path(device).name

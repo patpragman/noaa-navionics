@@ -275,6 +275,7 @@ grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
+grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
 grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -284,6 +285,7 @@ grep -q 'Existing config is required when --skip-gpsd is used with unattended st
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
+grep -q 'safe_by_id_chars' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
@@ -876,6 +878,17 @@ if [[ "$gpsd_code" -ne 2 ]]; then
   echo "expected configure_gpsd.sh to reject nested GPS by-id paths with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device '/dev/serial/by-id/$(id)' >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject shell metacharacters in GPS by-id paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPS device path is not a recognized stable path' "$gpsd_output"
 
 tmpdir="$(mktemp -d)"
 scripts/provision_sailboat_pi.sh \

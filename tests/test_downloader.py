@@ -277,6 +277,7 @@ class ConfigTests(unittest.TestCase):
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/../ttyS0\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/mock/extra\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/$(id)\n", "gps.device"),
             ("[gps]\nbaud = 12345\n", "gps.baud"),
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
             ("[gps]\nmode = gpsd\ngpsd_host = 192.168.1.10\n", "gps.gpsd_host"),
@@ -2645,6 +2646,16 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/mock/extra"))
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/../ttyS0"))
 
+    def test_stable_gps_device_path_rejects_shell_metacharacters(self):
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/$(id)"))
+        self.assertFalse(config_module._stable_gps_device_path("/dev/serial/by-id/$(id)"))
+
+    def test_check_gps_device_path_rejects_unsafe_by_id_name_before_existence(self):
+        result = check_gps_device_path("/dev/serial/by-id/$(id)")
+
+        self.assertFalse(result.ok)
+        self.assertIn("safe /dev/serial/by-id", result.detail)
+
     def test_check_gps_device_path_rejects_volatile_usb_name(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             device = Path(tmpdir) / "ttyUSB0"
@@ -2680,6 +2691,22 @@ class GpsTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("immediate polling", result.detail)
+
+    def test_check_gpsd_startup_config_rejects_unsafe_expected_device(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "gpsd"
+            config.write_text(
+                'START_DAEMON="true"\n'
+                'USBAUTO="false"\n'
+                'DEVICES="/dev/serial/by-id/$(id)"\n'
+                'GPSD_OPTIONS="-n"\n',
+                encoding="utf-8",
+            )
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/$(id)", config_path=config)
+
+            self.assertFalse(result.ok)
+            self.assertIn("safe stable path", result.detail)
 
     def test_check_gpsd_startup_config_rejects_mismatch_and_missing_polling(self):
         with tempfile.TemporaryDirectory() as tmpdir:

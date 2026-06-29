@@ -153,7 +153,7 @@ On the Pi, configure GPSD with the GPS device:
 scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-Use a single `/dev/serial/by-id/...` symlink name when possible; config validation, GPSD setup, and verification fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, reject nested by-id paths, require the configured path to be a character device when device checks are enabled, and reject unrecognized device paths that are not one of the documented stable aliases.
+Use a single `/dev/serial/by-id/...` symlink name when possible; config validation, GPSD setup, and verification fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, reject nested or shell-unsafe by-id paths, require the configured path to be a character device when device checks are enabled, and reject unrecognized device paths that are not one of the documented stable aliases.
 The installer syncs installed command symlinks, launchers, source revision, and user systemd unit files to disk. Provisioning syncs the desktop autostart entry after commissioning succeeds. The GPSD setup script syncs `/etc/default/gpsd` and its backup to disk, then updates the onboard `config.ini` through a synced atomic replacement. `scripts/configure_gps_time.sh` writes only the production chrony config path `/etc/chrony/chrony.conf` unless it is in dry-run mode, backs up and syncs that file, adds a managed GPSD `SHM 0` refclock block, restarts chrony, then restarts GPSD so the daemons reconnect in the right order.
 
 On the Pi, `status-report` writes a JSON readiness artifact:

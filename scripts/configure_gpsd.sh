@@ -58,7 +58,7 @@ stable_gps_device_path() {
   case "$1" in
     /dev/serial/by-id/*)
       local suffix="${1#/dev/serial/by-id/}"
-      [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." ]]
+      [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]
       return
       ;;
     /dev/serial0|/dev/serial1|/dev/gps)
