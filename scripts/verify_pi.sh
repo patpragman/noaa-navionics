@@ -1982,6 +1982,9 @@ check_launcher_lock_live() {
   local cmdline=""
   local current_boot_id=""
   local lock_boot_id=""
+  local key
+  local value
+  local fail_open=""
   cache_dir="$(dirname "$launcher_lock")"
   expected_uid="$(id -u)"
   if [[ -L "$cache_dir" || -L "$launcher_lock" || -L "${launcher_lock}/pid" || -L "${launcher_lock}/boot_id" ]]; then
@@ -2084,6 +2087,27 @@ check_launcher_lock_live() {
     printf 'chartplotter launcher lock owner is not the launcher: %s\n' "${cmdline:-<empty>}" >&2
     return 1
   fi
+  if [[ ! -r "/proc/${owner_pid}/environ" ]]; then
+    printf 'chartplotter launcher environment is unreadable for pid: %s\n' "$owner_pid" >&2
+    return 1
+  fi
+  while IFS='=' read -r key value; do
+    if [[ "$key" == "NOAA_NAVIONICS_START_ON_FAILED_READINESS" ]]; then
+      fail_open="${value,,}"
+    fi
+  done < <(tr '\0' '\n' <"/proc/${owner_pid}/environ" 2>/dev/null || true)
+  case "$fail_open" in
+    ""|0|no|false|off)
+      ;;
+    1|yes|true|on)
+      printf 'chartplotter launcher live environment enables NOAA_NAVIONICS_START_ON_FAILED_READINESS; production verification requires fail-closed startup\n' >&2
+      return 1
+      ;;
+    *)
+      printf 'chartplotter launcher live environment has invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS=%s\n' "$fail_open" >&2
+      return 1
+      ;;
+  esac
 }
 
 check_live_display_power_disabled() {
