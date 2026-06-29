@@ -1,5 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
+from contextlib import redirect_stdout
+from io import StringIO
 import sys
 import tempfile
 import textwrap
@@ -19,7 +21,8 @@ from noaa_navionics.downloader import (
     search_catalog,
 )
 from noaa_navionics.config import package_kwargs, read_config, write_default_config
-from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
+from noaa_navionics.cli import _log_rotating_tracks
+from noaa_navionics.gps import GPSFix, GPXTrackLogger, daily_track_path, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
 from noaa_navionics.health import (
     check_chart_dir,
     check_chart_manifest,
@@ -421,6 +424,35 @@ class GpsTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("<trkpt lat=\"48.11730000\" lon=\"11.51666667\">", text)
             self.assertIn("<ele>545.40</ele>", text)
+
+    def test_daily_track_path_uses_utc_date(self):
+        timestamp = datetime(2026, 6, 29, 23, 30, tzinfo=timezone.utc)
+        self.assertEqual(daily_track_path(Path("/tracks"), timestamp), Path("/tracks/tracks/track-20260629.gpx"))
+
+    def test_log_rotating_tracks_writes_one_file_per_utc_day(self):
+        fixes = [
+            GPSFix(timestamp=datetime(2026, 6, 29, 23, 59, tzinfo=timezone.utc), latitude=1.0, longitude=2.0),
+            GPSFix(timestamp=datetime(2026, 6, 30, 0, 1, tzinfo=timezone.utc), latitude=3.0, longitude=4.0),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(StringIO()):
+                count, outputs = _log_rotating_tracks(iter(fixes), Path(tmpdir), deadline=None, sample=True)
+            self.assertEqual(count, 2)
+            self.assertEqual([path.name for path in outputs], ["track-20260629.gpx", "track-20260630.gpx"])
+            self.assertIn('lat="1.00000000"', outputs[0].read_text(encoding="utf-8"))
+            self.assertIn('lat="3.00000000"', outputs[1].read_text(encoding="utf-8"))
+
+    def test_log_rotating_tracks_does_not_overwrite_existing_daily_file(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            existing = Path(tmpdir) / "tracks" / "track-20260629.gpx"
+            existing.parent.mkdir()
+            existing.write_text("old", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                count, outputs = _log_rotating_tracks(iter([fix]), Path(tmpdir), deadline=None, sample=True)
+            self.assertEqual(count, 1)
+            self.assertEqual(outputs[0].name, "track-20260629-1.gpx")
+            self.assertEqual(existing.read_text(encoding="utf-8"), "old")
 
     def test_parse_gpsd_tpv(self):
         payload = (

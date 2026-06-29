@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import argparse
@@ -16,7 +17,7 @@ from .downloader import (
     package_for,
     search_catalog,
 )
-from .gps import GPXTrackLogger, default_track_path, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
+from .gps import GPXTrackLogger, daily_track_path, default_track_path, iter_fixes, iter_gpsd_fixes, open_nmea_stream, read_nmea_lines
 from .health import run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
@@ -107,6 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--file", help="explicit GPX output file")
     track.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     track.add_argument("--seconds", type=float, help="stop after this many seconds")
+    track.add_argument("--rotate-daily", action="store_true", help="write one GPX file per UTC day")
 
     return parser
 
@@ -308,26 +310,22 @@ def main(argv: Optional[list[str]] = None) -> int:
                 app_config.gps_mode == "gpsd" and not args.sample and args.device == "/dev/ttyUSB0"
             )
             base_output = Path(args.output) if args.output != "~/charts/noaa-enc" else app_config.track_output
-            output = Path(args.file).expanduser() if args.file else default_track_path(base_output)
             deadline = time.monotonic() + args.seconds if args.seconds else None
-            with GPXTrackLogger(output) as logger:
-                count = 0
-                for fix in _read_fixes(
-                    args.device if args.device != "/dev/ttyUSB0" else app_config.gps_device,
-                    args.baud if args.baud != 4800 else app_config.gps_baud,
-                    args.sample,
-                    gpsd=use_gpsd,
-                    gpsd_host=app_config.gpsd_host,
-                    gpsd_port=app_config.gpsd_port,
-                ):
-                    logger.append(fix)
-                    count += 1
-                    print(_format_fix(fix))
-                    if deadline and time.monotonic() >= deadline:
-                        break
-                    if args.sample:
-                        continue
-            print(f"Saved {count} fixes to {output}")
+            fixes = _read_fixes(
+                args.device if args.device != "/dev/ttyUSB0" else app_config.gps_device,
+                args.baud if args.baud != 4800 else app_config.gps_baud,
+                args.sample,
+                gpsd=use_gpsd,
+                gpsd_host=app_config.gpsd_host,
+                gpsd_port=app_config.gpsd_port,
+            )
+            if args.rotate_daily and not args.file:
+                count, outputs = _log_rotating_tracks(fixes, base_output, deadline=deadline, sample=bool(args.sample))
+                print(f"Saved {count} fixes to {', '.join(str(path) for path in outputs)}")
+            else:
+                output = Path(args.file).expanduser() if args.file else default_track_path(base_output)
+                count = _log_single_track(fixes, output, deadline=deadline, sample=bool(args.sample))
+                print(f"Saved {count} fixes to {output}")
             return 0
 
     except Exception as exc:
@@ -367,6 +365,68 @@ def _read_fixes(
         return
     with open_nmea_stream(device, baud=baud) as stream:
         yield from iter_fixes(read_nmea_lines(stream))
+
+
+def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:
+    count = 0
+    with GPXTrackLogger(output) as logger:
+        for fix in fixes:
+            logger.append(fix)
+            count += 1
+            print(_format_fix(fix))
+            if deadline and time.monotonic() >= deadline:
+                break
+            if sample:
+                continue
+    return count
+
+
+def _log_rotating_tracks(fixes, base_output: Path, *, deadline: Optional[float], sample: bool) -> tuple[int, list[Path]]:
+    count = 0
+    current_day: Optional[str] = None
+    current_path: Optional[Path] = None
+    logger: Optional[GPXTrackLogger] = None
+    outputs: list[Path] = []
+    try:
+        for fix in fixes:
+            day = _track_day(fix)
+            if day != current_day:
+                if logger is not None:
+                    logger.__exit__(None, None, None)
+                current_day = day
+                current_path = _available_track_path(daily_track_path(base_output, fix.timestamp))
+                outputs.append(current_path)
+                logger = GPXTrackLogger(current_path)
+                logger.__enter__()
+            assert logger is not None
+            logger.append(fix)
+            count += 1
+            print(_format_fix(fix))
+            if deadline and time.monotonic() >= deadline:
+                break
+            if sample:
+                continue
+    finally:
+        if logger is not None:
+            logger.__exit__(None, None, None)
+    return count, outputs
+
+
+def _track_day(fix) -> str:
+    timestamp = fix.timestamp or datetime.now(timezone.utc)
+    return timestamp.astimezone(timezone.utc).strftime("%Y%m%d")
+
+
+def _available_track_path(path: Path) -> Path:
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    for index in range(1, 1000):
+        candidate = path.with_name(f"{stem}-{index}{suffix}")
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError(f"could not find available track filename near {path}")
 
 
 def _format_fix(fix) -> str:

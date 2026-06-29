@@ -214,6 +214,12 @@ def default_track_path(base_dir: Path) -> Path:
     return Path(base_dir).expanduser() / "tracks" / f"track-{stamp}.gpx"
 
 
+def daily_track_path(base_dir: Path, timestamp: Optional[datetime] = None) -> Path:
+    current = timestamp or datetime.now(timezone.utc)
+    stamp = current.astimezone(timezone.utc).strftime("%Y%m%d")
+    return Path(base_dir).expanduser() / "tracks" / f"track-{stamp}.gpx"
+
+
 def _parse_rmc(fields: list[str], raw: str) -> Optional[GPSFix]:
     if len(fields) < 10 or fields[2] != "A":
         return None

@@ -3,7 +3,7 @@ Description=Log GPSD fixes to GPX with NOAA Navionics
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini
+ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily
 Restart=on-failure
 RestartSec=10
 

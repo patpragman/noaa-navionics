@@ -217,7 +217,7 @@ or, using the onboard config:
 noaa-navionics log-track
 ```
 
-The generated GPX files are stored under `~/charts/noaa-enc/tracks/`.
+The generated GPX files are stored under `~/charts/noaa-enc/tracks/`. The systemd service writes one file per UTC day, such as `track-20260629.gpx`; if the service restarts on the same day it uses a numeric suffix instead of overwriting the earlier file.
 
 Systemd user service:
 
