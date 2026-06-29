@@ -366,6 +366,8 @@ grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
+grep -q 'LightDM active after boot' scripts/verify_pi.sh
+grep -q 'systemctl is-active --quiet lightdm.service' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
 grep -q '/usr/share/xsessions' scripts/verify_pi.sh
@@ -906,6 +908,8 @@ grep -q 'Refusing to configure graphical autologin for root' "$install_output"
 scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" --session LXDE-pi >"$install_output"
 grep -q 'autologin-session=LXDE-pi' "$install_output"
 grep -q 'Configured graphical autologin for' "$install_output"
+grep -q 'strict chartplotter-started mode, verification also requires LightDM to be active' README.md
+grep -q 'requires LightDM to be active' docs/sailboat-pi.md
 grep -q 'using X11 session LXDE-pi' "$install_output"
 
 set +e

@@ -1002,6 +1002,7 @@ if [[ -f "$lightdm_autologin" ]]; then
 fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
+  check "LightDM active after boot" systemctl is-active --quiet lightdm.service
   check "chartplotter started after boot" wait_for_chartplotter_started
   check "chartplotter launcher lock clear or live" check_launcher_lock_clear_or_live
   if opencpn_running; then
