@@ -24,10 +24,18 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
       device="${2:-}"
       shift 2
       ;;
     --config)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
       config="${2:-}"
       shift 2
       ;;
@@ -123,7 +131,9 @@ mkdir -p "$(dirname "$config")"
 python3 - "$config" "$device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
+import os
 import sys
+import tempfile
 
 config_path = Path(sys.argv[1]).expanduser()
 device = sys.argv[2]
@@ -136,8 +146,36 @@ parser.set("gps", "mode", "gpsd")
 parser.set("gps", "device", device)
 parser.set("gps", "gpsd_host", "127.0.0.1")
 parser.set("gps", "gpsd_port", "2947")
-with config_path.open("w", encoding="utf-8") as handle:
-    parser.write(handle)
+tmp_path = None
+try:
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=config_path.parent,
+        prefix=f".{config_path.name}.",
+        suffix=".part",
+        delete=False,
+    ) as handle:
+        tmp_path = Path(handle.name)
+        parser.write(handle)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp_path, config_path)
+    try:
+        fd = os.open(config_path.parent, os.O_RDONLY)
+    except OSError:
+        fd = None
+    if fd is not None:
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+finally:
+    if tmp_path is not None:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
 PY
 
 echo "Configured GPSD for $device"

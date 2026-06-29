@@ -37,6 +37,8 @@ grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPS device must be an absolute /dev path' scripts/configure_gpsd.sh
+grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
+grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'no fresh GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh NMEA fix' src/noaa_navionics/health.py
@@ -91,6 +93,16 @@ set -e
 if [[ "$provision_code" -ne 2 ]]; then
   cat "$provision_output" >&2
   echo "expected provision_sailboat_pi.sh to refuse non-Pi architecture with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run --device >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject missing --device value with exit 2" >&2
   exit 1
 fi
 
