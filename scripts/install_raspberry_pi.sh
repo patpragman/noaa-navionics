@@ -41,6 +41,31 @@ for directory in synced_dirs:
 PY
 }
 
+ensure_vcgencmd() {
+  if command -v vcgencmd >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # raspi-utils is current on Raspberry Pi OS Bookworm; libraspberrypi-bin
+  # covers older images that still package vcgencmd there.
+  if sudo apt install -y raspi-utils; then
+    if command -v vcgencmd >/dev/null 2>&1; then
+      return 0
+    fi
+  else
+    echo "raspi-utils install did not complete; trying legacy Raspberry Pi utilities package." >&2
+  fi
+
+  if sudo apt install -y libraspberrypi-bin; then
+    if command -v vcgencmd >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  echo "vcgencmd is not available after installing Raspberry Pi utilities; Pi power readiness checks will fail." >&2
+  return 1
+}
+
 for arg in "$@"; do
   case "$arg" in
     --skip-apt)
@@ -87,6 +112,7 @@ if [[ "$skip_apt" -eq 0 ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
   sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients x11-xserver-utils
+  ensure_vcgencmd
 fi
 
 mkdir -p "${HOME}/.local/bin" "$data_dir"

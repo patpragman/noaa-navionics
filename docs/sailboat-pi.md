@@ -61,12 +61,13 @@ Manual install:
 ```bash
 sudo apt update
 sudo apt install python3 python3-venv python3-tk opencpn gpsd gpsd-clients x11-xserver-utils
+sudo apt install raspi-utils || sudo apt install libraspberrypi-bin
 scripts/install_raspberry_pi.sh --skip-apt
 ```
 
 On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
-The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, and configures LightDM graphical autologin for the installing user. It syncs the installed command symlinks, launchers, source revision file, desktop autostart entry, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
+The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv`, symlinks commands into `~/.local/bin`, installs the chartplotter autostart entry, ensures `vcgencmd` is available for Raspberry Pi power checks, and configures LightDM graphical autologin for the installing user. It tries `raspi-utils` first and falls back to `libraspberrypi-bin` for older Raspberry Pi OS images. It syncs the installed command symlinks, launchers, source revision file, desktop autostart entry, and user systemd unit files to disk. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool. The track logger is enabled for future boots during install, but provisioning starts it only after GPSD has been configured. Use `--skip-autologin` only for deliberate headless or development deployments.
 
 ## Onboard Config
 

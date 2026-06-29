@@ -31,7 +31,7 @@ scripts/install_raspberry_pi.sh
 
 For headless use, `python3-tk` is optional.
 For chartplotter use, use Raspberry Pi OS with Desktop/LightDM so OpenCPN can launch on the attached display after power-up.
-The Raspberry Pi installer installs OpenCPN and GPSD on the Pi, configures graphical autologin for the installing user, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
+The Raspberry Pi installer installs OpenCPN and GPSD on the Pi, ensures Raspberry Pi power diagnostic utilities are available for `vcgencmd`, configures graphical autologin for the installing user, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
 
 ## Tkinter GUI
 

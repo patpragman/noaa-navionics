@@ -36,6 +36,10 @@ grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
+grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
+grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
+grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
+grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
