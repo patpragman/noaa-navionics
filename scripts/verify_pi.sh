@@ -2153,10 +2153,10 @@ wait_for_chartplotter_started() {
   local last_detail=""
   local check_output
   check_output="$(mktemp)"
-  trap 'rm -f "$check_output"' RETURN
   while true; do
     if check_chartplotter_log_after_boot "$log_file" >"$check_output" 2>&1; then
       if opencpn_running; then
+        rm -f "$check_output"
         return 0
       fi
       last_detail="OpenCPN is not running yet"
@@ -2165,6 +2165,7 @@ wait_for_chartplotter_started() {
     fi
     if [[ "$SECONDS" -ge "$deadline" ]]; then
       printf '%s\n' "${last_detail:-chartplotter did not start before timeout}" >&2
+      rm -f "$check_output"
       return 1
     fi
     sleep "$chartplotter_start_interval"

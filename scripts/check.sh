@@ -369,6 +369,18 @@ grep -q 'check_optional_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher log file integrity' scripts/verify_pi.sh
 grep -q 'chartplotter rotated launcher log file integrity' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
+start = text.index("wait_for_chartplotter_started() {")
+end = text.index("\n}\n\nwait_for_chrony_gps_source", start)
+block = text[start:end]
+if "trap " in block:
+    raise SystemExit("chartplotter wait temp cleanup must not use RETURN traps")
+if block.count('rm -f "$check_output"') < 2:
+    raise SystemExit("chartplotter wait temp file must be cleaned up on success and timeout")
+PY
 grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised' scripts/verify_pi.sh
