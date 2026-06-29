@@ -431,6 +431,7 @@ grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
 grep -q 'pending_without_quality' src/noaa_navionics/cli.py
 grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
+grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'package can be: state, cgd, region, chart, all' src/noaa_navionics/config.py

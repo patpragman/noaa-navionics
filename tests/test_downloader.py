@@ -599,13 +599,66 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             try:
                 cli_module._read_fixes = fake_read_fixes
-                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                stderr = StringIO()
+                with redirect_stdout(StringIO()), redirect_stderr(stderr):
                     code = cli_module.main(["log-track", "--config", str(app_config), "--rotate-daily"])
             finally:
                 cli_module._read_fixes = original
 
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 1)
             self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947)])
+            self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
+            self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+
+    def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "configured-tracks"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+                latitude=1.0,
+                longitude=2.0,
+                satellites=8,
+                hdop=1.2,
+            )
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+            ):
+                self.assertIsNotNone(deadline)
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(
+                        ["log-track", "--config", str(app_config), "--rotate-daily", "--seconds", "0.1"]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
             self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
 
     def test_cli_log_track_explicit_device_and_output_override_config(self):
@@ -662,6 +715,8 @@ class OpenCPNConfigTests(unittest.TestCase):
                             "--output",
                             str(explicit_output),
                             "--rotate-daily",
+                            "--seconds",
+                            "0.1",
                         ]
                     )
             finally:

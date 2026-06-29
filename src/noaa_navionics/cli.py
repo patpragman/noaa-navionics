@@ -422,6 +422,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 if count == 0:
                     print("No usable GPS fixes were written to the GPX track.", file=sys.stderr)
                     return 1
+                if deadline is None and not args.sample:
+                    print(
+                        "Live GPS stream ended unexpectedly; restart the track logger to resume GPX logging.",
+                        file=sys.stderr,
+                    )
+                    return 1
             except _TrackLoggerStop as exc:
                 print(f"Stopped track logger: {exc}")
             finally:
