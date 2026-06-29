@@ -85,7 +85,13 @@ from noaa_navionics.opencpn import (
     read_data_connections,
     read_chart_directories,
 )
-from noaa_navionics.report import build_status_report, format_status_text, write_status_report, _service_readiness_checks
+from noaa_navionics.report import (
+    build_status_report,
+    format_status_text,
+    write_status_report,
+    _install_wanted_by_targets,
+    _service_readiness_checks,
+)
 
 
 class PackageForTests(unittest.TestCase):
@@ -2033,6 +2039,29 @@ class StatusReportTests(unittest.TestCase):
             report_module.os.fsync = original_fsync
 
         self.assertGreaterEqual(len(calls), 2)
+
+    def test_install_wanted_by_targets_parse_only_install_section(self):
+        targets = _install_wanted_by_targets(
+            [
+                "[Unit]",
+                "WantedBy=wrong.target",
+                "[Install]",
+                "WantedBy=default.target timers.target",
+                ";WantedBy=commented.target",
+            ]
+        )
+
+        self.assertEqual(targets, ["default.target", "timers.target"])
+
+    def test_install_wanted_by_targets_ignore_missing_install_section(self):
+        targets = _install_wanted_by_targets(
+            [
+                "[Service]",
+                "WantedBy=default.target",
+            ]
+        )
+
+        self.assertEqual(targets, [])
 
     def test_service_readiness_checks_accept_expected_onboard_units(self):
         services = {

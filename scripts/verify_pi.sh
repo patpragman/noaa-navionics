@@ -585,6 +585,38 @@ volatile_usb_device_path() {
   esac
 }
 
+check_unit_install_target() {
+  local path="$1"
+  local expected_target="$2"
+  python3 - "$path" "$expected_target" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+expected = sys.argv[2]
+if not path.is_file():
+    raise SystemExit(f"missing unit file: {path}")
+try:
+    lines = path.read_text(encoding="utf-8").splitlines()
+except OSError as exc:
+    raise SystemExit(f"could not read unit file {path}: {exc}") from exc
+targets = []
+section = ""
+for raw_line in lines:
+    line = raw_line.strip()
+    if not line or line.startswith(("#", ";")):
+        continue
+    if line.startswith("[") and line.endswith("]"):
+        section = line[1:-1].strip()
+        continue
+    if section == "Install" and line.startswith("WantedBy="):
+        targets.extend(target for target in line.split("=", 1)[1].split() if target)
+if expected not in targets:
+    detail = ",".join(targets) if targets else "<missing>"
+    raise SystemExit(f"{path} [Install] WantedBy={detail}, expected {expected}")
+PY
+}
+
 check_chartplotter_log_after_boot() {
   local path="$1"
   python3 - "$path" <<'PY'
@@ -944,7 +976,7 @@ check "chart service loaded start limit burst" sh -c 'systemctl --user show noaa
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer randomized delay" grep -Fxq 'RandomizedDelaySec=30min' "$chart_timer"
-check "chart timer install target" grep -Fxq 'WantedBy=timers.target' "$chart_timer"
+check "chart timer install target" check_unit_install_target "$chart_timer" timers.target
 check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
 check "chart timer loaded randomized delay" sh -c 'systemctl --user show noaa-navionics.timer -p RandomizedDelayUSec 2>/dev/null | grep -Fxq RandomizedDelayUSec=30min'
@@ -966,7 +998,7 @@ check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10mi
 check "track service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=10min'
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"
 check "track service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
-check "track service install target" grep -Fxq 'WantedBy=default.target' "$track_service"
+check "track service install target" check_unit_install_target "$track_service" default.target
 check "preflight service file" test -f "$preflight_service"
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
@@ -990,7 +1022,7 @@ check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=
 check "preflight service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=30min'
 check "preflight service start limit burst" grep -Fxq 'StartLimitBurst=60' "$preflight_service"
 check "preflight service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
-check "preflight service install target" grep -Fxq 'WantedBy=default.target' "$preflight_service"
+check "preflight service install target" check_unit_install_target "$preflight_service" default.target
 check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
 check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
 check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service

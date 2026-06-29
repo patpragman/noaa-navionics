@@ -313,6 +313,8 @@ grep -q 'chart timer loaded weekly' scripts/verify_pi.sh
 grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'chart timer loaded randomized delay' scripts/verify_pi.sh
 grep -q 'chart timer install target' scripts/verify_pi.sh
+grep -q 'check_unit_install_target' scripts/verify_pi.sh
+grep -q 'section == "Install"' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
@@ -552,6 +554,8 @@ grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Install' src/noaa_navionics/report.py
 grep -q 'ExecMainStartTimestampMonotonic' src/noaa_navionics/report.py
 grep -q 'USER_UNIT_INSTALL_TARGETS' src/noaa_navionics/report.py
+grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py
+grep -q 'section != "Install"' src/noaa_navionics/report.py
 grep -q 'wanted_by' src/noaa_navionics/report.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py

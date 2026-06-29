@@ -362,13 +362,25 @@ def _user_unit_file_summary() -> dict[str, object]:
             except OSError as exc:
                 state["error"] = str(exc)
             else:
-                state["wanted_by"] = [
-                    line.split("=", 1)[1].strip()
-                    for line in lines
-                    if line.startswith("WantedBy=") and line.split("=", 1)[1].strip()
-                ]
+                state["wanted_by"] = _install_wanted_by_targets(lines)
         summary[unit] = state
     return summary
+
+
+def _install_wanted_by_targets(lines: list[str]) -> list[str]:
+    targets: list[str] = []
+    section = ""
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip()
+            continue
+        if section != "Install" or not line.startswith("WantedBy="):
+            continue
+        targets.extend(target for target in line.split("=", 1)[1].split() if target)
+    return targets
 
 
 def _service_readiness_checks(
