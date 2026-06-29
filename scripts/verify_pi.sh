@@ -19,6 +19,8 @@ set -euo pipefail
 failures=0
 config="${HOME}/.config/noaa-navionics/config.ini"
 bin="${HOME}/.local/bin/noaa-navionics"
+launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
+autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 
 check() {
@@ -56,6 +58,12 @@ case "$arch" in
 esac
 
 check "noaa-navionics command" test -x "$bin"
+check "chartplotter launcher" test -x "$launcher"
+check "chartplotter autostart" test -f "$autostart"
+if [[ -f "$autostart" ]]; then
+  check "chartplotter autostart exec" grep -Fq 'noaa-navionics-start-chartplotter' "$autostart"
+  check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
+fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "${HOME}/.local/share/noaa-navionics/source-revision"
 check "OpenCPN command" command -v opencpn

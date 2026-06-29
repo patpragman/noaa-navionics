@@ -41,7 +41,7 @@ Verify the Raspberry Pi after deployment:
 scripts/verify_pi.sh pi@raspberrypi.local
 ```
 
-The verify script runs checks on the Pi over SSH, including architecture, installed commands, user units, config, and `noaa-navionics status-report`.
+The verify script runs checks on the Pi over SSH, including architecture, installed commands, chartplotter autostart, user units, config, and `noaa-navionics status-report`.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:

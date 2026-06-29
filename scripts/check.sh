@@ -25,7 +25,9 @@ grep -q -- '--gps-seconds 10' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
+grep -q 'install -m 0755' scripts/install_raspberry_pi.sh
 grep -q 'source-revision' scripts/verify_pi.sh
+grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh

@@ -63,7 +63,7 @@ python3 -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install "${repo_root}"
 ln -sf "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 ln -sf "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
-cp "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
+install -m 0755 "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 
 if [[ -f "${repo_root}/.source-revision" ]]; then
   cp "${repo_root}/.source-revision" "$revision_file"
@@ -84,7 +84,7 @@ cp "${repo_root}/systemd/noaa-navionics.service" \
    "${repo_root}/systemd/noaa-navionics-preflight.service" \
    "$systemd_user_dir/"
 
-cp "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
+install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
 
 systemctl --user daemon-reload
 if [[ "$enable_services" -eq 1 ]]; then
