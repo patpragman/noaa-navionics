@@ -432,20 +432,6 @@ fi
 
 run "$bin" configure-opencpn --config "$config"
 
-if [[ "$skip_autologin" -eq 0 ]]; then
-  run mkdir -p "$autostart_dir"
-  run install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
-  run sync_paths "$autostart_entry"
-  desktop_args=(--user "$USER")
-  if [[ "$allow_non_pi" -eq 1 ]]; then
-    desktop_args+=(--allow-non-pi)
-  fi
-  if [[ "$dry_run" -eq 1 ]]; then
-    desktop_args+=(--dry-run)
-  fi
-  run "${repo_root}/scripts/configure_desktop_autologin.sh" "${desktop_args[@]}"
-fi
-
 if [[ "$skip_services" -eq 0 ]]; then
   run mkdir -p "$systemd_user_dir"
   run cp "${repo_root}/systemd/noaa-navionics.service" \
@@ -465,6 +451,20 @@ if [[ "$skip_services" -eq 0 ]]; then
 fi
 
 run "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"
+
+if [[ "$skip_autologin" -eq 0 ]]; then
+  run mkdir -p "$autostart_dir"
+  run install -m 0644 "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_dir/"
+  run sync_paths "$autostart_entry"
+  desktop_args=(--user "$USER")
+  if [[ "$allow_non_pi" -eq 1 ]]; then
+    desktop_args+=(--allow-non-pi)
+  fi
+  if [[ "$dry_run" -eq 1 ]]; then
+    desktop_args+=(--dry-run)
+  fi
+  run "${repo_root}/scripts/configure_desktop_autologin.sh" "${desktop_args[@]}"
+fi
 
 if [[ "$dry_run" -eq 1 ]]; then
   result_label="Dry run complete; no changes were made."

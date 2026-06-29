@@ -453,6 +453,15 @@ grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provisio
 grep -q 'systemctl --user enable noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user start noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/provision_sailboat_pi.sh").read_text(encoding="utf-8")
+status_index = text.index('run "$bin" status-report')
+autologin_index = text.index('configure_desktop_autologin.sh" "${desktop_args[@]}"')
+if autologin_index < status_index:
+    raise SystemExit("desktop autologin must be configured after final status-report succeeds")
+PY
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
