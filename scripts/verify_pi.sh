@@ -124,7 +124,8 @@ check_output() {
 check_status_report_json() {
   local path="$1"
   local require_current_boot="${2:-0}"
-  python3 - "$path" "$require_current_boot" <<'PY'
+  local expected_config_path="${3:-}"
+  python3 - "$path" "$require_current_boot" "$expected_config_path" <<'PY'
 from pathlib import Path
 from datetime import datetime, timezone
 import json
@@ -133,6 +134,7 @@ import sys
 
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
+expected_config_path = sys.argv[3]
 with open(path, encoding="utf-8") as handle:
     report = json.load(handle)
 if report.get("ok") is not True:
@@ -153,6 +155,9 @@ if not isinstance(checks, list) or not checks:
     raise SystemExit("status report has no checks")
 if not isinstance(service_checks, list) or not service_checks:
     raise SystemExit("status report has no service checks")
+actual_config_path = str(report.get("config_path", "")).strip()
+if expected_config_path and actual_config_path != expected_config_path:
+    raise SystemExit(f"status report config path {actual_config_path} does not match {expected_config_path}")
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {
@@ -499,7 +504,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   else
     check "OpenCPN running" false
   fi
-  check "boot status report JSON ready" check_status_report_json "$status_report" 1
+  check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config"
 fi
 check "config file" test -f "$config"
 check "source revision recorded" test -s "$revision_file"
@@ -608,7 +613,7 @@ for attempt in $(seq 1 "$status_attempts"); do
   if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
     printf 'OK   preflight\n'
     printf 'OK   status report %s\n' "$status_report"
-    check "status report JSON ready" check_status_report_json "$status_report"
+    check "status report JSON ready" check_status_report_json "$status_report" 0 "$config"
     preflight_ok=1
     break
   fi
