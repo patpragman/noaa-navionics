@@ -140,6 +140,8 @@ Start the Pi chartplotter launcher:
 noaa-navionics-start-chartplotter
 ```
 
+Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`.
+
 Create the onboard config:
 
 ```bash
