@@ -446,7 +446,7 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk") -> CheckResult:
     path = Path(chart_dir).expanduser()
     existing = path if path.exists() else path.parent
     if not existing.exists():
-        existing = Path.home()
+        return CheckResult(name, False, f"{existing} does not exist; create or mount the configured storage path")
     if not existing.is_dir():
         return CheckResult(name, False, f"{existing} is not a directory")
     usage = shutil.disk_usage(existing)

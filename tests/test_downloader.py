@@ -2040,6 +2040,13 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("not a directory", result.detail)
 
+    def test_disk_check_rejects_missing_parent_storage(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "missing-mount" / "charts"
+            result = check_disk_space(path)
+            self.assertFalse(result.ok)
+            self.assertIn("does not exist", result.detail)
+
     def test_disk_check_reports_unwritable_directory(self):
         original = health_module._directory_writable
         try:
@@ -2092,6 +2099,41 @@ class GpsTests(unittest.TestCase):
             self.assertIn("not writable", track_check.detail)
         finally:
             health_module._directory_writable = original
+
+    def test_preflight_rejects_missing_separate_track_storage_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            chart_dir = root / "charts"
+            extract = chart_dir / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (chart_dir / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip"},'
+                '"download":{"path":"","bytes":0,"sha256":""},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            sample = root / "sample.nmea"
+            sample.write_text(
+                "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
+                encoding="ascii",
+            )
+            track_output = root / "missing-mount" / "tracks"
+
+            results = health_module.run_preflight(
+                chart_dir=chart_dir,
+                chart_package="state",
+                chart_value="AK",
+                gps_sample=sample,
+                track_output=track_output,
+            )
+
+        track_check = next(check for check in results if check.name == "Track Disk")
+        self.assertFalse(track_check.ok)
+        self.assertIn("does not exist", track_check.detail)
 
 
 class PiHealthTests(unittest.TestCase):
