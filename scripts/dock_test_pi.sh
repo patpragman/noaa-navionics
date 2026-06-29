@@ -42,6 +42,7 @@ no_reboot=0
 timeout=180
 deploy_args=()
 provision_args=()
+verify_args=()
 
 require_positive_integer() {
   local name="$1"
@@ -77,7 +78,17 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("--device" "$device")
       shift 2
       ;;
-    --gps-seconds|--sync-retries)
+    --gps-seconds)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_positive_integer "$1" "${2:-}"
+      provision_args+=("$1" "${2:-}")
+      verify_args+=("$1" "${2:-}")
+      shift 2
+      ;;
+    --sync-retries)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
         exit 2
@@ -168,7 +179,7 @@ if [[ "$skip_deploy" -eq 0 ]]; then
 fi
 
 printf '\n[verify before reboot]\n'
-"${repo_root}/scripts/verify_pi.sh" "$target"
+"${repo_root}/scripts/verify_pi.sh" "${verify_args[@]}" "$target"
 
 if [[ "$no_reboot" -eq 1 ]]; then
   printf '\nDock test passed without reboot.\n'
@@ -181,6 +192,6 @@ wait_for_ssh_down
 wait_for_ssh_up
 
 printf '\n[verify after reboot]\n'
-"${repo_root}/scripts/verify_pi.sh" --require-chartplotter-started "$target"
+"${repo_root}/scripts/verify_pi.sh" --require-chartplotter-started "${verify_args[@]}" "$target"
 
 printf '\nDock test passed after reboot.\n'

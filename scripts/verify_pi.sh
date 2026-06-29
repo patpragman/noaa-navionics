@@ -3,23 +3,43 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/verify_pi.sh [--require-chartplotter-started] user@raspberrypi.local
+Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] user@raspberrypi.local
 
 Runs onboard verification on the Raspberry Pi over SSH.
 With --require-chartplotter-started, also requires a post-boot launcher log
 and a running OpenCPN process.
+Use --gps-seconds to allow a longer GPS fix wait during the status report.
 Nothing is installed or enabled on the local computer.
 EOF
 }
 
 target=""
 require_chartplotter_started=0
+gps_seconds=10
+
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "$name must be a positive integer" >&2
+    exit 2
+  fi
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --require-chartplotter-started)
       require_chartplotter_started=1
       shift
+      ;;
+    --gps-seconds)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_positive_integer "$1" "${2:-}"
+      gps_seconds="${2:-}"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -55,8 +75,9 @@ if [[ "$expected_revision" != "unknown" && -n "$worktree_status" ]]; then
 fi
 expected_revision_quoted="$(printf '%q' "$expected_revision")"
 require_chartplotter_started_quoted="$(printf '%q' "$require_chartplotter_started")"
+gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
 
-ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} bash -s" <<'REMOTE'
+ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
@@ -72,6 +93,7 @@ revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 status_attempts=3
 status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
+gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-10}"
 chartplotter_start_timeout=120
 chartplotter_start_interval=5
 
@@ -373,7 +395,7 @@ check "chart timer active" systemctl --user is-active --quiet noaa-navionics.tim
 printf '\n[preflight]\n'
 preflight_ok=0
 for attempt in $(seq 1 "$status_attempts"); do
-  if "$bin" status-report --config "$config" --gps-seconds 10 --output "$status_report"; then
+  if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
     printf 'OK   preflight\n'
     printf 'OK   status report %s\n' "$status_report"
     check "status report JSON ready" check_status_report_json "$status_report"

@@ -44,6 +44,7 @@ grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
 grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 grep -q 'chartplotter_start_timeout=120' scripts/verify_pi.sh
@@ -203,6 +204,16 @@ set -e
 if [[ "$dock_code" -ne 2 ]]; then
   cat "$dock_output" >&2
   echo "expected dock_test_pi.sh to reject invalid --timeout with exit 2" >&2
+  exit 1
+fi
+
+set +e
+scripts/verify_pi.sh --gps-seconds nope pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
 
