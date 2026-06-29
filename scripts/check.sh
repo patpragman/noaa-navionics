@@ -108,6 +108,8 @@ grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
+grep -q 'track service loaded restart' scripts/verify_pi.sh
+grep -q 'track service loaded restart delay' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh

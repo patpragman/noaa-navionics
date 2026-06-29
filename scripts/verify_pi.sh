@@ -531,6 +531,8 @@ check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navion
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
 check "track service loaded quiet stdout" sh -c 'systemctl --user show noaa-navionics-track.service -p StandardOutput 2>/dev/null | grep -Fxq StandardOutput=null'
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
+check "track service loaded restart" sh -c 'systemctl --user show noaa-navionics-track.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
+check "track service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-track.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=10s'
 check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10min' "$track_service"
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"
 check "preflight service file" test -f "$preflight_service"
