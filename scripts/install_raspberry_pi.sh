@@ -43,9 +43,17 @@ fi
 
 if [[ "$skip_apt" -eq 0 ]]; then
   sudo apt update
-  if ! grep -Rqs '^deb .*bookworm-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+  os_codename=""
+  if [[ -r /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    os_codename="${VERSION_CODENAME:-}"
+  fi
+  if [[ "$os_codename" == "bookworm" ]] && ! grep -Rqs '^deb .*bookworm-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
     echo 'deb https://deb.debian.org/debian bookworm-backports main' | sudo tee -a /etc/apt/sources.list >/dev/null
     sudo apt update
+  elif [[ "$os_codename" != "bookworm" ]]; then
+    echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
   sudo apt install -y python3 python3-venv python3-tk opencpn gpsd gpsd-clients
 fi

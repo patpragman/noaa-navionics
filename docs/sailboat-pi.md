@@ -56,11 +56,11 @@ Manual install:
 
 ```bash
 sudo apt update
-sudo sh -c 'echo deb https://deb.debian.org/debian bookworm-backports main >> /etc/apt/sources.list'
-sudo apt update
 sudo apt install python3 python3-venv python3-tk opencpn gpsd gpsd-clients
 scripts/install_raspberry_pi.sh --skip-apt
 ```
+
+On Raspberry Pi OS Bookworm, the installer adds `bookworm-backports` automatically when that source is not already configured. It does not add that Bookworm source on other OS releases.
 
 The installer creates a private virtual environment at `~/.local/share/noaa-navionics/venv` and symlinks commands into `~/.local/bin`. The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool.
 

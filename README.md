@@ -30,6 +30,7 @@ scripts/install_raspberry_pi.sh
 ```
 
 For headless use, `python3-tk` is optional.
+The Raspberry Pi installer installs OpenCPN and GPSD on the Pi, and only adds the Bookworm backports apt source when the Pi OS codename is Bookworm.
 
 ## Tkinter GUI
 
