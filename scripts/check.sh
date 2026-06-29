@@ -234,6 +234,12 @@ grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
 grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
 grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
 grep -q 'file_path.is_symlink()' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_install_path' scripts/install_raspberry_pi.sh
+grep -q 'path contains a symlink' scripts/install_raspberry_pi.sh
+grep -q 'expected no group/other write bits' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_install_path "${HOME}/.local/bin" "user command directory" directory' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_install_path "$data_dir" "NOAA Navionics data directory" directory' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_install_path "$revision_file" "source revision file" regular' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
@@ -1115,6 +1121,38 @@ if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
   install_expected_revision="${install_expected_revision}-dirty"
 fi
 test "$(tr -d '[:space:]' <"$install_smoke_home/.local/share/noaa-navionics/source-revision")" = "$install_expected_revision"
+
+unsafe_install_home="$tmpdir/unsafe-install-home"
+mkdir -p "$unsafe_install_home/.local/bin"
+chmod 0777 "$unsafe_install_home/.local/bin"
+set +e
+HOME="$unsafe_install_home" scripts/install_raspberry_pi.sh --skip-apt --allow-non-pi >"$install_output" 2>&1
+install_code=$?
+set -e
+chmod 0700 "$unsafe_install_home/.local/bin"
+if [[ "$install_code" -eq 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected install_raspberry_pi.sh to reject an unsafe user command directory" >&2
+  exit 1
+fi
+grep -q 'user command directory parent .* expected no group/other write bits' "$install_output"
+test ! -e "$unsafe_install_home/.local/share/noaa-navionics/venv"
+
+install_symlink_home="$tmpdir/install-symlink-home"
+install_symlink_target="$tmpdir/install-symlink-real-data"
+mkdir -p "$install_symlink_home/.local/share" "$install_symlink_target"
+ln -s "$install_symlink_target" "$install_symlink_home/.local/share/noaa-navionics"
+set +e
+HOME="$install_symlink_home" scripts/install_raspberry_pi.sh --skip-apt --allow-non-pi >"$install_output" 2>&1
+install_code=$?
+set -e
+if [[ "$install_code" -eq 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected install_raspberry_pi.sh to reject a symlinked data directory" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics data directory path contains a symlink' "$install_output"
+test -L "$install_symlink_home/.local/share/noaa-navionics"
 
 set +e
 scripts/verify_pi.sh --bad-option pi@example.invalid >"$verify_output" 2>&1

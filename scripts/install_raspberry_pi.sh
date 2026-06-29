@@ -120,6 +120,7 @@ PY
 
 write_source_revision() {
   local revision="$1"
+  validate_user_install_path "$revision_file" "source revision file" regular
   python3 - "$revision_file" "$revision" <<'PY'
 from pathlib import Path
 import os
@@ -155,6 +156,83 @@ finally:
             tmp_path.unlink()
         except FileNotFoundError:
             pass
+PY
+}
+
+validate_user_install_path() {
+  local target="$1"
+  local label="$2"
+  local expected_kind="$3"
+  python3 - "$target" "$label" "$expected_kind" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+target = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+expected_kind = sys.argv[3]
+home = Path.home().resolve(strict=False)
+expected_uid = os.getuid()
+
+if expected_kind not in {"directory", "regular", "link"}:
+    raise SystemExit(f"unsupported install path kind: {expected_kind}")
+
+path_chain = []
+cursor = target if expected_kind == "directory" else target.parent
+while True:
+    path_chain.append(cursor)
+    if cursor == home or cursor == cursor.parent:
+        break
+    cursor = cursor.parent
+if path_chain[-1] != home:
+    raise SystemExit(f"{label} path must be under the installing user's home directory: {target}")
+
+for path in path_chain:
+    if path.is_symlink():
+        raise SystemExit(f"{label} path contains a symlink: {path}")
+
+try:
+    resolved_target = target.resolve(strict=False)
+except RuntimeError as exc:
+    raise SystemExit(f"{label} path could not be resolved: {target}: {exc}") from exc
+if resolved_target != home and home not in resolved_target.parents:
+    raise SystemExit(f"{label} path must stay under the installing user's home directory: {target}")
+
+for directory in path_chain:
+    if not directory.exists():
+        continue
+    if not directory.is_dir():
+        raise SystemExit(f"{label} parent is not a directory: {directory}")
+    stat_result = directory.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f"{label} parent {directory} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f"{label} parent {directory} has permissions {mode:04o}, expected no group/other write bits"
+        )
+
+if expected_kind == "directory":
+    if target.exists() and not target.is_dir():
+        raise SystemExit(f"{label} is not a directory: {target}")
+elif expected_kind == "regular":
+    if target.is_symlink():
+        raise SystemExit(f"{label} is a symlink: {target}")
+    if target.exists() and not target.is_file():
+        raise SystemExit(f"{label} is not a regular file: {target}")
+elif expected_kind == "link":
+    if target.exists() and not target.is_symlink() and not target.is_file():
+        raise SystemExit(f"{label} is not a replaceable file or symlink: {target}")
+
+if expected_kind in {"regular", "link"} and target.exists() and not target.is_symlink():
+    stat_result = target.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(f"{label} {target} is owned by uid {stat_result.st_uid}, expected {expected_uid}")
+    if mode & 0o022:
+        raise SystemExit(f"{label} {target} has permissions {mode:04o}, expected no group/other write bits")
 PY
 }
 
@@ -212,6 +290,7 @@ install_user_file_atomic() {
   local target_dir
   local target_name
   local tmp
+  validate_user_install_path "$target" "installed user file" regular
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
   mkdir -p "$target_dir"
@@ -237,6 +316,7 @@ link_user_atomic() {
   local target_dir
   local target_name
   local tmp
+  validate_user_install_path "$target" "installed command symlink" link
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
   mkdir -p "$target_dir"
@@ -351,6 +431,12 @@ For development-only testing, pass --allow-non-pi.
 EOF
   exit 2
 fi
+
+validate_user_install_path "${HOME}/.local/bin" "user command directory" directory
+validate_user_install_path "$data_dir" "NOAA Navionics data directory" directory
+validate_user_install_path "$venv_dir" "private virtual environment" directory
+validate_user_install_path "$config_dir" "NOAA Navionics config directory" directory
+validate_user_install_path "$systemd_user_dir" "user systemd directory" directory
 
 if [[ "$skip_apt" -eq 0 ]]; then
   apt_update
