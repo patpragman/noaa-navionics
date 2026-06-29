@@ -639,6 +639,8 @@ chart_timer="${systemd_user_dir}/noaa-navionics.timer"
 track_service="${systemd_user_dir}/noaa-navionics-track.service"
 preflight_service="${systemd_user_dir}/noaa-navionics-preflight.service"
 check "chart service file" test -f "$chart_service"
+check "chart service type" grep -Fxq 'Type=oneshot' "$chart_service"
+check "chart service loaded type" sh -c 'systemctl --user show noaa-navionics.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
 check "chart service loaded sync command" sh -c 'loaded="$(systemctl --user show noaa-navionics.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics sync-charts" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--retries 5" && printf "%s\n" "$loaded" | grep -Fq -- "--retry-delay 30"'
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
@@ -655,6 +657,8 @@ check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'
 check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
 check "track service file" test -f "$track_service"
+check "track service type" grep -Fxq 'Type=simple' "$track_service"
+check "track service loaded type" sh -c 'systemctl --user show noaa-navionics-track.service -p Type 2>/dev/null | grep -Fxq Type=simple'
 check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
 check "track service loaded rotate daily" sh -c 'loaded="$(systemctl --user show noaa-navionics-track.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics log-track" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--rotate-daily"'
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
@@ -667,6 +671,8 @@ check "track service loaded start limit interval" sh -c 'systemctl --user show n
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"
 check "track service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
 check "preflight service file" test -f "$preflight_service"
+check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
+check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
 check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=10' "$preflight_service"
 check "preflight service GPS wait config" grep -Fxq 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' "$preflight_service"
 check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS} --output %h/.cache/noaa-navionics/status.json' "$preflight_service"

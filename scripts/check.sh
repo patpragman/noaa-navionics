@@ -289,6 +289,8 @@ grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics log-track' src/noaa_navionics/report.py
 grep -q 'noaa-navionics status-report' src/noaa_navionics/report.py
+grep -q '"Type": "oneshot"' src/noaa_navionics/report.py
+grep -q '"Type": "simple"' src/noaa_navionics/report.py
 grep -q '"Restart": "on-failure"' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'Chrony Service' src/noaa_navionics/report.py
@@ -300,6 +302,12 @@ grep -q '"extract_path": extract.get("path", "")' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
+grep -q 'Type=oneshot' systemd/noaa-navionics.service
+grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
+grep -q 'Type=simple' systemd/noaa-navionics-track.service
+grep -q 'chart service loaded type' scripts/verify_pi.sh
+grep -q 'track service loaded type' scripts/verify_pi.sh
+grep -q 'preflight service loaded type' scripts/verify_pi.sh
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service

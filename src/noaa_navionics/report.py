@@ -24,6 +24,7 @@ BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
         "ExecStart",
+        "Type",
         "TimeoutStartUSec",
         "Restart",
         "RestartUSec",
@@ -36,6 +37,7 @@ USER_UNIT_PROPERTIES = {
     ],
     "noaa-navionics-track.service": [
         "ExecStart",
+        "Type",
         "StandardOutput",
         "Restart",
         "RestartUSec",
@@ -44,6 +46,7 @@ USER_UNIT_PROPERTIES = {
     ],
     "noaa-navionics-preflight.service": [
         "ExecStart",
+        "Type",
         "EnvironmentFiles",
         "Restart",
         "RestartUSec",
@@ -336,6 +339,7 @@ def _service_readiness_checks(
                     "noaa-navionics.service",
                     "Chart Sync Settings",
                     exact={
+                        "Type": "oneshot",
                         "TimeoutStartUSec": "2h",
                         "Restart": "on-failure",
                         "RestartUSec": "30min",
@@ -364,6 +368,7 @@ def _service_readiness_checks(
                     "noaa-navionics-track.service",
                     "Track Logger Settings",
                     exact={
+                        "Type": "simple",
                         "StandardOutput": "null",
                         "Restart": "on-failure",
                         "RestartUSec": "10s",
@@ -384,6 +389,7 @@ def _service_readiness_checks(
                     "noaa-navionics-preflight.service",
                     "Boot Readiness Settings",
                     exact={
+                        "Type": "oneshot",
                         "Restart": "on-failure",
                         "RestartUSec": "30s",
                         "StartLimitIntervalUSec": "5min",

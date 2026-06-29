@@ -1090,6 +1090,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
                     "RestartUSec": "30min",
@@ -1110,6 +1111,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "active",
                 "properties": {
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "Type": "simple",
                     "StandardOutput": "null",
                     "Restart": "on-failure",
                     "RestartUSec": "10s",
@@ -1122,6 +1124,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 10 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "Type": "oneshot",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
                     "Restart": "on-failure",
                     "RestartUSec": "30s",
@@ -1151,6 +1154,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
+                    "Type": "oneshot",
                     "StandardOutput": "journal",
                     "Restart": "no",
                     "RestartUSec": "100ms",
@@ -1170,6 +1174,7 @@ class StatusReportTests(unittest.TestCase):
         track_settings = next(check for check in checks if check.name == "Track Logger Settings")
 
         self.assertFalse(track_settings.ok)
+        self.assertIn("Type=oneshot", track_settings.detail)
         self.assertIn("StandardOutput=journal", track_settings.detail)
         self.assertIn("Restart=no", track_settings.detail)
 
@@ -1183,6 +1188,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
+                    "Type": "simple",
                     "Restart": "no",
                     "RestartUSec": "30s",
                     "StartLimitIntervalUSec": "5min",
@@ -1200,6 +1206,7 @@ class StatusReportTests(unittest.TestCase):
         boot_settings = next(check for check in checks if check.name == "Boot Readiness Settings")
 
         self.assertFalse(boot_settings.ok)
+        self.assertIn("Type=simple", boot_settings.detail)
         self.assertIn("Restart=no", boot_settings.detail)
 
     def test_service_readiness_checks_fail_loaded_command_missing_args(self):
@@ -1210,6 +1217,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "ExecStart": "{ argv[]=/home/pi/.local/bin/noaa-navionics sync-charts ; }",
+                    "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
                     "RestartUSec": "30min",
