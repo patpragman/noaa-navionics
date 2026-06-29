@@ -308,8 +308,22 @@ if expected_config_path:
         )
     with Path(expected_manifest_path).open(encoding="utf-8") as manifest_handle:
         manifest_file = json.load(manifest_handle)
+    package_section = manifest_file.get("package", {})
     download_section = manifest_file.get("download", {})
+    extract_section = manifest_file.get("extract", {})
+    if not isinstance(package_section, dict):
+        raise SystemExit(f"manifest file has no package section: {expected_manifest_path}")
+    if not isinstance(download_section, dict):
+        raise SystemExit(f"manifest file has no download section: {expected_manifest_path}")
+    if not isinstance(extract_section, dict):
+        raise SystemExit(f"manifest file has no extract section: {expected_manifest_path}")
     manifest_file_created_at_source = str(manifest_file.get("created_at_source", "")).strip()
+    manifest_file_created_at = str(manifest_file.get("created_at", "")).strip()
+    if str(manifest.get("created_at", "")).strip() != manifest_file_created_at:
+        raise SystemExit(
+            "status report manifest created_at "
+            f"{str(manifest.get('created_at', '')).strip()} does not match manifest file {manifest_file_created_at}"
+        )
     if manifest_file_created_at_source != manifest_created_at_source:
         raise SystemExit(
             f"status report manifest created_at_source {manifest_created_at_source} "
@@ -321,6 +335,35 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest download_skipped {manifest_download_skipped} "
             f"does not match manifest file {manifest_file_download_skipped}"
+        )
+    manifest_field_pairs = [
+        ("package", package_section, "label"),
+        ("package_filename", package_section, "filename"),
+        ("url", package_section, "url"),
+        ("download_path", download_section, "path"),
+        ("download_url", download_section, "url"),
+        ("sha256", download_section, "sha256"),
+        ("extract_path", extract_section, "path"),
+    ]
+    for status_key, source_section, source_key in manifest_field_pairs:
+        status_value = str(manifest.get(status_key, "")).strip()
+        file_value = str(source_section.get(source_key, "")).strip()
+        if status_value != file_value:
+            raise SystemExit(
+                f"status report manifest {status_key} {status_value} "
+                f"does not match manifest file {source_key} {file_value}"
+            )
+    manifest_file_download_bytes = int(download_section.get("bytes", 0))
+    manifest_file_enc_cell_count = int(extract_section.get("enc_cell_count", 0))
+    if int(manifest.get("download_bytes", 0)) != manifest_file_download_bytes:
+        raise SystemExit(
+            f"status report manifest download_bytes {manifest.get('download_bytes', 0)} "
+            f"does not match manifest file bytes {manifest_file_download_bytes}"
+        )
+    if int(manifest.get("enc_cell_count", 0)) != manifest_file_enc_cell_count:
+        raise SystemExit(
+            f"status report manifest enc_cell_count {manifest.get('enc_cell_count', 0)} "
+            f"does not match manifest file enc_cell_count {manifest_file_enc_cell_count}"
         )
     manifest_package_filename = str(manifest.get("package_filename", "")).strip()
     if expected_package_zip and manifest_package_filename != expected_package_zip:

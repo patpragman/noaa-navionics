@@ -230,6 +230,10 @@ grep -q 'status report manifest missing' scripts/verify_pi.sh
 grep -q 'status report manifest missing created_at_source' scripts/verify_pi.sh
 grep -q 'status report manifest created_at_source' scripts/verify_pi.sh
 grep -q 'status report manifest download_skipped' scripts/verify_pi.sh
+grep -q 'status report manifest created_at ' scripts/verify_pi.sh
+grep -q 'does not match manifest file bytes' scripts/verify_pi.sh
+grep -q 'does not match manifest file enc_cell_count' scripts/verify_pi.sh
+grep -q 'manifest_field_pairs' scripts/verify_pi.sh
 grep -q 'expected_package_filename' scripts/verify_pi.sh
 grep -q 'expected_package_url' scripts/verify_pi.sh
 grep -q 'status report manifest package filename' scripts/verify_pi.sh
