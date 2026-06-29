@@ -107,7 +107,7 @@ Deploy to a Raspberry Pi over SSH:
 scripts/deploy_to_pi.sh pi@raspberrypi.local
 ```
 
-Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script checks for local `ssh` and remote `python3`, prefers `rsync` when it is available on both machines, and otherwise bootstraps the repo with local and remote `tar`. Both copy paths write into a validated sibling staging directory and promote it only after the transfer succeeds, so an interrupted deploy does not empty the previous deployment. The script writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
+Deployment refuses a dirty local worktree by default so the Pi's recorded source revision is trustworthy. Use `--allow-dirty` only for deliberate test deployments; those are recorded with a `-dirty` suffix. The deploy script checks for local `ssh` and remote `python3`, prefers `rsync` when it is available on both machines, and otherwise bootstraps the repo with local and remote `tar`. Both copy paths skip local build/cache directories and downloaded chart artifacts, write into a validated sibling staging directory, and promote it only after the transfer succeeds, so an interrupted deploy does not empty the previous deployment. The script writes the remote source revision through a synced temporary file and atomic replace before the Pi installer records it for status reports.
 
 Deploy and run the onboard provisioning sequence:
 

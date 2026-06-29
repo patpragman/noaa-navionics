@@ -107,6 +107,12 @@ grep -q 'Deployment staging directory is not ready' scripts/deploy_to_pi.sh
 grep -q 'Refusing to promote deployment staging outside deployment parent' scripts/deploy_to_pi.sh
 grep -q 'previous.rename(repo)' scripts/deploy_to_pi.sh
 grep -q -- "--exclude='./.git'" scripts/deploy_to_pi.sh
+grep -Fq -- "--exclude '*.egg-info/'" scripts/deploy_to_pi.sh
+grep -Fq -- "--exclude '.venv/'" scripts/deploy_to_pi.sh
+grep -Fq -- "--exclude='*.zip'" scripts/deploy_to_pi.sh
+grep -Fq -- "--exclude='ENCProdCat_19115.xml'" scripts/deploy_to_pi.sh
+grep -Fq -- "--exclude='*.egg-info'" scripts/deploy_to_pi.sh
+grep -Fq -- "--exclude='*/.venv'" scripts/deploy_to_pi.sh
 grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh

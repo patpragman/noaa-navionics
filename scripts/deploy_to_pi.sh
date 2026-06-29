@@ -451,8 +451,17 @@ deploy_with_rsync() {
     --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
+    --exclude '*.egg-info/' \
     --exclude '.pytest_cache/' \
+    --exclude '.mypy_cache/' \
+    --exclude '.ruff_cache/' \
+    --exclude '.venv/' \
+    --exclude 'build/' \
+    --exclude 'dist/' \
     --exclude 'charts/' \
+    --exclude '*.part' \
+    --exclude '*.zip' \
+    --exclude 'ENCProdCat_19115.xml' \
     "${repo_root}/" "${target}:${remote_staging_dir}/"
   promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
@@ -466,10 +475,25 @@ deploy_with_tar() {
       --exclude='./__pycache__' \
       --exclude='*/__pycache__' \
       --exclude='*.pyc' \
+      --exclude='*.egg-info' \
+      --exclude='*.egg-info/*' \
       --exclude='./.pytest_cache' \
       --exclude='*/.pytest_cache' \
+      --exclude='./.mypy_cache' \
+      --exclude='*/.mypy_cache' \
+      --exclude='./.ruff_cache' \
+      --exclude='*/.ruff_cache' \
+      --exclude='./.venv' \
+      --exclude='*/.venv' \
+      --exclude='./build' \
+      --exclude='*/build' \
+      --exclude='./dist' \
+      --exclude='*/dist' \
       --exclude='./charts' \
       --exclude='*/charts' \
+      --exclude='*.part' \
+      --exclude='*.zip' \
+      --exclude='ENCProdCat_19115.xml' \
       -czf - .
   ) | ssh "$target" "tar -xzf - -C ${remote_staging_dir_quoted}"
   promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
