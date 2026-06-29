@@ -204,13 +204,16 @@ set -euo pipefail
 failures=0
 config="${HOME}/.config/noaa-navionics/config.ini"
 bin="${HOME}/.local/bin/noaa-navionics"
+gui_bin="${HOME}/.local/bin/noaa-navionics-gui"
 launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 desktop_autologin="${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
+gps_time_helper="${HOME}/.local/bin/noaa-navionics-configure-gps-time"
 autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 log_file="${HOME}/.cache/noaa-navionics/chartplotter.log"
 launcher_lock="${HOME}/.cache/noaa-navionics/chartplotter.launch.lock"
+venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 status_attempts=3
@@ -1192,6 +1195,91 @@ check_user_regular_file_integrity() {
   fi
 }
 
+check_user_executable_file_integrity() {
+  local path="$1"
+  local label="$2"
+
+  check_user_regular_file_integrity "$path" "$label" || return 1
+  if [[ ! -x "$path" ]]; then
+    printf '%s is not executable: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+}
+
+check_user_private_directory_integrity() {
+  local path="$1"
+  local label="$2"
+  local expected_uid
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+
+  expected_uid="$(id -u)"
+  if [[ -L "$path" ]]; then
+    printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if [[ ! -d "$path" ]]; then
+    printf '%s is not a directory: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$path" 2>/dev/null)" || {
+    printf 'could not inspect %s: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "$expected_uid" ]]; then
+    printf '%s is owned by uid %s, expected %s: %s\n' "$label" "$owner_uid" "$expected_uid" "$path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    printf '%s has permissions %s, expected no group/other write bits: %s\n' "$label" "$mode_text" "$path" >&2
+    return 1
+  fi
+}
+
+check_command_symlink_to_private_venv() {
+  local path="$1"
+  local label="$2"
+  local expected_target="$3"
+  local actual_target
+  local resolved_target
+  local resolved_venv
+
+  if [[ ! -L "$path" ]]; then
+    printf '%s is not the expected symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  actual_target="$(readlink "$path" 2>/dev/null)" || {
+    printf 'could not read %s symlink: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  if [[ "$actual_target" != "$expected_target" ]]; then
+    printf '%s symlink target is %s, expected %s\n' "$label" "$actual_target" "$expected_target" >&2
+    return 1
+  fi
+  resolved_target="$(readlink -f "$path" 2>/dev/null)" || {
+    printf 'could not resolve %s symlink target: %s\n' "$label" "$path" >&2
+    return 1
+  }
+  resolved_venv="$(readlink -f "$venv_dir" 2>/dev/null)" || {
+    printf 'could not resolve private venv directory: %s\n' "$venv_dir" >&2
+    return 1
+  }
+  case "$resolved_target" in
+    "$resolved_venv"/bin/*)
+      ;;
+    *)
+      printf '%s resolves outside private venv: %s\n' "$label" "$resolved_target" >&2
+      return 1
+      ;;
+  esac
+  check_user_executable_file_integrity "$resolved_target" "$label target" || return 1
+}
+
 check_root_regular_file_integrity() {
   local path="$1"
   local label="$2"
@@ -1832,8 +1920,24 @@ esac
 
 check "verification user is not root" check_not_root_user
 check "noaa-navionics command" test -x "$bin"
+check "private venv directory integrity" check_user_private_directory_integrity "$venv_dir" "private virtual environment"
+check "noaa-navionics command symlink" check_command_symlink_to_private_venv "$bin" "noaa-navionics command" "${venv_dir}/bin/noaa-navionics"
+check "noaa-navionics GUI command" test -x "$gui_bin"
+if [[ -e "$gui_bin" || -L "$gui_bin" ]]; then
+  check "noaa-navionics GUI command symlink" check_command_symlink_to_private_venv "$gui_bin" "noaa-navionics GUI command" "${venv_dir}/bin/noaa-navionics-gui"
+fi
 check "chartplotter launcher" test -x "$launcher"
+if [[ -e "$launcher" || -L "$launcher" ]]; then
+  check "chartplotter launcher file integrity" check_user_executable_file_integrity "$launcher" "chartplotter launcher"
+fi
 check "desktop autologin helper" test -x "$desktop_autologin"
+if [[ -e "$desktop_autologin" || -L "$desktop_autologin" ]]; then
+  check "desktop autologin helper file integrity" check_user_executable_file_integrity "$desktop_autologin" "desktop autologin helper"
+fi
+check "GPS time helper" test -x "$gps_time_helper"
+if [[ -e "$gps_time_helper" || -L "$gps_time_helper" ]]; then
+  check "GPS time helper file integrity" check_user_executable_file_integrity "$gps_time_helper" "GPS time helper"
+fi
 if [[ -x "$launcher" ]]; then
   check "chartplotter launcher readiness gate" grep -Fq 'status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"' "$launcher"
   check "chartplotter launcher GPS wait config" grep -Fq 'NOAA_NAVIONICS_GPS_SECONDS' "$launcher"
