@@ -190,6 +190,8 @@ class DownloaderApp(tk.Tk):
             results = run_preflight(
                 chart_dir=Path(self.output.get()),
                 gpsd=self.use_gpsd.get(),
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
                 gps_device=None if self.use_gpsd.get() else self.gps_device.get().strip() or None,
                 gps_seconds=5.0,
             )

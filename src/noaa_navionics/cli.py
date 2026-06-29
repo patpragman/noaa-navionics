@@ -6,6 +6,7 @@ import argparse
 import time
 import sys
 
+from .config import DEFAULT_CONFIG_PATH, package_kwargs, read_config, write_default_config
 from .downloader import (
     BASE_URL,
     CATALOG_NAME,
@@ -34,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--timeout", type=float, default=60, help="network timeout in seconds")
     download.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
 
+    sync = subparsers.add_parser("sync-charts", help="download the chart package from the config file")
+    sync.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    sync.add_argument("--force", action="store_true", help="override config and force redownload")
+
     catalog = subparsers.add_parser("catalog", help="download NOAA's XML product catalog")
     catalog.add_argument("--output", "-o", default="~/charts/noaa-enc", help="download directory")
     catalog.add_argument("--force", action="store_true", help="overwrite an existing catalog")
@@ -50,7 +55,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     gui = subparsers.add_parser("gui", help="launch the Tkinter GUI")
 
+    init_config = subparsers.add_parser("init-config", help="write a default onboard config file")
+    init_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    init_config.add_argument("--force", action="store_true", help="overwrite an existing config")
+
     preflight = subparsers.add_parser("preflight", help="check Pi navigation readiness")
+    preflight.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     preflight.add_argument("--charts", default="~/charts/noaa-enc", help="chart directory")
     preflight.add_argument("--gpsd", action="store_true", help="check GPSD at localhost:2947")
     preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/ttyUSB0")
@@ -58,6 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--gps-seconds", type=float, default=5.0, help="seconds to wait for a GPS fix")
 
     gps = subparsers.add_parser("gps-monitor", help="print live GPS fixes from an NMEA device")
+    gps.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     gps.add_argument("--device", default="/dev/ttyUSB0", help="NMEA serial device")
     gps.add_argument("--baud", type=int, default=4800, help="serial baud rate")
     gps.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
@@ -65,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     gps.add_argument("--once", action="store_true", help="exit after the first valid fix")
 
     track = subparsers.add_parser("log-track", help="record GPS fixes to a GPX track")
+    track.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     track.add_argument("--device", default="/dev/ttyUSB0", help="NMEA serial device")
     track.add_argument("--baud", type=int, default=4800, help="serial baud rate")
     track.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
@@ -123,6 +135,21 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(path)
             return 0
 
+        if args.command == "sync-charts":
+            app_config = read_config(Path(args.config))
+            package = package_for(**package_kwargs(app_config))
+            result = download_package(
+                package,
+                app_config.chart_output,
+                extract=app_config.extract,
+                keep_zip=app_config.keep_zip,
+                force=args.force or app_config.force,
+            )
+            print(f"Downloaded: {result.path}" if not result.skipped else f"Already exists: {result.path}")
+            if result.extracted_to:
+                print(f"Extracted to: {result.extracted_to}")
+            return 0
+
         if args.command == "search-catalog":
             catalog_path = Path(args.catalog).expanduser() if args.catalog else ensure_catalog(
                 Path(args.output), force=args.force_catalog
@@ -158,11 +185,20 @@ def main(argv: Optional[list[str]] = None) -> int:
             gui_main()
             return 0
 
+        if args.command == "init-config":
+            path = write_default_config(Path(args.config), overwrite=args.force)
+            print(path)
+            return 0
+
         if args.command == "preflight":
+            app_config = read_config(Path(args.config))
+            gps_mode = app_config.gps_mode
             results = run_preflight(
-                chart_dir=Path(args.charts),
-                gpsd=args.gpsd,
-                gps_device=args.gps_device,
+                chart_dir=Path(args.charts) if args.charts != "~/charts/noaa-enc" else app_config.chart_output,
+                gpsd=args.gpsd or (gps_mode == "gpsd" and not args.gps_device and not args.gps_sample),
+                gpsd_host=app_config.gpsd_host,
+                gpsd_port=app_config.gpsd_port,
+                gps_device=args.gps_device or (app_config.gps_device if gps_mode == "serial" else None),
                 gps_sample=Path(args.gps_sample) if args.gps_sample else None,
                 gps_seconds=args.gps_seconds,
             )
@@ -172,8 +208,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 0 if all(result.ok for result in results) else 1
 
         if args.command == "gps-monitor":
+            app_config = read_config(Path(args.config))
+            use_gpsd = args.gpsd or (
+                app_config.gps_mode == "gpsd" and not args.sample and args.device == "/dev/ttyUSB0"
+            )
             count = 0
-            for fix in _read_fixes(args.device, args.baud, args.sample, gpsd=args.gpsd):
+            for fix in _read_fixes(
+                args.device if args.device != "/dev/ttyUSB0" else app_config.gps_device,
+                args.baud if args.baud != 4800 else app_config.gps_baud,
+                args.sample,
+                gpsd=use_gpsd,
+                gpsd_host=app_config.gpsd_host,
+                gpsd_port=app_config.gpsd_port,
+            ):
                 print(_format_fix(fix))
                 count += 1
                 if args.once or count >= 1 and args.sample:
@@ -181,11 +228,23 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
 
         if args.command == "log-track":
-            output = Path(args.file).expanduser() if args.file else default_track_path(Path(args.output))
+            app_config = read_config(Path(args.config))
+            use_gpsd = args.gpsd or (
+                app_config.gps_mode == "gpsd" and not args.sample and args.device == "/dev/ttyUSB0"
+            )
+            base_output = Path(args.output) if args.output != "~/charts/noaa-enc" else app_config.track_output
+            output = Path(args.file).expanduser() if args.file else default_track_path(base_output)
             deadline = time.monotonic() + args.seconds if args.seconds else None
             with GPXTrackLogger(output) as logger:
                 count = 0
-                for fix in _read_fixes(args.device, args.baud, args.sample, gpsd=args.gpsd):
+                for fix in _read_fixes(
+                    args.device if args.device != "/dev/ttyUSB0" else app_config.gps_device,
+                    args.baud if args.baud != 4800 else app_config.gps_baud,
+                    args.sample,
+                    gpsd=use_gpsd,
+                    gpsd_host=app_config.gpsd_host,
+                    gpsd_port=app_config.gpsd_port,
+                ):
                     logger.append(fix)
                     count += 1
                     print(_format_fix(fix))
@@ -215,9 +274,17 @@ def _add_selector_args(parser: argparse.ArgumentParser) -> None:
     selectors.add_argument("--catalog", action="store_true", help="download NOAA XML product catalog")
 
 
-def _read_fixes(device: str, baud: int, sample: Optional[str], *, gpsd: bool = False):
+def _read_fixes(
+    device: str,
+    baud: int,
+    sample: Optional[str],
+    *,
+    gpsd: bool = False,
+    gpsd_host: str = "127.0.0.1",
+    gpsd_port: int = 2947,
+):
     if gpsd:
-        yield from iter_gpsd_fixes()
+        yield from iter_gpsd_fixes(host=gpsd_host, port=gpsd_port)
         return
     if sample:
         with Path(sample).expanduser().open(encoding="ascii", errors="ignore") as handle:

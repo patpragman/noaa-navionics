@@ -89,10 +89,28 @@ For a production-style Raspberry Pi chartplotter setup, use this project with Op
 
 See [docs/sailboat-pi.md](docs/sailboat-pi.md).
 
+Deploy to a Raspberry Pi over SSH:
+
+```bash
+scripts/deploy_to_pi.sh pi@raspberrypi.local
+```
+
+Create the onboard config:
+
+```bash
+noaa-navionics init-config
+```
+
+Download the configured chart package:
+
+```bash
+noaa-navionics sync-charts
+```
+
 Preflight check:
 
 ```bash
-noaa-navionics preflight --charts ~/charts/noaa-enc --gpsd
+noaa-navionics preflight
 ```
 
 Live GPS check:
@@ -104,7 +122,7 @@ noaa-navionics gps-monitor --gpsd --once
 Track logging:
 
 ```bash
-noaa-navionics log-track --gpsd --output ~/charts/noaa-enc
+noaa-navionics log-track
 ```
 
 ## Raspberry Pi Automation
@@ -118,7 +136,7 @@ systemctl --user daemon-reload
 systemctl --user enable --now noaa-navionics.timer
 ```
 
-Edit `~/.config/systemd/user/noaa-navionics.service` if you want a bundle other than Alaska.
+Edit `~/.config/noaa-navionics/config.ini` if you want a bundle other than Alaska.
 
 ## Navigation Safety
 

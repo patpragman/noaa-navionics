@@ -1,0 +1,9 @@
+[Unit]
+Description=Run NOAA Navionics preflight checks
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/noaa-navionics preflight --config %h/.config/noaa-navionics/config.ini
+
+[Install]
+WantedBy=default.target

@@ -7,6 +7,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from noaa_navionics.downloader import package_for, search_catalog
+from noaa_navionics.config import package_kwargs, read_config, write_default_config
 from noaa_navionics.gps import GPXTrackLogger, iter_fixes, parse_gpsd_tpv, parse_nmea_sentence
 from noaa_navionics.health import check_chart_dir, check_gps_sample
 
@@ -86,6 +87,47 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(len(matches), 1)
             self.assertEqual(matches[0].name, "US5AK3CM")
             self.assertEqual(matches[0].states, ("AK",))
+
+
+class ConfigTests(unittest.TestCase):
+    def test_write_and_read_default_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            written = write_default_config(path)
+            self.assertEqual(written, path)
+            config = read_config(path)
+            self.assertEqual(config.chart_package, "state")
+            self.assertEqual(config.chart_value, "AK")
+            self.assertEqual(config.gps_mode, "gpsd")
+            self.assertTrue(config.extract)
+
+    def test_custom_config_package_kwargs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            path.write_text(
+                "[charts]\n"
+                "package = cgd\n"
+                "value = 17\n"
+                "output = /charts\n"
+                "extract = true\n"
+                "keep_zip = false\n"
+                "force = false\n"
+                "\n"
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/ttyACM0\n"
+                "baud = 9600\n"
+                "gpsd_host = 192.168.1.10\n"
+                "gpsd_port = 2947\n",
+                encoding="utf-8",
+            )
+            config = read_config(path)
+            self.assertEqual(package_kwargs(config), {"cgd": "17"})
+            self.assertEqual(config.gps_mode, "serial")
+            self.assertEqual(config.gps_device, "/dev/ttyACM0")
+            self.assertEqual(config.gps_baud, 9600)
+            self.assertFalse(config.keep_zip)
+            self.assertFalse(config.force)
 
 
 class GpsTests(unittest.TestCase):

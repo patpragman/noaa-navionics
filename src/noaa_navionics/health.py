@@ -22,6 +22,8 @@ def run_preflight(
     *,
     chart_dir: Path,
     gpsd: bool = False,
+    gpsd_host: str = "127.0.0.1",
+    gpsd_port: int = 2947,
     gps_device: Optional[str] = None,
     gps_sample: Optional[Path] = None,
     gps_seconds: float = 5.0,
@@ -34,7 +36,7 @@ def run_preflight(
         check_disk_space(chart_dir),
     ]
     if gpsd:
-        results.append(check_gpsd(seconds=gps_seconds))
+        results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
     elif gps_device:
@@ -106,15 +108,15 @@ def check_gps_device(device: str, *, seconds: float = 5.0) -> CheckResult:
     return CheckResult("GPS", False, f"no valid NMEA fix from {device} within {seconds:.0f}s")
 
 
-def check_gpsd(*, seconds: float = 5.0) -> CheckResult:
+def check_gpsd(*, host: str = "127.0.0.1", port: int = 2947, seconds: float = 5.0) -> CheckResult:
     deadline = time.monotonic() + seconds
     try:
-        for fix in iter_gpsd_fixes(timeout=seconds):
+        for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds):
             if time.monotonic() > deadline:
                 break
             return CheckResult("GPSD", True, _fix_detail(fix))
     except Exception as exc:
-        return CheckResult("GPSD", False, f"gpsd localhost:2947: {exc}")
+        return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}")
     return CheckResult("GPSD", False, f"no valid GPSD fix within {seconds:.0f}s")
 
 

@@ -13,6 +13,22 @@ This project is the chart-data, GPS-check, and operations wrapper for a Raspberr
 
 ## Install Packages
 
+Fast path from a cloned repo:
+
+```bash
+scripts/install_raspberry_pi.sh
+```
+
+Deploy from another computer over SSH:
+
+```bash
+scripts/deploy_to_pi.sh pi@raspberrypi.local
+```
+
+The deploy script copies this repo to the Raspberry Pi and runs the installer on the Pi. It does not install or enable services on the computer you run it from.
+
+Manual install:
+
 ```bash
 sudo apt update
 sudo sh -c 'echo deb https://deb.debian.org/debian bookworm-backports main >> /etc/apt/sources.list'
@@ -22,6 +38,37 @@ python3 -m pip install --user .
 ```
 
 The Python code uses only the standard library. `opencpn` renders NOAA ENCs, and `gpsd` shares one GPS feed between OpenCPN and this tool.
+
+## Onboard Config
+
+All services read one config file:
+
+```bash
+noaa-navionics init-config
+nano ~/.config/noaa-navionics/config.ini
+```
+
+Default config:
+
+```ini
+[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = yes
+force = yes
+
+[gps]
+mode = gpsd
+device = /dev/ttyUSB0
+baud = 4800
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+
+[tracking]
+output = ~/charts/noaa-enc
+```
 
 ## GPSD Setup
 
@@ -56,7 +103,7 @@ Configure OpenCPN to use the GPSD network source at `localhost:2947`.
 Download Alaska charts:
 
 ```bash
-noaa-navionics download --state AK --output ~/charts/noaa-enc --extract
+noaa-navionics sync-charts
 ```
 
 For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--chart` downloads. Use the catalog search to identify specific cells:
@@ -73,6 +120,12 @@ Run this before relying on the Pi:
 
 ```bash
 noaa-navionics preflight --charts ~/charts/noaa-enc --gpsd
+```
+
+or, using the onboard config:
+
+```bash
+noaa-navionics preflight
 ```
 
 Expected checks:
@@ -94,6 +147,12 @@ Manual:
 noaa-navionics log-track --gpsd --output ~/charts/noaa-enc
 ```
 
+or, using the onboard config:
+
+```bash
+noaa-navionics log-track
+```
+
 The generated GPX files are stored under `~/charts/noaa-enc/tracks/`.
 
 Systemd user service:
@@ -104,6 +163,8 @@ cp systemd/noaa-navionics-track.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now noaa-navionics-track.service
 ```
+
+The service reads `~/.config/noaa-navionics/config.ini`.
 
 ## Chart Updates
 
@@ -116,7 +177,17 @@ systemctl --user daemon-reload
 systemctl --user enable --now noaa-navionics.timer
 ```
 
-Edit the service file if your cruising region is not Alaska.
+Edit `~/.config/noaa-navionics/config.ini` if your cruising region is not Alaska.
+
+## Boot-Time Preflight
+
+Install a user service that runs the same readiness check at login:
+
+```bash
+cp systemd/noaa-navionics-preflight.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable noaa-navionics-preflight.service
+```
 
 ## Operational Notes
 
