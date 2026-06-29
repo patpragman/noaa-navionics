@@ -2812,6 +2812,43 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((real_destination / "US5AK3CM").exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
+    def test_extract_zip_rejects_symlinked_destination_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            link_parent = root / "link-parent"
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            destination = link_parent / "AK_ENCs"
+
+            with self.assertRaisesRegex(RuntimeError, "chart output path contains a symlink"):
+                extract_zip(archive, destination)
+
+            self.assertFalse((real_parent / "AK_ENCs").exists())
+            self.assertFalse(list(real_parent.glob(".AK_ENCs.*.extracting")))
+
+    def test_extract_zip_rejects_non_directory_destination(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            destination = root / "AK_ENCs"
+            destination.write_text("not a directory\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "chart extraction destination is not a directory"):
+                extract_zip(archive, destination)
+
+            self.assertEqual(destination.read_text(encoding="utf-8"), "not a directory\n")
+            self.assertFalse((root / ".AK_ENCs.previous").exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
     def test_extract_zip_syncs_extracted_tree_and_parent_directory(self):
         calls = []
         original_fsync = downloader_module.os.fsync

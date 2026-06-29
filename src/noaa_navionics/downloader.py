@@ -336,9 +336,11 @@ def _download_package_unlocked(
 def extract_zip(zip_path: Path, destination: Path) -> Path:
     destination = Path(destination).expanduser()
     parent = destination.parent
-    parent.mkdir(parents=True, exist_ok=True)
+    _prepare_output_dir(parent)
     if destination.is_symlink():
         raise RuntimeError(f"chart extraction destination is a symlink: {destination}")
+    if destination.exists() and not destination.is_dir():
+        raise RuntimeError(f"chart extraction destination is not a directory: {destination}")
     staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", suffix=".extracting", dir=parent))
     previous = parent / f".{destination.name}.previous"
     try:

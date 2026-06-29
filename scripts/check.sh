@@ -833,6 +833,9 @@ grep -q 'partial download already exists; remove interrupted chart update debris
 grep -q 'chart archive path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'tmp_path.exists() or tmp_path.is_symlink()' src/noaa_navionics/downloader.py
 grep -q 'chart extraction destination is a symlink' src/noaa_navionics/downloader.py
+grep -q 'chart extraction destination is not a directory' src/noaa_navionics/downloader.py
+grep -q 'test_extract_zip_rejects_symlinked_destination_parent' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_non_directory_destination' tests/test_downloader.py
 grep -q 'def _pid_is_running' src/noaa_navionics/downloader.py
 grep -q 'def _current_boot_id' src/noaa_navionics/downloader.py
 grep -q 'STATE_PACKAGES' src/noaa_navionics/downloader.py
