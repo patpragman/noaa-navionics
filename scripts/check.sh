@@ -533,6 +533,8 @@ grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_root_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_root_directory_integrity' scripts/verify_pi.sh
+grep -q 'first_shell_symlink_ancestor' scripts/verify_pi.sh
+grep -q 'path contains a symlink' scripts/verify_pi.sh
 grep -q 'chartplotter launcher env file integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher environment directory symlink guard' scripts/verify_pi.sh
 grep -q 'chartplotter autostart file integrity' scripts/verify_pi.sh

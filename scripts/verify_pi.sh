@@ -1454,6 +1454,24 @@ if normalized not in {"0", "no", "false", "off"}:
 PY
 }
 
+first_shell_symlink_ancestor() {
+  local path="$1"
+  local current
+
+  current="$path"
+  while [[ -n "$current" && "$current" != "." ]]; do
+    if [[ -L "$current" ]]; then
+      printf '%s\n' "$current"
+      return 0
+    fi
+    if [[ "$current" == "/" ]]; then
+      return 1
+    fi
+    current="$(dirname "$current")"
+  done
+  return 1
+}
+
 check_user_regular_file_integrity() {
   local path="$1"
   local label="$2"
@@ -1462,10 +1480,15 @@ check_user_regular_file_integrity() {
   local owner_uid
   local mode_text
   local mode
+  local symlink_component
 
   expected_uid="$(id -u)"
   if [[ -L "$path" ]]; then
     printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if symlink_component="$(first_shell_symlink_ancestor "$(dirname "$path")")"; then
+    printf '%s path contains a symlink: %s\n' "$label" "$symlink_component" >&2
     return 1
   fi
   if [[ ! -f "$path" ]]; then
@@ -1508,10 +1531,15 @@ check_user_private_directory_integrity() {
   local owner_uid
   local mode_text
   local mode
+  local symlink_component
 
   expected_uid="$(id -u)"
   if [[ -L "$path" ]]; then
     printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if symlink_component="$(first_shell_symlink_ancestor "$(dirname "$path")")"; then
+    printf '%s path contains a symlink: %s\n' "$label" "$symlink_component" >&2
     return 1
   fi
   if [[ ! -d "$path" ]]; then
@@ -1581,9 +1609,14 @@ check_root_regular_file_integrity() {
   local owner_uid
   local mode_text
   local mode
+  local symlink_component
 
   if [[ -L "$path" ]]; then
     printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if symlink_component="$(first_shell_symlink_ancestor "$(dirname "$path")")"; then
+    printf '%s path contains a symlink: %s\n' "$label" "$symlink_component" >&2
     return 1
   fi
   if [[ ! -f "$path" ]]; then
@@ -1614,9 +1647,14 @@ check_root_directory_integrity() {
   local owner_uid
   local mode_text
   local mode
+  local symlink_component
 
   if [[ -L "$path" ]]; then
     printf '%s is a symlink: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if symlink_component="$(first_shell_symlink_ancestor "$(dirname "$path")")"; then
+    printf '%s path contains a symlink: %s\n' "$label" "$symlink_component" >&2
     return 1
   fi
   if [[ ! -d "$path" ]]; then
