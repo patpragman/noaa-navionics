@@ -406,8 +406,10 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
     digest = result.sha256
     if not digest and result.path.exists():
         digest = sha256_file(result.path)
+    created_at, created_at_source = _manifest_created_at(output_path, package, result, digest)
     manifest = {
-        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "created_at": created_at,
+        "created_at_source": created_at_source,
         "package": {
             "label": package.label,
             "url": package.url,
@@ -449,6 +451,65 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
             except FileNotFoundError:
                 pass
     return target
+
+
+def _manifest_created_at(
+    output_path: Path,
+    package: Package,
+    result: DownloadResult,
+    digest: str,
+) -> tuple[str, str]:
+    if not result.skipped:
+        return _utc_now_text(), "download"
+    previous_created_at = _matching_previous_manifest_created_at(output_path, package, result, digest)
+    if previous_created_at:
+        return previous_created_at, "previous-manifest"
+    return _archive_mtime_text(result.path), "unverified-cache"
+
+
+def _matching_previous_manifest_created_at(
+    output_path: Path,
+    package: Package,
+    result: DownloadResult,
+    digest: str,
+) -> str:
+    manifest_path = output_path / MANIFEST_NAME
+    if not manifest_path.exists():
+        return ""
+    try:
+        manifest = read_manifest(output_path)
+    except Exception:
+        return ""
+    created_at = str(manifest.get("created_at", "")).strip()
+    package_section = manifest.get("package", {})
+    download = manifest.get("download", {})
+    if not created_at or not isinstance(package_section, dict) or not isinstance(download, dict):
+        return ""
+    if package_section.get("filename") != package.filename or package_section.get("url") != package.url:
+        return ""
+    previous_path = Path(str(download.get("path", ""))).expanduser()
+    if previous_path.name != result.path.name:
+        return ""
+    try:
+        previous_bytes = int(download.get("bytes", 0))
+    except (TypeError, ValueError):
+        return ""
+    previous_digest = str(download.get("sha256", "")).strip().lower()
+    if previous_bytes != result.bytes_written or previous_digest != digest.lower():
+        return ""
+    return created_at
+
+
+def _archive_mtime_text(path: Path) -> str:
+    try:
+        timestamp = Path(path).stat().st_mtime
+    except OSError:
+        return _utc_now_text()
+    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _utc_now_text() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def read_manifest(output_dir: Union[Path, str]) -> dict[str, object]:

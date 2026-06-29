@@ -354,6 +354,12 @@ def check_chart_manifest(
         created = _parse_manifest_time(str(manifest.get("created_at", "")))
     except Exception as exc:
         return CheckResult("Manifest", False, f"invalid {manifest_path}: {exc}")
+    if str(manifest.get("created_at_source", "")).strip() == "unverified-cache":
+        return CheckResult(
+            "Manifest",
+            False,
+            "manifest was created from an existing ZIP without a prior verified manifest; run sync-charts --force",
+        )
     if created is None:
         return CheckResult("Manifest", False, f"manifest has no valid created_at: {manifest_path}")
     age_days = (datetime.now(timezone.utc) - created).total_seconds() / 86400

@@ -652,6 +652,7 @@ class ManifestTests(unittest.TestCase):
             manifest = read_manifest(output)
             self.assertEqual(manifest["package"]["label"], "Test package")
             self.assertEqual(manifest["package"]["url"], source_zip.as_uri())
+            self.assertEqual(manifest["created_at_source"], "download")
             self.assertEqual(manifest["download"]["url"], source_zip.as_uri())
             self.assertEqual(manifest["download"]["sha256"], result.sha256)
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
@@ -672,7 +673,50 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
             manifest = read_manifest(output)
             self.assertEqual(manifest["download"]["bytes"], result.bytes_written)
+            self.assertEqual(manifest["created_at_source"], "unverified-cache")
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
+
+    def test_existing_zip_without_previous_manifest_fails_freshness_check(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            existing = output / "AK_ENCs.zip"
+            with zipfile.ZipFile(existing, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
+
+            result = download_package(package, output, extract=True)
+
+            self.assertTrue(result.skipped)
+            manifest = read_manifest(output)
+            self.assertEqual(manifest["created_at_source"], "unverified-cache")
+            check = check_chart_manifest(output)
+            self.assertFalse(check.ok)
+            self.assertIn("existing ZIP without a prior verified manifest", check.detail)
+
+    def test_existing_zip_preserves_previous_manifest_timestamp(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            first = download_package(package, output, extract=True, force=True)
+            old_created_at = "2000-01-01T00:00:00Z"
+            manifest = read_manifest(output)
+            manifest["created_at"] = old_created_at
+            (output / MANIFEST_NAME).write_text(json.dumps(manifest), encoding="utf-8")
+
+            second = download_package(package, output, extract=True, force=False)
+
+            self.assertTrue(second.skipped)
+            self.assertEqual(second.sha256, first.sha256)
+            updated_manifest = read_manifest(output)
+            self.assertEqual(updated_manifest["created_at"], old_created_at)
+            self.assertEqual(updated_manifest["created_at_source"], "previous-manifest")
+            check = check_chart_manifest(output, max_age_days=1)
+            self.assertFalse(check.ok)
+            self.assertIn("days old", check.detail)
 
     def test_write_manifest_does_not_reuse_fixed_part_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
