@@ -714,9 +714,12 @@ grep -q '"Restart": "on-failure"' src/noaa_navionics/report.py
 grep -q 'GPSD Service' src/noaa_navionics/report.py
 grep -q 'Chrony Service' src/noaa_navionics/report.py
 grep -q 'def _unit_query_failed' src/noaa_navionics/report.py
+grep -q 'enabled_text not in {"static", "generated"}' src/noaa_navionics/report.py
 grep -q 'def _systemctl_user_show' src/noaa_navionics/report.py
 grep -q 'loaded settings match expected values' src/noaa_navionics/report.py
 grep -q 'chart manifest freshness decides navigation readiness' src/noaa_navionics/report.py
+grep -q 'missing or disabled chart-refresh service still fails readiness' README.md
+grep -q 'missing or disabled chart-refresh service still fails readiness' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"min_free_gb": app_config.min_free_gb' src/noaa_navionics/report.py

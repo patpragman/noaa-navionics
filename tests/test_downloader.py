@@ -2954,6 +2954,48 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(sync_check.ok)
         self.assertIn("manifest freshness", sync_check.detail)
 
+    def test_service_readiness_checks_fail_disabled_chart_sync_service(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "disabled", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        sync_check = next(check for check in checks if check.name == "Chart Sync")
+
+        self.assertFalse(sync_check.ok)
+        self.assertIn("disabled", sync_check.detail)
+
+    def test_service_readiness_checks_fail_missing_chart_sync_service(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "not-found", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        sync_check = next(check for check in checks if check.name == "Chart Sync")
+
+        self.assertFalse(sync_check.ok)
+        self.assertIn("not-found", sync_check.detail)
+
     def test_service_readiness_checks_fail_chart_sync_query_error(self):
         services = {
             "available": True,
