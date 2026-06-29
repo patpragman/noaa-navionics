@@ -252,6 +252,13 @@ def check_chart_package(package: str, value: str = "") -> CheckResult:
             "catalog is metadata only; use state, cgd, region, chart, or all",
         )
     if package in {"state", "cgd", "region", "chart", "all"}:
+        filename, _url = _expected_manifest_package(package, value)
+        if not filename:
+            return CheckResult(
+                "Chart Package",
+                False,
+                f"{package} {value}".strip() + " is not a supported NOAA ENC package",
+            )
         label = f"{package} {value}".strip()
         return CheckResult("Chart Package", True, label)
     return CheckResult(

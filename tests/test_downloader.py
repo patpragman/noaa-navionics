@@ -102,6 +102,14 @@ class PackageForTests(unittest.TestCase):
         package = package_for(cgd="7")
         self.assertEqual(package.filename, "07CGD_ENCs.zip")
 
+    def test_rejects_unsupported_prepackaged_package_codes(self):
+        with self.assertRaisesRegex(ValueError, "state must be one of"):
+            package_for(state="ZZ")
+        with self.assertRaisesRegex(ValueError, "Coast Guard district must be one of"):
+            package_for(cgd="99")
+        with self.assertRaisesRegex(ValueError, "region must be one of"):
+            package_for(region="99")
+
     def test_requires_one_selector(self):
         with self.assertRaises(ValueError):
             package_for(state="AK", region="30")
@@ -250,6 +258,9 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\npackage = state\nvalue =\n", "charts.value"),
             ("[charts]\noutput =\n", "charts.output"),
             ("[charts]\noutput = charts/noaa-enc\n", "charts.output"),
+            ("[charts]\npackage = state\nvalue = ZZ\n", "charts.value"),
+            ("[charts]\npackage = cgd\nvalue = 99\n", "charts.value"),
+            ("[charts]\npackage = region\nvalue = 99\n", "charts.value"),
             ("[charts]\nmax_age_days = 0\n", "charts.max_age_days"),
             ("[charts]\nmin_free_gb = 0\n", "charts.min_free_gb"),
             ("[charts]\nmin_free_gb = nan\n", "charts.min_free_gb"),
@@ -1305,6 +1316,11 @@ class ManifestTests(unittest.TestCase):
     def test_chart_package_accepts_state_bundle(self):
         result = check_chart_package("state", "AK")
         self.assertTrue(result.ok)
+
+    def test_chart_package_rejects_unsupported_state_bundle(self):
+        result = check_chart_package("state", "ZZ")
+        self.assertFalse(result.ok)
+        self.assertIn("not a supported NOAA ENC package", result.detail)
 
     def test_chart_update_debris_fails_for_interrupted_sync_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:

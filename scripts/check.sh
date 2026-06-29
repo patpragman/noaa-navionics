@@ -329,6 +329,9 @@ grep -q 'boot_id' src/noaa_navionics/report.py
 grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
+grep -q 'STATE_PACKAGES' src/noaa_navionics/downloader.py
+grep -q 'COAST_GUARD_DISTRICT_PACKAGES' src/noaa_navionics/downloader.py
+grep -q 'REGION_PACKAGES' src/noaa_navionics/downloader.py
 grep -q 'if not keep_zip' src/noaa_navionics/downloader.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
@@ -352,6 +355,7 @@ grep -q '/dev/serial/by-id/YOUR_GPS_DEVICE' examples/noaa-navionics.ini
 grep -q 'min_free_gb = 2.0' examples/noaa-navionics.ini
 grep -q 'charts.min_free_gb' src/noaa_navionics/config.py
 grep -q 'def _get_float' src/noaa_navionics/config.py
+grep -q 'def _validate_chart_package_value' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be a hostname or IP address' src/noaa_navionics/config.py
 grep -q 'gps.gpsd_host must be local for onboard gpsd mode' src/noaa_navionics/config.py
 grep -q 'GPSD_LOCAL_HOSTS' src/noaa_navionics/config.py

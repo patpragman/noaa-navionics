@@ -31,6 +31,53 @@ UPDATE_PACKAGES = {
     "one-week": "OneWeek_ENCs.zip",
     "ten-days": "TenDays_ENCs.zip",
 }
+STATE_PACKAGES = {
+    "AK",
+    "AL",
+    "AQ",
+    "BS",
+    "CA",
+    "CT",
+    "DE",
+    "FL",
+    "FM",
+    "GA",
+    "GT",
+    "HI",
+    "HT",
+    "ID",
+    "IL",
+    "IN",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MH",
+    "MI",
+    "MN",
+    "MS",
+    "NC",
+    "NH",
+    "NJ",
+    "NV",
+    "NY",
+    "OH",
+    "OR",
+    "PA",
+    "PO",
+    "PR",
+    "PW",
+    "RI",
+    "SC",
+    "SP",
+    "TX",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+}
+COAST_GUARD_DISTRICT_PACKAGES = {1, 5, 7, 8, 9, 11, 13, 14, 17}
+REGION_PACKAGES = {2, 3, 4, 6, 7, 8, 10, 12, 13, 14, 15, 17, 22, 24, 26, 30, 32, 34, 36, 40}
 
 
 @dataclass(frozen=True)
@@ -92,6 +139,8 @@ def package_for(
         code = state.strip().upper()
         if len(code) != 2 or not code.isalpha():
             raise ValueError("state must be a two-letter NOAA state/territory code")
+        if code not in STATE_PACKAGES:
+            raise ValueError(f"state must be one of: {', '.join(sorted(STATE_PACKAGES))}")
         filename = f"{code}_ENCs.zip"
         return Package(f"State {code}", urljoin(base_url, filename), filename)
 
@@ -99,15 +148,23 @@ def package_for(
         code = cgd.strip().upper().replace("CGD", "")
         if not code.isdigit():
             raise ValueError("Coast Guard district must be numeric, like 17")
-        filename = f"{int(code):02d}CGD_ENCs.zip"
-        return Package(f"Coast Guard District {int(code):02d}", urljoin(base_url, filename), filename)
+        number = int(code)
+        if number not in COAST_GUARD_DISTRICT_PACKAGES:
+            supported = ", ".join(f"{value:02d}" for value in sorted(COAST_GUARD_DISTRICT_PACKAGES))
+            raise ValueError(f"Coast Guard district must be one of: {supported}")
+        filename = f"{number:02d}CGD_ENCs.zip"
+        return Package(f"Coast Guard District {number:02d}", urljoin(base_url, filename), filename)
 
     if region:
         code = region.strip().upper().replace("REGION", "")
         if not code.isdigit():
             raise ValueError("region must be numeric, like 30")
-        filename = f"{int(code):02d}Region_ENCs.zip"
-        return Package(f"Region {int(code):02d}", urljoin(base_url, filename), filename)
+        number = int(code)
+        if number not in REGION_PACKAGES:
+            supported = ", ".join(f"{value:02d}" for value in sorted(REGION_PACKAGES))
+            raise ValueError(f"region must be one of: {supported}")
+        filename = f"{number:02d}Region_ENCs.zip"
+        return Package(f"Region {number:02d}", urljoin(base_url, filename), filename)
 
     if updates:
         key = normalize_update_key(updates)

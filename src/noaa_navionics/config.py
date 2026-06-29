@@ -77,6 +77,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     chart_value = charts.get("value", defaults.chart_value).strip()
     if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
         raise ValueError(f"charts.value is required when charts.package is {chart_package}")
+    _validate_chart_package_value(chart_package, chart_value)
     chart_output_text = _get_required_text(charts, "output", str(defaults.chart_output), label="charts.output")
     chart_output = Path(chart_output_text).expanduser()
     _require_absolute_path(chart_output, label="charts.output")
@@ -197,6 +198,24 @@ def package_kwargs(app_config: AppConfig) -> dict[str, object]:
     if package == "all":
         return {"all_charts": True}
     raise ValueError("charts.package must be one of: state, cgd, region, chart, all")
+
+
+def _validate_chart_package_value(package: str, value: str) -> None:
+    from .downloader import package_for
+
+    try:
+        if package == "state":
+            package_for(state=value)
+        elif package == "cgd":
+            package_for(cgd=value)
+        elif package == "region":
+            package_for(region=value)
+        elif package == "chart":
+            package_for(chart=value)
+        elif package == "all":
+            package_for(all_charts=True)
+    except ValueError as exc:
+        raise ValueError(f"charts.value {exc}") from exc
 
 
 def _write_text_atomic(target: Path, text: str) -> None:

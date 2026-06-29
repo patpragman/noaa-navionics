@@ -15,6 +15,8 @@ NOAA publishes ENCs in S-57 format through the Office of Coast Survey chart down
 - Region bundles such as `30Region_ENCs.zip`
 - Individual chart ZIPs listed in `ENCProdCat_19115.xml`
 
+State, Coast Guard district, and region selectors are validated against NOAA's current prepackaged ENC bundles so typos fail before a dock sync starts.
+
 NOAA's downloader page says ENCs are available in S-57 format and points scripts to the XML product catalog. NOAA requests this citation for use of the data:
 
 > Office of Coast Survey. (2001). NOAA Electronic Navigational Charts (ENC) [Dataset]. National Oceanic and Atmospheric Administration. Accessed [date]. https://doi.org/10.25923/jyyk-j845
