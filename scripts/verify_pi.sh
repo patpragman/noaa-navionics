@@ -12,8 +12,11 @@ EOF
 fi
 
 target="$1"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+expected_revision_quoted="$(printf '%q' "$expected_revision")"
 
-ssh -t "$target" 'bash -s' <<'REMOTE'
+ssh -t "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 
 failures=0
@@ -22,6 +25,7 @@ bin="${HOME}/.local/bin/noaa-navionics"
 launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
+revision_file="${HOME}/.local/share/noaa-navionics/source-revision"
 
 check() {
   local name="$1"
@@ -65,7 +69,11 @@ if [[ -f "$autostart" ]]; then
   check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
 fi
 check "config file" test -f "$config"
-check "source revision recorded" test -s "${HOME}/.local/share/noaa-navionics/source-revision"
+check "source revision recorded" test -s "$revision_file"
+if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "unknown" ]]; then
+  installed_revision="$(tr -d '[:space:]' <"$revision_file")"
+  check "source revision matches" test "$installed_revision" = "$NOAA_NAVIONICS_EXPECTED_REVISION"
+fi
 check "OpenCPN command" command -v opencpn
 check "GPSD command" command -v gpsd
 check "GPSD config" test -f /etc/default/gpsd
