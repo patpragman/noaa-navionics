@@ -161,7 +161,7 @@ noaa-navionics sync-charts
 ```
 
 Each sync writes `noaa-navionics-manifest.json` next to the chart data. The manifest records the NOAA package URL, download size, SHA-256, extraction path, ENC cell count, and UTC sync time. Preflight requires this manifest, fails if it is older than `max_age_days`, and verifies that the recorded extraction path still contains ENC cells.
-The installed chart refresh service runs `sync-charts` with retries so transient Wi-Fi or NOAA download failures do not immediately fail the weekly refresh.
+The installed chart refresh service runs `sync-charts` with retries and a two-hour systemd start timeout so large NOAA bundles are not killed during slow marina Wi-Fi downloads.
 
 For another cruising area, use `--state`, `--cgd`, `--region`, or individual `--chart` downloads. Use the catalog search to identify specific cells:
 

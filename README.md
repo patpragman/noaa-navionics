@@ -188,7 +188,7 @@ noaa-navionics log-track
 
 A user-level systemd timer is included in `systemd/`.
 The Pi provisioning script enables user lingering so the timer and track logger can run after reboot without an interactive login.
-The included chart sync service retries transient network failures before reporting a failed run.
+The included chart sync service retries transient network failures and allows up to two hours for slow NOAA downloads before reporting a failed run.
 
 ```bash
 mkdir -p ~/.config/systemd/user
