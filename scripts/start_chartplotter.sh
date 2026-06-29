@@ -10,6 +10,9 @@ max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 gps_seconds=10
 warning_seconds=8
+readiness_attempts=3
+readiness_retry_delay=10
+start_on_failed_readiness=0
 lock_acquired=0
 
 sync_paths() {
@@ -47,6 +50,7 @@ PY
 load_launcher_settings() {
   local key
   local value
+  local start_on_failed_text
   if [[ -r "$launcher_env" ]]; then
     while IFS='=' read -r key value; do
       case "$key" in
@@ -56,11 +60,23 @@ load_launcher_settings() {
         NOAA_NAVIONICS_WARNING_SECONDS)
           warning_seconds="$value"
           ;;
+        NOAA_NAVIONICS_READINESS_ATTEMPTS)
+          readiness_attempts="$value"
+          ;;
+        NOAA_NAVIONICS_READINESS_RETRY_DELAY)
+          readiness_retry_delay="$value"
+          ;;
+        NOAA_NAVIONICS_START_ON_FAILED_READINESS)
+          start_on_failed_text="$value"
+          ;;
       esac
     done <"$launcher_env"
   fi
   gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-$gps_seconds}"
   warning_seconds="${NOAA_NAVIONICS_WARNING_SECONDS:-$warning_seconds}"
+  readiness_attempts="${NOAA_NAVIONICS_READINESS_ATTEMPTS:-$readiness_attempts}"
+  readiness_retry_delay="${NOAA_NAVIONICS_READINESS_RETRY_DELAY:-$readiness_retry_delay}"
+  start_on_failed_text="${NOAA_NAVIONICS_START_ON_FAILED_READINESS:-${start_on_failed_text:-no}}"
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
     echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 10 seconds." >&2
     gps_seconds=10
@@ -69,6 +85,26 @@ load_launcher_settings() {
     echo "Invalid NOAA_NAVIONICS_WARNING_SECONDS=${warning_seconds}; using 8 seconds." >&2
     warning_seconds=8
   fi
+  if [[ ! "$readiness_attempts" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=${readiness_attempts}; using 3 attempts." >&2
+    readiness_attempts=3
+  fi
+  if [[ ! "$readiness_retry_delay" =~ ^[0-9]+$ ]]; then
+    echo "Invalid NOAA_NAVIONICS_READINESS_RETRY_DELAY=${readiness_retry_delay}; using 10 seconds." >&2
+    readiness_retry_delay=10
+  fi
+  case "${start_on_failed_text,,}" in
+    1|yes|true|on)
+      start_on_failed_readiness=1
+      ;;
+    0|no|false|off)
+      start_on_failed_readiness=0
+      ;;
+    *)
+      echo "Invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS=${start_on_failed_text}; using no." >&2
+      start_on_failed_readiness=0
+      ;;
+  esac
 }
 
 keep_display_awake() {
@@ -153,21 +189,27 @@ acquire_launcher_lock() {
 }
 
 show_preflight_warning() {
+  local action_text
+  if [[ "$start_on_failed_readiness" -eq 1 ]]; then
+    action_text="OpenCPN will start anyway. Keep backup navigation available."
+  else
+    action_text="OpenCPN will not start automatically. Keep backup navigation available and fix readiness before departure."
+  fi
   if [[ "$warning_seconds" -eq 0 ]]; then
     echo "Readiness warning timeout is 0 seconds; continuing immediately."
     return 0
   fi
   if [[ -z "${DISPLAY:-}" ]]; then
-    echo "No display session found for readiness warning; waiting ${warning_seconds}s before OpenCPN."
+    echo "No display session found for readiness warning; waiting ${warning_seconds}s before continuing."
     sleep "$warning_seconds"
     return 0
   fi
   if ! command -v python3 >/dev/null 2>&1; then
-    echo "python3 is unavailable for readiness warning; waiting ${warning_seconds}s before OpenCPN." >&2
+    echo "python3 is unavailable for readiness warning; waiting ${warning_seconds}s before continuing." >&2
     sleep "$warning_seconds"
     return 0
   fi
-  if python3 - "$status_report" "$warning_seconds" <<'PY'
+  if python3 - "$status_report" "$warning_seconds" "$action_text" <<'PY'
 from pathlib import Path
 import json
 import sys
@@ -175,6 +217,7 @@ import tkinter as tk
 
 status_report = Path(sys.argv[1]).expanduser()
 seconds = int(sys.argv[2])
+action_text = sys.argv[3]
 
 def failed_checks(path):
     try:
@@ -213,7 +256,7 @@ message = (
     "NOAA Navionics readiness failed.\n\n"
     f"{failure_text}\n\n"
     f"Status report:\n{status_report}\n\n"
-    "OpenCPN will start anyway. Keep backup navigation available."
+    f"{action_text}"
 )
 frame = tk.Frame(root, padx=24, pady=20)
 frame.pack(fill="both", expand=True)
@@ -227,9 +270,30 @@ PY
   then
     echo "Readiness warning displayed for ${warning_seconds}s."
   else
-    echo "Readiness warning dialog unavailable; waiting ${warning_seconds}s before OpenCPN." >&2
+    echo "Readiness warning dialog unavailable; waiting ${warning_seconds}s before continuing." >&2
     sleep "$warning_seconds"
   fi
+}
+
+run_readiness_report() {
+  local attempt=1
+  while [[ "$attempt" -le "$readiness_attempts" ]]; do
+    if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
+      if [[ "$attempt" -eq 1 ]]; then
+        echo "NOAA Navionics preflight passed."
+      else
+        echo "NOAA Navionics preflight passed on attempt ${attempt}/${readiness_attempts}."
+      fi
+      return 0
+    fi
+    echo "NOAA Navionics preflight failed on attempt ${attempt}/${readiness_attempts}. Status report: $status_report" >&2
+    if [[ "$attempt" -lt "$readiness_attempts" ]]; then
+      echo "Retrying readiness in ${readiness_retry_delay}s." >&2
+      sleep "$readiness_retry_delay"
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
 }
 
 if [[ ! -x "$bin" ]]; then
@@ -252,12 +316,14 @@ acquire_launcher_lock
 load_launcher_settings
 keep_display_awake
 
-if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
-  echo "NOAA Navionics preflight passed."
-else
-  echo "NOAA Navionics preflight failed. Status report: $status_report" >&2
-  echo "Starting OpenCPN anyway; keep backup navigation available." >&2
+if ! run_readiness_report; then
+  echo "NOAA Navionics readiness failed after ${readiness_attempts} attempt(s). Status report: $status_report" >&2
   show_preflight_warning
+  if [[ "$start_on_failed_readiness" -ne 1 ]]; then
+    echo "Not starting OpenCPN automatically because readiness failed." >&2
+    exit 1
+  fi
+  echo "Starting OpenCPN despite failed readiness because NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled." >&2
 fi
 
 if ! command -v opencpn >/dev/null 2>&1; then

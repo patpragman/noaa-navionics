@@ -176,12 +176,12 @@ noaa-navionics-start-chartplotter
 
 Launcher output is appended to `~/.cache/noaa-navionics/chartplotter.log`, including OpenCPN's exit status if the chartplotter process stops.
 The launcher rotates that log once it exceeds 1 MB and syncs the rotated file and directory entry so repeated unattended boots do not grow the cache indefinitely.
-It reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
+It reads `NOAA_NAVIONICS_GPS_SECONDS`, optional `NOAA_NAVIONICS_WARNING_SECONDS`, optional `NOAA_NAVIONICS_READINESS_ATTEMPTS`, optional `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, and optional `NOAA_NAVIONICS_START_ON_FAILED_READINESS` from `~/.config/noaa-navionics/launcher.env` or the process environment before writing its startup readiness report.
 If OpenCPN is already running for the same user, a repeated launcher invocation leaves the existing chartplotter instance in place instead of starting a second one.
 The launcher also keeps a synced cache-directory lock for the supervised OpenCPN session so overlapping desktop startup attempts cannot race each other while OpenCPN is still starting or running; if an old lock points at an unrelated reused PID, it clears and syncs the stale lock cleanup before continuing startup.
 When an X desktop session is present, the launcher also asks the display server to disable screen blanking and DPMS sleep before starting OpenCPN.
 Preflight and Pi verification require `xset` from `x11-xserver-utils` so this display-awake step is available.
-If readiness fails in a desktop session, the launcher shows a Tkinter warning listing failed checks and the status report path before starting OpenCPN anyway.
+If readiness fails, the launcher retries the startup readiness report before launching OpenCPN. After the final failed attempt it shows a Tkinter warning listing failed checks and the status report path when a desktop is available, then does not start OpenCPN automatically. Set `NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes` only for deliberate manual fallback behavior where OpenCPN should launch despite failed readiness.
 If those display power commands fail during chartplotter autostart, or if the current-boot launcher log shows OpenCPN already exited, the strict Pi startup verifier fails the dock test.
 The provisioning script configures LightDM autologin so the desktop autostart entry can launch the chartplotter after boot. Autologin setup rejects root, requires the selected account to exist with an owned local home directory, and writes an installed X11 session into the LightDM config so display blanking controls work. Use `--skip-autologin` only for deliberate headless or development deployments.
 
