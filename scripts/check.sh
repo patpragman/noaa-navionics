@@ -655,19 +655,23 @@ grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
 grep -q 'prepare_app_config_path' scripts/configure_gpsd.sh
 grep -q 'validate_gpsd_config_path' scripts/configure_gpsd.sh
+grep -q -- '--gpsd-conf PATH' scripts/configure_gpsd.sh
+grep -q 'first_symlink_ancestor' scripts/configure_gpsd.sh
 grep -q 'GPSD config is a symlink' scripts/configure_gpsd.sh
+grep -q 'GPSD config directory is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory .* has permissions' scripts/configure_gpsd.sh
+grep -q 'Refusing to write a non-standard GPSD config path' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import read_config' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _prepare_config_parent' scripts/configure_gpsd.sh
 grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
-grep -q 'install_root_file_atomic "$tmp" /etc/default/gpsd 0644' scripts/configure_gpsd.sh
+grep -q 'install_root_file_atomic "$tmp" "$gpsd_conf" 0644' scripts/configure_gpsd.sh
 grep -q 'systemctl daemon-reload' scripts/configure_gpsd.sh
 grep -q 'systemctl enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
 grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
-grep -q 'backup_root_file_private /etc/default/gpsd "$backup"' scripts/configure_gpsd.sh
+grep -q 'backup_root_file_private "$gpsd_conf" "$backup"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
 ! grep -q 'sudo cp -a /etc/default/gpsd' scripts/configure_gpsd.sh
@@ -2258,6 +2262,29 @@ if [[ "$gpsd_code" -eq 0 ]]; then
 fi
 grep -q 'NOAA Navionics config directory is a symlink' "$gpsd_output"
 ! grep -q 'Would write /etc/default/gpsd' "$gpsd_output"
+
+gpsd_system_real_root="$tmpdir/real-gpsd-system-root"
+gpsd_system_link_root="$tmpdir/link-gpsd-system-root"
+mkdir -p "$gpsd_system_real_root/default"
+ln -s "$gpsd_system_real_root" "$gpsd_system_link_root"
+set +e
+scripts/configure_gpsd.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --config "$tmpdir/config.ini" \
+  --gpsd-conf "$gpsd_system_link_root/default/gpsd" \
+  --device /dev/serial/by-id/mock-gps >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -eq 0 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject a symlinked GPSD config ancestor" >&2
+  exit 1
+fi
+grep -q 'GPSD config directory is a symlink' "$gpsd_output"
+grep -q "$gpsd_system_link_root" "$gpsd_output"
+! grep -q 'Would write' "$gpsd_output"
 
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \

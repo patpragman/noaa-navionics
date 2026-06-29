@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${HOME}/.config/noaa-navionics/config.ini"
+gpsd_conf="/etc/default/gpsd"
 device=""
 allow_non_pi=0
 dry_run=0
@@ -14,6 +15,7 @@ Usage: scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS [options]
 
 Options:
   --config PATH       NOAA Navionics config path
+  --gpsd-conf PATH    GPSD config path for dry-run inspection
   --dry-run           Print intended changes without writing system files
   --no-device-check   Do not require the GPS device path to exist now
   --allow-non-pi      Allow running on non-Raspberry Pi architecture
@@ -260,14 +262,21 @@ PY
 }
 
 validate_gpsd_config_path() {
-  python3 - "$dry_run" <<'PY'
+  python3 - "$gpsd_conf" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import sys
 
-dry_run = sys.argv[1] == "1"
-path = Path("/etc/default/gpsd")
+path = Path(sys.argv[1])
+dry_run = sys.argv[2] == "1"
 parent = path.parent
+
+def first_symlink_ancestor(candidate):
+    current = Path(candidate).expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
 
 if path.is_symlink():
     raise SystemExit(f"GPSD config is a symlink: {path}")
@@ -275,6 +284,9 @@ if path.exists() and not path.is_file():
     raise SystemExit(f"GPSD config is not a regular file: {path}")
 if parent.is_symlink():
     raise SystemExit(f"GPSD config directory is a symlink: {parent}")
+symlink_component = first_symlink_ancestor(parent)
+if symlink_component is not None:
+    raise SystemExit(f"GPSD config directory is a symlink: {symlink_component}")
 if parent.exists():
     if not parent.is_dir():
         raise SystemExit(f"GPSD config parent is not a directory: {parent}")
@@ -332,6 +344,14 @@ while [[ $# -gt 0 ]]; do
       config="${2:-}"
       shift 2
       ;;
+    --gpsd-conf)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      gpsd_conf="${2:-}"
+      shift 2
+      ;;
     --dry-run)
       dry_run=1
       shift
@@ -381,6 +401,28 @@ esac
 
 if [[ "$device" =~ [[:space:]\"\'] ]]; then
   echo "GPS device path must not contain whitespace or quotes: $device" >&2
+  exit 2
+fi
+
+case "$gpsd_conf" in
+  /*)
+    ;;
+  *)
+    echo "GPSD config path must be absolute: $gpsd_conf" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$gpsd_conf" =~ [[:space:]\"\'] ]]; then
+  echo "GPSD config path must not contain whitespace or quotes: $gpsd_conf" >&2
+  exit 2
+fi
+
+if [[ "$dry_run" -eq 0 && "$gpsd_conf" != "/etc/default/gpsd" ]]; then
+  cat >&2 <<EOF
+Refusing to write a non-standard GPSD config path: $gpsd_conf
+Use /etc/default/gpsd for production, or --dry-run for custom-path inspection.
+EOF
   exit 2
 fi
 
@@ -442,20 +484,20 @@ GPSD_OPTIONS="-n"
 EOF
 
 if [[ "$dry_run" -eq 1 ]]; then
-  echo "Would write /etc/default/gpsd:"
+  echo "Would write $gpsd_conf:"
   cat "$tmp"
   echo
   echo "Would update $config with gps.mode=gpsd and gps.device=$device"
   exit 0
 fi
 
-if [[ -e /etc/default/gpsd ]]; then
+if [[ -e "$gpsd_conf" ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-  backup="/etc/default/gpsd.noaa-navionics.${stamp}.bak"
-  backup_root_file_private /etc/default/gpsd "$backup"
+  backup="${gpsd_conf}.noaa-navionics.${stamp}.bak"
+  backup_root_file_private "$gpsd_conf" "$backup"
 fi
 
-install_root_file_atomic "$tmp" /etc/default/gpsd 0644
+install_root_file_atomic "$tmp" "$gpsd_conf" 0644
 sudo systemctl daemon-reload
 sudo systemctl enable --now gpsd.socket gpsd.service
 sudo systemctl restart gpsd.socket gpsd.service
