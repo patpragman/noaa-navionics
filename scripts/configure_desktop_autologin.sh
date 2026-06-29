@@ -55,6 +55,36 @@ run() {
   fi
 }
 
+install_root_file_atomic() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local target_dir
+  local target_name
+  local target_tmp
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ install_root_file_atomic %q %q %q\n' "$source" "$target" "$mode"
+    return 0
+  fi
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
+  sudo install -d -m 0755 "$target_dir"
+  target_tmp="$(sudo mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! sudo install -m "$mode" "$source" "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! sync_path "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! sudo mv -f "$target_tmp" "$target"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  sync_path "$target"
+}
+
 session_is_safe() {
   [[ "$1" =~ ^[A-Za-z0-9._+-]+$ ]]
 }
@@ -228,11 +258,7 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo
 fi
 
-run sudo install -d -m 0755 "$lightdm_conf_dir"
-run sudo install -m 0644 "$tmp" "$autologin_conf"
-if [[ "$dry_run" -eq 0 ]]; then
-  sync_path "$autologin_conf"
-fi
+install_root_file_atomic "$tmp" "$autologin_conf" 0644
 run sudo systemctl set-default graphical.target
 run sudo systemctl enable lightdm.service
 

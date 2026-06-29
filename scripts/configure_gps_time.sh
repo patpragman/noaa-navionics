@@ -42,6 +42,32 @@ if fd is not None:
 PY
 }
 
+install_root_file_atomic() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local target_dir
+  local target_name
+  local target_tmp
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
+  sudo install -d -m 0755 "$target_dir"
+  target_tmp="$(sudo mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! sudo install -m "$mode" "$source" "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! sync_path "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! sudo mv -f "$target_tmp" "$target"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  sync_path "$target"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --chrony-conf)
@@ -183,8 +209,7 @@ if [[ -e "$chrony_conf" ]]; then
   sync_path "$backup"
 fi
 
-sudo install -m 0644 "$tmp" "$chrony_conf"
-sync_path "$chrony_conf"
+install_root_file_atomic "$tmp" "$chrony_conf" 0644
 sudo systemctl enable --now chrony
 sudo systemctl restart chrony
 if [[ "$restart_gpsd" -eq 1 ]]; then

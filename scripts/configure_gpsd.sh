@@ -43,6 +43,32 @@ if fd is not None:
 PY
 }
 
+install_root_file_atomic() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local target_dir
+  local target_name
+  local target_tmp
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
+  sudo install -d -m 0755 "$target_dir"
+  target_tmp="$(sudo mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! sudo install -m "$mode" "$source" "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! sync_path "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! sudo mv -f "$target_tmp" "$target"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  sync_path "$target"
+}
+
 volatile_usb_device_path() {
   case "$(basename "$1")" in
     ttyUSB*|ttyACM*)
@@ -208,8 +234,7 @@ if [[ -e /etc/default/gpsd ]]; then
   sync_path "$backup"
 fi
 
-sudo install -m 0644 "$tmp" /etc/default/gpsd
-sync_path /etc/default/gpsd
+install_root_file_atomic "$tmp" /etc/default/gpsd 0644
 sudo systemctl enable --now gpsd
 sudo systemctl restart gpsd
 

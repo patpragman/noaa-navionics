@@ -381,7 +381,7 @@ grep -q 'No LightDM X11 sessions are installed' scripts/configure_desktop_autolo
 grep -q 'Refusing to configure graphical autologin for root' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
-grep -q 'sync_path "$autologin_conf"' scripts/configure_desktop_autologin.sh
+grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'pwd.getpwnam' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user home does not exist' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user does not own home directory' scripts/configure_desktop_autologin.sh
@@ -394,10 +394,18 @@ grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
-grep -q 'sync_path /etc/default/gpsd' scripts/configure_gpsd.sh
+grep -q 'install_root_file_atomic "$tmp" /etc/default/gpsd 0644' scripts/configure_gpsd.sh
 grep -q 'sync_path "$backup"' scripts/configure_gpsd.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
+for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
+  grep -q 'install_root_file_atomic' "$script"
+  grep -q 'sudo mktemp "${target_dir}/.${target_name}.XXXXXX"' "$script"
+  grep -q 'sudo install -m "$mode" "$source" "$target_tmp"' "$script"
+  grep -q 'sync_path "$target_tmp"' "$script"
+  grep -q 'sudo mv -f "$target_tmp" "$target"' "$script"
+  grep -q 'sync_path "$target"' "$script"
+done
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
@@ -422,7 +430,7 @@ grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_ti
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
-grep -q 'sync_path "$chrony_conf"' scripts/configure_gps_time.sh
+grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
 grep -q 'Source Revision' src/noaa_navionics/health.py

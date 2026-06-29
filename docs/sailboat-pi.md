@@ -135,7 +135,7 @@ Configure GPSD with the stable device path:
 scripts/configure_gpsd.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The script requires an absolute `/dev/...` path without whitespace or quotes, backs up `/etc/default/gpsd`, writes and syncs the GPSD config, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
+The script requires an absolute `/dev/...` path without whitespace or quotes, backs up and syncs `/etc/default/gpsd`, replaces the GPSD config through a synced temporary file, restarts GPSD, and updates `~/.config/noaa-navionics/config.ini` through a synced atomic replacement.
 Config validation, GPSD setup, and readiness checks fail volatile USB names such as `/dev/ttyUSB0` or `/dev/ttyACM0`, reject nested or shell-unsafe by-id paths, require the configured path to be a character device when device checks are enabled, and reject unrecognized device paths; use one `/dev/serial/by-id/...` symlink name for USB GPS receivers, `/dev/serial0` or `/dev/serial1` for Raspberry Pi UART GPS hardware, or `/dev/gps` for a managed stable alias.
 
 Configure chrony to use GPSD as a local time source:
@@ -144,7 +144,7 @@ Configure chrony to use GPSD as a local time source:
 scripts/configure_gps_time.sh
 ```
 
-This writes only `/etc/chrony/chrony.conf` outside dry-run mode, backs it up, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, syncs the replacement file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present or excluded. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
+This writes only `/etc/chrony/chrony.conf` outside dry-run mode, backs it up, adds a managed `refclock SHM 0 offset 0.5 delay 0.1 refid GPS` block for GPSD's message-based time source, replaces the config through a synced temporary file, restarts chrony, and restarts GPSD so GPSD can reconnect after chrony restarts. This is intended to keep chart-age checks and GPX timestamps sane when the Pi is away from network time. Readiness requires chrony to report the GPS refclock as selected or combined, not merely present or excluded. For sub-second timing, use GPS/PPS hardware and tune chrony for PPS separately.
 
 Restart and verify:
 
@@ -174,7 +174,7 @@ For production provisioning, use `~/.config/noaa-navionics/config.ini`. A custom
 
 ## Startup
 
-The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`. Provisioning installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and writes `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` for the deployed user after confirming the account exists with an owned local home directory and an installed X11 session is available. The launcher reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or its environment, writes `~/.cache/noaa-navionics/status.json`, appends startup output and OpenCPN's exit status to `~/.cache/noaa-navionics/chartplotter.log`, rotates and syncs that log after 1 MB, keeps a synced cache-directory launch lock for the supervised OpenCPN session, clears and syncs stale locks whose live PID is not actually the chartplotter launcher, leaves an existing OpenCPN process in place instead of starting a duplicate, asks X11 desktop sessions to disable screen blanking and DPMS sleep, shows a Tkinter warning with failed checks if readiness fails, and then starts OpenCPN.
+The installer copies a launcher to `~/.local/bin/noaa-navionics-start-chartplotter`. Provisioning installs a desktop autostart entry for it, sets the Pi to boot to `graphical.target`, enables `lightdm.service`, and replaces `/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf` through a synced temporary file for the deployed user after confirming the account exists with an owned local home directory and an installed X11 session is available. The launcher reads `NOAA_NAVIONICS_GPS_SECONDS` and optional `NOAA_NAVIONICS_WARNING_SECONDS` from `~/.config/noaa-navionics/launcher.env` or its environment, writes `~/.cache/noaa-navionics/status.json`, appends startup output and OpenCPN's exit status to `~/.cache/noaa-navionics/chartplotter.log`, rotates and syncs that log after 1 MB, keeps a synced cache-directory launch lock for the supervised OpenCPN session, clears and syncs stale locks whose live PID is not actually the chartplotter launcher, leaves an existing OpenCPN process in place instead of starting a duplicate, asks X11 desktop sessions to disable screen blanking and DPMS sleep, shows a Tkinter warning with failed checks if readiness fails, and then starts OpenCPN.
 
 Manual launch:
 
