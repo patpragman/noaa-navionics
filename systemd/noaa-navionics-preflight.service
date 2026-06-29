@@ -1,7 +1,7 @@
 [Unit]
 Description=Write NOAA Navionics readiness report
-StartLimitIntervalSec=5min
-StartLimitBurst=5
+StartLimitIntervalSec=30min
+StartLimitBurst=60
 
 [Service]
 Type=oneshot

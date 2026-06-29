@@ -363,6 +363,9 @@ grep -q 'RandomizedDelaySec=30min' systemd/noaa-navionics.timer
 grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
 grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py
+grep -q 'StartLimitIntervalSec=30min' systemd/noaa-navionics-preflight.service
+grep -q 'StartLimitIntervalUSec.*30min' src/noaa_navionics/report.py
+grep -q 'StartLimitBurst=60' systemd/noaa-navionics-preflight.service
 grep -q 'Type=simple' systemd/noaa-navionics-track.service
 grep -q 'chart service loaded type' scripts/verify_pi.sh
 grep -q 'track service loaded type' scripts/verify_pi.sh

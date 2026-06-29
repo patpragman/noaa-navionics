@@ -1571,8 +1571,8 @@ class StatusReportTests(unittest.TestCase):
                     "TimeoutStartUSec": "infinity",
                     "Restart": "on-failure",
                     "RestartUSec": "30s",
-                    "StartLimitIntervalUSec": "5min",
-                    "StartLimitBurst": "5",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
                 },
             },
         }
