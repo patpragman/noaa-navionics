@@ -586,6 +586,8 @@ grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
+grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' README.md
+grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' docs/sailboat-pi.md
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' README.md
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'rejecting parent-directory traversal in the recovered track output path' README.md
@@ -984,6 +986,11 @@ grep -q 'Verified Pi recovery exports' scripts/verify_pi_recovery_exports.sh
 grep -q 'NOAA_NAVIONICS_RESTORE_APPLY' scripts/restore_pi_recovery_user_data.sh
 grep -q 'Dry run only. Re-run with --apply to write files.' scripts/restore_pi_recovery_user_data.sh
 grep -q 'do not restore recovery user data as root' scripts/restore_pi_recovery_user_data.sh
+grep -q 'require_local_command python3' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_trusted_local_command' scripts/restore_pi_recovery_user_data.sh
+grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/restore_pi_recovery_user_data.sh
+grep -q '"$python3_cmd" - "$recovery_dir"' scripts/restore_pi_recovery_user_data.sh
+! grep -q '^python3 - "$recovery_dir"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_data.sh
@@ -6124,6 +6131,25 @@ build_restore_fixture(Path(sys.argv[1]), config)
 build_restore_fixture(Path(sys.argv[2]), bad_config)
 PY
 chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir"
+
+restore_fake_python_bin="$tmpdir/restore-fake-python-bin"
+mkdir -p "$restore_fake_python_bin"
+cat >"$restore_fake_python_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "untrusted fake restore python should not run" >&2
+exit 99
+EOF
+chmod +x "$restore_fake_python_bin/python3"
+set +e
+HOME="$restore_home" PATH="$restore_fake_python_bin:$PATH" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject an untrusted local python3 command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 
 set +e
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_parent_dir" >"$verify_output" 2>&1

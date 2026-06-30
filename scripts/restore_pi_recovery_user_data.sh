@@ -36,6 +36,95 @@ recovery_dir="$1"
 shift
 apply=0
 overwrite=0
+python3_cmd=""
+
+local_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_local_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    echo "Could not inspect local command ${item_kind}: $item_path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "Local command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 2
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Local command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+check_local_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_local_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+validate_trusted_local_command() {
+  local command_name="$1"
+  local command_path="$2"
+  local resolved_path
+
+  if ! local_path_in_trusted_system_dir "$command_path"; then
+    echo "Local ${command_name} command is not in a trusted system directory: $command_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$command_path" ]]; then
+    echo "Local ${command_name} command is not executable: $command_path" >&2
+    exit 2
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve local ${command_name} command: $command_path" >&2
+    exit 2
+  fi
+  if ! local_path_in_trusted_system_dir "$resolved_path"; then
+    echo "Resolved local ${command_name} command is not in a trusted system directory: $resolved_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not executable after resolution: $resolved_path" >&2
+    exit 2
+  fi
+  check_local_owner_and_mode "$command_name" "$resolved_path"
+  check_local_directory_chain "$resolved_path"
+}
+
+require_local_command() {
+  local command_name="$1"
+  local command_path
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -75,10 +164,11 @@ if [[ ! -d "$recovery_dir" ]]; then
   echo "Recovery directory must be a real directory: $recovery_dir" >&2
   exit 2
 fi
+python3_cmd="$(require_local_command python3)"
 
 NOAA_NAVIONICS_RESTORE_APPLY="$apply" \
 NOAA_NAVIONICS_RESTORE_OVERWRITE="$overwrite" \
-python3 - "$recovery_dir" <<'PY'
+"$python3_cmd" - "$recovery_dir" <<'PY'
 from configparser import ConfigParser
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
