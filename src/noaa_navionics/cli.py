@@ -270,6 +270,12 @@ def build_parser() -> argparse.ArgumentParser:
     anchor.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     anchor.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
     anchor.add_argument(
+        "--anchor-samples",
+        type=_positive_int,
+        default=1,
+        help="quality GPS fixes to average when setting the anchor from the current position",
+    )
+    anchor.add_argument(
         "--interval-seconds",
         type=_positive_float,
         help="minimum seconds between non-alarm distance updates",
@@ -623,6 +629,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 radius_meters=args.radius_meters or app_config.anchor_radius_meters,
                 anchor_latitude=args.anchor_lat,
                 anchor_longitude=args.anchor_lon,
+                anchor_samples=args.anchor_samples,
                 interval_seconds=args.interval_seconds,
                 live_stream=live_stream,
             )
@@ -970,23 +977,37 @@ def _run_anchor_watch(
     radius_meters: float,
     anchor_latitude: Optional[float],
     anchor_longitude: Optional[float],
+    anchor_samples: int,
     interval_seconds: Optional[float],
     live_stream: bool,
 ) -> int:
     if (anchor_latitude is None) != (anchor_longitude is None):
         raise ValueError("--anchor-lat and --anchor-lon must be used together")
+    if anchor_samples < 1:
+        raise ValueError("anchor_samples must be at least 1")
 
     anchor_set_from_fix = anchor_latitude is None
-    anchor_fix_seen = False
+    anchor_established = not anchor_set_from_fix
+    anchor_sample_latitudes: list[float] = []
+    anchor_sample_longitudes: list[float] = []
     checked = 0
     last_update_monotonic: Optional[float] = None
     for fix in fixes:
-        if anchor_latitude is None or anchor_longitude is None:
-            anchor_latitude = fix.latitude
-            anchor_longitude = fix.longitude
-            anchor_fix_seen = True
-            print(f"Anchor set: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
-            print(_format_fix(fix))
+        if anchor_set_from_fix and not anchor_established:
+            anchor_sample_latitudes.append(fix.latitude)
+            anchor_sample_longitudes.append(fix.longitude)
+            if len(anchor_sample_latitudes) < anchor_samples:
+                print(f"Anchor sample {len(anchor_sample_latitudes)}/{anchor_samples}: {_format_fix(fix)}")
+                continue
+            anchor_latitude = sum(anchor_sample_latitudes) / anchor_samples
+            anchor_longitude = sum(anchor_sample_longitudes) / anchor_samples
+            anchor_established = True
+            if anchor_samples == 1:
+                print(f"Anchor set: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
+                print(_format_fix(fix))
+            else:
+                print(f"Anchor set from {anchor_samples} fixes: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
+                print(f"Last anchor sample: {_format_fix(fix)}")
             continue
 
         checked += 1
@@ -1009,7 +1030,17 @@ def _run_anchor_watch(
             )
             return 1
 
-    if anchor_set_from_fix and anchor_fix_seen:
+    if anchor_set_from_fix and not anchor_established:
+        if anchor_sample_latitudes:
+            print(
+                f"Only {len(anchor_sample_latitudes)} usable GPS fix(es) were available; "
+                f"need {anchor_samples} anchor samples.",
+                file=sys.stderr,
+            )
+        else:
+            print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
+        return 1
+    if anchor_set_from_fix and anchor_established:
         if live_stream:
             print("Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.", file=sys.stderr)
             return 1

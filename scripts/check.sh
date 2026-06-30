@@ -510,12 +510,14 @@ grep -q "writes a private GPX waypoint file under the configured track output's 
 grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" docs/sailboat-pi.md
 grep -q 'noaa-navionics anchor-watch' README.md
 grep -q 'noaa-navionics anchor-watch' docs/sailboat-pi.md
+grep -q -- '--anchor-samples N' README.md
+grep -q -- '--anchor-samples N' docs/sailboat-pi.md
 grep -q -- '--interval-seconds N' README.md
 grep -q -- '--interval-seconds N' docs/sailboat-pi.md
 grep -q 'when drift exceeds `\[anchor\].radius_meters`' README.md
 grep -q 'when drift exceeds `\[anchor\].radius_meters`' docs/sailboat-pi.md
-grep -q 'Use `--radius-meters N` for a one-off override' README.md
-grep -q 'Use `--radius-meters N` for a one-off override' docs/sailboat-pi.md
+grep -q '`--radius-meters N` for a one-off radius override' README.md
+grep -q '`--radius-meters N` for a one-off radius override' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
@@ -855,6 +857,7 @@ grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
 grep -q 'mark-position' src/noaa_navionics/cli.py
 grep -q 'anchor-watch' src/noaa_navionics/cli.py
+grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
 grep -q 'interval_seconds=args.interval_seconds' src/noaa_navionics/cli.py
 grep -q 'distance_meters' src/noaa_navionics/cli.py
 grep -q 'ANCHOR ALARM' src/noaa_navionics/cli.py
@@ -2269,10 +2272,13 @@ grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloa
 grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests/test_downloader.py
 grep -q 'test_distance_meters_uses_haversine_distance' tests/test_downloader.py
 grep -q 'mark-position", "--seconds", "0"' tests/test_downloader.py
+grep -q 'anchor-watch", "--anchor-samples", "0"' tests/test_downloader.py
 grep -q 'anchor-watch", "--radius-meters", "0"' tests/test_downloader.py
 grep -q 'def _coordinate_in_range' src/noaa_navionics/gps.py
 grep -q '_coordinate_in_range(self.latitude, latitude=True)' src/noaa_navionics/gps.py
