@@ -621,6 +621,12 @@ grep -q 'launcher-supervised OpenCPN running' scripts/verify_pi.sh
 ! grep -q 'check "OpenCPN running"' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh
+grep -q 'status_stat = os.fstat(fd)' scripts/verify_pi.sh
+grep -q 'not stat.S_ISREG(status_stat.st_mode)' scripts/verify_pi.sh
+grep -q 'os.fdopen(fd, encoding="utf-8")' scripts/verify_pi.sh
+! grep -q 'with status_path.open(encoding="utf-8") as handle' scripts/verify_pi.sh
+grep -q 'parsing that status artifact only through the no-follow descriptor it verified' README.md
+grep -q 'parses that status artifact only through the no-follow descriptor it verified' docs/sailboat-pi.md
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh

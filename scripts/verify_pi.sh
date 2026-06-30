@@ -392,6 +392,7 @@ import json
 import math
 import os
 import re
+import stat
 import sys
 
 def config_bool(parser, section, key, fallback):
@@ -591,19 +592,6 @@ if status_path.is_symlink():
     raise SystemExit(f"status report is a symlink: {status_path}")
 if not status_path.is_file():
     raise SystemExit(f"status report is not a regular file: {status_path}")
-try:
-    status_stat = status_path.stat()
-except OSError as exc:
-    raise SystemExit(f"could not inspect status report {status_path}: {exc}") from exc
-if status_stat.st_uid != os.getuid():
-    raise SystemExit(
-        f"status report {status_path} is owned by uid {status_stat.st_uid}, expected {os.getuid()}"
-    )
-status_mode = status_stat.st_mode & 0o777
-if status_mode != 0o600:
-    raise SystemExit(
-        f"status report {status_path} has permissions {status_mode:04o}, expected private 0600"
-    )
 cache_dir = status_path.parent
 if cache_dir.is_symlink():
     raise SystemExit(f"status report cache directory is a symlink: {cache_dir}")
@@ -636,8 +624,30 @@ if cache_mode != 0o700:
     raise SystemExit(
         f"status report cache directory {cache_dir} has permissions {cache_mode:04o}, expected private 0700"
     )
-with status_path.open(encoding="utf-8") as handle:
-    report = json.load(handle)
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(status_path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open status report {status_path}: {exc}") from exc
+try:
+    status_stat = os.fstat(fd)
+    if not stat.S_ISREG(status_stat.st_mode):
+        raise SystemExit(f"status report is not a regular file: {status_path}")
+    if status_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report {status_path} is owned by uid {status_stat.st_uid}, expected {os.getuid()}"
+        )
+    status_mode = status_stat.st_mode & 0o777
+    if status_mode != 0o600:
+        raise SystemExit(
+            f"status report {status_path} has permissions {status_mode:04o}, expected private 0600"
+        )
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        report = json.load(handle)
+finally:
+    if fd >= 0:
+        os.close(fd)
 if report.get("ok") is not True:
     raise SystemExit("status report ok is not true")
 generated_at = str(report.get("generated_at", ""))
