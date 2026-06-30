@@ -2556,20 +2556,36 @@ grep -q 'MemoryDenyWriteExecute' docs/sailboat-pi.md
 grep -q 'RestrictRealtime' docs/sailboat-pi.md
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
 python3 - <<'PY'
+from pathlib import Path
 import sys
 
 sys.path.insert(0, "src")
 from noaa_navionics import report
+
+expected_unit_properties = {
+    "NoNewPrivileges": "true",
+    "PrivateTmp": "true",
+    "ProtectSystem": "full",
+    "LockPersonality": "true",
+    "RestrictSUIDSGID": "true",
+    "MemoryDenyWriteExecute": "true",
+    "RestrictRealtime": "true",
+    "UMask": "0077",
+}
 
 for unit in (
     "noaa-navionics.service",
     "noaa-navionics-track.service",
     "noaa-navionics-preflight.service",
 ):
+    unit_text = Path("systemd", unit).read_text(encoding="utf-8")
+    unit_lines = set(unit_text.splitlines())
+    for property_name, expected_value in expected_unit_properties.items():
+        expected_line = f"{property_name}={expected_value}"
+        if expected_line not in unit_lines:
+            raise SystemExit(f"{unit} must set {expected_line}")
     properties = report.USER_UNIT_PROPERTIES[unit]
-    if "UMask" not in properties:
-        raise SystemExit(f"status report must query loaded {unit} UMask")
-    for property_name in ("ProtectSystem", "LockPersonality", "RestrictSUIDSGID", "MemoryDenyWriteExecute", "RestrictRealtime"):
+    for property_name in expected_unit_properties:
         if property_name not in properties:
             raise SystemExit(f"status report must query loaded {unit} {property_name}")
 PY
@@ -2675,6 +2691,34 @@ grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service Prot
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes "boot readiness service"' scripts/provision_sailboat_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/provision_sailboat_pi.sh").read_text(encoding="utf-8")
+units = {
+    "noaa-navionics.service": "chart refresh service",
+    "noaa-navionics-track.service": "track logger service",
+    "noaa-navionics-preflight.service": "boot readiness service",
+}
+expected_properties = {
+    "NoNewPrivileges": "yes",
+    "PrivateTmp": "yes",
+    "ProtectSystem": "full",
+    "LockPersonality": "yes",
+    "RestrictSUIDSGID": "yes",
+    "MemoryDenyWriteExecute": "yes",
+    "RestrictRealtime": "yes",
+    "UMask": "0077",
+}
+for unit, label in units.items():
+    for property_name, expected_value in expected_properties.items():
+        needle = (
+            f'require_loaded_user_unit_property {unit} {property_name} '
+            f'{expected_value} "{label}"'
+        )
+        if needle not in text:
+            raise SystemExit(f"provisioning must verify loaded {unit} {property_name}")
+PY
 grep -q 'The unattended startup services were installed but not enabled' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_enabled noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_enabled noaa-navionics-track.service "track logger service"' scripts/provision_sailboat_pi.sh
@@ -4152,6 +4196,22 @@ grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service Prot
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes' "$provision_output"
+for unit in noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service; do
+  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime UMask; do
+    case "$loaded_property" in
+      ProtectSystem)
+        expected_value=full
+        ;;
+      UMask)
+        expected_value=0077
+        ;;
+      *)
+        expected_value=yes
+        ;;
+    esac
+    grep -q "require_loaded_user_unit_property ${unit} ${loaded_property} ${expected_value}" "$provision_output"
+  done
+done
 grep -q 'require_user_unit_enabled noaa-navionics.timer' "$provision_output"
 grep -q 'require_user_unit_enabled noaa-navionics-track.service' "$provision_output"
 grep -q 'require_user_unit_enabled noaa-navionics-preflight.service' "$provision_output"
