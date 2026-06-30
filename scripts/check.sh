@@ -631,6 +631,7 @@ grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
+grep -Fq '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
 grep -q -- '--expected-gps-device' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
@@ -3895,6 +3896,17 @@ set -e
 if [[ "$verify_code" -ne 2 ]]; then
   cat "$verify_output" >&2
   echo "expected verify_pi.sh to reject invalid --expected-boot-id values with exit 2" >&2
+  exit 1
+fi
+grep -q 'boot ID must be the Linux boot_id value' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --expected-boot-id 0123456789abcdef0123456789abcdef pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject boot IDs without Linux boot_id hyphens with exit 2" >&2
   exit 1
 fi
 grep -q 'boot ID must be the Linux boot_id value' "$verify_output"

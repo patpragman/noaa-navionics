@@ -221,7 +221,7 @@ validate_boot_id_arg() {
     echo "boot ID is required" >&2
     exit 2
   fi
-  if [[ ! "$value" =~ ^[0-9a-fA-F-]{32,40}$ ]]; then
+  if [[ ! "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
     echo "boot ID must be the Linux boot_id value from /proc/sys/kernel/random/boot_id: $value" >&2
     exit 2
   fi
