@@ -91,6 +91,14 @@ scripts/collect_pi_support_bundle.sh pi@raspberrypi.local
 
 The support bundle is a local `.tgz` containing Pi-side NOAA Navionics config, status reports, configured chart manifests and storage listings, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, download charts, or copy NOAA chart archives, extracted ENC cells, or GPX track contents.
 
+Export GPX track logs after a trip:
+
+```bash
+scripts/export_pi_tracks.sh pi@raspberrypi.local
+```
+
+The track export helper validates the SSH target, reads the Pi's onboard config, and writes a local `.tgz` containing only regular private `.gpx` files from the configured track directory plus an export manifest. Use `--days N` to export only recent track files. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+
 Shut the Pi down cleanly before cutting boat power:
 
 ```bash

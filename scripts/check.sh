@@ -479,10 +479,14 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
+grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
 grep -q 'extracted ENC cells, or GPX track contents' docs/sailboat-pi.md
+grep -q 'containing only regular private `.gpx` files' README.md
+grep -q 'containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' README.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
@@ -777,6 +781,11 @@ grep -q 'noaa-navionics-manifest.json' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
+grep -q 'tarfile.open' scripts/export_pi_tracks.sh
+grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
+grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
+grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
+grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4554,6 +4563,70 @@ grep -q 'configured-storage-paths.txt' "$support_fake_ssh_stdin"
 grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
 grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'configured-track-storage-tree' "$support_fake_ssh_stdin"
+
+set +e
+scripts/export_pi_tracks.sh root@example.invalid >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not export tracks as root@' "$verify_output"
+
+track_export_symlink="$tmpdir/track-export-output-link"
+ln -s "$tmpdir" "$track_export_symlink"
+set +e
+scripts/export_pi_tracks.sh pi@example.invalid "$track_export_symlink" >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject symlinked output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not be a symlink' "$verify_output"
+
+set +e
+scripts/export_pi_tracks.sh pi@example.invalid --days nope >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject invalid --days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--days must be a non-negative integer' "$verify_output"
+
+track_export_fake_ssh_bin="$tmpdir/track-export-fake-ssh-bin"
+track_export_fake_ssh_args="$tmpdir/track-export-fake-ssh-args"
+track_export_fake_ssh_stdin="$tmpdir/track-export-fake-ssh-stdin"
+track_export_output_dir="$tmpdir/track-exports"
+mkdir -p "$track_export_fake_ssh_bin"
+cat >"$track_export_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake-track-export\n'
+EOF
+chmod +x "$track_export_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
+  PATH="$track_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_output_dir" --days 7 >"$verify_output" 2>&1
+grep -q 'Exported Pi GPX tracks:' "$verify_output"
+track_export_path="$(sed -n 's/^Exported Pi GPX tracks: //p' "$verify_output")"
+test -s "$track_export_path"
+grep -q -- '-o BatchMode=yes' "$track_export_fake_ssh_args"
+grep -q 'pi@example.invalid' "$track_export_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_EXPORT_DAYS=7 python3 -s' "$track_export_fake_ssh_args"
+grep -q 'tarfile.open' "$track_export_fake_ssh_stdin"
+grep -q 'configured GPX track directory' "$track_export_fake_ssh_stdin"
+grep -q 'refusing to export symlinked GPX track' "$track_export_fake_ssh_stdin"
+grep -q 'tracks/{path.name}' "$track_export_fake_ssh_stdin"
+grep -q 'NOAA chart archives and extracted ENC cells are not included' "$track_export_fake_ssh_stdin"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1
