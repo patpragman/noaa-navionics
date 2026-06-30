@@ -1075,12 +1075,17 @@ grep -q 'Chrony config directory is a symlink' scripts/configure_gps_time.sh
 grep -q 'Chrony config directory .* has permissions' scripts/configure_gps_time.sh
 grep -q 'expected no group/other write bits' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
+grep -q 'could not open chrony config' scripts/configure_gps_time.sh
+grep -q 'chrony config is not a regular file when opened' scripts/configure_gps_time.sh
+grep -q 'with os.fdopen(fd, encoding="utf-8") as handle' scripts/configure_gps_time.sh
+grep -q 'root or current user' scripts/configure_gps_time.sh
 grep -q 'unterminated NOAA Navionics GPS time block' scripts/configure_gps_time.sh
 grep -q 'END marker without BEGIN' scripts/configure_gps_time.sh
 grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_gps_time.sh
 grep -q 'backup_root_file_private "$chrony_conf" "$backup"' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gps_time.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gps_time.sh
+! grep -q 'source.read_text(encoding="utf-8")' scripts/configure_gps_time.sh
 ! grep -q 'sudo cp -a "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py
@@ -1102,8 +1107,8 @@ grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/
 grep -q 'test_check_chrony_gps_time_config_accepts_managed_refclock' tests/test_downloader.py
 grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_downloader.py
 grep -q 'test_read_trusted_config_lines_rejects_writable_config_before_parsing' tests/test_downloader.py
-grep -q 'Readiness and production skip checks read GPSD and chrony config files only after a no-follow descriptor' README.md
-grep -q 'Readiness and production skip checks read GPSD and chrony config files only after a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' README.md
+grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Readiness also rejects unsafe chrony config paths' README.md
 grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py

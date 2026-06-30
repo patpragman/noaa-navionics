@@ -292,12 +292,15 @@ validate_chrony_config_path
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-python3 - "$chrony_conf" "$tmp" <<'PY'
+python3 - "$chrony_conf" "$tmp" "$dry_run" <<'PY'
 from pathlib import Path
+import os
+import stat
 import sys
 
 source = Path(sys.argv[1])
 target = Path(sys.argv[2])
+dry_run = sys.argv[3] == "1"
 begin = "# BEGIN NOAA Navionics GPS time"
 end = "# END NOAA Navionics GPS time"
 block = """# BEGIN NOAA Navionics GPS time
@@ -308,10 +311,39 @@ makestep 1.0 3
 # END NOAA Navionics GPS time
 """
 
-try:
-    text = source.read_text(encoding="utf-8")
-except FileNotFoundError:
-    text = ""
+def read_existing_chrony_config(path: Path) -> str:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, os.O_RDONLY | nofollow)
+    except FileNotFoundError:
+        return ""
+    except OSError as exc:
+        raise SystemExit(f"could not open chrony config {path}: {exc}") from exc
+
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"chrony config is not a regular file when opened: {path}")
+        mode = opened.st_mode & 0o777
+        if mode & 0o022:
+            raise SystemExit(
+                f"chrony config {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        expected_uids = {0}
+        if dry_run:
+            expected_uids.add(os.getuid())
+        if opened.st_uid not in expected_uids:
+            expected = "root or current user" if dry_run else "root"
+            raise SystemExit(f"chrony config {path} is owned by uid {opened.st_uid}, expected {expected}")
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+text = read_existing_chrony_config(source)
 
 lines = text.splitlines(keepends=True)
 filtered: list[str] = []
