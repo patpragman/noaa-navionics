@@ -3521,6 +3521,28 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "manifest directory contains a symlink"):
                 read_manifest(link_dir)
 
+    def test_read_manifest_rejects_non_directory_manifest_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            not_directory = root / "charts"
+            not_directory.write_text("not a directory", encoding="ascii")
+
+            with self.assertRaisesRegex(RuntimeError, "manifest parent is not a directory"):
+                read_manifest(not_directory)
+
+    def test_read_manifest_rejects_writable_manifest_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = root / MANIFEST_NAME
+            manifest.write_text('{"created_at":"2026-01-01T00:00:00Z"}\n', encoding="utf-8")
+            manifest.chmod(0o600)
+            root.chmod(0o777)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "manifest directory .* has permissions 0777"):
+                    read_manifest(root)
+            finally:
+                root.chmod(0o700)
+
     def test_read_manifest_rejects_writable_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

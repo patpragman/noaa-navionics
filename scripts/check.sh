@@ -2402,11 +2402,14 @@ grep -q 'status report launcher settings path contains a symlink' scripts/verify
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'manifest directory .* has permissions' src/noaa_navionics/report.py
 grep -q 'manifest directory .* has permissions' src/noaa_navionics/health.py
+grep -q 'manifest directory .* has permissions' src/noaa_navionics/downloader.py
 grep -q 'manifest path is not a regular file' src/noaa_navionics/report.py
 grep -q 'test_manifest_summary_rejects_nonregular_manifest' tests/test_downloader.py
 grep -q 'test_manifest_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_manifest_summary_rejects_writable_manifest_directory' tests/test_downloader.py
 grep -q 'test_manifest_writable_directory_fails' tests/test_downloader.py
+grep -q 'test_read_manifest_rejects_non_directory_manifest_parent' tests/test_downloader.py
+grep -q 'test_read_manifest_rejects_writable_manifest_directory' tests/test_downloader.py
 grep -q 'status report manifest directory has permissions' scripts/verify_pi.sh
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest path contains a symlink' scripts/verify_pi.sh

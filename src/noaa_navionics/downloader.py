@@ -1094,6 +1094,24 @@ def _open_manifest_for_read(path: Path, *, expected_stat: Optional[os.stat_resul
     symlink_component = _first_symlink_ancestor(path.parent)
     if symlink_component is not None:
         raise RuntimeError(f"manifest directory contains a symlink: {symlink_component}")
+    if path.parent.exists():
+        if not path.parent.is_dir():
+            raise RuntimeError(f"manifest parent is not a directory: {path.parent}")
+        try:
+            directory_stat = path.parent.stat()
+        except OSError as exc:
+            raise RuntimeError(f"could not inspect manifest directory {path.parent}: {exc}") from exc
+        if directory_stat.st_uid != os.getuid():
+            raise RuntimeError(
+                f"manifest directory {path.parent} is owned by uid {directory_stat.st_uid}, "
+                f"expected {os.getuid()}"
+            )
+        directory_mode = directory_stat.st_mode & 0o777
+        if directory_mode & 0o022:
+            raise RuntimeError(
+                f"manifest directory {path.parent} has permissions {directory_mode:04o}, "
+                "expected no group/other write bits"
+            )
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
