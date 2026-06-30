@@ -1205,6 +1205,32 @@ def _desktop_summary(
     }
 
 
+def _read_key_value_file_lines(path: Path) -> tuple[os.stat_result, list[str]]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"key-value file path is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"key-value file path is not a regular file: {path}")
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"key-value file path {path} has permissions {mode:04o}, "
+                "expected no group/other write bits"
+            )
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return stat_result, handle.read().splitlines()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
 def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) -> dict[str, object]:
     symlink_component = _first_symlink_ancestor(path.parent)
     summary: dict[str, object] = {
@@ -1226,17 +1252,12 @@ def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) ->
         summary["error"] = f"key-value file path is not a regular file: {path}"
         return summary
     try:
-        stat_result = path.stat()
-    except OSError as exc:
+        stat_result, lines = _read_key_value_file_lines(path)
+    except Exception as exc:
         summary["error"] = str(exc)
         return summary
     summary["uid"] = stat_result.st_uid
     summary["mode"] = f"{stat_result.st_mode & 0o777:04o}"
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        summary["error"] = str(exc)
-        return summary
     values: dict[str, str] = {}
     sections: list[str] = []
     for raw_line in lines:

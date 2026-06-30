@@ -1520,12 +1520,15 @@ grep -q 'test_launcher_settings_check_fails_misowned_environment' tests/test_dow
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is not a regular file' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
+grep -q 'def _read_key_value_file_lines' src/noaa_navionics/report.py
+grep -q 'key-value file path .* has permissions' src/noaa_navionics/report.py
 grep -q 'def _key_value_file_integrity_failures' src/noaa_navionics/report.py
 grep -q 'is owned by uid' src/noaa_navionics/report.py
 grep -q 'has permissions.*expected no group/other write bits' src/noaa_navionics/report.py
 grep -q '"path_symlink_component"' src/noaa_navionics/report.py
 grep -q 'test_key_value_file_summary_rejects_nonregular_startup_file' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_key_value_file_summary_rejects_writable_startup_file_before_parsing' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_unsafe_desktop_startup_files' tests/test_downloader.py
 grep -q 'desktop autostart path is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart directory is a symlink' src/noaa_navionics/report.py
@@ -1677,8 +1680,10 @@ grep -q 'desktop autostart, LightDM autologin, and manifest files' docs/sailboat
 grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
+grep -q 'Status reports parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'Status reports parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md

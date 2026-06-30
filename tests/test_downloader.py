@@ -4262,6 +4262,18 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["mode"], "0640")
             self.assertEqual(summary["values"]["Name"], "NOAA Navionics Chartplotter")
 
+    def test_key_value_file_summary_rejects_writable_startup_file_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "noaa-navionics-chartplotter.desktop"
+            path.write_text("[Desktop Entry]\nName=Unexpected\n", encoding="utf-8")
+            path.chmod(0o622)
+
+            summary = _key_value_file_summary(path, comment_prefixes=("#",))
+
+            self.assertIn("has permissions 0622", summary["error"])
+            self.assertIn("expected no group/other write bits", summary["error"])
+            self.assertNotIn("values", summary)
+
     def test_opencpn_config_summary_rejects_symlinked_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
