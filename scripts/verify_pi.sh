@@ -340,6 +340,7 @@ failures=0
 systemctl_cmd=""
 loginctl_cmd=""
 chronyc_cmd=""
+python3_cmd=""
 bin_dir="${HOME}/.local/bin"
 data_dir="${HOME}/.local/share/noaa-navionics"
 config_dir="${HOME}/.config/noaa-navionics"
@@ -401,7 +402,7 @@ check_status_report_json() {
   local require_current_boot="${2:-0}"
   local expected_config_path="${3:-}"
   local expected_launcher_env_path="${4:-}"
-  python3 - "$path" "$require_current_boot" "$expected_config_path" "$expected_launcher_env_path" <<'PY'
+  "$python3_cmd" - "$path" "$require_current_boot" "$expected_config_path" "$expected_launcher_env_path" <<'PY'
 from pathlib import Path
 from configparser import ConfigParser
 from datetime import datetime, timezone
@@ -1940,7 +1941,7 @@ PY
 check_gpsd_device_matches_config() {
   local config_path="$1"
   local gpsd_device="$2"
-  python3 - "$config_path" "$gpsd_device" <<'PY'
+  "$python3_cmd" - "$config_path" "$gpsd_device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
 import os
@@ -1994,7 +1995,7 @@ check_expected_gps_device_matches() {
   if [[ -z "$expected_device" ]]; then
     return 0
   fi
-  python3 - "$config_path" "$gpsd_device" "$expected_device" <<'PY'
+  "$python3_cmd" - "$config_path" "$gpsd_device" "$expected_device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
 import os
@@ -2041,7 +2042,7 @@ PY
 
 check_lightdm_autologin_session() {
   local config_path="$1"
-  python3 - "$config_path" <<'PY'
+  "$python3_cmd" - "$config_path" <<'PY'
 from pathlib import Path
 import os
 import re
@@ -2088,7 +2089,7 @@ PY
 }
 
 check_tkinter_available() {
-  python3 - <<'PY'
+  "$python3_cmd" - <<'PY'
 try:
     import tkinter  # noqa: F401
 except Exception as exc:
@@ -2129,7 +2130,7 @@ check_raspberry_pi_throttling_state() {
 }
 
 check_chrony_gps_time_config() {
-  python3 - <<'PY'
+  "$python3_cmd" - <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -2170,7 +2171,7 @@ PY
 
 check_launcher_env_production_settings() {
   local path="$1"
-  python3 - "$path" <<'PY'
+  "$python3_cmd" - "$path" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -2521,6 +2522,13 @@ chronyc_command() {
   printf '%s\n' "$chronyc_cmd"
 }
 
+python3_command() {
+  if [[ -z "$python3_cmd" ]]; then
+    python3_cmd="$(root_command_path python3 "Python command")" || return 1
+  fi
+  printf '%s\n' "$python3_cmd"
+}
+
 check_opencpn_command_integrity() {
   local path
 
@@ -2605,7 +2613,7 @@ check_root_directory_integrity() {
 launcher_env_value() {
   local key="$1"
   local default="$2"
-  python3 - "$launcher_env" "$key" "$default" <<'PY'
+  "$python3_cmd" - "$launcher_env" "$key" "$default" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -2651,7 +2659,7 @@ check_launcher_env_expected_value() {
   local path="$1"
   local key="$2"
   local expected="$3"
-  python3 - "$path" "$key" "$expected" <<'PY'
+  "$python3_cmd" - "$path" "$key" "$expected" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -2760,7 +2768,7 @@ volatile_usb_device_path() {
 check_unit_install_target() {
   local path="$1"
   local expected_target="$2"
-  python3 - "$path" "$expected_target" <<'PY'
+  "$python3_cmd" - "$path" "$expected_target" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -2807,7 +2815,7 @@ PY
 
 check_chartplotter_log_after_boot() {
   local path="$1"
-  python3 - "$path" <<'PY'
+  "$python3_cmd" - "$path" <<'PY'
 from pathlib import Path
 from datetime import datetime, timezone
 import os
@@ -2931,7 +2939,7 @@ opencpn_running() {
 
 opencpn_process_active() {
   local pid="$1"
-  python3 - "$pid" <<'PY'
+  "$python3_cmd" - "$pid" <<'PY'
 import sys
 
 pid = sys.argv[1]
@@ -2956,7 +2964,7 @@ PY
 opencpn_process_supervised_by_launcher() {
   local pid="$1"
   local launcher_pid="$2"
-  python3 - "$pid" "$launcher_pid" <<'PY'
+  "$python3_cmd" - "$pid" "$launcher_pid" <<'PY'
 import sys
 
 pid = sys.argv[1]
@@ -2981,7 +2989,7 @@ PY
 
 process_cmdline_has_launcher_name() {
   local pid="$1"
-  python3 - "$pid" <<'PY'
+  "$python3_cmd" - "$pid" <<'PY'
 from pathlib import Path
 import sys
 
@@ -3005,7 +3013,7 @@ PY
 process_cmdline_has_arg() {
   local pid="$1"
   local expected_arg="$2"
-  python3 - "$pid" "$expected_arg" <<'PY'
+  "$python3_cmd" - "$pid" "$expected_arg" <<'PY'
 from pathlib import Path
 import sys
 
@@ -3027,7 +3035,7 @@ PY
 read_private_user_file() {
   local path="$1"
   local label="$2"
-  python3 - "$path" "$label" <<'PY'
+  "$python3_cmd" - "$path" "$label" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -3059,7 +3067,7 @@ PY
 }
 
 current_boot_id() {
-  python3 - <<'PY'
+  "$python3_cmd" - <<'PY'
 from pathlib import Path
 import re
 
@@ -3077,7 +3085,7 @@ read_proc_env_value() {
   local pid="$1"
   local key="$2"
   local label="$3"
-  python3 - "$pid" "$key" "$label" <<'PY'
+  "$python3_cmd" - "$pid" "$key" "$label" <<'PY'
 import os
 import sys
 
@@ -3112,7 +3120,7 @@ reject_proc_env_prefix() {
   local prefix="$2"
   local label="$3"
   local detail="${4:-}"
-  python3 - "$pid" "$prefix" "$label" "$detail" <<'PY'
+  "$python3_cmd" - "$pid" "$prefix" "$label" "$detail" <<'PY'
 import os
 import sys
 
@@ -3173,7 +3181,7 @@ opencpn_supervised_running() {
 
 read_proc_exe_path() {
   local pid="$1"
-  python3 - "$pid" <<'PY'
+  "$python3_cmd" - "$pid" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -3595,7 +3603,7 @@ loaded_unit_property_contains_all() {
 
 check_recent_track_log() {
   local config_path="$1"
-  python3 - "$config_path" "$gps_seconds" <<'PY'
+  "$python3_cmd" - "$config_path" "$gps_seconds" <<'PY'
 from configparser import ConfigParser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -3873,6 +3881,8 @@ case "$arch" in
     ;;
 esac
 
+check "Python command integrity" python3_command
+python3_cmd="$(python3_command)" || python3_cmd="/bin/false"
 check "verification user is not root" check_not_root_user
 check "local bin directory integrity" check_user_private_directory_integrity "$bin_dir" "local command directory"
 check "app data directory integrity" check_user_private_directory_integrity "$data_dir" "NOAA Navionics data directory"

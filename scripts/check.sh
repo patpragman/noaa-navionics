@@ -1156,8 +1156,11 @@ grep -q 'root_command_path()' scripts/verify_pi.sh
 grep -q 'systemctl_command()' scripts/verify_pi.sh
 grep -q 'loginctl_command()' scripts/verify_pi.sh
 grep -q 'chronyc_command()' scripts/verify_pi.sh
+grep -q 'python3_command()' scripts/verify_pi.sh
 grep -q 'check_root_directory_integrity "$(dirname "$path")" "${label} directory"' scripts/verify_pi.sh
 grep -q 'check_root_executable_file_integrity "$path" "$label"' scripts/verify_pi.sh
+grep -q 'check "Python command integrity" python3_command' scripts/verify_pi.sh
+grep -q 'python3_cmd="$(python3_command)" || python3_cmd="/bin/false"' scripts/verify_pi.sh
 grep -q 'check "display power command integrity" check_display_power_command_integrity' scripts/verify_pi.sh
 ! grep -q 'check "display power command" command -v xset' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" xset q' scripts/verify_pi.sh
@@ -1193,14 +1196,17 @@ grep -q 'check "preflight service loaded status report" loaded_unit_property_con
 ! grep -q 'loaded="$(systemctl --user show' scripts/verify_pi.sh
 grep -q 'check "GPSD command integrity" check_root_command_integrity gpsd "GPSD command"' scripts/verify_pi.sh
 grep -q 'check "GPSD client command integrity" check_root_command_integrity cgps "GPSD client command"' scripts/verify_pi.sh
+grep -q '"$python3_cmd" - "$path" "$require_current_boot" "$expected_config_path" "$expected_launcher_env_path"' scripts/verify_pi.sh
+grep -q '"$python3_cmd" - "$launcher_env" "$key" "$default"' scripts/verify_pi.sh
+! grep -Eq '(^|[[:space:]])python3[[:space:]]+-' scripts/verify_pi.sh
 ! grep -q 'check "process lookup command" command -v pgrep' scripts/verify_pi.sh
 ! grep -q 'check "Pi power command" command -v vcgencmd' scripts/verify_pi.sh
 ! grep -q 'check "Chrony command" command -v chronyc' scripts/verify_pi.sh
 ! grep -q 'check "GPSD command" command -v gpsd' scripts/verify_pi.sh
 ! grep -q 'check "GPSD client command" command -v cgps' scripts/verify_pi.sh
-grep -q 'trusted root-owned `systemctl`, `loginctl`, `pgrep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
+grep -q 'trusted root-owned `python3`, `systemctl`, `loginctl`, `pgrep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
 grep -q 'installed root-owned command dependencies' docs/sailboat-pi.md
-grep -q 'resolves `systemctl`, `loginctl`, and `chronyc` through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'resolves `python3`, `systemctl`, `loginctl`, and `chronyc` through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
 grep -q 'vcgencmd get_throttled failed' scripts/verify_pi.sh
 grep -q 'unexpected vcgencmd get_throttled output' scripts/verify_pi.sh
