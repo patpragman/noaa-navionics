@@ -506,6 +506,8 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, and metadata helper snippets" README.md
+grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, and metadata helper snippets" docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
@@ -992,7 +994,8 @@ done
 for remote_python_export_wrapper in \
   scripts/export_pi_opencpn_data.sh \
   scripts/export_pi_settings.sh \
-  scripts/export_pi_tracks.sh; do
+  scripts/export_pi_tracks.sh \
+  scripts/collect_pi_support_bundle.sh; do
   grep -q 'remote_python_command()' "$remote_python_export_wrapper"
   grep -q 'validate_remote_python_command_trust' "$remote_python_export_wrapper"
   grep -q 'Remote python3 command is not in a trusted system directory' "$remote_python_export_wrapper"
@@ -1000,6 +1003,16 @@ for remote_python_export_wrapper in \
   grep -q 'remote_python_cmd_quoted="$(printf '\''%q'\'' "$remote_python_cmd")"' "$remote_python_export_wrapper"
   ! grep -q '${remote_system_path} && export PATH && python3 -s' "$remote_python_export_wrapper"
 done
+grep -Fq '${remote_system_path} && export PATH && bash -s -- ${remote_python_cmd_quoted}' scripts/collect_pi_support_bundle.sh
+grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' scripts/collect_pi_support_bundle.sh
+grep -q '"$python3_cmd" - "$src" "$dest"' scripts/collect_pi_support_bundle.sh
+grep -q '"$python3_cmd" - "$config"' scripts/collect_pi_support_bundle.sh
+if awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh | grep -q 'command -v python3'; then
+  echo "support bundle remote collector must use the validated python3 command path" >&2
+  exit 1
+fi
+! grep -q 'if ! python3 -' scripts/collect_pi_support_bundle.sh
+! grep -q 'if python3 -' scripts/collect_pi_support_bundle.sh
 grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
@@ -5431,13 +5444,37 @@ support_output_dir="$tmpdir/support-bundles"
 mkdir -p "$support_fake_ssh_bin"
 cat >"$support_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
-printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+args="$*"
+if [[ "$args" == *"command -v python3"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
+  exit 0
+fi
+if [[ "$args" == *"&& sh -s -- /usr/bin/python3"* ]]; then
+  cat >/dev/null
+  exit 0
+fi
+printf '%s\n' "$args" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-support-bundle\n'
 EOF
 chmod +x "$support_fake_ssh_bin/ssh"
 mkdir -p "$support_output_dir"
 chmod 0777 "$support_output_dir"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_PYTHON_PATH=/home/pi/bin/python3 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_output_dir" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject an untrusted remote python3 command with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote python3 command is not in a trusted system directory: /home/pi/bin/python3' "$verify_output"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
@@ -5451,7 +5488,11 @@ test "$(stat -c '%a' "$support_bundle_path")" = 600
 test "$(stat -c '%u' "$support_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$support_fake_ssh_args"
 grep -q 'pi@example.invalid' "$support_fake_ssh_args"
-grep -q 'bash -s' "$support_fake_ssh_args"
+grep -q 'bash -s -- /usr/bin/python3' "$support_fake_ssh_args"
+grep -q 'python3_cmd="${1:-}"' "$support_fake_ssh_stdin"
+grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' "$support_fake_ssh_stdin"
+grep -q '"$python3_cmd" - "$src" "$dest"' "$support_fake_ssh_stdin"
+grep -q '"$python3_cmd" - "$config"' "$support_fake_ssh_stdin"
 grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
