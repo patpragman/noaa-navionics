@@ -278,7 +278,7 @@ install_root_file_atomic() {
 }
 
 validate_lightdm_autologin_path() {
-  python3 - "$lightdm_dir" "$lightdm_conf_dir" "$autologin_conf" "$dry_run" <<'PY'
+  "$python3_cmd" - "$lightdm_dir" "$lightdm_conf_dir" "$autologin_conf" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -456,13 +456,15 @@ EOF
   exit 2
 fi
 
+python3_cmd="$(python3_command)" || exit 2
+
 if [[ "$dry_run" -eq 0 ]] && ! id "$autologin_user" >/dev/null 2>&1; then
   echo "Autologin user does not exist: $autologin_user" >&2
   exit 2
 fi
 
 if [[ "$dry_run" -eq 0 ]]; then
-  if ! python3 - "$autologin_user" <<'PY'
+  if ! "$python3_cmd" - "$autologin_user" <<'PY'
 from pathlib import Path
 import pwd
 import sys
@@ -518,11 +520,9 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo
   sudo_cmd="sudo"
   systemctl_cmd="systemctl"
-  python3_cmd="python3"
 else
   sudo_cmd="$(sudo_command)" || exit 2
   systemctl_cmd="$(systemctl_command)" || exit 2
-  python3_cmd="$(python3_command)" || exit 2
 fi
 
 install_root_file_atomic "$tmp" "$autologin_conf" 0644

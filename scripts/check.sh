@@ -1409,11 +1409,14 @@ grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")
 grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_desktop_autologin.sh
 grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/configure_desktop_autologin.sh
+grep -q '"$python3_cmd" - "$lightdm_dir" "$lightdm_conf_dir" "$autologin_conf" "$dry_run"' scripts/configure_desktop_autologin.sh
+grep -q '"$python3_cmd" - "$autologin_user"' scripts/configure_desktop_autologin.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_desktop_autologin.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_desktop_autologin.sh
 grep -q 'run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'run "$sudo_cmd" "$systemctl_cmd" enable lightdm.service' scripts/configure_desktop_autologin.sh
 ! grep -q 'run sudo systemctl' scripts/configure_desktop_autologin.sh
+! grep -Eq '(^|[[:space:]])python3[[:space:]]+-' scripts/configure_desktop_autologin.sh
 ! grep -q '"$sudo_cmd" python3' scripts/configure_desktop_autologin.sh
 grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
 grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
@@ -1421,13 +1424,15 @@ python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/configure_desktop_autologin.sh").read_text(encoding="utf-8")
-sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2')
-systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
 python_resolve = text.index('python3_cmd="$(python3_command)" || exit 2')
-install = text.index('install_root_file_atomic "$tmp" "$autologin_conf" 0644')
-target = text.index('run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target')
-if not sudo_resolve < systemctl_resolve < python_resolve < install < target:
-    raise SystemExit("desktop autologin setup must validate sudo, systemctl, and Python before file install and graphical target changes")
+user_validate = text.index('"$python3_cmd" - "$autologin_user"', python_resolve)
+path_validate = text.index('validate_lightdm_autologin_path', user_validate)
+sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2', path_validate)
+systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2', sudo_resolve)
+install = text.index('install_root_file_atomic "$tmp" "$autologin_conf" 0644', systemctl_resolve)
+target = text.index('run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target', install)
+if not python_resolve < user_validate < path_validate < sudo_resolve < systemctl_resolve < install < target:
+    raise SystemExit("desktop autologin setup must validate Python before helper checks and sudo/systemctl before root changes")
 PY
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
