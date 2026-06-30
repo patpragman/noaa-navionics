@@ -106,7 +106,7 @@ Collect a diagnostic support bundle from the Pi before changing anything:
 scripts/collect_pi_support_bundle.sh pi@raspberrypi.local
 ```
 
-The support bundle helper tightens the local output directory to private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, and writes a local `.tgz` containing Pi-side NOAA Navionics config, status reports, configured chart manifests and storage listings, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, download charts, or copy NOAA chart archives, extracted ENC cells, or GPX track contents.
+The support bundle helper tightens the local output directory to private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, and writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config, status reports, configured chart manifests and storage listings, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, download charts, or copy NOAA chart archives, extracted ENC cells, or GPX track contents.
 
 Export GPX track logs after a trip:
 
@@ -114,7 +114,7 @@ Export GPX track logs after a trip:
 scripts/export_pi_tracks.sh pi@raspberrypi.local
 ```
 
-The track export helper validates the SSH target, tightens the local output directory to private `0700`, reads the Pi's onboard config, and writes a local `.tgz` containing only regular private `.gpx` files from the configured track directory plus an export manifest. Use `--days N` to export only recent track files. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+The track export helper validates the SSH target, tightens the local output directory to private `0700`, reads the Pi's onboard config, and writes a local private `0600` `.tgz` containing only regular private `.gpx` files from the configured track directory plus an export manifest. Use `--days N` to export only recent track files. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 
 Mark the current GPS position while underway:
 
@@ -146,7 +146,7 @@ Export OpenCPN user navigation data before SD-card swaps or maintenance:
 scripts/export_pi_opencpn_data.sh pi@raspberrypi.local
 ```
 
-The OpenCPN export helper tightens the local output directory to private `0700` and writes a local `.tgz` containing trusted regular OpenCPN config, `navobj.xml` route/waypoint data, and GPX/XML layer files when present. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+The OpenCPN export helper tightens the local output directory to private `0700` and writes a local private `0600` `.tgz` containing trusted regular OpenCPN config, `navobj.xml` route/waypoint data, and GPX/XML layer files when present. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 
 Export commissioning settings before reimaging or replacing storage:
 
@@ -154,7 +154,7 @@ Export commissioning settings before reimaging or replacing storage:
 scripts/export_pi_settings.sh pi@raspberrypi.local
 ```
 
-The settings export helper tightens the local output directory to private `0700` and writes a local `.tgz` containing trusted NOAA Navionics config, launcher policy, source revision, user service/autostart files, and readable GPSD/chrony/LightDM settings. It does not deploy, reboot, start services, download charts, or copy logs, GPX tracks, NOAA chart archives, or extracted ENC cells.
+The settings export helper tightens the local output directory to private `0700` and writes a local private `0600` `.tgz` containing trusted NOAA Navionics config, launcher policy, source revision, user service/autostart files, and readable GPSD/chrony/LightDM settings. It does not deploy, reboot, start services, download charts, or copy logs, GPX tracks, NOAA chart archives, or extracted ENC cells.
 
 Export a full recovery set before a trip or maintenance window:
 

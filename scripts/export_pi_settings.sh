@@ -223,6 +223,40 @@ prepare_private_output_dir() {
   fi
 }
 
+finalize_private_archive() {
+  local path="$1"
+  local mode
+  local owner_uid
+  local stat_output
+
+  if [[ -L "$path" || ! -f "$path" ]]; then
+    echo "Export archive must be a regular non-symlink file: $path" >&2
+    exit 1
+  fi
+  if ! chmod 0600 -- "$path"; then
+    echo "Could not tighten export archive permissions to 0600: $path" >&2
+    exit 1
+  fi
+  if [[ -L "$path" || ! -f "$path" ]]; then
+    echo "Export archive must remain a regular non-symlink file after permission tightening: $path" >&2
+    exit 1
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect export archive permissions: $path" >&2
+    exit 1
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  if [[ "$owner_uid" != "$(id -u)" ]]; then
+    echo "Export archive is owned by uid ${owner_uid}, expected $(id -u): $path" >&2
+    exit 1
+  fi
+  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "600" ]]; then
+    echo "Export archive has permissions ${mode}, expected private 0600: $path" >&2
+    exit 1
+  fi
+}
+
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 ssh_cmd="$(require_local_command ssh)"
@@ -381,5 +415,6 @@ if [[ ! -s "$partial_path" ]]; then
   exit 1
 fi
 mv -- "$partial_path" "$archive_path"
+finalize_private_archive "$archive_path"
 trap - EXIT
 printf 'Exported Pi commissioning settings: %s\n' "$archive_path"
