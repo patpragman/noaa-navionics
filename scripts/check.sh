@@ -2798,22 +2798,25 @@ grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
 grep -q 'remote_reboot_command' scripts/dock_test_pi.sh
+grep -q 'remote_sudo_command' scripts/dock_test_pi.sh
+grep -q 'validate_remote_root_command_trust' scripts/dock_test_pi.sh
 grep -q 'validate_remote_reboot_command_trust' scripts/dock_test_pi.sh
-grep -q 'Remote reboot command is not in a trusted system directory' scripts/dock_test_pi.sh
-grep -q 'Remote reboot command ${item_kind} is owned by uid' scripts/dock_test_pi.sh
-grep -q 'Remote reboot command ${item_kind} has permissions' scripts/dock_test_pi.sh
-grep -Fq 'readlink -f -- "$reboot_cmd"' scripts/dock_test_pi.sh
-grep -q 'Remote reboot command is not executable after resolution' scripts/dock_test_pi.sh
+grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/dock_test_pi.sh
+grep -q 'Remote ${command_label} command ${item_kind} is owned by uid' scripts/dock_test_pi.sh
+grep -q 'Remote ${command_label} command ${item_kind} has permissions' scripts/dock_test_pi.sh
+grep -Fq 'readlink -f -- "$command_path"' scripts/dock_test_pi.sh
+grep -q 'Remote ${command_label} command is not executable after resolution' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && true' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && python3 -' scripts/dock_test_pi.sh
 grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/dock_test_pi.sh
 grep -q 'remote boot ID is invalid; expected Linux boot_id value' scripts/dock_test_pi.sh
 ! grep -q '${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v reboot' scripts/dock_test_pi.sh
-grep -q '${remote_system_path} && export PATH && sudo -n -l' scripts/dock_test_pi.sh
-grep -Fq '${remote_system_path} && export PATH && sudo -n '"'"'$remote_reboot_cmd'"'" scripts/dock_test_pi.sh
-grep -q 'sudo -n -l' scripts/dock_test_pi.sh
-grep -q "sudo -n '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
+grep -q '${remote_system_path} && export PATH && command -v sudo' scripts/dock_test_pi.sh
+grep -q '${remote_system_path} && export PATH && '"'"'$remote_sudo_cmd'"'"' -n -l' scripts/dock_test_pi.sh
+grep -Fq '${remote_system_path} && export PATH && '"'"'$remote_sudo_cmd'"'"' -n '"'"'$remote_reboot_cmd'"'" scripts/dock_test_pi.sh
+grep -q -- "-n -l '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
+grep -q "'\$remote_sudo_cmd' -n '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
 ! grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
 grep -q 'ssh -T "${ssh_batch_options\[@\]}" "$target"' scripts/verify_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/deploy_to_pi.sh
@@ -2836,8 +2839,10 @@ grep -q -- '--skip-autologin cannot be used for the dock acceptance test' script
 grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' README.md
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
-grep -q 'root-owned, executable, non-group/world-writable command in a trusted system directory' README.md
-grep -q 'root-owned, executable, non-group/world-writable command in a trusted system directory' docs/sailboat-pi.md
+grep -q 'validates the remote absolute `reboot` and `sudo` command paths' README.md
+grep -q 'validates the remote absolute `reboot` and `sudo` command paths' docs/sailboat-pi.md
+grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' README.md
+grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' docs/sailboat-pi.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' README.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' docs/sailboat-pi.md
 grep -q 'pins its remote command path to trusted system directories' README.md
@@ -3717,13 +3722,24 @@ if [[ "$args" == *"command -v reboot"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_REBOOT_PATH:-/usr/sbin/reboot}"
   exit 0
 fi
-if [[ "$args" == *"sh -s -- '/usr/sbin/reboot'"* ]]; then
+if [[ "$args" == *"command -v sudo"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_SUDO_PATH:-/usr/bin/sudo}"
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- /usr/sbin/reboot reboot"* ]]; then
   if [[ -n "${NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR:-}" ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR" >&2
     exit 1
   fi
   if [[ "${NOAA_NAVIONICS_FAKE_REBOOT_NOT_EXECUTABLE:-0}" == "1" ]]; then
     printf '%s\n' "Remote reboot command is not executable after resolution: /usr/sbin/reboot -> /usr/sbin/reboot" >&2
+    exit 1
+  fi
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- /usr/bin/sudo sudo"* ]]; then
+  if [[ -n "${NOAA_NAVIONICS_FAKE_SUDO_TRUST_ERROR:-}" ]]; then
+    printf '%s\n' "$NOAA_NAVIONICS_FAKE_SUDO_TRUST_ERROR" >&2
     exit 1
   fi
   exit 0
@@ -3776,6 +3792,37 @@ if [[ "$dock_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Remote reboot command is not executable after resolution' "$dock_output"
+
+set +e
+NOAA_NAVIONICS_FAKE_REBOOT_PATH=/usr/sbin/reboot \
+NOAA_NAVIONICS_FAKE_SUDO_PATH=/home/pi/bin/sudo \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  PATH="$dock_fake_ssh_bin:$PATH" \
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 1 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject user-writable-looking sudo commands with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote sudo command is not in a trusted system directory: /home/pi/bin/sudo' "$dock_output"
+
+set +e
+NOAA_NAVIONICS_FAKE_REBOOT_PATH=/usr/sbin/reboot \
+NOAA_NAVIONICS_FAKE_SUDO_PATH=/usr/bin/sudo \
+NOAA_NAVIONICS_FAKE_SUDO_TRUST_ERROR='Remote sudo command file is owned by uid 1000, expected 0: /usr/bin/sudo' \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  PATH="$dock_fake_ssh_bin:$PATH" \
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 1 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject non-root sudo commands with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote sudo command file is owned by uid 1000, expected 0: /usr/bin/sudo' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --timeout nope >"$dock_output" 2>&1

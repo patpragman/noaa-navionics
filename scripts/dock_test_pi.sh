@@ -48,6 +48,7 @@ deploy_args=()
 provision_args=()
 verify_args=()
 remote_reboot_cmd=""
+remote_sudo_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -442,22 +443,28 @@ validate_boot_id_value() {
   fi
 }
 
-validate_remote_reboot_command_trust() {
-  local reboot_cmd="$1"
+validate_remote_root_command_trust() {
+  local command_label="$1"
+  local command_path="$2"
+  local command_path_quoted
+  local command_label_quoted
 
-  case "$reboot_cmd" in
+  case "$command_path" in
     /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*)
       ;;
     *)
-      echo "Remote reboot command is not in a trusted system directory: $reboot_cmd" >&2
+      echo "Remote ${command_label} command is not in a trusted system directory: $command_path" >&2
       return 1
       ;;
   esac
 
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- '$reboot_cmd'" <<'REMOTE_REBOOT_TRUST'
+  command_path_quoted="$(printf '%q' "$command_path")"
+  command_label_quoted="$(printf '%q' "$command_label")"
+  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_label_quoted}" <<'REMOTE_ROOT_COMMAND_TRUST'
 set -eu
 
-reboot_cmd="$1"
+command_path="$1"
+command_label="$2"
 
 check_trusted_system_path() {
   case "$1" in
@@ -465,7 +472,7 @@ check_trusted_system_path() {
       return 0
       ;;
   esac
-  echo "Remote reboot command resolves outside trusted system directories: $1" >&2
+  echo "Remote ${command_label} command resolves outside trusted system directories: $1" >&2
   return 1
 }
 
@@ -478,12 +485,12 @@ check_owner_and_mode() {
   mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
 
   if [ "$owner_uid" != "0" ]; then
-    echo "Remote reboot command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    echo "Remote ${command_label} command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
     return 1
   fi
   case "$mode_tail" in
     ?[2367]?|??[2367])
-      echo "Remote reboot command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      echo "Remote ${command_label} command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
       return 1
       ;;
   esac
@@ -498,21 +505,25 @@ check_directory_chain() {
   done
 }
 
-check_trusted_system_path "$reboot_cmd"
-resolved_cmd="$(readlink -f -- "$reboot_cmd")"
+check_trusted_system_path "$command_path"
+resolved_cmd="$(readlink -f -- "$command_path")"
 check_trusted_system_path "$resolved_cmd"
 if [ ! -f "$resolved_cmd" ]; then
-  echo "Remote reboot command is not a regular file after resolution: ${reboot_cmd} -> ${resolved_cmd}" >&2
+  echo "Remote ${command_label} command is not a regular file after resolution: ${command_path} -> ${resolved_cmd}" >&2
   exit 1
 fi
 if [ ! -x "$resolved_cmd" ]; then
-  echo "Remote reboot command is not executable after resolution: ${reboot_cmd} -> ${resolved_cmd}" >&2
+  echo "Remote ${command_label} command is not executable after resolution: ${command_path} -> ${resolved_cmd}" >&2
   exit 1
 fi
-check_directory_chain "$reboot_cmd"
+check_directory_chain "$command_path"
 check_directory_chain "$resolved_cmd"
 check_owner_and_mode file "$resolved_cmd"
-REMOTE_REBOOT_TRUST
+REMOTE_ROOT_COMMAND_TRUST
+}
+
+validate_remote_reboot_command_trust() {
+  validate_remote_root_command_trust reboot "$1"
 }
 
 remote_reboot_command() {
@@ -532,12 +543,32 @@ remote_reboot_command() {
   printf '%s\n' "$reboot_cmd"
 }
 
+remote_sudo_command() {
+  local sudo_cmd
+
+  if ! sudo_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v sudo" 2>/dev/null)" || [[ -z "$sudo_cmd" ]]; then
+    echo "Could not find the remote sudo command on $target." >&2
+    return 1
+  fi
+  if [[ "$sudo_cmd" != /* || "$sudo_cmd" =~ [[:space:]\"\'] ]]; then
+    echo "Remote sudo command path is unsafe: $sudo_cmd" >&2
+    return 1
+  fi
+  if ! validate_remote_root_command_trust sudo "$sudo_cmd"; then
+    return 1
+  fi
+  printf '%s\n' "$sudo_cmd"
+}
+
 check_remote_noninteractive_reboot_available() {
   if ! remote_reboot_cmd="$(remote_reboot_command)"; then
     return 1
   fi
+  if ! remote_sudo_cmd="$(remote_sudo_command)"; then
+    return 1
+  fi
 
-  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sudo -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
+  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
     printf 'OK   noninteractive sudo can run %s\n' "$remote_reboot_cmd"
     return 0
   fi
@@ -553,8 +584,11 @@ request_reboot() {
   if [[ -z "$remote_reboot_cmd" ]]; then
     remote_reboot_cmd="$(remote_reboot_command)"
   fi
+  if [[ -z "$remote_sudo_cmd" ]]; then
+    remote_sudo_cmd="$(remote_sudo_command)"
+  fi
 
-  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sudo -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
+  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
     return 0
   fi
 
@@ -567,7 +601,7 @@ request_reboot() {
   done
 
   echo "Failed to request reboot with passwordless sudo on $target." >&2
-  echo "The dock test requires the SSH user to run: sudo -n $remote_reboot_cmd" >&2
+  echo "The dock test requires the SSH user to run: $remote_sudo_cmd -n $remote_reboot_cmd" >&2
   return 1
 }
 
