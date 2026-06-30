@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -26,6 +27,7 @@ MANIFEST_NAME = "noaa-navionics-manifest.json"
 DOWNLOAD_LOCK_NAME = ".noaa-navionics-download.lock"
 DOWNLOAD_LOCK_STALE_SECONDS = 6 * 60 * 60
 USER_AGENT = "noaa-navionics/0.1 (+https://www.charts.noaa.gov/ENCs/ENCs.shtml)"
+BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 UPDATE_PACKAGES = {
     "one-day": "OneDay_ENCs.zip",
@@ -702,7 +704,7 @@ def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_
     owner_boot_id = _lock_field(lock_text, "boot_id")
     if owner_pid and owner_pid.isdigit():
         current_boot_id = _current_boot_id()
-        if owner_boot_id and current_boot_id and owner_boot_id != current_boot_id:
+        if _valid_boot_id(owner_boot_id) and _valid_boot_id(current_boot_id) and owner_boot_id != current_boot_id:
             return True
         if _pid_is_running(int(owner_pid)):
             return False
@@ -754,9 +756,14 @@ def _lock_field(lock_text: str, name: str) -> str:
 
 def _current_boot_id() -> str:
     try:
-        return Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+        value = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
     except OSError:
-        return "unknown"
+        return ""
+    return value if _valid_boot_id(value) else ""
+
+
+def _valid_boot_id(value: str) -> bool:
+    return bool(BOOT_ID_RE.fullmatch(value))
 
 
 def _pid_is_running(pid: int) -> bool:

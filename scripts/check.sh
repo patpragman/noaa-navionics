@@ -1442,6 +1442,12 @@ grep -q 'test_stale_download_lock_cleanup_rejects_writable_lock_file' tests/test
 grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or group/world-writable lock files' README.md
 grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or group/world-writable lock files' docs/sailboat-pi.md
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
+grep -q 'BOOT_ID_RE.fullmatch' src/noaa_navionics/downloader.py
+grep -q '_valid_boot_id(owner_boot_id) and _valid_boot_id(current_boot_id)' src/noaa_navionics/downloader.py
+grep -q 'test_old_download_lock_with_malformed_current_boot_id_keeps_live_owner' tests/test_downloader.py
+grep -q 'test_old_download_lock_with_malformed_owner_boot_id_keeps_live_owner' tests/test_downloader.py
+grep -q 'valid Linux `boot_id` UUID shape' README.md
+grep -q 'valid Linux `boot_id` UUID shape' docs/sailboat-pi.md
 grep -q 'lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
 grep -q 'os.fchmod(lock_fd, 0o600)' src/noaa_navionics/downloader.py
 grep -q 'partial download already exists; remove interrupted chart update debris' src/noaa_navionics/downloader.py
