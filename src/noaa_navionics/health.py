@@ -10,6 +10,7 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -155,12 +156,43 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
                 f"deployed source revision path has permissions {mode:04o}, expected no group/other write bits: {revision_path}",
             )
     try:
-        revision = revision_path.read_text(encoding="utf-8").strip()
+        revision = _read_source_revision_text(revision_path)
     except OSError as exc:
         return CheckResult("Source Revision", False, f"cannot read deployed source revision at {revision_path}: {exc}")
+    except RuntimeError as exc:
+        return CheckResult("Source Revision", False, str(exc).replace("source revision", "deployed source revision"))
     if not revision or revision == "unknown":
         return CheckResult("Source Revision", False, f"deployed source revision is not recorded at {revision_path}")
     return CheckResult("Source Revision", True, revision)
+
+
+def _read_source_revision_text(path: Path) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"source revision path is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"source revision path is not a regular file: {path}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(
+                f"source revision path is owned by uid {stat_result.st_uid}, expected {os.getuid()}: {path}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"source revision path has permissions {mode:04o}, expected no group/other write bits: {path}"
+            )
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return handle.read().strip()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _source_revision_path() -> Path:

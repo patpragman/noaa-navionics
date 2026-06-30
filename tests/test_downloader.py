@@ -3967,6 +3967,17 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("source revision path", summary["source_revision_error"])
             self.assertIn("has permissions 0620", summary["source_revision_error"])
 
+    def test_source_revision_reader_rejects_writable_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            revision.chmod(0o622)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "source revision path .* has permissions 0622"):
+                    report_module._source_revision(revision)
+            finally:
+                revision.chmod(0o600)
+
     def test_launcher_settings_summary_rejects_symlinked_environment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -8593,6 +8604,17 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("has permissions 0620", result.detail)
+
+    def test_health_source_revision_reader_rejects_writable_revision(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            revision.chmod(0o622)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "source revision path has permissions 0622"):
+                    health_module._read_source_revision_text(revision)
+            finally:
+                revision.chmod(0o600)
 
     def test_check_source_revision_rejects_unknown_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:
