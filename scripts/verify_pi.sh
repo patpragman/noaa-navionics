@@ -966,6 +966,25 @@ if expected_config_path:
             f"status report track_log latest_mode {status_latest_mode or '<missing>'} "
             f"does not match file permissions {latest_track_mode:04o}"
         )
+    def numeric_track_log_field(field):
+        value = track_log.get(field)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise SystemExit(f"status report track_log {field} is not numeric: {value!r}")
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise SystemExit(f"status report track_log {field} is not finite: {value!r}")
+        return parsed
+    latest_latitude = numeric_track_log_field("latest_latitude")
+    latest_longitude = numeric_track_log_field("latest_longitude")
+    age_seconds = numeric_track_log_field("age_seconds")
+    if not (-90.0 <= latest_latitude <= 90.0):
+        raise SystemExit(f"status report track_log latest_latitude is outside -90..90: {latest_latitude}")
+    if not (-180.0 <= latest_longitude <= 180.0):
+        raise SystemExit(f"status report track_log latest_longitude is outside -180..180: {latest_longitude}")
+    if abs(latest_latitude) < 1e-12 and abs(latest_longitude) < 1e-12:
+        raise SystemExit("status report track_log latest coordinates are invalid 0,0")
+    if age_seconds < 0.0:
+        raise SystemExit(f"status report track_log age_seconds is negative: {age_seconds:g}")
     latest_satellites = track_log.get("latest_satellites")
     latest_hdop = track_log.get("latest_hdop")
     if latest_satellites is None and latest_hdop is None:
@@ -1728,10 +1747,25 @@ if track_log.get("ok") is not True:
 latest_track_path = str(track_log.get("latest_path", "")).strip()
 if not latest_track_path:
     raise SystemExit("status report track_log has no latest_path")
-for field in ("latest_latitude", "latest_longitude", "age_seconds"):
+def numeric_track_log_field(field):
     value = track_log.get(field)
-    if not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise SystemExit(f"status report track_log {field} is not numeric: {value!r}")
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise SystemExit(f"status report track_log {field} is not finite: {value!r}")
+    return parsed
+latest_latitude = numeric_track_log_field("latest_latitude")
+latest_longitude = numeric_track_log_field("latest_longitude")
+age_seconds = numeric_track_log_field("age_seconds")
+if not (-90.0 <= latest_latitude <= 90.0):
+    raise SystemExit(f"status report track_log latest_latitude is outside -90..90: {latest_latitude}")
+if not (-180.0 <= latest_longitude <= 180.0):
+    raise SystemExit(f"status report track_log latest_longitude is outside -180..180: {latest_longitude}")
+if abs(latest_latitude) < 1e-12 and abs(latest_longitude) < 1e-12:
+    raise SystemExit("status report track_log latest coordinates are invalid 0,0")
+if age_seconds < 0.0:
+    raise SystemExit(f"status report track_log age_seconds is negative: {age_seconds:g}")
 latest_satellites = track_log.get("latest_satellites")
 latest_hdop = track_log.get("latest_hdop")
 if latest_satellites is None and latest_hdop is None:
