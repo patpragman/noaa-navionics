@@ -3387,7 +3387,7 @@ class StatusReportTests(unittest.TestCase):
             )
             track_time = datetime.now(timezone.utc)
             with GPXTrackLogger(charts / "tracks" / "track-20260629.gpx") as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=track_time))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=track_time, satellites=8, hdop=1.2))
             config = root / "config.ini"
             config.write_text(
                 "[charts]\n"
@@ -4361,7 +4361,7 @@ class StatusReportTests(unittest.TestCase):
             root = Path(tmpdir)
             track_path = root / "tracks" / "track-20260629.gpx"
             with GPXTrackLogger(track_path) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
 
             summary = _track_log_summary(
                 root,
@@ -4385,7 +4385,7 @@ class StatusReportTests(unittest.TestCase):
             root = Path(tmpdir)
             track_path = root / "tracks" / "track-20260629.gpx"
             with GPXTrackLogger(track_path) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
             track_path.parent.chmod(0o755)
 
             summary = _track_log_summary(
@@ -4406,7 +4406,7 @@ class StatusReportTests(unittest.TestCase):
             real_output = root / "real-tracks"
             track_path = real_output / "tracks" / "track-20260629.gpx"
             with GPXTrackLogger(track_path) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
             link_output = root / "track-link"
             try:
                 link_output.symlink_to(real_output, target_is_directory=True)
@@ -4435,7 +4435,7 @@ class StatusReportTests(unittest.TestCase):
             real_output = real_root / "noaa-tracks"
             track_path = real_output / "tracks" / "track-20260629.gpx"
             with GPXTrackLogger(track_path) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
             link_root = root / "link-storage"
             try:
                 link_root.symlink_to(real_root, target_is_directory=True)
@@ -4462,7 +4462,7 @@ class StatusReportTests(unittest.TestCase):
             root = Path(tmpdir)
             track_path = root / "tracks" / "track-20260629.gpx"
             with GPXTrackLogger(track_path) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
             track_path.chmod(0o644)
 
             summary = _track_log_summary(
@@ -4485,7 +4485,7 @@ class StatusReportTests(unittest.TestCase):
             def write_later():
                 time.sleep(0.05)
                 with GPXTrackLogger(track_path) as logger:
-                    logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                    logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
 
             writer = threading.Thread(target=write_later)
             writer.start()
@@ -4509,7 +4509,7 @@ class StatusReportTests(unittest.TestCase):
             root = Path(tmpdir)
             track_path = root / "tracks" / "track-20260629.gpx"
             with GPXTrackLogger(track_path) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
 
             summary = _track_log_summary(root, now=timestamp + timedelta(seconds=700), boot_epoch=None)
             check = _track_log_readiness_check(summary)
@@ -4557,7 +4557,7 @@ class StatusReportTests(unittest.TestCase):
             tracks.chmod(0o700)
             real_track = root / "real.gpx"
             with GPXTrackLogger(real_track) as logger:
-                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp))
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
             symlink_track = tracks / "track-20260629.gpx"
             try:
                 symlink_track.symlink_to(real_track)
@@ -6551,7 +6551,13 @@ class GpsTests(unittest.TestCase):
             self.assertNotIn("<trkpt", text)
 
     def test_gpx_logger_syncs_track_file_and_directory_to_disk(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
         calls = []
         original_fsync = gps_module.os.fsync
         gps_module.os.fsync = lambda fd: calls.append(fd)
@@ -6565,8 +6571,22 @@ class GpsTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 5)
 
+    def test_gpx_logger_skips_missing_quality_fields(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "track.gpx"
+            with GPXTrackLogger(path, name="Test") as logger:
+                logger.append(fix)
+
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("<trkpt", text)
+
     def test_gpx_logger_tightens_public_track_parent(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             parent = Path(tmpdir) / "tracks"
             parent.mkdir()
@@ -6580,7 +6600,7 @@ class GpsTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
 
     def test_gpx_logger_rejects_misowned_track_parent(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             parent = Path(tmpdir) / "tracks"
             parent.mkdir()
@@ -6595,7 +6615,7 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(path.exists())
 
     def test_gpx_logger_rejects_symlinked_track_parent(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             target = root / "target"
@@ -6613,7 +6633,7 @@ class GpsTests(unittest.TestCase):
             self.assertFalse((target / "track.gpx").exists())
 
     def test_gpx_logger_does_not_overwrite_existing_file(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "track.gpx"
             path.write_text("existing", encoding="utf-8")
@@ -6630,8 +6650,8 @@ class GpsTests(unittest.TestCase):
 
     def test_log_rotating_tracks_writes_one_file_per_utc_day(self):
         fixes = [
-            GPSFix(timestamp=datetime(2026, 6, 29, 23, 59, tzinfo=timezone.utc), latitude=1.0, longitude=2.0),
-            GPSFix(timestamp=datetime(2026, 6, 30, 0, 1, tzinfo=timezone.utc), latitude=3.0, longitude=4.0),
+            GPSFix(timestamp=datetime(2026, 6, 29, 23, 59, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2),
+            GPSFix(timestamp=datetime(2026, 6, 30, 0, 1, tzinfo=timezone.utc), latitude=3.0, longitude=4.0, satellites=8, hdop=1.2),
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             with redirect_stdout(StringIO()):
@@ -6643,7 +6663,7 @@ class GpsTests(unittest.TestCase):
             self.assertIn('lat="3.00000000"', outputs[1].read_text(encoding="utf-8"))
 
     def test_log_rotating_tracks_rejects_symlinked_tracks_directory(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             target = root / "target"
@@ -6658,7 +6678,7 @@ class GpsTests(unittest.TestCase):
                     _log_rotating_tracks(iter([fix]), root, deadline=None, sample=True)
 
     def test_log_rotating_tracks_rejects_symlinked_base_directory(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             target = root / "target"
@@ -6677,7 +6697,7 @@ class GpsTests(unittest.TestCase):
 
     def test_log_single_track_closes_gpx_on_stop_signal_exception(self):
         def fixes():
-            yield GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+            yield GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
             raise _TrackLoggerStop("SIGTERM")
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -6835,16 +6855,20 @@ class GpsTests(unittest.TestCase):
         self.assertIn("Skipping stale track fix", stderr.getvalue())
         self.assertIn("future", stderr.getvalue())
 
-    def test_trackable_fixes_keep_position_only_fix(self):
+    def test_trackable_fixes_skip_position_only_fix(self):
         position_only = GPSFix(
             timestamp=datetime.now(timezone.utc),
             latitude=1.0,
             longitude=2.0,
         )
 
-        self.assertEqual(list(_trackable_fixes(iter([position_only]))), [position_only])
+        with redirect_stderr(StringIO()) as stderr:
+            fixes = list(_trackable_fixes(iter([position_only])))
 
-    def test_trackable_fixes_delay_position_only_until_next_fix(self):
+        self.assertEqual(fixes, [])
+        self.assertIn("missing satellite or HDOP quality fields", stderr.getvalue())
+
+    def test_trackable_fixes_skip_position_only_before_quality_fix(self):
         now = datetime.now(timezone.utc)
         first = GPSFix(
             timestamp=now,
@@ -6855,11 +6879,16 @@ class GpsTests(unittest.TestCase):
             timestamp=now + timedelta(seconds=1),
             latitude=3.0,
             longitude=4.0,
+            satellites=8,
+            hdop=1.2,
         )
 
-        self.assertEqual(list(_trackable_fixes(iter([first, second]))), [first, second])
+        with redirect_stderr(StringIO()):
+            fixes = list(_trackable_fixes(iter([first, second])))
 
-    def test_trackable_fixes_drop_pending_position_only_before_weak_quality(self):
+        self.assertEqual(fixes, [second])
+
+    def test_trackable_fixes_skip_position_only_before_weak_quality(self):
         now = datetime.now(timezone.utc)
         position_only = GPSFix(
             timestamp=now,
@@ -6885,6 +6914,8 @@ class GpsTests(unittest.TestCase):
             timestamp=datetime.now(timezone.utc),
             latitude=3.0,
             longitude=4.0,
+            satellites=8,
+            hdop=1.2,
         )
 
         with redirect_stderr(StringIO()):
@@ -6892,7 +6923,7 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual(fixes, [timestamped])
 
-    def test_trackable_fixes_keep_pending_timestamped_fix_before_untimestamped_fix(self):
+    def test_trackable_fixes_skip_position_only_before_untimestamped_fix(self):
         timestamped = GPSFix(
             timestamp=datetime.now(timezone.utc),
             latitude=1.0,
@@ -6903,7 +6934,7 @@ class GpsTests(unittest.TestCase):
         with redirect_stderr(StringIO()):
             fixes = list(_trackable_fixes(iter([timestamped, untimestamped])))
 
-        self.assertEqual(fixes, [timestamped])
+        self.assertEqual(fixes, [])
 
     def test_shared_gps_quality_rejects_high_hdop(self):
         fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=9.9)
@@ -6937,7 +6968,7 @@ class GpsTests(unittest.TestCase):
             _raise_track_logger_stop(signal.SIGTERM, None)
 
     def test_log_rotating_tracks_does_not_overwrite_existing_daily_file(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             existing = Path(tmpdir) / "tracks" / "track-20260629.gpx"
             existing.parent.mkdir()
@@ -6949,7 +6980,7 @@ class GpsTests(unittest.TestCase):
             self.assertEqual(existing.read_text(encoding="utf-8"), "old")
 
     def test_log_rotating_tracks_prunes_old_daily_files(self):
-        fix = GPSFix(timestamp=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        fix = GPSFix(timestamp=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
             tracks = Path(tmpdir) / "tracks"
             tracks.mkdir()

@@ -1129,13 +1129,15 @@ grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
 grep -q 'Skipping untimestamped track fix' src/noaa_navionics/cli.py
+grep -q 'Skipping low-detail track fix' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is stale' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/cli.py
-grep -q 'skips invalid coordinates, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
-grep -q 'skips invalid coordinates, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
-grep -q 'pending_without_quality' src/noaa_navionics/cli.py
+grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
+grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
+! grep -q 'pending_without_quality' src/noaa_navionics/cli.py
 grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
+grep -q 'gps_fix_has_quality_fields(fix)' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py

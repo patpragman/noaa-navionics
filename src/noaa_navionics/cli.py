@@ -572,19 +572,14 @@ def _trackable_fixes(
     future_tolerance_seconds: float = 30.0,
 ):
     last_skip_detail = ""
-    pending_without_quality = None
     for fix in fixes:
         quality_detail = gps_fix_quality_failure(fix)
         if quality_detail:
-            pending_without_quality = None
             if quality_detail != last_skip_detail:
                 print(f"Skipping weak track fix: {quality_detail}", file=sys.stderr)
                 last_skip_detail = quality_detail
             continue
         if fix.timestamp is None:
-            if pending_without_quality is not None:
-                yield pending_without_quality
-                pending_without_quality = None
             detail = "fix has no timestamp; cannot write reliable GPX trackpoint"
             if detail != last_skip_detail:
                 print(f"Skipping untimestamped track fix: {detail}", file=sys.stderr)
@@ -596,21 +591,18 @@ def _trackable_fixes(
             future_tolerance_seconds=future_tolerance_seconds,
         )
         if freshness_detail:
-            pending_without_quality = None
             if freshness_detail != last_skip_detail:
                 print(f"Skipping stale track fix: {freshness_detail}", file=sys.stderr)
                 last_skip_detail = freshness_detail
             continue
-        last_skip_detail = ""
         if not gps_fix_has_quality_fields(fix):
-            if pending_without_quality is not None:
-                yield pending_without_quality
-            pending_without_quality = fix
+            detail = "fix missing satellite or HDOP quality fields; cannot write reliable GPX trackpoint"
+            if detail != last_skip_detail:
+                print(f"Skipping low-detail track fix: {detail}", file=sys.stderr)
+                last_skip_detail = detail
             continue
-        pending_without_quality = None
+        last_skip_detail = ""
         yield fix
-    if pending_without_quality is not None:
-        yield pending_without_quality
 
 
 def _track_fix_freshness_failure(

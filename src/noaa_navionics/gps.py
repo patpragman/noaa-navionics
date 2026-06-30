@@ -358,6 +358,8 @@ class GPXTrackLogger:
             return
         if gps_fix_quality_failure(fix):
             return
+        if not gps_fix_has_quality_fields(fix):
+            return
         self.file.write(f'    <trkpt lat="{fix.latitude:.8f}" lon="{fix.longitude:.8f}">\n')
         if fix.altitude_m is not None:
             self.file.write(f"      <ele>{fix.altitude_m:.2f}</ele>\n")
