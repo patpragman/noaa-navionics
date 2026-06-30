@@ -350,6 +350,12 @@ grep -q 'GPS device path is volatile' scripts/dock_test_pi.sh
 grep -q 'GPS device path is volatile' scripts/verify_pi.sh
 grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
+grep -q 'SSH target user contains unsafe characters' scripts/deploy_to_pi.sh
+grep -q 'SSH target user contains unsafe characters' scripts/dock_test_pi.sh
+grep -q 'SSH target user contains unsafe characters' scripts/verify_pi.sh
+grep -q 'SSH target host contains unsafe characters' scripts/deploy_to_pi.sh
+grep -q 'SSH target host contains unsafe characters' scripts/dock_test_pi.sh
+grep -q 'SSH target host contains unsafe characters' scripts/verify_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/verify_pi.sh
@@ -2402,6 +2408,28 @@ fi
 grep -q 'plain user@host without paths or ports' "$verify_output"
 
 set +e
+scripts/verify_pi.sh 'bad;user@example.invalid' >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject unsafe SSH target users with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target user contains unsafe characters' "$verify_output"
+
+set +e
+scripts/verify_pi.sh 'pi@example.invalid;bad' >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject unsafe SSH target hosts with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target host contains unsafe characters' "$verify_output"
+
+set +e
 scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1
 desktop_code=$?
 set -e
@@ -2626,6 +2654,28 @@ fi
 grep -q 'plain user@host without paths or ports' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh 'bad;user@example.invalid' --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject unsafe SSH target users with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target user contains unsafe characters' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh 'pi@example.invalid;bad' --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject unsafe SSH target hosts with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target host contains unsafe characters' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh pi@example.invalid / --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -2712,6 +2762,28 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'plain user@host without paths or ports' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh 'bad;user@example.invalid' --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject unsafe SSH target users with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target user contains unsafe characters' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh 'pi@example.invalid;bad' --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject unsafe SSH target hosts with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target host contains unsafe characters' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid / --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1

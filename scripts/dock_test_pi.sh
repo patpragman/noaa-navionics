@@ -79,8 +79,16 @@ validate_ssh_target() {
     echo "SSH target must be user@host: $value" >&2
     exit 2
   fi
+  if [[ ! "$user_part" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]]; then
+    echo "SSH target user contains unsafe characters: $user_part" >&2
+    exit 2
+  fi
   if [[ "$host_part" == *:* || "$host_part" == */* ]]; then
     echo "SSH target must be plain user@host without paths or ports: $value" >&2
+    exit 2
+  fi
+  if [[ ! "$host_part" =~ ^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)*[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]]; then
+    echo "SSH target host contains unsafe characters: $host_part" >&2
     exit 2
   fi
   if [[ "$user_part" == "root" ]]; then
