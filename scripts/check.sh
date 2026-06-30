@@ -482,10 +482,17 @@ grep -q 'check_chartplotter_log_after_boot' scripts/verify_pi.sh
 grep -q 'launcher log cache directory is a symlink' scripts/verify_pi.sh
 grep -q 'launcher log has permissions' scripts/verify_pi.sh
 grep -q 'launcher log cache path contains a symlink' scripts/verify_pi.sh
+grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/verify_pi.sh
+grep -q 'log_stat = os.fstat(fd)' scripts/verify_pi.sh
+grep -q 'stat.S_ISREG(log_stat.st_mode)' scripts/verify_pi.sh
+grep -q 'os.fdopen(fd, "r", encoding="utf-8", errors="replace")' scripts/verify_pi.sh
+! grep -q 'text = path.read_text(encoding="utf-8", errors="replace")' scripts/verify_pi.sh
 grep -q 'rotated_log_file="${log_file}.1"' scripts/verify_pi.sh
 grep -q 'check_optional_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher log file integrity' scripts/verify_pi.sh
 grep -q 'chartplotter rotated launcher log file integrity' scripts/verify_pi.sh
+grep -q 'parses the active launcher log only through the no-follow descriptor it verified' README.md
+grep -q 'parses the active launcher log only through the no-follow descriptor it verified' docs/sailboat-pi.md
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 python3 - <<'PY'
 from pathlib import Path

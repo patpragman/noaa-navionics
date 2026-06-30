@@ -2287,6 +2287,7 @@ check_chartplotter_log_after_boot() {
 from pathlib import Path
 from datetime import datetime, timezone
 import os
+import stat
 import sys
 import time
 
@@ -2309,7 +2310,6 @@ if not path.is_file():
 try:
     cache_parent_stat = cache_dir.parent.stat()
     cache_stat = cache_dir.stat()
-    log_stat = path.stat()
 except OSError as exc:
     raise SystemExit(f"could not inspect launcher log path {path}: {exc}") from exc
 expected_uid = os.getuid()
@@ -2333,12 +2333,26 @@ if cache_mode != 0o700:
     raise SystemExit(
         f"launcher log cache directory has permissions {cache_mode:04o}, expected private 0700: {cache_dir}"
     )
-if log_stat.st_uid != expected_uid:
-    raise SystemExit(f"launcher log is owned by uid {log_stat.st_uid}, expected {expected_uid}: {path}")
-log_mode = log_stat.st_mode & 0o777
-if log_mode != 0o600:
-    raise SystemExit(f"launcher log has permissions {log_mode:04o}, expected private 0600: {path}")
-text = path.read_text(encoding="utf-8", errors="replace")
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open launcher log path {path}: {exc}") from exc
+try:
+    log_stat = os.fstat(fd)
+    if not stat.S_ISREG(log_stat.st_mode):
+        raise SystemExit(f"launcher log is not a regular file: {path}")
+    if log_stat.st_uid != expected_uid:
+        raise SystemExit(f"launcher log is owned by uid {log_stat.st_uid}, expected {expected_uid}: {path}")
+    log_mode = log_stat.st_mode & 0o777
+    if log_mode != 0o600:
+        raise SystemExit(f"launcher log has permissions {log_mode:04o}, expected private 0600: {path}")
+    with os.fdopen(fd, "r", encoding="utf-8", errors="replace") as handle:
+        fd = -1
+        text = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
 startup_marker = "Starting NOAA Navionics chartplotter launcher"
 launch_marker = "Launching OpenCPN with ENC processing."
 duplicate_marker = "OpenCPN is already running; leaving the existing chartplotter instance in place."
