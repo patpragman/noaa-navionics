@@ -371,9 +371,27 @@ def _set_chart_directory(text: str, chart_dir: Path) -> tuple[str, bool, str]:
 def _set_gpsd_connection(text: str, host: str, port: int) -> tuple[str, bool]:
     connections = read_data_connections_from_text(text)
     wanted = _gpsd_connection_string(host, port)
-    if any(_same_gpsd_connection(connection, host, port) for connection in connections):
+    updated_connections = []
+    found_wanted = False
+    changed = False
+    for connection in connections:
+        if _same_gpsd_connection(connection, host, port):
+            if found_wanted:
+                changed = True
+                continue
+            found_wanted = True
+            updated_connections.append(connection)
+            continue
+        if _is_enabled_gpsd_connection(connection):
+            changed = True
+            continue
+        updated_connections.append(connection)
+    if not found_wanted:
+        updated_connections.append(wanted)
+        changed = True
+    if not changed:
         return text, False
-    connections.append(wanted)
+    connections = updated_connections
     value = "|".join(connections)
     return _set_section_key(text, _NMEA_DATA_SOURCE_SECTION, "DataConnections", value), True
 
@@ -400,15 +418,16 @@ def _data_connections_value(text: str) -> str:
 
 def _same_gpsd_connection(connection: str, host: str, port: int) -> bool:
     fields = connection.split(";")
-    if len(fields) < 18:
-        return False
     return (
-        fields[0] == "1"
-        and fields[1] == "2"
+        _is_enabled_gpsd_connection(connection)
         and _normalize_host(fields[2]) == _normalize_host(host)
         and _int_or_none(fields[3]) == port
-        and fields[17] == "1"
     )
+
+
+def _is_enabled_gpsd_connection(connection: str) -> bool:
+    fields = connection.split(";")
+    return len(fields) >= 18 and fields[0] == "1" and fields[1] == "2" and fields[17] == "1"
 
 
 def _gpsd_connection_string(host: str, port: int) -> str:

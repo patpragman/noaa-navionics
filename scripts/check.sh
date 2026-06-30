@@ -1354,6 +1354,7 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'class OpenCPNGPSDConnection' src/noaa_navionics/opencpn.py
 grep -q 'def enabled_gpsd_connections' src/noaa_navionics/opencpn.py
 grep -q 'def enabled_gpsd_connections_from_values' src/noaa_navionics/opencpn.py
+grep -q 'def _is_enabled_gpsd_connection' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/opencpn.py
@@ -1370,6 +1371,9 @@ grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
 grep -q 'unexpected enabled GPSD connection' src/noaa_navionics/health.py
 grep -q 'unexpected enabled GPSD connections' scripts/verify_pi.sh
 grep -q 'test_check_opencpn_gpsd_config_rejects_extra_enabled_gpsd_source' tests/test_downloader.py
+grep -q 'test_configure_gpsd_connection_removes_stale_enabled_gpsd_sources' tests/test_downloader.py
+grep -q 'removes stale enabled OpenCPN GPSD endpoints' README.md
+grep -q 'removes stale enabled OpenCPN GPSD endpoints' docs/sailboat-pi.md
 grep -q 'rejects extra enabled OpenCPN GPSD endpoints' README.md
 grep -q 'rejects extra enabled OpenCPN GPSD endpoints' docs/sailboat-pi.md
 grep -q 'test_configure_chart_directory_rejects_symlinked_config_ancestor' tests/test_downloader.py

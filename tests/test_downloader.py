@@ -781,6 +781,20 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(connections[0], existing)
             self.assertEqual(len(connections), 2)
 
+    def test_configure_gpsd_connection_removes_stale_enabled_gpsd_sources(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+
+            configure_gpsd_connection(config_path=config, host="192.0.2.20", port=2947)
+            result = configure_gpsd_connection(config_path=config, host="127.0.0.1", port=2947)
+
+            self.assertTrue(result.changed)
+            self.assertTrue(gpsd_connection_configured(config_path=config, host="localhost", port=2947))
+            connections = read_data_connections(config)
+            self.assertEqual(len(connections), 1)
+            self.assertIn("127.0.0.1;2947", connections[0])
+            self.assertNotIn("192.0.2.20", connections[0])
+
     def test_configure_gpsd_connection_uses_unique_synced_temp_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -819,9 +833,13 @@ class OpenCPNConfigTests(unittest.TestCase):
     def test_check_opencpn_gpsd_config_rejects_extra_enabled_gpsd_source(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "opencpn.conf"
-
-            configure_gpsd_connection(config_path=config, host="127.0.0.1", port=2947)
-            configure_gpsd_connection(config_path=config, host="192.0.2.20", port=2947)
+            expected = opencpn_module._gpsd_connection_string("127.0.0.1", 2947)
+            stale = opencpn_module._gpsd_connection_string("192.0.2.20", 2947)
+            config.write_text(
+                "[Settings/NMEADataSource]\n"
+                f"DataConnections={expected}|{stale}\n",
+                encoding="utf-8",
+            )
 
             result = check_opencpn_gpsd_config(config_path=config, host="127.0.0.1", port=2947)
 
