@@ -895,7 +895,7 @@ def _trackable_fixes(
     fixes,
     *,
     max_fix_age_seconds: float = 300.0,
-    future_tolerance_seconds: float = 30.0,
+    future_tolerance_seconds: float = 0.0,
 ):
     last_skip_detail = ""
     for fix in fixes:
@@ -935,7 +935,7 @@ def _track_fix_freshness_failure(
     fix,
     *,
     max_fix_age_seconds: float = 300.0,
-    future_tolerance_seconds: float = 30.0,
+    future_tolerance_seconds: float = 0.0,
 ) -> str:
     if fix.timestamp is None:
         return "fix has no timestamp; cannot write reliable GPX trackpoint"

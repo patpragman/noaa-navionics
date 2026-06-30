@@ -2337,8 +2337,10 @@ grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
 grep -q 'Skipping untimestamped track fix' src/noaa_navionics/cli.py
 grep -q 'Skipping low-detail track fix' src/noaa_navionics/cli.py
+grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is stale' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/cli.py
+grep -q 'test_trackable_fixes_skip_slightly_future_timestamped_fix' tests/test_downloader.py
 grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
 grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
 ! grep -q 'pending_without_quality' src/noaa_navionics/cli.py

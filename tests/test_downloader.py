@@ -1436,7 +1436,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 "baud = 4800\n",
                 encoding="utf-8",
             )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc) - timedelta(seconds=3)
             fixes = [
                 GPSFix(
                     timestamp=now,
@@ -1534,7 +1534,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 "device = /dev/serial/by-id/mock-gps\n",
                 encoding="utf-8",
             )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc) - timedelta(seconds=3)
             fixes = [
                 GPSFix(
                     timestamp=now,
@@ -1597,7 +1597,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 "device = /dev/serial/by-id/mock-gps\n",
                 encoding="utf-8",
             )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc) - timedelta(seconds=3)
             fixes = [
                 GPSFix(
                     timestamp=now,
@@ -1699,7 +1699,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 "device = /dev/serial/by-id/mock-gps\n",
                 encoding="utf-8",
             )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc) - timedelta(seconds=3)
             fixes = [
                 GPSFix(
                     timestamp=now,
@@ -10490,6 +10490,30 @@ class GpsTests(unittest.TestCase):
         self.assertIn("Skipping stale track fix", stderr.getvalue())
         self.assertIn("future", stderr.getvalue())
 
+    def test_trackable_fixes_skip_slightly_future_timestamped_fix(self):
+        now = datetime.now(timezone.utc)
+        future = GPSFix(
+            timestamp=now + timedelta(seconds=1),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        fresh = GPSFix(
+            timestamp=now,
+            latitude=3.0,
+            longitude=4.0,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        with redirect_stderr(StringIO()) as stderr:
+            fixes = list(_trackable_fixes(iter([future, fresh])))
+
+        self.assertEqual(fixes, [fresh])
+        self.assertIn("Skipping stale track fix", stderr.getvalue())
+        self.assertIn("future", stderr.getvalue())
+
     def test_trackable_fixes_skip_position_only_fix(self):
         position_only = GPSFix(
             timestamp=datetime.now(timezone.utc),
@@ -10504,7 +10528,7 @@ class GpsTests(unittest.TestCase):
         self.assertIn("missing satellite or HDOP quality fields", stderr.getvalue())
 
     def test_trackable_fixes_skip_position_only_before_quality_fix(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc) - timedelta(seconds=2)
         first = GPSFix(
             timestamp=now,
             latitude=1.0,
@@ -10524,7 +10548,7 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fixes, [second])
 
     def test_trackable_fixes_skip_position_only_before_weak_quality(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc) - timedelta(seconds=2)
         position_only = GPSFix(
             timestamp=now,
             latitude=1.0,
