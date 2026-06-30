@@ -550,8 +550,8 @@ grep -q 'trusted NOAA Navionics config, launcher policy, source revision' README
 grep -q 'trusted NOAA Navionics config, launcher policy, source revision' docs/sailboat-pi.md
 grep -q 'read-only settings, OpenCPN user-data, GPX track, and support-bundle exports' README.md
 grep -q 'read-only settings, OpenCPN user-data, GPX track, and support-bundle exports' docs/sailboat-pi.md
-grep -q 'read one quality-checked GPSD or serial GPS fix' README.md
-grep -q 'read one quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
+grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' README.md
+grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'read-only diagnostic evidence' README.md
@@ -2595,10 +2595,14 @@ grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fixes' src/noaa_navionics/gui.py
+grep -q 'def _gps_fix_freshness_failure' src/noaa_navionics/gui.py
+grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/gui.py
+grep -q 'fix timestamp is in the future' src/noaa_navionics/gui.py
 grep -q 'def format_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def download_selected_package' src/noaa_navionics/gui.py
 grep -q 'text="GPS Fix"' src/noaa_navionics/gui.py
 grep -q 'without satellite or HDOP quality data' src/noaa_navionics/gui.py
+grep -q 'fix has no timestamp' src/noaa_navionics/gui.py
 grep -q 'download requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
@@ -2671,6 +2675,10 @@ PY
 grep -q 'test_gui_download_rejects_low_disk_before_download' tests/test_downloader.py
 grep -q 'test_gui_download_rejects_missing_storage_before_creating_directory' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_reads_configured_gpsd_and_formats_position' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_skips_stale_before_fresh_fix' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_stale_timestamped_fix' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_future_timestamped_fix' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_untimestamped_fix' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_volatile_serial_override' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_fix_without_quality_fields' tests/test_downloader.py
 grep -q 'test_status_gui_summarizes_readiness_rows' tests/test_downloader.py

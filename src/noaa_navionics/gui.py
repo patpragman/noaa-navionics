@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Thread
@@ -93,6 +94,8 @@ def read_configured_gps_fix(
     gpsd_enabled: Optional[bool] = None,
     gps_device: Optional[str] = None,
     gps_seconds: float = 10.0,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
 ) -> GPSFix:
     return read_configured_gps_fixes(
         app_config,
@@ -100,6 +103,8 @@ def read_configured_gps_fix(
         gpsd_enabled=gpsd_enabled,
         gps_device=gps_device,
         gps_seconds=gps_seconds,
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
     )[0]
 
 
@@ -110,6 +115,8 @@ def read_configured_gps_fixes(
     gpsd_enabled: Optional[bool] = None,
     gps_device: Optional[str] = None,
     gps_seconds: float = 10.0,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
 ) -> list[GPSFix]:
     use_gpsd = app_config.gps_mode == "gpsd" if gpsd_enabled is None else gpsd_enabled
     if count < 1:
@@ -123,7 +130,13 @@ def read_configured_gps_fixes(
             timeout=max(0.1, gps_seconds),
             max_duration=gps_seconds,
         )
-        return _usable_gps_fixes(fixes, count=count, source=f"GPSD {app_config.gpsd_host}:{app_config.gpsd_port}")
+        return _usable_gps_fixes(
+            fixes,
+            count=count,
+            source=f"GPSD {app_config.gpsd_host}:{app_config.gpsd_port}",
+            max_fix_age_seconds=max_fix_age_seconds,
+            future_tolerance_seconds=future_tolerance_seconds,
+        )
 
     device = gps_device or app_config.gps_device
     if _volatile_usb_device_path(device):
@@ -133,7 +146,13 @@ def read_configured_gps_fixes(
     deadline = time.monotonic() + gps_seconds
     with open_nmea_stream(device, app_config.gps_baud) as stream:
         lines = _bounded_nmea_lines(stream, deadline, idle_timeout=gps_seconds)
-        return _usable_gps_fixes(iter_fixes(lines), count=count, source=device)
+        return _usable_gps_fixes(
+            iter_fixes(lines),
+            count=count,
+            source=device,
+            max_fix_age_seconds=max_fix_age_seconds,
+            future_tolerance_seconds=future_tolerance_seconds,
+        )
 
 
 def format_gps_fix(fix: GPSFix) -> list[str]:
@@ -161,7 +180,14 @@ def _bounded_nmea_lines(stream, deadline: float, *, idle_timeout: float):
         yield line
 
 
-def _usable_gps_fixes(fixes, *, count: int, source: str) -> list[GPSFix]:
+def _usable_gps_fixes(
+    fixes,
+    *,
+    count: int,
+    source: str,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
+) -> list[GPSFix]:
     usable: list[GPSFix] = []
     saw_fix_without_quality = False
     last_failure = ""
@@ -173,6 +199,14 @@ def _usable_gps_fixes(fixes, *, count: int, source: str) -> list[GPSFix]:
         if not gps_fix_has_quality_fields(fix):
             saw_fix_without_quality = True
             continue
+        freshness_failure = _gps_fix_freshness_failure(
+            fix,
+            max_fix_age_seconds=max_fix_age_seconds,
+            future_tolerance_seconds=future_tolerance_seconds,
+        )
+        if freshness_failure:
+            last_failure = freshness_failure
+            continue
         usable.append(fix)
         if len(usable) >= count:
             return usable
@@ -182,6 +216,25 @@ def _usable_gps_fixes(fixes, *, count: int, source: str) -> list[GPSFix]:
     if usable:
         raise RuntimeError(f"only {len(usable)} usable GPS fix(es) from {source}; need {count}")
     raise RuntimeError(f"no usable GPS fix from {source}{detail}")
+
+
+def _gps_fix_freshness_failure(
+    fix: GPSFix,
+    *,
+    max_fix_age_seconds: float,
+    future_tolerance_seconds: float,
+) -> str:
+    if fix.timestamp is None:
+        return "fix has no timestamp"
+    timestamp = fix.timestamp
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    age_seconds = (datetime.now(timezone.utc) - timestamp.astimezone(timezone.utc)).total_seconds()
+    if age_seconds > max_fix_age_seconds:
+        return f"fix timestamp is stale ({age_seconds:.0f}s old)"
+    if age_seconds < -future_tolerance_seconds:
+        return f"fix timestamp is in the future by {-age_seconds:.0f}s"
+    return ""
 
 
 def download_selected_package(
