@@ -441,12 +441,32 @@ def parse_manifest_int(value, field, source):
     except (TypeError, ValueError) as exc:
         raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}") from exc
 
-def sha256_file(path):
+def sha256_trusted_file(path, label, expected_uid):
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     digest = hashlib.sha256()
-    with Path(path).expanduser().open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise SystemExit(f"could not open {label} {path}: {exc}") from exc
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise SystemExit(f"{label} is not a regular file: {path}")
+        if file_stat.st_uid != expected_uid:
+            raise SystemExit(f"{label} {path} is owned by uid {file_stat.st_uid}, expected {expected_uid}")
+        file_mode = file_stat.st_mode & 0o777
+        if file_mode & 0o022:
+            raise SystemExit(
+                f"{label} {path} has permissions {file_mode:04o}, expected no group/other write bits"
+            )
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+    return digest.hexdigest(), file_stat
 
 def count_enc_cells(path):
     root = Path(path).expanduser()
@@ -1272,10 +1292,11 @@ if expected_config_path:
         raise SystemExit(f"status report manifest path contains a symlink: {live_manifest_symlink_component}")
     if not manifest_file_path.is_file():
         raise SystemExit(f"status report manifest path is not a regular file: {manifest_file_path}")
-    try:
-        manifest_stat = manifest_file_path.stat()
-    except OSError as exc:
-        raise SystemExit(f"could not inspect status report manifest path {manifest_file_path}: {exc}") from exc
+    manifest_text, manifest_stat = read_trusted_text_file(
+        manifest_file_path,
+        "manifest",
+        os.getuid(),
+    )
     verify_status_file_owner_and_mode(
         manifest,
         manifest_file_path,
@@ -1283,8 +1304,10 @@ if expected_config_path:
         "manifest",
         os.getuid(),
     )
-    with manifest_file_path.open(encoding="utf-8") as manifest_handle:
-        manifest_file = json.load(manifest_handle)
+    try:
+        manifest_file = json.loads(manifest_text)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"could not parse manifest JSON {expected_manifest_path}: {exc}") from exc
     package_section = manifest_file.get("package", {})
     download_section = manifest_file.get("download", {})
     extract_section = manifest_file.get("extract", {})
@@ -1428,10 +1451,11 @@ if expected_config_path:
     if download_path.exists():
         if not download_path.is_file():
             raise SystemExit(f"status report manifest download path is not a regular file: {download_path}")
-        try:
-            download_path_stat = download_path.stat()
-        except OSError as exc:
-            raise SystemExit(f"could not inspect status report manifest download path {download_path}: {exc}") from exc
+        actual_download_sha256, download_path_stat = sha256_trusted_file(
+            download_path,
+            "manifest download path",
+            os.getuid(),
+        )
         verify_status_file_owner_and_mode(
             {
                 "uid": manifest.get("download_path_uid"),
@@ -1447,7 +1471,7 @@ if expected_config_path:
                 f"status report manifest download path {download_path} has "
                 f"{download_path_stat.st_size} bytes, expected {manifest_file_download_bytes}"
             )
-        actual_download_sha256 = sha256_file(download_path).lower()
+        actual_download_sha256 = actual_download_sha256.lower()
         if actual_download_sha256 != manifest_file_sha256:
             raise SystemExit(
                 f"status report manifest download path SHA-256 {actual_download_sha256} "

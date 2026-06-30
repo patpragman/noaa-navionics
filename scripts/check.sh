@@ -710,7 +710,12 @@ grep -q 'status report manifest download path is not a regular file' scripts/ver
 grep -q 'verify_status_file_owner_and_mode' scripts/verify_pi.sh
 grep -q '"download_path_uid"' scripts/verify_pi.sh
 grep -q '"download_path_mode"' scripts/verify_pi.sh
-grep -q 'def sha256_file' scripts/verify_pi.sh
+grep -q 'def sha256_trusted_file' scripts/verify_pi.sh
+grep -q 'manifest_text, manifest_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'manifest_file = json.loads(manifest_text)' scripts/verify_pi.sh
+grep -q 'actual_download_sha256, download_path_stat = sha256_trusted_file' scripts/verify_pi.sh
+! grep -q 'with manifest_file_path.open(encoding="utf-8") as manifest_handle' scripts/verify_pi.sh
+! grep -q 'def sha256_file' scripts/verify_pi.sh
 grep -q 'bytes, expected' scripts/verify_pi.sh
 grep -q 'status report manifest download path SHA-256' scripts/verify_pi.sh
 grep -q 'def parse_manifest_int' scripts/verify_pi.sh
@@ -1745,8 +1750,8 @@ grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test
 grep -q 'test_manifest_summary_marks_nonregular_download_path' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
-grep -q 'desktop autostart, LightDM autologin, and manifest files' README.md
-grep -q 'desktop autostart, LightDM autologin, and manifest files' docs/sailboat-pi.md
+grep -q 'desktop autostart, LightDM autologin, and manifest files through no-follow descriptor reads' README.md
+grep -q 'desktop autostart, LightDM autologin, and manifest files through no-follow descriptor reads' docs/sailboat-pi.md
 grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
