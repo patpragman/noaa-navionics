@@ -9719,6 +9719,44 @@ class GpsTests(unittest.TestCase):
             self.assertIn("GPSD config", result.detail)
             self.assertIn("has permissions 0666", result.detail)
 
+    def test_check_gpsd_startup_config_rejects_replaced_config_before_parsing(self):
+        original_open = health_module.os.open
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                config = root / "gpsd"
+                config.write_text(
+                    'START_DAEMON="true"\n'
+                    'USBAUTO="false"\n'
+                    'DEVICES="/dev/serial/by-id/mock-gps"\n'
+                    'GPSD_OPTIONS="-n"\n',
+                    encoding="utf-8",
+                )
+                replacement = root / "gpsd.replacement"
+                replacement.write_text(
+                    'START_DAEMON="true"\n'
+                    'USBAUTO="false"\n'
+                    'DEVICES="/dev/serial/by-id/mock-gps"\n'
+                    'GPSD_OPTIONS="-n"\n',
+                    encoding="utf-8",
+                )
+                replaced = False
+
+                def replacing_open(path, flags, *args, **kwargs):
+                    nonlocal replaced
+                    if Path(path) == config and not replaced:
+                        replacement.replace(config)
+                        replaced = True
+                    return original_open(path, flags, *args, **kwargs)
+
+                health_module.os.open = replacing_open
+                result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+        finally:
+            health_module.os.open = original_open
+
+        self.assertFalse(result.ok)
+        self.assertIn("GPSD config changed before it could be read", result.detail)
+
     def test_check_gpsd_startup_config_rejects_unsafe_expected_device(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "gpsd"
@@ -10410,6 +10448,35 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("has permissions 0666", result.detail)
 
+    def test_check_chrony_gps_time_config_rejects_replaced_config_before_parsing(self):
+        original_open = health_module.os.open
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                config = root / "chrony.conf"
+                config.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+                replacement = root / "chrony.replacement"
+                replacement.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+                replaced = False
+
+                def replacing_open(path, flags, *args, **kwargs):
+                    nonlocal replaced
+                    if Path(path) == config and not replaced:
+                        replacement.replace(config)
+                        replaced = True
+                    return original_open(path, flags, *args, **kwargs)
+
+                health_module.os.open = replacing_open
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_config(config)
+        finally:
+            health_module.os.open = original_open
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("Chrony config changed before it could be read", result.detail)
+
     def test_read_trusted_config_lines_rejects_writable_config_before_parsing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "chrony.conf"
@@ -10418,6 +10485,23 @@ class PiHealthTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "has permissions 0666"):
                 _read_trusted_config_lines(config, label="Chrony config", expected_uid=os.getuid())
+
+    def test_read_trusted_config_lines_rejects_replaced_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            expected_stat = config.stat()
+            replacement = Path(tmpdir) / "chrony.replacement"
+            replacement.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            replacement.replace(config)
+
+            with self.assertRaisesRegex(RuntimeError, "Chrony config changed before it could be read"):
+                _read_trusted_config_lines(
+                    config,
+                    label="Chrony config",
+                    expected_uid=os.getuid(),
+                    expected_stat=expected_stat,
+                )
 
     def test_check_chrony_gps_time_source_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi

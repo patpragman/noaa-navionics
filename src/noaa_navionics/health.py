@@ -385,9 +385,16 @@ def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.co
                 False,
                 f"Chrony config {path} has permissions {mode:04o}, expected no group/other write bits",
             )
+    else:
+        stat_result = None
     expected_uid = 0 if path == Path("/etc/chrony/chrony.conf") else os.getuid()
     try:
-        lines = _read_trusted_config_lines(path, label="Chrony config", expected_uid=expected_uid)
+        lines = _read_trusted_config_lines(
+            path,
+            label="Chrony config",
+            expected_uid=expected_uid,
+            expected_stat=stat_result,
+        )
     except OSError as exc:
         return CheckResult("Chrony Config", False, f"could not read Chrony config {path}: {exc}")
     except RuntimeError as exc:
@@ -1198,9 +1205,11 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
                 False,
                 f"GPSD config {path} has permissions {mode:04o}, expected no group/other write bits",
             )
+    else:
+        stat_result = None
     try:
         expected_uid = 0 if path == Path("/etc/default/gpsd") else os.getuid()
-        values = _read_gpsd_default_config(path, expected_uid=expected_uid)
+        values = _read_gpsd_default_config(path, expected_uid=expected_uid, expected_stat=stat_result)
     except OSError as exc:
         return CheckResult("GPSD Config", False, f"cannot read {path}: {exc}")
     except RuntimeError as exc:
@@ -1222,12 +1231,18 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
     return CheckResult("GPSD Config", True, f"{path} uses {expected_device} with immediate polling")
 
 
-def _read_gpsd_default_config(path: Path, *, expected_uid: int) -> dict[str, str]:
+def _read_gpsd_default_config(
+    path: Path,
+    *,
+    expected_uid: int,
+    expected_stat: Optional[os.stat_result] = None,
+) -> dict[str, str]:
     values: dict[str, str] = {}
     for raw_line in _read_trusted_config_lines(
         path,
         label="GPSD config",
         expected_uid=expected_uid,
+        expected_stat=expected_stat,
     ):
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -1243,7 +1258,13 @@ def _read_gpsd_default_config(path: Path, *, expected_uid: int) -> dict[str, str
     return values
 
 
-def _read_trusted_config_lines(path: Path, *, label: str, expected_uid: int) -> list[str]:
+def _read_trusted_config_lines(
+    path: Path,
+    *,
+    label: str,
+    expected_uid: int,
+    expected_stat: Optional[os.stat_result] = None,
+) -> list[str]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -1253,6 +1274,11 @@ def _read_trusted_config_lines(path: Path, *, label: str, expected_uid: int) -> 
         raise
     try:
         stat_result = os.fstat(fd)
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"{label} changed before it could be read: {path}")
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"{label} is not a regular file: {path}")
         if stat_result.st_uid != expected_uid:
