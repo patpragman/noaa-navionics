@@ -2757,42 +2757,97 @@ opencpn_running() {
 
 opencpn_process_active() {
   local pid="$1"
-  local stat_line
-  local state
-  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/stat" ]]; then
-    return 1
-  fi
-  stat_line="$(cat "/proc/${pid}/stat" 2>/dev/null || true)"
-  state="${stat_line##*) }"
-  state="${state%% *}"
-  [[ -n "$state" && "$state" != "Z" ]]
+  python3 - "$pid" <<'PY'
+import sys
+
+pid = sys.argv[1]
+if not pid.isdigit():
+    raise SystemExit(1)
+try:
+    with open(f"/proc/{pid}/stat", encoding="ascii", errors="ignore") as handle:
+        stat_text = handle.read()
+except OSError:
+    raise SystemExit(1)
+try:
+    tail = stat_text.rsplit(") ", 1)[1]
+except IndexError:
+    raise SystemExit(1)
+fields = tail.split()
+if not fields:
+    raise SystemExit(1)
+raise SystemExit(0 if fields[0] != "Z" else 1)
+PY
 }
 
 opencpn_process_supervised_by_launcher() {
   local pid="$1"
   local launcher_pid="$2"
-  local parent_pid=""
-  if [[ ! "$pid" =~ ^[0-9]+$ || ! "$launcher_pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/status" ]]; then
-    return 1
-  fi
-  parent_pid="$(awk '/^PPid:/ {print $2; exit}' "/proc/${pid}/status" 2>/dev/null || true)"
-  [[ "$parent_pid" == "$launcher_pid" ]]
+  python3 - "$pid" "$launcher_pid" <<'PY'
+import sys
+
+pid = sys.argv[1]
+launcher_pid = sys.argv[2]
+if not pid.isdigit() or not launcher_pid.isdigit():
+    raise SystemExit(1)
+try:
+    with open(f"/proc/{pid}/stat", encoding="ascii", errors="ignore") as handle:
+        stat_text = handle.read()
+except OSError:
+    raise SystemExit(1)
+try:
+    tail = stat_text.rsplit(") ", 1)[1]
+except IndexError:
+    raise SystemExit(1)
+fields = tail.split()
+if len(fields) < 2:
+    raise SystemExit(1)
+raise SystemExit(0 if fields[1] == launcher_pid else 1)
+PY
 }
 
 process_cmdline_has_launcher_name() {
   local pid="$1"
-  local arg
-  local arg_name
-  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/cmdline" ]]; then
-    return 1
-  fi
-  while IFS= read -r -d '' arg; do
-    arg_name="${arg##*/}"
-    if [[ "$arg_name" == "noaa-navionics-start-chartplotter" || "$arg_name" == "start_chartplotter.sh" ]]; then
-      return 0
-    fi
-  done <"/proc/${pid}/cmdline"
-  return 1
+  python3 - "$pid" <<'PY'
+from pathlib import Path
+import sys
+
+pid = sys.argv[1]
+if not pid.isdigit():
+    raise SystemExit(1)
+try:
+    data = Path(f"/proc/{pid}/cmdline").read_bytes()
+except OSError:
+    raise SystemExit(1)
+for raw_arg in data.split(b"\0"):
+    if not raw_arg:
+        continue
+    arg_name = Path(raw_arg.decode("utf-8", "surrogateescape")).name
+    if arg_name in {"noaa-navionics-start-chartplotter", "start_chartplotter.sh"}:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
+process_cmdline_has_arg() {
+  local pid="$1"
+  local expected_arg="$2"
+  python3 - "$pid" "$expected_arg" <<'PY'
+from pathlib import Path
+import sys
+
+pid = sys.argv[1]
+expected_arg = sys.argv[2]
+if not pid.isdigit():
+    raise SystemExit(1)
+try:
+    data = Path(f"/proc/{pid}/cmdline").read_bytes()
+except OSError:
+    raise SystemExit(1)
+for raw_arg in data.split(b"\0"):
+    if raw_arg.decode("utf-8", "surrogateescape") == expected_arg:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
 }
 
 read_private_user_file() {
@@ -2834,6 +2889,7 @@ read_proc_env_value() {
   local key="$2"
   local label="$3"
   python3 - "$pid" "$key" "$label" <<'PY'
+import os
 import sys
 
 pid = sys.argv[1]
@@ -2842,11 +2898,17 @@ label = sys.argv[3]
 if not pid.isdigit():
     raise SystemExit(f"{label} pid is invalid: {pid}")
 path = f"/proc/{pid}/environ"
+fd = -1
 try:
-    with open(path, "rb") as handle:
+    fd = os.open(path, os.O_RDONLY)
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
         data = handle.read()
 except OSError as exc:
     raise SystemExit(f"could not read {label} for pid {pid}: {exc}") from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
 
 prefix = target_key.encode("utf-8") + b"="
 for entry in data.split(b"\0"):
@@ -2862,6 +2924,7 @@ reject_proc_env_prefix() {
   local label="$3"
   local detail="${4:-}"
   python3 - "$pid" "$prefix" "$label" "$detail" <<'PY'
+import os
 import sys
 
 pid = sys.argv[1]
@@ -2871,11 +2934,17 @@ detail = sys.argv[4]
 if not pid.isdigit():
     raise SystemExit(f"{label} pid is invalid: {pid}")
 path = f"/proc/{pid}/environ"
+fd = -1
 try:
-    with open(path, "rb") as handle:
+    fd = os.open(path, os.O_RDONLY)
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
         data = handle.read()
 except OSError as exc:
     raise SystemExit(f"could not read {label} for pid {pid}: {exc}") from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
 
 prefix_bytes = prefix.encode("utf-8")
 for entry in data.split(b"\0"):
@@ -3001,18 +3070,12 @@ check_opencpn_process_display_environment() {
 
 check_opencpn_enc_parse_argument() {
   local pid
-  local arg
   local saw_supervised=0
   while IFS= read -r pid; do
-    if [[ ! -r "/proc/${pid}/cmdline" ]]; then
-      continue
-    fi
     saw_supervised=1
-    while IFS= read -r -d '' arg; do
-      if [[ "$arg" == "-parse_all_enc" ]]; then
-        return 0
-      fi
-    done <"/proc/${pid}/cmdline"
+    if process_cmdline_has_arg "$pid" "-parse_all_enc"; then
+      return 0
+    fi
   done < <(supervised_opencpn_pids)
   if [[ "$saw_supervised" -eq 0 ]]; then
     printf 'no active OpenCPN process is supervised by the chartplotter launcher\n' >&2

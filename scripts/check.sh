@@ -635,9 +635,16 @@ grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'opencpn_process_supervised_by_launcher' scripts/verify_pi.sh
 grep -q 'process_cmdline_has_launcher_name' scripts/verify_pi.sh
-grep -Fq 'arg_name="${arg##*/}"' scripts/verify_pi.sh
+grep -q 'process_cmdline_has_arg' scripts/verify_pi.sh
+grep -q 'stat_text.rsplit(") ", 1)' scripts/verify_pi.sh
+grep -q 'raise SystemExit(0 if fields\[1\] == launcher_pid else 1)' scripts/verify_pi.sh
+grep -q 'Path(f"/proc/{pid}/cmdline").read_bytes()' scripts/verify_pi.sh
+grep -q 'raw_arg.decode("utf-8", "surrogateescape") == expected_arg' scripts/verify_pi.sh
 grep -q 'process_cmdline_has_launcher_name "$owner_pid"' scripts/verify_pi.sh
 ! grep -Fq 'cmdline="$(tr '\''\0'\'' '\'' '\'' <"/proc/${owner_pid}/cmdline"' scripts/verify_pi.sh
+! grep -q 'done <"/proc/${pid}/cmdline"' scripts/verify_pi.sh
+! grep -q 'cat "/proc/${pid}/stat"' scripts/verify_pi.sh
+! grep -q 'awk .*"/proc/${pid}/status"' scripts/verify_pi.sh
 grep -q 'supervised_opencpn_pids' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_executable_integrity' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_display_environment' scripts/verify_pi.sh
@@ -655,7 +662,7 @@ grep -q 'chartplotter launcher XAUTHORITY file' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity "$xauthority" "chartplotter launcher XAUTHORITY file"' scripts/verify_pi.sh
 grep -q 'check_chartplotter_xauthority_integrity "$launcher_xauthority"' scripts/verify_pi.sh
 grep -q 'check_chartplotter_xauthority_integrity "$xauthority"' scripts/verify_pi.sh
-grep -q '/^PPid:/' scripts/verify_pi.sh
+grep -q 'fields\[1\] == launcher_pid' scripts/verify_pi.sh
 grep -q 'no active OpenCPN process is supervised by the chartplotter launcher' scripts/verify_pi.sh
 grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN exited within' scripts/verify_pi.sh
@@ -667,6 +674,8 @@ grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' docs/sailboat-pi.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' README.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' docs/sailboat-pi.md
+grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, and environments as explicit `/proc` data' README.md
+grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, and environments as explicit `/proc` data' docs/sailboat-pi.md
 grep -q 'running on that same live X display from a trusted root-owned executable' README.md
 grep -q 'running on that same live X display from a trusted root-owned executable' docs/sailboat-pi.md
 grep -q 'trusted `XAUTHORITY` file when present' README.md
@@ -738,8 +747,7 @@ grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/v
 grep -q 'launcher log does not contain OpenCPN launch or duplicate marker' scripts/verify_pi.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/verify_pi.sh
 grep -q 'opencpn_process_active' scripts/verify_pi.sh
-grep -Fq 'state="${stat_line##*) }"' scripts/verify_pi.sh
-grep -Fq '[[ -n "$state" && "$state" != "Z" ]]' scripts/verify_pi.sh
+grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN running' scripts/verify_pi.sh
 ! grep -q 'check "OpenCPN running"' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
