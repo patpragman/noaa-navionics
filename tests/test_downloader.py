@@ -2217,6 +2217,42 @@ class ManifestTests(unittest.TestCase):
 
             self.assertEqual(output.stat().st_mode & 0o777, 0o700)
 
+    def test_fsync_tree_uses_no_follow_file_opens(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            tree = root / "chart-tree"
+            tree.mkdir()
+            regular = tree / "US5AK3CM.000"
+            regular.write_text("cell", encoding="ascii")
+            outside = root / "outside"
+            outside.mkdir()
+            outside_file = outside / "outside.000"
+            outside_file.write_text("outside", encoding="ascii")
+            symlink_file = tree / "linked.000"
+            symlink_dir = tree / "linked-dir"
+            try:
+                symlink_file.symlink_to(outside_file)
+                symlink_dir.symlink_to(outside, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            original_open = os.open
+            opened: list[tuple[Path, int]] = []
+
+            def recording_open(path, flags, *args, **kwargs):
+                opened.append((Path(path), flags))
+                return original_open(path, flags, *args, **kwargs)
+
+            with patch("noaa_navionics.downloader.os.open", side_effect=recording_open):
+                downloader_module._fsync_tree(tree)
+
+            opened_by_path = {path: flags for path, flags in opened}
+            self.assertIn(regular, opened_by_path)
+            self.assertTrue(opened_by_path[regular] & getattr(os, "O_NOFOLLOW", 0))
+            self.assertNotIn(symlink_file, opened_by_path)
+            self.assertNotIn(symlink_dir, opened_by_path)
+            self.assertNotIn(symlink_dir / outside_file.name, opened_by_path)
+
     def test_forced_download_rejects_bad_zip_before_replacing_archive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -1534,9 +1534,14 @@ grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
 grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_tree' src/noaa_navionics/downloader.py
+grep -q 'dirnames\[:\] = \[dirname for dirname in dirnames if not (current / dirname).is_symlink()\]' src/noaa_navionics/downloader.py
+grep -q 'os.open(file_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' src/noaa_navionics/downloader.py
+grep -q 'stat.S_ISREG(opened.st_mode)' src/noaa_navionics/downloader.py
+! grep -q 'with file_path.open("rb") as handle' src/noaa_navionics/downloader.py
+grep -q 'test_fsync_tree_uses_no_follow_file_opens' tests/test_downloader.py
 grep -q 'test_chart_directory_sync_uses_no_follow_open' tests/test_downloader.py
-grep -q 'Chart directory sync uses no-follow directory opens' README.md
-grep -q 'Chart directory sync uses no-follow directory opens' docs/sailboat-pi.md
+grep -q 'Chart tree sync uses no-follow opens for directories and regular files' README.md
+grep -q 'Chart tree sync uses no-follow opens for directories and regular files' docs/sailboat-pi.md
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'def _fsync_directory' src/noaa_navionics/gps.py

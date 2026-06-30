@@ -598,13 +598,27 @@ def _fsync_tree(root: Path) -> None:
         return
     for current_root, dirnames, filenames in os.walk(path):
         current = Path(current_root)
+        dirnames[:] = [dirname for dirname in dirnames if not (current / dirname).is_symlink()]
         for filename in filenames:
             file_path = current / filename
             try:
-                with file_path.open("rb") as handle:
-                    os.fsync(handle.fileno())
+                initial = file_path.lstat()
             except OSError:
                 continue
+            if not stat.S_ISREG(initial.st_mode):
+                continue
+            try:
+                fd = os.open(file_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            except OSError:
+                continue
+            try:
+                opened = os.fstat(fd)
+                if stat.S_ISREG(opened.st_mode):
+                    os.fsync(fd)
+            except OSError:
+                pass
+            finally:
+                os.close(fd)
         for dirname in dirnames:
             _fsync_directory(current / dirname)
         _fsync_directory(current)
