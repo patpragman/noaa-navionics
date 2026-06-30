@@ -116,6 +116,10 @@ grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
 grep -q 'is_raspberry_pi' scripts/start_chartplotter.sh
+grep -q 'trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/start_chartplotter.sh
+grep -q 'read -r -d .*device_tree_model </proc/device-tree/model' scripts/start_chartplotter.sh
+grep -q 'PATH="$trusted_system_path"' scripts/start_chartplotter.sh
+grep -q 'export PATH' scripts/start_chartplotter.sh
 grep -q 'expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
 grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
@@ -127,6 +131,13 @@ python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/start_chartplotter.sh").read_text(encoding="utf-8")
+path_pin = text.index('PATH="$trusted_system_path"')
+ambient_reexec = text.index('reexec_without_ambient_launcher_settings "$@"')
+first_command_lookup = text.index('command -v')
+if not path_pin < ambient_reexec:
+    raise SystemExit("chartplotter launcher must pin PATH on Pi before ambient environment re-exec")
+if not path_pin < first_command_lookup:
+    raise SystemExit("chartplotter launcher must pin PATH on Pi before command lookup")
 opencpn_start = text.index('"$opencpn_bin" -parse_all_enc &')
 tail = text[opencpn_start:]
 wait_index = tail.index('wait "$opencpn_pid"')
@@ -895,6 +906,8 @@ grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scrip
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness retries' scripts/verify_pi.sh
+grep -q 'chartplotter launcher trusted PATH' scripts/verify_pi.sh
+grep -q 'chartplotter launcher Pi PATH pin' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ambient environment scrub' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ambient environment re-exec' scripts/verify_pi.sh
 grep -q 'chartplotter launcher fail-closed default' scripts/verify_pi.sh
@@ -1891,6 +1904,8 @@ grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
 grep -q 'status-reported user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' README.md
 grep -q "status artifact's user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode fields" docs/sailboat-pi.md
+grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' README.md
+grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware' README.md
 grep -q 'rejects non-root OpenCPN executables or executable directories on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'rejects symlinked, misowned, or public cache parents' README.md

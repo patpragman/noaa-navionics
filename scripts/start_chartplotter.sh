@@ -20,6 +20,16 @@ opencpn_restart_delay=5
 lock_acquired=0
 opencpn_bin=""
 opencpn_child_pid=""
+trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+device_tree_model=""
+
+if [[ -r /proc/device-tree/model ]]; then
+  IFS= read -r -d '' device_tree_model </proc/device-tree/model || true
+fi
+if [[ "$device_tree_model" == *"Raspberry Pi"* ]]; then
+  PATH="$trusted_system_path"
+  export PATH
+fi
 
 reexec_without_ambient_launcher_settings() {
   local key

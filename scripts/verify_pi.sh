@@ -3532,6 +3532,8 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher readiness gate" grep -Fq 'status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"' "$launcher"
   check "chartplotter launcher GPS wait config" grep -Fq 'NOAA_NAVIONICS_GPS_SECONDS' "$launcher"
   check "chartplotter launcher readiness retries" grep -Fq 'NOAA_NAVIONICS_READINESS_ATTEMPTS' "$launcher"
+  check "chartplotter launcher trusted PATH" grep -Fq 'trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' "$launcher"
+  check "chartplotter launcher Pi PATH pin" grep -Fq 'PATH="$trusted_system_path"' "$launcher"
   check "chartplotter launcher ambient environment scrub" grep -Fq 'reexec_without_ambient_launcher_settings' "$launcher"
   check "chartplotter launcher ambient environment re-exec" grep -Fq 'exec env "${env_args[@]}" "$0" "$@"' "$launcher"
   check "chartplotter launcher environment directory symlink guard" grep -Fq 'launcher environment directory is a symlink' "$launcher"
