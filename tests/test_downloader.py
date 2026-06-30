@@ -11052,6 +11052,8 @@ class GpsTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertIn("4 satellites", result.detail)
         self.assertIn("HDOP 0.9", result.detail)
+        self.assertIn("speed 22.4 kt", result.detail)
+        self.assertIn("course 84.4 deg", result.detail)
 
     def test_check_gps_device_rejects_overlong_unterminated_nmea_fragment(self):
         original = health_module.open_nmea_stream
@@ -11264,6 +11266,7 @@ class GpsTests(unittest.TestCase):
 
     def test_check_gpsd_accepts_later_quality_fix(self):
         original = health_module.iter_gpsd_fixes
+        timestamp = datetime.now(timezone.utc).replace(microsecond=0)
         position_only = GPSFix(
             timestamp=datetime.now(timezone.utc),
             latitude=61.0,
@@ -11271,12 +11274,15 @@ class GpsTests(unittest.TestCase):
             fix_quality=3,
         )
         good = GPSFix(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=timestamp,
             latitude=61.1,
             longitude=-149.1,
+            speed_knots=4.2,
+            course_degrees=181.5,
             fix_quality=3,
             satellites=6,
             hdop=1.2,
+            altitude_m=12.3,
         )
 
         try:
@@ -11288,6 +11294,10 @@ class GpsTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertIn("6 satellites", result.detail)
         self.assertIn("61.100000", result.detail)
+        self.assertIn(f"time {timestamp.isoformat().replace('+00:00', 'Z')}", result.detail)
+        self.assertIn("speed 4.2 kt", result.detail)
+        self.assertIn("course 181.5 deg", result.detail)
+        self.assertIn("altitude 12.3 m", result.detail)
 
     def test_check_gpsd_rejects_position_only_fix_before_stream_error(self):
         original = health_module.iter_gpsd_fixes

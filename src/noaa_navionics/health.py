@@ -1630,10 +1630,18 @@ def _same_path(left: Path, right: Path) -> bool:
 
 def _fix_detail(fix: GPSFix) -> str:
     pieces = [f"{fix.latitude:.6f}, {fix.longitude:.6f}"]
+    if fix.timestamp is not None:
+        pieces.append(f"time {fix.timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}")
     if fix.satellites is not None:
         pieces.append(f"{fix.satellites} satellites")
     if fix.hdop is not None:
         pieces.append(f"HDOP {fix.hdop}")
+    if fix.speed_knots is not None:
+        pieces.append(f"speed {fix.speed_knots:.1f} kt")
+    if fix.course_degrees is not None:
+        pieces.append(f"course {fix.course_degrees:.1f} deg")
+    if fix.altitude_m is not None:
+        pieces.append(f"altitude {fix.altitude_m:.1f} m")
     return "; ".join(pieces)
 
 
