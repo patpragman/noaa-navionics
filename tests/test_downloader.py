@@ -74,6 +74,7 @@ from noaa_navionics.health import (
     check_gps_sample,
     check_display_power_tool,
     check_chrony_gps_time_source,
+    check_opencpn,
     check_opencpn_chart_config,
     check_opencpn_gpsd_config,
     check_pi_temperature,
@@ -7465,6 +7466,92 @@ class PiHealthTests(unittest.TestCase):
             os.environ["PATH"] = original_path
         self.assertFalse(result.ok)
         self.assertIn("x11-xserver-utils", result.detail)
+
+    def test_check_opencpn_accepts_trusted_local_command(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "opencpn"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: False
+                result = check_opencpn()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertIn("trusted executable", result.detail)
+
+    def test_check_opencpn_rejects_symlinked_command(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            bin_dir = root / "bin"
+            bin_dir.mkdir(mode=0o700)
+            real = root / "real-opencpn"
+            real.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            real.chmod(0o755)
+            fake = bin_dir / "opencpn"
+            try:
+                fake.symlink_to(real)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: False
+                result = check_opencpn()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("symlink", result.detail)
+
+    def test_check_opencpn_rejects_writable_command(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "opencpn"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o775)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: False
+                result = check_opencpn()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("expected no group/other write bits", result.detail)
+
+    def test_check_opencpn_requires_root_owner_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "opencpn"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_opencpn()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("expected root", result.detail)
 
     def test_parse_throttled_value(self):
         self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)

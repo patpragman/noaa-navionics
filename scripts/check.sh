@@ -103,6 +103,9 @@ grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
 grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
 grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
+grep -q 'OpenCPN command is a symlink' src/noaa_navionics/health.py
+grep -q 'expected root' src/noaa_navionics/health.py
+grep -q 'test_check_opencpn_requires_root_owner_on_pi' tests/test_downloader.py
 python3 - <<'PY'
 from pathlib import Path
 

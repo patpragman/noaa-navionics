@@ -203,8 +203,53 @@ def check_tkinter() -> CheckResult:
 
 
 def check_opencpn() -> CheckResult:
-    path = shutil.which("opencpn")
-    return CheckResult("OpenCPN", path is not None, path or "missing; install opencpn for chart display")
+    command = shutil.which("opencpn")
+    if command is None:
+        return CheckResult("OpenCPN", False, "missing; install opencpn for chart display")
+    path = Path(command)
+    if not path.is_absolute():
+        return CheckResult("OpenCPN", False, f"OpenCPN command path is not absolute: {path}")
+    if path.is_symlink():
+        return CheckResult("OpenCPN", False, f"OpenCPN command is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        return CheckResult("OpenCPN", False, f"OpenCPN command path contains a symlink: {symlink_component}")
+    if not path.is_file():
+        return CheckResult("OpenCPN", False, f"OpenCPN command is not a regular file: {path}")
+    if not os.access(path, os.X_OK):
+        return CheckResult("OpenCPN", False, f"OpenCPN command is not executable: {path}")
+    try:
+        stat_result = path.stat()
+        parent_stat = path.parent.stat()
+    except OSError as exc:
+        return CheckResult("OpenCPN", False, f"could not inspect OpenCPN command {path}: {exc}")
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command has permissions {mode:04o}, expected no group/other write bits: {path}",
+        )
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o022:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command directory has permissions {parent_mode:04o}, expected no group/other write bits: {path.parent}",
+        )
+    if _is_raspberry_pi() and stat_result.st_uid != 0:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command is owned by uid {stat_result.st_uid}, expected root: {path}",
+        )
+    if not _is_raspberry_pi() and stat_result.st_uid not in {0, os.getuid()}:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command is owned by uid {stat_result.st_uid}, expected root or {os.getuid()}: {path}",
+        )
+    return CheckResult("OpenCPN", True, f"trusted executable at {path}")
 
 
 def check_display_power_tool() -> CheckResult:
