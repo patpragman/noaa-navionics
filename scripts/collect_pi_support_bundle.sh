@@ -249,12 +249,34 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 umask 077
 
-bundle_root="${HOME}/.cache/noaa-navionics/support-bundle.$$"
+cache_parent="${HOME}/.cache"
+cache_dir="${cache_parent}/noaa-navionics"
+if [[ -L "$cache_parent" || -L "$cache_dir" ]]; then
+  printf 'support bundle cache path must not be a symlink\n' >&2
+  exit 1
+fi
+mkdir -p "$cache_dir"
+chmod 0700 "$cache_parent" "$cache_dir"
+if [[ ! -d "$cache_dir" || -L "$cache_dir" ]]; then
+  printf 'support bundle cache directory must be a real directory: %s\n' "$cache_dir" >&2
+  exit 1
+fi
+if [[ "$(stat -c '%u %a' "$cache_dir" 2>/dev/null)" != "$(id -u) 700" ]]; then
+  printf 'support bundle cache directory must be user-owned private 0700: %s\n' "$cache_dir" >&2
+  exit 1
+fi
+bundle_root="$(mktemp -d "${cache_dir}/support-bundle.XXXXXX")"
 files_dir="${bundle_root}/files"
 commands_dir="${bundle_root}/commands"
-mkdir -p "$files_dir" "$commands_dir"
+mkdir "$files_dir" "$commands_dir"
 cleanup_remote_bundle() {
-  rm -rf -- "$bundle_root"
+  case "$bundle_root" in
+    "$cache_dir"/support-bundle.*)
+      if [[ -d "$bundle_root" && ! -L "$bundle_root" ]]; then
+        rm -rf -- "$bundle_root"
+      fi
+      ;;
+  esac
 }
 trap cleanup_remote_bundle EXIT
 

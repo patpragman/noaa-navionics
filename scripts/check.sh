@@ -502,6 +502,8 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper tightens the local output directory to private `0700`' README.md
 grep -q 'support bundle helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
+grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
+grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, tightens the local output directory to private `0700`' README.md
@@ -865,6 +867,9 @@ grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
+grep -q 'mktemp -d "${cache_dir}/support-bundle.XXXXXX"' scripts/collect_pi_support_bundle.sh
+grep -q 'support bundle cache directory must be user-owned private 0700' scripts/collect_pi_support_bundle.sh
+grep -q '"$cache_dir"/support-bundle.\*)' scripts/collect_pi_support_bundle.sh
 grep -q 'tarfile.open' scripts/export_pi_tracks.sh
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
