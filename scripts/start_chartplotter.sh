@@ -229,7 +229,8 @@ validate_launcher_env_path() {
     exit 1
   fi
   if [[ ! -e "$launcher_env" ]]; then
-    return 0
+    echo "NOAA Navionics launcher environment is missing: $launcher_env" >&2
+    exit 1
   fi
   if [[ -L "$launcher_env" ]]; then
     echo "NOAA Navionics launcher environment is a symlink: $launcher_env" >&2

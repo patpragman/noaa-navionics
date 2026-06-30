@@ -88,6 +88,7 @@ grep -q 'launcher_lock_path_safe_for_cleanup' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock path became unsafe; leaving it in place' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_env_path' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher environment is missing' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment path contains a symlink' scripts/start_chartplotter.sh
@@ -1485,7 +1486,7 @@ grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_dow
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'desktop autostart, LightDM autologin, and manifest files' README.md
 grep -q 'desktop autostart, LightDM autologin, and manifest files' docs/sailboat-pi.md
-grep -q 'readiness report fails if the persisted launcher environment is not regular, owned by the wrong account, group/world-writable' README.md
+grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
@@ -1693,8 +1694,8 @@ grep -q 'pins its remote command path to trusted system directories' README.md
 grep -q 'pins its remote command path to trusted system directories' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
-grep -q 'only after rejecting symlinked launcher environment files or path components' README.md
-grep -q 'only after rejecting symlinked launcher environment files or path components' docs/sailboat-pi.md
+grep -q 'only after rejecting a missing launcher environment, symlinked launcher environment files or path components' README.md
+grep -q 'only after rejecting a missing launcher environment, symlinked launcher environment files or path components' docs/sailboat-pi.md
 
 python3 - <<'PY'
 from pathlib import Path
@@ -1716,6 +1717,13 @@ verify_output="$(mktemp)"
 tmpdir="$(mktemp -d)"
 workspace_tmpdir="$(mktemp -d "$repo_root/.check-tmp.XXXXXX")"
 trap 'rm -rf "${tmpdir:-}" "${workspace_tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
+
+write_test_launcher_env() {
+  local home_dir="$1"
+  mkdir -p "$home_dir/.config/noaa-navionics"
+  printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$home_dir/.config/noaa-navionics/launcher.env"
+  chmod 0600 "$home_dir/.config/noaa-navionics/launcher.env"
+}
 
 install_smoke_home="$tmpdir/install-smoke-home"
 mkdir -p "$install_smoke_home"
@@ -3284,6 +3292,22 @@ grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q -- '--gps-seconds 17' "$launcher_home/.cache/noaa-navionics/noaa.log"
 grep -q "Using OpenCPN binary: $tmpdir/opencpn" "$launcher_home/.cache/noaa-navionics/chartplotter.log"
 
+launcher_missing_env_home="$tmpdir/launcher-missing-env-home"
+mkdir -p "$launcher_missing_env_home/.local/bin" "$launcher_missing_env_home/.cache/noaa-navionics" "$launcher_missing_env_home/.config/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_missing_env_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_missing_env_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_missing_env_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_missing_env_code=$?
+set -e
+if [[ "$launcher_missing_env_code" -eq 0 ]]; then
+  cat "$launcher_missing_env_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a missing launcher environment" >&2
+  exit 1
+fi
+grep -q 'NOAA Navionics launcher environment is missing' "$launcher_missing_env_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_missing_env_home/.cache/noaa-navionics/chartplotter.log"
+
 launcher_symlink_env_home="$tmpdir/launcher-symlink-env-home"
 launcher_symlink_env_target="$tmpdir/launcher-symlink-env-target"
 mkdir -p "$launcher_symlink_env_home/.local/bin" "$launcher_symlink_env_home/.cache/noaa-navionics" "$launcher_symlink_env_home/.config/noaa-navionics"
@@ -3484,6 +3508,7 @@ grep -q 'OpenCPN exited cleanly; not restarting.' "$launcher_opencpn_restart_hom
 
 launcher_fail_home="$tmpdir/launcher-fail-home"
 mkdir -p "$launcher_fail_home/.local/bin" "$launcher_fail_home/.cache/noaa-navionics"
+write_test_launcher_env "$launcher_fail_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_fail_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/xset"
 chmod +x "$launcher_fail_home/.local/bin/noaa-navionics" "$tmpdir/xset"
@@ -3515,6 +3540,7 @@ grep -q 'chartplotter launcher lock path contains a symlink' "$launcher_symlink_
 
 launcher_lock_home="$tmpdir/launcher-lock-home"
 mkdir -p "$launcher_lock_home/.local/bin" "$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+write_test_launcher_env "$launcher_lock_home"
 printf '%s\n' "$$" >"$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
@@ -3529,6 +3555,7 @@ grep -q 'OpenCPN exited with status 0' "$launcher_lock_home/.cache/noaa-navionic
 
 launcher_dirty_lock_home="$tmpdir/launcher-dirty-lock-home"
 mkdir -p "$launcher_dirty_lock_home/.local/bin" "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+write_test_launcher_env "$launcher_dirty_lock_home"
 printf '%s\n' "$$" >"$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 printf 'stale\n' >"$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/extra"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_dirty_lock_home/.local/bin/noaa-navionics"
@@ -3566,6 +3593,7 @@ grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place
 
 launcher_old_boot_lock_home="$tmpdir/launcher-old-boot-lock-home"
 mkdir -p "$launcher_old_boot_lock_home/.local/bin" "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
+write_test_launcher_env "$launcher_old_boot_lock_home"
 bash -c 'while :; do sleep 1; done' start_chartplotter.sh &
 old_boot_launcher_pid=$!
 printf '%s\n' "$old_boot_launcher_pid" >"$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
@@ -3599,6 +3627,7 @@ grep -q 'Another NOAA Navionics chartplotter launcher is already running' "$laun
 
 launcher_live_lock_home="$tmpdir/launcher-live-lock-home"
 mkdir -p "$launcher_live_lock_home/.local/bin" "$launcher_live_lock_home/.cache/noaa-navionics"
+write_test_launcher_env "$launcher_live_lock_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_live_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nprintf "fake opencpn start\\n" >>"$HOME/.cache/noaa-navionics/opencpn-starts.log"\nsleep 2\n' >"$tmpdir/opencpn"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
@@ -3634,6 +3663,7 @@ grep -q 'Another NOAA Navionics chartplotter launcher is already running' "$laun
 
 launcher_replaced_lock_home="$tmpdir/launcher-replaced-lock-home"
 mkdir -p "$launcher_replaced_lock_home/.local/bin" "$launcher_replaced_lock_home/.cache/noaa-navionics"
+write_test_launcher_env "$launcher_replaced_lock_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_replaced_lock_home/.local/bin/noaa-navionics"
 cat >"$tmpdir/opencpn" <<'EOF'
 #!/usr/bin/env bash
@@ -3656,6 +3686,7 @@ grep -q 'chartplotter launcher lock path became unsafe; leaving it in place' "$l
 
 launcher_duplicate_home="$tmpdir/launcher-duplicate-home"
 mkdir -p "$launcher_duplicate_home/.local/bin" "$launcher_duplicate_home/.cache/noaa-navionics"
+write_test_launcher_env "$launcher_duplicate_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_duplicate_home/.local/bin/noaa-navionics"
 bash -c 'while :; do sleep 1; done' opencpn &
 duplicate_opencpn_pid=$!
@@ -3669,6 +3700,7 @@ grep -q 'OpenCPN is already running' "$launcher_duplicate_home/.cache/noaa-navio
 
 launcher_empty_pgrep_home="$tmpdir/launcher-empty-pgrep-home"
 mkdir -p "$launcher_empty_pgrep_home/.local/bin" "$launcher_empty_pgrep_home/.cache/noaa-navionics"
+write_test_launcher_env "$launcher_empty_pgrep_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_empty_pgrep_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
