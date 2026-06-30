@@ -86,6 +86,7 @@ from noaa_navionics.health import (
     _parse_vcgencmd_temperature,
     _parse_throttled_value,
     _read_trusted_config_lines,
+    _sha256_trusted_file,
 )
 from noaa_navionics.opencpn import (
     chart_directory_configured,
@@ -3293,6 +3294,15 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("manifest download path", result.detail)
             self.assertIn("has permissions 0622", result.detail)
+
+    def test_sha256_trusted_file_rejects_writable_archive_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive = Path(tmpdir) / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            archive.chmod(0o622)
+
+            with self.assertRaisesRegex(RuntimeError, "has permissions 0622"):
+                _sha256_trusted_file(archive, label="manifest download path", expected_uid=os.getuid())
 
     def test_manifest_archive_path_under_symlinked_parent_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -1085,11 +1085,17 @@ grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest download path contains a symlink' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
-grep -q 'manifest download path is not a regular file' src/noaa_navionics/health.py
-grep -q 'manifest download path .* is owned by uid' src/noaa_navionics/health.py
-grep -q 'manifest download path .* has permissions' src/noaa_navionics/health.py
+grep -q 'f"{label} is not a regular file' src/noaa_navionics/health.py
+grep -q 'f"{label} {path} is owned by uid' src/noaa_navionics/health.py
+grep -q 'f"{label} {path} has permissions' src/noaa_navionics/health.py
 grep -q 'test_manifest_archive_nonregular_path_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_writable_file_fails' tests/test_downloader.py
+grep -q 'def _sha256_trusted_file' src/noaa_navionics/health.py
+grep -q 'actual_bytes, actual_sha256 = _sha256_trusted_file' src/noaa_navionics/health.py
+grep -q 'os.fdopen(fd, "rb")' src/noaa_navionics/health.py
+grep -q 'test_sha256_trusted_file_rejects_writable_archive_before_hashing' tests/test_downloader.py
+grep -q 'retained ZIP hashes are computed from the same no-follow descriptor' README.md
+grep -q 'retained ZIP hashes are computed from the same no-follow descriptor' docs/sailboat-pi.md
 grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py

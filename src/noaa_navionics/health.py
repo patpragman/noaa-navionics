@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 from urllib.parse import urlparse
+import hashlib
 import importlib.util
 import os
 import re
@@ -24,7 +25,7 @@ from .gps import (
     iter_gpsd_fixes,
     open_nmea_stream,
 )
-from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest, sha256_file
+from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest
 from .opencpn import (
     chart_directory_configured,
     enabled_gpsd_connections,
@@ -773,36 +774,60 @@ def _check_manifest_archive(
         if required:
             return CheckResult("Manifest", False, f"manifest retained download path is missing: {archive_path}")
         return None
-    if not archive_path.is_file():
-        return CheckResult("Manifest", False, f"manifest download path is not a regular file: {archive_path}")
     try:
-        archive_stat = archive_path.stat()
+        actual_bytes, actual_sha256 = _sha256_trusted_file(
+            archive_path,
+            label="manifest download path",
+            expected_uid=os.getuid(),
+        )
     except OSError as exc:
-        return CheckResult("Manifest", False, f"could not inspect manifest download path {archive_path}: {exc}")
-    if archive_stat.st_uid != os.getuid():
-        return CheckResult(
-            "Manifest",
-            False,
-            f"manifest download path {archive_path} is owned by uid {archive_stat.st_uid}, expected {os.getuid()}",
-        )
-    archive_mode = archive_stat.st_mode & 0o777
-    if archive_mode & 0o022:
-        return CheckResult(
-            "Manifest",
-            False,
-            f"manifest download path {archive_path} has permissions {archive_mode:04o}, expected no group/other write bits",
-        )
-    actual_bytes = archive_stat.st_size
+        return CheckResult("Manifest", False, f"could not read manifest download path {archive_path}: {exc}")
+    except RuntimeError as exc:
+        return CheckResult("Manifest", False, str(exc))
     if actual_bytes != expected_bytes:
         return CheckResult(
             "Manifest",
             False,
             f"manifest recorded {expected_bytes} downloaded bytes but {archive_path} has {actual_bytes}",
         )
-    actual_sha256 = sha256_file(archive_path)
     if actual_sha256.lower() != expected_sha256:
         return CheckResult("Manifest", False, f"manifest SHA-256 does not match {archive_path}")
     return None
+
+
+def _sha256_trusted_file(path: Path, *, label: str, expected_uid: int) -> tuple[int, str]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"{label} is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"{label} is not a regular file: {path}")
+        if stat_result.st_uid != expected_uid:
+            raise RuntimeError(
+                f"{label} {path} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"{label} {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        hasher = hashlib.sha256()
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            while True:
+                chunk = handle.read(1024 * 1024)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        return stat_result.st_size, hasher.hexdigest()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _first_path_symlink_between(path: Path, root: Path) -> Optional[Path]:
