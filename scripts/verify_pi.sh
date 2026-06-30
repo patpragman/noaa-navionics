@@ -2777,12 +2777,46 @@ opencpn_process_supervised_by_launcher() {
   [[ "$parent_pid" == "$launcher_pid" ]]
 }
 
+read_private_user_file() {
+  local path="$1"
+  local label="$2"
+  python3 - "$path" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open {label} {path}: {exc}") from exc
+try:
+    file_stat = os.fstat(fd)
+    if not stat.S_ISREG(file_stat.st_mode):
+        raise SystemExit(f"{label} is not a regular file: {path}")
+    if file_stat.st_uid != os.getuid():
+        raise SystemExit(f"{label} {path} is owned by uid {file_stat.st_uid}, expected {os.getuid()}")
+    mode = file_stat.st_mode & 0o777
+    if mode != 0o600:
+        raise SystemExit(f"{label} {path} has permissions {mode:04o}, expected private 0600")
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        sys.stdout.write(handle.read().strip())
+finally:
+    if fd >= 0:
+        os.close(fd)
+PY
+}
+
 launcher_lock_pid() {
   local owner_pid=""
   if [[ ! -r "${launcher_lock}/pid" ]]; then
     return 1
   fi
-  read -r owner_pid <"${launcher_lock}/pid" || return 1
+  owner_pid="$(read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid")" || return 1
   [[ "$owner_pid" =~ ^[0-9]+$ ]] || return 1
   printf '%s\n' "$owner_pid"
 }
@@ -3069,12 +3103,12 @@ check_launcher_lock_live() {
     printf 'could not read current boot ID for chartplotter launcher lock verification\n' >&2
     return 1
   fi
-  read -r lock_boot_id <"${launcher_lock}/boot_id" || lock_boot_id=""
+  lock_boot_id="$(read_private_user_file "${launcher_lock}/boot_id" "chartplotter launcher lock boot ID")" || lock_boot_id=""
   if [[ "$lock_boot_id" != "$current_boot_id" ]]; then
     printf 'chartplotter launcher lock boot ID %s does not match current boot %s\n' "${lock_boot_id:-<empty>}" "$current_boot_id" >&2
     return 1
   fi
-  read -r owner_pid <"${launcher_lock}/pid" || owner_pid=""
+  owner_pid="$(read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid")" || owner_pid=""
   if [[ ! "$owner_pid" =~ ^[0-9]+$ ]]; then
     printf 'chartplotter launcher lock pid is invalid: %s\n' "${owner_pid:-<empty>}" >&2
     return 1
@@ -3118,7 +3152,7 @@ check_live_display_power_disabled() {
     printf 'chartplotter launcher lock pid is unreadable: %s\n' "${launcher_lock}/pid" >&2
     return 1
   fi
-  read -r owner_pid <"${launcher_lock}/pid" || owner_pid=""
+  owner_pid="$(read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid")" || owner_pid=""
   if [[ ! "$owner_pid" =~ ^[0-9]+$ || ! -r "/proc/${owner_pid}/environ" ]]; then
     printf 'chartplotter launcher environment is unreadable for pid: %s\n' "${owner_pid:-<empty>}" >&2
     return 1

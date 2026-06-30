@@ -565,6 +565,11 @@ grep -q 'chartplotter launcher lock pid file is owned by uid' scripts/verify_pi.
 grep -q 'chartplotter launcher lock boot ID file is owned by uid' scripts/verify_pi.sh
 grep -q 'chartplotter launcher live environment overrides' scripts/verify_pi.sh
 grep -q 'production verification requires launcher settings from' scripts/verify_pi.sh
+grep -q 'read_private_user_file()' scripts/verify_pi.sh
+grep -q 'read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid"' scripts/verify_pi.sh
+grep -q 'read_private_user_file "${launcher_lock}/boot_id" "chartplotter launcher lock boot ID"' scripts/verify_pi.sh
+! grep -q 'read -r owner_pid <"${launcher_lock}/pid"' scripts/verify_pi.sh
+! grep -q 'read -r lock_boot_id <"${launcher_lock}/boot_id"' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
