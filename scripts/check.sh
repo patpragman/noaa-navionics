@@ -1223,6 +1223,11 @@ grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness retries' scripts/verify_pi.sh
 grep -q 'chartplotter launcher trusted PATH' scripts/verify_pi.sh
 grep -q 'chartplotter launcher Pi PATH pin' scripts/verify_pi.sh
+grep -q 'chartplotter launcher trusted Python resolver' scripts/verify_pi.sh
+grep -q 'chartplotter launcher Python path resolver' scripts/verify_pi.sh
+grep -q 'chartplotter launcher resolved Python trust check' scripts/verify_pi.sh
+grep -q 'chartplotter launcher Python resolution command' scripts/verify_pi.sh
+grep -q 'chartplotter launcher resolved Python execution' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ambient environment scrub' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ambient environment re-exec' scripts/verify_pi.sh
 grep -q 'chartplotter launcher fail-closed default' scripts/verify_pi.sh
@@ -1242,7 +1247,8 @@ grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc'
 grep -q 'chartplotter launcher lock' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher previous-boot lock recovery' scripts/verify_pi.sh
-grep -q 'chartplotter launcher lock sync create' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock descriptor write' scripts/verify_pi.sh
+grep -q 'chartplotter launcher lock directory sync create' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock sync cleanup' scripts/verify_pi.sh
 grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'production verification requires launcher settings from' scripts/verify_pi.sh
