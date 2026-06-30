@@ -3283,6 +3283,19 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "manifest path .* has permissions 0622"):
                 read_manifest(root)
 
+    def test_read_manifest_rejects_replaced_manifest_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = root / MANIFEST_NAME
+            manifest.write_text('{"created_at":"2026-01-01T00:00:00Z"}\n', encoding="utf-8")
+            expected_stat = manifest.stat()
+            replacement = root / "replacement-manifest.json"
+            replacement.write_text('{"created_at":"2026-02-01T00:00:00Z"}\n', encoding="utf-8")
+            replacement.replace(manifest)
+
+            with self.assertRaisesRegex(RuntimeError, "manifest path changed before it could be read"):
+                read_manifest(root, expected_stat=expected_stat)
+
     def test_manifest_without_extracted_cells_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -1460,9 +1460,13 @@ grep -q 'previous chart manifest path .* has permissions' src/noaa_navionics/dow
 grep -q 'def _open_manifest_for_read' src/noaa_navionics/downloader.py
 grep -q 'manifest directory contains a symlink' src/noaa_navionics/downloader.py
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
+grep -q 'manifest path changed before it could be read' src/noaa_navionics/downloader.py
+grep -q 'read_manifest(chart_output, expected_stat=stat_result)' src/noaa_navionics/report.py
+grep -q 'read_manifest(path, expected_stat=manifest_stat)' src/noaa_navionics/health.py
 grep -q 'test_read_manifest_rejects_symlinked_manifest' tests/test_downloader.py
 grep -q 'test_read_manifest_rejects_symlinked_manifest_directory' tests/test_downloader.py
 grep -q 'test_read_manifest_rejects_writable_manifest' tests/test_downloader.py
+grep -q 'test_read_manifest_rejects_replaced_manifest_before_parsing' tests/test_downloader.py
 grep -q 'test_existing_zip_symlinked_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'test_existing_zip_writable_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'unsafe ownership or permissions' README.md
@@ -2148,8 +2152,8 @@ grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test
 grep -q 'test_manifest_summary_marks_nonregular_download_path' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
-grep -q 'desktop autostart, LightDM autologin, and manifest files through no-follow descriptor reads' README.md
-grep -q 'desktop autostart, LightDM autologin, and manifest files through no-follow descriptor reads' docs/sailboat-pi.md
+grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' README.md
+grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' docs/sailboat-pi.md
 grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md

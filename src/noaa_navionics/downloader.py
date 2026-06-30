@@ -1002,7 +1002,7 @@ def _matching_previous_manifest(
             "expected no group/other write bits"
         )
     try:
-        manifest = read_manifest(output_path)
+        manifest = read_manifest(output_path, expected_stat=manifest_stat)
     except RuntimeError:
         raise
     except Exception:
@@ -1068,14 +1068,18 @@ def _utc_now_text() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def read_manifest(output_dir: Union[Path, str]) -> dict[str, object]:
+def read_manifest(
+    output_dir: Union[Path, str],
+    *,
+    expected_stat: Optional[os.stat_result] = None,
+) -> dict[str, object]:
     path = Path(output_dir).expanduser() / MANIFEST_NAME
-    fd = _open_manifest_for_read(path)
+    fd = _open_manifest_for_read(path, expected_stat=expected_stat)
     with os.fdopen(fd, encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def _open_manifest_for_read(path: Path) -> int:
+def _open_manifest_for_read(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> int:
     if path.is_symlink():
         raise RuntimeError(f"manifest path is a symlink: {path}")
     symlink_component = _first_symlink_ancestor(path.parent)
@@ -1090,6 +1094,11 @@ def _open_manifest_for_read(path: Path) -> int:
         raise
     try:
         stat_result = os.fstat(fd)
+        if expected_stat is not None and (
+            stat_result.st_dev != expected_stat.st_dev
+            or stat_result.st_ino != expected_stat.st_ino
+        ):
+            raise RuntimeError(f"manifest path changed before it could be read: {path}")
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"manifest path is not a regular file: {path}")
         if stat_result.st_uid != os.getuid():

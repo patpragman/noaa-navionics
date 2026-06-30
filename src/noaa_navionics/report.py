@@ -945,7 +945,7 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
     summary["uid"] = stat_result.st_uid
     summary["mode"] = f"{stat_result.st_mode & 0o777:04o}"
     try:
-        manifest = read_manifest(chart_output)
+        manifest = read_manifest(chart_output, expected_stat=stat_result)
     except Exception as exc:
         summary["error"] = str(exc)
         return summary

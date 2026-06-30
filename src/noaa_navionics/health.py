@@ -634,7 +634,7 @@ def check_chart_manifest(
             f"manifest path {manifest_path} has permissions {manifest_mode:04o}, expected no group/other write bits",
         )
     try:
-        manifest = read_manifest(path)
+        manifest = read_manifest(path, expected_stat=manifest_stat)
         created = _parse_manifest_time(str(manifest.get("created_at", "")))
     except Exception as exc:
         return CheckResult("Manifest", False, f"invalid {manifest_path}: {exc}")
