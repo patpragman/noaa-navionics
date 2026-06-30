@@ -66,6 +66,7 @@ from noaa_navionics.gps import (
     read_nmea_lines,
 )
 from noaa_navionics.health import (
+    CheckResult,
     check_chart_dir,
     check_chart_manifest,
     check_chart_update_debris,
@@ -108,6 +109,7 @@ from noaa_navionics.report import (
     _key_value_file_summary,
     _launcher_settings_summary,
     _launcher_settings_check,
+    _gps_fix_summary,
     _parse_proc_uptime_seconds,
     _read_trusted_gpx_track_file,
     _service_readiness_checks,
@@ -6369,6 +6371,27 @@ class StatusReportTests(unittest.TestCase):
             self.assertTrue(output.exists())
             self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
+
+    def test_gps_fix_summary_preserves_future_timestamp_age(self):
+        now = datetime(2026, 6, 30, 12, 0, 0, tzinfo=timezone.utc)
+        future = now + timedelta(seconds=45)
+        check = CheckResult(
+            "GPSD",
+            True,
+            "future test fix",
+            {
+                "timestamp": future.isoformat().replace("+00:00", "Z"),
+                "latitude": 61.0,
+                "longitude": -149.0,
+                "satellites": 8,
+                "hdop": 1.2,
+            },
+        )
+
+        summary = _gps_fix_summary([check], now=now)
+
+        self.assertEqual(summary["source"], "GPSD")
+        self.assertEqual(summary["age_seconds"], -45.0)
 
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

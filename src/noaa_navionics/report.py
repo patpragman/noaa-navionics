@@ -217,7 +217,7 @@ def _gps_fix_summary(checks: list[CheckResult], *, now: Optional[datetime] = Non
             timestamp = _parse_gps_fix_timestamp(check.data.get("timestamp"))
             if timestamp is not None:
                 current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
-                summary["age_seconds"] = max(0.0, (current - timestamp).total_seconds())
+                summary["age_seconds"] = (current - timestamp).total_seconds()
         return summary
     return {
         "source": "",

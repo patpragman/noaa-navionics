@@ -492,10 +492,8 @@ grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-d
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
-grep -q 'Status JSON includes a top-level `gps_fix` object plus matching structured `data`' README.md
-grep -q 'Status JSON includes a top-level `gps_fix` object plus matching structured `data`' docs/sailboat-pi.md
-grep -q 'live fix time, age, position' README.md
-grep -q 'live fix time, age, position' docs/sailboat-pi.md
+grep -q 'live fix time, signed age, position' README.md
+grep -q 'live fix time, signed age, position' docs/sailboat-pi.md
 grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
@@ -1152,6 +1150,7 @@ grep -q 'status report has no gps_fix section' scripts/verify_pi.sh
 grep -q 'status report gps_fix data does not match' scripts/verify_pi.sh
 grep -q 'status report gps_fix latitude is outside -90..90' scripts/verify_pi.sh
 grep -q 'status report gps_fix timestamp is stale' scripts/verify_pi.sh
+grep -q 'status report gps_fix age_seconds is negative' scripts/verify_pi.sh
 grep -q 'status report gps_fix age_seconds is stale' scripts/verify_pi.sh
 grep -q 'status report gps_fix has no satellite or HDOP quality fields' scripts/verify_pi.sh
 grep -q 'status report gps_fix source' scripts/verify_pi.sh
@@ -2824,6 +2823,8 @@ grep -q 'test_opencpn_config_summary_records_public_directory_mode' tests/test_d
 grep -q 'test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config' tests/test_downloader.py
 grep -q 'status-report --gps-sample.*still checks OpenCPN' README.md
 grep -q 'Sample-based status reports substitute only the live GPS fix read' docs/sailboat-pi.md
+grep -q 'summary\["age_seconds"\] = (current - timestamp).total_seconds()' src/noaa_navionics/report.py
+grep -q 'test_gps_fix_summary_preserves_future_timestamp_age' tests/test_downloader.py
 grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' README.md
 grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
