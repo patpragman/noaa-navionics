@@ -3123,12 +3123,27 @@ class ManifestTests(unittest.TestCase):
             root = Path(tmpdir)
             lock = root / DOWNLOAD_LOCK_NAME
             lock.write_text("busy\n", encoding="ascii")
+            os.chmod(lock, 0o600)
             package = Package("Locked test", "https://example.invalid/chart.zip", "chart.zip")
 
             with self.assertRaisesRegex(RuntimeError, "already in progress"):
                 download_package(package, root)
 
             self.assertTrue(lock.exists())
+
+    def test_download_lock_rejects_public_active_lock_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("busy\n", encoding="ascii")
+            os.chmod(lock, 0o644)
+            package = Package("Locked test", "https://example.invalid/chart.zip", "chart.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart update lock path has permissions 0644"):
+                download_package(package, root)
+
+            self.assertTrue(lock.exists())
+            self.assertEqual(lock.read_text(encoding="ascii"), "busy\n")
 
     def test_download_lock_rejects_symlinked_lock_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3156,6 +3171,7 @@ class ManifestTests(unittest.TestCase):
             (root / "chart.zip").write_bytes(b"existing")
             lock = root / DOWNLOAD_LOCK_NAME
             lock.write_text("stale\n", encoding="ascii")
+            os.chmod(lock, 0o600)
             old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
             os.utime(lock, (old_time, old_time))
             package = Package("Stale lock test", "https://example.invalid/chart.zip", "chart.zip")
@@ -3182,12 +3198,30 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(lock.exists())
             self.assertEqual(lock.read_text(encoding="ascii"), "stale\n")
 
+    def test_stale_download_lock_cleanup_rejects_public_lock_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "chart.zip").write_bytes(b"existing")
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("stale\n", encoding="ascii")
+            os.chmod(lock, 0o644)
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(lock, (old_time, old_time))
+            package = Package("Stale lock test", "https://example.invalid/chart.zip", "chart.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart update lock path has permissions 0644"):
+                download_package(package, root)
+
+            self.assertTrue(lock.exists())
+            self.assertEqual(lock.read_text(encoding="ascii"), "stale\n")
+
     def test_old_download_lock_with_live_owner_is_not_replaced(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             lock = root / DOWNLOAD_LOCK_NAME
             current_boot_id = "12345678-1234-4234-8234-123456789abc"
             lock.write_text(f"pid=1234 boot_id={current_boot_id} created_at=old\n", encoding="ascii")
+            os.chmod(lock, 0o600)
             old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
             os.utime(lock, (old_time, old_time))
             original_boot_id = downloader_module._current_boot_id
@@ -3210,6 +3244,7 @@ class ManifestTests(unittest.TestCase):
             current_boot_id = "12345678-1234-4234-8234-123456789abc"
             previous_boot_id = "abcdefab-cdef-4abc-8def-abcdefabcdef"
             lock.write_text(f"pid=1234 boot_id={previous_boot_id} created_at=old\n", encoding="ascii")
+            os.chmod(lock, 0o600)
             old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
             os.utime(lock, (old_time, old_time))
             original_boot_id = downloader_module._current_boot_id
@@ -3230,6 +3265,7 @@ class ManifestTests(unittest.TestCase):
             lock = Path(tmpdir) / DOWNLOAD_LOCK_NAME
             owner_boot_id = "12345678-1234-4234-8234-123456789abc"
             lock.write_text(f"pid=1234 boot_id={owner_boot_id} created_at=old\n", encoding="ascii")
+            os.chmod(lock, 0o600)
             old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
             os.utime(lock, (old_time, old_time))
             original_boot_id = downloader_module._current_boot_id
@@ -3250,6 +3286,7 @@ class ManifestTests(unittest.TestCase):
             lock = Path(tmpdir) / DOWNLOAD_LOCK_NAME
             current_boot_id = "12345678-1234-4234-8234-123456789abc"
             lock.write_text("pid=1234 boot_id=not-a-boot-id created_at=old\n", encoding="ascii")
+            os.chmod(lock, 0o600)
             old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
             os.utime(lock, (old_time, old_time))
             original_boot_id = downloader_module._current_boot_id

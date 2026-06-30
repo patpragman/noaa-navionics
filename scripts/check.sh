@@ -1701,8 +1701,12 @@ grep -q 'chart update lock path is not a regular file; leaving it in place' src/
 grep -q 'with os.fdopen(fd, encoding="ascii", errors="ignore") as handle' src/noaa_navionics/downloader.py
 ! grep -q 'lock_path.read_text(encoding="ascii", errors="ignore")' src/noaa_navionics/downloader.py
 grep -q 'test_stale_download_lock_cleanup_rejects_writable_lock_file' tests/test_downloader.py
-grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or group/world-writable lock files' README.md
-grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or group/world-writable lock files' docs/sailboat-pi.md
+grep -q 'expected private 0600; leaving it in place: {lock_path}' src/noaa_navionics/downloader.py
+grep -q '_validate_stale_lock_for_cleanup(lock_path)' src/noaa_navionics/downloader.py
+grep -q 'test_download_lock_rejects_public_active_lock_file' tests/test_downloader.py
+grep -q 'test_stale_download_lock_cleanup_rejects_public_lock_file' tests/test_downloader.py
+grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or non-private lock files' README.md
+grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or non-private lock files' docs/sailboat-pi.md
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
 grep -q 'BOOT_ID_RE.fullmatch' src/noaa_navionics/downloader.py
 grep -q '_valid_boot_id(owner_boot_id) and _valid_boot_id(current_boot_id)' src/noaa_navionics/downloader.py

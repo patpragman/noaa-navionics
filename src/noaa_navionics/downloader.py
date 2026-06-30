@@ -658,9 +658,9 @@ def _chart_update_lock(output_path: Path):
         except FileExistsError as exc:
             if lock_path.is_symlink():
                 raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
+            _validate_stale_lock_for_cleanup(lock_path)
             if _lock_is_stale(lock_path):
                 try:
-                    _validate_stale_lock_for_cleanup(lock_path)
                     lock_path.unlink()
                     _fsync_directory(output_path)
                 except FileNotFoundError:
@@ -725,10 +725,10 @@ def _validate_stale_lock_for_cleanup(lock_path: Path) -> None:
             f"expected {expected_uid}; leaving it in place: {lock_path}"
         )
     mode = lock_stat.st_mode & 0o777
-    if mode & 0o022:
+    if mode != 0o600:
         raise RuntimeError(
             f"chart update lock path has permissions {mode:04o}, "
-            f"expected no group/other write bits; leaving it in place: {lock_path}"
+            f"expected private 0600; leaving it in place: {lock_path}"
         )
 
 
@@ -773,10 +773,10 @@ def _read_chart_update_lock_text(lock_path: Path) -> str:
                 f"expected {expected_uid}; leaving it in place: {lock_path}"
             )
         mode = opened.st_mode & 0o777
-        if mode & 0o022:
+        if mode != 0o600:
             raise RuntimeError(
                 f"chart update lock path has permissions {mode:04o}, "
-                f"expected no group/other write bits; leaving it in place: {lock_path}"
+                f"expected private 0600; leaving it in place: {lock_path}"
             )
         with os.fdopen(fd, encoding="ascii", errors="ignore") as handle:
             fd = -1
