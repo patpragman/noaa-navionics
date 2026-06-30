@@ -518,16 +518,36 @@ grep -q '/^PPid:/' scripts/verify_pi.sh
 grep -q 'no active OpenCPN process is supervised by the chartplotter launcher' scripts/verify_pi.sh
 grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN exited within' scripts/verify_pi.sh
+grep -q 'launcher-supervised OpenCPN executable integrity failed after stability wait' scripts/verify_pi.sh
+grep -q 'launcher-supervised OpenCPN display environment failed after stability wait' scripts/verify_pi.sh
 grep -q 'launcher-supervised `opencpn` child process' README.md
 grep -q 'launcher-supervised `opencpn` child process' docs/sailboat-pi.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' docs/sailboat-pi.md
+grep -q 'remain running with that trusted executable and display environment through a short stability check' README.md
+grep -q 'remain running with that trusted executable and display environment through a short stability check' docs/sailboat-pi.md
 grep -q 'running on that same live X display from a trusted root-owned executable' README.md
 grep -q 'running on that same live X display from a trusted root-owned executable' docs/sailboat-pi.md
 grep -q 'trusted `XAUTHORITY` file when present' README.md
 grep -q 'trusted `XAUTHORITY` file when present' docs/sailboat-pi.md
 grep -q 'launcher-supervised OpenCPN is running' docs/sailboat-pi.md
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
+start = text.index("check_opencpn_stable() {")
+end = text.index("\n}\n\ncheck_launcher_lock_live", start)
+block = text[start:end]
+for needle in (
+    "check_opencpn_process_executable_integrity",
+    "check_opencpn_process_display_environment",
+    "launcher-supervised OpenCPN executable integrity failed after stability wait",
+    "launcher-supervised OpenCPN display environment failed after stability wait",
+):
+    if needle not in block:
+        raise SystemExit(f"missing OpenCPN stability guard: {needle}")
+PY
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
 grep -q 'check_recent_track_log' scripts/verify_pi.sh
 grep -q 'recent GPX trackpoint' scripts/verify_pi.sh

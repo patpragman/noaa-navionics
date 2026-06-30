@@ -2540,6 +2540,14 @@ check_opencpn_stable() {
     printf 'launcher-supervised OpenCPN exited within %ss of startup verification\n' "$opencpn_stability_seconds" >&2
     return 1
   fi
+  if ! check_opencpn_process_executable_integrity; then
+    printf 'launcher-supervised OpenCPN executable integrity failed after stability wait\n' >&2
+    return 1
+  fi
+  if ! check_opencpn_process_display_environment; then
+    printf 'launcher-supervised OpenCPN display environment failed after stability wait\n' >&2
+    return 1
+  fi
 }
 
 check_launcher_lock_live() {
