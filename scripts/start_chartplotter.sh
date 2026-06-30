@@ -20,6 +20,7 @@ opencpn_restart_delay=5
 lock_acquired=0
 opencpn_bin=""
 opencpn_child_pid=""
+python3_bin=""
 trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 device_tree_model=""
 
@@ -66,8 +67,124 @@ first_symlink_ancestor() {
   return 1
 }
 
+path_in_trusted_system_dir() {
+  case "$1" in
+    /usr/local/sbin/*|/usr/local/bin/*|/usr/sbin/*|/usr/bin/*|/sbin/*|/bin/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+validate_python_command_candidate() {
+  local candidate="$1"
+  local resolved_candidate
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_owner_uid
+  local parent_mode_text
+  local parent_mode
+  local symlink_component
+
+  if [[ -z "$candidate" ]]; then
+    echo "Python command python3 was not found on PATH" >&2
+    return 1
+  fi
+  case "$candidate" in
+    /*)
+      ;;
+    *)
+      echo "Python command path is not absolute: $candidate" >&2
+      return 1
+      ;;
+  esac
+  if is_raspberry_pi && ! path_in_trusted_system_dir "$candidate"; then
+    echo "Python command is not in a trusted system directory: $candidate" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$candidate")"
+  if symlink_component="$(first_symlink_ancestor "$parent_dir")"; then
+    echo "Python command path contains a symlink: $symlink_component" >&2
+    return 1
+  fi
+  if ! resolved_candidate="$(readlink -f -- "$candidate" 2>/dev/null)" || [[ -z "$resolved_candidate" ]]; then
+    echo "Could not resolve Python command: $candidate" >&2
+    return 1
+  fi
+  if is_raspberry_pi && ! path_in_trusted_system_dir "$resolved_candidate"; then
+    echo "Python command resolves outside trusted system directories: $candidate -> $resolved_candidate" >&2
+    return 1
+  fi
+  if [[ ! -f "$resolved_candidate" ]]; then
+    echo "Python command is not a regular file after resolution: $candidate -> $resolved_candidate" >&2
+    return 1
+  fi
+  if [[ ! -x "$resolved_candidate" ]]; then
+    echo "Python command is not executable: $resolved_candidate" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$resolved_candidate" 2>/dev/null)" || {
+    echo "Could not inspect Python command: $resolved_candidate" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "Python command has permissions ${mode_text}, expected no group/other write bits: $resolved_candidate" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$resolved_candidate")"
+  if symlink_component="$(first_symlink_ancestor "$parent_dir")"; then
+    echo "Resolved Python command path contains a symlink: $symlink_component" >&2
+    return 1
+  fi
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect Python command directory: $parent_dir" >&2
+    return 1
+  }
+  parent_owner_uid="${parent_stat%% *}"
+  parent_mode_text="${parent_stat#* }"
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "Python command directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$parent_owner_uid" != "0" ]]; then
+    echo "Python command directory is owned by uid ${parent_owner_uid}, expected root on Raspberry Pi: $parent_dir" >&2
+    return 1
+  fi
+  if [[ "$parent_owner_uid" != "0" && "$parent_owner_uid" != "$(id -u)" ]]; then
+    echo "Python command directory is owned by uid ${parent_owner_uid}, expected root or $(id -u): $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$owner_uid" != "0" ]]; then
+    echo "Python command is owned by uid ${owner_uid}, expected root on Raspberry Pi: $resolved_candidate" >&2
+    return 1
+  fi
+  if [[ "$owner_uid" != "0" && "$owner_uid" != "$(id -u)" ]]; then
+    echo "Python command is owned by uid ${owner_uid}, expected root or $(id -u): $resolved_candidate" >&2
+    return 1
+  fi
+  printf '%s\n' "$resolved_candidate"
+  return 0
+}
+
+python3_command_path() {
+  local path_candidate
+
+  path_candidate="$(command -v python3 2>/dev/null || true)"
+  validate_python_command_candidate "$path_candidate" || return 1
+}
+
 sync_paths() {
-  python3 - "$@" <<'PY'
+  "$python3_bin" - "$@" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -185,7 +302,7 @@ prepare_private_cache_dir() {
 }
 
 prepare_private_log_file() {
-  python3 - "$log_file" <<'PY'
+  "$python3_bin" - "$log_file" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -228,7 +345,7 @@ PY
 }
 
 read_trusted_launcher_env() {
-  python3 - "$launcher_env" <<'PY'
+  "$python3_bin" - "$launcher_env" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -624,7 +741,7 @@ opencpn_running() {
 
 opencpn_process_active() {
   local pid="$1"
-  python3 - "$pid" <<'PY'
+  "$python3_bin" - "$pid" <<'PY'
 import sys
 
 pid = sys.argv[1]
@@ -647,7 +764,7 @@ PY
 
 process_looks_like_launcher() {
   local pid="$1"
-  python3 - "$pid" <<'PY'
+  "$python3_bin" - "$pid" <<'PY'
 from pathlib import Path
 import sys
 
@@ -704,7 +821,7 @@ launcher_lock_path_safe_for_cleanup() {
 read_launcher_lock_file() {
   local name="$1"
   local label="$2"
-  python3 - "$launcher_lock_dir" "$name" "$label" <<'PY'
+  "$python3_bin" - "$launcher_lock_dir" "$name" "$label" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -754,7 +871,7 @@ PY
 }
 
 remove_stale_launcher_lock() {
-  python3 - "$cache_dir" "$launcher_lock_dir" <<'PY'
+  "$python3_bin" - "$cache_dir" "$launcher_lock_dir" <<'PY'
 from pathlib import Path
 import os
 import shutil
@@ -845,7 +962,7 @@ launcher_lock_from_current_boot() {
 write_launcher_lock_files() {
   local boot_id
   boot_id="$(current_boot_id)"
-  python3 - "$launcher_lock_dir" "$$" "$boot_id" <<'PY'
+  "$python3_bin" - "$launcher_lock_dir" "$$" "$boot_id" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -1007,12 +1124,7 @@ show_preflight_warning() {
     sleep "$warning_seconds"
     return 0
   fi
-  if ! command -v python3 >/dev/null 2>&1; then
-    echo "python3 is unavailable for readiness warning; waiting ${warning_seconds}s before continuing." >&2
-    sleep "$warning_seconds"
-    return 0
-  fi
-  if python3 - "$status_report" "$warning_seconds" "$action_text" "$button_text" <<'PY'
+  if "$python3_bin" - "$status_report" "$warning_seconds" "$action_text" "$button_text" <<'PY'
 from pathlib import Path
 import json
 import os
@@ -1270,6 +1382,8 @@ if [[ ! -x "$bin" ]]; then
   echo "noaa-navionics is not installed at $bin" >&2
   exit 127
 fi
+
+python3_bin="$(python3_command_path)" || exit 127
 
 prepare_private_cache_dir
 if [[ -L "$log_file" ]]; then

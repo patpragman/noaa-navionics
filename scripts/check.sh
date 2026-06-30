@@ -159,6 +159,23 @@ grep -q 'read -r -d .*device_tree_model </proc/device-tree/model' scripts/start_
 grep -q 'PATH="$trusted_system_path"' scripts/start_chartplotter.sh
 grep -q 'export PATH' scripts/start_chartplotter.sh
 grep -q 'expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q 'validate_python_command_candidate' scripts/start_chartplotter.sh
+grep -q 'python3_command_path' scripts/start_chartplotter.sh
+grep -q 'Python command python3 was not found on PATH' scripts/start_chartplotter.sh
+grep -q 'Python command path is not absolute' scripts/start_chartplotter.sh
+grep -q 'path_in_trusted_system_dir' scripts/start_chartplotter.sh
+grep -q 'readlink -f -- "$candidate"' scripts/start_chartplotter.sh
+grep -q 'Python command is not in a trusted system directory' scripts/start_chartplotter.sh
+grep -q 'Python command resolves outside trusted system directories' scripts/start_chartplotter.sh
+grep -q 'Python command is not a regular file after resolution' scripts/start_chartplotter.sh
+grep -q 'Python command directory is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q 'Python command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -Fq 'python3_bin="$(python3_command_path)" || exit 127' scripts/start_chartplotter.sh
+grep -Fq '"$python3_bin" - "$@"' scripts/start_chartplotter.sh
+grep -Fq 'if "$python3_bin" - "$status_report"' scripts/start_chartplotter.sh
+! grep -Eq '(^|[[:space:]])python3[[:space:]]+-' scripts/start_chartplotter.sh
+grep -q 'resolves Python to a trusted executable path before running descriptor-safe helper snippets' README.md
+grep -q 'resolves Python to a trusted executable path before running descriptor-safe helper snippets' docs/sailboat-pi.md
 grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
 grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher Pi OpenCPN root owner' scripts/verify_pi.sh
