@@ -198,7 +198,6 @@ def build_parser() -> argparse.ArgumentParser:
     status_gui.add_argument(
         "--anchor-radius-meters",
         type=_positive_float,
-        default=50.0,
         help="anchor drift radius used by the status GUI",
     )
 
@@ -270,7 +269,11 @@ def build_parser() -> argparse.ArgumentParser:
     anchor.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
     anchor.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     anchor.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
-    anchor.add_argument("--radius-meters", type=_positive_float, default=50.0, help="drift radius before alarming")
+    anchor.add_argument(
+        "--radius-meters",
+        type=_positive_float,
+        help="drift radius before alarming; defaults to [anchor].radius_meters",
+    )
     anchor.add_argument("--anchor-lat", type=_latitude_arg, help="explicit anchor latitude")
     anchor.add_argument("--anchor-lon", type=_longitude_arg, help="explicit anchor longitude")
 
@@ -431,9 +434,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 str(args.gps_seconds),
                 "--refresh-seconds",
                 str(args.refresh_seconds),
-                "--anchor-radius-meters",
-                str(args.anchor_radius_meters),
             ]
+            if args.anchor_radius_meters is not None:
+                status_gui_args.extend(["--anchor-radius-meters", str(args.anchor_radius_meters)])
             if args.no_output:
                 status_gui_args.append("--no-output")
             else:
@@ -612,7 +615,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             )
             return _run_anchor_watch(
                 fixes,
-                radius_meters=args.radius_meters,
+                radius_meters=args.radius_meters or app_config.anchor_radius_meters,
                 anchor_latitude=args.anchor_lat,
                 anchor_longitude=args.anchor_lon,
                 live_stream=live_stream,

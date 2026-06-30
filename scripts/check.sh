@@ -504,10 +504,12 @@ grep -q 'noaa-navionics mark-position --mob' README.md
 grep -q 'noaa-navionics mark-position --mob' docs/sailboat-pi.md
 grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" README.md
 grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" docs/sailboat-pi.md
-grep -q 'noaa-navionics anchor-watch --radius-meters 50' README.md
-grep -q 'noaa-navionics anchor-watch --radius-meters 50' docs/sailboat-pi.md
-grep -q 'exits non-zero with an audible terminal bell when drift exceeds the radius' README.md
-grep -q 'exits non-zero with an audible terminal bell when drift exceeds the radius' docs/sailboat-pi.md
+grep -q 'noaa-navionics anchor-watch' README.md
+grep -q 'noaa-navionics anchor-watch' docs/sailboat-pi.md
+grep -q 'when drift exceeds `\[anchor\].radius_meters`' README.md
+grep -q 'when drift exceeds `\[anchor\].radius_meters`' docs/sailboat-pi.md
+grep -q 'Use `--radius-meters N` for a one-off override' README.md
+grep -q 'Use `--radius-meters N` for a one-off override' docs/sailboat-pi.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -848,6 +850,7 @@ grep -q 'anchor-watch' src/noaa_navionics/cli.py
 grep -q 'distance_meters' src/noaa_navionics/cli.py
 grep -q 'ANCHOR ALARM' src/noaa_navionics/cli.py
 grep -q 'No usable GPS fix was available for anchor watch' src/noaa_navionics/cli.py
+grep -q 'app_config.anchor_radius_meters' src/noaa_navionics/cli.py
 grep -q 'gpx_position_mark_path' src/noaa_navionics/cli.py
 grep -q 'write_gpx_position_mark' src/noaa_navionics/cli.py
 grep -q 'No usable GPS fix was available for a position mark' src/noaa_navionics/cli.py
@@ -2239,6 +2242,9 @@ grep -q 'def write_gpx_position_mark' src/noaa_navionics/gps.py
 grep -q 'def gpx_position_mark_path' src/noaa_navionics/gps.py
 grep -q 'def distance_meters' src/noaa_navionics/gps.py
 grep -q 'EARTH_RADIUS_METERS' src/noaa_navionics/gps.py
+grep -q 'anchor_radius_meters' src/noaa_navionics/config.py
+grep -q '\[anchor\]' src/noaa_navionics/config.py
+grep -q 'radius_meters = 50' examples/noaa-navionics.ini
 grep -q '<wpt lat=' src/noaa_navionics/gps.py
 grep -q 'position mark requires satellite or HDOP quality data' src/noaa_navionics/gps.py
 grep -q 'expected a new regular GPX position mark file' src/noaa_navionics/gps.py
@@ -2246,6 +2252,7 @@ grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloa
 grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_distance_meters_uses_haversine_distance' tests/test_downloader.py
 grep -q 'mark-position", "--seconds", "0"' tests/test_downloader.py
 grep -q 'anchor-watch", "--radius-meters", "0"' tests/test_downloader.py
@@ -2570,6 +2577,7 @@ grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
+grep -q 'def _configured_anchor_radius' src/noaa_navionics/status_gui.py
 grep -q 'def available_position_mark_path' src/noaa_navionics/status_gui.py
 grep -q 'READY' src/noaa_navionics/status_gui.py
 grep -q 'NOT READY' src/noaa_navionics/status_gui.py
@@ -2624,6 +2632,7 @@ grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
+grep -q 'test_status_gui_reads_configured_anchor_radius' tests/test_downloader.py
 grep -q 'test_cli_mark_position_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py

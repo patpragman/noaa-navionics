@@ -289,7 +289,11 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.max_chart_age_days, 30)
             self.assertEqual(config.min_free_gb, 2.0)
             self.assertEqual(config.track_retention_days, 90)
+            self.assertEqual(config.anchor_radius_meters, 50.0)
             self.assertTrue(config.extract)
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("[anchor]\n", text)
+            self.assertIn("radius_meters = 50\n", text)
 
     def test_write_default_config_creates_private_parent_and_file_with_permissive_umask(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -567,7 +571,9 @@ class ConfigTests(unittest.TestCase):
                 "gpsd_host = 192.168.1.10\n"
                 "gpsd_port = 2947\n"
                 "[tracking]\n"
-                "retention_days = 14\n",
+                "retention_days = 14\n"
+                "[anchor]\n"
+                "radius_meters = 75.5\n",
                 encoding="utf-8",
             )
             config = read_config(path)
@@ -578,6 +584,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.max_chart_age_days, 14)
             self.assertEqual(config.min_free_gb, 4.5)
             self.assertEqual(config.track_retention_days, 14)
+            self.assertEqual(config.anchor_radius_meters, 75.5)
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
 
@@ -628,6 +635,8 @@ class ConfigTests(unittest.TestCase):
             ("[charts]\nmin_free_gb = 0\n", "charts.min_free_gb"),
             ("[charts]\nmin_free_gb = nan\n", "charts.min_free_gb"),
             ("[charts]\nextract = maybe\n", "charts.extract"),
+            ("[anchor]\nradius_meters = 0\n", "anchor.radius_meters"),
+            ("[anchor]\nradius_meters = nan\n", "anchor.radius_meters"),
             ("[gps]\nmode = serial\ndevice =\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice =\n", "gps.device"),
             ("[gps]\nmode = serial\ndevice = /dev/ttyACM0\n", "gps.device"),
@@ -1469,6 +1478,53 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Anchor set: 61.000000, -149.000000", stdout.getvalue())
             self.assertIn("Anchor distance:", stdout.getvalue())
+            self.assertEqual(stderr.getvalue(), "")
+
+    def test_cli_anchor_watch_uses_configured_radius_by_default(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[anchor]\n"
+                "radius_meters = 900\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.0,
+                longitude=-148.99,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = cli_module._read_fixes
+
+            try:
+                cli_module._read_fixes = lambda *args, **kwargs: iter([fix])
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "anchor-watch",
+                            "--config",
+                            str(app_config),
+                            "--anchor-lat",
+                            "61.0",
+                            "--anchor-lon",
+                            "-149.0",
+                            "--seconds",
+                            "12",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertIn("radius 900 m", stdout.getvalue())
             self.assertEqual(stderr.getvalue(), "")
 
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
@@ -2401,6 +2457,13 @@ class GuiTests(unittest.TestCase):
             self.assertIn("ANCHOR ALARM", status_gui_module.format_anchor_check(distance, radius))
             self.assertIn("Anchor OK", status_gui_module.format_anchor_check(1.0, radius))
 
+    def test_status_gui_reads_configured_anchor_radius(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            config_path = Path(tmpdir) / "config.ini"
+            config_path.write_text("[anchor]\nradius_meters = 82.5\n", encoding="utf-8")
+
+            self.assertEqual(status_gui_module._configured_anchor_radius(config_path), 82.5)
+
     def test_gui_download_rejects_low_disk_before_download(self):
         package = package_for(state="AK")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2481,6 +2544,7 @@ class GuiTests(unittest.TestCase):
             gpsd_port=2948,
             track_output=Path("/tracks/noaa"),
             track_retention_days=30,
+            anchor_radius_meters=75.0,
         )
         calls = []
         original = gui_module.run_preflight
@@ -2539,6 +2603,7 @@ class GuiTests(unittest.TestCase):
             gpsd_port=2947,
             track_output=Path("/tracks/noaa"),
             track_retention_days=30,
+            anchor_radius_meters=75.0,
         )
         calls = []
         original = gui_module.iter_gpsd_fixes
@@ -2582,6 +2647,7 @@ class GuiTests(unittest.TestCase):
             gpsd_port=2947,
             track_output=Path("/tracks/noaa"),
             track_retention_days=30,
+            anchor_radius_meters=75.0,
         )
         original = gui_module.open_nmea_stream
 
@@ -2622,6 +2688,7 @@ class GuiTests(unittest.TestCase):
             gpsd_port=2947,
             track_output=Path("/tracks/noaa"),
             track_retention_days=30,
+            anchor_radius_meters=75.0,
         )
         original = gui_module.iter_gpsd_fixes
 
@@ -2663,6 +2730,7 @@ class GuiTests(unittest.TestCase):
                         gpsd_port=2947,
                         track_output=Path("/tracks/noaa"),
                         track_retention_days=90,
+                        anchor_radius_meters=50.0,
                     )
 
                     with self.assertRaisesRegex(ValueError, expected):
@@ -2690,6 +2758,7 @@ class GuiTests(unittest.TestCase):
                 gpsd_port=2947,
                 track_output=Path("/tracks/noaa"),
                 track_retention_days=90,
+                anchor_radius_meters=50.0,
             )
             calls = []
             original_download = gui_module.download_package
@@ -2735,6 +2804,7 @@ class GuiTests(unittest.TestCase):
                 gpsd_port=2947,
                 track_output=Path("/tracks/noaa"),
                 track_retention_days=90,
+                anchor_radius_meters=50.0,
             )
             calls = []
             original_download = gui_module.download_package

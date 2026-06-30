@@ -140,7 +140,7 @@ class StatusApp(tk.Tk):
         output_path: Optional[Path] = DEFAULT_STATUS_REPORT,
         gps_seconds: float = 10.0,
         refresh_seconds: float = 60.0,
-        anchor_radius_meters: float = 50.0,
+        anchor_radius_meters: Optional[float] = None,
     ) -> None:
         super().__init__()
         self.title("NOAA Navionics Status")
@@ -151,6 +151,8 @@ class StatusApp(tk.Tk):
         self.output_path = Path(output_path).expanduser() if output_path is not None else None
         self.gps_seconds = gps_seconds
         self.refresh_seconds = refresh_seconds
+        if anchor_radius_meters is None:
+            anchor_radius_meters = _configured_anchor_radius(self.config_path)
         self.anchor_radius = tk.StringVar(value=f"{anchor_radius_meters:g}")
         self.queue: Queue = Queue()
         self.worker: Optional[Thread] = None
@@ -338,6 +340,13 @@ def _fix_coordinates(fix: GPSFix) -> str:
     return f"{fix.latitude:.6f}, {fix.longitude:.6f}"
 
 
+def _configured_anchor_radius(config_path: Path) -> float:
+    try:
+        return read_config(config_path).anchor_radius_meters
+    except Exception:
+        return 50.0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Show a Tkinter NOAA Navionics readiness panel.")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -357,7 +366,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--anchor-radius-meters",
         type=_positive_float,
-        default=50.0,
         help="anchor drift radius used by the Anchor Check button",
     )
     return parser

@@ -126,10 +126,10 @@ The position-mark command reads one quality-checked GPSD or serial fix from the 
 Watch anchor drift from the current position or an explicit anchor point:
 
 ```bash
-noaa-navionics anchor-watch --radius-meters 50
+noaa-navionics anchor-watch
 ```
 
-The anchor watch reads quality-checked GPSD or serial fixes from the onboard config, uses the first accepted fix as the anchor unless `--anchor-lat` and `--anchor-lon` are provided, prints distance updates, and exits non-zero with an audible terminal bell when drift exceeds the radius. It does not change charts, OpenCPN config, or services.
+The anchor watch reads quality-checked GPSD or serial fixes from the onboard config, uses the first accepted fix as the anchor unless `--anchor-lat` and `--anchor-lon` are provided, prints distance updates, and exits non-zero with an audible terminal bell when drift exceeds `[anchor].radius_meters`. Use `--radius-meters N` for a one-off override. It does not change charts, OpenCPN config, or services.
 
 Collect post-trip artifacts after returning to the dock:
 

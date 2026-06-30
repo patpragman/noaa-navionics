@@ -69,6 +69,7 @@ class AppConfig:
     gpsd_port: int
     track_output: Path
     track_retention_days: int
+    anchor_radius_meters: float
 
 
 def default_config() -> AppConfig:
@@ -89,6 +90,7 @@ def default_config() -> AppConfig:
         gpsd_port=2947,
         track_output=chart_output,
         track_retention_days=90,
+        anchor_radius_meters=50.0,
     )
 
 
@@ -107,6 +109,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     charts = parser["charts"] if parser.has_section("charts") else {}
     gps = parser["gps"] if parser.has_section("gps") else {}
     tracking = parser["tracking"] if parser.has_section("tracking") else {}
+    anchor = parser["anchor"] if parser.has_section("anchor") else {}
 
     chart_package = charts.get("package", defaults.chart_package).strip().lower()
     if chart_package not in CHART_PACKAGES:
@@ -163,6 +166,13 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         label="tracking.retention_days",
         minimum=0,
     )
+    anchor_radius_meters = _get_float(
+        anchor,
+        "radius_meters",
+        defaults.anchor_radius_meters,
+        label="anchor.radius_meters",
+        minimum=1.0,
+    )
     return AppConfig(
         chart_package=chart_package,
         chart_value=chart_value,
@@ -179,6 +189,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         gpsd_port=gpsd_port,
         track_output=track_output,
         track_retention_days=track_retention_days,
+        anchor_radius_meters=anchor_radius_meters,
     )
 
 
@@ -221,6 +232,10 @@ def default_config_text() -> str:
         f"output = {defaults.track_output}\n"
         "# Keep this many days of rotated GPX track logs; 0 disables pruning.\n"
         f"retention_days = {defaults.track_retention_days}\n"
+        "\n"
+        "[anchor]\n"
+        "# Default alarm radius used by anchor-watch and the status GUI Anchor Check.\n"
+        f"radius_meters = {defaults.anchor_radius_meters:g}\n"
     )
 
 
