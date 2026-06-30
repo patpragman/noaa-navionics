@@ -501,6 +501,10 @@ if [ ! -f "$resolved_cmd" ]; then
   echo "Remote reboot command is not a regular file after resolution: ${reboot_cmd} -> ${resolved_cmd}" >&2
   exit 1
 fi
+if [ ! -x "$resolved_cmd" ]; then
+  echo "Remote reboot command is not executable after resolution: ${reboot_cmd} -> ${resolved_cmd}" >&2
+  exit 1
+fi
 check_directory_chain "$reboot_cmd"
 check_directory_chain "$resolved_cmd"
 check_owner_and_mode file "$resolved_cmd"
