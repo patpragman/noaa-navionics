@@ -1113,6 +1113,10 @@ grep -q 'does not match live unit file' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'check_root_command_integrity()' scripts/verify_pi.sh
+grep -q 'root_command_path()' scripts/verify_pi.sh
+grep -q 'systemctl_command()' scripts/verify_pi.sh
+grep -q 'loginctl_command()' scripts/verify_pi.sh
+grep -q 'chronyc_command()' scripts/verify_pi.sh
 grep -q 'check_root_directory_integrity "$(dirname "$path")" "${label} directory"' scripts/verify_pi.sh
 grep -q 'check_root_executable_file_integrity "$path" "$label"' scripts/verify_pi.sh
 grep -q 'check "display power command integrity" check_display_power_command_integrity' scripts/verify_pi.sh
@@ -1121,7 +1125,24 @@ grep -q 'check "display power command integrity" check_display_power_command_int
 ! grep -q 'DISPLAY="$display" xset q' scripts/verify_pi.sh
 grep -q 'check "process lookup command integrity" check_root_command_integrity pgrep "process lookup command"' scripts/verify_pi.sh
 grep -q 'check "Pi power command integrity" check_root_command_integrity vcgencmd "Pi power command"' scripts/verify_pi.sh
-grep -q 'check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"' scripts/verify_pi.sh
+grep -q 'check "Systemctl command integrity" systemctl_command' scripts/verify_pi.sh
+grep -q 'check "Loginctl command integrity" loginctl_command' scripts/verify_pi.sh
+grep -q 'systemctl_cmd="$(systemctl_command)" || systemctl_cmd="/bin/false"' scripts/verify_pi.sh
+grep -q 'loginctl_cmd="$(loginctl_command)" || loginctl_cmd="/bin/false"' scripts/verify_pi.sh
+grep -q 'check "Chrony command integrity" chronyc_command' scripts/verify_pi.sh
+grep -q 'chronyc_path="$(chronyc_command)" || return 1' scripts/verify_pi.sh
+grep -q 'systemctl_path="$(systemctl_command)" || return 1' scripts/verify_pi.sh
+grep -q 'check "Chrony service enabled" "$systemctl_cmd" is-enabled --quiet chrony' scripts/verify_pi.sh
+grep -q 'check "GPSD socket enabled" "$systemctl_cmd" is-enabled --quiet gpsd.socket' scripts/verify_pi.sh
+grep -q 'check "LightDM enabled" "$systemctl_cmd" is-enabled --quiet lightdm.service' scripts/verify_pi.sh
+grep -q 'check "chart timer enabled" "$systemctl_cmd" --user is-enabled --quiet noaa-navionics.timer' scripts/verify_pi.sh
+grep -q 'check "user linger enabled" sh -c' scripts/verify_pi.sh
+grep -q '"$loginctl_cmd" "$USER"' scripts/verify_pi.sh
+! grep -q 'check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"' scripts/verify_pi.sh
+! grep -q 'check "LightDM enabled" systemctl is-enabled --quiet lightdm.service' scripts/verify_pi.sh
+! grep -q 'check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket' scripts/verify_pi.sh
+! grep -q 'check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer' scripts/verify_pi.sh
+! grep -q 'chronyc sources -n' scripts/verify_pi.sh
 grep -q 'check "GPSD command integrity" check_root_command_integrity gpsd "GPSD command"' scripts/verify_pi.sh
 grep -q 'check "GPSD client command integrity" check_root_command_integrity cgps "GPSD client command"' scripts/verify_pi.sh
 ! grep -q 'check "process lookup command" command -v pgrep' scripts/verify_pi.sh
@@ -1129,8 +1150,9 @@ grep -q 'check "GPSD client command integrity" check_root_command_integrity cgps
 ! grep -q 'check "Chrony command" command -v chronyc' scripts/verify_pi.sh
 ! grep -q 'check "GPSD command" command -v gpsd' scripts/verify_pi.sh
 ! grep -q 'check "GPSD client command" command -v cgps' scripts/verify_pi.sh
-grep -q 'trusted root-owned `pgrep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
+grep -q 'trusted root-owned `systemctl`, `loginctl`, `pgrep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
 grep -q 'installed root-owned command dependencies' docs/sailboat-pi.md
+grep -q 'resolves `systemctl`, `loginctl`, and `chronyc` through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
 grep -q 'vcgencmd get_throttled failed' scripts/verify_pi.sh
 grep -q 'unexpected vcgencmd get_throttled output' scripts/verify_pi.sh
@@ -1236,7 +1258,7 @@ grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
 grep -q 'chartplotter autostart not disabled' scripts/verify_pi.sh
 grep -q 'graphical boot target' scripts/verify_pi.sh
 grep -q 'LightDM active after boot' scripts/verify_pi.sh
-grep -q 'systemctl is-active --quiet lightdm.service' scripts/verify_pi.sh
+grep -q 'check "LightDM active after boot" "$systemctl_cmd" is-active --quiet lightdm.service' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
 grep -q 'could not open LightDM autologin config' scripts/verify_pi.sh

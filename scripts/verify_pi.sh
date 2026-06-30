@@ -334,6 +334,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
 failures=0
+systemctl_cmd=""
+loginctl_cmd=""
+chronyc_cmd=""
 bin_dir="${HOME}/.local/bin"
 data_dir="${HOME}/.local/share/noaa-navionics"
 config_dir="${HOME}/.config/noaa-navionics"
@@ -2472,6 +2475,49 @@ check_root_command_integrity() {
   check_root_executable_file_integrity "$path" "$label"
 }
 
+root_command_path() {
+  local command_name="$1"
+  local label="$2"
+  local path
+
+  path="$(command -v "$command_name" 2>/dev/null)" || {
+    printf '%s was not found on PATH\n' "$label" >&2
+    return 1
+  }
+  case "$path" in
+    /*)
+      ;;
+    *)
+      printf '%s path is not absolute: %s\n' "$label" "$path" >&2
+      return 1
+      ;;
+  esac
+  check_root_directory_integrity "$(dirname "$path")" "${label} directory" || return 1
+  check_root_executable_file_integrity "$path" "$label" || return 1
+  printf '%s\n' "$path"
+}
+
+systemctl_command() {
+  if [[ -z "$systemctl_cmd" ]]; then
+    systemctl_cmd="$(root_command_path systemctl "Systemctl command")" || return 1
+  fi
+  printf '%s\n' "$systemctl_cmd"
+}
+
+loginctl_command() {
+  if [[ -z "$loginctl_cmd" ]]; then
+    loginctl_cmd="$(root_command_path loginctl "Loginctl command")" || return 1
+  fi
+  printf '%s\n' "$loginctl_cmd"
+}
+
+chronyc_command() {
+  if [[ -z "$chronyc_cmd" ]]; then
+    chronyc_cmd="$(root_command_path chronyc "Chrony command")" || return 1
+  fi
+  printf '%s\n' "$chronyc_cmd"
+}
+
 check_opencpn_command_integrity() {
   local path
 
@@ -3485,9 +3531,11 @@ wait_for_chartplotter_started() {
 
 wait_for_chrony_gps_source() {
   local deadline=$((SECONDS + gps_seconds))
+  local chronyc_path
   local output=""
+  chronyc_path="$(chronyc_command)" || return 1
   while true; do
-    output="$(chronyc sources -n 2>&1 || true)"
+    output="$("$chronyc_path" sources -n 2>&1 || true)"
     if printf '%s\n' "$output" | grep -Eq '^#[*+].*GPS'; then
       return 0
     fi
@@ -3501,9 +3549,11 @@ wait_for_chrony_gps_source() {
 
 check_preflight_service_succeeded() {
   local deadline=$((SECONDS + gps_seconds + 60))
+  local systemctl_path
   local state=""
+  systemctl_path="$(systemctl_command)" || return 1
   while true; do
-    state="$(systemctl --user show noaa-navionics-preflight.service \
+    state="$("$systemctl_path" --user show noaa-navionics-preflight.service \
       -p ActiveState \
       -p Result \
       -p ExecMainStatus \
@@ -3877,9 +3927,13 @@ if [[ -f "$autostart" ]]; then
   check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
   check "chartplotter autostart not disabled" sh -c '! grep -Eq "^(Hidden=true|X-GNOME-Autostart-enabled=false)$" "$1"' sh "$autostart"
 fi
-check "graphical boot target" sh -c 'systemctl get-default 2>/dev/null | grep -qx graphical.target'
-check "LightDM unit installed" sh -c 'systemctl --no-pager --no-legend list-unit-files lightdm.service 2>/dev/null | grep -q "^lightdm.service"'
-check "LightDM enabled" systemctl is-enabled --quiet lightdm.service
+check "Systemctl command integrity" systemctl_command
+check "Loginctl command integrity" loginctl_command
+systemctl_cmd="$(systemctl_command)" || systemctl_cmd="/bin/false"
+loginctl_cmd="$(loginctl_command)" || loginctl_cmd="/bin/false"
+check "graphical boot target" sh -c '"$1" get-default 2>/dev/null | grep -qx graphical.target' sh "$systemctl_cmd"
+check "LightDM unit installed" sh -c '"$1" --no-pager --no-legend list-unit-files lightdm.service 2>/dev/null | grep -q "^lightdm.service"' sh "$systemctl_cmd"
+check "LightDM enabled" "$systemctl_cmd" is-enabled --quiet lightdm.service
 check "LightDM autologin directory integrity" check_root_directory_integrity "$(dirname "$lightdm_autologin")" "LightDM autologin directory"
 check "LightDM autologin config" test -f "$lightdm_autologin"
 if [[ -f "$lightdm_autologin" ]]; then
@@ -3891,7 +3945,7 @@ if [[ -f "$lightdm_autologin" ]]; then
 fi
 if [[ "$require_chartplotter_started" -eq 1 ]]; then
   printf '\n[chartplotter startup]\n'
-  check "LightDM active after boot" systemctl is-active --quiet lightdm.service
+  check "LightDM active after boot" "$systemctl_cmd" is-active --quiet lightdm.service
   check "chartplotter launcher log file integrity" check_user_regular_file_integrity "$log_file" "chartplotter launcher log"
   check "chartplotter rotated launcher log file integrity" check_optional_user_regular_file_integrity "$rotated_log_file" "chartplotter rotated launcher log"
   check "chartplotter started after boot" wait_for_chartplotter_started
@@ -3927,19 +3981,19 @@ check "Tkinter readiness warning support" check_tkinter_available
 check "process lookup command integrity" check_root_command_integrity pgrep "process lookup command"
 check "Pi power command integrity" check_root_command_integrity vcgencmd "Pi power command"
 check "Pi power state" check_raspberry_pi_throttling_state
-check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"
-check "Chrony service enabled" systemctl is-enabled --quiet chrony
-check "Chrony service active" systemctl is-active --quiet chrony
+check "Chrony command integrity" chronyc_command
+check "Chrony service enabled" "$systemctl_cmd" is-enabled --quiet chrony
+check "Chrony service active" "$systemctl_cmd" is-active --quiet chrony
 check "Chrony config directory integrity" check_root_directory_integrity /etc/chrony "chrony config directory"
 check "Chrony config file integrity" check_root_regular_file_integrity /etc/chrony/chrony.conf "chrony config"
 check "Chrony GPSD time source" check_chrony_gps_time_config
 check "Chrony usable GPS source" wait_for_chrony_gps_source
 check "GPSD command integrity" check_root_command_integrity gpsd "GPSD command"
 check "GPSD client command integrity" check_root_command_integrity cgps "GPSD client command"
-check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket
-check "GPSD socket active" systemctl is-active --quiet gpsd.socket
-check "GPSD service enabled" systemctl is-enabled --quiet gpsd
-check "GPSD service active" systemctl is-active --quiet gpsd
+check "GPSD socket enabled" "$systemctl_cmd" is-enabled --quiet gpsd.socket
+check "GPSD socket active" "$systemctl_cmd" is-active --quiet gpsd.socket
+check "GPSD service enabled" "$systemctl_cmd" is-enabled --quiet gpsd
+check "GPSD service active" "$systemctl_cmd" is-active --quiet gpsd
 check "GPSD config directory integrity" check_root_directory_integrity /etc/default "GPSD config directory"
 check "GPSD config" test -f /etc/default/gpsd
 if [[ -f /etc/default/gpsd ]]; then
@@ -3984,7 +4038,7 @@ check_output "version/help" "$bin" --help
 check_output "configured packages" "$bin" list-packages
 
 printf '\n[systemd user units]\n'
-systemctl --user --no-pager list-unit-files 'noaa-navionics*' || failures=$((failures + 1))
+"$systemctl_cmd" --user --no-pager list-unit-files 'noaa-navionics*' || failures=$((failures + 1))
 chart_service="${systemd_user_dir}/noaa-navionics.service"
 chart_timer="${systemd_user_dir}/noaa-navionics.timer"
 track_service="${systemd_user_dir}/noaa-navionics-track.service"
@@ -4116,13 +4170,13 @@ check "preflight service loaded start limit interval" sh -c 'systemctl --user sh
 check "preflight service start limit burst" grep -Fxq 'StartLimitBurst=60' "$preflight_service"
 check "preflight service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
 check "preflight service install target" check_unit_install_target "$preflight_service" default.target
-check "user linger enabled" sh -c "loginctl show-user '$USER' -p Linger 2>/dev/null | grep -q '^Linger=yes$'"
-check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer
-check "track service enabled" systemctl --user is-enabled --quiet noaa-navionics-track.service
-check "track service active" systemctl --user is-active --quiet noaa-navionics-track.service
-check "preflight service enabled" systemctl --user is-enabled --quiet noaa-navionics-preflight.service
+check "user linger enabled" sh -c '"$1" show-user "$2" -p Linger 2>/dev/null | grep -q "^Linger=yes$"' sh "$loginctl_cmd" "$USER"
+check "chart timer enabled" "$systemctl_cmd" --user is-enabled --quiet noaa-navionics.timer
+check "track service enabled" "$systemctl_cmd" --user is-enabled --quiet noaa-navionics-track.service
+check "track service active" "$systemctl_cmd" --user is-active --quiet noaa-navionics-track.service
+check "preflight service enabled" "$systemctl_cmd" --user is-enabled --quiet noaa-navionics-preflight.service
 check "preflight service last success" check_preflight_service_succeeded
-check "chart timer active" systemctl --user is-active --quiet noaa-navionics.timer
+check "chart timer active" "$systemctl_cmd" --user is-active --quiet noaa-navionics.timer
 
 printf '\n[preflight]\n'
 preflight_ok=0
