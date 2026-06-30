@@ -2151,6 +2151,127 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(calls[0]["keep_zip"], True)
         self.assertEqual(calls[0]["track_output"], Path("/tracks/noaa"))
 
+    def test_gui_gps_fix_reads_configured_gpsd_and_formats_position(self):
+        timestamp = datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc)
+        fix = GPSFix(
+            timestamp=timestamp,
+            latitude=61.2181,
+            longitude=-149.9003,
+            speed_knots=4.2,
+            course_degrees=181.5,
+            fix_quality=3,
+            satellites=9,
+            hdop=0.9,
+        )
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="gpsd",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+        )
+        calls = []
+        original = gui_module.iter_gpsd_fixes
+
+        def fake_iter_gpsd_fixes(**kwargs):
+            calls.append(kwargs)
+            return iter([fix])
+
+        try:
+            gui_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            result = gui_module.read_configured_gps_fix(app_config, gps_seconds=7.0)
+        finally:
+            gui_module.iter_gpsd_fixes = original
+
+        self.assertIs(result, fix)
+        self.assertEqual(calls[0]["host"], "127.0.0.1")
+        self.assertEqual(calls[0]["port"], 2947)
+        self.assertEqual(calls[0]["max_duration"], 7.0)
+        lines = gui_module.format_gps_fix(result)
+        self.assertIn("GPS fix: 61.218100, -149.900300", lines)
+        self.assertIn("GPS time: 2026-06-30T12:34:56Z", lines)
+        self.assertIn("Satellites: 9", lines)
+        self.assertIn("HDOP: 0.9", lines)
+        self.assertIn("Speed: 4.2 kt", lines)
+        self.assertIn("Course: 181.5 deg", lines)
+
+    def test_gui_gps_fix_rejects_volatile_serial_override(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="serial",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+        )
+        original = gui_module.open_nmea_stream
+
+        def fake_open_nmea_stream(*args, **kwargs):
+            raise AssertionError("open_nmea_stream should not be called")
+
+        try:
+            gui_module.open_nmea_stream = fake_open_nmea_stream
+            with self.assertRaisesRegex(ValueError, "volatile"):
+                gui_module.read_configured_gps_fix(
+                    app_config,
+                    gpsd_enabled=False,
+                    gps_device="/dev/ttyUSB0",
+                )
+        finally:
+            gui_module.open_nmea_stream = original
+
+    def test_gui_gps_fix_rejects_fix_without_quality_fields(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+            fix_quality=3,
+        )
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="gpsd",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+        )
+        original = gui_module.iter_gpsd_fixes
+
+        try:
+            gui_module.iter_gpsd_fixes = lambda **kwargs: iter([fix])
+            with self.assertRaisesRegex(RuntimeError, "without satellite or HDOP"):
+                gui_module.read_configured_gps_fix(app_config)
+        finally:
+            gui_module.iter_gpsd_fixes = original
+
     def test_configured_gui_sync_rejects_incomplete_onboard_chart_packages(self):
         calls = []
         original = gui_module.download_package

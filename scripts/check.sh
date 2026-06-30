@@ -483,6 +483,8 @@ grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
 grep -q 'extracted ENC cells, or GPX track contents' docs/sailboat-pi.md
+grep -q 'read one quality-checked GPSD or serial GPS fix' README.md
+grep -q 'read one quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'read-only diagnostic evidence' README.md
@@ -2401,7 +2403,11 @@ grep -q 'PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")' src/
 grep -q 'values=PACKAGE_KIND_OPTIONS' src/noaa_navionics/gui.py
 grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
+grep -q 'def read_configured_gps_fix' src/noaa_navionics/gui.py
+grep -q 'def format_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def download_selected_package' src/noaa_navionics/gui.py
+grep -q 'text="GPS Fix"' src/noaa_navionics/gui.py
+grep -q 'without satellite or HDOP quality data' src/noaa_navionics/gui.py
 grep -q 'download requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
@@ -2431,6 +2437,9 @@ if mkdir_index < disk_index:
 PY
 grep -q 'test_gui_download_rejects_low_disk_before_download' tests/test_downloader.py
 grep -q 'test_gui_download_rejects_missing_storage_before_creating_directory' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_reads_configured_gpsd_and_formats_position' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_volatile_serial_override' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_fix_without_quality_fields' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py

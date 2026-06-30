@@ -52,7 +52,7 @@ noaa-navionics-gui
 ```
 
 The GUI lets you choose a complete onboard chart bundle type, output directory, ZIP extraction, and overwrite behavior; manual GUI downloads check writable chart storage and free space before creating the output directory or starting a NOAA download.
-On the Raspberry Pi it can also load the onboard config, run preflight with the configured chart, GPSD, baud, chart-age, and track-storage values, sync the configured chart package with the same complete-chart guard as the CLI, write the JSON status report, and register the configured chart/GPSD connection with OpenCPN.
+On the Raspberry Pi it can also load the onboard config, read one quality-checked GPSD or serial GPS fix, run preflight with the configured chart, GPSD, baud, chart-age, and track-storage values, sync the configured chart package with the same complete-chart guard as the CLI, write the JSON status report, and register the configured chart/GPSD connection with OpenCPN.
 
 ## CLI Examples
 

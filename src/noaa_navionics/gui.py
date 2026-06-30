@@ -4,11 +4,28 @@ from pathlib import Path
 from queue import Empty, Queue
 from threading import Thread
 from typing import Optional
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .config import DEFAULT_CONFIG_PATH, AppConfig, package_kwargs, read_config
+from .config import (
+    DEFAULT_CONFIG_PATH,
+    AppConfig,
+    _stable_gps_device_path,
+    _volatile_usb_device_path,
+    package_kwargs,
+    read_config,
+)
 from .downloader import download_package, package_for
+from .gps import (
+    GPSFix,
+    gps_fix_has_quality_fields,
+    gps_fix_quality_failure,
+    iter_fixes,
+    iter_gpsd_fixes,
+    open_nmea_stream,
+    read_nmea_lines,
+)
 from .health import check_chart_package, check_disk_space, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import build_status_report, format_status_text, write_status_report
@@ -68,6 +85,79 @@ def sync_configured_charts(app_config: AppConfig, *, progress=None, retries: int
         retry_delay=retry_delay,
         progress=progress,
     )
+
+
+def read_configured_gps_fix(
+    app_config: AppConfig,
+    *,
+    gpsd_enabled: Optional[bool] = None,
+    gps_device: Optional[str] = None,
+    gps_seconds: float = 10.0,
+) -> GPSFix:
+    use_gpsd = app_config.gps_mode == "gpsd" if gpsd_enabled is None else gpsd_enabled
+    if gps_seconds <= 0:
+        raise ValueError("gps_seconds must be greater than 0")
+    if use_gpsd:
+        fixes = iter_gpsd_fixes(
+            host=app_config.gpsd_host,
+            port=app_config.gpsd_port,
+            timeout=max(0.1, gps_seconds),
+            max_duration=gps_seconds,
+        )
+        return _first_usable_gps_fix(fixes, source=f"GPSD {app_config.gpsd_host}:{app_config.gpsd_port}")
+
+    device = gps_device or app_config.gps_device
+    if _volatile_usb_device_path(device):
+        raise ValueError(f"GPS device path is volatile; use /dev/serial/by-id/... instead: {device}")
+    if not _stable_gps_device_path(device):
+        raise ValueError("GPS device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    deadline = time.monotonic() + gps_seconds
+    with open_nmea_stream(device, app_config.gps_baud) as stream:
+        lines = _bounded_nmea_lines(stream, deadline, idle_timeout=gps_seconds)
+        return _first_usable_gps_fix(iter_fixes(lines), source=device)
+
+
+def format_gps_fix(fix: GPSFix) -> list[str]:
+    lines = [
+        f"GPS fix: {fix.latitude:.6f}, {fix.longitude:.6f}",
+    ]
+    if fix.timestamp is not None:
+        lines.append(f"GPS time: {fix.timestamp.isoformat().replace('+00:00', 'Z')}")
+    if fix.satellites is not None:
+        lines.append(f"Satellites: {fix.satellites}")
+    if fix.hdop is not None:
+        lines.append(f"HDOP: {fix.hdop:g}")
+    if fix.speed_knots is not None:
+        lines.append(f"Speed: {fix.speed_knots:.1f} kt")
+    if fix.course_degrees is not None:
+        lines.append(f"Course: {fix.course_degrees:.1f} deg")
+    return lines
+
+
+def _bounded_nmea_lines(stream, deadline: float, *, idle_timeout: float):
+    lines = read_nmea_lines(stream, idle_timeout=idle_timeout)
+    for line in lines:
+        if time.monotonic() > deadline:
+            break
+        yield line
+
+
+def _first_usable_gps_fix(fixes, *, source: str) -> GPSFix:
+    saw_fix_without_quality = False
+    last_failure = ""
+    for fix in fixes:
+        failure = gps_fix_quality_failure(fix)
+        if failure:
+            last_failure = failure
+            continue
+        if not gps_fix_has_quality_fields(fix):
+            saw_fix_without_quality = True
+            continue
+        return fix
+    if saw_fix_without_quality:
+        raise RuntimeError(f"{source} reported a fix without satellite or HDOP quality data")
+    detail = f": {last_failure}" if last_failure else ""
+    raise RuntimeError(f"no usable GPS fix from {source}{detail}")
 
 
 def download_selected_package(
@@ -178,6 +268,8 @@ class DownloaderApp(tk.Tk):
         ttk.Checkbutton(gps_row, text="GPSD", variable=self.use_gpsd).grid(row=0, column=2, sticky=tk.W, padx=(10, 0))
         self.preflight_button = ttk.Button(gps_row, text="Preflight", command=self._start_preflight)
         self.preflight_button.grid(row=0, column=3, padx=(10, 0))
+        self.gps_fix_button = ttk.Button(gps_row, text="GPS Fix", command=self._start_gps_fix)
+        self.gps_fix_button.grid(row=0, column=4, padx=(10, 0))
 
         action_row = ttk.Frame(root)
         action_row.grid(row=6, column=1, sticky=tk.EW, pady=(0, 12))
@@ -194,6 +286,7 @@ class DownloaderApp(tk.Tk):
             [
                 self.load_config_button,
                 self.preflight_button,
+                self.gps_fix_button,
                 self.download_button,
                 self.sync_config_button,
                 self.status_report_button,
@@ -266,6 +359,15 @@ class DownloaderApp(tk.Tk):
         self.status.set("Running preflight")
         self._log("Running preflight checks")
         self.worker = Thread(target=self._preflight_worker, daemon=True)
+        self.worker.start()
+
+    def _start_gps_fix(self) -> None:
+        if self.worker and self.worker.is_alive():
+            return
+        self._set_busy(True)
+        self.status.set("Reading GPS fix")
+        self._log("Reading GPS fix")
+        self.worker = Thread(target=self._gps_fix_worker, daemon=True)
         self.worker.start()
 
     def _load_config(self) -> None:
@@ -368,6 +470,18 @@ class DownloaderApp(tk.Tk):
         except Exception as exc:
             self.queue.put(("error", exc))
 
+    def _gps_fix_worker(self) -> None:
+        try:
+            app_config = read_config(self._config_path())
+            fix = read_configured_gps_fix(
+                app_config,
+                gpsd_enabled=self.use_gpsd.get(),
+                gps_device=self.gps_device.get().strip() or None,
+            )
+            self.queue.put(("gps-fix", format_gps_fix(fix)))
+        except Exception as exc:
+            self.queue.put(("error", exc))
+
     def _status_report_worker(self) -> None:
         try:
             output = Path(self.status_report.get()).expanduser()
@@ -434,6 +548,11 @@ class DownloaderApp(tk.Tk):
                         mark = "OK" if result.ok else "FAIL"
                         self._log(f"{mark:4} {result.name:10} {result.detail}")
                     self.status.set("Preflight passed" if ok else "Preflight needs attention")
+                elif kind == "gps-fix":
+                    self._set_busy(False)
+                    for line in payload:
+                        self._log(line)
+                    self.status.set("GPS fix ready")
                 elif kind == "status-report":
                     self._set_busy(False)
                     report, output = payload
