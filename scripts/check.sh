@@ -1942,6 +1942,8 @@ grep -q '"$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/
 ! grep -q '"$sudo_cmd" python3' scripts/configure_gps_time.sh
 grep -q 'GPS time setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
 grep -q 'GPS time setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'writes the generated chrony temp file through a no-follow private descriptor' README.md
+grep -q 'writes the generated chrony temp file through a no-follow private descriptor' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -2005,8 +2007,13 @@ grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_
 grep -q 'backup_root_file_private "$chrony_conf" "$backup"' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gps_time.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gps_time.sh
+grep -q 'write_generated_chrony_config(target, "".join(filtered))' scripts/configure_gps_time.sh
+grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_gps_time.sh
+grep -q 'generated chrony config temp .* expected 0600' scripts/configure_gps_time.sh
+grep -q 'os.fsync(handle.fileno())' scripts/configure_gps_time.sh
 ! grep -q 'sudo mkdir -p "$(dirname "$chrony_conf")"' scripts/configure_gps_time.sh
 ! grep -q 'source.read_text(encoding="utf-8")' scripts/configure_gps_time.sh
+! grep -q 'target.write_text("".join(filtered), encoding="utf-8")' scripts/configure_gps_time.sh
 ! grep -q 'sudo cp -a "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
 grep -q 'Time Sync' src/noaa_navionics/health.py

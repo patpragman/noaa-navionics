@@ -573,6 +573,30 @@ def read_existing_chrony_config(path: Path) -> str:
             os.close(fd)
 
 
+def write_generated_chrony_config(path: Path, text: str) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, os.O_WRONLY | os.O_TRUNC | nofollow)
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"generated chrony config temp is not a regular file: {path}")
+        if opened.st_uid != os.getuid():
+            raise SystemExit(
+                f"generated chrony config temp {path} is owned by uid {opened.st_uid}, expected {os.getuid()}"
+            )
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode != 0o600:
+            raise SystemExit(f"generated chrony config temp {path} has permissions {mode:04o}, expected 0600")
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
 text = read_existing_chrony_config(source)
 
 lines = text.splitlines(keepends=True)
@@ -598,7 +622,7 @@ if skipping:
 if filtered and filtered[-1].strip():
     filtered.append("\n")
 filtered.append(block)
-target.write_text("".join(filtered), encoding="utf-8")
+write_generated_chrony_config(target, "".join(filtered))
 PY
 
 if [[ "$dry_run" -eq 1 ]]; then
