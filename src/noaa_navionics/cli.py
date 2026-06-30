@@ -200,6 +200,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=_positive_float,
         help="anchor drift radius used by the status GUI",
     )
+    status_gui.add_argument(
+        "--anchor-samples",
+        type=_positive_int,
+        default=1,
+        help="quality GPS fixes to average for status GUI anchor checks",
+    )
 
     init_config = subparsers.add_parser("init-config", help="write a default onboard config file")
     init_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -448,6 +454,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             ]
             if args.anchor_radius_meters is not None:
                 status_gui_args.extend(["--anchor-radius-meters", str(args.anchor_radius_meters)])
+            status_gui_args.extend(["--anchor-samples", str(args.anchor_samples)])
             if args.no_output:
                 status_gui_args.append("--no-output")
             else:

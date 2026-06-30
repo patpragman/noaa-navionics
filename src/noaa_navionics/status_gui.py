@@ -133,13 +133,37 @@ def check_anchor_drift(
     *,
     gps_seconds: float = 10.0,
     radius_meters: float = 50.0,
+    anchor_samples: int = 1,
 ) -> tuple[float, float, GPSFix, GPSFix]:
     if not math.isfinite(radius_meters) or radius_meters <= 0:
         raise ValueError("anchor radius must be greater than 0")
+    if anchor_samples < 1:
+        raise ValueError("anchor samples must be at least 1")
     app_config = read_config(config_path)
-    anchor_fix, current_fix = read_configured_gps_fixes(app_config, count=2, gps_seconds=gps_seconds)
+    fixes = read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)
+    anchor_fixes = fixes[:anchor_samples]
+    current_fix = fixes[-1]
+    anchor_fix = _average_anchor_fix(anchor_fixes)
     distance = distance_meters(anchor_fix.latitude, anchor_fix.longitude, current_fix.latitude, current_fix.longitude)
     return distance, radius_meters, anchor_fix, current_fix
+
+
+def _average_anchor_fix(fixes: list[GPSFix]) -> GPSFix:
+    if len(fixes) == 1:
+        return fixes[0]
+    latitudes = [fix.latitude for fix in fixes if fix.latitude is not None]
+    longitudes = [fix.longitude for fix in fixes if fix.longitude is not None]
+    if len(latitudes) != len(fixes) or len(longitudes) != len(fixes):
+        raise ValueError("anchor samples must include coordinates")
+    satellites = [fix.satellites for fix in fixes if fix.satellites is not None]
+    hdops = [fix.hdop for fix in fixes if fix.hdop is not None]
+    return GPSFix(
+        timestamp=fixes[-1].timestamp,
+        latitude=sum(latitudes) / len(latitudes),
+        longitude=sum(longitudes) / len(longitudes),
+        satellites=min(satellites) if satellites else None,
+        hdop=max(hdops) if hdops else None,
+    )
 
 
 def format_anchor_check(distance: float, radius_meters: float) -> str:
@@ -162,6 +186,16 @@ def _positive_float(value: str) -> float:
     return parsed
 
 
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed
+
+
 def _non_negative_float(value: str) -> float:
     try:
         parsed = float(value)
@@ -181,6 +215,7 @@ class StatusApp(tk.Tk):
         gps_seconds: float = 10.0,
         refresh_seconds: float = 60.0,
         anchor_radius_meters: Optional[float] = None,
+        anchor_samples: int = 1,
     ) -> None:
         super().__init__()
         self.title("NOAA Navionics Status")
@@ -194,6 +229,7 @@ class StatusApp(tk.Tk):
         if anchor_radius_meters is None:
             anchor_radius_meters = _configured_anchor_radius(self.config_path)
         self.anchor_radius = tk.StringVar(value=f"{anchor_radius_meters:g}")
+        self.anchor_samples = tk.StringVar(value=str(anchor_samples))
         self.queue: Queue = Queue()
         self.worker: Optional[Thread] = None
         self.after_id: Optional[str] = None
@@ -242,6 +278,9 @@ class StatusApp(tk.Tk):
         ttk.Label(buttons, text="Radius m").pack(side=tk.LEFT, padx=(16, 0))
         self.anchor_radius_entry = ttk.Entry(buttons, textvariable=self.anchor_radius, width=7)
         self.anchor_radius_entry.pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Label(buttons, text="Samples").pack(side=tk.LEFT, padx=(10, 0))
+        self.anchor_samples_entry = ttk.Entry(buttons, textvariable=self.anchor_samples, width=4)
+        self.anchor_samples_entry.pack(side=tk.LEFT, padx=(6, 0))
         self.anchor_button = ttk.Button(buttons, text="Anchor Check", command=self.anchor_check)
         self.anchor_button.pack(side=tk.LEFT, padx=(10, 0))
         ttk.Button(buttons, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
@@ -271,9 +310,18 @@ class StatusApp(tk.Tk):
         except argparse.ArgumentTypeError as exc:
             self._show_error(f"Anchor radius {exc}")
             return
+        try:
+            anchor_samples = _positive_int(self.anchor_samples.get())
+        except argparse.ArgumentTypeError as exc:
+            self._show_error(f"Anchor samples {exc}")
+            return
         self._set_busy(True)
         self.summary.set("Checking anchor distance...")
-        self.worker = Thread(target=self._anchor_worker, kwargs={"radius_meters": radius_meters}, daemon=True)
+        self.worker = Thread(
+            target=self._anchor_worker,
+            kwargs={"radius_meters": radius_meters, "anchor_samples": anchor_samples},
+            daemon=True,
+        )
         self.worker.start()
 
     def _refresh_worker(self) -> None:
@@ -292,12 +340,13 @@ class StatusApp(tk.Tk):
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
 
-    def _anchor_worker(self, *, radius_meters: float) -> None:
+    def _anchor_worker(self, *, radius_meters: float, anchor_samples: int) -> None:
         try:
             distance, radius, anchor_fix, current_fix = check_anchor_drift(
                 self.config_path,
                 gps_seconds=self.gps_seconds,
                 radius_meters=radius_meters,
+                anchor_samples=anchor_samples,
             )
             self.queue.put(("anchor", (distance, radius, anchor_fix, current_fix)))
         except Exception as exc:  # pragma: no cover - UI path
@@ -375,6 +424,7 @@ class StatusApp(tk.Tk):
         self.mob_button.configure(state=state)
         self.anchor_button.configure(state=state)
         self.anchor_radius_entry.configure(state=state)
+        self.anchor_samples_entry.configure(state=state)
 
     def _schedule_refresh(self) -> None:
         if self.after_id is not None:
@@ -416,6 +466,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=_positive_float,
         help="anchor drift radius used by the Anchor Check button",
     )
+    parser.add_argument(
+        "--anchor-samples",
+        type=_positive_int,
+        default=1,
+        help="quality GPS fixes to average for the Anchor Check button",
+    )
     return parser
 
 
@@ -428,6 +484,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         gps_seconds=args.gps_seconds,
         refresh_seconds=args.refresh_seconds,
         anchor_radius_meters=args.anchor_radius_meters,
+        anchor_samples=args.anchor_samples,
     )
     app.mainloop()
 
