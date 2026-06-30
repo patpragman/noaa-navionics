@@ -5400,6 +5400,74 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
+    def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            archive = charts / "AK_ENCs.zip"
+            archive.write_bytes(b"x")
+            manifest = charts / MANIFEST_NAME
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            manifest.write_text(
+                '{"created_at":"' + now + '",'
+                '"created_at_source":"download",'
+                '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
+                f'"download":{{"path":"{archive}","url":"file:///test.zip","bytes":1,"sha256":"abc","skipped":false}},'
+                f'"extract":{{"path":"{cell.parent}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            sample = root / "sample.nmea"
+            sample.write_text(
+                "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
+                encoding="ascii",
+            )
+            with GPXTrackLogger(charts / "tracks" / "track-20260629.gpx") as logger:
+                logger.append(
+                    GPSFix(
+                        latitude=61.2181,
+                        longitude=-149.9003,
+                        timestamp=datetime.now(timezone.utc),
+                        satellites=8,
+                        hdop=1.2,
+                    )
+                )
+            config = root / "config.ini"
+            config.write_text(
+                "[charts]\n"
+                "package = state\n"
+                "value = AK\n"
+                f"output = {charts}\n"
+                "min_free_gb = 0.1\n"
+                "\n"
+                "[gps]\n"
+                "mode = gpsd\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {charts}\n",
+                encoding="utf-8",
+            )
+            opencpn_config = root / "opencpn.conf"
+            configure_chart_directory(charts, config_path=opencpn_config)
+            original_opencpn_config_path = opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH
+            original_flatpak_opencpn_config_path = opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH
+            opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = opencpn_config
+            opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH = root / "missing-flatpak-opencpn.conf"
+            try:
+                report = build_status_report(config_path=config, gps_sample=sample)
+            finally:
+                opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = original_opencpn_config_path
+                opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH = original_flatpak_opencpn_config_path
+
+            opencpn_gpsd_check = next(check for check in report["checks"] if check["name"] == "OpenCPN GPSD")
+            self.assertFalse(opencpn_gpsd_check["ok"])
+            self.assertIn("not listed", opencpn_gpsd_check["detail"])
+            self.assertFalse(report["ok"])
+
     def test_app_summary_rejects_symlinked_source_revision(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

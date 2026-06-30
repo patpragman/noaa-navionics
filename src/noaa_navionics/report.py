@@ -18,7 +18,7 @@ import time
 
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
-from .health import CheckResult, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
+from .health import CheckResult, check_opencpn_gpsd_config, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
 from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
 from . import __version__
 
@@ -139,6 +139,8 @@ def build_status_report(
         keep_zip=app_config.keep_zip,
         track_output=app_config.track_output,
     )
+    if gps_mode == "gpsd" and gps_sample is not None:
+        checks.append(check_opencpn_gpsd_config(host=app_config.gpsd_host, port=app_config.gpsd_port))
     check_rows = [asdict(check) for check in checks]
     services = _service_summary()
     system_services = _system_service_summary()

@@ -2509,6 +2509,7 @@ grep -q 'LAUNCHER_ENV_KEYS' src/noaa_navionics/report.py
 grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/report.py
 grep -q 'OpenCPN config path is not a regular file' src/noaa_navionics/report.py
 grep -q 'OpenCPN config directory is a symlink' src/noaa_navionics/report.py
+grep -q 'check_opencpn_gpsd_config' src/noaa_navionics/report.py
 grep -q '"config_symlink_component"' src/noaa_navionics/report.py
 grep -q '"uid"' src/noaa_navionics/report.py
 grep -q '"mode"' src/noaa_navionics/report.py
@@ -2518,6 +2519,9 @@ grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/te
 grep -q 'test_opencpn_config_summary_rejects_nonregular_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_public_directory_mode' tests/test_downloader.py
+grep -q 'test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config' tests/test_downloader.py
+grep -q 'status-report --gps-sample.*still checks OpenCPN' README.md
+grep -q 'Sample-based status reports substitute only the live GPS fix read' docs/sailboat-pi.md
 grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' README.md
 grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
