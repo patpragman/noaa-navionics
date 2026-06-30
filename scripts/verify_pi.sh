@@ -2378,32 +2378,55 @@ launcher_lock_pid() {
   printf '%s\n' "$owner_pid"
 }
 
-opencpn_supervised_running() {
+supervised_opencpn_pids() {
   local launcher_pid
   local pid
   launcher_pid="$(launcher_lock_pid)" || return 1
   while IFS= read -r pid; do
     if opencpn_process_active "$pid" && opencpn_process_supervised_by_launcher "$pid" "$launcher_pid"; then
-      return 0
+      printf '%s\n' "$pid"
     fi
   done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
-  return 1
+}
+
+opencpn_supervised_running() {
+  [[ -n "$(supervised_opencpn_pids)" ]]
+}
+
+check_opencpn_process_executable_integrity() {
+  local pid
+  local executable
+  local checked=0
+  while IFS= read -r pid; do
+    checked=1
+    executable="$(readlink -f "/proc/${pid}/exe" 2>/dev/null || true)"
+    if [[ -z "$executable" ]]; then
+      printf 'launcher-supervised OpenCPN executable is unreadable for pid %s\n' "$pid" >&2
+      return 1
+    fi
+    case "$executable" in
+      /*)
+        ;;
+      *)
+        printf 'launcher-supervised OpenCPN executable path is not absolute for pid %s: %s\n' "$pid" "$executable" >&2
+        return 1
+        ;;
+    esac
+    check_root_directory_integrity "$(dirname "$executable")" "launcher-supervised OpenCPN executable directory" || return 1
+    check_root_executable_file_integrity "$executable" "launcher-supervised OpenCPN executable" || return 1
+  done < <(supervised_opencpn_pids)
+  if [[ "$checked" -eq 0 ]]; then
+    printf 'no launcher-supervised OpenCPN process found for executable integrity check\n' >&2
+    return 1
+  fi
 }
 
 check_opencpn_enc_parse_argument() {
   local pid
   local arg
-  local launcher_pid
   local saw_supervised=0
-  launcher_pid="$(launcher_lock_pid)" || {
-    printf 'chartplotter launcher lock pid is unreadable; cannot tie OpenCPN to launcher supervision\n' >&2
-    return 1
-  }
   while IFS= read -r pid; do
-    if ! opencpn_process_active "$pid" || [[ ! -r "/proc/${pid}/cmdline" ]]; then
-      continue
-    fi
-    if ! opencpn_process_supervised_by_launcher "$pid" "$launcher_pid"; then
+    if [[ ! -r "/proc/${pid}/cmdline" ]]; then
       continue
     fi
     saw_supervised=1
@@ -2412,9 +2435,9 @@ check_opencpn_enc_parse_argument() {
         return 0
       fi
     done <"/proc/${pid}/cmdline"
-  done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
+  done < <(supervised_opencpn_pids)
   if [[ "$saw_supervised" -eq 0 ]]; then
-    printf 'no active OpenCPN process is supervised by chartplotter launcher pid %s\n' "$launcher_pid" >&2
+    printf 'no active OpenCPN process is supervised by the chartplotter launcher\n' >&2
   else
     printf 'no launcher-supervised OpenCPN process was started with -parse_all_enc\n' >&2
   fi
@@ -3031,6 +3054,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   else
     check "launcher-supervised OpenCPN running" false
   fi
+  check "launcher-supervised OpenCPN executable integrity" check_opencpn_process_executable_integrity
   check "OpenCPN ENC parse argument" check_opencpn_enc_parse_argument
   check "OpenCPN stable after startup" check_opencpn_stable
   check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config" "$launcher_env"
