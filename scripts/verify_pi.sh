@@ -2421,6 +2421,75 @@ check_opencpn_process_executable_integrity() {
   fi
 }
 
+check_opencpn_process_display_environment() {
+  local launcher_pid
+  local key
+  local value
+  local launcher_display=""
+  local launcher_xauthority=""
+  local opencpn_display
+  local opencpn_xauthority
+  local pid
+  local checked=0
+  launcher_pid="$(launcher_lock_pid)" || {
+    printf 'chartplotter launcher lock pid is unreadable; cannot compare OpenCPN display environment\n' >&2
+    return 1
+  }
+  if [[ ! -r "/proc/${launcher_pid}/environ" ]]; then
+    printf 'chartplotter launcher environment is unreadable for pid: %s\n' "$launcher_pid" >&2
+    return 1
+  fi
+  while IFS='=' read -r key value; do
+    case "$key" in
+      DISPLAY)
+        launcher_display="$value"
+        ;;
+      XAUTHORITY)
+        launcher_xauthority="$value"
+        ;;
+    esac
+  done < <(tr '\0' '\n' <"/proc/${launcher_pid}/environ" 2>/dev/null || true)
+  if [[ -z "$launcher_display" ]]; then
+    printf 'chartplotter launcher has no DISPLAY environment; cannot verify OpenCPN display environment\n' >&2
+    return 1
+  fi
+  while IFS= read -r pid; do
+    checked=1
+    opencpn_display=""
+    opencpn_xauthority=""
+    if [[ ! -r "/proc/${pid}/environ" ]]; then
+      printf 'launcher-supervised OpenCPN environment is unreadable for pid: %s\n' "$pid" >&2
+      return 1
+    fi
+    while IFS='=' read -r key value; do
+      case "$key" in
+        DISPLAY)
+          opencpn_display="$value"
+          ;;
+        XAUTHORITY)
+          opencpn_xauthority="$value"
+          ;;
+        NOAA_NAVIONICS_*)
+          printf 'launcher-supervised OpenCPN inherited NOAA_NAVIONICS_* environment override %s\n' "$key" >&2
+          return 1
+          ;;
+      esac
+    done < <(tr '\0' '\n' <"/proc/${pid}/environ" 2>/dev/null || true)
+    if [[ "$opencpn_display" != "$launcher_display" ]]; then
+      printf 'launcher-supervised OpenCPN DISPLAY %s does not match launcher DISPLAY %s for pid %s\n' "${opencpn_display:-<empty>}" "$launcher_display" "$pid" >&2
+      return 1
+    fi
+    if [[ "$opencpn_xauthority" != "$launcher_xauthority" ]]; then
+      printf 'launcher-supervised OpenCPN XAUTHORITY %s does not match launcher XAUTHORITY %s for pid %s\n' "${opencpn_xauthority:-<empty>}" "${launcher_xauthority:-<empty>}" "$pid" >&2
+      return 1
+    fi
+  done < <(supervised_opencpn_pids)
+  if [[ "$checked" -eq 0 ]]; then
+    printf 'no launcher-supervised OpenCPN process found for display environment check\n' >&2
+    return 1
+  fi
+}
+
 check_opencpn_enc_parse_argument() {
   local pid
   local arg
@@ -3055,6 +3124,7 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
     check "launcher-supervised OpenCPN running" false
   fi
   check "launcher-supervised OpenCPN executable integrity" check_opencpn_process_executable_integrity
+  check "launcher-supervised OpenCPN display environment" check_opencpn_process_display_environment
   check "OpenCPN ENC parse argument" check_opencpn_enc_parse_argument
   check "OpenCPN stable after startup" check_opencpn_stable
   check "boot status report JSON ready" check_status_report_json "$status_report" 1 "$config" "$launcher_env"
