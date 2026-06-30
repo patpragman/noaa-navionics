@@ -4785,6 +4785,21 @@ class StatusReportTests(unittest.TestCase):
             finally:
                 revision.chmod(0o600)
 
+    def test_source_revision_reader_rejects_replaced_file_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            revision = root / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            revision.chmod(0o600)
+            expected_stat = revision.stat()
+            replacement = root / "replacement-source-revision"
+            replacement.write_text("unexpected\n", encoding="utf-8")
+            replacement.chmod(0o600)
+            replacement.replace(revision)
+
+            with self.assertRaisesRegex(RuntimeError, "changed before it could be read"):
+                report_module._read_source_revision_text(revision, expected_stat=expected_stat)
+
     def test_launcher_settings_summary_rejects_symlinked_environment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -10048,6 +10063,21 @@ class PiHealthTests(unittest.TestCase):
                     health_module._read_source_revision_text(revision)
             finally:
                 revision.chmod(0o600)
+
+    def test_health_source_revision_reader_rejects_replaced_revision(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            revision = root / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            revision.chmod(0o600)
+            expected_stat = revision.stat()
+            replacement = root / "replacement-source-revision"
+            replacement.write_text("unexpected\n", encoding="utf-8")
+            replacement.chmod(0o600)
+            replacement.replace(revision)
+
+            with self.assertRaisesRegex(RuntimeError, "changed before it could be read"):
+                health_module._read_source_revision_text(revision, expected_stat=expected_stat)
 
     def test_check_source_revision_rejects_unknown_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:

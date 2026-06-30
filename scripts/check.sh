@@ -2083,6 +2083,8 @@ grep -q 'source revision path is not a regular file' src/noaa_navionics/report.p
 grep -q 'source revision path .* has permissions' src/noaa_navionics/report.py
 grep -q 'def _read_source_revision_text' src/noaa_navionics/report.py
 grep -q 'def _read_source_revision_text' src/noaa_navionics/health.py
+grep -q 'source revision path changed before it could be read' src/noaa_navionics/report.py
+grep -q 'source revision path changed before it could be read' src/noaa_navionics/health.py
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/report.py
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/health.py
 grep -q 'source revision directory is a symlink' src/noaa_navionics/report.py
@@ -2091,6 +2093,10 @@ grep -q 'deployed source revision path is not a regular file' src/noaa_navionics
 grep -q 'deployed source revision path has permissions' src/noaa_navionics/health.py
 grep -q 'status report source revision path contains a symlink' scripts/verify_pi.sh
 grep -q 'test_app_summary_rejects_symlinked_source_revision_directory' tests/test_downloader.py
+grep -q 'test_source_revision_reader_rejects_replaced_file_before_parsing' tests/test_downloader.py
+grep -q 'test_health_source_revision_reader_rejects_replaced_revision' tests/test_downloader.py
+grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the opened file is still the inspected file' README.md
+grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the opened file is still the inspected file' docs/sailboat-pi.md
 grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_nonregular_source_revision' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_writable_source_revision' tests/test_downloader.py

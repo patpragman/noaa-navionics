@@ -490,6 +490,7 @@ def _app_summary() -> dict[str, object]:
             str(source_revision_symlink_component) if source_revision_symlink_component is not None else ""
         ),
     }
+    source_revision_stat: Optional[os.stat_result] = None
     if source_revision_is_symlink:
         summary["source_revision_error"] = f"source revision path is a symlink: {source_revision_path}"
         return summary
@@ -523,22 +524,25 @@ def _app_summary() -> dict[str, object]:
             )
             return summary
     try:
-        summary["source_revision"] = _source_revision(source_revision_path)
+        summary["source_revision"] = _source_revision(
+            source_revision_path,
+            expected_stat=source_revision_stat,
+        )
     except RuntimeError as exc:
         summary["source_revision_error"] = str(exc)
     return summary
 
 
-def _source_revision(path: Optional[Path] = None) -> str:
+def _source_revision(path: Optional[Path] = None, *, expected_stat: Optional[os.stat_result] = None) -> str:
     revision_path = path or _source_revision_path()
     try:
-        value = _read_source_revision_text(revision_path)
+        value = _read_source_revision_text(revision_path, expected_stat=expected_stat)
     except OSError:
         return "unknown"
     return value or "unknown"
 
 
-def _read_source_revision_text(path: Path) -> str:
+def _read_source_revision_text(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> str:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -550,6 +554,11 @@ def _read_source_revision_text(path: Path) -> str:
         stat_result = os.fstat(fd)
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"source revision path is not a regular file: {path}")
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"source revision path changed before it could be read: {path}")
         if stat_result.st_uid != os.getuid():
             raise RuntimeError(
                 f"source revision path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"

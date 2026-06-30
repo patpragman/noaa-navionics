@@ -139,6 +139,7 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
             False,
             f"deployed source revision directory is a symlink: {symlink_component}",
         )
+    revision_stat: Optional[os.stat_result] = None
     if revision_path.exists():
         if not revision_path.is_file():
             return CheckResult(
@@ -164,7 +165,10 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
                 f"deployed source revision path has permissions {mode:04o}, expected no group/other write bits: {revision_path}",
             )
     try:
-        revision = _read_source_revision_text(revision_path)
+        revision = _read_source_revision_text(
+            revision_path,
+            expected_stat=revision_stat,
+        )
     except OSError as exc:
         return CheckResult("Source Revision", False, f"cannot read deployed source revision at {revision_path}: {exc}")
     except RuntimeError as exc:
@@ -174,7 +178,7 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
     return CheckResult("Source Revision", True, revision)
 
 
-def _read_source_revision_text(path: Path) -> str:
+def _read_source_revision_text(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> str:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -186,6 +190,11 @@ def _read_source_revision_text(path: Path) -> str:
         stat_result = os.fstat(fd)
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"source revision path is not a regular file: {path}")
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"source revision path changed before it could be read: {path}")
         if stat_result.st_uid != os.getuid():
             raise RuntimeError(
                 f"source revision path is owned by uid {stat_result.st_uid}, expected {os.getuid()}: {path}"
