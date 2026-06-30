@@ -514,6 +514,12 @@ grep -q 'usage()' scripts/configure_gps_time.sh
 grep -q 'usage()' scripts/configure_desktop_autologin.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'ensure_gpsd_client_tools' scripts/install_raspberry_pi.sh
+grep -q 'path_in_trusted_system_dir()' scripts/install_raspberry_pi.sh
+grep -q 'check_root_command_integrity()' scripts/install_raspberry_pi.sh
+grep -q 'is not in a trusted system directory' scripts/install_raspberry_pi.sh
+grep -q 'is owned by uid .* expected root' scripts/install_raspberry_pi.sh
+grep -q 'directory is owned by uid .* expected root' scripts/install_raspberry_pi.sh
+grep -q 'expected no group/other write bits' scripts/install_raspberry_pi.sh
 grep -q 'raspi-utils' scripts/install_raspberry_pi.sh
 grep -q 'libraspberrypi-bin' scripts/install_raspberry_pi.sh
 grep -q 'python3 python3-venv python3-tk rsync opencpn' scripts/install_raspberry_pi.sh
@@ -525,7 +531,14 @@ grep -q -- '--no-use-pep517' scripts/install_raspberry_pi.sh
 grep -q 'opencpn gpsd chrony lightdm x11-xserver-utils' scripts/install_raspberry_pi.sh
 grep -q 'gpsd-clients' scripts/install_raspberry_pi.sh
 grep -q 'gpsd-tools' scripts/install_raspberry_pi.sh
-grep -q 'command -v cgps' scripts/install_raspberry_pi.sh
+grep -q 'check_root_command_integrity cgps "GPSD client command"' scripts/install_raspberry_pi.sh
+grep -q 'check_root_command_integrity vcgencmd "Pi power command"' scripts/install_raspberry_pi.sh
+grep -q 'trusted cgps is not available after installing GPSD client tools' scripts/install_raspberry_pi.sh
+grep -q 'trusted vcgencmd is not available after installing Raspberry Pi utilities' scripts/install_raspberry_pi.sh
+grep -q 'trusted root-owned `cgps`' README.md
+grep -q 'trusted root-owned `vcgencmd`' README.md
+grep -q 'trusted root-owned `cgps`' docs/sailboat-pi.md
+grep -q 'trusted root-owned `vcgencmd`' docs/sailboat-pi.md
 grep -q 'status --porcelain --untracked-files=all' scripts/install_raspberry_pi.sh
 grep -q 'revision="${revision}-dirty"' scripts/install_raspberry_pi.sh
 grep -q 'Direct installs run on a dirty Pi worktree' README.md
@@ -534,7 +547,7 @@ grep -q 'console_scripts' setup.py
 grep -q 'noaa-navionics=noaa_navionics.cli:main' setup.py
 grep -q 'noaa-navionics-gui=noaa_navionics.gui:main' setup.py
 ! grep -q '^build-backend' pyproject.toml
-grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
+grep -q 'trusted vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'python3-setuptools procps' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic' scripts/install_raspberry_pi.sh

@@ -560,39 +560,130 @@ apt_install() {
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
 }
 
+path_in_trusted_system_dir() {
+  case "$1" in
+    /usr/local/sbin/*|/usr/local/bin/*|/usr/sbin/*|/usr/bin/*|/sbin/*|/bin/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+check_root_command_integrity() {
+  local command_name="$1"
+  local label="$2"
+  local command_path
+  local resolved_path
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_owner_uid
+  local parent_mode_text
+  local parent_mode
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "${label} was not found on PATH" >&2
+    return 1
+  fi
+  case "$command_path" in
+    /*)
+      ;;
+    *)
+      echo "${label} path is not absolute: $command_path" >&2
+      return 1
+      ;;
+  esac
+  if ! path_in_trusted_system_dir "$command_path"; then
+    echo "${label} is not in a trusted system directory: $command_path" >&2
+    return 1
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve ${label}: $command_path" >&2
+    return 1
+  fi
+  if ! path_in_trusted_system_dir "$resolved_path"; then
+    echo "${label} resolves outside trusted system directories: $command_path -> $resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -f "$resolved_path" ]]; then
+    echo "${label} is not a regular file after resolution: $command_path -> $resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "${label} is not executable: $resolved_path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$resolved_path" 2>/dev/null)" || {
+    echo "Could not inspect ${label}: $resolved_path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "${label} is owned by uid ${owner_uid}, expected root: $resolved_path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "${label} has permissions ${mode_text}, expected no group/other write bits: $resolved_path" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$resolved_path")"
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect ${label} directory: $parent_dir" >&2
+    return 1
+  }
+  parent_owner_uid="${parent_stat%% *}"
+  parent_mode_text="${parent_stat#* }"
+  if [[ "$parent_owner_uid" != "0" ]]; then
+    echo "${label} directory is owned by uid ${parent_owner_uid}, expected root: $parent_dir" >&2
+    return 1
+  fi
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "${label} directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+}
+
 ensure_gpsd_client_tools() {
-  if command -v cgps >/dev/null 2>&1; then
+  if check_root_command_integrity cgps "GPSD client command"; then
     return 0
   fi
 
   if apt_install gpsd-clients; then
-    if command -v cgps >/dev/null 2>&1; then
+    if check_root_command_integrity cgps "GPSD client command"; then
       return 0
     fi
-    echo "gpsd-clients installed but cgps is unavailable; trying gpsd-tools." >&2
+    echo "gpsd-clients installed but trusted cgps is unavailable; trying gpsd-tools." >&2
   else
     echo "gpsd-clients install did not complete; trying gpsd-tools." >&2
   fi
 
   if apt_install gpsd-tools; then
-    if command -v cgps >/dev/null 2>&1; then
+    if check_root_command_integrity cgps "GPSD client command"; then
       return 0
     fi
   fi
 
-  echo "cgps is not available after installing GPSD client tools; GPS manual verification will fail." >&2
+  echo "trusted cgps is not available after installing GPSD client tools; GPS manual verification will fail." >&2
   return 1
 }
 
 ensure_vcgencmd() {
-  if command -v vcgencmd >/dev/null 2>&1; then
+  if check_root_command_integrity vcgencmd "Pi power command"; then
     return 0
   fi
 
   # raspi-utils is current on Raspberry Pi OS Bookworm; libraspberrypi-bin
   # covers older images that still package vcgencmd there.
   if apt_install raspi-utils; then
-    if command -v vcgencmd >/dev/null 2>&1; then
+    if check_root_command_integrity vcgencmd "Pi power command"; then
       return 0
     fi
   else
@@ -600,12 +691,12 @@ ensure_vcgencmd() {
   fi
 
   if apt_install libraspberrypi-bin; then
-    if command -v vcgencmd >/dev/null 2>&1; then
+    if check_root_command_integrity vcgencmd "Pi power command"; then
       return 0
     fi
   fi
 
-  echo "vcgencmd is not available after installing Raspberry Pi utilities; Pi power readiness checks will fail." >&2
+  echo "trusted vcgencmd is not available after installing Raspberry Pi utilities; Pi power readiness checks will fail." >&2
   return 1
 }
 
