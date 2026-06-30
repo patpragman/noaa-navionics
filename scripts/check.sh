@@ -97,6 +97,8 @@ grep -q 'chartplotter launcher lock path became unsafe; leaving it in place' scr
 grep -q 'validate_launcher_env_path' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment is missing' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment is a symlink' scripts/start_chartplotter.sh
+grep -q 'read_trusted_launcher_env' scripts/start_chartplotter.sh
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment has permissions' scripts/start_chartplotter.sh
@@ -2081,6 +2083,8 @@ grep -q 'Onboard config reads use a no-follow descriptor' README.md
 grep -q 'Config reads use a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' README.md
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' docs/sailboat-pi.md
+grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' README.md
+grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' README.md
@@ -4112,6 +4116,44 @@ if [[ "$launcher_symlink_env_code" -eq 0 ]]; then
 fi
 grep -q 'NOAA Navionics launcher environment is a symlink' "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_symlink_env_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_swapped_env_home="$tmpdir/launcher-swapped-env-home"
+launcher_swapped_env_target="$tmpdir/launcher-swapped-env-target"
+mkdir -p "$launcher_swapped_env_home/.local/bin" "$launcher_swapped_env_home/.cache/noaa-navionics" "$launcher_swapped_env_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$launcher_swapped_env_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_swapped_env_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_swapped_env_target"
+cat >"$tmpdir/stat" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"/.config/noaa-navionics/launcher.env"* ]]; then
+  /usr/bin/stat "$@"
+  code=$?
+  if [[ "$code" -eq 0 ]]; then
+    rm -f "$HOME/.config/noaa-navionics/launcher.env"
+    ln -s "$HOME/.config/noaa-navionics/swapped-launcher.env" "$HOME/.config/noaa-navionics/launcher.env"
+  fi
+  exit "$code"
+fi
+exec /usr/bin/stat "$@"
+EOF
+ln -s "$launcher_swapped_env_target" "$launcher_swapped_env_home/.config/noaa-navionics/swapped-launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_swapped_env_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nprintf "opencpn launched\\n" >"$HOME/.cache/noaa-navionics/opencpn-started"\nexit 0\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_swapped_env_home/.local/bin/noaa-navionics" "$tmpdir/stat" "$tmpdir/opencpn"
+set +e
+HOME="$launcher_swapped_env_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_swapped_env_code=$?
+set -e
+if [[ "$launcher_swapped_env_code" -eq 0 ]]; then
+  cat "$launcher_swapped_env_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject launcher environment replaced with a symlink after validation" >&2
+  exit 1
+fi
+test -L "$launcher_swapped_env_home/.config/noaa-navionics/launcher.env"
+test ! -e "$launcher_swapped_env_home/.cache/noaa-navionics/opencpn-started"
+grep -q 'NOAA Navionics launcher environment is a symlink' "$launcher_swapped_env_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_swapped_env_home/.cache/noaa-navionics/chartplotter.log"
+rm -f "$tmpdir/stat"
 
 launcher_symlink_env_dir_home="$tmpdir/launcher-symlink-env-dir-home"
 launcher_symlink_env_dir_target="$tmpdir/launcher-symlink-env-dir-target"

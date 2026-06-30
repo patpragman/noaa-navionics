@@ -167,14 +167,56 @@ prepare_private_log_file() {
   sync_paths "$log_file" || true
 }
 
+read_trusted_launcher_env() {
+  python3 - "$launcher_env" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    if path.is_symlink():
+        raise SystemExit(f"NOAA Navionics launcher environment is a symlink: {path}")
+    raise SystemExit(f"Could not open NOAA Navionics launcher environment: {path}: {exc}") from exc
+
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"NOAA Navionics launcher environment is not a regular file: {path}")
+    if opened.st_uid != os.getuid():
+        raise SystemExit(
+            f"NOAA Navionics launcher environment is owned by uid {opened.st_uid}, expected {os.getuid()}: {path}"
+        )
+    mode = opened.st_mode & 0o777
+    if mode != 0o600:
+        raise SystemExit(
+            f"NOAA Navionics launcher environment has permissions {mode:04o}, expected private 0600: {path}"
+        )
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        print(handle.read(), end="")
+finally:
+    if fd >= 0:
+        os.close(fd)
+PY
+}
+
 load_launcher_settings() {
   local key
+  local launcher_env_text
   local raw_line
   local trimmed
   local value
   local start_on_failed_text
   local seen_gps_seconds=0
   if [[ -r "$launcher_env" ]]; then
+    if ! launcher_env_text="$(read_trusted_launcher_env)"; then
+      return 1
+    fi
     while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
       trimmed="${raw_line#"${raw_line%%[![:space:]]*}"}"
       trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
@@ -219,7 +261,7 @@ load_launcher_settings() {
           return 1
           ;;
       esac
-    done <"$launcher_env"
+    done <<<"$launcher_env_text"
   fi
   start_on_failed_text="${start_on_failed_text:-no}"
   if [[ "$seen_gps_seconds" -ne 1 ]]; then
