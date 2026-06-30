@@ -588,9 +588,21 @@ if cache_dir.parent.is_symlink():
 if not cache_dir.is_dir():
     raise SystemExit(f"status report cache directory is not a directory: {cache_dir}")
 try:
+    cache_parent_stat = cache_dir.parent.stat()
     cache_stat = cache_dir.stat()
 except OSError as exc:
-    raise SystemExit(f"could not inspect status report cache directory {cache_dir}: {exc}") from exc
+    raise SystemExit(f"could not inspect status report cache path {cache_dir}: {exc}") from exc
+if cache_parent_stat.st_uid != os.getuid():
+    raise SystemExit(
+        f"status report cache parent directory {cache_dir.parent} is owned by uid "
+        f"{cache_parent_stat.st_uid}, expected {os.getuid()}"
+    )
+cache_parent_mode = cache_parent_stat.st_mode & 0o777
+if cache_parent_mode != 0o700:
+    raise SystemExit(
+        f"status report cache parent directory {cache_dir.parent} has permissions "
+        f"{cache_parent_mode:04o}, expected private 0700"
+    )
 if cache_stat.st_uid != os.getuid():
     raise SystemExit(
         f"status report cache directory {cache_dir} is owned by uid {cache_stat.st_uid}, expected {os.getuid()}"

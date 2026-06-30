@@ -1146,6 +1146,8 @@ grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
 grep -q 'status report cache directory' scripts/verify_pi.sh
 grep -q 'status report cache parent directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report cache parent directory .* is owned by uid' scripts/verify_pi.sh
+grep -q 'status report cache parent directory .* has permissions' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'test_write_status_report_tightens_public_home_cache_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
@@ -1436,8 +1438,8 @@ grep -q 'status-reported user unit, OpenCPN config, desktop autostart, and Light
 grep -q "status artifact's user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode fields" docs/sailboat-pi.md
 grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware' README.md
 grep -q 'rejects non-root OpenCPN executables or executable directories on Raspberry Pi hardware' docs/sailboat-pi.md
-grep -q 'rejects symlinked cache parents' README.md
-grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
+grep -q 'rejects symlinked, misowned, or public cache parents' README.md
+grep -q 'rejects symlinked, misowned, or public cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
 grep -q '"is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_path_is_symlink"' src/noaa_navionics/report.py
