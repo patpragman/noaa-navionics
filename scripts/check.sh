@@ -341,7 +341,12 @@ grep -q 'Remote deploy command ${command_name} resolves outside trusted system d
 grep -q 'Remote deploy command ${command_name} ${item_kind} is owned by uid' scripts/deploy_to_pi.sh
 grep -q 'Remote deploy command ${command_name} ${item_kind} has permissions' scripts/deploy_to_pi.sh
 grep -q 'readlink -f -- "$command_path"' scripts/deploy_to_pi.sh
+grep -q 'remote_python_cmd="$(require_remote_command_available python3)"' scripts/deploy_to_pi.sh
+grep -q 'remote_python_cmd_quoted="$(printf '\''%q'\'' "$remote_python_cmd")"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=' scripts/deploy_to_pi.sh
+grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} ${remote_python_cmd_quoted} -' scripts/deploy_to_pi.sh
+grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} ${remote_python_cmd_quoted} -' scripts/deploy_to_pi.sh
+! grep -q '${remote_system_path} && export PATH && .* python3 -' scripts/deploy_to_pi.sh
 grep -q 'remote_rsync_cmd="$(remote_command_path rsync)"' scripts/deploy_to_pi.sh
 grep -q 'local_rsync_cmd="$(local_command_path rsync)"' scripts/deploy_to_pi.sh
 grep -q 'deploy_with_rsync "$local_rsync_cmd" "$remote_rsync_cmd"' scripts/deploy_to_pi.sh
@@ -378,6 +383,8 @@ grep -q 'validates remote deploy command paths, ownership, permissions, and pare
 grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' docs/sailboat-pi.md
 grep -q 'uses the validated absolute local and remote `rsync` or `tar` paths for the actual copy command' README.md
 grep -q 'uses the validated absolute local and remote `rsync` or `tar` paths for the actual copy command' docs/sailboat-pi.md
+grep -q 'uses the validated absolute remote `python3` path for deployment staging and source-revision helpers' README.md
+grep -q 'uses the validated absolute remote `python3` path for deployment staging and source-revision helpers' docs/sailboat-pi.md
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment path under symlink' scripts/deploy_to_pi.sh

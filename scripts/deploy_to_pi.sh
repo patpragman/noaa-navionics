@@ -36,6 +36,7 @@ skip_services=0
 skip_autologin=0
 ssh_cmd=""
 git_cmd=""
+remote_python_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -552,16 +553,18 @@ EOF
 fi
 
 ssh_cmd="$(require_local_command ssh)"
-require_remote_command_available python3 >/dev/null
+remote_python_cmd="$(require_remote_command_available python3)"
 
 write_remote_source_revision() {
   local remote_dir_value="$1"
   local revision_value="$2"
   local remote_dir_env
   local revision_env
+  local remote_python_cmd_quoted
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   revision_env="$(printf '%q' "$revision_value")"
-  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
+  remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} ${remote_python_cmd_quoted} - <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -681,10 +684,12 @@ prepare_remote_deploy_staging() {
   local remote_dir_env
   local staging_dir_env
   local previous_dir_env
+  local remote_python_cmd_quoted
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   staging_dir_env="$(printf '%q' "$staging_dir_value")"
   previous_dir_env="$(printf '%q' "$previous_dir_value")"
-  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+  remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} ${remote_python_cmd_quoted} - <<'PY'
 from pathlib import Path
 import os
 import shutil
@@ -791,10 +796,12 @@ promote_remote_deploy_staging() {
   local remote_dir_env
   local staging_dir_env
   local previous_dir_env
+  local remote_python_cmd_quoted
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   staging_dir_env="$(printf '%q' "$staging_dir_value")"
   previous_dir_env="$(printf '%q' "$previous_dir_value")"
-  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+  remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} ${remote_python_cmd_quoted} - <<'PY'
 from pathlib import Path
 import os
 import shutil
