@@ -251,6 +251,16 @@ check_remote_owner_and_mode() {
   esac
 }
 
+check_remote_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_remote_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
 require_remote_command() {
   local command_name="$1"
   local command_path
@@ -276,6 +286,7 @@ require_remote_command() {
     echo "Remote ${command_name} command is not executable after resolution: $resolved_path" >&2
     exit 1
   fi
+  check_remote_directory_chain "$resolved_path"
   check_remote_owner_and_mode "$command_name" "$resolved_path"
   printf '%s\n' "$resolved_path"
 }

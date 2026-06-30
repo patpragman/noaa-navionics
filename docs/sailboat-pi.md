@@ -184,7 +184,7 @@ Shut the Pi down cleanly before cutting boat power:
 scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm
 ```
 
-The shutdown helper validates the SSH target, trusted remote `sync`, `sudo`, and `systemctl` command paths, flushes filesystem buffers, and requests `systemctl poweroff` through noninteractive sudo. Use `--dry-run` to prove that path without powering off.
+The shutdown helper validates the SSH target plus trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, flushes filesystem buffers, and requests `systemctl poweroff` through noninteractive sudo. Use `--dry-run` to prove that path without powering off.
 
 Manual install:
 
