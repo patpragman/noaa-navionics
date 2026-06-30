@@ -119,7 +119,7 @@ def write_current_position_mark(
     gps_seconds: float = 10.0,
     mob: bool = False,
     max_fix_age_seconds: float = 300.0,
-    future_tolerance_seconds: float = 30.0,
+    future_tolerance_seconds: float = 0.0,
 ) -> tuple[Path, GPSFix]:
     app_config = read_config(config_path)
     fix = read_configured_gps_fix(app_config, gps_seconds=gps_seconds)
@@ -177,7 +177,7 @@ def check_anchor_drift(
     radius_meters: float = 50.0,
     anchor_samples: int = 1,
     max_fix_age_seconds: float = 300.0,
-    future_tolerance_seconds: float = 30.0,
+    future_tolerance_seconds: float = 0.0,
 ) -> tuple[float, float, GPSFix, GPSFix]:
     if not math.isfinite(radius_meters) or radius_meters <= 0:
         raise ValueError("anchor radius must be greater than 0")

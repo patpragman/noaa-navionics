@@ -2693,6 +2693,38 @@ class GuiTests(unittest.TestCase):
 
             self.assertFalse((track_output / "tracks").exists())
 
+    def test_status_gui_position_mark_rejects_future_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_output = root / "tracks-root"
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc) + timedelta(seconds=1),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fix
+
+            try:
+                status_gui_module.read_configured_gps_fix = lambda app_config, **kwargs: fix
+                with self.assertRaisesRegex(ValueError, "future"):
+                    status_gui_module.write_current_position_mark(config_path, mob=True)
+            finally:
+                status_gui_module.read_configured_gps_fix = original
+
+            self.assertFalse((track_output / "tracks").exists())
+
     def test_status_gui_anchor_check_uses_configured_gps_fixes(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -2703,15 +2735,16 @@ class GuiTests(unittest.TestCase):
                 "device = /dev/serial/by-id/mock-gps\n",
                 encoding="utf-8",
             )
+            now = datetime.now(timezone.utc) - timedelta(seconds=2)
             anchor_fix = GPSFix(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=now,
                 latitude=61.0,
                 longitude=-149.0,
                 satellites=9,
                 hdop=0.9,
             )
             current_fix = GPSFix(
-                timestamp=datetime.now(timezone.utc) + timedelta(seconds=1),
+                timestamp=now + timedelta(seconds=1),
                 latitude=61.0,
                 longitude=-148.99,
                 satellites=9,
@@ -2779,6 +2812,41 @@ class GuiTests(unittest.TestCase):
             finally:
                 status_gui_module.read_configured_gps_fixes = original
 
+    def test_status_gui_anchor_check_rejects_future_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            anchor_fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.0,
+                longitude=-149.0,
+                satellites=9,
+                hdop=0.9,
+            )
+            future_current_fix = GPSFix(
+                timestamp=datetime.now(timezone.utc) + timedelta(seconds=1),
+                latitude=61.0,
+                longitude=-148.99,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fixes
+
+            try:
+                status_gui_module.read_configured_gps_fixes = (
+                    lambda app_config, **kwargs: [anchor_fix, future_current_fix]
+                )
+                with self.assertRaisesRegex(ValueError, "anchor check requires fresh GPS fix 2.*future"):
+                    status_gui_module.check_anchor_drift(config_path)
+            finally:
+                status_gui_module.read_configured_gps_fixes = original
+
     def test_status_gui_anchor_check_averages_anchor_samples(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -2789,7 +2857,7 @@ class GuiTests(unittest.TestCase):
                 "device = /dev/serial/by-id/mock-gps\n",
                 encoding="utf-8",
             )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc) - timedelta(seconds=3)
             fixes = [
                 GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.8),
                 GPSFix(
