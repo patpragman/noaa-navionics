@@ -2800,6 +2800,7 @@ grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
 grep -q 'remote_reboot_command' scripts/dock_test_pi.sh
 grep -q 'remote_sudo_command' scripts/dock_test_pi.sh
+grep -q 'remote_python_command' scripts/dock_test_pi.sh
 grep -q 'validate_remote_root_command_trust' scripts/dock_test_pi.sh
 grep -q 'validate_remote_reboot_command_trust' scripts/dock_test_pi.sh
 grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/dock_test_pi.sh
@@ -2808,12 +2809,14 @@ grep -q 'Remote ${command_label} command ${item_kind} has permissions' scripts/d
 grep -Fq 'readlink -f -- "$command_path"' scripts/dock_test_pi.sh
 grep -q 'Remote ${command_label} command is not executable after resolution' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && true' scripts/dock_test_pi.sh
-grep -q '${remote_system_path} && export PATH && python3 -' scripts/dock_test_pi.sh
+grep -Fq '${remote_system_path} && export PATH && '"'"'$remote_python_cmd'"'"' -' scripts/dock_test_pi.sh
+! grep -q '${remote_system_path} && export PATH && python3 -' scripts/dock_test_pi.sh
 grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/dock_test_pi.sh
 grep -q 'remote boot ID is invalid; expected Linux boot_id value' scripts/dock_test_pi.sh
 ! grep -q '${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v reboot' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v sudo' scripts/dock_test_pi.sh
+grep -q '${remote_system_path} && export PATH && command -v python3' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && '"'"'$remote_sudo_cmd'"'"' -n -l' scripts/dock_test_pi.sh
 grep -Fq '${remote_system_path} && export PATH && '"'"'$remote_sudo_cmd'"'"' -n '"'"'$remote_reboot_cmd'"'" scripts/dock_test_pi.sh
 grep -q -- "-n -l '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
@@ -2842,6 +2845,8 @@ grep -q 'preflights noninteractive sudo reboot access before deploying or provis
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
 grep -q 'validates the remote absolute `reboot` and `sudo` command paths' README.md
 grep -q 'validates the remote absolute `reboot` and `sudo` command paths' docs/sailboat-pi.md
+grep -q 'validates the remote absolute `python3` command path before reading boot IDs' README.md
+grep -q 'validates the remote absolute `python3` command path before reading boot IDs' docs/sailboat-pi.md
 grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' README.md
 grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' docs/sailboat-pi.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' README.md
@@ -3727,6 +3732,10 @@ if [[ "$args" == *"command -v sudo"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_SUDO_PATH:-/usr/bin/sudo}"
   exit 0
 fi
+if [[ "$args" == *"command -v python3"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
+  exit 0
+fi
 if [[ "$args" == *"sh -s -- /usr/sbin/reboot reboot"* ]]; then
   if [[ -n "${NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR:-}" ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR" >&2
@@ -3743,6 +3752,19 @@ if [[ "$args" == *"sh -s -- /usr/bin/sudo sudo"* ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_SUDO_TRUST_ERROR" >&2
     exit 1
   fi
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- /usr/bin/python3 python3"* ]]; then
+  if [[ -n "${NOAA_NAVIONICS_FAKE_PYTHON_TRUST_ERROR:-}" ]]; then
+    printf '%s\n' "$NOAA_NAVIONICS_FAKE_PYTHON_TRUST_ERROR" >&2
+    exit 1
+  fi
+  exit 0
+fi
+if [[ "$args" == *"-n -l"* ]]; then
+  exit 0
+fi
+if [[ "$args" == *"NOAA_NAVIONICS_EXPECTED_REVISION="* ]]; then
   exit 0
 fi
 echo "unexpected fake ssh invocation: $args" >&2
@@ -3824,6 +3846,22 @@ if [[ "$dock_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Remote sudo command file is owned by uid 1000, expected 0: /usr/bin/sudo' "$dock_output"
+
+set +e
+NOAA_NAVIONICS_FAKE_REBOOT_PATH=/usr/sbin/reboot \
+NOAA_NAVIONICS_FAKE_SUDO_PATH=/usr/bin/sudo \
+NOAA_NAVIONICS_FAKE_PYTHON_PATH=/home/pi/bin/python3 \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  PATH="$dock_fake_ssh_bin:$PATH" \
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --allow-dirty --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 1 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject user-writable-looking python3 commands with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote python3 command is not in a trusted system directory: /home/pi/bin/python3' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --timeout nope >"$dock_output" 2>&1

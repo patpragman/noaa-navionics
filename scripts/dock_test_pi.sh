@@ -49,6 +49,7 @@ provision_args=()
 verify_args=()
 remote_reboot_cmd=""
 remote_sudo_cmd=""
+remote_python_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -415,7 +416,10 @@ ssh_available() {
 }
 
 remote_boot_id() {
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && python3 -" <<'REMOTE_BOOT_ID'
+  if [[ -z "$remote_python_cmd" ]]; then
+    remote_python_cmd="$(remote_python_command)"
+  fi
+  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_python_cmd' -" <<'REMOTE_BOOT_ID'
 from pathlib import Path
 import re
 
@@ -558,6 +562,23 @@ remote_sudo_command() {
     return 1
   fi
   printf '%s\n' "$sudo_cmd"
+}
+
+remote_python_command() {
+  local python_cmd
+
+  if ! python_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v python3" 2>/dev/null)" || [[ -z "$python_cmd" ]]; then
+    echo "Could not find the remote python3 command on $target." >&2
+    return 1
+  fi
+  if [[ "$python_cmd" != /* || "$python_cmd" =~ [[:space:]\"\'] ]]; then
+    echo "Remote python3 command path is unsafe: $python_cmd" >&2
+    return 1
+  fi
+  if ! validate_remote_root_command_trust python3 "$python_cmd"; then
+    return 1
+  fi
+  printf '%s\n' "$python_cmd"
 }
 
 check_remote_noninteractive_reboot_available() {
