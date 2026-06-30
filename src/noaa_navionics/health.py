@@ -1061,18 +1061,19 @@ def _removable_storage_root(path: Path) -> Optional[Path]:
 
 
 def check_pi_throttling() -> CheckResult:
-    vcgencmd = shutil.which("vcgencmd")
-    if vcgencmd is None:
+    vcgencmd, error = _trusted_system_command("vcgencmd", "Pi power command")
+    if error:
         if _is_raspberry_pi():
             return CheckResult(
                 "Pi Power",
                 False,
-                "vcgencmd not found on Raspberry Pi; install the Raspberry Pi firmware utilities",
+                f"{error}; install the Raspberry Pi firmware utilities",
             )
-        return CheckResult("Pi Power", True, "vcgencmd not found; skipping Raspberry Pi throttling check")
+        return CheckResult("Pi Power", True, f"{error}; skipping Raspberry Pi throttling check")
+    assert vcgencmd is not None
     try:
         completed = subprocess.run(
-            [vcgencmd, "get_throttled"],
+            [str(vcgencmd), "get_throttled"],
             check=False,
             text=True,
             stdout=subprocess.PIPE,
@@ -1573,12 +1574,12 @@ def _read_sysfs_pi_temperature(path: Path) -> Optional[float]:
 
 
 def _read_vcgencmd_temperature() -> Optional[float]:
-    vcgencmd = shutil.which("vcgencmd")
-    if vcgencmd is None:
+    vcgencmd, error = _trusted_system_command("vcgencmd", "Pi power command")
+    if error:
         return None
     try:
         completed = subprocess.run(
-            [vcgencmd, "measure_temp"],
+            [str(vcgencmd), "measure_temp"],
             check=False,
             text=True,
             stdout=subprocess.PIPE,

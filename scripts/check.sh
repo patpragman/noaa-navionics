@@ -991,6 +991,8 @@ grep -q '"Chrony Config"' scripts/verify_pi.sh
 grep -q 'temperature sensor unavailable on Raspberry Pi' src/noaa_navionics/health.py
 grep -q 'temperature sensor returned a non-finite value' src/noaa_navionics/health.py
 grep -q 'throttling reported since boot' src/noaa_navionics/health.py
+grep -q '_trusted_system_command("vcgencmd", "Pi power command")' src/noaa_navionics/health.py
+grep -q 'test_check_pi_throttling_rejects_user_owned_vcgencmd_on_pi' tests/test_downloader.py
 grep -q 're.fullmatch(r"throttled=' src/noaa_navionics/health.py
 grep -Fq '[[ ! "$output" =~ ^throttled=(0x[[:xdigit:]]+|[0-9]+)$ ]]' scripts/verify_pi.sh
 ! grep -q 'healthy now; historical events' src/noaa_navionics/health.py

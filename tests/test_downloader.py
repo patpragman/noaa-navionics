@@ -11052,6 +11052,26 @@ class PiHealthTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("vcgencmd", result.detail)
 
+    def test_check_pi_throttling_rejects_user_owned_vcgencmd_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "vcgencmd"
+            fake.write_text("#!/bin/sh\necho throttled=0x0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_pi_throttling()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("Pi power command directory is not a trusted system directory", result.detail)
+
     def test_check_pi_temperature_reports_normal_temperature(self):
         original_reader = health_module._read_pi_temperature
         try:
