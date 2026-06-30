@@ -481,6 +481,8 @@ PY
 grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock is missing while OpenCPN is expected to be supervised' scripts/verify_pi.sh
+grep -q 'chartplotter launcher cache parent directory is owned by uid' scripts/verify_pi.sh
+grep -q 'chartplotter launcher cache parent directory has permissions' scripts/verify_pi.sh
 grep -q 'chartplotter launcher cache directory is owned by uid' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock directory is owned by uid' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock is not a directory' scripts/verify_pi.sh
@@ -1153,6 +1155,8 @@ grep -q 'test_write_status_report_tightens_public_home_cache_parent' tests/test_
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
+grep -q 'launcher log cache parent directory is owned by uid' scripts/verify_pi.sh
+grep -q 'launcher log cache parent directory has permissions' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock pid file has permissions' scripts/verify_pi.sh
 grep -q 'def _fsync_directory' src/noaa_navionics/cli.py
 grep -q '_fsync_directory(tracks_dir)' src/noaa_navionics/cli.py

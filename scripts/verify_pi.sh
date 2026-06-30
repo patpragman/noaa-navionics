@@ -2172,11 +2172,23 @@ if not path.exists():
 if not path.is_file():
     raise SystemExit(f"launcher log is not a regular file: {path}")
 try:
+    cache_parent_stat = cache_dir.parent.stat()
     cache_stat = cache_dir.stat()
     log_stat = path.stat()
 except OSError as exc:
     raise SystemExit(f"could not inspect launcher log path {path}: {exc}") from exc
 expected_uid = os.getuid()
+if cache_parent_stat.st_uid != expected_uid:
+    raise SystemExit(
+        f"launcher log cache parent directory is owned by uid {cache_parent_stat.st_uid}, "
+        f"expected {expected_uid}: {cache_dir.parent}"
+    )
+cache_parent_mode = cache_parent_stat.st_mode & 0o777
+if cache_parent_mode != 0o700:
+    raise SystemExit(
+        f"launcher log cache parent directory has permissions {cache_parent_mode:04o}, "
+        f"expected private 0700: {cache_dir.parent}"
+    )
 if cache_stat.st_uid != expected_uid:
     raise SystemExit(
         f"launcher log cache directory is owned by uid {cache_stat.st_uid}, expected {expected_uid}: {cache_dir}"
@@ -2287,9 +2299,13 @@ check_opencpn_stable() {
 }
 
 check_launcher_lock_live() {
+  local cache_parent
   local cache_dir
   local expected_uid
+  local cache_parent_stat_output
   local stat_output
+  local cache_parent_owner_uid
+  local cache_parent_mode
   local owner_uid
   local cache_mode
   local lock_mode
@@ -2302,9 +2318,21 @@ check_launcher_lock_live() {
   local key
   local value
   cache_dir="$(dirname "$launcher_lock")"
+  cache_parent="$(dirname "$cache_dir")"
   expected_uid="$(id -u)"
-  if [[ -L "$cache_dir" || -L "$launcher_lock" || -L "${launcher_lock}/pid" || -L "${launcher_lock}/boot_id" ]]; then
+  if [[ -L "$cache_parent" || -L "$cache_dir" || -L "$launcher_lock" || -L "${launcher_lock}/pid" || -L "${launcher_lock}/boot_id" ]]; then
     printf 'chartplotter launcher lock path contains a symlink: %s\n' "$launcher_lock" >&2
+    return 1
+  fi
+  cache_parent_stat_output="$(stat -c '%u %a' "$cache_parent" 2>/dev/null || true)"
+  cache_parent_owner_uid="${cache_parent_stat_output%% *}"
+  cache_parent_mode="${cache_parent_stat_output#* }"
+  if [[ -z "$cache_parent_stat_output" || "$cache_parent_owner_uid" != "$expected_uid" ]]; then
+    printf 'chartplotter launcher cache parent directory is owned by uid %s, expected %s: %s\n' "${cache_parent_owner_uid:-<missing>}" "$expected_uid" "$cache_parent" >&2
+    return 1
+  fi
+  if [[ "$cache_parent_mode" != "700" ]]; then
+    printf 'chartplotter launcher cache parent directory has permissions %s, expected 700: %s\n' "${cache_parent_mode:-<missing>}" "$cache_parent" >&2
     return 1
   fi
   stat_output="$(stat -c '%u %a' "$cache_dir" 2>/dev/null || true)"
