@@ -1031,8 +1031,16 @@ grep -q 'chart download path .* is owned by uid' src/noaa_navionics/downloader.p
 grep -q 'chart download path .* has permissions' src/noaa_navionics/downloader.py
 grep -q 'test_existing_zip_nonregular_path_fails_before_reading_cache' tests/test_downloader.py
 grep -q 'test_existing_zip_writable_file_fails_before_reading_cache' tests/test_downloader.py
+grep -q 'previous chart manifest path is a symlink' src/noaa_navionics/downloader.py
+grep -q 'previous chart manifest path is not a regular file' src/noaa_navionics/downloader.py
+grep -q 'previous chart manifest path .* is owned by uid' src/noaa_navionics/downloader.py
+grep -q 'previous chart manifest path .* has permissions' src/noaa_navionics/downloader.py
+grep -q 'test_existing_zip_symlinked_previous_manifest_fails_before_extracting' tests/test_downloader.py
+grep -q 'test_existing_zip_writable_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'unsafe ownership or permissions' README.md
 grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
+grep -q 'trusted previous manifest' README.md
+grep -q 'trusted previous manifest' docs/sailboat-pi.md
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py

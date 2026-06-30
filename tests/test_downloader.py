@@ -1963,6 +1963,44 @@ class ManifestTests(unittest.TestCase):
 
             self.assertEqual(read_manifest(output)["created_at_source"], "unverified-cache")
 
+    def test_existing_zip_symlinked_previous_manifest_fails_before_extracting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=False, keep_zip=True, force=True)
+            real_manifest = root / "real-manifest.json"
+            real_manifest.write_text((output / MANIFEST_NAME).read_text(encoding="utf-8"), encoding="utf-8")
+            (output / MANIFEST_NAME).unlink()
+            try:
+                (output / MANIFEST_NAME).symlink_to(real_manifest)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "previous chart manifest path is a symlink"):
+                download_package(package, output, extract=True)
+
+            self.assertFalse((output / "AK_ENCs").exists())
+
+    def test_existing_zip_writable_previous_manifest_fails_before_extracting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=False, keep_zip=True, force=True)
+            (output / MANIFEST_NAME).chmod(0o622)
+
+            with self.assertRaisesRegex(RuntimeError, "previous chart manifest path .* has permissions 0622"):
+                download_package(package, output, extract=True)
+
+            self.assertFalse((output / "AK_ENCs").exists())
+
     def test_existing_zip_preserves_previous_manifest_timestamp(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

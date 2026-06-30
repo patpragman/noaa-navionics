@@ -793,8 +793,27 @@ def _matching_previous_manifest(
     digest: str,
 ) -> Optional[dict[str, object]]:
     manifest_path = output_path / MANIFEST_NAME
+    if manifest_path.is_symlink():
+        raise RuntimeError(f"previous chart manifest path is a symlink: {manifest_path}")
     if not manifest_path.exists():
         return None
+    if not manifest_path.is_file():
+        raise RuntimeError(f"previous chart manifest path is not a regular file: {manifest_path}")
+    try:
+        manifest_stat = manifest_path.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect previous chart manifest path {manifest_path}: {exc}") from exc
+    if manifest_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"previous chart manifest path {manifest_path} is owned by uid {manifest_stat.st_uid}, "
+            f"expected {os.getuid()}"
+        )
+    manifest_mode = manifest_stat.st_mode & 0o777
+    if manifest_mode & 0o022:
+        raise RuntimeError(
+            f"previous chart manifest path {manifest_path} has permissions {manifest_mode:04o}, "
+            "expected no group/other write bits"
+        )
     try:
         manifest = read_manifest(output_path)
     except Exception:
