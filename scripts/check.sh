@@ -1247,9 +1247,14 @@ grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/te
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' README.md
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
+grep -q 'launcher environment is not a regular file' src/noaa_navionics/report.py
+grep -q 'launcher environment is owned by uid' src/noaa_navionics/report.py
 grep -q 'malformed launcher environment line' src/noaa_navionics/report.py
 grep -q 'unknown launcher environment key' src/noaa_navionics/report.py
 grep -q 'launcher environment has permissions.*expected private 0600' src/noaa_navionics/report.py
+grep -q 'test_launcher_settings_summary_rejects_nonregular_environment' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_misowned_environment' tests/test_downloader.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
 grep -q '"path_symlink_component"' src/noaa_navionics/report.py
@@ -1384,7 +1389,7 @@ grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_dow
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'manifest, retained-download, or extract path components' README.md
 grep -q 'manifest, retained-download, or extract path components' docs/sailboat-pi.md
-grep -q 'launcher environment path components' README.md
+grep -q 'readiness report fails if the persisted launcher environment is not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md

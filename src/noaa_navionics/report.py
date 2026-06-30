@@ -908,7 +908,7 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
     symlink_component = _first_symlink_ancestor(launcher_env.parent)
     summary: dict[str, object] = {
         "path": str(launcher_env),
-        "exists": launcher_env.is_file(),
+        "exists": launcher_env.exists(),
         "is_symlink": launcher_env.is_symlink(),
         "directory_is_symlink": launcher_env.parent.is_symlink(),
         "launcher_settings_symlink_component": str(symlink_component) if symlink_component is not None else "",
@@ -921,8 +921,13 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
         return summary
     if not launcher_env.exists():
         return summary
+    if not launcher_env.is_file():
+        summary["error"] = f"launcher environment is not a regular file: {launcher_env}"
+        return summary
     try:
-        summary["mode"] = f"{launcher_env.stat().st_mode & 0o777:04o}"
+        stat_result = launcher_env.stat()
+        summary["uid"] = stat_result.st_uid
+        summary["mode"] = f"{stat_result.st_mode & 0o777:04o}"
     except OSError as exc:
         summary["error"] = str(exc)
         return summary
@@ -1305,6 +1310,18 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     error = str(summary.get("error", ""))
     if error:
         return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")
+    uid = summary.get("uid")
+    if uid is not None:
+        try:
+            parsed_uid = int(uid)
+        except (TypeError, ValueError):
+            return CheckResult("Launcher Settings", False, f"launcher environment owner was not parsed: {path}")
+        if parsed_uid != os.getuid():
+            return CheckResult(
+                "Launcher Settings",
+                False,
+                f"launcher environment is owned by uid {parsed_uid}, expected {os.getuid()}: {path}",
+            )
     mode = str(summary.get("mode", "")).strip()
     if mode and mode != "0600":
         return CheckResult(

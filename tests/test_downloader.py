@@ -3589,6 +3589,32 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "60")
             self.assertEqual(summary["malformed_lines"], ["3: not-a-setting"])
 
+    def test_launcher_settings_summary_rejects_nonregular_environment(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            launcher_env = Path(tmpdir) / "launcher.env"
+            launcher_env.mkdir()
+
+            summary = _launcher_settings_summary(launcher_env)
+            check = _launcher_settings_check(summary)
+
+            self.assertEqual(summary["path"], str(launcher_env))
+            self.assertEqual(summary["exists"], True)
+            self.assertIn("not a regular file", summary["error"])
+            self.assertFalse(check.ok)
+            self.assertIn("not a regular file", check.detail)
+
+    def test_launcher_settings_summary_records_owner_and_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            launcher_env = Path(tmpdir) / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=60\n", encoding="ascii")
+            launcher_env.chmod(0o600)
+
+            summary = _launcher_settings_summary(launcher_env)
+
+            self.assertEqual(summary["uid"], os.getuid())
+            self.assertEqual(summary["mode"], "0600")
+            self.assertEqual(summary["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "60")
+
     def test_launcher_settings_check_fails_symlinked_environment_ancestor(self):
         check = _launcher_settings_check(
             {
@@ -3603,6 +3629,21 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(check.ok)
         self.assertIn("launcher environment directory is a symlink: /home/pi", check.detail)
+
+    def test_launcher_settings_check_fails_misowned_environment(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "uid": os.getuid() + 1,
+                "mode": "0600",
+                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("owned by uid", check.detail)
 
     def test_launcher_settings_check_fails_unknown_environment_keys(self):
         check = _launcher_settings_check(
