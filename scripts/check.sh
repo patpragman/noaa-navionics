@@ -1025,8 +1025,13 @@ grep -q 'CHRONY_GPSD_REFCLOCK' src/noaa_navionics/health.py
 grep -q 'Chrony config is not a regular file' src/noaa_navionics/health.py
 grep -q 'Chrony config .* is owned by uid' src/noaa_navionics/health.py
 grep -q 'Chrony config .* has permissions' src/noaa_navionics/health.py
+grep -q 'def _read_trusted_config_lines' src/noaa_navionics/health.py
+grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/health.py
 grep -q 'test_check_chrony_gps_time_config_accepts_managed_refclock' tests/test_downloader.py
 grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_downloader.py
+grep -q 'test_read_trusted_config_lines_rejects_writable_config_before_parsing' tests/test_downloader.py
+grep -q 'Readiness reads GPSD and chrony config files only after a no-follow descriptor' README.md
+grep -q 'Readiness reads GPSD and chrony config files only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Readiness also rejects unsafe chrony config paths' README.md
 grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py

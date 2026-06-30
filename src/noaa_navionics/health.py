@@ -367,10 +367,13 @@ def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.co
                 False,
                 f"Chrony config {path} has permissions {mode:04o}, expected no group/other write bits",
             )
+    expected_uid = 0 if path == Path("/etc/chrony/chrony.conf") else os.getuid()
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _read_trusted_config_lines(path, label="Chrony config", expected_uid=expected_uid)
     except OSError as exc:
         return CheckResult("Chrony Config", False, f"could not read Chrony config {path}: {exc}")
+    except RuntimeError as exc:
+        return CheckResult("Chrony Config", False, str(exc))
     configured = any(
         line.strip() == CHRONY_GPSD_REFCLOCK
         for line in lines
@@ -1106,9 +1109,12 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
                 f"GPSD config {path} has permissions {mode:04o}, expected no group/other write bits",
             )
     try:
-        values = _read_gpsd_default_config(path)
+        expected_uid = 0 if path == Path("/etc/default/gpsd") else os.getuid()
+        values = _read_gpsd_default_config(path, expected_uid=expected_uid)
     except OSError as exc:
         return CheckResult("GPSD Config", False, f"cannot read {path}: {exc}")
+    except RuntimeError as exc:
+        return CheckResult("GPSD Config", False, str(exc))
     devices = _split_shell_words(values.get("DEVICES", ""))
     options = _split_shell_words(values.get("GPSD_OPTIONS", ""))
     failures = []
@@ -1126,22 +1132,54 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
     return CheckResult("GPSD Config", True, f"{path} uses {expected_device} with immediate polling")
 
 
-def _read_gpsd_default_config(path: Path) -> dict[str, str]:
+def _read_gpsd_default_config(path: Path, *, expected_uid: int) -> dict[str, str]:
     values: dict[str, str] = {}
-    with path.open(encoding="utf-8") as handle:
-        for raw_line in handle:
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip()
-            try:
-                parsed = shlex.split(value, comments=False, posix=True)
-            except ValueError:
-                parsed = []
-            values[key] = parsed[0] if len(parsed) == 1 else value.strip("\"'")
+    for raw_line in _read_trusted_config_lines(
+        path,
+        label="GPSD config",
+        expected_uid=expected_uid,
+    ):
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        try:
+            parsed = shlex.split(value, comments=False, posix=True)
+        except ValueError:
+            parsed = []
+        values[key] = parsed[0] if len(parsed) == 1 else value.strip("\"'")
     return values
+
+
+def _read_trusted_config_lines(path: Path, *, label: str, expected_uid: int) -> list[str]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"{label} is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"{label} is not a regular file: {path}")
+        if stat_result.st_uid != expected_uid:
+            raise RuntimeError(
+                f"{label} {path} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"{label} {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return handle.read().splitlines()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _split_shell_words(value: str) -> list[str]:

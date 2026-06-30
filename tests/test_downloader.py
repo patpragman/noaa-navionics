@@ -85,6 +85,7 @@ from noaa_navionics.health import (
     check_time_synchronization,
     _parse_vcgencmd_temperature,
     _parse_throttled_value,
+    _read_trusted_config_lines,
 )
 from noaa_navionics.opencpn import (
     chart_directory_configured,
@@ -8882,6 +8883,15 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("has permissions 0666", result.detail)
+
+    def test_read_trusted_config_lines_rejects_writable_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            config.chmod(0o666)
+
+            with self.assertRaisesRegex(RuntimeError, "has permissions 0666"):
+                _read_trusted_config_lines(config, label="Chrony config", expected_uid=os.getuid())
 
     def test_check_chrony_gps_time_source_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi
