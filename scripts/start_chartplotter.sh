@@ -122,7 +122,7 @@ prepare_private_cache_dir() {
     exit 1
   fi
   cache_parent_mode=$((8#$cache_parent_mode_text))
-  if (( cache_parent_mode & 022 )); then
+  if (( cache_parent_mode & 077 )); then
     echo "Tightening NOAA Navionics cache parent directory permissions from ${cache_parent_mode_text} to 700: $cache_parent"
     chmod 0700 "$cache_parent"
   fi

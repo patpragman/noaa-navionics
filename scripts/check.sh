@@ -1137,13 +1137,17 @@ grep -q 'GPX logging rejects symlinked track-output parent components' README.md
 grep -q 'GPX logger also refuses symlinked track-output parent components' docs/sailboat-pi.md
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
+grep -q 'def _prepare_home_status_cache_parent' src/noaa_navionics/report.py
 grep -q 'status report parent directory' src/noaa_navionics/report.py
 grep -q 'status report parent path contains a symlink' src/noaa_navionics/report.py
+grep -q 'status report cache parent directory' src/noaa_navionics/report.py
+grep -q 'os.chmod(cache_parent, 0o700)' src/noaa_navionics/report.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
 grep -q 'status report cache directory' scripts/verify_pi.sh
 grep -q 'status report cache parent directory is a symlink' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
+grep -q 'test_write_status_report_tightens_public_home_cache_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
@@ -3244,10 +3248,10 @@ printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_public_cache_parent_home/.loc
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
 chmod +x "$launcher_public_cache_parent_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
-chmod 0777 "$launcher_public_cache_parent_home/.cache"
+chmod 0755 "$launcher_public_cache_parent_home/.cache"
 HOME="$launcher_public_cache_parent_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_public_cache_parent_output" 2>&1
 test "$(stat -c '%a' "$launcher_public_cache_parent_home/.cache")" = 700
-grep -q 'Tightening NOAA Navionics cache parent directory permissions from 777 to 700' "$launcher_public_cache_parent_output"
+grep -q 'Tightening NOAA Navionics cache parent directory permissions from 755 to 700' "$launcher_public_cache_parent_output"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_public_cache_parent_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_symlink_rotated_log_home="$tmpdir/launcher-symlink-rotated-log-home"

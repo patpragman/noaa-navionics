@@ -4563,6 +4563,29 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
+    def test_write_status_report_tightens_public_home_cache_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            cache_parent = root / ".cache"
+            cache_parent.mkdir()
+            cache_parent.chmod(0o755)
+            old_home = os.environ.get("HOME")
+            os.environ["HOME"] = str(root)
+            try:
+                output = Path("~/.cache/noaa-navionics/status.json")
+                write_status_report({"ok": True}, output)
+            finally:
+                if old_home is None:
+                    os.environ.pop("HOME", None)
+                else:
+                    os.environ["HOME"] = old_home
+
+            status_dir = cache_parent / "noaa-navionics"
+            status_file = status_dir / "status.json"
+            self.assertEqual(stat.S_IMODE(cache_parent.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(status_dir.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(status_file.stat().st_mode), 0o600)
+
     def test_write_status_report_rejects_symlinked_output_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

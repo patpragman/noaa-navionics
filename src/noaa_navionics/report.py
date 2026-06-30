@@ -213,6 +213,7 @@ def _prepare_private_status_parent(path: Path) -> None:
     symlink_component = _first_symlink_ancestor(path.parent)
     if symlink_component is not None:
         raise RuntimeError(f"status report parent path contains a symlink: {symlink_component}")
+    _prepare_home_status_cache_parent(path)
     path.mkdir(parents=True, mode=0o700, exist_ok=True)
     stat_result = path.stat()
     if stat_result.st_uid != os.getuid():
@@ -223,6 +224,26 @@ def _prepare_private_status_parent(path: Path) -> None:
     os.chmod(path, 0o700)
     _fsync_directory(path)
     _fsync_directory(path.parent)
+
+
+def _prepare_home_status_cache_parent(path: Path) -> None:
+    path = Path(path).expanduser()
+    home_cache_report_dir = Path.home() / ".cache" / "noaa-navionics"
+    if path != home_cache_report_dir:
+        return
+    cache_parent = path.parent
+    cache_parent.mkdir(mode=0o700, exist_ok=True)
+    stat_result = cache_parent.stat()
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"status report cache parent directory {cache_parent} is owned by uid "
+            f"{stat_result.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o077:
+        os.chmod(cache_parent, 0o700)
+    _fsync_directory(cache_parent)
+    _fsync_directory(cache_parent.parent)
 
 
 def _fsync_directory(path: Path) -> None:
