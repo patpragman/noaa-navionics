@@ -73,7 +73,7 @@ Run the normal pre-trip dock workflow against an already commissioned Pi:
 scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
+The pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to private `0700`, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
 
 Before leaving the dock on an already commissioned Pi, run the no-deploy, no-reboot pre-departure check:
 
@@ -138,7 +138,7 @@ Collect post-trip artifacts after returning to the dock:
 scripts/post_trip_collect_pi.sh pi@raspberrypi.local
 ```
 
-The post-trip helper saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle, and can optionally dry-run or request a clean shutdown with `--shutdown-dry-run` or `--shutdown-confirm`. It continues exporting tracks/support even when the status snapshot reports unhealthy state, then exits non-zero after collection so the saved artifacts can be inspected.
+The post-trip helper tightens the local export directory and trip folder to private `0700`, saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle, and can optionally dry-run or request a clean shutdown with `--shutdown-dry-run` or `--shutdown-confirm`. It continues exporting tracks/support even when the status snapshot reports unhealthy state, then exits non-zero after collection so the saved artifacts can be inspected.
 
 Export OpenCPN user navigation data before SD-card swaps or maintenance:
 

@@ -124,6 +124,34 @@ validate_output_dir_arg() {
   fi
 }
 
+prepare_private_output_dir() {
+  local label="$1"
+  local path="$2"
+  local mode
+
+  mkdir -p -- "$path"
+  if [[ ! -d "$path" || -L "$path" ]]; then
+    echo "$label must be a real directory: $path" >&2
+    exit 2
+  fi
+  if ! chmod 0700 -- "$path"; then
+    echo "Could not tighten $label permissions to 0700: $path" >&2
+    exit 2
+  fi
+  if [[ ! -d "$path" || -L "$path" ]]; then
+    echo "$label must remain a real directory after tightening: $path" >&2
+    exit 2
+  fi
+  if ! mode="$(stat -Lc '%a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect $label permissions: $path" >&2
+    exit 2
+  fi
+  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "700" ]]; then
+    echo "$label has permissions ${mode}, expected private 0700: $path" >&2
+    exit 2
+  fi
+}
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -330,6 +358,7 @@ else
 fi
 
 if [[ "$skip_recovery" -eq 0 ]]; then
+  prepare_private_output_dir "Recovery output directory" "$output_dir"
   recovery_output="$(mktemp)"
   cleanup_recovery_output() {
     rm -f -- "${recovery_output:-}"

@@ -480,8 +480,10 @@ grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/se
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to private `0700`, exports and verifies a local recovery bundle' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
+grep -q 'tightens the local export directory and trip folder to private `0700`' README.md
+grep -q 'tightens the local export directory and trip folder to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
@@ -925,6 +927,7 @@ grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
 grep -q -- '--status --gps-seconds "$gps_seconds"' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
+grep -q 'prepare_private_output_dir "Recovery output directory" "$output_dir"' scripts/pre_trip_prepare_pi.sh
 grep -q 'check_pi_status.sh' scripts/post_trip_collect_pi.sh
 grep -q 'export_pi_tracks.sh' scripts/post_trip_collect_pi.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/post_trip_collect_pi.sh
@@ -932,6 +935,8 @@ grep -q 'shutdown_pi_safely.sh' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip Pi artifacts written to:' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
+grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
+grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -4748,6 +4753,8 @@ printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 printf 'fake pre-departure\n'
 EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
+mkdir -p "$pre_trip_output_dir"
+chmod 0777 "$pre_trip_output_dir"
 NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
   "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
   pi@example.invalid \
@@ -4766,6 +4773,7 @@ grep -Fxq "refresh|pi@example.invalid --retries 6 --retry-delay 9 --status --gps
 grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$pre_trip_log"
 grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test" "$pre_trip_log"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
+test "$(stat -c '%a' "$pre_trip_output_dir")" = 700
 
 set +e
 scripts/post_trip_collect_pi.sh root@example.invalid >"$verify_output" 2>&1
@@ -4842,6 +4850,8 @@ printf 'shutdown|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
 printf 'fake shutdown\n'
 EOF
 chmod +x "$post_trip_repo/scripts/"*.sh
+mkdir -p "$post_trip_output_dir"
+chmod 0777 "$post_trip_output_dir"
 NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
   "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
   pi@example.invalid "$post_trip_output_dir" \
@@ -4851,6 +4861,8 @@ NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
 grep -q 'Post-trip Pi collection completed for pi@example.invalid' "$verify_output"
 post_trip_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
 test -d "$post_trip_dir"
+test "$(stat -c '%a' "$post_trip_output_dir")" = 700
+test "$(stat -c '%a' "$post_trip_dir")" = 700
 grep -q '"ok": true' "$post_trip_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
