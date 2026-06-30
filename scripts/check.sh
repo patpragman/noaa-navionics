@@ -896,6 +896,7 @@ grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
+grep -q 'check_disk_space(app_config.chart_output' scripts/provision_sailboat_pi.sh
 grep -q 'validate_user_install_path' scripts/provision_sailboat_pi.sh
 grep -q 'path contains a symlink' scripts/provision_sailboat_pi.sh
 grep -q 'expected no group/other write bits' scripts/provision_sailboat_pi.sh
@@ -1713,7 +1714,8 @@ deploy_output="$(mktemp)"
 dock_output="$(mktemp)"
 verify_output="$(mktemp)"
 tmpdir="$(mktemp -d)"
-trap 'rm -rf "${tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
+workspace_tmpdir="$(mktemp -d "$repo_root/.check-tmp.XXXXXX")"
+trap 'rm -rf "${tmpdir:-}" "${workspace_tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
 
 install_smoke_home="$tmpdir/install-smoke-home"
 mkdir -p "$install_smoke_home"
@@ -3091,6 +3093,79 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' "$provision_output"
+
+skip_sync_unsafe_home="$workspace_tmpdir/skip-sync-unsafe-home"
+skip_sync_unsafe_charts="$skip_sync_unsafe_home/charts/noaa-enc"
+mkdir -p "$skip_sync_unsafe_home/.config/noaa-navionics" "$skip_sync_unsafe_charts/AK_ENCs/US5AK3CM"
+cat >"$skip_sync_unsafe_home/.config/noaa-navionics/config.ini" <<EOF
+[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = no
+force = yes
+max_age_days = 30
+min_free_gb = 0.1
+
+[gps]
+mode = gpsd
+device = /dev/serial/by-id/mock-gps
+baud = 4800
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+
+[tracking]
+output = ~/charts/noaa-enc
+retention_days = 90
+EOF
+printf 'cell\n' >"$skip_sync_unsafe_charts/AK_ENCs/US5AK3CM/US5AK3CM.000"
+python3 - "$skip_sync_unsafe_charts" <<'PY'
+from datetime import datetime, timezone
+from pathlib import Path
+import json
+import sys
+
+chart_dir = Path(sys.argv[1])
+manifest = {
+    "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "created_at_source": "download",
+    "package": {
+        "label": "State AK",
+        "filename": "AK_ENCs.zip",
+        "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+    },
+    "download": {
+        "path": "",
+        "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+        "bytes": 1,
+        "sha256": "abc",
+    },
+    "extract": {
+        "path": str(chart_dir / "AK_ENCs"),
+        "enc_cell_count": 1,
+    },
+}
+(chart_dir / "noaa-navionics-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+(chart_dir / "noaa-navionics-manifest.json").chmod(0o600)
+PY
+chmod 0777 "$skip_sync_unsafe_charts"
+set +e
+HOME="$skip_sync_unsafe_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-sync \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
+provision_code=$?
+set -e
+chmod 0700 "$skip_sync_unsafe_charts"
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-sync with unsafe chart storage permissions" >&2
+  exit 1
+fi
+grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' "$provision_output"
+grep -q 'has permissions 0777, expected no group/other write bits' "$provision_output"
 
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony.conf" >"$gpsd_output"
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' "$gpsd_output"
