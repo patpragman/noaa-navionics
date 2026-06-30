@@ -949,6 +949,25 @@ if expected_config_path:
         latest_track_stat = latest_track_path.stat()
     except OSError as exc:
         raise SystemExit(f"could not inspect status report track_log latest_path {latest_track_path}: {exc}") from exc
+    latest_track_fd = -1
+    try:
+        latest_track_fd = os.open(latest_track_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        latest_track_open_stat = os.fstat(latest_track_fd)
+    except OSError as exc:
+        raise SystemExit(f"could not open status report track_log latest_path {latest_track_path}: {exc}") from exc
+    finally:
+        if latest_track_fd >= 0:
+            os.close(latest_track_fd)
+    if not stat.S_ISREG(latest_track_open_stat.st_mode):
+        raise SystemExit(
+            f"status report track_log latest_path is not a regular file after opening: {latest_track_path}"
+        )
+    if (latest_track_open_stat.st_dev, latest_track_open_stat.st_ino) != (
+        latest_track_stat.st_dev,
+        latest_track_stat.st_ino,
+    ):
+        raise SystemExit(f"status report track_log latest_path changed before it could be verified: {latest_track_path}")
+    latest_track_stat = latest_track_open_stat
     if latest_track_stat.st_uid != os.getuid():
         raise SystemExit(
             f"status report track_log latest_path {latest_track_path} is owned by uid "

@@ -720,6 +720,9 @@ grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
 grep -q 'expected private 0700' scripts/verify_pi.sh
 grep -q 'status report track_log tracks_mode' scripts/verify_pi.sh
+grep -q 'could not open status report track_log latest_path' scripts/verify_pi.sh
+grep -q 'status report track_log latest_path changed before it could be verified' scripts/verify_pi.sh
+grep -q 'latest_track_fd = os.open(latest_track_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'status report track_log latest_mode' scripts/verify_pi.sh
 grep -q '"min_free_gb": float' scripts/verify_pi.sh
