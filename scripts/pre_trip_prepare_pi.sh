@@ -261,6 +261,7 @@ require_helper() {
     echo "Helper script must not be a symlink: $path" >&2
     exit 2
   fi
+  reject_symlinked_path_components "Helper script" "$path"
   if [[ ! -f "$path" || ! -x "$path" ]]; then
     echo "Helper script is missing or not executable: $path" >&2
     exit 2

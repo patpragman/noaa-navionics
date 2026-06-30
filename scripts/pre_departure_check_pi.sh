@@ -86,12 +86,50 @@ validate_gps_device_path_arg() {
   exit 2
 }
 
+reject_symlinked_path_components() {
+  local label="$1"
+  local path="$2"
+  local current
+  local component
+  local remaining
+
+  if [[ "$path" == /* ]]; then
+    current="/"
+    remaining="${path#/}"
+  else
+    current="."
+    remaining="$path"
+  fi
+
+  while [[ -n "$remaining" ]]; do
+    component="${remaining%%/*}"
+    if [[ "$component" == "$remaining" ]]; then
+      remaining=""
+    else
+      remaining="${remaining#*/}"
+    fi
+    if [[ -z "$component" || "$component" == "." ]]; then
+      continue
+    fi
+    if [[ "$current" == "/" ]]; then
+      current="/$component"
+    else
+      current="${current}/${component}"
+    fi
+    if [[ -L "$current" ]]; then
+      echo "$label path contains a symlink: $current" >&2
+      exit 2
+    fi
+  done
+}
+
 require_helper() {
   local path="$1"
   if [[ -L "$path" ]]; then
     echo "Helper script must not be a symlink: $path" >&2
     exit 2
   fi
+  reject_symlinked_path_components "Helper script" "$path"
   if [[ ! -f "$path" || ! -x "$path" ]]; then
     echo "Helper script is missing or not executable: $path" >&2
     exit 2

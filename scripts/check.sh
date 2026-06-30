@@ -1043,6 +1043,14 @@ grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' sc
 grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
 grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json' scripts/post_trip_collect_pi.sh
 grep -q 'verify_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
+for helper_wrapper in \
+  scripts/export_pi_recovery_bundle.sh \
+  scripts/post_trip_collect_pi.sh \
+  scripts/pre_departure_check_pi.sh \
+  scripts/pre_trip_prepare_pi.sh; do
+  grep -q 'reject_symlinked_path_components "Helper script" "$path"' "$helper_wrapper"
+  grep -q 'path contains a symlink' "$helper_wrapper"
+done
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -5148,6 +5156,103 @@ if [[ "$pre_departure_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Helper script must not be a symlink' "$verify_output"
+
+write_noop_helper() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"$path"
+  chmod +x "$path"
+}
+
+pre_trip_parent_real="$tmpdir/pre-trip-helper-parent-real"
+pre_trip_parent_link="$tmpdir/pre-trip-helper-parent-link"
+mkdir -p "$pre_trip_parent_real/scripts"
+cp scripts/pre_trip_prepare_pi.sh "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"
+for helper in refresh_pi_charts.sh export_pi_recovery_bundle.sh verify_pi_recovery_exports.sh pre_departure_check_pi.sh; do
+  write_noop_helper "$pre_trip_parent_real/scripts/$helper"
+done
+chmod +x "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"
+ln -s "$pre_trip_parent_real" "$pre_trip_parent_link"
+set +e
+"$pre_trip_parent_link/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-refresh \
+  --skip-recovery >"$verify_output" 2>&1
+pre_trip_parent_code=$?
+set -e
+if [[ "$pre_trip_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject a symlinked helper parent path with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script path contains a symlink' "$verify_output"
+
+post_trip_parent_real="$tmpdir/post-trip-helper-parent-real"
+post_trip_parent_link="$tmpdir/post-trip-helper-parent-link"
+mkdir -p "$post_trip_parent_real/scripts"
+cp scripts/post_trip_collect_pi.sh "$post_trip_parent_real/scripts/post_trip_collect_pi.sh"
+for helper in check_pi_status.sh export_pi_tracks.sh collect_pi_support_bundle.sh shutdown_pi_safely.sh; do
+  write_noop_helper "$post_trip_parent_real/scripts/$helper"
+done
+chmod +x "$post_trip_parent_real/scripts/post_trip_collect_pi.sh"
+ln -s "$post_trip_parent_real" "$post_trip_parent_link"
+set +e
+"$post_trip_parent_link/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$tmpdir/post-trip-helper-parent-output" \
+  --skip-status \
+  --skip-tracks \
+  --skip-support \
+  --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_parent_code=$?
+set -e
+if [[ "$post_trip_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a symlinked helper parent path with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script path contains a symlink' "$verify_output"
+
+recovery_parent_real="$tmpdir/recovery-helper-parent-real"
+recovery_parent_link="$tmpdir/recovery-helper-parent-link"
+mkdir -p "$recovery_parent_real/scripts"
+cp scripts/export_pi_recovery_bundle.sh "$recovery_parent_real/scripts/export_pi_recovery_bundle.sh"
+for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh; do
+  write_noop_helper "$recovery_parent_real/scripts/$helper"
+done
+chmod +x "$recovery_parent_real/scripts/export_pi_recovery_bundle.sh"
+ln -s "$recovery_parent_real" "$recovery_parent_link"
+set +e
+"$recovery_parent_link/scripts/export_pi_recovery_bundle.sh" \
+  pi@example.invalid "$tmpdir/recovery-helper-parent-output" >"$verify_output" 2>&1
+recovery_parent_code=$?
+set -e
+if [[ "$recovery_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject a symlinked helper parent path with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script path contains a symlink' "$verify_output"
+
+pre_departure_parent_real="$tmpdir/pre-departure-helper-parent-real"
+pre_departure_parent_link="$tmpdir/pre-departure-helper-parent-link"
+mkdir -p "$pre_departure_parent_real/scripts"
+cp scripts/pre_departure_check_pi.sh "$pre_departure_parent_real/scripts/pre_departure_check_pi.sh"
+write_noop_helper "$pre_departure_parent_real/scripts/verify_pi.sh"
+chmod +x "$pre_departure_parent_real/scripts/pre_departure_check_pi.sh"
+ln -s "$pre_departure_parent_real" "$pre_departure_parent_link"
+set +e
+"$pre_departure_parent_link/scripts/pre_departure_check_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_departure_parent_code=$?
+set -e
+if [[ "$pre_departure_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject a symlinked helper parent path with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script path contains a symlink' "$verify_output"
 
 set +e
 scripts/check_pi_status.sh root@example.invalid >"$verify_output" 2>&1
