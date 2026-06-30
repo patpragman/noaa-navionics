@@ -2105,6 +2105,16 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse((output / "AK_ENCs").exists())
 
+    def test_hash_existing_download_path_rejects_writable_zip_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            existing = Path(tmpdir) / "AK_ENCs.zip"
+            with zipfile.ZipFile(existing, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            existing.chmod(0o622)
+
+            with self.assertRaisesRegex(RuntimeError, "chart download path .* has permissions 0622"):
+                downloader_module._hash_existing_download_path(existing)
+
     def test_download_rejects_symlinked_output_ancestor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

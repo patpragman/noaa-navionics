@@ -1154,8 +1154,13 @@ grep -q 'test_forced_download_rejects_zip_without_enc_cells_before_replacing_arc
 grep -q 'chart download path is not a regular file' src/noaa_navionics/downloader.py
 grep -q 'chart download path .* is owned by uid' src/noaa_navionics/downloader.py
 grep -q 'chart download path .* has permissions' src/noaa_navionics/downloader.py
+grep -q 'def _hash_existing_download_path' src/noaa_navionics/downloader.py
+grep -q 'destination_stat, digest = _hash_existing_download_path(destination)' src/noaa_navionics/downloader.py
+grep -q 'os.fdopen(fd, "rb")' src/noaa_navionics/downloader.py
+! grep -q 'digest = sha256_file(destination)' src/noaa_navionics/downloader.py
 grep -q 'test_existing_zip_nonregular_path_fails_before_reading_cache' tests/test_downloader.py
 grep -q 'test_existing_zip_writable_file_fails_before_reading_cache' tests/test_downloader.py
+grep -q 'test_hash_existing_download_path_rejects_writable_zip_before_hashing' tests/test_downloader.py
 grep -q 'previous chart manifest path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'previous chart manifest path is not a regular file' src/noaa_navionics/downloader.py
 grep -q 'previous chart manifest path .* is owned by uid' src/noaa_navionics/downloader.py
@@ -1170,6 +1175,8 @@ grep -q 'test_existing_zip_symlinked_previous_manifest_fails_before_extracting' 
 grep -q 'test_existing_zip_writable_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'unsafe ownership or permissions' README.md
 grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
+grep -q 'cache-reuse hashes are computed from the same no-follow descriptor' README.md
+grep -q 'cache-reuse hashes are computed from the same no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Manifest reads reject symlinked manifest files or parent path components' README.md
 grep -q 'Manifest reads reject symlinked manifest files or parent path components' docs/sailboat-pi.md
 grep -q 'trusted previous manifest' README.md
