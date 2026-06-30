@@ -1542,6 +1542,12 @@ grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest recorded {manifest_cell_count} ENC cells but found {actual_cell_count}' src/noaa_navionics/health.py
 grep -q 'test_manifest_with_extra_unrecorded_cells_fails' tests/test_downloader.py
+grep -q 'def _trusted_enc_cell_tree_count' src/noaa_navionics/health.py
+grep -q 'manifest extract {label} {path} has permissions' src/noaa_navionics/health.py
+grep -q 'test_manifest_writable_enc_cell_fails' tests/test_downloader.py
+grep -q 'test_manifest_writable_extract_directory_fails' tests/test_downloader.py
+grep -q 'live chart tree is user-owned with no group/other write bits' README.md
+grep -q 'live chart tree is user-owned with no group/other write bits' docs/sailboat-pi.md
 grep -q 'exactly the manifest-recorded regular non-symlink ENC cell count' README.md
 grep -q 'exactly the manifest-recorded regular non-symlink ENC cell count' docs/sailboat-pi.md
 grep -q 'unverified-cache' src/noaa_navionics/health.py

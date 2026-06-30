@@ -3704,6 +3704,55 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("manifest recorded 1 ENC cells but found 2", result.detail)
 
+    def test_manifest_writable_enc_cell_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            cell.chmod(0o666)
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest extract file", result.detail)
+            self.assertIn("has permissions 0666", result.detail)
+
+    def test_manifest_writable_extract_directory_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            cell.parent.chmod(0o777)
+            try:
+                (root / MANIFEST_NAME).write_text(
+                    '{"created_at":"' + now + '",'
+                    '"package":{"label":"Test"},'
+                    '"download":{"sha256":"abc"},'
+                    f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                    encoding="utf-8",
+                )
+
+                result = check_chart_manifest(root)
+            finally:
+                cell.parent.chmod(0o700)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest extract directory", result.detail)
+            self.assertIn("has permissions 0777", result.detail)
+
     def test_manifest_extract_path_outside_chart_dir_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -3831,7 +3880,7 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_manifest(root, expected_package="state", expected_value="AK")
 
             self.assertFalse(result.ok)
-            self.assertIn("no ENC cells found", result.detail)
+            self.assertIn("manifest extract path contains a symlink", result.detail)
 
     def test_manifest_download_url_mismatched_filename_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -28,7 +28,7 @@ from .gps import (
     iter_gpsd_fixes,
     open_nmea_stream,
 )
-from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest
+from .downloader import MANIFEST_NAME, package_for, read_manifest
 from .opencpn import (
     chart_directory_configured,
     enabled_gpsd_connections,
@@ -795,7 +795,9 @@ def check_chart_manifest(
         return CheckResult("Manifest", False, "manifest has invalid ENC cell count")
     if manifest_cell_count <= 0:
         return CheckResult("Manifest", False, "manifest reports no extracted ENC cells")
-    actual_cell_count = count_enc_cells(extract_path)
+    actual_cell_count, extract_tree_error = _trusted_enc_cell_tree_count(extract_path)
+    if extract_tree_error:
+        return CheckResult("Manifest", False, extract_tree_error)
     if actual_cell_count <= 0:
         return CheckResult("Manifest", False, f"no ENC cells found at manifest extract path: {extract_path}")
     if actual_cell_count != manifest_cell_count:
@@ -841,6 +843,70 @@ def check_chart_manifest(
     if download_url_check is not None:
         return download_url_check
     return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
+
+
+def _trusted_enc_cell_tree_count(root: Path) -> tuple[int, str]:
+    expected_uid = os.getuid()
+
+    def validate_entry(path: Path, *, expected_directory: bool = False) -> str:
+        try:
+            stat_result = path.lstat()
+        except OSError as exc:
+            return f"could not inspect manifest extract path {path}: {exc}"
+        if stat.S_ISLNK(stat_result.st_mode):
+            return f"manifest extract path contains a symlink: {path}"
+        if expected_directory:
+            if not stat.S_ISDIR(stat_result.st_mode):
+                return f"manifest extract path entry is not a directory: {path}"
+            label = "directory"
+        else:
+            if not stat.S_ISREG(stat_result.st_mode):
+                return f"manifest extract path entry is not a regular file: {path}"
+            label = "file"
+        if stat_result.st_uid != expected_uid:
+            return (
+                f"manifest extract {label} {path} is owned by uid "
+                f"{stat_result.st_uid}, expected {expected_uid}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            return (
+                f"manifest extract {label} {path} has permissions {mode:04o}, "
+                "expected no group/other write bits"
+            )
+        return ""
+
+    root_error = validate_entry(root, expected_directory=True)
+    if root_error:
+        return 0, root_error
+
+    walk_errors: list[str] = []
+
+    def on_walk_error(exc: OSError) -> None:
+        walk_errors.append(f"could not inspect manifest extract path {exc.filename}: {exc}")
+
+    cell_count = 0
+    for current_root, dirnames, filenames in os.walk(root, onerror=on_walk_error):
+        if walk_errors:
+            return 0, walk_errors[0]
+        current = Path(current_root)
+        current_error = validate_entry(current, expected_directory=True)
+        if current_error:
+            return 0, current_error
+        for dirname in dirnames:
+            directory_error = validate_entry(current / dirname, expected_directory=True)
+            if directory_error:
+                return 0, directory_error
+        for filename in filenames:
+            file_path = current / filename
+            file_error = validate_entry(file_path)
+            if file_error:
+                return 0, file_error
+            if file_path.name.lower().endswith(".000"):
+                cell_count += 1
+    if walk_errors:
+        return 0, walk_errors[0]
+    return cell_count, ""
 
 
 def _check_manifest_download_url(manifest: dict[str, object]) -> Optional[CheckResult]:
