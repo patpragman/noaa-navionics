@@ -580,8 +580,10 @@ grep -q 'support bundle helper rejects broad/system local output directories or 
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
-grep -q 'recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file' README.md
-grep -q 'recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file' docs/sailboat-pi.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file' README.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file' docs/sailboat-pi.md
+grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
+grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
@@ -983,6 +985,11 @@ grep -q 'unsupported non-regular member' scripts/verify_pi_recovery_exports.sh
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/verify_pi_recovery_exports.sh
 grep -q 'archive has permissions .* expected private 0600' scripts/verify_pi_recovery_exports.sh
 grep -q 'Verified Pi recovery exports' scripts/verify_pi_recovery_exports.sh
+grep -q 'require_local_command python3' scripts/verify_pi_recovery_exports.sh
+grep -q 'validate_trusted_local_command' scripts/verify_pi_recovery_exports.sh
+grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/verify_pi_recovery_exports.sh
+grep -q '"$python3_cmd" - "$recovery_dir"' scripts/verify_pi_recovery_exports.sh
+! grep -q '^python3 - "$recovery_dir"' scripts/verify_pi_recovery_exports.sh
 grep -q 'NOAA_NAVIONICS_RESTORE_APPLY' scripts/restore_pi_recovery_user_data.sh
 grep -q 'Dry run only. Re-run with --apply to write files.' scripts/restore_pi_recovery_user_data.sh
 grep -q 'do not restore recovery user data as root' scripts/restore_pi_recovery_user_data.sh
@@ -5993,6 +6000,25 @@ with tarfile.open(
 (root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz").chmod(0o600)
 PY
 chmod 0700 "$recovery_verify_dir"
+
+recovery_verify_fake_python_bin="$tmpdir/recovery-verify-fake-python-bin"
+mkdir -p "$recovery_verify_fake_python_bin"
+cat >"$recovery_verify_fake_python_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "untrusted fake recovery verifier python should not run" >&2
+exit 99
+EOF
+chmod +x "$recovery_verify_fake_python_bin/python3"
+set +e
+PATH="$recovery_verify_fake_python_bin:$PATH" scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject an untrusted local python3 command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 
 scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
 grep -q 'Verified Pi recovery exports:' "$verify_output"

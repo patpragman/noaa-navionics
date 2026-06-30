@@ -243,14 +243,14 @@ Export a full recovery set before a trip or maintenance window:
 scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30
 ```
 
-The recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory and timestamped recovery folder to user-owned private `0700`, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. The recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file before trusting its contents. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+The recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory and timestamped recovery folder to user-owned private `0700`, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. The recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file before trusting its contents. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 Verify that local recovery directory before relying on it for an SD-card recovery:
 
 ```bash
 scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ
 ```
 
-The verifier checks the local `.tgz` files for the expected export set, readable tar contents, safe member paths, README files, and positive settings, OpenCPN, and GPX manifest counts. It does not contact the Pi.
+The verifier checks the local `.tgz` files with the validated local Python command for the expected export set, readable tar contents, safe member paths, README files, and positive settings, OpenCPN, and GPX manifest counts. It does not contact the Pi.
 After reimaging a Pi, copy the verified recovery directory onto the Pi and restore user-owned navigation data as the Pi desktop user:
 
 ```bash
