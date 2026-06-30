@@ -596,6 +596,17 @@ def fsync_parent() -> None:
     finally:
         os.close(fd)
 
+def remove_path(path: Path, *, label: str) -> None:
+    if path.is_dir() and not path.is_symlink():
+        if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+            raise SystemExit(
+                f'Deployment cleanup requires Python shutil.rmtree with symlink-attack resistance; '
+                f'leaving {label} in place: {path}'
+            )
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
 validate_deployment_parent()
 
 if not repo.exists() and not repo.is_symlink() and (previous.exists() or previous.is_symlink()):
@@ -607,10 +618,8 @@ if not repo.exists() and not repo.is_symlink() and (previous.exists() or previou
 
 for sibling in (staging, previous):
     if sibling.exists() or sibling.is_symlink():
-        if sibling.is_dir() and not sibling.is_symlink():
-            shutil.rmtree(sibling)
-        else:
-            sibling.unlink()
+        label = "stale deployment staging path" if sibling == staging else "previous deployment path"
+        remove_path(sibling, label=label)
 staging.mkdir(parents=True)
 os.chmod(staging, 0o755)
 fsync_parent()
@@ -664,8 +673,13 @@ def validate_deployment_parent() -> None:
             f'Refusing deployment parent with permissions {mode:04o}, expected no group/other write bits: {parent}'
         )
 
-def remove_path(path: Path) -> None:
+def remove_path(path: Path, *, label: str) -> None:
     if path.is_dir() and not path.is_symlink():
+        if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+            raise SystemExit(
+                f'Deployment cleanup requires Python shutil.rmtree with symlink-attack resistance; '
+                f'leaving {label} in place: {path}'
+            )
         shutil.rmtree(path)
     else:
         path.unlink()
@@ -680,7 +694,7 @@ if not staging.name.startswith(repo.name + '.') or not previous.name.startswith(
     raise SystemExit('Refusing to promote unexpected deployment staging paths')
 try:
     if previous.exists() or previous.is_symlink():
-        remove_path(previous)
+        remove_path(previous, label="previous deployment path")
     if repo.exists() or repo.is_symlink():
         if repo.is_symlink() or not repo.is_dir():
             raise RuntimeError(f'Refusing to replace non-directory deployment path: {repo}')
@@ -702,7 +716,7 @@ except Exception:
     raise
 else:
     if previous.exists() or previous.is_symlink():
-        remove_path(previous)
+        remove_path(previous, label="previous deployment path")
     fd = os.open(repo.parent, os.O_RDONLY)
     try:
         os.fsync(fd)

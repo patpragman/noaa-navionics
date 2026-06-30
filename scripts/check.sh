@@ -261,6 +261,12 @@ grep -q 'Refusing to promote deployment staging outside deployment parent' scrip
 grep -q 'Restored previous deployment after interrupted promotion' scripts/deploy_to_pi.sh
 grep -q 'Refusing to restore non-directory previous deployment path' scripts/deploy_to_pi.sh
 grep -q 'previous.rename(repo)' scripts/deploy_to_pi.sh
+grep -q 'Deployment cleanup requires Python shutil.rmtree with symlink-attack resistance' scripts/deploy_to_pi.sh
+grep -q 'label = "stale deployment staging path" if sibling == staging else "previous deployment path"' scripts/deploy_to_pi.sh
+grep -q 'remove_path(previous, label="previous deployment path")' scripts/deploy_to_pi.sh
+grep -q 'not getattr(shutil.rmtree, "avoids_symlink_attacks", False)' scripts/deploy_to_pi.sh
+grep -q 'deployment cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree`' README.md
+grep -q 'deployment cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree`' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
