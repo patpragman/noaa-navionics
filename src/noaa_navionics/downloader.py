@@ -429,7 +429,7 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
             raise RuntimeError(f"extracted ZIP contains no ENC .000 cells: {zip_path}")
         _fsync_tree(staging)
     except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
+        _remove_path(staging, missing_ok=True, label="chart extraction staging")
         raise
 
     moved_existing_to_previous = False
@@ -449,7 +449,7 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         if moved_existing_to_previous and previous.exists() and not destination.exists():
             previous.rename(destination)
             _fsync_directory(parent)
-        shutil.rmtree(staging, ignore_errors=True)
+        _remove_path(staging, missing_ok=True, label="chart extraction staging")
         raise
     else:
         _remove_path(previous, missing_ok=True, label="previous chart extraction")

@@ -3586,6 +3586,32 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual((previous / "old.000").read_text(encoding="ascii"), "old")
             self.assertFalse((root / "AK_ENCs").exists())
 
+    def test_extract_zip_failed_staging_cleanup_requires_symlink_safe_rmtree(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "empty-charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("README.txt", "no chart cells")
+            destination = root / "AK_ENCs"
+            original = getattr(downloader_module.shutil.rmtree, "avoids_symlink_attacks", None)
+            try:
+                downloader_module.shutil.rmtree.avoids_symlink_attacks = False
+                with self.assertRaisesRegex(RuntimeError, "shutil.rmtree is not symlink-attack resistant"):
+                    extract_zip(archive, destination)
+            finally:
+                if original is None:
+                    try:
+                        del downloader_module.shutil.rmtree.avoids_symlink_attacks
+                    except AttributeError:
+                        pass
+                else:
+                    downloader_module.shutil.rmtree.avoids_symlink_attacks = original
+
+            self.assertFalse(destination.exists())
+            leftovers = list(root.glob(".AK_ENCs.*.extracting"))
+            self.assertEqual(len(leftovers), 1)
+            self.assertEqual((leftovers[0] / "README.txt").read_text(encoding="ascii"), "no chart cells")
+
     def test_extract_zip_syncs_extracted_tree_and_parent_directory(self):
         calls = []
         original_fsync = downloader_module.os.fsync
