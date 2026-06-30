@@ -312,6 +312,10 @@ grep -q 'umask 077' scripts/provision_sailboat_pi.sh
 grep -q 'umask 077' scripts/configure_gpsd.sh
 grep -q 'umask 077' scripts/configure_gps_time.sh
 grep -q 'umask 077' scripts/configure_desktop_autologin.sh
+for script in scripts/install_raspberry_pi.sh scripts/provision_sailboat_pi.sh scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
+  grep -q 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' "$script"
+  grep -q 'export PATH' "$script"
+done
 grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
 grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
 grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
