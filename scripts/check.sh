@@ -920,6 +920,10 @@ grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restored tracking.output must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
+grep -q 'Restore-created directories and overwrite backup directories are revalidated as user-owned private `0700` paths' README.md
+grep -q 'Restore-created directories and overwrite backup directories are revalidated as user-owned private `0700` paths' docs/sailboat-pi.md
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
@@ -5593,6 +5597,22 @@ grep -q 'NOAA_NAVIONICS_GPS_SECONDS=60' "$restore_home/.config/noaa-navionics/la
 grep -q '<navobj />' "$restore_home/.opencpn/navobj.xml"
 grep -q '<gpx />' "$restore_home/.opencpn/layers/route.gpx"
 grep -q '<gpx><trk /></gpx>' "$restore_home/tracks-store/tracks/underway.gpx"
+RESTORE_HOME="$restore_home" python3 - <<'PY'
+from pathlib import Path
+import os
+import stat
+
+home = Path(os.environ["RESTORE_HOME"])
+for path in (
+    home / ".config" / "noaa-navionics",
+    home / ".opencpn",
+    home / ".opencpn" / "layers",
+    home / "tracks-store" / "tracks",
+):
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if mode != 0o700:
+        raise SystemExit(f"{path} has mode {mode:04o}, expected 0700")
+PY
 
 set +e
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply >"$verify_output" 2>&1
@@ -5608,6 +5628,20 @@ grep -q 'restore target already exists; use --overwrite' "$verify_output"
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply --overwrite >"$verify_output" 2>&1
 grep -q 'Backed up replaced files under:' "$verify_output"
 test -f "$(find "$restore_home/.cache/noaa-navionics/recovery-restore-backups" -path '*/.config/noaa-navionics/config.ini' -type f | head -n 1)"
+RESTORE_HOME="$restore_home" python3 - <<'PY'
+from pathlib import Path
+import os
+import stat
+
+home = Path(os.environ["RESTORE_HOME"])
+backup_root = home / ".cache" / "noaa-navionics" / "recovery-restore-backups"
+for path in (backup_root, *backup_root.rglob("*")):
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if path.is_dir() and mode != 0o700:
+        raise SystemExit(f"{path} has mode {mode:04o}, expected 0700")
+    if path.is_file() and mode != 0o600:
+        raise SystemExit(f"{path} has mode {mode:04o}, expected 0600")
+PY
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1

@@ -222,9 +222,30 @@ def ensure_private_directory(path: Path, apply: bool) -> None:
         opened = os.fstat(directory_fd)
         if not stat.S_ISDIR(opened.st_mode):
             fail(f"restore path is not a directory after creation: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"restore directory {path} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode & 0o077:
+            fail(f"restore directory {path} has permissions {mode:04o}, expected private 0700")
         os.fsync(directory_fd)
     finally:
         os.close(directory_fd)
+    fsync_parent(path)
+
+
+def ensure_private_directory_tree(path: Path, root: Path, apply: bool) -> None:
+    root = root.resolve()
+    target = path.resolve() if path.exists() else path
+    try:
+        target.relative_to(root)
+    except ValueError:
+        fail(f"restore backup directory escapes backup root: {path}")
+    relative_parts = path.relative_to(root).parts
+    current = root
+    ensure_private_directory(current, apply)
+    for part in relative_parts:
+        current = current / part
+        ensure_private_directory(current, apply)
 
 
 def fsync_parent(path: Path) -> None:
@@ -243,7 +264,7 @@ def backup_existing(path: Path, backup_root: Path) -> None:
         return
     reject_unsafe_target(path, "backup source")
     backup_path = backup_root / path.resolve().relative_to("/")
-    backup_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_private_directory_tree(backup_path.parent, backup_root, apply=True)
     shutil.copy2(path, backup_path, follow_symlinks=False)
     os.chmod(backup_path, 0o600)
     fsync_parent(backup_path)
@@ -337,7 +358,7 @@ def main() -> None:
     if apply and overwrite:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         backup_root = home / ".cache" / "noaa-navionics" / "recovery-restore-backups" / stamp
-        ensure_private_directory(backup_root, apply=True)
+        ensure_private_directory_tree(backup_root, home / ".cache", apply=True)
 
     planned: list[tuple[str, Path, bytes]] = [
         ("settings", home / ".config" / "noaa-navionics" / "config.ini", config_bytes),
