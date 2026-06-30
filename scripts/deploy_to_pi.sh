@@ -407,6 +407,12 @@ validate_remote_dir() {
     exit 2
   fi
   case "$trimmed" in
+    ../*|*/../*|*/..)
+      echo "Remote deployment directory must not contain parent-directory components: $value" >&2
+      exit 2
+      ;;
+  esac
+  case "$trimmed" in
     /tmp/*|/var/*|/etc/*|/usr/*|/bin/*|/sbin/*|/lib/*|/lib64/*|/run/*|/dev/*|/proc/*|/sys/*|/boot/*)
       echo "Remote deployment directory must be under the Pi user's home directory, not a system or volatile path: $value" >&2
       exit 2
