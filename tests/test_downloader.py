@@ -5103,6 +5103,24 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(state["directory_mode"], "0700")
             self.assertEqual(state["wanted_by"], ["timers.target"])
 
+    def test_user_unit_file_summary_rejects_writable_unit_file_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            unit_dir = root / ".config/systemd/user"
+            unit_dir.mkdir(parents=True)
+            os.chmod(unit_dir, 0o700)
+            unit_file = unit_dir / "noaa-navionics.timer"
+            unit_file.write_text("[Install]\nWantedBy=timers.target\n", encoding="utf-8")
+            os.chmod(unit_file, 0o622)
+
+            with patch.dict(os.environ, {"HOME": str(root)}):
+                summary = _user_unit_file_summary()
+
+            state = summary["noaa-navionics.timer"]
+            self.assertIn("has permissions 0622", state["error"])
+            self.assertIn("expected no group/other write bits", state["error"])
+            self.assertNotIn("wanted_by", state)
+
     def test_service_readiness_checks_accept_expected_onboard_units(self):
         services = {
             "available": True,

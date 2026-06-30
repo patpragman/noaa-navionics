@@ -1571,6 +1571,8 @@ grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py
 grep -q 'user unit file path is a symlink' src/noaa_navionics/report.py
 grep -q 'user unit file directory is a symlink' src/noaa_navionics/report.py
 grep -q 'unit file path contains a symlink' src/noaa_navionics/report.py
+grep -q 'def _read_user_unit_file_lines' src/noaa_navionics/report.py
+grep -q 'user unit file path .* has permissions' src/noaa_navionics/report.py
 grep -q 'directory_uid' src/noaa_navionics/report.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/report.py
 grep -q 'status report {unit} path contains a symlink' scripts/verify_pi.sh
@@ -1580,6 +1582,9 @@ grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_file' tests/test_dow
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_directory' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_ancestor' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_records_owner_and_permissions' tests/test_downloader.py
+grep -q 'test_user_unit_file_summary_rejects_writable_unit_file_before_parsing' tests/test_downloader.py
+grep -q 'Status reports parse user systemd unit install targets only after a no-follow descriptor read' README.md
+grep -q 'Status reports parse user systemd unit install targets only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'test_service_readiness_checks_fail_public_unit_file_permissions' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_public_unit_directory_permissions' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_misowned_unit_file' tests/test_downloader.py

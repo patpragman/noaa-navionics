@@ -1051,16 +1051,44 @@ def _user_unit_file_summary() -> dict[str, object]:
             continue
         if path.is_file():
             try:
-                stat_result = path.stat()
+                stat_result, lines = _read_user_unit_file_lines(path)
                 state["uid"] = stat_result.st_uid
                 state["mode"] = f"{stat_result.st_mode & 0o777:04o}"
-                lines = path.read_text(encoding="utf-8").splitlines()
-            except OSError as exc:
+            except Exception as exc:
                 state["error"] = str(exc)
             else:
                 state["wanted_by"] = _install_wanted_by_targets(lines)
         summary[unit] = state
     return summary
+
+
+def _read_user_unit_file_lines(path: Path) -> tuple[os.stat_result, list[str]]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"user unit file path is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"user unit file path is not a regular file: {path}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(
+                f"user unit file path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"user unit file path {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return stat_result, handle.read().splitlines()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]:
