@@ -1338,6 +1338,8 @@ def _read_nmea_lines_until(stream, deadline: float) -> Iterable[str]:
 def _limited_find(root: Path, *, suffix: str, limit: int) -> list[Path]:
     found: list[Path] = []
     for path in root.rglob(f"*{suffix}"):
+        if path.is_symlink() or not path.is_file():
+            continue
         found.append(path)
         if len(found) >= limit:
             break

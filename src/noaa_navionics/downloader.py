@@ -1045,7 +1045,7 @@ def _open_manifest_for_read(path: Path) -> int:
 def count_enc_cells(root: Optional[Path]) -> int:
     if root is None or not Path(root).exists():
         return 0
-    return sum(1 for _ in Path(root).rglob("*.000"))
+    return sum(1 for path in Path(root).rglob("*.000") if path.is_file() and not path.is_symlink())
 
 
 def download_catalog(output_dir: Union[Path, str], **kwargs: object) -> DownloadResult:

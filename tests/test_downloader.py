@@ -3049,6 +3049,47 @@ class ManifestTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
 
+    def test_count_enc_cells_ignores_symlinked_cells(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "outside.000"
+            target.write_text("not a trusted chart cell", encoding="ascii")
+            cell = root / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            try:
+                cell.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            self.assertEqual(downloader_module.count_enc_cells(root / "AK_ENCs"), 0)
+
+    def test_manifest_symlinked_enc_cell_does_not_satisfy_count(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            target = root / "outside.000"
+            target.write_text("not a trusted chart cell", encoding="ascii")
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            try:
+                cell.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                '"download":{"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip","sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("no ENC cells found", result.detail)
+
     def test_manifest_download_url_mismatched_filename_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -8836,6 +8877,24 @@ class GpsTests(unittest.TestCase):
             cell.write_text("", encoding="ascii")
             extracted_result = check_chart_dir(root)
             self.assertTrue(extracted_result.ok)
+
+    def test_chart_check_ignores_symlinked_enc_cells(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "outside.000"
+            target.write_text("not a trusted chart cell", encoding="ascii")
+            charts = root / "charts"
+            cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            try:
+                cell.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_chart_dir(charts)
+
+            self.assertFalse(result.ok)
+            self.assertIn("no ENC .000 cells", result.detail)
 
     def test_chart_check_rejects_symlinked_chart_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -744,8 +744,8 @@ grep -q 'does not match manifest file enc_cell_count' scripts/verify_pi.sh
 grep -q 'actual_enc_cell_count' src/noaa_navionics/report.py
 grep -q 'status report manifest actual_enc_cell_count' scripts/verify_pi.sh
 grep -q 'actual_enc_cell_count: 1' tests/test_downloader.py
-grep -q 'manifest-recorded and live ENC cell counts' README.md
-grep -q 'manifest-recorded and live ENC cell counts' docs/sailboat-pi.md
+grep -q 'manifest-recorded and live regular non-symlink ENC cell counts' README.md
+grep -q 'manifest-recorded and live regular non-symlink ENC cell counts' docs/sailboat-pi.md
 grep -q 'manifest_field_pairs' scripts/verify_pi.sh
 grep -q 'expected_package_filename' scripts/verify_pi.sh
 grep -q 'expected_package_url' scripts/verify_pi.sh
@@ -778,8 +778,13 @@ grep -q 'status report manifest extract path contains a symlink' scripts/verify_
 grep -q 'status report manifest extract path is not a directory' scripts/verify_pi.sh
 grep -q 'def count_enc_cells' scripts/verify_pi.sh
 grep -q 'expected exactly {manifest_file_enc_cell_count}' scripts/verify_pi.sh
-grep -q 'exact live ENC cell count' README.md
-grep -q 'exact live ENC cell count' docs/sailboat-pi.md
+grep -q 'exact live regular non-symlink ENC cell count' README.md
+grep -q 'exact live regular non-symlink ENC cell count' docs/sailboat-pi.md
+grep -q 'path.is_file() and not path.is_symlink()' src/noaa_navionics/downloader.py
+grep -q 'path.is_symlink() or not path.is_file()' src/noaa_navionics/health.py
+grep -q 'test_count_enc_cells_ignores_symlinked_cells' tests/test_downloader.py
+grep -q 'test_manifest_symlinked_enc_cell_does_not_satisfy_count' tests/test_downloader.py
+grep -q 'test_chart_check_ignores_symlinked_enc_cells' tests/test_downloader.py
 grep -q '"ENC cell count"' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
@@ -1207,8 +1212,8 @@ grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'manifest recorded {manifest_cell_count} ENC cells but found {actual_cell_count}' src/noaa_navionics/health.py
 grep -q 'test_manifest_with_extra_unrecorded_cells_fails' tests/test_downloader.py
-grep -q 'exactly the manifest-recorded ENC cell count' README.md
-grep -q 'exactly the manifest-recorded ENC cell count' docs/sailboat-pi.md
+grep -q 'exactly the manifest-recorded regular non-symlink ENC cell count' README.md
+grep -q 'exactly the manifest-recorded regular non-symlink ENC cell count' docs/sailboat-pi.md
 grep -q 'unverified-cache' src/noaa_navionics/health.py
 grep -q 'chart directory is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest path is a symlink' src/noaa_navionics/health.py
