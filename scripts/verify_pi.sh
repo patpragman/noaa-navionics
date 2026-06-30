@@ -582,6 +582,28 @@ def verify_status_file_owner_and_mode(summary, path, stat_result, label, expecte
             "expected no group/other write bits"
         )
 
+def read_private_user_file_text(path, label):
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise SystemExit(f"could not open {label} {path}: {exc}") from exc
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise SystemExit(f"{label} is not a regular file: {path}")
+        if file_stat.st_uid != os.getuid():
+            raise SystemExit(f"{label} {path} is owned by uid {file_stat.st_uid}, expected {os.getuid()}")
+        file_mode = file_stat.st_mode & 0o777
+        if file_mode != 0o600:
+            raise SystemExit(f"{label} {path} has permissions {file_mode:04o}, expected private 0600")
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return handle.read(), file_stat
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -729,10 +751,15 @@ if expected_launcher_env_path:
     values = launcher_settings.get("values")
     if not isinstance(values, dict):
         raise SystemExit(f"status report launcher settings values were not parsed: {expected_launcher_env_path}")
-    try:
-        launcher_lines = launcher_env_file.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        raise SystemExit(f"could not read launcher environment {expected_launcher_env_path}: {exc}") from exc
+    launcher_text, launcher_env_stat = read_private_user_file_text(launcher_env_file, "launcher environment")
+    verify_status_file_owner_and_mode(
+        launcher_settings,
+        launcher_env_file,
+        launcher_env_stat,
+        "launcher settings",
+        os.getuid(),
+    )
+    launcher_lines = launcher_text.splitlines()
     actual_values = {}
     for raw_line in launcher_lines:
         line = raw_line.strip()

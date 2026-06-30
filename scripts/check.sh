@@ -625,8 +625,14 @@ grep -q 'status_stat = os.fstat(fd)' scripts/verify_pi.sh
 grep -q 'not stat.S_ISREG(status_stat.st_mode)' scripts/verify_pi.sh
 grep -q 'os.fdopen(fd, encoding="utf-8")' scripts/verify_pi.sh
 ! grep -q 'with status_path.open(encoding="utf-8") as handle' scripts/verify_pi.sh
+grep -q 'def read_private_user_file_text' scripts/verify_pi.sh
+grep -q 'launcher_text, launcher_env_stat = read_private_user_file_text' scripts/verify_pi.sh
+grep -q 'expected private 0600' scripts/verify_pi.sh
+! grep -q 'launcher_env_file.read_text(encoding="utf-8")' scripts/verify_pi.sh
 grep -q 'parsing that status artifact only through the no-follow descriptor it verified' README.md
 grep -q 'parses that status artifact only through the no-follow descriptor it verified' docs/sailboat-pi.md
+grep -q 'launcher settings matching a no-follow descriptor read of the live private launcher environment' README.md
+grep -q 'launcher settings matching a no-follow descriptor read of the live private launcher environment' docs/sailboat-pi.md
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
@@ -833,6 +839,7 @@ grep -q 'chartplotter launcher fail-open override disabled' scripts/verify_pi.sh
 grep -q 'production dock verification requires fail-closed chartplotter startup' scripts/verify_pi.sh
 grep -q 'status report launcher settings values' scripts/verify_pi.sh
 grep -q 'do not match launcher environment' scripts/verify_pi.sh
+grep -q '"launcher settings",' scripts/verify_pi.sh
 grep -q 'status report launcher GPS wait' scripts/verify_pi.sh
 grep -q 'status report OpenCPN chart directories' scripts/verify_pi.sh
 grep -q 'do not match live OpenCPN config' scripts/verify_pi.sh
@@ -1734,6 +1741,7 @@ grep -q 'desktop autostart, LightDM autologin, and manifest files' docs/sailboat
 grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
+grep -q 'Pi verification compares status-reported launcher settings only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'Status reports parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
