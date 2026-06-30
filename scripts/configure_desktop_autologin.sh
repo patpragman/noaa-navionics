@@ -549,12 +549,43 @@ choose_xsession
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-cat >"$tmp" <<EOF
-[Seat:*]
-autologin-user=${autologin_user}
-autologin-user-timeout=0
-autologin-session=${autologin_session}
-EOF
+"$python3_cmd" - "$tmp" "$autologin_user" "$autologin_session" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+target = Path(sys.argv[1])
+autologin_user = sys.argv[2]
+autologin_session = sys.argv[3]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+fd = os.open(target, os.O_WRONLY | os.O_TRUNC | nofollow)
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"generated LightDM autologin temp is not a regular file: {target}")
+    if opened.st_uid != os.getuid():
+        raise SystemExit(
+            f"generated LightDM autologin temp {target} is owned by uid {opened.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        raise SystemExit(f"generated LightDM autologin temp {target} has permissions {mode:04o}, expected 0600")
+    text = (
+        "[Seat:*]\n"
+        f"autologin-user={autologin_user}\n"
+        "autologin-user-timeout=0\n"
+        f"autologin-session={autologin_session}\n"
+    )
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        fd = -1
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
+finally:
+    if fd >= 0:
+        os.close(fd)
+PY
 
 if [[ "$dry_run" -eq 1 ]]; then
   echo "Would write $autologin_conf:"

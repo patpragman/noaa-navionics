@@ -1761,6 +1761,11 @@ grep -q '"$python3_cmd" - "$lightdm_dir" "$lightdm_conf_dir" "$autologin_conf" "
 grep -q '"$python3_cmd" - "$autologin_user"' scripts/configure_desktop_autologin.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_desktop_autologin.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_desktop_autologin.sh
+grep -q '"$python3_cmd" - "$tmp" "$autologin_user" "$autologin_session"' scripts/configure_desktop_autologin.sh
+grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_desktop_autologin.sh
+grep -q 'generated LightDM autologin temp .* expected 0600' scripts/configure_desktop_autologin.sh
+grep -q 'os.fsync(handle.fileno())' scripts/configure_desktop_autologin.sh
+! grep -q 'cat >"$tmp"' scripts/configure_desktop_autologin.sh
 grep -q 'run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'run "$sudo_cmd" "$systemctl_cmd" enable lightdm.service' scripts/configure_desktop_autologin.sh
 ! grep -q 'run sudo systemctl' scripts/configure_desktop_autologin.sh
@@ -1768,6 +1773,8 @@ grep -q 'run "$sudo_cmd" "$systemctl_cmd" enable lightdm.service' scripts/config
 ! grep -q '"$sudo_cmd" python3' scripts/configure_desktop_autologin.sh
 grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
 grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'writes the generated LightDM autologin temp file through a no-follow private descriptor' README.md
+grep -q 'writes the generated LightDM autologin temp file through a no-follow private descriptor' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
