@@ -284,8 +284,12 @@ def format_status_text(report: dict[str, object]) -> str:
             "package_filename",
             "url",
             "download_path",
+            "download_path_exists",
             "download_path_is_symlink",
             "download_path_symlink_component",
+            "download_path_uid",
+            "download_path_mode",
+            "download_path_error",
             "download_url",
             "download_skipped",
             "download_bytes",
@@ -791,6 +795,7 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
             "package_filename": package.get("filename", "") if isinstance(package, dict) else "",
             "url": package.get("url", "") if isinstance(package, dict) else "",
             "download_path": download_path,
+            "download_path_exists": download_path_obj.exists() if download_path_obj is not None else False,
             "download_path_is_symlink": download_path_obj.is_symlink() if download_path_obj is not None else False,
             "download_path_symlink_component": (
                 str(download_path_symlink_component) if download_path_symlink_component is not None else ""
@@ -807,6 +812,22 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
             "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
         }
     )
+    if (
+        download_path_obj is not None
+        and download_path_obj.exists()
+        and not download_path_obj.is_symlink()
+        and download_path_symlink_component is None
+    ):
+        if not download_path_obj.is_file():
+            summary["download_path_error"] = f"manifest download path is not a regular file: {download_path_obj}"
+        else:
+            try:
+                download_stat = download_path_obj.stat()
+            except OSError as exc:
+                summary["download_path_error"] = str(exc)
+            else:
+                summary["download_path_uid"] = download_stat.st_uid
+                summary["download_path_mode"] = f"{download_stat.st_mode & 0o777:04o}"
     return summary
 
 

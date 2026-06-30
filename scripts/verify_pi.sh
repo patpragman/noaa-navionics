@@ -1259,6 +1259,9 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest download path contains a symlink: {download_path_symlink_component}"
         )
+    download_path_error = str(manifest.get("download_path_error", "")).strip()
+    if download_path_error:
+        raise SystemExit(f"status report manifest download path error: {download_path_error}")
     if download_path.name != manifest_package_filename:
         raise SystemExit(
             f"status report manifest download path {download_path} does not end with {manifest_package_filename}"
@@ -1273,6 +1276,23 @@ if expected_config_path:
     if download_symlink_component is not None:
         raise SystemExit(
             f"status report manifest download path contains a symlink: {download_symlink_component}"
+        )
+    if download_path.exists():
+        if not download_path.is_file():
+            raise SystemExit(f"status report manifest download path is not a regular file: {download_path}")
+        try:
+            download_path_stat = download_path.stat()
+        except OSError as exc:
+            raise SystemExit(f"could not inspect status report manifest download path {download_path}: {exc}") from exc
+        verify_status_file_owner_and_mode(
+            {
+                "uid": manifest.get("download_path_uid"),
+                "mode": manifest.get("download_path_mode"),
+            },
+            download_path,
+            download_path_stat,
+            "manifest download path",
+            os.getuid(),
         )
     if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")

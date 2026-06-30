@@ -704,7 +704,26 @@ def _check_manifest_archive(
         if required:
             return CheckResult("Manifest", False, f"manifest retained download path is missing: {archive_path}")
         return None
-    actual_bytes = archive_path.stat().st_size
+    if not archive_path.is_file():
+        return CheckResult("Manifest", False, f"manifest download path is not a regular file: {archive_path}")
+    try:
+        archive_stat = archive_path.stat()
+    except OSError as exc:
+        return CheckResult("Manifest", False, f"could not inspect manifest download path {archive_path}: {exc}")
+    if archive_stat.st_uid != os.getuid():
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest download path {archive_path} is owned by uid {archive_stat.st_uid}, expected {os.getuid()}",
+        )
+    archive_mode = archive_stat.st_mode & 0o777
+    if archive_mode & 0o022:
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest download path {archive_path} has permissions {archive_mode:04o}, expected no group/other write bits",
+        )
+    actual_bytes = archive_stat.st_size
     if actual_bytes != expected_bytes:
         return CheckResult(
             "Manifest",

@@ -2921,6 +2921,57 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("manifest download path is a symlink", result.detail)
 
+    def test_manifest_archive_nonregular_path_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            archive.mkdir()
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":5,"sha256":"abc"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download path is not a regular file", result.detail)
+
+    def test_manifest_archive_writable_file_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            archive.chmod(0o622)
+            digest = downloader_module.sha256_file(archive)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":5,"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download path", result.detail)
+            self.assertIn("has permissions 0622", result.detail)
+
     def test_manifest_archive_path_under_symlinked_parent_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -3192,13 +3243,16 @@ class StatusReportTests(unittest.TestCase):
             cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
             cell.parent.mkdir(parents=True)
             cell.write_text("cell", encoding="ascii")
+            archive = charts / "AK_ENCs.zip"
+            archive.write_bytes(b"x" * 123)
+            archive.chmod(0o640)
             manifest = charts / MANIFEST_NAME
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             manifest.write_text(
                 '{"created_at":"' + now + '",'
                 '"created_at_source":"download",'
                 '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
-                f'"download":{{"path":"{charts / "AK_ENCs.zip"}","url":"file:///test.zip",'
+                f'"download":{{"path":"{archive}","url":"file:///test.zip",'
                 '"bytes":123,"sha256":"abc","skipped":false},'
                 f'"extract":{{"path":"{cell.parent}","enc_cell_count":1}}}}\n',
                 encoding="utf-8",
@@ -3359,8 +3413,11 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["manifest"]["package_filename"], "AK_ENCs.zip")
             self.assertEqual(report["manifest"]["url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_path"], str(charts / "AK_ENCs.zip"))
+            self.assertEqual(report["manifest"]["download_path_exists"], True)
             self.assertEqual(report["manifest"]["download_path_is_symlink"], False)
             self.assertEqual(report["manifest"]["download_path_symlink_component"], "")
+            self.assertEqual(report["manifest"]["download_path_uid"], os.getuid())
+            self.assertEqual(report["manifest"]["download_path_mode"], "0640")
             self.assertEqual(report["manifest"]["download_url"], "file:///test.zip")
             self.assertEqual(report["manifest"]["download_skipped"], False)
             self.assertEqual(report["manifest"]["download_bytes"], 123)
@@ -3396,8 +3453,11 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("mode: 0644", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)
+            self.assertIn("download_path_exists: True", text)
             self.assertIn("download_path_is_symlink: False", text)
             self.assertIn("download_path_symlink_component: ", text)
+            self.assertIn(f"download_path_uid: {os.getuid()}", text)
+            self.assertIn("download_path_mode: 0640", text)
             self.assertIn("download_url: file:///test.zip", text)
             self.assertIn("download_skipped: False", text)
             self.assertIn("download_bytes: 123", text)
@@ -4079,6 +4139,37 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["extract_path"], str(extract_link))
             self.assertEqual(summary["extract_path_is_symlink"], True)
             self.assertEqual(summary["extract_path_symlink_component"], str(extract_link))
+
+    def test_manifest_summary_marks_nonregular_download_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            archive = charts / "AK_ENCs.zip"
+            archive.mkdir()
+            extract = charts / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (charts / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"created_at_source":"download",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",'
+                '"bytes":5,"sha256":"abc","skipped":false},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            summary = report_module._manifest_summary(charts)
+
+            self.assertEqual(summary["download_path"], str(archive))
+            self.assertEqual(summary["download_path_exists"], True)
+            self.assertIn("manifest download path is not a regular file", summary["download_path_error"])
+            self.assertNotIn("download_path_uid", summary)
+            self.assertNotIn("download_path_mode", summary)
 
     def test_manifest_summary_marks_recorded_path_symlink_ancestors(self):
         with tempfile.TemporaryDirectory() as tmpdir:

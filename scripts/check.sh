@@ -591,6 +591,10 @@ grep -q 'status report manifest download URL' scripts/verify_pi.sh
 grep -q 'status report manifest download path' scripts/verify_pi.sh
 grep -q 'status report manifest download path is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest download path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest download path is not a regular file' scripts/verify_pi.sh
+grep -q 'verify_status_file_owner_and_mode' scripts/verify_pi.sh
+grep -q '"download_path_uid"' scripts/verify_pi.sh
+grep -q '"download_path_mode"' scripts/verify_pi.sh
 grep -q 'def parse_manifest_int' scripts/verify_pi.sh
 grep -q 'status report manifest {field} is invalid in {source}' scripts/verify_pi.sh
 grep -q '"download_bytes"' scripts/verify_pi.sh
@@ -960,6 +964,11 @@ grep -q 'does not match configured' src/noaa_navionics/health.py
 grep -q 'manifest download path is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest download path contains a symlink' src/noaa_navionics/health.py
 grep -q 'manifest download path is outside chart directory' src/noaa_navionics/health.py
+grep -q 'manifest download path is not a regular file' src/noaa_navionics/health.py
+grep -q 'manifest download path .* is owned by uid' src/noaa_navionics/health.py
+grep -q 'manifest download path .* has permissions' src/noaa_navionics/health.py
+grep -q 'test_manifest_archive_nonregular_path_fails' tests/test_downloader.py
+grep -q 'test_manifest_archive_writable_file_fails' tests/test_downloader.py
 grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
@@ -1408,7 +1417,11 @@ grep -q 'recorded through a symlinked path component' README.md
 grep -q 'recorded through a symlinked path component' docs/sailboat-pi.md
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
 grep -q '"manifest_symlink_component"' src/noaa_navionics/report.py
+grep -q '"download_path_exists"' src/noaa_navionics/report.py
 grep -q '"download_path_symlink_component"' src/noaa_navionics/report.py
+grep -q '"download_path_uid"' src/noaa_navionics/report.py
+grep -q '"download_path_mode"' src/noaa_navionics/report.py
+grep -q '"download_path_error"' src/noaa_navionics/report.py
 grep -q '"extract_path_symlink_component"' src/noaa_navionics/report.py
 grep -q '"launcher_settings_symlink_component"' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.py
@@ -1431,6 +1444,7 @@ grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_ancestor' 
 grep -q 'test_launcher_settings_check_fails_symlinked_environment_ancestor' tests/test_downloader.py
 grep -q 'test_manifest_summary_rejects_symlinked_manifest_ancestor' tests/test_downloader.py
 grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test_downloader.py
+grep -q 'test_manifest_summary_marks_nonregular_download_path' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'desktop autostart, LightDM autologin, and manifest files' README.md
