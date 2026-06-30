@@ -7010,6 +7010,18 @@ class GpsTests(unittest.TestCase):
                 self.assertIsNone(fix.timestamp)
                 self.assertTrue(fix.valid)
 
+    def test_parse_gga_rejects_impossible_time_fields(self):
+        for time_value in ("240000", "236000", "235960", "126000"):
+            with self.subTest(time_value=time_value):
+                fix = parse_nmea_sentence(
+                    f"$GPGGA,{time_value},4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+                )
+
+                self.assertIsNotNone(fix)
+                assert fix is not None
+                self.assertIsNone(fix.timestamp)
+                self.assertTrue(fix.valid)
+
     def test_parse_rmc_sentence(self):
         sentence = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
         fix = parse_nmea_sentence(sentence)
@@ -7038,6 +7050,18 @@ class GpsTests(unittest.TestCase):
             with self.subTest(time_value=time_value, date_value=date_value):
                 fix = parse_nmea_sentence(
                     f"$GPRMC,{time_value},A,4807.038,N,01131.000,E,022.4,084.4,{date_value},003.1,W"
+                )
+
+                self.assertIsNotNone(fix)
+                assert fix is not None
+                self.assertIsNone(fix.timestamp)
+                self.assertTrue(fix.valid)
+
+    def test_parse_rmc_rejects_impossible_time_fields(self):
+        for time_value in ("240000", "236000", "235960", "126000"):
+            with self.subTest(time_value=time_value):
+                fix = parse_nmea_sentence(
+                    f"$GPRMC,{time_value},A,4807.038,N,01131.000,E,022.4,084.4,290626,003.1,W"
                 )
 
                 self.assertIsNotNone(fix)

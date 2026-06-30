@@ -583,7 +583,15 @@ def _time_parts(value: str) -> Optional[tuple[int, int, int, int, int]]:
         seconds = float(value[4:])
     except ValueError:
         return None
-    if hour < 0 or minute < 0 or seconds < 0.0 or not math.isfinite(seconds):
+    if (
+        hour < 0
+        or hour > 23
+        or minute < 0
+        or minute > 59
+        or seconds < 0.0
+        or seconds >= 60.0
+        or not math.isfinite(seconds)
+    ):
         return None
     whole_seconds = int(seconds)
     microsecond = int(round((seconds - whole_seconds) * 1_000_000))
