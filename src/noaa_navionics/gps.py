@@ -22,6 +22,7 @@ BAUD_RATES = {
     115200: termios.B115200,
 }
 NMEA_MAX_LINE_BYTES = 4096
+GPSD_MAX_MESSAGE_BYTES = 65536
 NMEA_CHECKSUM_HEX = frozenset("0123456789ABCDEFabcdef")
 
 
@@ -216,6 +217,7 @@ def iter_gpsd_fixes(
     max_duration: Optional[float] = None,
     idle_timeout: Optional[float] = None,
     sky_max_age_seconds: float = 10.0,
+    max_message_bytes: int = GPSD_MAX_MESSAGE_BYTES,
 ) -> Iterator[GPSFix]:
     latest_sky: Optional[GPSFix] = None
     latest_sky_monotonic: Optional[float] = None
@@ -235,11 +237,13 @@ def iter_gpsd_fixes(
                         read_timeout = min(read_timeout, idle_timeout)
                     sock.settimeout(read_timeout)
                 try:
-                    line = handle.readline()
+                    line = handle.readline(max_message_bytes + 1)
                 except TimeoutError as exc:
                     if deadline is None and idle_timeout is not None:
                         raise TimeoutError(f"no GPSD messages within {idle_timeout:g}s") from exc
                     break
+                if len(line) > max_message_bytes:
+                    raise ValueError(f"GPSD message exceeded {max_message_bytes} bytes")
                 if not line:
                     break
                 try:

@@ -1729,8 +1729,8 @@ grep -q 'NMEA sentence exceeded' src/noaa_navionics/health.py
 grep -q 'test_read_nmea_lines_rejects_overlong_unterminated_fragment' tests/test_downloader.py
 grep -q 'test_cli_deadline_nmea_reader_rejects_overlong_unterminated_fragment' tests/test_downloader.py
 grep -q 'test_check_gps_device_rejects_overlong_unterminated_nmea_fragment' tests/test_downloader.py
-grep -q 'NMEA readers reject overlong unterminated fragments' README.md
-grep -q 'NMEA readers reject overlong unterminated fragments' docs/sailboat-pi.md
+grep -q 'NMEA readers and GPSD streams reject overlong messages' README.md
+grep -q 'NMEA readers and GPSD streams reject overlong messages' docs/sailboat-pi.md
 grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow descriptor checks' README.md
 grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow descriptor checks' docs/sailboat-pi.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' README.md
@@ -1864,6 +1864,11 @@ grep -q 'trailing-garbage checksum suffixes' docs/sailboat-pi.md
 grep -q 'sky_max_age_seconds' src/noaa_navionics/gps.py
 grep -q 'max_duration' src/noaa_navionics/gps.py
 grep -q 'idle_timeout' src/noaa_navionics/gps.py
+grep -q 'GPSD_MAX_MESSAGE_BYTES' src/noaa_navionics/gps.py
+grep -q 'GPSD message exceeded' src/noaa_navionics/gps.py
+grep -q 'test_iter_gpsd_fixes_rejects_overlong_message' tests/test_downloader.py
+grep -q 'NMEA readers and GPSD streams reject overlong messages' README.md
+grep -q 'NMEA readers and GPSD streams reject overlong messages' docs/sailboat-pi.md
 grep -q 'sock.settimeout' src/noaa_navionics/gps.py
 grep -q 'sock.settimeout(idle_timeout)' src/noaa_navionics/gps.py
 grep -q 'no GPSD messages within' src/noaa_navionics/gps.py

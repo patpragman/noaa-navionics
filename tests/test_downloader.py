@@ -8908,6 +8908,61 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.hdop, 1.8)
         self.assertAlmostEqual(fix.latitude, 61.2181)
 
+    def test_iter_gpsd_fixes_rejects_overlong_message(self):
+        original = gps_module.socket.create_connection
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO("x" * 18)
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            with self.assertRaisesRegex(ValueError, "GPSD message exceeded 16 bytes"):
+                list(iter_gpsd_fixes(timeout=1, max_message_bytes=16))
+        finally:
+            gps_module.socket.create_connection = original
+
+    def test_iter_gpsd_fixes_accepts_bounded_message(self):
+        original = gps_module.socket.create_connection
+        payload = '{"class":"TPV","mode":3,"lat":61.2,"lon":-149.9}\n'
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(payload)
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            fixes = list(iter_gpsd_fixes(timeout=1, max_message_bytes=len(payload)))
+        finally:
+            gps_module.socket.create_connection = original
+
+        self.assertEqual(len(fixes), 1)
+        self.assertAlmostEqual(fixes[0].latitude, 61.2)
+
     def test_iter_gpsd_fixes_ignores_stale_sky_quality(self):
         original_socket = gps_module.socket.create_connection
         original_monotonic = gps_module.time.monotonic
@@ -9034,7 +9089,7 @@ class GpsTests(unittest.TestCase):
             def __exit__(self, exc_type, exc, tb):
                 return None
 
-            def readline(self):
+            def readline(self, size=-1):
                 raise TimeoutError("idle")
 
         class FakeSocket:
@@ -9111,7 +9166,7 @@ class GpsTests(unittest.TestCase):
             def __exit__(self, exc_type, exc, tb):
                 return None
 
-            def readline(self):
+            def readline(self, size=-1):
                 return '{"class":"TPV","mode":1}\n'
 
         class FakeSocket:
