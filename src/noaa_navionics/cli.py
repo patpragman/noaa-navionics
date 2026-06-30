@@ -270,6 +270,11 @@ def build_parser() -> argparse.ArgumentParser:
     anchor.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     anchor.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
     anchor.add_argument(
+        "--interval-seconds",
+        type=_positive_float,
+        help="minimum seconds between non-alarm distance updates",
+    )
+    anchor.add_argument(
         "--radius-meters",
         type=_positive_float,
         help="drift radius before alarming; defaults to [anchor].radius_meters",
@@ -618,6 +623,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 radius_meters=args.radius_meters or app_config.anchor_radius_meters,
                 anchor_latitude=args.anchor_lat,
                 anchor_longitude=args.anchor_lon,
+                interval_seconds=args.interval_seconds,
                 live_stream=live_stream,
             )
 
@@ -964,6 +970,7 @@ def _run_anchor_watch(
     radius_meters: float,
     anchor_latitude: Optional[float],
     anchor_longitude: Optional[float],
+    interval_seconds: Optional[float],
     live_stream: bool,
 ) -> int:
     if (anchor_latitude is None) != (anchor_longitude is None):
@@ -972,6 +979,7 @@ def _run_anchor_watch(
     anchor_set_from_fix = anchor_latitude is None
     anchor_fix_seen = False
     checked = 0
+    last_update_monotonic: Optional[float] = None
     for fix in fixes:
         if anchor_latitude is None or anchor_longitude is None:
             anchor_latitude = fix.latitude
@@ -983,8 +991,18 @@ def _run_anchor_watch(
 
         checked += 1
         distance = distance_meters(anchor_latitude, anchor_longitude, fix.latitude, fix.longitude)
-        print(f"Anchor distance: {distance:.1f} m  radius {radius_meters:g} m  {_format_fix(fix)}")
-        if distance > radius_meters:
+        alarm = distance > radius_meters
+        now = time.monotonic()
+        should_print_update = (
+            alarm
+            or interval_seconds is None
+            or last_update_monotonic is None
+            or now - last_update_monotonic >= interval_seconds
+        )
+        if should_print_update:
+            print(f"Anchor distance: {distance:.1f} m  radius {radius_meters:g} m  {_format_fix(fix)}")
+            last_update_monotonic = now
+        if alarm:
             print(
                 f"\aANCHOR ALARM: {distance:.1f} m from anchor; radius {radius_meters:g} m",
                 file=sys.stderr,

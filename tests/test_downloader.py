@@ -1527,6 +1527,71 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("radius 900 m", stdout.getvalue())
             self.assertEqual(stderr.getvalue(), "")
 
+    def test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            now = datetime.now(timezone.utc)
+            fixes = [
+                GPSFix(
+                    timestamp=now,
+                    latitude=61.00001,
+                    longitude=-149.00001,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+                GPSFix(
+                    timestamp=now + timedelta(seconds=1),
+                    latitude=61.00002,
+                    longitude=-149.00002,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+                GPSFix(
+                    timestamp=now + timedelta(seconds=2),
+                    latitude=61.0,
+                    longitude=-148.99,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+            ]
+            original = cli_module._read_fixes
+
+            try:
+                cli_module._read_fixes = lambda *args, **kwargs: iter(fixes)
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "anchor-watch",
+                            "--config",
+                            str(app_config),
+                            "--anchor-lat",
+                            "61.0",
+                            "--anchor-lon",
+                            "-149.0",
+                            "--radius-meters",
+                            "50",
+                            "--interval-seconds",
+                            "60",
+                            "--seconds",
+                            "12",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(stdout.getvalue().count("Anchor distance:"), 2)
+            self.assertIn("ANCHOR ALARM", stderr.getvalue())
+
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -3150,6 +3215,7 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["log-track", "--seconds", "0"])
         self.assert_parse_error(["mark-position", "--seconds", "0"])
         self.assert_parse_error(["anchor-watch", "--seconds", "0"])
+        self.assert_parse_error(["anchor-watch", "--interval-seconds", "0"])
         self.assert_parse_error(["anchor-watch", "--radius-meters", "0"])
         self.assert_parse_error(["anchor-watch", "--anchor-lat", "91"])
         self.assert_parse_error(["anchor-watch", "--anchor-lon", "181"])
