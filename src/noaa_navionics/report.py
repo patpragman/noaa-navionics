@@ -1300,7 +1300,11 @@ def _desktop_summary(
     }
 
 
-def _read_key_value_file_lines(path: Path) -> tuple[os.stat_result, list[str]]:
+def _read_key_value_file_lines(
+    path: Path,
+    *,
+    expected_stat: Optional[os.stat_result] = None,
+) -> tuple[os.stat_result, list[str]]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -1312,6 +1316,11 @@ def _read_key_value_file_lines(path: Path) -> tuple[os.stat_result, list[str]]:
         stat_result = os.fstat(fd)
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"key-value file path is not a regular file: {path}")
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"key-value file path changed before it could be read: {path}")
         mode = stat_result.st_mode & 0o777
         if mode & 0o022:
             raise RuntimeError(
@@ -1347,7 +1356,12 @@ def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) ->
         summary["error"] = f"key-value file path is not a regular file: {path}"
         return summary
     try:
-        stat_result, lines = _read_key_value_file_lines(path)
+        expected_stat = path.stat()
+    except OSError as exc:
+        summary["error"] = f"could not inspect key-value file path {path}: {exc}"
+        return summary
+    try:
+        stat_result, lines = _read_key_value_file_lines(path, expected_stat=expected_stat)
     except Exception as exc:
         summary["error"] = str(exc)
         return summary

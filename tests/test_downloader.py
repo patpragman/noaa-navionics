@@ -5111,6 +5111,21 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("expected no group/other write bits", summary["error"])
             self.assertNotIn("values", summary)
 
+    def test_key_value_file_reader_rejects_replaced_startup_file_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            path = root / "noaa-navionics-chartplotter.desktop"
+            path.write_text("[Desktop Entry]\nName=NOAA Navionics Chartplotter\n", encoding="utf-8")
+            path.chmod(0o640)
+            expected_stat = path.stat()
+            replacement = root / "replacement.desktop"
+            replacement.write_text("[Desktop Entry]\nName=Unexpected\nHidden=true\n", encoding="utf-8")
+            replacement.chmod(0o640)
+            replacement.replace(path)
+
+            with self.assertRaisesRegex(RuntimeError, "key-value file path changed before it could be read"):
+                report_module._read_key_value_file_lines(path, expected_stat=expected_stat)
+
     def test_opencpn_config_summary_rejects_symlinked_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
