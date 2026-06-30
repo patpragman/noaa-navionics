@@ -2252,6 +2252,21 @@ class CLIValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "launcher environment path is a symlink"):
                 _gps_seconds_from_launcher_env(launcher_env)
 
+    def test_status_report_rejects_writable_launcher_environment_parent_for_gps_wait(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / "launcher-parent"
+            parent.mkdir()
+            launcher_env = parent / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=37\n", encoding="ascii")
+            launcher_env.chmod(0o600)
+            parent.chmod(0o777)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "launcher environment directory .* has permissions"):
+                    _gps_seconds_from_launcher_env(launcher_env)
+            finally:
+                parent.chmod(0o700)
+
     def test_status_report_rejects_unknown_launcher_environment_key_for_gps_wait(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             launcher_env = Path(tmpdir) / "launcher.env"
@@ -5198,9 +5213,32 @@ class StatusReportTests(unittest.TestCase):
 
             summary = _launcher_settings_summary(launcher_env)
 
+            self.assertEqual(summary["directory_uid"], os.getuid())
+            self.assertEqual(summary["directory_mode"], f"{launcher_env.parent.stat().st_mode & 0o777:04o}")
             self.assertEqual(summary["uid"], os.getuid())
             self.assertEqual(summary["mode"], "0600")
             self.assertEqual(summary["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "60")
+
+    def test_launcher_settings_summary_records_public_environment_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / "launcher-parent"
+            parent.mkdir()
+            launcher_env = parent / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=60\n", encoding="ascii")
+            launcher_env.chmod(0o600)
+            parent.chmod(0o777)
+            try:
+                summary = _launcher_settings_summary(launcher_env)
+                check = _launcher_settings_check(summary)
+            finally:
+                parent.chmod(0o700)
+
+            self.assertEqual(summary["directory_uid"], os.getuid())
+            self.assertEqual(summary["directory_mode"], "0777")
+            self.assertFalse(check.ok)
+            self.assertIn("launcher environment directory", check.detail)
+            self.assertIn("expected no group/other write bits", check.detail)
 
     def test_launcher_settings_summary_rejects_public_environment_before_parsing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -6834,6 +6872,23 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(check.ok)
         self.assertIn("expected private 0600", check.detail)
+
+    def test_launcher_settings_check_fails_public_environment_directory(self):
+        check = _launcher_settings_check(
+            {
+                "path": "/home/pi/.config/noaa-navionics/launcher.env",
+                "exists": True,
+                "is_symlink": False,
+                "directory_mode": "0775",
+                "uid": os.getuid(),
+                "mode": "0600",
+                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
+            }
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("launcher environment directory", check.detail)
+        self.assertIn("expected no group/other write bits", check.detail)
 
     def test_launcher_settings_check_fails_symlinked_environment(self):
         check = _launcher_settings_check(

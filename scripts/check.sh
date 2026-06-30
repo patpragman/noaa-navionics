@@ -2217,14 +2217,21 @@ grep -q 'launcher environment is owned by uid' src/noaa_navionics/report.py
 grep -q 'malformed launcher environment line' src/noaa_navionics/report.py
 grep -q 'unknown launcher environment key' src/noaa_navionics/report.py
 grep -q 'launcher environment has permissions.*expected private 0600' src/noaa_navionics/report.py
+grep -q 'launcher environment directory .* has permissions' src/noaa_navionics/cli.py
+grep -q 'launcher environment directory .* has permissions' src/noaa_navionics/report.py
+grep -q 'directory_uid' src/noaa_navionics/report.py
+grep -q 'directory_mode' src/noaa_navionics/report.py
 grep -q 'def _read_launcher_settings_lines' src/noaa_navionics/report.py
 grep -q 'launcher environment changed before it could be read' src/noaa_navionics/report.py
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/report.py
+grep -q 'test_status_report_rejects_writable_launcher_environment_parent_for_gps_wait' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_nonregular_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_records_public_environment_directory' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_public_environment_before_parsing' tests/test_downloader.py
 grep -q 'test_launcher_settings_reader_rejects_replaced_environment_before_parsing' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_misowned_environment' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_public_environment_directory' tests/test_downloader.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is not a regular file' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
@@ -2402,9 +2409,9 @@ grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_dow
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' README.md
 grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' docs/sailboat-pi.md
-grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
+grep -q 'readiness report fails if the persisted launcher environment directory is owned by the wrong account or group/world-writable' README.md
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
-grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
+grep -q 'Status reports parse launcher settings only after checking the launcher environment directory ownership and permissions' README.md
 grep -q 'Pi verification compares status-reported launcher settings only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'def _read_existing_config' src/noaa_navionics/config.py
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/config.py
@@ -2413,15 +2420,15 @@ grep -q 'parser.read_file(handle, source=str(path))' src/noaa_navionics/config.p
 ! grep -q 'parser.read(cfg_path)' src/noaa_navionics/config.py
 grep -q 'Onboard config reads use a no-follow descriptor' README.md
 grep -q 'Config reads use a no-follow descriptor' docs/sailboat-pi.md
-grep -q 'Status reports parse launcher settings only after a no-follow descriptor read confirms the file is still the inspected file' README.md
-grep -q 'records launcher settings in status reports only after a no-follow descriptor read confirms the file is still the inspected file' docs/sailboat-pi.md
+grep -q 'Status reports parse launcher settings only after checking the launcher environment directory ownership and permissions' README.md
+grep -q 'records launcher settings in status reports only after checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' README.md
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
-grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'records launcher settings in status reports only after checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' docs/sailboat-pi.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' docs/sailboat-pi.md
@@ -2674,8 +2681,10 @@ grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot
 grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
-grep -q 'only after rejecting a missing launcher environment, symlinked launcher environment files or path components' README.md
-grep -q 'only after rejecting a missing launcher environment, symlinked launcher environment files or path components' docs/sailboat-pi.md
+grep -q 'misowned or group/world-writable launcher environment directories' README.md
+grep -q 'misowned or group/world-writable launcher environment directories' docs/sailboat-pi.md
+grep -q 'checking the launcher environment directory ownership and permissions' README.md
+grep -q 'checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
 
 python3 - <<'PY'
 from pathlib import Path

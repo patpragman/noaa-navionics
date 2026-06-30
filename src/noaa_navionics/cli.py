@@ -533,6 +533,7 @@ def _gps_seconds_from_launcher_env(path: Path) -> float:
         raise RuntimeError(f"launcher environment path is a symlink: {launcher_env}")
     if symlink_component is not None:
         raise RuntimeError(f"launcher environment directory is a symlink: {symlink_component}")
+    _reject_unsafe_launcher_env_parent(launcher_env.parent)
     values: dict[str, str] = {}
     for line_number, raw_line in enumerate(_read_launcher_settings_lines(launcher_env), start=1):
         line = raw_line.strip()
@@ -549,6 +550,29 @@ def _gps_seconds_from_launcher_env(path: Path) -> float:
     if not raw_seconds.isdigit() or int(raw_seconds) <= 0:
         raise ValueError(f"NOAA_NAVIONICS_GPS_SECONDS={raw_seconds or '<missing>'} expected positive integer")
     return float(int(raw_seconds))
+
+
+def _reject_unsafe_launcher_env_parent(path: Path) -> None:
+    parent = Path(path).expanduser()
+    if not parent.exists():
+        return
+    if not parent.is_dir():
+        raise RuntimeError(f"launcher environment parent is not a directory: {parent}")
+    try:
+        parent_stat = parent.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect launcher environment directory {parent}: {exc}") from exc
+    if parent_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"launcher environment directory {parent} is owned by uid {parent_stat.st_uid}, "
+            f"expected {os.getuid()}"
+        )
+    parent_mode = stat.S_IMODE(parent_stat.st_mode)
+    if parent_mode & 0o022:
+        raise RuntimeError(
+            f"launcher environment directory {parent} has permissions {parent_mode:04o}, "
+            "expected no group/other write bits"
+        )
 
 
 def _read_fixes(

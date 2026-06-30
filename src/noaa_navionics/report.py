@@ -1187,6 +1187,17 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
     if symlink_component is not None:
         summary["error"] = f"launcher environment directory is a symlink: {symlink_component}"
         return summary
+    if launcher_env.parent.exists():
+        if not launcher_env.parent.is_dir():
+            summary["error"] = f"launcher environment parent is not a directory: {launcher_env.parent}"
+            return summary
+        try:
+            parent_stat = launcher_env.parent.stat()
+            summary["directory_uid"] = parent_stat.st_uid
+            summary["directory_mode"] = f"{parent_stat.st_mode & 0o777:04o}"
+        except OSError as exc:
+            summary["error"] = f"could not inspect launcher environment directory {launcher_env.parent}: {exc}"
+            return summary
     if not launcher_env.exists():
         return summary
     if not launcher_env.is_file():
@@ -1674,6 +1685,40 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     error = str(summary.get("error", ""))
     if error:
         return CheckResult("Launcher Settings", False, f"launcher environment unreadable at {path}: {error}")
+    directory_uid = summary.get("directory_uid")
+    if directory_uid is not None:
+        try:
+            parsed_directory_uid = int(directory_uid)
+        except (TypeError, ValueError):
+            return CheckResult(
+                "Launcher Settings",
+                False,
+                f"launcher environment directory owner was not parsed: {Path(path).parent}",
+            )
+        if parsed_directory_uid != os.getuid():
+            return CheckResult(
+                "Launcher Settings",
+                False,
+                f"launcher environment directory {Path(path).parent} is owned by uid "
+                f"{parsed_directory_uid}, expected {os.getuid()}",
+            )
+    directory_mode = str(summary.get("directory_mode", "")).strip()
+    if directory_mode:
+        try:
+            parsed_directory_mode = int(directory_mode, 8)
+        except ValueError:
+            return CheckResult(
+                "Launcher Settings",
+                False,
+                f"launcher environment directory mode was not parsed: {Path(path).parent}",
+            )
+        if parsed_directory_mode & 0o022:
+            return CheckResult(
+                "Launcher Settings",
+                False,
+                f"launcher environment directory {Path(path).parent} has permissions {directory_mode}, "
+                "expected no group/other write bits",
+            )
     uid = summary.get("uid")
     if uid is not None:
         try:
