@@ -402,7 +402,11 @@ grep -q 'if path.is_dir():' scripts/provision_sailboat_pi.sh
 grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
+grep -q 'private venv cleanup requires Python shutil.rmtree with symlink-attack resistance' scripts/install_raspberry_pi.sh
+grep -q 'not getattr(shutil.rmtree, "avoids_symlink_attacks", False)' scripts/install_raspberry_pi.sh
 grep -q 'shutil.rmtree(venv)' scripts/install_raspberry_pi.sh
+grep -q 'venv cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree`' README.md
+grep -q 'venv cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree`' docs/sailboat-pi.md
 grep -q 'usage()' scripts/install_raspberry_pi.sh
 grep -q 'usage()' scripts/provision_sailboat_pi.sh
 grep -q 'usage()' scripts/configure_gpsd.sh

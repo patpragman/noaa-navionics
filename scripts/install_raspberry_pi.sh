@@ -121,6 +121,11 @@ except ValueError as exc:
 if venv.exists() or venv.is_symlink():
     if venv.is_symlink() or not venv.is_dir():
         raise SystemExit(f"refusing to remove non-directory private venv path: {venv}")
+    if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+        raise SystemExit(
+            "private venv cleanup requires Python shutil.rmtree with symlink-attack resistance; "
+            f"leaving existing private venv in place: {venv}"
+        )
     shutil.rmtree(venv)
 PY
 }
