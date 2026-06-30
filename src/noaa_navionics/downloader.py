@@ -345,6 +345,9 @@ def _download_package_unlocked(
 
 
 def _hash_existing_download_path(path: Path) -> tuple[os.stat_result, str]:
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"chart download path contains a symlink: {symlink_component}")
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -525,14 +528,8 @@ def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
 
 
 def sha256_file(path: Path) -> str:
-    hasher = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        while True:
-            chunk = handle.read(1024 * 1024)
-            if not chunk:
-                break
-            hasher.update(chunk)
-    return hasher.hexdigest()
+    _, digest = _hash_existing_download_path(Path(path).expanduser())
+    return digest
 
 
 def _open_exclusive_private_binary(path: Path):

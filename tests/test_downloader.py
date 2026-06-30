@@ -3922,8 +3922,8 @@ class ManifestTests(unittest.TestCase):
             root = Path(tmpdir)
             archive = root / "AK_ENCs.zip"
             archive.write_bytes(b"chart")
-            archive.chmod(0o622)
             digest = downloader_module.sha256_file(archive)
+            archive.chmod(0o622)
             extract = root / "AK_ENCs"
             cell = extract / "US5AK3CM" / "US5AK3CM.000"
             cell.parent.mkdir(parents=True)
@@ -3952,6 +3952,48 @@ class ManifestTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "has permissions 0622"):
                 _sha256_trusted_file(archive, label="manifest download path", expected_uid=os.getuid())
+
+    def test_sha256_file_rejects_symlinked_archive_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_archive = root / "real-AK-ENCs.zip"
+            real_archive.write_bytes(b"chart")
+            archive = root / "AK_ENCs.zip"
+            try:
+                archive.symlink_to(real_archive)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "chart archive path is a symlink"):
+                downloader_module.sha256_file(archive)
+
+    def test_sha256_file_rejects_writable_archive_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive = Path(tmpdir) / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            archive.chmod(0o622)
+
+            try:
+                with self.assertRaisesRegex(RuntimeError, "chart download path .* has permissions 0622"):
+                    downloader_module.sha256_file(archive)
+            finally:
+                archive.chmod(0o600)
+
+    def test_sha256_file_rejects_archive_under_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            archive = real_parent / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            link_parent = root / "link-parent"
+            try:
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "chart download path contains a symlink"):
+                downloader_module.sha256_file(link_parent / "AK_ENCs.zip")
 
     def test_manifest_archive_path_under_symlinked_parent_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
