@@ -454,8 +454,12 @@ grep -q 'verify_installed_user_executable' scripts/install_raspberry_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/install_raspberry_pi.sh
 grep -q 'install -m "$mode" "$source" "$tmp"' scripts/install_raspberry_pi.sh
 grep -q 'ln -s "$source" "$tmp"' scripts/install_raspberry_pi.sh
+test "$(grep -c 'validate_user_install_path "$target" "installed user file" regular' scripts/install_raspberry_pi.sh)" -ge 2
+test "$(grep -c 'validate_user_install_path "$target" "installed command symlink" link' scripts/install_raspberry_pi.sh)" -ge 2
 grep -q 'mv -f "$tmp" "$target"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$target"' scripts/install_raspberry_pi.sh
+grep -q 'Installer revalidates helper, unit, and command-link targets immediately before promotion' README.md
+grep -q 'Installer revalidates helper, unit, and command-link targets immediately before promotion' docs/sailboat-pi.md
 grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755' scripts/install_raspberry_pi.sh

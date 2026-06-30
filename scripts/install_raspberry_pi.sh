@@ -389,6 +389,10 @@ install_user_file_atomic() {
     rm -f "$tmp"
     return 1
   fi
+  if ! validate_user_install_path "$target" "installed user file" regular; then
+    rm -f "$tmp"
+    return 1
+  fi
   if ! mv -f "$tmp" "$target"; then
     rm -f "$tmp"
     return 1
@@ -409,6 +413,10 @@ link_user_atomic() {
   tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
   rm -f "$tmp"
   if ! ln -s "$source" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! validate_user_install_path "$target" "installed command symlink" link; then
     rm -f "$tmp"
     return 1
   fi
