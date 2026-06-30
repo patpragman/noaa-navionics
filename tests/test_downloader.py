@@ -7362,6 +7362,34 @@ class GpsTests(unittest.TestCase):
             self.assertIn("GPSD config directory is a symlink", result.detail)
             self.assertIn(str(link_root), result.detail)
 
+    def test_check_gpsd_startup_config_rejects_nonregular_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "gpsd"
+            config.mkdir()
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPSD config path is not a regular file", result.detail)
+
+    def test_check_gpsd_startup_config_rejects_writable_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "gpsd"
+            config.write_text(
+                'START_DAEMON="true"\n'
+                'USBAUTO="false"\n'
+                'DEVICES="/dev/serial/by-id/mock-gps"\n'
+                'GPSD_OPTIONS="-n"\n',
+                encoding="utf-8",
+            )
+            config.chmod(0o666)
+
+            result = check_gpsd_startup_config("/dev/serial/by-id/mock-gps", config_path=config)
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPSD config", result.detail)
+            self.assertIn("has permissions 0666", result.detail)
+
     def test_check_gpsd_startup_config_rejects_unsafe_expected_device(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "gpsd"

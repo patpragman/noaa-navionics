@@ -932,6 +932,27 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
     symlink_component = _first_symlink_ancestor(path.parent)
     if symlink_component is not None:
         return CheckResult("GPSD Config", False, f"GPSD config directory is a symlink: {symlink_component}")
+    if path.exists() and not path.is_file():
+        return CheckResult("GPSD Config", False, f"GPSD config path is not a regular file: {path}")
+    if path.exists():
+        try:
+            stat_result = path.stat()
+        except OSError as exc:
+            return CheckResult("GPSD Config", False, f"cannot inspect {path}: {exc}")
+        expected_uid = 0 if path == Path("/etc/default/gpsd") else os.getuid()
+        if stat_result.st_uid != expected_uid:
+            return CheckResult(
+                "GPSD Config",
+                False,
+                f"GPSD config {path} is owned by uid {stat_result.st_uid}, expected {expected_uid}",
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            return CheckResult(
+                "GPSD Config",
+                False,
+                f"GPSD config {path} has permissions {mode:04o}, expected no group/other write bits",
+            )
     try:
         values = _read_gpsd_default_config(path)
     except OSError as exc:

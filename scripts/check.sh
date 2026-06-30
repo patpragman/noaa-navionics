@@ -781,9 +781,14 @@ grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh
 grep -Fq '"$suffix" != */*' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
 grep -q 'GPSD config directory is a symlink' src/noaa_navionics/health.py
+grep -q 'GPSD config path is not a regular file' src/noaa_navionics/health.py
+grep -q 'GPSD config .* is owned by uid' src/noaa_navionics/health.py
+grep -q 'GPSD config .* has permissions' src/noaa_navionics/health.py
 grep -q 'test_check_gpsd_startup_config_rejects_symlinked_config_ancestor' tests/test_downloader.py
-grep -q 'symlinked GPSD config path components' README.md
-grep -q 'symlinked GPSD config path components' docs/sailboat-pi.md
+grep -q 'test_check_gpsd_startup_config_rejects_nonregular_config' tests/test_downloader.py
+grep -q 'test_check_gpsd_startup_config_rejects_writable_config' tests/test_downloader.py
+grep -q 'symlinked, non-regular, writable, or misowned GPSD config' README.md
+grep -q 'symlinked, non-regular, writable, or misowned GPSD config' docs/sailboat-pi.md
 grep -q '"gpsd.socket"' src/noaa_navionics/report.py
 grep -q '"GPSD Socket"' src/noaa_navionics/report.py
 grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
