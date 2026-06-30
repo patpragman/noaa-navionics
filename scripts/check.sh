@@ -625,6 +625,7 @@ test "$(grep -c 'status report track_log latest_latitude is outside -90..90' scr
 test "$(grep -c 'status report track_log latest_longitude is outside -180..180' scripts/verify_pi.sh)" -ge 2
 test "$(grep -c 'status report track_log latest coordinates are invalid 0,0' scripts/verify_pi.sh)" -ge 2
 test "$(grep -c 'status report track_log age_seconds is negative' scripts/verify_pi.sh)" -ge 2
+test "$(grep -c 'status report track_log age_seconds is stale' scripts/verify_pi.sh)" -ge 2
 grep -q 'def first_symlink_ancestor' scripts/verify_pi.sh
 grep -q 'track_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh

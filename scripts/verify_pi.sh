@@ -985,6 +985,8 @@ if expected_config_path:
         raise SystemExit("status report track_log latest coordinates are invalid 0,0")
     if age_seconds < 0.0:
         raise SystemExit(f"status report track_log age_seconds is negative: {age_seconds:g}")
+    if age_seconds > 600.0:
+        raise SystemExit(f"status report track_log age_seconds is stale: {age_seconds:g}")
     latest_satellites = track_log.get("latest_satellites")
     latest_hdop = track_log.get("latest_hdop")
     if latest_satellites is None and latest_hdop is None:
@@ -1766,6 +1768,8 @@ if abs(latest_latitude) < 1e-12 and abs(latest_longitude) < 1e-12:
     raise SystemExit("status report track_log latest coordinates are invalid 0,0")
 if age_seconds < 0.0:
     raise SystemExit(f"status report track_log age_seconds is negative: {age_seconds:g}")
+if age_seconds > 600.0:
+    raise SystemExit(f"status report track_log age_seconds is stale: {age_seconds:g}")
 latest_satellites = track_log.get("latest_satellites")
 latest_hdop = track_log.get("latest_hdop")
 if latest_satellites is None and latest_hdop is None:
