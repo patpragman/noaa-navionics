@@ -8385,6 +8385,31 @@ class GpsTests(unittest.TestCase):
         finally:
             gps_module.time.monotonic = original_monotonic
 
+    def test_read_nmea_lines_rejects_overlong_unterminated_fragment(self):
+        class LongFragmentStream:
+            def read(self, size=-1):
+                return b"A"
+
+        with self.assertRaisesRegex(ValueError, "NMEA sentence exceeded 4 bytes without a line ending"):
+            next(read_nmea_lines(LongFragmentStream(), max_line_bytes=4))
+
+    def test_cli_deadline_nmea_reader_rejects_overlong_unterminated_fragment(self):
+        original_limit = cli_module.NMEA_MAX_LINE_BYTES
+        original_monotonic = cli_module.time.monotonic
+
+        class LongFragmentStream:
+            def read(self, size=-1):
+                return b"A"
+
+        try:
+            cli_module.NMEA_MAX_LINE_BYTES = 4
+            cli_module.time.monotonic = lambda: 0.0
+            with self.assertRaisesRegex(ValueError, "NMEA sentence exceeded 4 bytes without a line ending"):
+                next(cli_module._read_nmea_lines_until(LongFragmentStream(), deadline=10.0))
+        finally:
+            cli_module.NMEA_MAX_LINE_BYTES = original_limit
+            cli_module.time.monotonic = original_monotonic
+
     def test_iter_gpsd_fixes_stops_after_max_duration_without_fixes(self):
         original_socket = gps_module.socket.create_connection
         original_monotonic = gps_module.time.monotonic
@@ -8612,6 +8637,22 @@ class GpsTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertIn("4 satellites", result.detail)
         self.assertIn("HDOP 0.9", result.detail)
+
+    def test_check_gps_device_rejects_overlong_unterminated_nmea_fragment(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            return BytesIO(b"A" * (health_module.NMEA_MAX_LINE_BYTES + 1))
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("NMEA sentence exceeded", result.detail)
 
     def test_check_gps_device_rejects_null_island_fix(self):
         original = health_module.open_nmea_stream

@@ -31,6 +31,7 @@ from .downloader import (
 )
 from .gps import (
     GPXTrackLogger,
+    NMEA_MAX_LINE_BYTES,
     daily_track_path,
     default_track_path,
     first_symlink_ancestor,
@@ -589,6 +590,8 @@ def _read_nmea_lines_until(stream, deadline: float):
             time.sleep(0.05)
             continue
         buffer += chunk
+        if len(buffer) > NMEA_MAX_LINE_BYTES:
+            raise ValueError(f"NMEA sentence exceeded {NMEA_MAX_LINE_BYTES} bytes without a line ending")
         if chunk in (b"\n", b"\r"):
             line = buffer.decode("ascii", errors="ignore").strip()
             buffer = b""

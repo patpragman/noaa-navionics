@@ -21,6 +21,7 @@ BAUD_RATES = {
     57600: termios.B57600,
     115200: termios.B115200,
 }
+NMEA_MAX_LINE_BYTES = 4096
 
 
 @dataclass(frozen=True)
@@ -133,7 +134,12 @@ def open_nmea_stream(device: str, baud: int = 4800) -> BinaryIO:
     return os.fdopen(fd, "rb", buffering=0)
 
 
-def read_nmea_lines(stream: BinaryIO, *, idle_timeout: Optional[float] = None) -> Iterator[str]:
+def read_nmea_lines(
+    stream: BinaryIO,
+    *,
+    idle_timeout: Optional[float] = None,
+    max_line_bytes: int = NMEA_MAX_LINE_BYTES,
+) -> Iterator[str]:
     buffer = b""
     last_data_monotonic = time.monotonic()
     while True:
@@ -145,6 +151,8 @@ def read_nmea_lines(stream: BinaryIO, *, idle_timeout: Optional[float] = None) -
             continue
         last_data_monotonic = time.monotonic()
         buffer += chunk
+        if len(buffer) > max_line_bytes:
+            raise ValueError(f"NMEA sentence exceeded {max_line_bytes} bytes without a line ending")
         if chunk in (b"\n", b"\r"):
             line = buffer.decode("ascii", errors="ignore").strip()
             buffer = b""

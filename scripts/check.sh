@@ -1533,6 +1533,15 @@ grep -q 'return _non_negative_int_or_none(value)' src/noaa_navionics/gps.py
 grep -q 'day_carry' src/noaa_navionics/gps.py
 grep -q 'not math.isfinite(seconds)' src/noaa_navionics/gps.py
 grep -q 'isinstance(time_value, str)' src/noaa_navionics/gps.py
+grep -q 'NMEA_MAX_LINE_BYTES' src/noaa_navionics/gps.py
+grep -q 'NMEA sentence exceeded' src/noaa_navionics/gps.py
+grep -q 'NMEA sentence exceeded' src/noaa_navionics/cli.py
+grep -q 'NMEA sentence exceeded' src/noaa_navionics/health.py
+grep -q 'test_read_nmea_lines_rejects_overlong_unterminated_fragment' tests/test_downloader.py
+grep -q 'test_cli_deadline_nmea_reader_rejects_overlong_unterminated_fragment' tests/test_downloader.py
+grep -q 'test_check_gps_device_rejects_overlong_unterminated_nmea_fragment' tests/test_downloader.py
+grep -q 'NMEA readers reject overlong unterminated fragments' README.md
+grep -q 'NMEA readers reject overlong unterminated fragments' docs/sailboat-pi.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' README.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
 grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py

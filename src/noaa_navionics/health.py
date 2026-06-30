@@ -20,6 +20,7 @@ import time
 
 from .gps import (
     GPSFix,
+    NMEA_MAX_LINE_BYTES,
     gps_fix_has_quality_fields,
     gps_fix_quality_failure,
     iter_fixes,
@@ -1331,6 +1332,8 @@ def _read_nmea_lines_until(stream, deadline: float) -> Iterable[str]:
             time.sleep(0.05)
             continue
         buffer += chunk
+        if len(buffer) > NMEA_MAX_LINE_BYTES:
+            raise ValueError(f"NMEA sentence exceeded {NMEA_MAX_LINE_BYTES} bytes without a line ending")
         if chunk in (b"\n", b"\r"):
             line = buffer.decode("ascii", errors="ignore").strip()
             buffer = b""
