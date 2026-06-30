@@ -480,6 +480,8 @@ grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/se
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
+grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
@@ -536,8 +538,10 @@ grep -q '`--radius-meters N` for a one-off radius override' README.md
 grep -q '`--radius-meters N` for a one-off radius override' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
-grep -q 'post-trip helper rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'post-trip helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
+grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`' README.md
+grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -556,16 +560,20 @@ grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics 
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
-grep -q 'recovery export helper rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'recovery export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits' README.md
+grep -q 'recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
+grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
 grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
-grep -q 'pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
+grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' README.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
@@ -1078,6 +1086,9 @@ for helper_wrapper in \
   scripts/pre_trip_prepare_pi.sh; do
   grep -q 'reject_symlinked_path_components "Helper script" "$path"' "$helper_wrapper"
   grep -q 'path contains a symlink' "$helper_wrapper"
+  grep -q 'Helper script is owned by uid ${owner_uid}, expected current user ${current_uid}' "$helper_wrapper"
+  grep -q 'Helper script has permissions ${mode}, expected no group/other write bits' "$helper_wrapper"
+  grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' "$helper_wrapper"
 done
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
@@ -5169,6 +5180,22 @@ grep -Fxq -- '--allow-dirty' "$pre_departure_args"
 grep -Fxq -- 'pi@example.invalid' "$pre_departure_args"
 grep -q 'Pre-departure check passed' "$verify_output"
 
+chmod 0775 "$pre_departure_repo/scripts/verify_pi.sh"
+set +e
+NOAA_NAVIONICS_FAKE_VERIFY_ARGS="$pre_departure_args" \
+  "$pre_departure_repo/scripts/pre_departure_check_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject a group-writable verify helper with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+chmod 0755 "$pre_departure_repo/scripts/verify_pi.sh"
+
 mv "$pre_departure_repo/scripts/verify_pi.sh" "$pre_departure_repo/scripts/verify_pi.real.sh"
 ln -s verify_pi.real.sh "$pre_departure_repo/scripts/verify_pi.sh"
 set +e
@@ -5200,6 +5227,22 @@ for helper in refresh_pi_charts.sh export_pi_recovery_bundle.sh verify_pi_recove
   write_noop_helper "$pre_trip_parent_real/scripts/$helper"
 done
 chmod +x "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"
+chmod 0775 "$pre_trip_parent_real/scripts/refresh_pi_charts.sh"
+set +e
+"$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-refresh \
+  --skip-recovery >"$verify_output" 2>&1
+pre_trip_parent_code=$?
+set -e
+if [[ "$pre_trip_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject a group-writable helper with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+chmod 0755 "$pre_trip_parent_real/scripts/refresh_pi_charts.sh"
 ln -s "$pre_trip_parent_real" "$pre_trip_parent_link"
 set +e
 "$pre_trip_parent_link/scripts/pre_trip_prepare_pi.sh" \
@@ -5224,6 +5267,23 @@ for helper in check_pi_status.sh export_pi_tracks.sh collect_pi_support_bundle.s
   write_noop_helper "$post_trip_parent_real/scripts/$helper"
 done
 chmod +x "$post_trip_parent_real/scripts/post_trip_collect_pi.sh"
+chmod 0775 "$post_trip_parent_real/scripts/check_pi_status.sh"
+set +e
+"$post_trip_parent_real/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$tmpdir/post-trip-helper-writable-output" \
+  --skip-status \
+  --skip-tracks \
+  --skip-support \
+  --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_parent_code=$?
+set -e
+if [[ "$post_trip_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a group-writable helper with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+chmod 0755 "$post_trip_parent_real/scripts/check_pi_status.sh"
 ln -s "$post_trip_parent_real" "$post_trip_parent_link"
 set +e
 "$post_trip_parent_link/scripts/post_trip_collect_pi.sh" \
@@ -5249,6 +5309,19 @@ for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.s
   write_noop_helper "$recovery_parent_real/scripts/$helper"
 done
 chmod +x "$recovery_parent_real/scripts/export_pi_recovery_bundle.sh"
+chmod 0775 "$recovery_parent_real/scripts/export_pi_settings.sh"
+set +e
+"$recovery_parent_real/scripts/export_pi_recovery_bundle.sh" \
+  pi@example.invalid "$tmpdir/recovery-helper-writable-output" >"$verify_output" 2>&1
+recovery_parent_code=$?
+set -e
+if [[ "$recovery_parent_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject a group-writable helper with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+chmod 0755 "$recovery_parent_real/scripts/export_pi_settings.sh"
 ln -s "$recovery_parent_real" "$recovery_parent_link"
 set +e
 "$recovery_parent_link/scripts/export_pi_recovery_bundle.sh" \

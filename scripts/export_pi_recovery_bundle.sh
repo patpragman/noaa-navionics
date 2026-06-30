@@ -218,6 +218,12 @@ prepare_private_output_dir() {
 
 require_helper() {
   local path="$1"
+  local current_uid
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
   if [[ -L "$path" ]]; then
     echo "Helper script must not be a symlink: $path" >&2
     exit 2
@@ -227,6 +233,24 @@ require_helper() {
     echo "Helper script is missing or not executable: $path" >&2
     exit 2
   fi
+  current_uid="$(id -u)"
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect helper script owner and permissions: $path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "Helper script is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
+    exit 2
+  fi
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Helper script has permissions ${mode}, expected no group/other write bits: $path" >&2
+      exit 2
+      ;;
+  esac
 }
 
 run_step() {

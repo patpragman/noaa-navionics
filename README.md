@@ -116,7 +116,7 @@ Run the normal pre-trip dock workflow against an already commissioned Pi:
 scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
+The pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits, refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
 
 Deploy to a Raspberry Pi over SSH:
 
@@ -219,7 +219,7 @@ Collect post-trip artifacts after returning to the dock:
 scripts/post_trip_collect_pi.sh pi@raspberrypi.local
 ```
 
-The post-trip helper rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle, and can optionally dry-run or request a clean shutdown with `--shutdown-dry-run` or `--shutdown-confirm`. It continues exporting tracks/support even when the status snapshot reports unhealthy state, then exits non-zero after collection so the saved artifacts can be inspected.
+The post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits, rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle, and can optionally dry-run or request a clean shutdown with `--shutdown-dry-run` or `--shutdown-confirm`. It continues exporting tracks/support even when the status snapshot reports unhealthy state, then exits non-zero after collection so the saved artifacts can be inspected.
 
 Export OpenCPN user navigation data before SD-card swaps or maintenance:
 
@@ -243,7 +243,7 @@ Export a full recovery set before a trip or maintenance window:
 scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30
 ```
 
-The recovery export helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory and timestamped recovery folder to user-owned private `0700`, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. The recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file before trusting its contents. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+The recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory and timestamped recovery folder to user-owned private `0700`, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. The recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file before trusting its contents. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 Verify that local recovery directory before relying on it for an SD-card recovery:
 
 ```bash
