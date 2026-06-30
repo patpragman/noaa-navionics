@@ -326,6 +326,75 @@ remote_boot_id() {
   ssh "${ssh_batch_options[@]}" "$target" "cat /proc/sys/kernel/random/boot_id"
 }
 
+validate_remote_reboot_command_trust() {
+  local reboot_cmd="$1"
+
+  case "$reboot_cmd" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*)
+      ;;
+    *)
+      echo "Remote reboot command is not in a trusted system directory: $reboot_cmd" >&2
+      return 1
+      ;;
+  esac
+
+  ssh "${ssh_batch_options[@]}" "$target" "sh -s -- '$reboot_cmd'" <<'REMOTE_REBOOT_TRUST'
+set -eu
+
+reboot_cmd="$1"
+
+check_trusted_system_path() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*)
+      return 0
+      ;;
+  esac
+  echo "Remote reboot command resolves outside trusted system directories: $1" >&2
+  return 1
+}
+
+check_owner_and_mode() {
+  item_kind="$1"
+  item_path="$2"
+  stat_output="$(stat -Lc '%u %a' -- "$item_path")"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [ "$owner_uid" != "0" ]; then
+    echo "Remote reboot command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    return 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Remote reboot command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      return 1
+      ;;
+  esac
+}
+
+check_directory_chain() {
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_owner_and_mode directory "$directory"
+    [ "$directory" = "/" ] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+check_trusted_system_path "$reboot_cmd"
+resolved_cmd="$(readlink -f -- "$reboot_cmd")"
+check_trusted_system_path "$resolved_cmd"
+if [ ! -f "$resolved_cmd" ]; then
+  echo "Remote reboot command is not a regular file after resolution: ${reboot_cmd} -> ${resolved_cmd}" >&2
+  exit 1
+fi
+check_directory_chain "$reboot_cmd"
+check_directory_chain "$resolved_cmd"
+check_owner_and_mode file "$resolved_cmd"
+REMOTE_REBOOT_TRUST
+}
+
 remote_reboot_command() {
   local reboot_cmd
 
@@ -335,6 +404,9 @@ remote_reboot_command() {
   fi
   if [[ "$reboot_cmd" != /* || "$reboot_cmd" =~ [[:space:]\"\'] ]]; then
     echo "Remote reboot command path is unsafe: $reboot_cmd" >&2
+    return 1
+  fi
+  if ! validate_remote_reboot_command_trust "$reboot_cmd"; then
     return 1
   fi
   printf '%s\n' "$reboot_cmd"

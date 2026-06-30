@@ -1493,6 +1493,11 @@ grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
 grep -q 'remote_reboot_command' scripts/dock_test_pi.sh
+grep -q 'validate_remote_reboot_command_trust' scripts/dock_test_pi.sh
+grep -q 'Remote reboot command is not in a trusted system directory' scripts/dock_test_pi.sh
+grep -q 'Remote reboot command ${item_kind} is owned by uid' scripts/dock_test_pi.sh
+grep -q 'Remote reboot command ${item_kind} has permissions' scripts/dock_test_pi.sh
+grep -Fq 'readlink -f -- "$reboot_cmd"' scripts/dock_test_pi.sh
 grep -q 'sudo -n -l' scripts/dock_test_pi.sh
 grep -q "sudo -n '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
 ! grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
@@ -1513,6 +1518,8 @@ grep -q -- '--skip-autologin cannot be used for the dock acceptance test' script
 grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' README.md
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
+grep -q 'root-owned, non-group/world-writable command in a trusted system directory' README.md
+grep -q 'root-owned, non-group/world-writable command in a trusted system directory' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
 grep -q 'only after rejecting symlinked launcher environment files or path components' README.md
@@ -2184,6 +2191,54 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--device is required for the rebooted dock acceptance test' "$dock_output"
+
+dock_fake_ssh_bin="$tmpdir/dock-fake-ssh-bin"
+mkdir -p "$dock_fake_ssh_bin"
+cat >"$dock_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+args="$*"
+if [[ "$args" == *"command -v reboot"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_REBOOT_PATH:-/usr/sbin/reboot}"
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- '/usr/sbin/reboot'"* ]]; then
+  if [[ -n "${NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR:-}" ]]; then
+    printf '%s\n' "$NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR" >&2
+    exit 1
+  fi
+  exit 0
+fi
+echo "unexpected fake ssh invocation: $args" >&2
+exit 1
+EOF
+chmod +x "$dock_fake_ssh_bin/ssh"
+
+set +e
+NOAA_NAVIONICS_FAKE_REBOOT_PATH=/home/pi/bin/reboot \
+  PATH="$dock_fake_ssh_bin:$PATH" \
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 1 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject user-writable-looking reboot commands with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote reboot command is not in a trusted system directory: /home/pi/bin/reboot' "$dock_output"
+
+set +e
+NOAA_NAVIONICS_FAKE_REBOOT_PATH=/usr/sbin/reboot \
+NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR='Remote reboot command file is owned by uid 1000, expected 0: /usr/sbin/reboot' \
+  PATH="$dock_fake_ssh_bin:$PATH" \
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 1 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject non-root reboot commands with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote reboot command file is owned by uid 1000, expected 0: /usr/sbin/reboot' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --timeout nope >"$dock_output" 2>&1
