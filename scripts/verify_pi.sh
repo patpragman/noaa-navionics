@@ -1855,14 +1855,35 @@ check_lightdm_autologin_session() {
   local config_path="$1"
   python3 - "$config_path" <<'PY'
 from pathlib import Path
+import os
 import re
+import stat
 import sys
 
-config = Path(sys.argv[1])
+config = Path(sys.argv[1]).expanduser()
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
-    text = config.read_text(encoding="utf-8")
+    fd = os.open(config, flags)
 except OSError as exc:
-    raise SystemExit(f"could not read LightDM autologin config: {exc}") from exc
+    raise SystemExit(f"could not open LightDM autologin config {config}: {exc}") from exc
+try:
+    config_stat = os.fstat(fd)
+    if not stat.S_ISREG(config_stat.st_mode):
+        raise SystemExit(f"LightDM autologin config is not a regular file: {config}")
+    if config_stat.st_uid != 0:
+        raise SystemExit(f"LightDM autologin config {config} is owned by uid {config_stat.st_uid}, expected root")
+    config_mode = config_stat.st_mode & 0o777
+    if config_mode & 0o022:
+        raise SystemExit(
+            f"LightDM autologin config {config} has permissions {config_mode:04o}, "
+            "expected no group/other write bits"
+        )
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        text = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
 session = ""
 for line in text.splitlines():
     if line.startswith("autologin-session="):
@@ -1927,13 +1948,33 @@ check_raspberry_pi_throttling_state() {
 check_chrony_gps_time_config() {
   python3 - <<'PY'
 from pathlib import Path
+import os
+import stat
 
 path = Path("/etc/chrony/chrony.conf")
 expected = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
-    text = path.read_text(encoding="utf-8")
+    fd = os.open(path, flags)
 except OSError as exc:
-    raise SystemExit(f"could not read chrony config {path}: {exc}") from exc
+    raise SystemExit(f"could not open chrony config {path}: {exc}") from exc
+try:
+    config_stat = os.fstat(fd)
+    if not stat.S_ISREG(config_stat.st_mode):
+        raise SystemExit(f"chrony config is not a regular file: {path}")
+    if config_stat.st_uid != 0:
+        raise SystemExit(f"chrony config {path} is owned by uid {config_stat.st_uid}, expected root")
+    config_mode = config_stat.st_mode & 0o777
+    if config_mode & 0o022:
+        raise SystemExit(
+            f"chrony config {path} has permissions {config_mode:04o}, expected no group/other write bits"
+        )
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        text = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
 configured = any(
     line.strip() == expected
     for line in text.splitlines()

@@ -807,6 +807,8 @@ grep -q 'GPSD service active' scripts/verify_pi.sh
 grep -q 'Chrony service enabled' scripts/verify_pi.sh
 grep -q 'Chrony GPSD time source' scripts/verify_pi.sh
 grep -q 'check_chrony_gps_time_config' scripts/verify_pi.sh
+grep -q 'could not open chrony config' scripts/verify_pi.sh
+grep -q 'chrony config is not a regular file' scripts/verify_pi.sh
 grep -q 'not line.lstrip().startswith("#")' scripts/verify_pi.sh
 grep -q 'uncommented NOAA Navionics GPSD SHM 0 time source' scripts/verify_pi.sh
 grep -q 'Chrony usable GPS source' scripts/verify_pi.sh
@@ -888,6 +890,8 @@ grep -q 'LightDM active after boot' scripts/verify_pi.sh
 grep -q 'systemctl is-active --quiet lightdm.service' scripts/verify_pi.sh
 grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
+grep -q 'could not open LightDM autologin config' scripts/verify_pi.sh
+grep -q 'LightDM autologin config is not a regular file' scripts/verify_pi.sh
 grep -q '/usr/share/xsessions' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'chart service network wait command' scripts/verify_pi.sh
@@ -1778,9 +1782,11 @@ grep -q 'Pi verification compares status-reported launcher settings only after a
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' README.md
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
+grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
