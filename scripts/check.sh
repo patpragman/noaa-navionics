@@ -250,8 +250,20 @@ grep -q 'Readiness warning displayed' scripts/start_chartplotter.sh
 grep -q 'no-follow descriptor-confirmed private status file' README.md
 grep -q 'no-follow descriptor-confirmed private status file' docs/sailboat-pi.md
 grep -q 'Not starting OpenCPN automatically because readiness failed' scripts/start_chartplotter.sh
-grep -q 'xset s noblank' scripts/start_chartplotter.sh
+grep -q 'validate_display_power_command_candidate' scripts/start_chartplotter.sh
+grep -q 'display_power_command_path' scripts/start_chartplotter.sh
+grep -q 'Display power command xset was not found on PATH' scripts/start_chartplotter.sh
+grep -q 'Display power command path is not absolute' scripts/start_chartplotter.sh
+grep -q 'Display power command is a symlink' scripts/start_chartplotter.sh
+grep -q 'Display power command directory is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q 'Display power command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q '"$xset_bin" s off' scripts/start_chartplotter.sh
+grep -q '"$xset_bin" s noblank' scripts/start_chartplotter.sh
+grep -q '"$xset_bin" -dpms' scripts/start_chartplotter.sh
+grep -q 'resolves `xset` to a trusted executable path' README.md
+grep -q 'resolves `xset` to a trusted executable path' docs/sailboat-pi.md
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
+grep -q 'xset is unavailable or not trusted' scripts/start_chartplotter.sh
 grep -q 'launcher.env' scripts/start_chartplotter.sh
 grep -q -- '--gps-seconds "$gps_seconds"' scripts/start_chartplotter.sh
 grep -q '.source-revision' scripts/deploy_to_pi.sh
