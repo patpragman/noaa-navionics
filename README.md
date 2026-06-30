@@ -148,6 +148,14 @@ scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-i
 
 This is a live Pi check for the current startup state before leaving the dock. It requires strict chartplotter-started verification, exact GPS receiver matching, chart readiness, GPSD, chrony GPS time, and GPX track logging, but it does not replace the rebooted dock acceptance test for new or changed installations.
 
+Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
+
+```bash
+scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30
+```
+
+The refresh helper validates the SSH target, waits for NOAA TCP connectivity from the Pi, then runs `sync-charts` on the Pi's installed `~/.local/bin/noaa-navionics` with the onboard config. Add `--force` only for a deliberate redownload. No chart data is downloaded on the local computer.
+
 Collect a diagnostic support bundle from the Pi before changing anything:
 
 ```bash

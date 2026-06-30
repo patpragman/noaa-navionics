@@ -13,6 +13,7 @@ bash -n \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
   scripts/pre_departure_check_pi.sh \
+  scripts/refresh_pi_charts.sh \
   scripts/collect_pi_support_bundle.sh \
   scripts/shutdown_pi_safely.sh \
   scripts/start_chartplotter.sh \
@@ -472,6 +473,10 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30' README.md
+grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30' docs/sailboat-pi.md
+grep -q 'No chart data is downloaded on the local computer' README.md
+grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
@@ -504,6 +509,7 @@ grep -q 'validate_ssh_target' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/verify_pi.sh
 grep -q 'validate_ssh_target' scripts/collect_pi_support_bundle.sh
 grep -q 'validate_ssh_target' scripts/shutdown_pi_safely.sh
+grep -q 'validate_ssh_target' scripts/refresh_pi_charts.sh
 grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/verify_pi.sh
@@ -516,6 +522,7 @@ grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
 grep -q 'SSH target must be user@host' scripts/collect_pi_support_bundle.sh
 grep -q 'SSH target must be user@host' scripts/shutdown_pi_safely.sh
+grep -q 'SSH target must be user@host' scripts/refresh_pi_charts.sh
 grep -q 'SSH target user contains unsafe characters' scripts/deploy_to_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/dock_test_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/verify_pi.sh
@@ -524,6 +531,7 @@ grep -q 'SSH target host contains unsafe characters' scripts/dock_test_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/verify_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/collect_pi_support_bundle.sh
 grep -q 'SSH target host contains unsafe characters' scripts/shutdown_pi_safely.sh
+grep -q 'SSH target host contains unsafe characters' scripts/refresh_pi_charts.sh
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/verify_pi.sh
@@ -761,6 +769,8 @@ grep -q 'chartplotter.log' scripts/collect_pi_support_bundle.sh
 grep -q 'status.json' scripts/collect_pi_support_bundle.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
+grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
+grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
@@ -3220,6 +3230,9 @@ trap 'rm -rf "${tmpdir:-}" "${workspace_tmpdir:-}" "$install_output" "$provision
 support_remote_heredoc="$tmpdir/support-remote-heredoc.sh"
 awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh >"$support_remote_heredoc"
 bash -n "$support_remote_heredoc"
+refresh_remote_heredoc="$tmpdir/refresh-remote-heredoc.sh"
+awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/refresh_pi_charts.sh >"$refresh_remote_heredoc"
+bash -n "$refresh_remote_heredoc"
 shutdown_remote_heredoc="$tmpdir/shutdown-remote-heredoc.sh"
 awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/shutdown_pi_safely.sh >"$shutdown_remote_heredoc"
 bash -n "$shutdown_remote_heredoc"
@@ -3555,6 +3568,17 @@ if [[ "$pre_departure_code" -ne 0 ]]; then
   exit 1
 fi
 grep -q 'Usage: scripts/pre_departure_check_pi.sh' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh --help >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 0 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/refresh_pi_charts.sh' "$verify_output"
 
 set +e
 scripts/collect_pi_support_bundle.sh --help >"$verify_output" 2>&1
@@ -4399,6 +4423,65 @@ grep -Fxq -- '3' "$pre_departure_args"
 grep -Fxq -- '--allow-dirty' "$pre_departure_args"
 grep -Fxq -- 'pi@example.invalid' "$pre_departure_args"
 grep -q 'Pre-departure check passed' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh root@example.invalid >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not refresh charts as root@' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --retries 0 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject invalid --retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retries must be a positive integer' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --retry-delay soon >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject invalid --retry-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retry-delay must be a non-negative integer' "$verify_output"
+
+refresh_fake_ssh_bin="$tmpdir/refresh-fake-ssh-bin"
+refresh_fake_ssh_args="$tmpdir/refresh-fake-ssh-args"
+refresh_fake_ssh_stdin="$tmpdir/refresh-fake-ssh-stdin"
+mkdir -p "$refresh_fake_ssh_bin"
+cat >"$refresh_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake refresh ssh completed\n'
+EOF
+chmod +x "$refresh_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$refresh_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$refresh_fake_ssh_stdin" \
+  PATH="$refresh_fake_ssh_bin:$PATH" \
+  scripts/refresh_pi_charts.sh pi@example.invalid --force --retries 7 --retry-delay 11 >"$verify_output" 2>&1
+grep -q 'Pi NOAA chart refresh completed for pi@example.invalid' "$verify_output"
+grep -q 'NOAA_NAVIONICS_REFRESH_FORCE=1' "$refresh_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_REFRESH_RETRIES=7' "$refresh_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_REFRESH_RETRY_DELAY=11' "$refresh_fake_ssh_args"
+grep -q 'pi@example.invalid' "$refresh_fake_ssh_args"
+grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
+grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' "$refresh_fake_ssh_stdin"
+grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
+grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
 
 set +e
 scripts/collect_pi_support_bundle.sh root@example.invalid >"$verify_output" 2>&1

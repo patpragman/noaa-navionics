@@ -1,0 +1,361 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: scripts/refresh_pi_charts.sh user@raspberrypi.local [options]
+
+Refreshes the commissioned Raspberry Pi's NOAA chart package over SSH by
+running wait-network and sync-charts on the Pi. This downloads NOAA data on
+the Raspberry Pi, not on the local computer.
+
+Options:
+  --force             Force a redownload even when cached chart files exist
+  --retries N         Download attempts on the Pi before failing (default: 5)
+  --retry-delay N     Seconds between retryable failures (default: 30)
+
+Nothing is installed, enabled, rebooted, shut down, or downloaded on the
+local computer.
+EOF
+}
+
+if [[ $# -lt 1 ]]; then
+  usage
+  exit 2
+fi
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+target="$1"
+shift
+force=0
+retries=5
+retry_delay=30
+ssh_cmd=""
+ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "$name must be a positive integer" >&2
+    exit 2
+  fi
+}
+
+require_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force)
+      force=1
+      shift
+      ;;
+    --retries)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_positive_integer "$1" "${2:-}"
+      retries="${2:-}"
+      shift 2
+      ;;
+    --retry-delay)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_non_negative_integer "$1" "${2:-}"
+      retry_delay="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+validate_ssh_target() {
+  local value="$1"
+  local user_part
+  local host_part
+
+  if [[ -z "$value" ]]; then
+    echo "SSH target is required" >&2
+    exit 2
+  fi
+  if [[ "$value" == -* ]]; then
+    echo "SSH target must not begin with '-': $value" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "SSH target must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  if [[ "$value" != *@* ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  user_part="${value%@*}"
+  host_part="${value#*@}"
+  if [[ -z "$user_part" || -z "$host_part" ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  if [[ ! "$user_part" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]]; then
+    echo "SSH target user contains unsafe characters: $user_part" >&2
+    exit 2
+  fi
+  if [[ "$host_part" == *:* || "$host_part" == */* ]]; then
+    echo "SSH target must be plain user@host without paths or ports: $value" >&2
+    exit 2
+  fi
+  if [[ ! "$host_part" =~ ^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)*[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]]; then
+    echo "SSH target host contains unsafe characters: $host_part" >&2
+    exit 2
+  fi
+  if [[ "$user_part" == "root" ]]; then
+    cat >&2 <<'EOF'
+Do not refresh charts as root@.
+Use the Pi desktop user so the onboard config, chart storage, and manifest ownership stay consistent.
+EOF
+    exit 2
+  fi
+}
+
+local_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_local_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local stat_output
+  local owner_uid
+  local mode
+  local mode_tail
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    echo "Could not inspect local command ${item_kind}: $item_path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "Local command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 2
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Local command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+check_local_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_local_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+validate_trusted_local_command() {
+  local command_name="$1"
+  local command_path="$2"
+  local resolved_path
+
+  if [[ "${NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS:-0}" == "1" || ( "$command_name" == "ssh" && "${NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH:-0}" == "1" ) ]]; then
+    return 0
+  fi
+  if ! local_path_in_trusted_system_dir "$command_path"; then
+    echo "Local ${command_name} command is not in a trusted system directory: $command_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$command_path" ]]; then
+    echo "Local ${command_name} command is not executable: $command_path" >&2
+    exit 2
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve local ${command_name} command: $command_path" >&2
+    exit 2
+  fi
+  if ! local_path_in_trusted_system_dir "$resolved_path"; then
+    echo "Resolved local ${command_name} command is not in a trusted system directory: $resolved_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not executable after resolution: $resolved_path" >&2
+    exit 2
+  fi
+  check_local_owner_and_mode "$command_name" "$resolved_path"
+  check_local_directory_chain "$resolved_path"
+}
+
+require_local_command() {
+  local command_name="$1"
+  local command_path
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
+}
+
+validate_ssh_target "$target"
+ssh_cmd="$(require_local_command ssh)"
+force_quoted="$(printf '%q' "$force")"
+retries_quoted="$(printf '%q' "$retries")"
+retry_delay_quoted="$(printf '%q' "$retry_delay")"
+
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REFRESH_FORCE=${force_quoted} NOAA_NAVIONICS_REFRESH_RETRIES=${retries_quoted} NOAA_NAVIONICS_REFRESH_RETRY_DELAY=${retry_delay_quoted} bash -s" <<'REMOTE'
+set -euo pipefail
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+app_bin="${HOME}/.local/bin/noaa-navionics"
+config="${HOME}/.config/noaa-navionics/config.ini"
+expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
+force="${NOAA_NAVIONICS_REFRESH_FORCE:-0}"
+retries="${NOAA_NAVIONICS_REFRESH_RETRIES:-5}"
+retry_delay="${NOAA_NAVIONICS_REFRESH_RETRY_DELAY:-30}"
+
+require_nonnegative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "$name must be a non-negative integer" >&2
+    exit 1
+  fi
+}
+
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "$name must be a positive integer" >&2
+    exit 1
+  fi
+}
+
+check_user_owned_private_file() {
+  local label="$1"
+  local path="$2"
+  local stat_output
+  local owner_uid
+  local mode
+  local mode_tail
+  local current_uid
+
+  if [[ -L "$path" ]]; then
+    echo "$label must not be a symlink: $path" >&2
+    exit 1
+  fi
+  if [[ ! -f "$path" ]]; then
+    echo "$label is missing or not a regular file: $path" >&2
+    exit 1
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect $label: $path" >&2
+    exit 1
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "$label is owned by uid $owner_uid, expected $current_uid: $path" >&2
+    exit 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "$label has permissions $mode, expected no group/other write: $path" >&2
+      exit 1
+      ;;
+  esac
+}
+
+check_installed_noaa_command() {
+  local resolved
+  local stat_output
+  local owner_uid
+  local current_uid
+  local mode
+  local mode_tail
+
+  if [[ ! -x "$app_bin" ]]; then
+    echo "Installed noaa-navionics command is missing or not executable: $app_bin" >&2
+    exit 1
+  fi
+  if ! resolved="$(readlink -f -- "$app_bin" 2>/dev/null)" || [[ -z "$resolved" ]]; then
+    echo "Could not resolve installed noaa-navionics command: $app_bin" >&2
+    exit 1
+  fi
+  if [[ "$resolved" != "$expected_venv_bin" ]]; then
+    echo "Installed noaa-navionics command resolves to $resolved, expected $expected_venv_bin" >&2
+    exit 1
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$resolved" 2>/dev/null)"; then
+    echo "Could not inspect installed noaa-navionics command target: $resolved" >&2
+    exit 1
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "Installed noaa-navionics command target is owned by uid $owner_uid, expected $current_uid: $resolved" >&2
+    exit 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Installed noaa-navionics command target has permissions $mode, expected no group/other write: $resolved" >&2
+      exit 1
+      ;;
+  esac
+}
+
+require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
+require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
+check_installed_noaa_command
+check_user_owned_private_file "onboard NOAA Navionics config" "$config"
+
+sync_args=(sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay")
+if [[ "$force" == "1" ]]; then
+  sync_args+=(--force)
+fi
+
+"$app_bin" wait-network --host www.charts.noaa.gov --port 443 --seconds 300
+"$app_bin" "${sync_args[@]}"
+printf 'Pi NOAA chart refresh completed using %s.\n' "$config"
+REMOTE
+
+printf 'Pi NOAA chart refresh completed for %s.\n' "$target"
