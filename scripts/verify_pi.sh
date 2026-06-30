@@ -2295,16 +2295,34 @@ launcher_env_value() {
   local default="$2"
   python3 - "$launcher_env" "$key" "$default" <<'PY'
 from pathlib import Path
+import os
+import stat
 import sys
 
 path = Path(sys.argv[1]).expanduser()
 key = sys.argv[2]
 default = sys.argv[3]
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
-    lines = path.read_text(encoding="utf-8").splitlines()
+    fd = os.open(path, flags)
 except OSError:
     print(default)
     raise SystemExit(0)
+try:
+    env_stat = os.fstat(fd)
+    if not stat.S_ISREG(env_stat.st_mode):
+        raise SystemExit(f"launcher environment is not a regular file: {path}")
+    if env_stat.st_uid != os.getuid():
+        raise SystemExit(f"launcher environment {path} is owned by uid {env_stat.st_uid}, expected {os.getuid()}")
+    env_mode = env_stat.st_mode & 0o777
+    if env_mode != 0o600:
+        raise SystemExit(f"launcher environment {path} has permissions {env_mode:04o}, expected private 0600")
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        lines = handle.read().splitlines()
+finally:
+    if fd >= 0:
+        os.close(fd)
 for raw_line in lines:
     line = raw_line.strip()
     if not line or line.startswith("#") or "=" not in line:
@@ -2314,6 +2332,53 @@ for raw_line in lines:
         print(value.strip())
         raise SystemExit(0)
 print(default)
+PY
+}
+
+check_launcher_env_expected_value() {
+  local path="$1"
+  local key="$2"
+  local expected="$3"
+  python3 - "$path" "$key" "$expected" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+key = sys.argv[2]
+expected = sys.argv[3]
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open launcher environment {path}: {exc}") from exc
+try:
+    env_stat = os.fstat(fd)
+    if not stat.S_ISREG(env_stat.st_mode):
+        raise SystemExit(f"launcher environment is not a regular file: {path}")
+    if env_stat.st_uid != os.getuid():
+        raise SystemExit(f"launcher environment {path} is owned by uid {env_stat.st_uid}, expected {os.getuid()}")
+    env_mode = env_stat.st_mode & 0o777
+    if env_mode != 0o600:
+        raise SystemExit(f"launcher environment {path} has permissions {env_mode:04o}, expected private 0600")
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        lines = handle.read().splitlines()
+finally:
+    if fd >= 0:
+        os.close(fd)
+for raw_line in lines:
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    found_key, value = line.split("=", 1)
+    if found_key.strip() == key:
+        actual = value.strip()
+        if actual != expected:
+            raise SystemExit(f"launcher environment {key}={actual!r}, expected {expected!r}")
+        raise SystemExit(0)
+raise SystemExit(f"launcher environment is missing {key}={expected}")
 PY
 }
 
@@ -3328,10 +3393,10 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher lock sync cleanup" grep -Fq 'sync_paths "$launcher_lock_dir"' "$launcher"
   check "chartplotter launcher stale lock recovery" grep -Fq 'is not a chartplotter launcher; treating lock as stale' "$launcher"
 fi
-check "chartplotter launcher GPS wait persisted" grep -Fxq "NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}" "$launcher_env"
-check "chartplotter launcher OpenCPN restarts persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTARTS=${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$launcher_env"
-check "chartplotter launcher OpenCPN restart delay persisted" grep -Fxq "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$launcher_env"
 check "chartplotter launcher env file integrity" check_user_private_regular_file_integrity "$launcher_env" "chartplotter launcher environment"
+check "chartplotter launcher GPS wait persisted" check_launcher_env_expected_value "$launcher_env" "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"
+check "chartplotter launcher OpenCPN restarts persisted" check_launcher_env_expected_value "$launcher_env" "NOAA_NAVIONICS_OPENCPN_RESTARTS" "${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}"
+check "chartplotter launcher OpenCPN restart delay persisted" check_launcher_env_expected_value "$launcher_env" "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}"
 check "chartplotter launcher fail-open override disabled" check_launcher_env_production_settings "$launcher_env"
 set_chartplotter_start_timeout_from_launcher_env
 check "desktop autostart directory integrity" check_user_private_directory_integrity "$autostart_dir" "desktop autostart directory"
