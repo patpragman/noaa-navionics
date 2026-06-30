@@ -102,6 +102,7 @@ from noaa_navionics.report import (
     _key_value_file_summary,
     _launcher_settings_summary,
     _launcher_settings_check,
+    _read_trusted_gpx_track_file,
     _service_readiness_checks,
     _track_log_readiness_check,
     _track_log_summary,
@@ -4792,6 +4793,27 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(summary["ok"])
             self.assertFalse(check.ok)
             self.assertIn("permissions are 0644", check.detail)
+
+    def test_read_trusted_gpx_track_file_rejects_writable_track_file_before_parsing(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            track_path = tracks / "track-20260629.gpx"
+            track_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f'  <trk><trkseg><trkpt lat="61.2181" lon="-149.9003">'
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}</time>"
+                "<sat>8</sat></trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            track_path.chmod(0o622)
+
+            with self.assertRaisesRegex(RuntimeError, "permissions are 0622"):
+                _read_trusted_gpx_track_file(track_path, expected_owner=os.getuid())
 
     def test_track_log_summary_waits_for_delayed_trackpoint(self):
         timestamp = datetime.now(timezone.utc)

@@ -694,13 +694,14 @@ def _track_log_summary_once(
             continue
         candidates.append((stat.st_mtime, path, stat))
     candidates.sort(reverse=True)
-    for _mtime, path, stat in candidates:
+    for _mtime, path, stat_result in candidates:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError as exc:
-            last_detail = f"could not read {path}: {exc}"
+            read_stat, text = _read_trusted_gpx_track_file(path, expected_owner=expected_owner)
+        except Exception as exc:
+            last_detail = str(exc)
             continue
-        if boot_time is not None and stat.st_mtime + 5 < boot_time:
+        stat_result = read_stat
+        if boot_time is not None and stat_result.st_mtime + 5 < boot_time:
             last_detail = f"{path} is older than current boot"
             continue
         trackpoints = re.findall(r"<trkpt\b.*?</trkpt>", text, flags=re.DOTALL)
@@ -759,7 +760,7 @@ def _track_log_summary_once(
             "latest_latitude": latitude,
             "latest_longitude": longitude,
             "age_seconds": age,
-            "latest_mode": f"{stat.st_mode & 0o777:04o}",
+            "latest_mode": f"{stat_result.st_mode & 0o777:04o}",
             "detail": detail,
         }
         if newest_quality.get("satellites") is not None:
@@ -772,6 +773,31 @@ def _track_log_summary_once(
         return summary
     summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
     return summary
+
+
+def _read_trusted_gpx_track_file(path: Path, *, expected_owner: int) -> tuple[os.stat_result, str]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"{path} is a symlink, expected a regular GPX track file")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"{path} is not a regular GPX track file")
+        if stat_result.st_uid != expected_owner:
+            raise RuntimeError(f"{path} is owned by uid {stat_result.st_uid}, expected {expected_owner}")
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o077:
+            raise RuntimeError(f"{path} permissions are {mode:04o}, expected private 0600")
+        with os.fdopen(fd, encoding="utf-8", errors="replace") as handle:
+            fd = -1
+            return stat_result, handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _first_symlink_ancestor(path: Path) -> Optional[Path]:
