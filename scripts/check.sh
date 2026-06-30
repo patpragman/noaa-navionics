@@ -1138,11 +1138,20 @@ grep -q 'check "LightDM enabled" "$systemctl_cmd" is-enabled --quiet lightdm.ser
 grep -q 'check "chart timer enabled" "$systemctl_cmd" --user is-enabled --quiet noaa-navionics.timer' scripts/verify_pi.sh
 grep -q 'check "user linger enabled" sh -c' scripts/verify_pi.sh
 grep -q '"$loginctl_cmd" "$USER"' scripts/verify_pi.sh
+grep -q 'loaded_unit_property_equals()' scripts/verify_pi.sh
+grep -q 'loaded_unit_property_contains_all()' scripts/verify_pi.sh
+grep -q 'loaded="$("$systemctl_cmd" --user show "$unit" -p "$property" 2>/dev/null)"' scripts/verify_pi.sh
+grep -q 'check "chart service loaded fragment path" loaded_unit_property_equals noaa-navionics.service FragmentPath "$chart_service"' scripts/verify_pi.sh
+grep -q 'check "chart service loaded network wait command" loaded_unit_property_contains_all noaa-navionics.service ExecStartPre' scripts/verify_pi.sh
+grep -q 'check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart' scripts/verify_pi.sh
+grep -q 'check "preflight service loaded status report" loaded_unit_property_contains_all noaa-navionics-preflight.service ExecStart' scripts/verify_pi.sh
 ! grep -q 'check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"' scripts/verify_pi.sh
 ! grep -q 'check "LightDM enabled" systemctl is-enabled --quiet lightdm.service' scripts/verify_pi.sh
 ! grep -q 'check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket' scripts/verify_pi.sh
 ! grep -q 'check "chart timer enabled" systemctl --user is-enabled --quiet noaa-navionics.timer' scripts/verify_pi.sh
 ! grep -q 'chronyc sources -n' scripts/verify_pi.sh
+! grep -q "sh -c 'systemctl --user show" scripts/verify_pi.sh
+! grep -q 'loaded="$(systemctl --user show' scripts/verify_pi.sh
 grep -q 'check "GPSD command integrity" check_root_command_integrity gpsd "GPSD command"' scripts/verify_pi.sh
 grep -q 'check "GPSD client command integrity" check_root_command_integrity cgps "GPSD client command"' scripts/verify_pi.sh
 ! grep -q 'check "process lookup command" command -v pgrep' scripts/verify_pi.sh

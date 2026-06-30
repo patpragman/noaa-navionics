@@ -3571,6 +3571,25 @@ check_preflight_service_succeeded() {
   done
 }
 
+loaded_unit_property_equals() {
+  local unit="$1"
+  local property="$2"
+  local expected="$3"
+  "$systemctl_cmd" --user show "$unit" -p "$property" 2>/dev/null | grep -Fxq "${property}=${expected}"
+}
+
+loaded_unit_property_contains_all() {
+  local unit="$1"
+  local property="$2"
+  shift 2
+  local loaded
+  local expected
+  loaded="$("$systemctl_cmd" --user show "$unit" -p "$property" 2>/dev/null)" || return 1
+  for expected in "$@"; do
+    printf '%s\n' "$loaded" | grep -Fq -- "$expected" || return 1
+  done
+}
+
 check_recent_track_log() {
   local config_path="$1"
   python3 - "$config_path" "$gps_seconds" <<'PY'
@@ -4048,127 +4067,127 @@ check "chart service file" test -f "$chart_service"
 if [[ -f "$chart_service" ]]; then
   check "chart service file integrity" check_user_regular_file_integrity "$chart_service" "chart service unit file"
 fi
-check "chart service loaded fragment path" sh -c 'systemctl --user show noaa-navionics.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_service"
+check "chart service loaded fragment path" loaded_unit_property_equals noaa-navionics.service FragmentPath "$chart_service"
 check "chart service type" grep -Fxq 'Type=oneshot' "$chart_service"
-check "chart service loaded type" sh -c 'systemctl --user show noaa-navionics.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
+check "chart service loaded type" loaded_unit_property_equals noaa-navionics.service Type oneshot
 check "chart service network wait command" grep -Fq 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$chart_service"
-check "chart service loaded network wait command" sh -c 'loaded="$(systemctl --user show noaa-navionics.service -p ExecStartPre 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq ".local/bin/noaa-navionics" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics wait-network" && printf "%s\n" "$loaded" | grep -Fq -- "--host www.charts.noaa.gov" && printf "%s\n" "$loaded" | grep -Fq -- "--port 443" && printf "%s\n" "$loaded" | grep -Fq -- "--seconds 300"'
+check "chart service loaded network wait command" loaded_unit_property_contains_all noaa-navionics.service ExecStartPre ".local/bin/noaa-navionics" "noaa-navionics wait-network" "--host www.charts.noaa.gov" "--port 443" "--seconds 300"
 check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
-check "chart service loaded sync command" sh -c 'loaded="$(systemctl --user show noaa-navionics.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq ".local/bin/noaa-navionics" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics sync-charts" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--retries 5" && printf "%s\n" "$loaded" | grep -Fq -- "--retry-delay 30"'
+check "chart service loaded sync command" loaded_unit_property_contains_all noaa-navionics.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics sync-charts" "--config" "noaa-navionics/config.ini" "--retries 5" "--retry-delay 30"
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
-check "chart service loaded timeout" sh -c 'systemctl --user show noaa-navionics.service -p TimeoutStartUSec 2>/dev/null | grep -Fxq TimeoutStartUSec=2h'
+check "chart service loaded timeout" loaded_unit_property_equals noaa-navionics.service TimeoutStartUSec 2h
 check "chart service restart" grep -Fxq 'Restart=on-failure' "$chart_service"
-check "chart service loaded restart" sh -c 'systemctl --user show noaa-navionics.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
+check "chart service loaded restart" loaded_unit_property_equals noaa-navionics.service Restart on-failure
 check "chart service restart delay" grep -Fxq 'RestartSec=30min' "$chart_service"
-check "chart service loaded restart delay" sh -c 'systemctl --user show noaa-navionics.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30min'
+check "chart service loaded restart delay" loaded_unit_property_equals noaa-navionics.service RestartUSec 30min
 check "chart service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$chart_service"
-check "chart service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
+check "chart service loaded no new privileges" loaded_unit_property_equals noaa-navionics.service NoNewPrivileges yes
 check "chart service private tmp" grep -Fxq 'PrivateTmp=true' "$chart_service"
-check "chart service loaded private tmp" sh -c 'systemctl --user show noaa-navionics.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
+check "chart service loaded private tmp" loaded_unit_property_equals noaa-navionics.service PrivateTmp yes
 check "chart service protected system" grep -Fxq 'ProtectSystem=full' "$chart_service"
-check "chart service loaded protected system" sh -c 'systemctl --user show noaa-navionics.service -p ProtectSystem 2>/dev/null | grep -Fxq ProtectSystem=full'
+check "chart service loaded protected system" loaded_unit_property_equals noaa-navionics.service ProtectSystem full
 check "chart service lock personality" grep -Fxq 'LockPersonality=true' "$chart_service"
-check "chart service loaded lock personality" sh -c 'systemctl --user show noaa-navionics.service -p LockPersonality 2>/dev/null | grep -Fxq LockPersonality=yes'
+check "chart service loaded lock personality" loaded_unit_property_equals noaa-navionics.service LockPersonality yes
 check "chart service restrict suid sgid" grep -Fxq 'RestrictSUIDSGID=true' "$chart_service"
-check "chart service loaded restrict suid sgid" sh -c 'systemctl --user show noaa-navionics.service -p RestrictSUIDSGID 2>/dev/null | grep -Fxq RestrictSUIDSGID=yes'
+check "chart service loaded restrict suid sgid" loaded_unit_property_equals noaa-navionics.service RestrictSUIDSGID yes
 check "chart service deny writable executable memory" grep -Fxq 'MemoryDenyWriteExecute=true' "$chart_service"
-check "chart service loaded deny writable executable memory" sh -c 'systemctl --user show noaa-navionics.service -p MemoryDenyWriteExecute 2>/dev/null | grep -Fxq MemoryDenyWriteExecute=yes'
+check "chart service loaded deny writable executable memory" loaded_unit_property_equals noaa-navionics.service MemoryDenyWriteExecute yes
 check "chart service restrict realtime" grep -Fxq 'RestrictRealtime=true' "$chart_service"
-check "chart service loaded restrict realtime" sh -c 'systemctl --user show noaa-navionics.service -p RestrictRealtime 2>/dev/null | grep -Fxq RestrictRealtime=yes'
+check "chart service loaded restrict realtime" loaded_unit_property_equals noaa-navionics.service RestrictRealtime yes
 check "chart service private files" grep -Fxq 'UMask=0077' "$chart_service"
-check "chart service loaded private files" sh -c 'systemctl --user show noaa-navionics.service -p UMask 2>/dev/null | grep -Fxq UMask=0077'
+check "chart service loaded private files" loaded_unit_property_equals noaa-navionics.service UMask 0077
 check "chart service start limit interval" grep -Fxq 'StartLimitIntervalSec=6h' "$chart_service"
-check "chart service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=6h'
+check "chart service loaded start limit interval" loaded_unit_property_equals noaa-navionics.service StartLimitIntervalUSec 6h
 check "chart service start limit burst" grep -Fxq 'StartLimitBurst=3' "$chart_service"
-check "chart service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=3'
+check "chart service loaded start limit burst" loaded_unit_property_equals noaa-navionics.service StartLimitBurst 3
 check "chart timer weekly" grep -Fxq 'OnCalendar=weekly' "$chart_timer"
-check "chart timer loaded fragment path" sh -c 'systemctl --user show noaa-navionics.timer -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$chart_timer"
+check "chart timer loaded fragment path" loaded_unit_property_equals noaa-navionics.timer FragmentPath "$chart_timer"
 check "chart timer persistent" grep -Fxq 'Persistent=true' "$chart_timer"
 check "chart timer randomized delay" grep -Fxq 'RandomizedDelaySec=30min' "$chart_timer"
 if [[ -f "$chart_timer" ]]; then
   check "chart timer file integrity" check_user_regular_file_integrity "$chart_timer" "chart timer unit file"
 fi
 check "chart timer install target" check_unit_install_target "$chart_timer" timers.target
-check "chart timer loaded weekly" sh -c 'systemctl --user show noaa-navionics.timer -p TimersCalendar 2>/dev/null | grep -Fq OnCalendar=weekly'
-check "chart timer loaded persistent" sh -c 'systemctl --user show noaa-navionics.timer -p Persistent 2>/dev/null | grep -Fxq Persistent=yes'
-check "chart timer loaded randomized delay" sh -c 'systemctl --user show noaa-navionics.timer -p RandomizedDelayUSec 2>/dev/null | grep -Fxq RandomizedDelayUSec=30min'
+check "chart timer loaded weekly" loaded_unit_property_contains_all noaa-navionics.timer TimersCalendar OnCalendar=weekly
+check "chart timer loaded persistent" loaded_unit_property_equals noaa-navionics.timer Persistent yes
+check "chart timer loaded randomized delay" loaded_unit_property_equals noaa-navionics.timer RandomizedDelayUSec 30min
 check "track service file" test -f "$track_service"
 if [[ -f "$track_service" ]]; then
   check "track service file integrity" check_user_regular_file_integrity "$track_service" "track service unit file"
 fi
-check "track service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-track.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$track_service"
+check "track service loaded fragment path" loaded_unit_property_equals noaa-navionics-track.service FragmentPath "$track_service"
 check "track service type" grep -Fxq 'Type=simple' "$track_service"
-check "track service loaded type" sh -c 'systemctl --user show noaa-navionics-track.service -p Type 2>/dev/null | grep -Fxq Type=simple'
+check "track service loaded type" loaded_unit_property_equals noaa-navionics-track.service Type simple
 check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
-check "track service loaded rotate daily" sh -c 'loaded="$(systemctl --user show noaa-navionics-track.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq ".local/bin/noaa-navionics" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics log-track" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--rotate-daily"'
+check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily"
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
-check "track service loaded quiet stdout" sh -c 'systemctl --user show noaa-navionics-track.service -p StandardOutput 2>/dev/null | grep -Fxq StandardOutput=null'
+check "track service loaded quiet stdout" loaded_unit_property_equals noaa-navionics-track.service StandardOutput null
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
-check "track service loaded restart" sh -c 'systemctl --user show noaa-navionics-track.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
+check "track service loaded restart" loaded_unit_property_equals noaa-navionics-track.service Restart on-failure
 check "track service restart delay" grep -Fxq 'RestartSec=10' "$track_service"
-check "track service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-track.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=10s'
+check "track service loaded restart delay" loaded_unit_property_equals noaa-navionics-track.service RestartUSec 10s
 check "track service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$track_service"
-check "track service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics-track.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
+check "track service loaded no new privileges" loaded_unit_property_equals noaa-navionics-track.service NoNewPrivileges yes
 check "track service private tmp" grep -Fxq 'PrivateTmp=true' "$track_service"
-check "track service loaded private tmp" sh -c 'systemctl --user show noaa-navionics-track.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
+check "track service loaded private tmp" loaded_unit_property_equals noaa-navionics-track.service PrivateTmp yes
 check "track service protected system" grep -Fxq 'ProtectSystem=full' "$track_service"
-check "track service loaded protected system" sh -c 'systemctl --user show noaa-navionics-track.service -p ProtectSystem 2>/dev/null | grep -Fxq ProtectSystem=full'
+check "track service loaded protected system" loaded_unit_property_equals noaa-navionics-track.service ProtectSystem full
 check "track service lock personality" grep -Fxq 'LockPersonality=true' "$track_service"
-check "track service loaded lock personality" sh -c 'systemctl --user show noaa-navionics-track.service -p LockPersonality 2>/dev/null | grep -Fxq LockPersonality=yes'
+check "track service loaded lock personality" loaded_unit_property_equals noaa-navionics-track.service LockPersonality yes
 check "track service restrict suid sgid" grep -Fxq 'RestrictSUIDSGID=true' "$track_service"
-check "track service loaded restrict suid sgid" sh -c 'systemctl --user show noaa-navionics-track.service -p RestrictSUIDSGID 2>/dev/null | grep -Fxq RestrictSUIDSGID=yes'
+check "track service loaded restrict suid sgid" loaded_unit_property_equals noaa-navionics-track.service RestrictSUIDSGID yes
 check "track service deny writable executable memory" grep -Fxq 'MemoryDenyWriteExecute=true' "$track_service"
-check "track service loaded deny writable executable memory" sh -c 'systemctl --user show noaa-navionics-track.service -p MemoryDenyWriteExecute 2>/dev/null | grep -Fxq MemoryDenyWriteExecute=yes'
+check "track service loaded deny writable executable memory" loaded_unit_property_equals noaa-navionics-track.service MemoryDenyWriteExecute yes
 check "track service restrict realtime" grep -Fxq 'RestrictRealtime=true' "$track_service"
-check "track service loaded restrict realtime" sh -c 'systemctl --user show noaa-navionics-track.service -p RestrictRealtime 2>/dev/null | grep -Fxq RestrictRealtime=yes'
+check "track service loaded restrict realtime" loaded_unit_property_equals noaa-navionics-track.service RestrictRealtime yes
 check "track service private track files" grep -Fxq 'UMask=0077' "$track_service"
-check "track service loaded private track files" sh -c 'systemctl --user show noaa-navionics-track.service -p UMask 2>/dev/null | grep -Fxq UMask=0077'
+check "track service loaded private track files" loaded_unit_property_equals noaa-navionics-track.service UMask 0077
 check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10min' "$track_service"
-check "track service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=10min'
+check "track service loaded start limit interval" loaded_unit_property_equals noaa-navionics-track.service StartLimitIntervalUSec 10min
 check "track service start limit burst" grep -Fxq 'StartLimitBurst=60' "$track_service"
-check "track service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-track.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
+check "track service loaded start limit burst" loaded_unit_property_equals noaa-navionics-track.service StartLimitBurst 60
 check "track service install target" check_unit_install_target "$track_service" default.target
 check "preflight service file" test -f "$preflight_service"
 if [[ -f "$preflight_service" ]]; then
   check "preflight service file integrity" check_user_regular_file_integrity "$preflight_service" "preflight service unit file"
 fi
-check "preflight service loaded fragment path" sh -c 'systemctl --user show noaa-navionics-preflight.service -p FragmentPath 2>/dev/null | grep -Fxq "FragmentPath=$1"' sh "$preflight_service"
+check "preflight service loaded fragment path" loaded_unit_property_equals noaa-navionics-preflight.service FragmentPath "$preflight_service"
 check "preflight service wants track logger" grep -Fxq 'Wants=noaa-navionics-track.service' "$preflight_service"
 check "preflight service after track logger" grep -Fxq 'After=noaa-navionics-track.service' "$preflight_service"
-check "preflight service loaded wants track logger" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Wants 2>/dev/null | grep -Fq noaa-navionics-track.service'
-check "preflight service loaded after track logger" sh -c 'systemctl --user show noaa-navionics-preflight.service -p After 2>/dev/null | grep -Fq noaa-navionics-track.service'
+check "preflight service loaded wants track logger" loaded_unit_property_contains_all noaa-navionics-preflight.service Wants noaa-navionics-track.service
+check "preflight service loaded after track logger" loaded_unit_property_contains_all noaa-navionics-preflight.service After noaa-navionics-track.service
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
-check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
+check "preflight service loaded type" loaded_unit_property_equals noaa-navionics-preflight.service Type oneshot
 check "preflight service no systemd GPS environment" sh -c '! grep -Eq "^(Environment|EnvironmentFile)=" "$1"' sh "$preflight_service"
-check "preflight service loaded no systemd GPS environment" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Environment -p EnvironmentFiles 2>/dev/null | grep -Fxq Environment= && systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fxq EnvironmentFiles='
+check "preflight service loaded no systemd GPS environment" sh -c '"$1" --user show noaa-navionics-preflight.service -p Environment -p EnvironmentFiles 2>/dev/null | grep -Fxq Environment= && "$1" --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fxq EnvironmentFiles=' sh "$systemctl_cmd"
 check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
-check "preflight service loaded status report" sh -c 'loaded="$(systemctl --user show noaa-navionics-preflight.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq ".local/bin/noaa-navionics" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics status-report" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--gps-seconds-from-launcher-env" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/launcher.env" && printf "%s\n" "$loaded" | grep -Fq -- "--output" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/status.json"'
+check "preflight service loaded status report" loaded_unit_property_contains_all noaa-navionics-preflight.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics status-report" "--config" "noaa-navionics/config.ini" "--gps-seconds-from-launcher-env" "noaa-navionics/launcher.env" "--output" "noaa-navionics/status.json"
 check "preflight service timeout" grep -Fxq 'TimeoutStartSec=0' "$preflight_service"
-check "preflight service loaded timeout" sh -c 'systemctl --user show noaa-navionics-preflight.service -p TimeoutStartUSec 2>/dev/null | grep -Fxq TimeoutStartUSec=infinity'
+check "preflight service loaded timeout" loaded_unit_property_equals noaa-navionics-preflight.service TimeoutStartUSec infinity
 check "preflight service restart" grep -Fxq 'Restart=on-failure' "$preflight_service"
-check "preflight service loaded restart" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Restart 2>/dev/null | grep -Fxq Restart=on-failure'
+check "preflight service loaded restart" loaded_unit_property_equals noaa-navionics-preflight.service Restart on-failure
 check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
 check "preflight service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$preflight_service"
-check "preflight service loaded no new privileges" sh -c 'systemctl --user show noaa-navionics-preflight.service -p NoNewPrivileges 2>/dev/null | grep -Fxq NoNewPrivileges=yes'
+check "preflight service loaded no new privileges" loaded_unit_property_equals noaa-navionics-preflight.service NoNewPrivileges yes
 check "preflight service private tmp" grep -Fxq 'PrivateTmp=true' "$preflight_service"
-check "preflight service loaded private tmp" sh -c 'systemctl --user show noaa-navionics-preflight.service -p PrivateTmp 2>/dev/null | grep -Fxq PrivateTmp=yes'
+check "preflight service loaded private tmp" loaded_unit_property_equals noaa-navionics-preflight.service PrivateTmp yes
 check "preflight service protected system" grep -Fxq 'ProtectSystem=full' "$preflight_service"
-check "preflight service loaded protected system" sh -c 'systemctl --user show noaa-navionics-preflight.service -p ProtectSystem 2>/dev/null | grep -Fxq ProtectSystem=full'
+check "preflight service loaded protected system" loaded_unit_property_equals noaa-navionics-preflight.service ProtectSystem full
 check "preflight service lock personality" grep -Fxq 'LockPersonality=true' "$preflight_service"
-check "preflight service loaded lock personality" sh -c 'systemctl --user show noaa-navionics-preflight.service -p LockPersonality 2>/dev/null | grep -Fxq LockPersonality=yes'
+check "preflight service loaded lock personality" loaded_unit_property_equals noaa-navionics-preflight.service LockPersonality yes
 check "preflight service restrict suid sgid" grep -Fxq 'RestrictSUIDSGID=true' "$preflight_service"
-check "preflight service loaded restrict suid sgid" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestrictSUIDSGID 2>/dev/null | grep -Fxq RestrictSUIDSGID=yes'
+check "preflight service loaded restrict suid sgid" loaded_unit_property_equals noaa-navionics-preflight.service RestrictSUIDSGID yes
 check "preflight service deny writable executable memory" grep -Fxq 'MemoryDenyWriteExecute=true' "$preflight_service"
-check "preflight service loaded deny writable executable memory" sh -c 'systemctl --user show noaa-navionics-preflight.service -p MemoryDenyWriteExecute 2>/dev/null | grep -Fxq MemoryDenyWriteExecute=yes'
+check "preflight service loaded deny writable executable memory" loaded_unit_property_equals noaa-navionics-preflight.service MemoryDenyWriteExecute yes
 check "preflight service restrict realtime" grep -Fxq 'RestrictRealtime=true' "$preflight_service"
-check "preflight service loaded restrict realtime" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestrictRealtime 2>/dev/null | grep -Fxq RestrictRealtime=yes'
+check "preflight service loaded restrict realtime" loaded_unit_property_equals noaa-navionics-preflight.service RestrictRealtime yes
 check "preflight service private files" grep -Fxq 'UMask=0077' "$preflight_service"
-check "preflight service loaded private files" sh -c 'systemctl --user show noaa-navionics-preflight.service -p UMask 2>/dev/null | grep -Fxq UMask=0077'
-check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
+check "preflight service loaded private files" loaded_unit_property_equals noaa-navionics-preflight.service UMask 0077
+check "preflight service loaded restart delay" loaded_unit_property_equals noaa-navionics-preflight.service RestartUSec 30s
 check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=30min' "$preflight_service"
-check "preflight service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=30min'
+check "preflight service loaded start limit interval" loaded_unit_property_equals noaa-navionics-preflight.service StartLimitIntervalUSec 30min
 check "preflight service start limit burst" grep -Fxq 'StartLimitBurst=60' "$preflight_service"
-check "preflight service loaded start limit burst" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitBurst 2>/dev/null | grep -Fxq StartLimitBurst=60'
+check "preflight service loaded start limit burst" loaded_unit_property_equals noaa-navionics-preflight.service StartLimitBurst 60
 check "preflight service install target" check_unit_install_target "$preflight_service" default.target
 check "user linger enabled" sh -c '"$1" show-user "$2" -p Linger 2>/dev/null | grep -q "^Linger=yes$"' sh "$loginctl_cmd" "$USER"
 check "chart timer enabled" "$systemctl_cmd" --user is-enabled --quiet noaa-navionics.timer
