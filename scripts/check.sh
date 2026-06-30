@@ -581,6 +581,11 @@ grep -q '"Launcher Settings"' scripts/verify_pi.sh
 grep -q 'status report has no unit_files section' scripts/verify_pi.sh
 grep -q 'status report {unit} path is a symlink' scripts/verify_pi.sh
 grep -q 'status report {unit} directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report {unit} uid' scripts/verify_pi.sh
+grep -q 'status report {unit} directory_uid' scripts/verify_pi.sh
+grep -q 'status report {unit} mode' scripts/verify_pi.sh
+grep -q 'status report {unit} directory_mode' scripts/verify_pi.sh
+grep -q 'expected no group/other write bits' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
@@ -1269,6 +1274,8 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' docs/s
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
+grep -q 'status-reported user unit owner/mode' README.md
+grep -q "status artifact's user unit owner/mode fields" docs/sailboat-pi.md
 grep -q 'rejects symlinked cache parents' README.md
 grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py

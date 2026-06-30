@@ -1228,6 +1228,54 @@ for unit, expected_target in expected_unit_files.items():
     live_unit_symlink_component = first_symlink_ancestor(expected_unit_path.parent)
     if live_unit_symlink_component is not None:
         raise SystemExit(f"status report {unit} path contains a symlink: {live_unit_symlink_component}")
+    try:
+        unit_stat = expected_unit_path.stat()
+        unit_dir_stat = expected_unit_path.parent.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report {unit} ownership: {exc}") from exc
+    status_uid = state.get("uid")
+    if status_uid != unit_stat.st_uid:
+        raise SystemExit(
+            f"status report {unit} uid {status_uid!r} does not match file owner uid {unit_stat.st_uid}"
+        )
+    if unit_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report {unit} file is owned by uid {unit_stat.st_uid}, expected {os.getuid()}"
+        )
+    unit_mode = unit_stat.st_mode & 0o777
+    status_mode = str(state.get("mode", "")).strip()
+    if status_mode != f"{unit_mode:04o}":
+        raise SystemExit(
+            f"status report {unit} mode {status_mode or '<missing>'} "
+            f"does not match file permissions {unit_mode:04o}"
+        )
+    if unit_mode & 0o022:
+        raise SystemExit(
+            f"status report {unit} file has permissions {unit_mode:04o}, "
+            "expected no group/other write bits"
+        )
+    status_dir_uid = state.get("directory_uid")
+    if status_dir_uid != unit_dir_stat.st_uid:
+        raise SystemExit(
+            f"status report {unit} directory_uid {status_dir_uid!r} "
+            f"does not match directory owner uid {unit_dir_stat.st_uid}"
+        )
+    if unit_dir_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report {unit} directory is owned by uid {unit_dir_stat.st_uid}, expected {os.getuid()}"
+        )
+    unit_dir_mode = unit_dir_stat.st_mode & 0o777
+    status_dir_mode = str(state.get("directory_mode", "")).strip()
+    if status_dir_mode != f"{unit_dir_mode:04o}":
+        raise SystemExit(
+            f"status report {unit} directory_mode {status_dir_mode or '<missing>'} "
+            f"does not match directory permissions {unit_dir_mode:04o}"
+        )
+    if unit_dir_mode & 0o022:
+        raise SystemExit(
+            f"status report {unit} directory has permissions {unit_dir_mode:04o}, "
+            "expected no group/other write bits"
+        )
     if expected_target:
         wanted_by = state.get("wanted_by")
         if not isinstance(wanted_by, list):
