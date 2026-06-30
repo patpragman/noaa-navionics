@@ -95,9 +95,10 @@ grep -q 'read_launcher_lock_file pid "chartplotter launcher lock pid"' scripts/s
 grep -q 'os.open(name, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
 grep -q 'lock_mode = lock_stat.st_mode & 0o777' scripts/start_chartplotter.sh
 grep -q 'expected private 0700: {lock}' scripts/start_chartplotter.sh
+grep -q 'expected private 0600' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock directory has permissions' scripts/start_chartplotter.sh
-grep -q 'requires existing launcher lock directories to be private `0700` before trusting their PID or boot ID' README.md
-grep -q 'requires existing launcher lock directories to be private `0700` before trusting their PID or boot ID' docs/sailboat-pi.md
+grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' README.md
+grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' docs/sailboat-pi.md
 grep -q 'writes and reads lock PID and boot-ID files through no-follow descriptor opens' README.md
 grep -q 'writes and reads lock PID and boot-ID files through no-follow descriptor opens' docs/sailboat-pi.md
 ! grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
@@ -144,8 +145,8 @@ grep -q 'remove_stale_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'shutil.rmtree(lock)' scripts/start_chartplotter.sh
 grep -q 'shutil.rmtree is not symlink-attack resistant' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place' scripts/start_chartplotter.sh
-grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris' README.md
-grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris' docs/sailboat-pi.md
+grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' README.md
+grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' docs/sailboat-pi.md
 grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` only after opening it through a no-follow descriptor' README.md
 grep -q 'through a no-follow descriptor, rotates and syncs that log after 1 MB' docs/sailboat-pi.md
 ! grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
@@ -4752,6 +4753,7 @@ mkdir -p "$launcher_lock_home/.local/bin" "$launcher_lock_home/.cache/noaa-navio
 chmod 0700 "$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 write_test_launcher_env "$launcher_lock_home"
 printf '%s\n' "$$" >"$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+chmod 0600 "$launcher_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
@@ -4783,13 +4785,37 @@ if [[ "$launcher_public_lock_code" -eq 0 ]]; then
 fi
 test -d "$launcher_public_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 test ! -e "$launcher_public_lock_home/.cache/noaa-navionics/opencpn-started"
-grep -q 'chartplotter launcher lock path has permissions 0770, expected no group/other write bits; leaving it in place' "$launcher_public_lock_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'chartplotter launcher lock path has permissions 0770, expected private 0700; leaving it in place' "$launcher_public_lock_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_public_lock_file_home="$tmpdir/launcher-public-lock-file-home"
+mkdir -p "$launcher_public_lock_file_home/.local/bin" "$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.launch.lock"
+chmod 0700 "$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.launch.lock"
+write_test_launcher_env "$launcher_public_lock_file_home"
+printf '%s\n' "$$" >"$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+chmod 0644 "$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_public_lock_file_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+printf '#!/usr/bin/env bash\nprintf "opencpn launched\\n" >"$HOME/.cache/noaa-navionics/opencpn-started"\nexit 0\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_public_lock_file_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+set +e
+HOME="$launcher_public_lock_file_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_public_lock_file_code=$?
+set -e
+if [[ "$launcher_public_lock_file_code" -eq 0 ]]; then
+  cat "$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a public launcher lock pid file" >&2
+  exit 1
+fi
+test -d "$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.launch.lock"
+test ! -e "$launcher_public_lock_file_home/.cache/noaa-navionics/opencpn-started"
+grep -q 'chartplotter launcher lock pid has permissions 0644, expected private 0600; leaving it in place' "$launcher_public_lock_file_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_dirty_lock_home="$tmpdir/launcher-dirty-lock-home"
 mkdir -p "$launcher_dirty_lock_home/.local/bin" "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 chmod 0700 "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 write_test_launcher_env "$launcher_dirty_lock_home"
 printf '%s\n' "$$" >"$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+chmod 0600 "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 printf 'stale\n' >"$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/extra"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_dirty_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
@@ -4806,6 +4832,7 @@ launcher_symlink_child_target="$tmpdir/launcher-symlink-child-target"
 mkdir -p "$launcher_symlink_child_lock_home/.local/bin" "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock" "$launcher_symlink_child_target"
 chmod 0700 "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
 printf '%s\n' "$$" >"$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+chmod 0600 "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 ln -s "$launcher_symlink_child_target" "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/extra-link"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_child_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
@@ -4833,6 +4860,7 @@ bash -c 'while :; do sleep 1; done' start_chartplotter.sh &
 old_boot_launcher_pid=$!
 printf '%s\n' "$old_boot_launcher_pid" >"$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 printf 'previous-boot\n' >"$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id"
+chmod 0600 "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid" "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/boot_id"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_old_boot_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
@@ -4852,6 +4880,7 @@ chmod 0700 "$launcher_active_lock_home/.cache/noaa-navionics/chartplotter.launch
 bash -c 'while :; do sleep 1; done' start_chartplotter.sh &
 active_launcher_pid=$!
 printf '%s\n' "$active_launcher_pid" >"$launcher_active_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+chmod 0600 "$launcher_active_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_active_lock_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho "opencpn should not be launched" >&2\nexit 9\n' >"$tmpdir/opencpn"

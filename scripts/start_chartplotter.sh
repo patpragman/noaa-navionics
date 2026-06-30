@@ -741,8 +741,8 @@ try:
         if opened.st_uid != expected_uid:
             raise SystemExit(f"{label} is owned by uid {opened.st_uid}, expected {expected_uid}")
         mode = opened.st_mode & 0o777
-        if mode & 0o022:
-            raise SystemExit(f"{label} has permissions {mode:04o}, expected no group/other write bits")
+        if mode != 0o600:
+            raise SystemExit(f"{label} has permissions {mode:04o}, expected private 0600")
         data = os.read(fd, 4096).decode("ascii", "ignore").splitlines()
         if data:
             sys.stdout.write(data[0])
@@ -796,6 +796,19 @@ for path in [lock, *lock.rglob("*")]:
             f"chartplotter launcher lock path is owned by uid {path_stat.st_uid}, "
             f"expected {expected_uid}; leaving it in place: {path}"
         )
+    if path == lock and mode != 0o700:
+        fail(
+            f"chartplotter launcher lock path has permissions {mode:04o}, "
+            f"expected private 0700; leaving it in place: {path}"
+        )
+    if path.parent == lock and path.name in {"pid", "boot_id"}:
+        if not stat.S_ISREG(path_stat.st_mode):
+            fail(f"chartplotter launcher lock {path.name} is not a regular file; leaving it in place: {path}")
+        if mode != 0o600:
+            fail(
+                f"chartplotter launcher lock {path.name} has permissions {mode:04o}, "
+                f"expected private 0600; leaving it in place: {path}"
+            )
     if mode & 0o022:
         fail(
             f"chartplotter launcher lock path has permissions {mode:04o}, "
