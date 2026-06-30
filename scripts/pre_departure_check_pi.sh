@@ -86,6 +86,18 @@ validate_gps_device_path_arg() {
   exit 2
 }
 
+require_helper() {
+  local path="$1"
+  if [[ -L "$path" ]]; then
+    echo "Helper script must not be a symlink: $path" >&2
+    exit 2
+  fi
+  if [[ ! -f "$path" || ! -x "$path" ]]; then
+    echo "Helper script is missing or not executable: $path" >&2
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -137,8 +149,10 @@ if [[ -z "$device" ]]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+verify_helper="${repo_root}/scripts/verify_pi.sh"
+require_helper "$verify_helper"
 
-"${repo_root}/scripts/verify_pi.sh" \
+"$verify_helper" \
   --require-chartplotter-started \
   --expected-gps-device "$device" \
   "${verify_args[@]}" \

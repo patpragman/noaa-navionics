@@ -5130,6 +5130,22 @@ grep -Fxq -- '--allow-dirty' "$pre_departure_args"
 grep -Fxq -- 'pi@example.invalid' "$pre_departure_args"
 grep -q 'Pre-departure check passed' "$verify_output"
 
+mv "$pre_departure_repo/scripts/verify_pi.sh" "$pre_departure_repo/scripts/verify_pi.real.sh"
+ln -s verify_pi.real.sh "$pre_departure_repo/scripts/verify_pi.sh"
+set +e
+NOAA_NAVIONICS_FAKE_VERIFY_ARGS="$pre_departure_args" \
+  "$pre_departure_repo/scripts/pre_departure_check_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject a symlinked verify helper with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script must not be a symlink' "$verify_output"
+
 set +e
 scripts/check_pi_status.sh root@example.invalid >"$verify_output" 2>&1
 status_snapshot_code=$?
