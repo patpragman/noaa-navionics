@@ -999,12 +999,25 @@ grep -q 'live_wanted_by = install_wanted_by_targets' scripts/verify_pi.sh
 grep -q 'does not match live unit file' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
+grep -q 'check_root_command_integrity()' scripts/verify_pi.sh
+grep -q 'check_root_directory_integrity "$(dirname "$path")" "${label} directory"' scripts/verify_pi.sh
+grep -q 'check_root_executable_file_integrity "$path" "$label"' scripts/verify_pi.sh
 grep -q 'check "display power command integrity" check_display_power_command_integrity' scripts/verify_pi.sh
 ! grep -q 'check "display power command" command -v xset' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" xset q' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" xset q' scripts/verify_pi.sh
-grep -q 'process lookup command' scripts/verify_pi.sh
-grep -q 'Pi power command' scripts/verify_pi.sh
+grep -q 'check "process lookup command integrity" check_root_command_integrity pgrep "process lookup command"' scripts/verify_pi.sh
+grep -q 'check "Pi power command integrity" check_root_command_integrity vcgencmd "Pi power command"' scripts/verify_pi.sh
+grep -q 'check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"' scripts/verify_pi.sh
+grep -q 'check "GPSD command integrity" check_root_command_integrity gpsd "GPSD command"' scripts/verify_pi.sh
+grep -q 'check "GPSD client command integrity" check_root_command_integrity cgps "GPSD client command"' scripts/verify_pi.sh
+! grep -q 'check "process lookup command" command -v pgrep' scripts/verify_pi.sh
+! grep -q 'check "Pi power command" command -v vcgencmd' scripts/verify_pi.sh
+! grep -q 'check "Chrony command" command -v chronyc' scripts/verify_pi.sh
+! grep -q 'check "GPSD command" command -v gpsd' scripts/verify_pi.sh
+! grep -q 'check "GPSD client command" command -v cgps' scripts/verify_pi.sh
+grep -q 'trusted root-owned `pgrep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
+grep -q 'installed root-owned command dependencies' docs/sailboat-pi.md
 grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
 grep -q 'vcgencmd get_throttled failed' scripts/verify_pi.sh
 grep -q 'unexpected vcgencmd get_throttled output' scripts/verify_pi.sh
@@ -1167,8 +1180,7 @@ grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
 grep -q 'GPSD by-id device is symlink' scripts/verify_pi.sh
 grep -q 'GPSD device is character device' scripts/verify_pi.sh
-grep -q 'GPSD client command' scripts/verify_pi.sh
-grep -q 'command -v cgps' scripts/verify_pi.sh
+grep -q 'GPSD client command integrity' scripts/verify_pi.sh
 grep -q 'GPSD socket enabled' scripts/verify_pi.sh
 grep -q 'GPSD socket active' scripts/verify_pi.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh

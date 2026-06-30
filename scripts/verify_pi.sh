@@ -2371,6 +2371,27 @@ check_root_executable_file_integrity() {
   fi
 }
 
+check_root_command_integrity() {
+  local command_name="$1"
+  local label="$2"
+  local path
+
+  path="$(command -v "$command_name" 2>/dev/null)" || {
+    printf '%s was not found on PATH\n' "$label" >&2
+    return 1
+  }
+  case "$path" in
+    /*)
+      ;;
+    *)
+      printf '%s path is not absolute: %s\n' "$label" "$path" >&2
+      return 1
+      ;;
+  esac
+  check_root_directory_integrity "$(dirname "$path")" "${label} directory" || return 1
+  check_root_executable_file_integrity "$path" "$label"
+}
+
 check_opencpn_command_integrity() {
   local path
 
@@ -3823,18 +3844,18 @@ check "OpenCPN command" command -v opencpn
 check "OpenCPN command integrity" check_opencpn_command_integrity
 check "display power command integrity" check_display_power_command_integrity
 check "Tkinter readiness warning support" check_tkinter_available
-check "process lookup command" command -v pgrep
-check "Pi power command" command -v vcgencmd
+check "process lookup command integrity" check_root_command_integrity pgrep "process lookup command"
+check "Pi power command integrity" check_root_command_integrity vcgencmd "Pi power command"
 check "Pi power state" check_raspberry_pi_throttling_state
-check "Chrony command" command -v chronyc
+check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
 check "Chrony config directory integrity" check_root_directory_integrity /etc/chrony "chrony config directory"
 check "Chrony config file integrity" check_root_regular_file_integrity /etc/chrony/chrony.conf "chrony config"
 check "Chrony GPSD time source" check_chrony_gps_time_config
 check "Chrony usable GPS source" wait_for_chrony_gps_source
-check "GPSD command" command -v gpsd
-check "GPSD client command" command -v cgps
+check "GPSD command integrity" check_root_command_integrity gpsd "GPSD command"
+check "GPSD client command integrity" check_root_command_integrity cgps "GPSD client command"
 check "GPSD socket enabled" systemctl is-enabled --quiet gpsd.socket
 check "GPSD socket active" systemctl is-active --quiet gpsd.socket
 check "GPSD service enabled" systemctl is-enabled --quiet gpsd
