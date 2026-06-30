@@ -195,6 +195,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=60.0,
         help="seconds between automatic refreshes; 0 disables",
     )
+    status_gui.add_argument(
+        "--anchor-radius-meters",
+        type=_positive_float,
+        default=50.0,
+        help="anchor drift radius used by the status GUI",
+    )
 
     init_config = subparsers.add_parser("init-config", help="write a default onboard config file")
     init_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -425,6 +431,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 str(args.gps_seconds),
                 "--refresh-seconds",
                 str(args.refresh_seconds),
+                "--anchor-radius-meters",
+                str(args.anchor_radius_meters),
             ]
             if args.no_output:
                 status_gui_args.append("--no-output")

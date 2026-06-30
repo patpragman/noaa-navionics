@@ -11,8 +11,8 @@ import tkinter as tk
 from tkinter import ttk
 
 from .config import DEFAULT_CONFIG_PATH, read_config
-from .gps import GPSFix, gpx_position_mark_path, write_gpx_position_mark
-from .gui import format_gps_fix, read_configured_gps_fix
+from .gps import GPSFix, distance_meters, gpx_position_mark_path, write_gpx_position_mark
+from .gui import format_gps_fix, read_configured_gps_fix, read_configured_gps_fixes
 from .report import build_status_report, write_status_report
 
 
@@ -92,6 +92,36 @@ def write_current_position_mark(
     return write_gpx_position_mark(path, fix, name=name, description=description), fix
 
 
+def check_anchor_drift(
+    config_path: Path,
+    *,
+    gps_seconds: float = 10.0,
+    radius_meters: float = 50.0,
+) -> tuple[float, float, GPSFix, GPSFix]:
+    if not math.isfinite(radius_meters) or radius_meters <= 0:
+        raise ValueError("anchor radius must be greater than 0")
+    app_config = read_config(config_path)
+    anchor_fix, current_fix = read_configured_gps_fixes(app_config, count=2, gps_seconds=gps_seconds)
+    distance = distance_meters(anchor_fix.latitude, anchor_fix.longitude, current_fix.latitude, current_fix.longitude)
+    return distance, radius_meters, anchor_fix, current_fix
+
+
+def format_anchor_check(distance: float, radius_meters: float) -> str:
+    if distance > radius_meters:
+        return f"ANCHOR ALARM: {distance:.1f} m from anchor; radius {radius_meters:g} m"
+    return f"Anchor OK: {distance:.1f} m from anchor; radius {radius_meters:g} m"
+
+
+def _positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
 def _non_negative_float(value: str) -> float:
     try:
         parsed = float(value)
@@ -110,6 +140,7 @@ class StatusApp(tk.Tk):
         output_path: Optional[Path] = DEFAULT_STATUS_REPORT,
         gps_seconds: float = 10.0,
         refresh_seconds: float = 60.0,
+        anchor_radius_meters: float = 50.0,
     ) -> None:
         super().__init__()
         self.title("NOAA Navionics Status")
@@ -120,6 +151,7 @@ class StatusApp(tk.Tk):
         self.output_path = Path(output_path).expanduser() if output_path is not None else None
         self.gps_seconds = gps_seconds
         self.refresh_seconds = refresh_seconds
+        self.anchor_radius = tk.StringVar(value=f"{anchor_radius_meters:g}")
         self.queue: Queue = Queue()
         self.worker: Optional[Thread] = None
         self.after_id: Optional[str] = None
@@ -163,6 +195,11 @@ class StatusApp(tk.Tk):
         self.mark_button.pack(side=tk.LEFT, padx=(10, 0))
         self.mob_button = ttk.Button(buttons, text="MOB", command=lambda: self.mark_position(mob=True))
         self.mob_button.pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(buttons, text="Radius m").pack(side=tk.LEFT, padx=(16, 0))
+        self.anchor_radius_entry = ttk.Entry(buttons, textvariable=self.anchor_radius, width=7)
+        self.anchor_radius_entry.pack(side=tk.LEFT, padx=(6, 0))
+        self.anchor_button = ttk.Button(buttons, text="Anchor Check", command=self.anchor_check)
+        self.anchor_button.pack(side=tk.LEFT, padx=(10, 0))
         ttk.Button(buttons, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
         ttk.Label(root, textvariable=self.last_report).grid(row=4, column=0, sticky=tk.W, pady=(8, 0))
 
@@ -182,6 +219,19 @@ class StatusApp(tk.Tk):
         self.worker = Thread(target=self._mark_worker, kwargs={"mob": mob}, daemon=True)
         self.worker.start()
 
+    def anchor_check(self) -> None:
+        if self.worker is not None and self.worker.is_alive():
+            return
+        try:
+            radius_meters = _positive_float(self.anchor_radius.get())
+        except argparse.ArgumentTypeError as exc:
+            self._show_error(f"Anchor radius {exc}")
+            return
+        self._set_busy(True)
+        self.summary.set("Checking anchor distance...")
+        self.worker = Thread(target=self._anchor_worker, kwargs={"radius_meters": radius_meters}, daemon=True)
+        self.worker.start()
+
     def _refresh_worker(self) -> None:
         try:
             report = build_status_report(config_path=self.config_path, gps_seconds=self.gps_seconds)
@@ -198,6 +248,17 @@ class StatusApp(tk.Tk):
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
 
+    def _anchor_worker(self, *, radius_meters: float) -> None:
+        try:
+            distance, radius, anchor_fix, current_fix = check_anchor_drift(
+                self.config_path,
+                gps_seconds=self.gps_seconds,
+                radius_meters=radius_meters,
+            )
+            self.queue.put(("anchor", (distance, radius, anchor_fix, current_fix)))
+        except Exception as exc:  # pragma: no cover - UI path
+            self.queue.put(("error", str(exc)))
+
     def _poll_queue(self) -> None:
         try:
             while True:
@@ -207,6 +268,9 @@ class StatusApp(tk.Tk):
                 elif kind == "mark":
                     path, lines = payload
                     self._show_mark(path, lines)
+                elif kind == "anchor":
+                    distance, radius, anchor_fix, current_fix = payload
+                    self._show_anchor(distance, radius, anchor_fix, current_fix)
                 elif kind == "error":
                     self._show_error(str(payload))
         except Empty:
@@ -240,6 +304,14 @@ class StatusApp(tk.Tk):
         self.last_report.set(" | ".join(lines))
         self._schedule_refresh()
 
+    def _show_anchor(self, distance: float, radius_meters: float, anchor_fix: GPSFix, current_fix: GPSFix) -> None:
+        self._set_busy(False)
+        summary = format_anchor_check(distance, radius_meters)
+        self.headline.set("NOT READY" if distance > radius_meters else "READY")
+        self.summary.set(summary)
+        self.last_report.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
+        self._schedule_refresh()
+
     def _show_error(self, message: str) -> None:
         self._set_busy(False)
         self.headline.set("NOT READY")
@@ -251,6 +323,8 @@ class StatusApp(tk.Tk):
         self.refresh_button.configure(state=state)
         self.mark_button.configure(state=state)
         self.mob_button.configure(state=state)
+        self.anchor_button.configure(state=state)
+        self.anchor_radius_entry.configure(state=state)
 
     def _schedule_refresh(self) -> None:
         if self.after_id is not None:
@@ -258,6 +332,10 @@ class StatusApp(tk.Tk):
             self.after_id = None
         if self.refresh_seconds > 0:
             self.after_id = self.after(int(self.refresh_seconds * 1000), self.refresh_now)
+
+
+def _fix_coordinates(fix: GPSFix) -> str:
+    return f"{fix.latitude:.6f}, {fix.longitude:.6f}"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -276,6 +354,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=60.0,
         help="seconds between automatic refreshes; 0 disables",
     )
+    parser.add_argument(
+        "--anchor-radius-meters",
+        type=_positive_float,
+        default=50.0,
+        help="anchor drift radius used by the Anchor Check button",
+    )
     return parser
 
 
@@ -287,6 +371,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         output_path=output_path,
         gps_seconds=args.gps_seconds,
         refresh_seconds=args.refresh_seconds,
+        anchor_radius_meters=args.anchor_radius_meters,
     )
     app.mainloop()
 

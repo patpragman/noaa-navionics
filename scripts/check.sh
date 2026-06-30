@@ -2556,6 +2556,7 @@ grep -q 'values=PACKAGE_KIND_OPTIONS' src/noaa_navionics/gui.py
 grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fix' src/noaa_navionics/gui.py
+grep -q 'def read_configured_gps_fixes' src/noaa_navionics/gui.py
 grep -q 'def format_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def download_selected_package' src/noaa_navionics/gui.py
 grep -q 'text="GPS Fix"' src/noaa_navionics/gui.py
@@ -2567,20 +2568,28 @@ grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
+grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
+grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
 grep -q 'def available_position_mark_path' src/noaa_navionics/status_gui.py
 grep -q 'READY' src/noaa_navionics/status_gui.py
 grep -q 'NOT READY' src/noaa_navionics/status_gui.py
 grep -q 'text="MOB"' src/noaa_navionics/status_gui.py
+grep -q 'text="Anchor Check"' src/noaa_navionics/status_gui.py
+grep -q 'anchor-radius-meters' src/noaa_navionics/status_gui.py
 grep -q 'write_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
+grep -q 'read_configured_gps_fixes(app_config, count=2, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'build_status_report(config_path=self.config_path, gps_seconds=self.gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_status_report(report, self.output_path)' src/noaa_navionics/status_gui.py
 grep -q 'status-gui' src/noaa_navionics/cli.py
+grep -q 'anchor-radius-meters' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' README.md
 grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' docs/sailboat-pi.md
+grep -q 'use Anchor Check for a bounded two-fix drift check' README.md
+grep -q 'use Anchor Check for a bounded two-fix drift check' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -2614,6 +2623,7 @@ grep -q 'test_status_gui_summarizes_readiness_rows' tests/test_downloader.py
 grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader.py
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
 grep -q 'test_cli_mark_position_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py

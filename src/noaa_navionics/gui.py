@@ -94,7 +94,26 @@ def read_configured_gps_fix(
     gps_device: Optional[str] = None,
     gps_seconds: float = 10.0,
 ) -> GPSFix:
+    return read_configured_gps_fixes(
+        app_config,
+        count=1,
+        gpsd_enabled=gpsd_enabled,
+        gps_device=gps_device,
+        gps_seconds=gps_seconds,
+    )[0]
+
+
+def read_configured_gps_fixes(
+    app_config: AppConfig,
+    *,
+    count: int,
+    gpsd_enabled: Optional[bool] = None,
+    gps_device: Optional[str] = None,
+    gps_seconds: float = 10.0,
+) -> list[GPSFix]:
     use_gpsd = app_config.gps_mode == "gpsd" if gpsd_enabled is None else gpsd_enabled
+    if count < 1:
+        raise ValueError("count must be at least 1")
     if gps_seconds <= 0:
         raise ValueError("gps_seconds must be greater than 0")
     if use_gpsd:
@@ -104,7 +123,7 @@ def read_configured_gps_fix(
             timeout=max(0.1, gps_seconds),
             max_duration=gps_seconds,
         )
-        return _first_usable_gps_fix(fixes, source=f"GPSD {app_config.gpsd_host}:{app_config.gpsd_port}")
+        return _usable_gps_fixes(fixes, count=count, source=f"GPSD {app_config.gpsd_host}:{app_config.gpsd_port}")
 
     device = gps_device or app_config.gps_device
     if _volatile_usb_device_path(device):
@@ -114,7 +133,7 @@ def read_configured_gps_fix(
     deadline = time.monotonic() + gps_seconds
     with open_nmea_stream(device, app_config.gps_baud) as stream:
         lines = _bounded_nmea_lines(stream, deadline, idle_timeout=gps_seconds)
-        return _first_usable_gps_fix(iter_fixes(lines), source=device)
+        return _usable_gps_fixes(iter_fixes(lines), count=count, source=device)
 
 
 def format_gps_fix(fix: GPSFix) -> list[str]:
@@ -142,7 +161,8 @@ def _bounded_nmea_lines(stream, deadline: float, *, idle_timeout: float):
         yield line
 
 
-def _first_usable_gps_fix(fixes, *, source: str) -> GPSFix:
+def _usable_gps_fixes(fixes, *, count: int, source: str) -> list[GPSFix]:
+    usable: list[GPSFix] = []
     saw_fix_without_quality = False
     last_failure = ""
     for fix in fixes:
@@ -153,10 +173,14 @@ def _first_usable_gps_fix(fixes, *, source: str) -> GPSFix:
         if not gps_fix_has_quality_fields(fix):
             saw_fix_without_quality = True
             continue
-        return fix
+        usable.append(fix)
+        if len(usable) >= count:
+            return usable
     if saw_fix_without_quality:
         raise RuntimeError(f"{source} reported a fix without satellite or HDOP quality data")
     detail = f": {last_failure}" if last_failure else ""
+    if usable:
+        raise RuntimeError(f"only {len(usable)} usable GPS fix(es) from {source}; need {count}")
     raise RuntimeError(f"no usable GPS fix from {source}{detail}")
 
 

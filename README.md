@@ -60,7 +60,7 @@ For a focused onboard helm-readiness panel, run:
 noaa-navionics-status-gui
 ```
 
-The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display. Use its Mark or MOB buttons to write a private GPX waypoint from the current quality-checked GPS fix into the configured track export area.
+The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display. Use its Mark or MOB buttons to write a private GPX waypoint from the current quality-checked GPS fix into the configured track export area, and use Anchor Check for a bounded two-fix drift check at the configured radius.
 
 ## CLI Examples
 
