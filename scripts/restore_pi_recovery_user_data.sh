@@ -290,6 +290,8 @@ def safe_track_output_from_config(config_text: str, home: Path) -> Path:
     expanded = Path(os.path.expanduser(track_output))
     if not expanded.is_absolute():
         fail(f"restored tracking.output is not absolute after expansion: {track_output}")
+    if ".." in expanded.parts:
+        fail(f"restored tracking.output must not contain parent-directory components: {track_output}")
 
     resolved_home = home.resolve()
     if expanded == resolved_home or expanded in resolved_home.parents:

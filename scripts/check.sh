@@ -546,6 +546,8 @@ grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
+grep -q 'rejecting parent-directory traversal in the recovered track output path' README.md
+grep -q 'rejecting parent-directory traversal in the recovered track output path' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
 grep -q 'dry-run by default and requires `--apply` before writing' docs/sailboat-pi.md
 grep -q 'does not restore root-owned GPSD, chrony, LightDM' README.md
@@ -916,6 +918,7 @@ grep -q 'do not restore recovery user data as root' scripts/restore_pi_recovery_
 grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored tracking.output must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
@@ -5457,9 +5460,10 @@ fi
 grep -q 'Recovery directory must not be a symlink' "$verify_output"
 
 recovery_restore_dir="$tmpdir/recovery-restore"
+recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
 restore_home="$tmpdir/restore-home"
-mkdir -p "$recovery_restore_dir" "$restore_home"
-python3 - "$recovery_restore_dir" <<'PY'
+mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$restore_home"
+python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" <<'PY'
 from pathlib import Path
 import io
 import json
@@ -5486,7 +5490,39 @@ def build_archive(directory, name, manifest, members):
             add_text(archive, member_name, text)
 
 
-root = Path(sys.argv[1])
+def build_restore_fixture(root, config):
+    build_archive(
+        root,
+        "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
+        {"file_count": 2},
+        {
+            "noaa-navionics/config.ini": config,
+            "noaa-navionics/launcher.env": "NOAA_NAVIONICS_GPS_SECONDS=60\n",
+        },
+    )
+    build_archive(
+        root,
+        "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000000Z.tgz",
+        {"file_count": 2},
+        {
+            "opencpn/navobj.xml": "<navobj />\n",
+            "opencpn/layers/route.gpx": "<gpx />\n",
+        },
+    )
+    build_archive(
+        root,
+        "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000000Z.tgz",
+        {"track_count": 1},
+        {"tracks/underway.gpx": "<gpx><trk /></gpx>\n"},
+    )
+    build_archive(
+        root,
+        "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz",
+        None,
+        {"commands/date-utc.txt": "2026-01-01\n"},
+    )
+
+
 config = """[charts]
 package = state
 value = AK
@@ -5508,37 +5544,21 @@ gpsd_port = 2947
 output = ~/tracks-store
 retention_days = 90
 """
-build_archive(
-    root,
-    "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
-    {"file_count": 2},
-    {
-        "noaa-navionics/config.ini": config,
-        "noaa-navionics/launcher.env": "NOAA_NAVIONICS_GPS_SECONDS=60\n",
-    },
-)
-build_archive(
-    root,
-    "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000000Z.tgz",
-    {"file_count": 2},
-    {
-        "opencpn/navobj.xml": "<navobj />\n",
-        "opencpn/layers/route.gpx": "<gpx />\n",
-    },
-)
-build_archive(
-    root,
-    "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000000Z.tgz",
-    {"track_count": 1},
-    {"tracks/underway.gpx": "<gpx><trk /></gpx>\n"},
-)
-build_archive(
-    root,
-    "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz",
-    None,
-    {"commands/date-utc.txt": "2026-01-01\n"},
-)
+bad_config = config.replace("output = ~/tracks-store", "output = ~/../../etc/noaa-navionics-restore")
+build_restore_fixture(Path(sys.argv[1]), config)
+build_restore_fixture(Path(sys.argv[2]), bad_config)
 PY
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_parent_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject tracking output parent traversal with exit 1" >&2
+  exit 1
+fi
+grep -q 'restored tracking.output must not contain parent-directory components' "$verify_output"
 
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
 grep -q 'Dry run only. Re-run with --apply to write files.' "$verify_output"

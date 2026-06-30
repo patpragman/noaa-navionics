@@ -257,7 +257,7 @@ After reimaging a Pi, copy the verified recovery directory onto the Pi and resto
 scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply
 ```
 
-The restore helper is dry-run by default and requires `--apply` before writing. It restores NOAA Navionics `config.ini` and launcher policy, OpenCPN user config/routes/waypoints/layers, and GPX tracks into the restored configured track directory. It does not restore root-owned GPSD, chrony, LightDM, service unit, chart, or NOAA ENC files; re-run provisioning and then `scripts/verify_pi.sh` or `scripts/dock_test_pi.sh` on the Pi before relying on it.
+The restore helper is dry-run by default and requires `--apply` before writing. It restores NOAA Navionics `config.ini` and launcher policy, OpenCPN user config/routes/waypoints/layers, and GPX tracks into the restored configured track directory after rejecting parent-directory traversal in the recovered track output path. It does not restore root-owned GPSD, chrony, LightDM, service unit, chart, or NOAA ENC files; re-run provisioning and then `scripts/verify_pi.sh` or `scripts/dock_test_pi.sh` on the Pi before relying on it.
 
 Shut the Pi down cleanly before cutting boat power:
 
