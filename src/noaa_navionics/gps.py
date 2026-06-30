@@ -38,7 +38,14 @@ class GPSFix:
 
     @property
     def valid(self) -> bool:
-        return self.latitude is not None and self.longitude is not None and self.fix_quality is not None and self.fix_quality != 0
+        return (
+            self.latitude is not None
+            and self.longitude is not None
+            and _coordinate_in_range(self.latitude, latitude=True)
+            and _coordinate_in_range(self.longitude, latitude=False)
+            and self.fix_quality is not None
+            and self.fix_quality != 0
+        )
 
     @property
     def speed_mph(self) -> Optional[float]:
@@ -149,6 +156,8 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
     latitude = _finite_float_or_none(data.get("lat"))
     longitude = _finite_float_or_none(data.get("lon"))
     if latitude is None or longitude is None:
+        return None
+    if not _coordinate_in_range(latitude, latitude=True) or not _coordinate_in_range(longitude, latitude=False):
         return None
     timestamp = None
     time_value = data.get("time")
@@ -481,12 +490,25 @@ def _parse_lat_lon(value: str, hemisphere: str, *, latitude: bool) -> Optional[f
         minutes = float(value[split_at:])
     except ValueError:
         return None
+    if not math.isfinite(degrees) or not math.isfinite(minutes):
+        return None
+    if degrees < 0.0:
+        return None
     if minutes < 0.0 or minutes >= 60.0:
         return None
     decimal = degrees + minutes / 60
+    if not _coordinate_in_range(decimal, latitude=latitude):
+        return None
     if hemisphere in ("S", "W"):
         decimal = -decimal
     return decimal
+
+
+def _coordinate_in_range(value: float, *, latitude: bool) -> bool:
+    if not math.isfinite(value):
+        return False
+    limit = 90.0 if latitude else 180.0
+    return -limit <= value <= limit
 
 
 def _parse_rmc_timestamp(time_value: str, date_value: str) -> Optional[datetime]:

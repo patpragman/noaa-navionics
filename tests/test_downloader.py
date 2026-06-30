@@ -7025,6 +7025,18 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(parse_nmea_sentence(bad_number))
         self.assertEqual(list(iter_fixes([bad_minutes, bad_number])), [])
 
+    def test_parse_nmea_rejects_impossible_coordinate_values(self):
+        bad_latitude = "$GPGGA,123519,9100.000,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+        bad_longitude = "$GPRMC,123519,A,4807.038,N,18100.000,W,022.4,084.4,230394,003.1,W"
+        negative_degrees = "$GPGGA,123519,-100.000,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+        non_finite = "$GPRMC,123519,A,48NaN,N,01131.000,E,022.4,084.4,230394,003.1,W"
+
+        self.assertIsNone(parse_nmea_sentence(bad_latitude))
+        self.assertIsNone(parse_nmea_sentence(bad_longitude))
+        self.assertIsNone(parse_nmea_sentence(negative_degrees))
+        self.assertIsNone(parse_nmea_sentence(non_finite))
+        self.assertEqual(list(iter_fixes([bad_latitude, bad_longitude, negative_degrees, non_finite])), [])
+
     def test_iter_fixes_merges_gga_and_rmc(self):
         fixes = list(
             iter_fixes(
@@ -7664,6 +7676,13 @@ class GpsTests(unittest.TestCase):
 
         self.assertIsNone(parse_gpsd_tpv(payload))
 
+    def test_parse_gpsd_tpv_rejects_out_of_range_position(self):
+        bad_latitude = '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z","lat":91.0,"lon":-149.9003}'
+        bad_longitude = '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z","lat":61.2181,"lon":-181.0}'
+
+        self.assertIsNone(parse_gpsd_tpv(bad_latitude))
+        self.assertIsNone(parse_gpsd_tpv(bad_longitude))
+
     def test_parse_gpsd_tpv_rejects_malformed_fix_mode(self):
         base = '"class":"TPV","time":"2026-06-28T12:34:56.000Z","lat":61.2181,"lon":-149.9003'
 
@@ -8049,7 +8068,7 @@ class GpsTests(unittest.TestCase):
             health_module.open_nmea_stream = original
 
         self.assertFalse(result.ok)
-        self.assertIn("latitude 91.000000 outside -90..90", result.detail)
+        self.assertIn("no fresh navigation-quality NMEA fix", result.detail)
 
     def test_check_gps_device_rejects_stale_timestamped_fix(self):
         original = health_module.open_nmea_stream

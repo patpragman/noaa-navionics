@@ -1364,7 +1364,13 @@ grep -q 'test_gpx_logger_directory_sync_uses_no_follow_open' tests/test_download
 grep -q 'GPX directory sync uses no-follow directory opens' README.md
 grep -q 'GPX directory sync uses no-follow directory opens' docs/sailboat-pi.md
 grep -q 'expected a new regular GPX track file' src/noaa_navionics/gps.py
-grep -q 'fix_quality is not None and self.fix_quality != 0' src/noaa_navionics/gps.py
+grep -q 'def _coordinate_in_range' src/noaa_navionics/gps.py
+grep -q '_coordinate_in_range(self.latitude, latitude=True)' src/noaa_navionics/gps.py
+grep -q '_coordinate_in_range(self.longitude, latitude=False)' src/noaa_navionics/gps.py
+grep -q 'self.fix_quality is not None' src/noaa_navionics/gps.py
+grep -q 'self.fix_quality != 0' src/noaa_navionics/gps.py
+grep -q 'test_parse_nmea_rejects_impossible_coordinate_values' tests/test_downloader.py
+grep -q 'test_parse_gpsd_tpv_rejects_out_of_range_position' tests/test_downloader.py
 grep -q 'if gps_fix_quality_failure(fix):' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: missing coordinates' src/noaa_navionics/gps.py
 grep -q 'hemisphere not in ("N", "S")' src/noaa_navionics/gps.py
