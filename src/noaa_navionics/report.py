@@ -707,7 +707,11 @@ def _track_log_summary_once(
     candidates.sort(reverse=True)
     for _mtime, path, stat_result in candidates:
         try:
-            read_stat, text = _read_trusted_gpx_track_file(path, expected_owner=expected_owner)
+            read_stat, text = _read_trusted_gpx_track_file(
+                path,
+                expected_owner=expected_owner,
+                expected_stat=stat_result,
+            )
         except Exception as exc:
             last_detail = str(exc)
             continue
@@ -786,7 +790,12 @@ def _track_log_summary_once(
     return summary
 
 
-def _read_trusted_gpx_track_file(path: Path, *, expected_owner: int) -> tuple[os.stat_result, str]:
+def _read_trusted_gpx_track_file(
+    path: Path,
+    *,
+    expected_owner: int,
+    expected_stat: Optional[os.stat_result] = None,
+) -> tuple[os.stat_result, str]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -798,6 +807,11 @@ def _read_trusted_gpx_track_file(path: Path, *, expected_owner: int) -> tuple[os
         stat_result = os.fstat(fd)
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"{path} is not a regular GPX track file")
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"{path} changed before it could be read")
         if stat_result.st_uid != expected_owner:
             raise RuntimeError(f"{path} is owned by uid {stat_result.st_uid}, expected {expected_owner}")
         mode = stat_result.st_mode & 0o777

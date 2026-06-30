@@ -5639,6 +5639,40 @@ class StatusReportTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "permissions are 0622"):
                 _read_trusted_gpx_track_file(track_path, expected_owner=os.getuid())
 
+    def test_read_trusted_gpx_track_file_rejects_replaced_file_before_parsing(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            track_path = tracks / "track-20260629.gpx"
+            track_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f'  <trk><trkseg><trkpt lat="61.2181" lon="-149.9003">'
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}</time>"
+                "<sat>8</sat></trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            track_path.chmod(0o600)
+            expected_stat = track_path.stat()
+            replacement = tracks / "replacement.gpx"
+            replacement.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f'  <trk><trkseg><trkpt lat="60.0" lon="-150.0">'
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}</time>"
+                "<sat>8</sat></trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            replacement.chmod(0o600)
+            replacement.replace(track_path)
+
+            with self.assertRaisesRegex(RuntimeError, "changed before it could be read"):
+                _read_trusted_gpx_track_file(track_path, expected_owner=os.getuid(), expected_stat=expected_stat)
+
     def test_track_log_summary_waits_for_delayed_trackpoint(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
