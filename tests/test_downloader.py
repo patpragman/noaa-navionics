@@ -1827,6 +1827,52 @@ class ManifestTests(unittest.TestCase):
         finally:
             downloader_module.urlopen = original
 
+    def test_download_rejects_http_redirect_before_writing_archive(self):
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(
+                b"chart",
+                url="http://downloads.charts.noaa.gov/cache/AK_ENCs.zip",
+            )
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("State AK", "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", "AK_ENCs.zip")
+
+                with self.assertRaisesRegex(RuntimeError, "non-HTTPS redirect"):
+                    download_package(package, output)
+
+                self.assertFalse((output / "AK_ENCs.zip").exists())
+                self.assertFalse((output / MANIFEST_NAME).exists())
+        finally:
+            downloader_module.urlopen = original
+
+    def test_download_rejects_redirect_to_wrong_filename_before_writing_archive(self):
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(
+                b"chart",
+                url="https://downloads.charts.noaa.gov/cache/CA_ENCs.zip",
+            )
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("State AK", "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", "AK_ENCs.zip")
+
+                with self.assertRaisesRegex(RuntimeError, "does not match package filename"):
+                    download_package(package, output)
+
+                self.assertFalse((output / "AK_ENCs.zip").exists())
+                self.assertFalse((output / MANIFEST_NAME).exists())
+        finally:
+            downloader_module.urlopen = original
+
     def test_existing_zip_extract_respects_no_keep_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

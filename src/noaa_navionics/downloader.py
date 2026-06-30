@@ -6,7 +6,7 @@ from http.client import HTTPException, IncompleteRead
 from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, Optional, Union
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 from datetime import datetime, timezone
 import hashlib
@@ -296,6 +296,11 @@ def _download_package_unlocked(
         try:
             with urlopen(request, timeout=timeout) as response:
                 download_url = _response_url(response, package.url)
+                if not _download_url_matches_package(download_url, package.url):
+                    raise URLError(
+                        f"download URL {download_url} does not match package filename from "
+                        f"{package.url} or uses a non-HTTPS redirect"
+                    )
                 total = _content_length(response)
                 with _open_exclusive_private_binary(tmp_path) as target:
                     while True:
@@ -851,6 +856,20 @@ def _response_url(response: object, fallback: str) -> str:
         if value:
             return value
     return fallback
+
+
+def _download_url_matches_package(download_url: str, package_url: str) -> bool:
+    if download_url == package_url:
+        return True
+    parsed_package = urlparse(package_url)
+    if parsed_package.scheme.lower() != "https":
+        return True
+    parsed_download = urlparse(download_url)
+    if parsed_download.scheme.lower() != "https":
+        return False
+    download_filename = Path(parsed_download.path).name
+    package_filename = Path(parsed_package.path).name
+    return bool(download_filename and package_filename and download_filename == package_filename)
 
 
 def _archive_mtime_text(path: Path) -> str:

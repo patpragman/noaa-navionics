@@ -1023,6 +1023,10 @@ grep -q 'def _zip_member_path_is_unsafe' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP has unsafe member path' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP is not a valid archive' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
+grep -q 'or uses a non-HTTPS redirect' src/noaa_navionics/downloader.py
+grep -q 'def _download_url_matches_package' src/noaa_navionics/downloader.py
+grep -q 'test_download_rejects_http_redirect_before_writing_archive' tests/test_downloader.py
+grep -q 'test_download_rejects_redirect_to_wrong_filename_before_writing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_bad_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_unsafe_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive' tests/test_downloader.py
@@ -1041,6 +1045,8 @@ grep -q 'unsafe ownership or permissions' README.md
 grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
 grep -q 'trusted previous manifest' README.md
 grep -q 'trusted previous manifest' docs/sailboat-pi.md
+grep -q 'HTTP or change filenames fail before archive replacement' README.md
+grep -q 'HTTP or change filenames fail before archive replacement' docs/sailboat-pi.md
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
