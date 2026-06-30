@@ -480,10 +480,10 @@ grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/se
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to private `0700`, exports and verifies a local recovery bundle' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
-grep -q 'tightens the local export directory and trip folder to private `0700`' README.md
-grep -q 'tightens the local export directory and trip folder to private `0700`' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
+grep -q 'tightens the local export directory and trip folder to user-owned private `0700`' README.md
+grep -q 'tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
@@ -500,16 +500,16 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'support bundle helper tightens the local output directory to private `0700`' README.md
-grep -q 'support bundle helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
+grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'track export helper validates the SSH target, tightens the local output directory to private `0700`' README.md
-grep -q 'track export helper validates the SSH target, tightens the local output directory to private `0700`' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'track export helper validates the SSH target, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -536,20 +536,20 @@ grep -q 'continues exporting tracks/support even when the status snapshot report
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'OpenCPN export helper tightens the local output directory to private `0700`' README.md
-grep -q 'OpenCPN export helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'OpenCPN export helper tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'settings export helper tightens the local output directory to private `0700`' README.md
-grep -q 'settings export helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
+grep -q 'settings export helper tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'settings export helper tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
-grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`' README.md
-grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`' docs/sailboat-pi.md
+grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
+grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file' README.md
@@ -876,6 +876,7 @@ grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bundle.sh
+grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
 grep -q 'mktemp -d "${cache_dir}/support-bundle.XXXXXX"' scripts/collect_pi_support_bundle.sh
 grep -q 'support bundle cache directory must be user-owned private 0700' scripts/collect_pi_support_bundle.sh
 grep -q '"$cache_dir"/support-bundle.\*)' scripts/collect_pi_support_bundle.sh
@@ -886,6 +887,7 @@ grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_tracks.sh
+grep -q 'expected current user ${current_uid}' scripts/export_pi_tracks.sh
 grep -q 'mark-position' src/noaa_navionics/cli.py
 grep -q 'anchor-watch' src/noaa_navionics/cli.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
@@ -905,6 +907,7 @@ grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_da
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_opencpn_data.sh
+grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
 grep -q 'source-revision' scripts/export_pi_settings.sh
@@ -913,6 +916,7 @@ grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
+grep -q 'expected current user ${current_uid}' scripts/export_pi_settings.sh
 grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
@@ -920,6 +924,7 @@ grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
+grep -q 'expected current user ${current_uid}' scripts/export_pi_recovery_bundle.sh
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-settings-\*.tgz' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-opencpn-\*.tgz' scripts/verify_pi_recovery_exports.sh
@@ -976,6 +981,7 @@ grep -q -- '--status --gps-seconds "$gps_seconds"' scripts/pre_trip_prepare_pi.s
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$output_dir"' scripts/pre_trip_prepare_pi.sh
+grep -q 'expected current user ${current_uid}' scripts/pre_trip_prepare_pi.sh
 grep -q 'check_pi_status.sh' scripts/post_trip_collect_pi.sh
 grep -q 'export_pi_tracks.sh' scripts/post_trip_collect_pi.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/post_trip_collect_pi.sh
@@ -985,6 +991,7 @@ grep -q 'Post-trip collection completed, but the status snapshot reported a fail
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
+grep -q 'expected current user ${current_uid}' scripts/post_trip_collect_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -4843,6 +4850,7 @@ grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$p
 grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test" "$pre_trip_log"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
 test "$(stat -c '%a' "$pre_trip_output_dir")" = 700
+test "$(stat -c '%u' "$pre_trip_output_dir")" = "$(id -u)"
 
 set +e
 scripts/post_trip_collect_pi.sh root@example.invalid >"$verify_output" 2>&1
@@ -4932,6 +4940,8 @@ post_trip_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_out
 test -d "$post_trip_dir"
 test "$(stat -c '%a' "$post_trip_output_dir")" = 700
 test "$(stat -c '%a' "$post_trip_dir")" = 700
+test "$(stat -c '%u' "$post_trip_output_dir")" = "$(id -u)"
+test "$(stat -c '%u' "$post_trip_dir")" = "$(id -u)"
 grep -q '"ok": true' "$post_trip_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
@@ -5164,6 +5174,7 @@ support_bundle_path="$(sed -n 's/^Collected Pi support bundle: //p' "$verify_out
 test -s "$support_bundle_path"
 test "$(stat -c '%a' "$support_output_dir")" = 700
 test "$(stat -c '%a' "$support_bundle_path")" = 600
+test "$(stat -c '%u' "$support_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$support_fake_ssh_args"
 grep -q 'pi@example.invalid' "$support_fake_ssh_args"
 grep -q 'bash -s' "$support_fake_ssh_args"
@@ -5234,6 +5245,7 @@ track_export_path="$(sed -n 's/^Exported Pi GPX tracks: //p' "$verify_output")"
 test -s "$track_export_path"
 test "$(stat -c '%a' "$track_export_output_dir")" = 700
 test "$(stat -c '%a' "$track_export_path")" = 600
+test "$(stat -c '%u' "$track_export_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$track_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$track_export_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS=7 python3 -s' "$track_export_fake_ssh_args"
@@ -5291,6 +5303,7 @@ opencpn_export_path="$(sed -n 's/^Exported Pi OpenCPN user data: //p' "$verify_o
 test -s "$opencpn_export_path"
 test "$(stat -c '%a' "$opencpn_export_output_dir")" = 700
 test "$(stat -c '%a' "$opencpn_export_path")" = 600
+test "$(stat -c '%u' "$opencpn_export_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$opencpn_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$opencpn_export_fake_ssh_args"
 grep -q 'python3 -s' "$opencpn_export_fake_ssh_args"
@@ -5348,6 +5361,7 @@ settings_export_path="$(sed -n 's/^Exported Pi commissioning settings: //p' "$ve
 test -s "$settings_export_path"
 test "$(stat -c '%a' "$settings_export_output_dir")" = 700
 test "$(stat -c '%a' "$settings_export_path")" = 600
+test "$(stat -c '%u' "$settings_export_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$settings_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$settings_export_fake_ssh_args"
 grep -q 'python3 -s' "$settings_export_fake_ssh_args"
@@ -5420,6 +5434,8 @@ recovery_export_dir="$(sed -n 's/^Pi recovery exports written to: //p' "$verify_
 test -d "$recovery_export_dir"
 test "$(stat -c '%a' "$recovery_output_dir")" = 700
 test "$(stat -c '%a' "$recovery_export_dir")" = 700
+test "$(stat -c '%u' "$recovery_output_dir")" = "$(id -u)"
+test "$(stat -c '%u' "$recovery_export_dir")" = "$(id -u)"
 grep -Eq '^export_pi_settings.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^export_pi_tracks.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 14$' "$recovery_log"

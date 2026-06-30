@@ -87,8 +87,12 @@ validate_output_dir_arg() {
 prepare_private_output_dir() {
   local label="$1"
   local path="$2"
+  local current_uid
   local mode
+  local owner_uid
+  local stat_output
 
+  current_uid="$(id -u)"
   mkdir -p -- "$path"
   if [[ ! -d "$path" || -L "$path" ]]; then
     echo "$label must be a real directory: $path" >&2
@@ -102,8 +106,14 @@ prepare_private_output_dir() {
     echo "$label must remain a real directory after tightening: $path" >&2
     exit 2
   fi
-  if ! mode="$(stat -Lc '%a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect $label permissions: $path" >&2
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect $label owner and permissions: $path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "$label is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
     exit 2
   fi
   if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "700" ]]; then
