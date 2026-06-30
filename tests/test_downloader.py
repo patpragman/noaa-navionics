@@ -9016,6 +9016,7 @@ class GpsTests(unittest.TestCase):
         with (
             patch("noaa_navionics.health.Path.exists", return_value=True),
             patch("noaa_navionics.health.Path.is_dir", return_value=False),
+            patch("noaa_navionics.health.Path.is_symlink", return_value=True),
             patch("noaa_navionics.health.Path.is_char_device", return_value=True),
             patch("noaa_navionics.health.Path.resolve", return_value=Path("/dev/ttyACM0")),
         ):
@@ -9025,10 +9026,24 @@ class GpsTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("usb-gps", result.detail)
 
+    def test_check_gps_device_path_rejects_by_id_character_node_without_symlink(self):
+        with (
+            patch("noaa_navionics.health.Path.exists", return_value=True),
+            patch("noaa_navionics.health.Path.is_dir", return_value=False),
+            patch("noaa_navionics.health.Path.is_symlink", return_value=False),
+            patch("noaa_navionics.health.Path.is_char_device", return_value=True),
+            patch("noaa_navionics.health.Path.resolve", return_value=Path("/dev/ttyACM0")),
+        ):
+            result = check_gps_device_path("/dev/serial/by-id/usb-gps")
+
+            self.assertFalse(result.ok)
+            self.assertIn("udev by-id symlink", result.detail)
+
     def test_check_gps_device_path_rejects_non_character_stable_path(self):
         with (
             patch("noaa_navionics.health.Path.exists", return_value=True),
             patch("noaa_navionics.health.Path.is_dir", return_value=False),
+            patch("noaa_navionics.health.Path.is_symlink", return_value=True),
             patch("noaa_navionics.health.Path.is_char_device", return_value=False),
             patch("noaa_navionics.health.Path.resolve", return_value=Path("/tmp/not-a-device")),
         ):

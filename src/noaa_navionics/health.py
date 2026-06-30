@@ -1088,6 +1088,8 @@ def check_gps_device_path(device: str) -> CheckResult:
         return CheckResult("GPS Device", False, f"{path} does not exist")
     if path.is_dir():
         return CheckResult("GPS Device", False, f"{path} is a directory, not a GPS device")
+    if path_text.startswith("/dev/serial/by-id/") and not path.is_symlink():
+        return CheckResult("GPS Device", False, f"{path} is not a udev by-id symlink")
     try:
         resolved = path.resolve()
     except OSError:

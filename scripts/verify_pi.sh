@@ -3732,6 +3732,9 @@ if [[ -r /etc/default/gpsd ]]; then
   if [[ -n "$gpsd_device" ]]; then
     check "GPSD device exists" test -e "$gpsd_device"
     check "GPSD device is not directory" test ! -d "$gpsd_device"
+    if [[ "$gpsd_device" == /dev/serial/by-id/* ]]; then
+      check "GPSD by-id device is symlink" test -L "$gpsd_device"
+    fi
     check "GPSD device is character device" test -c "$gpsd_device"
     check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"
     if [[ -n "${NOAA_NAVIONICS_EXPECTED_GPS_DEVICE:-}" ]]; then

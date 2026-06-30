@@ -1076,6 +1076,7 @@ grep -q 'ExecMainStartTimestampMonotonic' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
+grep -q 'GPSD by-id device is symlink' scripts/verify_pi.sh
 grep -q 'GPSD device is character device' scripts/verify_pi.sh
 grep -q 'GPSD client command' scripts/verify_pi.sh
 grep -q 'command -v cgps' scripts/verify_pi.sh
@@ -1123,6 +1124,7 @@ grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
 grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
+grep -q 'GPS by-id device path is not a symlink' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
 grep -q 'prepare_app_config_path' scripts/configure_gpsd.sh
@@ -1181,6 +1183,7 @@ grep -q 'validate_existing_system_service gpsd.service GPSD --skip-gpsd' scripts
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
 grep -q 'safe_by_id_chars' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
+grep -q 'GPS by-id device path is not a symlink' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
@@ -1653,10 +1656,14 @@ grep -q 'test_preflight_rejects_volatile_direct_serial_device_before_opening' te
 grep -q 'def check_gps_device' src/noaa_navionics/health.py
 grep -q 'gps_device_check = check_gps_device_path(device)' src/noaa_navionics/health.py
 grep -q 'test_check_gps_device_rejects_volatile_path_before_opening' tests/test_downloader.py
+grep -q 'test_check_gps_device_path_rejects_by_id_character_node_without_symlink' tests/test_downloader.py
+grep -q 'is not a udev by-id symlink' src/noaa_navionics/health.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/config.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/health.py
 grep -q 'volatile USB name' src/noaa_navionics/config.py
 grep -q 'gps.device must be /dev/serial/by-id/' src/noaa_navionics/config.py
+grep -q 'actual udev symlinks' README.md
+grep -q 'actual udev symlinks' docs/sailboat-pi.md
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
 grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py

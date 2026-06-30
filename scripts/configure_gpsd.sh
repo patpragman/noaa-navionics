@@ -470,6 +470,11 @@ if [[ "$check_device" -eq 1 && -d "$device" ]]; then
   exit 2
 fi
 
+if [[ "$check_device" -eq 1 && "$device" == /dev/serial/by-id/* && ! -L "$device" ]]; then
+  echo "GPS by-id device path is not a symlink: $device" >&2
+  exit 2
+fi
+
 if [[ "$check_device" -eq 1 && ! -c "$device" ]]; then
   echo "GPS device path is not a character device: $device" >&2
   exit 2
