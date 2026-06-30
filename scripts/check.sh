@@ -1340,6 +1340,9 @@ grep -q 'existing complete charts are required when --skip-sync is used with una
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
 grep -q 'check_disk_space(app_config.chart_output' scripts/provision_sailboat_pi.sh
 grep -q 'validate_user_install_path' scripts/provision_sailboat_pi.sh
+grep -q 'verify_installed_noaa_navionics_command "$bin" "${venv_dir}/bin/noaa-navionics"' scripts/provision_sailboat_pi.sh
+grep -q 'installed noaa-navionics command must resolve to the private venv command' scripts/provision_sailboat_pi.sh
+! grep -q 'command -v noaa-navionics' scripts/provision_sailboat_pi.sh
 grep -q 'path contains a symlink' scripts/provision_sailboat_pi.sh
 grep -q 'expected no group/other write bits' scripts/provision_sailboat_pi.sh
 grep -q 'validate_user_install_path "$launcher_env" "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh
@@ -2406,6 +2409,8 @@ grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailb
 grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment and promoted user service/autostart files through no-follow descriptors' README.md
 grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment and promoted user service/autostart files through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'Provisioning requires the installed private `~/.local/bin/noaa-navionics` symlink to resolve into `~/.local/share/noaa-navionics/venv/bin/noaa-navionics`' README.md
+grep -q 'Provisioning requires the installed private `~/.local/bin/noaa-navionics` symlink to resolve into `~/.local/share/noaa-navionics/venv/bin/noaa-navionics`' docs/sailboat-pi.md
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
 grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
@@ -3245,8 +3250,8 @@ grep -q 'chartplotter launcher environment path contains a symlink' "$provision_
 ! grep -q 'NOAA_NAVIONICS_GPS_SECONDS' "$provision_output"
 
 provision_verify_home="$tmpdir/provision-verify-home"
-mkdir -p "$provision_verify_home/.local/bin"
-cat >"$provision_verify_home/.local/bin/noaa-navionics" <<'EOF'
+mkdir -p "$provision_verify_home/.local/bin" "$provision_verify_home/.local/share/noaa-navionics/venv/bin"
+cat >"$provision_verify_home/.local/share/noaa-navionics/venv/bin/noaa-navionics" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 case "${1:-}" in
@@ -3291,7 +3296,9 @@ case "${1:-}" in
     ;;
 esac
 EOF
-chmod +x "$provision_verify_home/.local/bin/noaa-navionics"
+chmod 0700 "$provision_verify_home/.local/share" "$provision_verify_home/.local/share/noaa-navionics" "$provision_verify_home/.local/share/noaa-navionics/venv" "$provision_verify_home/.local/share/noaa-navionics/venv/bin"
+chmod 0755 "$provision_verify_home/.local/share/noaa-navionics/venv/bin/noaa-navionics"
+ln -s "$provision_verify_home/.local/share/noaa-navionics/venv/bin/noaa-navionics" "$provision_verify_home/.local/bin/noaa-navionics"
 HOME="$provision_verify_home" \
   scripts/provision_sailboat_pi.sh \
     --allow-non-pi \

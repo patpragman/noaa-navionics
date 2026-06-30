@@ -21,6 +21,8 @@ opencpn_restarts=3
 opencpn_restart_delay=5
 sync_retries=5
 sync_retry_delay=30
+venv_dir="${HOME}/.local/share/noaa-navionics/venv"
+bin="${HOME}/.local/bin/noaa-navionics"
 
 sync_paths() {
   python3 - "$@" <<'PY'
@@ -594,16 +596,6 @@ if [[ "$skip_sync" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 
   validate_existing_charts
 fi
 
-bin="${HOME}/.local/bin/noaa-navionics"
-if [[ ! -x "$bin" && "$dry_run" -eq 0 ]]; then
-  if command -v noaa-navionics >/dev/null 2>&1; then
-    bin="$(command -v noaa-navionics)"
-  else
-    echo "noaa-navionics is not installed; run scripts/install_raspberry_pi.sh first" >&2
-    exit 2
-  fi
-fi
-
 run() {
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+'
@@ -723,6 +715,115 @@ for directory in path_chain:
         raise SystemExit(
             f"{label} path {directory} has permissions {mode:04o}, expected no group/other write bits"
         )
+PY
+}
+
+verify_installed_noaa_navionics_command() {
+  local target="$1"
+  local expected_target="$2"
+  python3 - "$target" "$expected_target" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+target = Path(sys.argv[1]).expanduser()
+expected_target = Path(sys.argv[2]).expanduser()
+home = Path.home().resolve(strict=False)
+expected_uid = os.getuid()
+
+def require_under_home(path: Path, label: str) -> None:
+    try:
+        resolved = path.resolve(strict=False)
+    except RuntimeError as exc:
+        raise SystemExit(f"{label} path could not be resolved: {path}: {exc}") from exc
+    if resolved != home and home not in resolved.parents:
+        raise SystemExit(f"{label} path must stay under the deploying user's home directory: {path}")
+
+def check_private_parent_chain(path: Path, label: str) -> None:
+    chain = []
+    cursor = path
+    while True:
+        chain.append(cursor)
+        if cursor == home or cursor == cursor.parent:
+            break
+        cursor = cursor.parent
+    if chain[-1] != home:
+        raise SystemExit(f"{label} path must be under the deploying user's home directory: {path}")
+    for directory in reversed(chain):
+        if not directory.exists():
+            raise SystemExit(f"{label} parent directory is missing: {directory}")
+        if directory.is_symlink():
+            raise SystemExit(f"{label} parent directory path contains a symlink: {directory}")
+        if not directory.is_dir():
+            raise SystemExit(f"{label} parent path is not a directory: {directory}")
+        st = directory.stat()
+        mode = st.st_mode & 0o777
+        if st.st_uid != expected_uid:
+            raise SystemExit(
+                f"{label} parent {directory} is owned by uid {st.st_uid}, expected {expected_uid}"
+            )
+        if mode & 0o022:
+            raise SystemExit(
+                f"{label} parent {directory} has permissions {mode:04o}, "
+                "expected no group/other write bits"
+            )
+
+require_under_home(target, "installed noaa-navionics command")
+require_under_home(expected_target, "installed noaa-navionics command target")
+check_private_parent_chain(target.parent, "installed noaa-navionics command")
+check_private_parent_chain(expected_target.parent, "installed noaa-navionics command target")
+
+try:
+    link_stat = target.lstat()
+except OSError as exc:
+    raise SystemExit(
+        "noaa-navionics is not installed at ~/.local/bin/noaa-navionics; "
+        "run scripts/install_raspberry_pi.sh first"
+    ) from exc
+if not stat.S_ISLNK(link_stat.st_mode):
+    raise SystemExit(f"installed noaa-navionics command is not a symlink: {target}")
+if link_stat.st_uid != expected_uid:
+    raise SystemExit(
+        f"installed noaa-navionics command symlink {target} is owned by uid {link_stat.st_uid}, "
+        f"expected {expected_uid}"
+    )
+
+try:
+    resolved_target = target.resolve(strict=True)
+    resolved_expected = expected_target.resolve(strict=True)
+except OSError as exc:
+    raise SystemExit(f"installed noaa-navionics command could not be resolved: {target}: {exc}") from exc
+if resolved_target != resolved_expected:
+    raise SystemExit(
+        "installed noaa-navionics command must resolve to the private venv command: "
+        f"{target} -> {resolved_target}, expected {resolved_expected}"
+    )
+
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(expected_target, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open installed noaa-navionics command target {expected_target}: {exc}") from exc
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"installed noaa-navionics command target is not a regular file: {expected_target}")
+    if opened.st_uid != expected_uid:
+        raise SystemExit(
+            f"installed noaa-navionics command target {expected_target} is owned by uid "
+            f"{opened.st_uid}, expected {expected_uid}"
+        )
+    mode = opened.st_mode
+    if not mode & stat.S_IXUSR:
+        raise SystemExit(f"installed noaa-navionics command target is not executable: {expected_target}")
+    if mode & 0o022:
+        raise SystemExit(
+            f"installed noaa-navionics command target {expected_target} has permissions {mode & 0o777:04o}, "
+            "expected no group/other write bits"
+        )
+finally:
+    os.close(fd)
 PY
 }
 
@@ -1039,6 +1140,10 @@ if actual != expected:
     )
 PY
 }
+
+if [[ "$dry_run" -eq 0 ]]; then
+  verify_installed_noaa_navionics_command "$bin" "${venv_dir}/bin/noaa-navionics"
+fi
 
 if same_path "$config" "$default_config"; then
   ensure_private_directory "$(dirname "$config")" "NOAA Navionics config directory"
