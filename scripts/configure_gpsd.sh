@@ -382,7 +382,7 @@ stable_gps_device_path() {
 }
 
 validate_updated_app_config() {
-  python3 - "$repo_root" "$config" "$device" <<'PY'
+  "$python3_cmd" - "$repo_root" "$config" "$device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
 import os
@@ -432,7 +432,7 @@ PY
 }
 
 prepare_app_config_path() {
-  python3 - "$repo_root" "$config" "$dry_run" <<'PY'
+  "$python3_cmd" - "$repo_root" "$config" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -452,7 +452,7 @@ PY
 }
 
 validate_gpsd_config_path() {
-  python3 - "$gpsd_conf" "$dry_run" <<'PY'
+  "$python3_cmd" - "$gpsd_conf" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -664,6 +664,8 @@ if [[ "$check_device" -eq 1 && ! -c "$device" ]]; then
   exit 2
 fi
 
+python3_cmd="$(python3_command)" || exit 2
+
 prepare_app_config_path
 validate_updated_app_config
 validate_gpsd_config_path
@@ -688,7 +690,6 @@ fi
 
 sudo_cmd="$(sudo_command)" || exit 2
 systemctl_cmd="$(systemctl_command)" || exit 2
-python3_cmd="$(python3_command)" || exit 2
 
 if [[ -e "$gpsd_conf" ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -701,7 +702,7 @@ install_root_file_atomic "$tmp" "$gpsd_conf" 0644
 "$sudo_cmd" "$systemctl_cmd" enable --now gpsd.socket gpsd.service
 "$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service
 
-python3 - "$repo_root" "$config" "$device" <<'PY'
+"$python3_cmd" - "$repo_root" "$config" "$device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
 import os
