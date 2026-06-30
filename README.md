@@ -195,6 +195,13 @@ scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30
 ```
 
 The recovery export helper creates one timestamped local directory, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+Verify that local recovery directory before relying on it for an SD-card recovery:
+
+```bash
+scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ
+```
+
+The verifier checks the local `.tgz` files for the expected export set, readable tar contents, safe member paths, README files, and positive settings, OpenCPN, and GPX manifest counts. It does not contact the Pi.
 
 Shut the Pi down cleanly before cutting boat power:
 

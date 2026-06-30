@@ -15,6 +15,7 @@ bash -n \
   scripts/pre_departure_check_pi.sh \
   scripts/refresh_pi_charts.sh \
   scripts/collect_pi_support_bundle.sh \
+  scripts/verify_pi_recovery_exports.sh \
   scripts/shutdown_pi_safely.sh \
   scripts/start_chartplotter.sh \
   scripts/configure_desktop_autologin.sh \
@@ -487,6 +488,10 @@ grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
+grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
+grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
+grep -q 'It does not contact the Pi' README.md
+grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
@@ -813,6 +818,17 @@ grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
+grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
+grep -q 'noaa-navionics-pi-settings-\*.tgz' scripts/verify_pi_recovery_exports.sh
+grep -q 'noaa-navionics-pi-opencpn-\*.tgz' scripts/verify_pi_recovery_exports.sh
+grep -q 'noaa-navionics-pi-tracks-\*.tgz' scripts/verify_pi_recovery_exports.sh
+grep -q 'noaa-navionics-pi-support-\*.tgz' scripts/verify_pi_recovery_exports.sh
+grep -q 'manifest.json' scripts/verify_pi_recovery_exports.sh
+grep -q 'README.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
+grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
+grep -q 'unsupported non-regular member' scripts/verify_pi_recovery_exports.sh
+grep -q 'Verified Pi recovery exports' scripts/verify_pi_recovery_exports.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4823,6 +4839,94 @@ grep -Eq '^export_pi_settings.sh\|pi@example.invalid .*/noaa-navionics-pi-recove
 grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^export_pi_tracks.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 14$' "$recovery_log"
 grep -Eq '^collect_pi_support_bundle.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
+
+recovery_verify_dir="$tmpdir/recovery-verify"
+mkdir -p "$recovery_verify_dir"
+python3 - "$recovery_verify_dir" <<'PY'
+from pathlib import Path
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+def build_archive(directory, name, manifest, extra_member):
+    with tarfile.open(directory / name, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+        add_text(archive, "README.txt", "recovery fixture\n")
+        if manifest is not None:
+            add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
+        add_text(archive, extra_member, "fixture\n")
+
+
+root = Path(sys.argv[1])
+build_archive(
+    root,
+    "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
+    {"file_count": 1},
+    "noaa-navionics/config.ini",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000000Z.tgz",
+    {"file_count": 1},
+    "opencpn/navobj.xml",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000000Z.tgz",
+    {"track_count": 1},
+    "tracks/track.gpx",
+)
+with tarfile.open(
+    root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz",
+    "w:gz",
+    format=tarfile.PAX_FORMAT,
+) as archive:
+    add_text(archive, "./README.txt", "support fixture\n")
+    add_text(archive, "./commands/date-utc.txt", "2026-01-01\n")
+PY
+
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
+grep -q 'Verified Pi recovery exports:' "$verify_output"
+grep -q 'commissioning settings:' "$verify_output"
+grep -q 'OpenCPN user data:' "$verify_output"
+grep -q 'GPX tracks:' "$verify_output"
+grep -q 'diagnostic support bundle:' "$verify_output"
+
+rm -f "$recovery_verify_dir"/noaa-navionics-pi-support-*.tgz
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject missing support archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'missing diagnostic support bundle archive' "$verify_output"
+
+recovery_verify_link="$tmpdir/recovery-verify-link"
+ln -s "$recovery_verify_dir" "$recovery_verify_link"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_link" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject symlinked recovery directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery directory must not be a symlink' "$verify_output"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1

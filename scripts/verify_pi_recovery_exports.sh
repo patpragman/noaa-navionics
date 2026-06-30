@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: scripts/verify_pi_recovery_exports.sh RECOVERY_DIR
+
+Verifies a local recovery export directory created by
+scripts/export_pi_recovery_bundle.sh. This checks archive presence,
+permissions, tar readability, safe member names, README files, and export
+manifests. It does not contact the Raspberry Pi.
+EOF
+}
+
+if [[ $# -ne 1 ]]; then
+  usage
+  exit 2
+fi
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+recovery_dir="$1"
+if [[ -z "$recovery_dir" ]]; then
+  echo "Recovery directory is required" >&2
+  exit 2
+fi
+if [[ "$recovery_dir" =~ [\"\'] ]]; then
+  echo "Recovery directory must not contain quotes: $recovery_dir" >&2
+  exit 2
+fi
+if [[ -L "$recovery_dir" ]]; then
+  echo "Recovery directory must not be a symlink: $recovery_dir" >&2
+  exit 2
+fi
+if [[ ! -d "$recovery_dir" ]]; then
+  echo "Recovery directory must be a real directory: $recovery_dir" >&2
+  exit 2
+fi
+
+python3 - "$recovery_dir" <<'PY'
+from pathlib import Path, PurePosixPath
+import json
+import os
+import stat
+import sys
+import tarfile
+
+
+ARCHIVES = [
+    {
+        "label": "commissioning settings",
+        "pattern": "noaa-navionics-pi-settings-*.tgz",
+        "manifest_key": "file_count",
+    },
+    {
+        "label": "OpenCPN user data",
+        "pattern": "noaa-navionics-pi-opencpn-*.tgz",
+        "manifest_key": "file_count",
+    },
+    {
+        "label": "GPX tracks",
+        "pattern": "noaa-navionics-pi-tracks-*.tgz",
+        "manifest_key": "track_count",
+    },
+    {
+        "label": "diagnostic support bundle",
+        "pattern": "noaa-navionics-pi-support-*.tgz",
+        "manifest_key": None,
+    },
+]
+
+
+def fail(message: str, exit_code: int = 1) -> None:
+    print(f"error: {message}", file=sys.stderr)
+    raise SystemExit(exit_code)
+
+
+def normalized_member_name(name: str) -> str:
+    while name.startswith("./"):
+        name = name[2:]
+    return name.rstrip("/")
+
+
+def validate_member_name(name: str, archive_path: Path) -> str:
+    normalized = normalized_member_name(name)
+    if not normalized:
+        return normalized
+    if "\\" in normalized:
+        fail(f"{archive_path.name} contains unsafe backslash member: {name}")
+    member_path = PurePosixPath(normalized)
+    if member_path.is_absolute() or ".." in member_path.parts:
+        fail(f"{archive_path.name} contains unsafe member path: {name}")
+    return normalized
+
+
+def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
+    if archive_path.is_symlink():
+        fail(f"archive must not be a symlink: {archive_path}")
+    try:
+        result = archive_path.lstat()
+    except OSError as exc:
+        fail(f"could not inspect archive {archive_path}: {exc}")
+    if not stat.S_ISREG(result.st_mode):
+        fail(f"archive must be a regular file: {archive_path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode & 0o022:
+        fail(f"archive has permissions {mode:04o}, expected no group/other write bits: {archive_path}")
+    if result.st_size <= 0:
+        fail(f"archive is empty: {archive_path}")
+    if not os.access(archive_path, os.R_OK):
+        fail(f"archive is not readable: {archive_path}")
+
+    try:
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            members = archive.getmembers()
+            names = set()
+            regular_file_count = 0
+            for member in members:
+                normalized = validate_member_name(member.name, archive_path)
+                if normalized:
+                    names.add(normalized)
+                if member.issym() or member.islnk() or member.isdev():
+                    fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
+                if member.isfile():
+                    regular_file_count += 1
+                elif not member.isdir():
+                    fail(f"{archive_path.name} contains unsupported member type: {member.name}")
+
+            if "README.txt" not in names:
+                fail(f"{archive_path.name} is missing README.txt")
+
+            manifest_key = spec["manifest_key"]
+            if manifest_key is not None:
+                if "manifest.json" not in names:
+                    fail(f"{archive_path.name} is missing manifest.json")
+                try:
+                    manifest_file = archive.extractfile("manifest.json")
+                except (KeyError, OSError, tarfile.TarError) as exc:
+                    fail(f"{archive_path.name} manifest.json could not be read: {exc}")
+                if manifest_file is None:
+                    fail(f"{archive_path.name} manifest.json is not a regular file")
+                try:
+                    manifest = json.loads(manifest_file.read().decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    fail(f"{archive_path.name} manifest.json is invalid JSON: {exc}")
+                count = manifest.get(str(manifest_key))
+                if not isinstance(count, int) or count <= 0:
+                    fail(f"{archive_path.name} manifest {manifest_key} must be a positive integer")
+
+            if regular_file_count <= 0:
+                fail(f"{archive_path.name} does not contain any regular files")
+            return regular_file_count
+    except (OSError, tarfile.TarError) as exc:
+        fail(f"{archive_path.name} is not a readable gzip tar archive: {exc}")
+
+
+def find_archive(recovery_dir: Path, spec: dict[str, object]) -> Path:
+    matches = sorted(recovery_dir.glob(str(spec["pattern"])))
+    if not matches:
+        fail(f"missing {spec['label']} archive matching {spec['pattern']}")
+    if len(matches) > 1:
+        fail(f"expected one {spec['label']} archive, found {len(matches)}")
+    return matches[0]
+
+
+def main() -> None:
+    recovery_dir = Path(sys.argv[1])
+    summaries = []
+    for spec in ARCHIVES:
+        archive_path = find_archive(recovery_dir, spec)
+        file_count = inspect_archive(archive_path, spec)
+        summaries.append((str(spec["label"]), archive_path.name, file_count))
+
+    print(f"Verified Pi recovery exports: {recovery_dir}")
+    for label, name, file_count in summaries:
+        print(f"- {label}: {name} ({file_count} regular file(s))")
+
+
+main()
+PY
