@@ -968,13 +968,17 @@ def check_gps_sample(sample: Path) -> CheckResult:
     if not path.exists():
         return CheckResult("GPS", False, f"sample file not found: {path}")
     quality_detail = ""
+    missing_quality_detail = ""
     with path.open(encoding="ascii", errors="ignore") as handle:
         for fix in iter_fixes(handle):
             quality_detail = gps_fix_quality_failure(fix)
             if quality_detail:
                 continue
+            if not gps_fix_has_quality_fields(fix):
+                missing_quality_detail = "NMEA fix missing satellite or HDOP quality fields"
+                continue
             return CheckResult("GPS", True, _fix_detail(fix))
-    suffix = f"; {quality_detail}" if quality_detail else ""
+    suffix = f"; {quality_detail}" if quality_detail else (f"; {missing_quality_detail}" if missing_quality_detail else "")
     return CheckResult("GPS", False, f"no valid fix found in {path}{suffix}")
 
 
@@ -1120,6 +1124,7 @@ def check_gps_device(
     deadline = time.monotonic() + seconds
     stale_detail = ""
     quality_detail = ""
+    missing_quality_detail = ""
     try:
         with open_nmea_stream(device, baud=baud) as stream:
             for fix in iter_fixes(_read_nmea_lines_until(stream, deadline)):
@@ -1130,10 +1135,17 @@ def check_gps_device(
                 quality_detail = gps_fix_quality_failure(fix)
                 if quality_detail:
                     continue
+                if not gps_fix_has_quality_fields(fix):
+                    missing_quality_detail = "; NMEA fix missing satellite or HDOP quality fields"
+                    continue
                 return CheckResult("GPS", True, _fix_detail(fix))
     except Exception as exc:
-        return CheckResult("GPS", False, f"{device}: {exc}")
-    fix_detail = stale_detail or (f"; {quality_detail}" if quality_detail else "")
+        return CheckResult("GPS", False, f"{device}: {exc}{missing_quality_detail}")
+    fix_detail = (
+        (f"; {quality_detail}" if quality_detail else "")
+        or missing_quality_detail
+        or stale_detail
+    )
     return CheckResult(
         "GPS",
         False,

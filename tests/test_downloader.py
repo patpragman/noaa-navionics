@@ -7330,6 +7330,15 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("weak GPS fix", result.detail)
 
+    def test_check_gps_sample_rejects_missing_quality_fields(self):
+        sentence = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,290626,,,A\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.nmea"
+            path.write_text(sentence, encoding="ascii")
+            result = check_gps_sample(path)
+            self.assertFalse(result.ok)
+            self.assertIn("missing satellite or HDOP quality fields", result.detail)
+
     def test_check_gps_sample_rejects_null_island_fix(self):
         sentence = "$GPGGA,123519,0000.000,N,00000.000,E,1,08,0.9,545.4,M,46.9,M,,\n"
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -7396,6 +7405,25 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("HDOP", result.detail)
+
+    def test_check_gps_device_rejects_missing_quality_fields(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
+            return BytesIO(
+                f"$GPRMC,{fix_time},A,4807.038,N,01131.000,E,022.4,084.4,{fix_date},,,A\n".encode("ascii")
+            )
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("missing satellite or HDOP quality fields", result.detail)
 
     def test_check_gps_device_rejects_null_island_fix(self):
         original = health_module.open_nmea_stream
