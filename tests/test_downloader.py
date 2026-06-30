@@ -9827,6 +9827,17 @@ class PiHealthTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("above 80 C limit", result.detail)
 
+    def test_check_pi_temperature_rejects_non_finite_temperature(self):
+        original_reader = health_module._read_pi_temperature
+        try:
+            health_module._read_pi_temperature = lambda: math.nan
+            result = check_pi_temperature()
+        finally:
+            health_module._read_pi_temperature = original_reader
+
+        self.assertFalse(result.ok)
+        self.assertIn("non-finite", result.detail)
+
     def test_check_pi_temperature_reports_missing_sensor_on_pi(self):
         original_reader = health_module._read_pi_temperature
         original_is_pi = health_module._is_raspberry_pi
@@ -9869,6 +9880,16 @@ class PiHealthTests(unittest.TestCase):
             temp_file.write_text("42500\n", encoding="ascii")
 
             self.assertEqual(health_module._read_sysfs_pi_temperature(temp_file), 42.5)
+
+    def test_read_sysfs_pi_temperature_rejects_non_finite_values(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_file = Path(tmpdir) / "temp"
+
+            temp_file.write_text("nan\n", encoding="ascii")
+            self.assertIsNone(health_module._read_sysfs_pi_temperature(temp_file))
+
+            temp_file.write_text("inf\n", encoding="ascii")
+            self.assertIsNone(health_module._read_sysfs_pi_temperature(temp_file))
 
     def test_read_pi_temperature_falls_back_to_vcgencmd(self):
         with tempfile.TemporaryDirectory() as tmpdir:

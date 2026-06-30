@@ -7,6 +7,7 @@ from typing import Iterable, Optional
 from urllib.parse import urlparse
 import hashlib
 import importlib.util
+import math
 import os
 import re
 import shlex
@@ -1043,6 +1044,8 @@ def check_pi_temperature(*, warn_c: float = 70.0, fail_c: float = 80.0) -> Check
                 "temperature sensor unavailable on Raspberry Pi; cannot verify enclosure thermal margin",
             )
         return CheckResult("Pi Thermal", True, "temperature sensor not found; skipping Raspberry Pi thermal check")
+    if not math.isfinite(temperature):
+        return CheckResult("Pi Thermal", False, "temperature sensor returned a non-finite value")
     if temperature >= fail_c:
         return CheckResult("Pi Thermal", False, f"{temperature:.1f} C; above {fail_c:.0f} C limit")
     if temperature >= warn_c:
@@ -1426,9 +1429,10 @@ def _read_sysfs_pi_temperature(path: Path) -> Optional[float]:
     except OSError:
         return None
     try:
-        return float(raw) / 1000
+        temperature = float(raw) / 1000
     except ValueError:
         return None
+    return temperature if math.isfinite(temperature) else None
 
 
 def _read_vcgencmd_temperature() -> Optional[float]:
@@ -1456,6 +1460,7 @@ def _parse_vcgencmd_temperature(output: str) -> Optional[float]:
     if not match:
         return None
     try:
-        return float(match.group(1))
+        temperature = float(match.group(1))
     except ValueError:
         return None
+    return temperature if math.isfinite(temperature) else None
