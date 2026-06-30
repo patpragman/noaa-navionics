@@ -159,10 +159,10 @@ The status helper runs the Pi's installed `noaa-navionics status-report` over ba
 Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
 
 ```bash
-scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30
+scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status
 ```
 
-The refresh helper validates the SSH target, waits for NOAA TCP connectivity from the Pi, then runs `sync-charts` on the Pi's installed `~/.local/bin/noaa-navionics` with the onboard config. Add `--force` only for a deliberate redownload. No chart data is downloaded on the local computer.
+The refresh helper validates the SSH target, waits for NOAA TCP connectivity from the Pi, then runs `sync-charts` on the Pi's installed `~/.local/bin/noaa-navionics` with the onboard config. Add `--force` only for a deliberate redownload. Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds. No chart data is downloaded on the local computer.
 
 Collect a diagnostic support bundle from the Pi before changing anything:
 

@@ -13,6 +13,8 @@ Options:
   --force             Force a redownload even when cached chart files exist
   --retries N         Download attempts on the Pi before failing (default: 5)
   --retry-delay N     Seconds between retryable failures (default: 30)
+  --status            Run a read-only status-report after chart sync succeeds
+  --gps-seconds N     Seconds to wait for a GPS fix during --status (default: 10)
 
 Nothing is installed, enabled, rebooted, shut down, or downloaded on the
 local computer.
@@ -34,6 +36,8 @@ shift
 force=0
 retries=5
 retry_delay=30
+status=0
+gps_seconds=10
 ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -78,6 +82,19 @@ while [[ $# -gt 0 ]]; do
       fi
       require_non_negative_integer "$1" "${2:-}"
       retry_delay="${2:-}"
+      shift 2
+      ;;
+    --status)
+      status=1
+      shift
+      ;;
+    --gps-seconds)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      require_positive_integer "$1" "${2:-}"
+      gps_seconds="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -235,8 +252,10 @@ ssh_cmd="$(require_local_command ssh)"
 force_quoted="$(printf '%q' "$force")"
 retries_quoted="$(printf '%q' "$retries")"
 retry_delay_quoted="$(printf '%q' "$retry_delay")"
+status_quoted="$(printf '%q' "$status")"
+gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REFRESH_FORCE=${force_quoted} NOAA_NAVIONICS_REFRESH_RETRIES=${retries_quoted} NOAA_NAVIONICS_REFRESH_RETRY_DELAY=${retry_delay_quoted} bash -s" <<'REMOTE'
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REFRESH_FORCE=${force_quoted} NOAA_NAVIONICS_REFRESH_RETRIES=${retries_quoted} NOAA_NAVIONICS_REFRESH_RETRY_DELAY=${retry_delay_quoted} NOAA_NAVIONICS_REFRESH_STATUS=${status_quoted} NOAA_NAVIONICS_REFRESH_GPS_SECONDS=${gps_seconds_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
@@ -247,6 +266,8 @@ expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
 force="${NOAA_NAVIONICS_REFRESH_FORCE:-0}"
 retries="${NOAA_NAVIONICS_REFRESH_RETRIES:-5}"
 retry_delay="${NOAA_NAVIONICS_REFRESH_RETRY_DELAY:-30}"
+status="${NOAA_NAVIONICS_REFRESH_STATUS:-0}"
+gps_seconds="${NOAA_NAVIONICS_REFRESH_GPS_SECONDS:-10}"
 
 require_nonnegative_integer() {
   local name="$1"
@@ -345,6 +366,7 @@ check_installed_noaa_command() {
 
 require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
 require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
+require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
 check_installed_noaa_command
 check_user_owned_private_file "onboard NOAA Navionics config" "$config"
 
@@ -355,6 +377,10 @@ fi
 
 "$app_bin" wait-network --host www.charts.noaa.gov --port 443 --seconds 300
 "$app_bin" "${sync_args[@]}"
+if [[ "$status" == "1" ]]; then
+  printf '\nPost-refresh status report:\n'
+  "$app_bin" status-report --config "$config" --gps-seconds "$gps_seconds"
+fi
 printf 'Pi NOAA chart refresh completed using %s.\n' "$config"
 REMOTE
 

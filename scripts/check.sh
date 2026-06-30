@@ -482,8 +482,10 @@ grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
-grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30' README.md
-grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30' docs/sailboat-pi.md
+grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
+grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
+grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' README.md
+grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
 grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
@@ -855,6 +857,10 @@ grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
+grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
+grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
+grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' scripts/refresh_pi_charts.sh
+grep -q 'Post-refresh status report' scripts/refresh_pi_charts.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
@@ -4604,6 +4610,17 @@ if [[ "$refresh_code" -ne 2 ]]; then
 fi
 grep -q -- '--retry-delay must be a non-negative integer' "$verify_output"
 
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --status --gps-seconds nope >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject invalid --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
+
 refresh_fake_ssh_bin="$tmpdir/refresh-fake-ssh-bin"
 refresh_fake_ssh_args="$tmpdir/refresh-fake-ssh-args"
 refresh_fake_ssh_stdin="$tmpdir/refresh-fake-ssh-stdin"
@@ -4619,15 +4636,19 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$refresh_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$refresh_fake_ssh_stdin" \
   PATH="$refresh_fake_ssh_bin:$PATH" \
-  scripts/refresh_pi_charts.sh pi@example.invalid --force --retries 7 --retry-delay 11 >"$verify_output" 2>&1
+  scripts/refresh_pi_charts.sh pi@example.invalid --force --retries 7 --retry-delay 11 --status --gps-seconds 13 >"$verify_output" 2>&1
 grep -q 'Pi NOAA chart refresh completed for pi@example.invalid' "$verify_output"
 grep -q 'NOAA_NAVIONICS_REFRESH_FORCE=1' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_RETRIES=7' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_RETRY_DELAY=11' "$refresh_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_REFRESH_STATUS=1' "$refresh_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS=13' "$refresh_fake_ssh_args"
 grep -q 'pi@example.invalid' "$refresh_fake_ssh_args"
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' "$refresh_fake_ssh_stdin"
 grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
+grep -q 'Post-refresh status report' "$refresh_fake_ssh_stdin"
+grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' "$refresh_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
 
 set +e
