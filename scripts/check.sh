@@ -1145,10 +1145,18 @@ grep -q 'previous chart manifest path is a symlink' src/noaa_navionics/downloade
 grep -q 'previous chart manifest path is not a regular file' src/noaa_navionics/downloader.py
 grep -q 'previous chart manifest path .* is owned by uid' src/noaa_navionics/downloader.py
 grep -q 'previous chart manifest path .* has permissions' src/noaa_navionics/downloader.py
+grep -q 'def _open_manifest_for_read' src/noaa_navionics/downloader.py
+grep -q 'manifest directory contains a symlink' src/noaa_navionics/downloader.py
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
+grep -q 'test_read_manifest_rejects_symlinked_manifest' tests/test_downloader.py
+grep -q 'test_read_manifest_rejects_symlinked_manifest_directory' tests/test_downloader.py
+grep -q 'test_read_manifest_rejects_writable_manifest' tests/test_downloader.py
 grep -q 'test_existing_zip_symlinked_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'test_existing_zip_writable_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'unsafe ownership or permissions' README.md
 grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
+grep -q 'Manifest reads reject symlinked manifest files or parent path components' README.md
+grep -q 'Manifest reads reject symlinked manifest files or parent path components' docs/sailboat-pi.md
 grep -q 'trusted previous manifest' README.md
 grep -q 'trusted previous manifest' docs/sailboat-pi.md
 grep -q 'HTTP or change filenames fail before archive replacement' README.md

@@ -2620,6 +2620,45 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("manifest path", result.detail)
             self.assertIn("has permissions 0666", result.detail)
 
+    def test_read_manifest_rejects_symlinked_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_manifest = root / "real-manifest.json"
+            real_manifest.write_text('{"created_at":"2026-01-01T00:00:00Z"}\n', encoding="utf-8")
+            manifest = root / MANIFEST_NAME
+            try:
+                manifest.symlink_to(real_manifest)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "manifest path is a symlink"):
+                read_manifest(root)
+
+    def test_read_manifest_rejects_symlinked_manifest_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_dir = root / "real"
+            real_dir.mkdir()
+            (real_dir / MANIFEST_NAME).write_text('{"created_at":"2026-01-01T00:00:00Z"}\n', encoding="utf-8")
+            link_dir = root / "link"
+            try:
+                link_dir.symlink_to(real_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "manifest directory contains a symlink"):
+                read_manifest(link_dir)
+
+    def test_read_manifest_rejects_writable_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = root / MANIFEST_NAME
+            manifest.write_text('{"created_at":"2026-01-01T00:00:00Z"}\n', encoding="utf-8")
+            manifest.chmod(0o622)
+
+            with self.assertRaisesRegex(RuntimeError, "manifest path .* has permissions 0622"):
+                read_manifest(root)
+
     def test_manifest_without_extracted_cells_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

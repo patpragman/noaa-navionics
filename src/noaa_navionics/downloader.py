@@ -875,6 +875,8 @@ def _matching_previous_manifest(
         )
     try:
         manifest = read_manifest(output_path)
+    except RuntimeError:
+        raise
     except Exception:
         return None
     created_at = str(manifest.get("created_at", "")).strip()
@@ -940,8 +942,41 @@ def _utc_now_text() -> str:
 
 def read_manifest(output_dir: Union[Path, str]) -> dict[str, object]:
     path = Path(output_dir).expanduser() / MANIFEST_NAME
-    with path.open(encoding="utf-8") as handle:
+    fd = _open_manifest_for_read(path)
+    with os.fdopen(fd, encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _open_manifest_for_read(path: Path) -> int:
+    if path.is_symlink():
+        raise RuntimeError(f"manifest path is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"manifest directory contains a symlink: {symlink_component}")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"manifest path is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"manifest path is not a regular file: {path}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(
+                f"manifest path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"manifest path {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+    except Exception:
+        os.close(fd)
+        raise
+    return fd
 
 
 def count_enc_cells(root: Optional[Path]) -> int:
