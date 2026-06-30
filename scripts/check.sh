@@ -657,6 +657,10 @@ grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
 grep -q 'process lookup command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
+grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
+grep -q 'vcgencmd get_throttled failed' scripts/verify_pi.sh
+grep -q 'active Raspberry Pi power or thermal throttling' scripts/verify_pi.sh
+grep -q 'Pi power state' scripts/verify_pi.sh
 grep -q 'local bin directory integrity' scripts/verify_pi.sh
 grep -q 'app data directory integrity' scripts/verify_pi.sh
 grep -q 'app config directory integrity' scripts/verify_pi.sh

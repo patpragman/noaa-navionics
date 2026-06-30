@@ -1694,6 +1694,47 @@ except Exception as exc:
 PY
 }
 
+check_raspberry_pi_throttling_state() {
+  local output
+  local value_text
+  local value
+  local active=()
+  local historical=()
+
+  if ! output="$(vcgencmd get_throttled 2>&1)"; then
+    printf 'vcgencmd get_throttled failed: %s\n' "$output" >&2
+    return 1
+  fi
+  if [[ "$output" != throttled=* ]]; then
+    printf 'unexpected vcgencmd get_throttled output: %s\n' "$output" >&2
+    return 1
+  fi
+  value_text="${output#throttled=}"
+  value_text="${value_text%%[[:space:]]*}"
+  if [[ ! "$value_text" =~ ^(0x[[:xdigit:]]+|[0-9]+)$ ]]; then
+    printf 'unexpected vcgencmd get_throttled value: %s\n' "$output" >&2
+    return 1
+  fi
+  value=$((value_text))
+
+  (( value & (1 << 0) )) && active+=("under-voltage")
+  (( value & (1 << 1) )) && active+=("frequency capped")
+  (( value & (1 << 2) )) && active+=("currently throttled")
+  (( value & (1 << 3) )) && active+=("soft temperature limit active")
+  (( value & (1 << 16) )) && historical+=("under-voltage occurred")
+  (( value & (1 << 17) )) && historical+=("frequency cap occurred")
+  (( value & (1 << 18) )) && historical+=("throttling occurred")
+  (( value & (1 << 19) )) && historical+=("soft temperature limit occurred")
+
+  if [[ "${#active[@]}" -gt 0 ]]; then
+    printf 'active Raspberry Pi power or thermal throttling: %s\n' "${active[*]}" >&2
+    return 1
+  fi
+  if [[ "${#historical[@]}" -gt 0 ]]; then
+    printf 'WARN historical Raspberry Pi throttling events since boot: %s\n' "${historical[*]}" >&2
+  fi
+}
+
 check_chrony_gps_time_config() {
   python3 - <<'PY'
 from pathlib import Path
@@ -2896,6 +2937,7 @@ check "display power command" command -v xset
 check "Tkinter readiness warning support" check_tkinter_available
 check "process lookup command" command -v pgrep
 check "Pi power command" command -v vcgencmd
+check "Pi power state" check_raspberry_pi_throttling_state
 check "Chrony command" command -v chronyc
 check "Chrony service enabled" systemctl is-enabled --quiet chrony
 check "Chrony service active" systemctl is-active --quiet chrony
