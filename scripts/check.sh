@@ -1287,8 +1287,11 @@ grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config path is not a regular file' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config path .* has permissions' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config directory .* has permissions' src/noaa_navionics/opencpn.py
+grep -q 'os.chmod(parent, 0o700)' src/noaa_navionics/opencpn.py
+grep -q 'expected private 0700' src/noaa_navionics/opencpn.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
 grep -q 'test_configure_chart_directory_rejects_symlinked_config_ancestor' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_tightens_public_config_parent' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_nonregular_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_writable_config_file' tests/test_downloader.py

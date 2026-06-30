@@ -552,6 +552,19 @@ class OpenCPNConfigTests(unittest.TestCase):
             finally:
                 parent.chmod(0o700)
 
+    def test_configure_chart_directory_tightens_public_config_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / ".opencpn"
+            parent.mkdir()
+            parent.chmod(0o755)
+            config = parent / "opencpn.conf"
+
+            configure_chart_directory(root / "charts", config_path=config)
+
+            self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(config.stat().st_mode), 0o600)
+
     def test_configure_chart_directory_rejects_symlinked_config_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

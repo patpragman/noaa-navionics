@@ -255,6 +255,17 @@ def _prepare_config_parent(target: Path) -> None:
             f"OpenCPN config directory {parent} has permissions {parent_mode:04o}, "
             "expected no group/other write bits"
         )
+    if parent_mode & 0o077:
+        try:
+            os.chmod(parent, 0o700)
+        except OSError as exc:
+            raise RuntimeError(f"could not make OpenCPN config directory private: {parent}: {exc}") from exc
+    parent_mode = parent.stat().st_mode & 0o777
+    if parent_mode & 0o077:
+        raise RuntimeError(
+            f"OpenCPN config directory {parent} has permissions {parent_mode:04o}, "
+            "expected private 0700"
+        )
 
 
 def _reject_unsafe_config_path(path: Path) -> None:
