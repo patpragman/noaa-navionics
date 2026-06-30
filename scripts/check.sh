@@ -1511,8 +1511,11 @@ grep -q 'launcher environment is owned by uid' src/noaa_navionics/report.py
 grep -q 'malformed launcher environment line' src/noaa_navionics/report.py
 grep -q 'unknown launcher environment key' src/noaa_navionics/report.py
 grep -q 'launcher environment has permissions.*expected private 0600' src/noaa_navionics/report.py
+grep -q 'def _read_launcher_settings_lines' src/noaa_navionics/report.py
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/report.py
 grep -q 'test_launcher_settings_summary_rejects_nonregular_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_launcher_settings_summary_rejects_public_environment_before_parsing' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_misowned_environment' tests/test_downloader.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is not a regular file' src/noaa_navionics/report.py
@@ -1665,7 +1668,9 @@ grep -q 'desktop autostart, LightDM autologin, and manifest files' README.md
 grep -q 'desktop autostart, LightDM autologin, and manifest files' docs/sailboat-pi.md
 grep -q 'readiness report fails if the persisted launcher environment is missing, not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
+grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
+grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md

@@ -11,6 +11,7 @@ import platform
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1059,8 +1060,8 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
         summary["error"] = str(exc)
         return summary
     try:
-        lines = launcher_env.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
+        lines = _read_launcher_settings_lines(launcher_env)
+    except Exception as exc:
         summary["error"] = str(exc)
         return summary
     values: dict[str, str] = {}
@@ -1077,6 +1078,33 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
     if malformed_lines:
         summary["malformed_lines"] = malformed_lines
     return summary
+
+
+def _read_launcher_settings_lines(path: Path) -> list[str]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"launcher environment path is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"launcher environment is not a regular file: {path}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(
+                f"launcher environment is owned by uid {stat_result.st_uid}, expected {os.getuid()}: {path}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode != 0o600:
+            raise RuntimeError(f"launcher environment has permissions {mode:04o}, expected private 0600: {path}")
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            return handle.read().splitlines()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:

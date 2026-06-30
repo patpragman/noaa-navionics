@@ -4046,6 +4046,7 @@ class StatusReportTests(unittest.TestCase):
                 "not-a-setting\n",
                 encoding="ascii",
             )
+            launcher_env.chmod(0o600)
 
             summary = _launcher_settings_summary(launcher_env)
 
@@ -4077,6 +4078,22 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["uid"], os.getuid())
             self.assertEqual(summary["mode"], "0600")
             self.assertEqual(summary["values"]["NOAA_NAVIONICS_GPS_SECONDS"], "60")
+
+    def test_launcher_settings_summary_rejects_public_environment_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            launcher_env = Path(tmpdir) / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n", encoding="ascii")
+            launcher_env.chmod(0o644)
+
+            summary = _launcher_settings_summary(launcher_env)
+            check = _launcher_settings_check(summary)
+
+            self.assertEqual(summary["uid"], os.getuid())
+            self.assertEqual(summary["mode"], "0644")
+            self.assertIn("expected private 0600", summary["error"])
+            self.assertNotIn("values", summary)
+            self.assertFalse(check.ok)
+            self.assertIn("expected private 0600", check.detail)
 
     def test_launcher_settings_check_fails_symlinked_environment_ancestor(self):
         check = _launcher_settings_check(
