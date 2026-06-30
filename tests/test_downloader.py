@@ -6065,6 +6065,21 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("expected no group/other write bits", state["error"])
             self.assertNotIn("wanted_by", state)
 
+    def test_user_unit_file_reader_rejects_replaced_unit_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            unit_file = root / "noaa-navionics-track.service"
+            unit_file.write_text("[Install]\nWantedBy=default.target\n", encoding="utf-8")
+            unit_file.chmod(0o600)
+            expected_stat = unit_file.stat()
+            replacement = root / "replacement.service"
+            replacement.write_text("[Install]\nWantedBy=unexpected.target\n", encoding="utf-8")
+            replacement.chmod(0o600)
+            replacement.replace(unit_file)
+
+            with self.assertRaisesRegex(RuntimeError, "user unit file path changed before it could be read"):
+                report_module._read_user_unit_file_lines(unit_file, expected_stat=expected_stat)
+
     def test_service_readiness_checks_accept_expected_onboard_units(self):
         services = {
             "available": True,

@@ -2025,6 +2025,7 @@ grep -q 'user unit file path is a symlink' src/noaa_navionics/report.py
 grep -q 'user unit file directory is a symlink' src/noaa_navionics/report.py
 grep -q 'unit file path contains a symlink' src/noaa_navionics/report.py
 grep -q 'def _read_user_unit_file_lines' src/noaa_navionics/report.py
+grep -q 'user unit file path changed before it could be read' src/noaa_navionics/report.py
 grep -q 'user unit file path .* has permissions' src/noaa_navionics/report.py
 grep -q 'directory_uid' src/noaa_navionics/report.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/report.py
@@ -2036,8 +2037,9 @@ grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_directory' tests/tes
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_ancestor' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_records_owner_and_permissions' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_rejects_writable_unit_file_before_parsing' tests/test_downloader.py
-grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' README.md
-grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'test_user_unit_file_reader_rejects_replaced_unit_before_parsing' tests/test_downloader.py
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' docs/sailboat-pi.md
 grep -q 'test_service_readiness_checks_fail_public_unit_file_permissions' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_public_unit_directory_permissions' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_misowned_unit_file' tests/test_downloader.py
@@ -2165,12 +2167,12 @@ grep -q 'launcher.env` through a no-follow descriptor only after rejecting a mis
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
-grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' README.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' docs/sailboat-pi.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
-grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md

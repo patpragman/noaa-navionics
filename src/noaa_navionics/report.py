@@ -1113,7 +1113,13 @@ def _user_unit_file_summary() -> dict[str, object]:
             continue
         if path.is_file():
             try:
-                stat_result, lines = _read_user_unit_file_lines(path)
+                expected_stat = path.stat()
+            except OSError as exc:
+                state["error"] = f"could not inspect user unit file path {path}: {exc}"
+                summary[unit] = state
+                continue
+            try:
+                stat_result, lines = _read_user_unit_file_lines(path, expected_stat=expected_stat)
                 state["uid"] = stat_result.st_uid
                 state["mode"] = f"{stat_result.st_mode & 0o777:04o}"
             except Exception as exc:
@@ -1124,7 +1130,11 @@ def _user_unit_file_summary() -> dict[str, object]:
     return summary
 
 
-def _read_user_unit_file_lines(path: Path) -> tuple[os.stat_result, list[str]]:
+def _read_user_unit_file_lines(
+    path: Path,
+    *,
+    expected_stat: Optional[os.stat_result] = None,
+) -> tuple[os.stat_result, list[str]]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -1136,6 +1146,11 @@ def _read_user_unit_file_lines(path: Path) -> tuple[os.stat_result, list[str]]:
         stat_result = os.fstat(fd)
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"user unit file path is not a regular file: {path}")
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"user unit file path changed before it could be read: {path}")
         if stat_result.st_uid != os.getuid():
             raise RuntimeError(
                 f"user unit file path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
