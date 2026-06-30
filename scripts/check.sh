@@ -2515,11 +2515,28 @@ grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
 grep -q 'ProtectSystem=full' systemd/noaa-navionics.service
 grep -q 'ProtectSystem=full' systemd/noaa-navionics-track.service
 grep -q 'ProtectSystem=full' systemd/noaa-navionics-preflight.service
+grep -q 'LockPersonality=true' systemd/noaa-navionics.service
+grep -q 'LockPersonality=true' systemd/noaa-navionics-track.service
+grep -q 'LockPersonality=true' systemd/noaa-navionics-preflight.service
+grep -q 'RestrictSUIDSGID=true' systemd/noaa-navionics.service
+grep -q 'RestrictSUIDSGID=true' systemd/noaa-navionics-track.service
+grep -q 'RestrictSUIDSGID=true' systemd/noaa-navionics-preflight.service
 grep -q 'UMask=0077' systemd/noaa-navionics.service
 grep -q 'UMask=0077' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
 grep -q 'ProtectSystem.*full' src/noaa_navionics/report.py
+grep -q 'LockPersonality.*yes' src/noaa_navionics/report.py
+grep -q 'RestrictSUIDSGID.*yes' src/noaa_navionics/report.py
+grep -q 'LockPersonality' tests/test_downloader.py
+grep -q 'RestrictSUIDSGID' tests/test_downloader.py
+grep -q 'chart service lock personality' scripts/verify_pi.sh
+grep -q 'track service restrict suid sgid' scripts/verify_pi.sh
+grep -q 'preflight service loaded lock personality' scripts/verify_pi.sh
+grep -q 'LockPersonality' README.md
+grep -q 'RestrictSUIDSGID' README.md
+grep -q 'LockPersonality' docs/sailboat-pi.md
+grep -q 'RestrictSUIDSGID' docs/sailboat-pi.md
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
 python3 - <<'PY'
 import sys

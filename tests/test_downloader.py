@@ -4743,7 +4743,7 @@ class StatusReportTests(unittest.TestCase):
                 with self.assertRaises((ValueError, IndexError)):
                     _parse_proc_uptime_seconds(value)
 
-    def test_status_report_queries_track_logger_umask(self):
+    def test_status_report_queries_user_service_hardening_properties(self):
         for unit in (
             "noaa-navionics.service",
             "noaa-navionics-track.service",
@@ -4752,6 +4752,8 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(unit=unit):
                 self.assertIn("UMask", report_module.USER_UNIT_PROPERTIES[unit])
                 self.assertIn("ProtectSystem", report_module.USER_UNIT_PROPERTIES[unit])
+                self.assertIn("LockPersonality", report_module.USER_UNIT_PROPERTIES[unit])
+                self.assertIn("RestrictSUIDSGID", report_module.USER_UNIT_PROPERTIES[unit])
 
     def test_service_summary_rejects_user_owned_systemctl_on_pi(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -6633,6 +6635,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
@@ -6661,6 +6665,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
@@ -6686,6 +6692,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7529,6 +7537,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7890,6 +7900,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7908,6 +7920,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7932,6 +7946,8 @@ class StatusReportTests(unittest.TestCase):
                     "NoNewPrivileges": "yes",
                     "PrivateTmp": "yes",
                     "ProtectSystem": "full",
+                    "LockPersonality": "yes",
+                    "RestrictSUIDSGID": "yes",
                     "UMask": "0077",
                 },
             },
