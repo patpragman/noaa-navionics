@@ -32,11 +32,24 @@ sync_path() {
   sudo python3 - "$path" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 
 path = Path(sys.argv[1])
-with path.open("rb") as handle:
-    os.fsync(handle.fileno())
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    if path.is_symlink():
+        raise SystemExit(f"root file sync target is a symlink: {path}") from exc
+    raise SystemExit(f"could not open root file sync target {path}: {exc}") from exc
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"root file sync target is not a regular file: {path}")
+    os.fsync(fd)
+finally:
+    os.close(fd)
 try:
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path.parent, flags)

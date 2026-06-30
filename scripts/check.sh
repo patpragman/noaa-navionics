@@ -1167,6 +1167,11 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'sync_path "$target_tmp"' "$script"
   grep -q 'sudo mv -f "$target_tmp" "$target"' "$script"
   grep -q 'sync_path "$target"' "$script"
+  grep -q 'root file sync target is a symlink' "$script"
+  grep -q 'root file sync target is not a regular file' "$script"
+  grep -q 'os.open(path, os.O_RDONLY | nofollow)' "$script"
+  grep -q 'stat.S_ISREG(opened.st_mode)' "$script"
+  ! grep -q 'with path.open("rb") as handle' "$script"
 done
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
@@ -1259,6 +1264,9 @@ grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_d
 grep -q 'test_read_trusted_config_lines_rejects_writable_config_before_parsing' tests/test_downloader.py
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' README.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'GPSD setup, GPS time setup, and desktop autologin sync promoted root files only after reopening them as regular no-follow file descriptors' README.md
+grep -q 'Promoted root config files are synced only after reopening them as regular no-follow file descriptors' docs/sailboat-pi.md
+grep -q 'syncs the promoted config only after reopening it as a regular no-follow file descriptor' docs/sailboat-pi.md
 grep -q 'Production provisioning reads the existing onboard GPS config only after a no-follow descriptor' README.md
 grep -q 'provisioning reads the existing onboard GPS config only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'The GPSD setup script reads any existing onboard app config through a no-follow descriptor' README.md
