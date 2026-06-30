@@ -667,6 +667,65 @@ require_loaded_user_units() {
   require_loaded_user_unit_property noaa-navionics-preflight.service UMask 0077 "boot readiness service"
 }
 
+require_user_unit_enabled() {
+  local unit="$1"
+  local label="$2"
+  local state
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ require_user_unit_enabled %q %q\n' "$unit" "$label"
+    return 0
+  fi
+  if ! systemctl --user is-enabled --quiet "$unit"; then
+    state="$(systemctl --user is-enabled "$unit" 2>&1 || true)"
+    cat >&2 <<EOF
+Provisioning did not leave $label enabled.
+Expected: systemctl --user is-enabled $unit -> enabled
+Actual:   ${state:-unknown}
+EOF
+    exit 2
+  fi
+}
+
+require_user_unit_active() {
+  local unit="$1"
+  local label="$2"
+  local state
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ require_user_unit_active %q %q\n' "$unit" "$label"
+    return 0
+  fi
+  if ! systemctl --user is-active --quiet "$unit"; then
+    state="$(systemctl --user is-active "$unit" 2>&1 || true)"
+    cat >&2 <<EOF
+Provisioning did not leave $label active.
+Expected: systemctl --user is-active $unit -> active
+Actual:   ${state:-unknown}
+EOF
+    exit 2
+  fi
+}
+
+require_user_unit_result_success() {
+  local unit="$1"
+  local label="$2"
+  local result
+  local status
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ require_user_unit_result_success %q %q\n' "$unit" "$label"
+    return 0
+  fi
+  result="$(systemctl --user show "$unit" -p Result --value 2>/dev/null || true)"
+  status="$(systemctl --user show "$unit" -p ExecMainStatus --value 2>/dev/null || true)"
+  if [[ "$result" != "success" || "$status" != "0" ]]; then
+    cat >&2 <<EOF
+Provisioning did not leave $label with a successful last run.
+Expected: Result=success and ExecMainStatus=0 for $unit
+Actual:   Result=${result:-unknown} ExecMainStatus=${status:-unknown}
+EOF
+    exit 2
+  fi
+}
+
 status_report="${HOME}/.cache/noaa-navionics/status.json"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 autostart_dir="${HOME}/.config/autostart"
@@ -768,6 +827,11 @@ if [[ "$skip_services" -eq 0 ]]; then
   run systemctl --user enable --now noaa-navionics-track.service
   run systemctl --user restart noaa-navionics-track.service
   run systemctl --user enable noaa-navionics-preflight.service
+  require_user_unit_enabled noaa-navionics.timer "chart refresh timer"
+  require_user_unit_enabled noaa-navionics-track.service "track logger service"
+  require_user_unit_enabled noaa-navionics-preflight.service "boot readiness service"
+  require_user_unit_active noaa-navionics.timer "chart refresh timer"
+  require_user_unit_active noaa-navionics-track.service "track logger service"
 fi
 
 if [[ "$skip_autologin" -eq 0 ]]; then
@@ -786,6 +850,7 @@ fi
 
 if [[ "$skip_services" -eq 0 ]]; then
   run systemctl --user restart noaa-navionics-preflight.service
+  require_user_unit_result_success noaa-navionics-preflight.service "boot readiness service"
 fi
 
 run "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"

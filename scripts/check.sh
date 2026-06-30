@@ -1422,6 +1422,15 @@ grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem 
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'The unattended startup services were installed but not enabled' scripts/provision_sailboat_pi.sh
+grep -q 'require_user_unit_enabled noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
+grep -q 'require_user_unit_enabled noaa-navionics-track.service "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_user_unit_enabled noaa-navionics-preflight.service "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_user_unit_active noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
+grep -q 'require_user_unit_active noaa-navionics-track.service "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_user_unit_result_success noaa-navionics-preflight.service "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'Provisioning did not leave .* enabled' scripts/provision_sailboat_pi.sh
+grep -q 'Provisioning did not leave .* active' scripts/provision_sailboat_pi.sh
+grep -q 'Provisioning did not leave .* with a successful last run' scripts/provision_sailboat_pi.sh
 grep -q 'sudo loginctl enable-linger "$USER"' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
@@ -2597,6 +2606,12 @@ grep -q 'systemctl --user daemon-reload' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full' "$provision_output"
+grep -q 'require_user_unit_enabled noaa-navionics.timer' "$provision_output"
+grep -q 'require_user_unit_enabled noaa-navionics-track.service' "$provision_output"
+grep -q 'require_user_unit_enabled noaa-navionics-preflight.service' "$provision_output"
+grep -q 'require_user_unit_active noaa-navionics.timer' "$provision_output"
+grep -q 'require_user_unit_active noaa-navionics-track.service' "$provision_output"
+grep -q 'require_user_unit_result_success noaa-navionics-preflight.service' "$provision_output"
 python3 - "$provision_output" <<'PY'
 from pathlib import Path
 import sys
@@ -2604,8 +2619,15 @@ import sys
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 guard_index = text.index("require_loaded_user_unit_property noaa-navionics.service ProtectSystem full")
 linger_index = text.index("sudo loginctl enable-linger")
+enabled_index = text.index("require_user_unit_enabled noaa-navionics.timer")
+preflight_restart_index = text.index("systemctl --user restart noaa-navionics-preflight.service")
+preflight_success_index = text.index("require_user_unit_result_success noaa-navionics-preflight.service")
 if guard_index > linger_index:
     raise SystemExit("loaded user-unit guard must run before user linger and service enablement")
+if enabled_index < text.index("systemctl --user enable --now noaa-navionics.timer"):
+    raise SystemExit("enabled-state guard must run after timer enablement")
+if preflight_success_index < preflight_restart_index:
+    raise SystemExit("boot readiness success guard must run after preflight restart")
 PY
 
 set +e
