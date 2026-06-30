@@ -44,6 +44,7 @@ skip_status=0
 skip_tracks=0
 skip_support=0
 shutdown_mode=""
+python3_cmd=""
 
 if [[ $# -gt 0 && "$1" != --* ]]; then
   output_dir="$1"
@@ -66,6 +67,94 @@ require_non_negative_integer() {
     echo "$name must be a non-negative integer" >&2
     exit 2
   fi
+}
+
+local_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_local_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    echo "Could not inspect local command ${item_kind}: $item_path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "Local command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 2
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Local command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+check_local_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_local_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+validate_trusted_local_command() {
+  local command_name="$1"
+  local command_path="$2"
+  local resolved_path
+
+  if ! local_path_in_trusted_system_dir "$command_path"; then
+    echo "Local ${command_name} command is not in a trusted system directory: $command_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$command_path" ]]; then
+    echo "Local ${command_name} command is not executable: $command_path" >&2
+    exit 2
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve local ${command_name} command: $command_path" >&2
+    exit 2
+  fi
+  if ! local_path_in_trusted_system_dir "$resolved_path"; then
+    echo "Resolved local ${command_name} command is not in a trusted system directory: $resolved_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not executable after resolution: $resolved_path" >&2
+    exit 2
+  fi
+  check_local_owner_and_mode "$command_name" "$resolved_path"
+  check_local_directory_chain "$resolved_path"
+}
+
+require_local_command() {
+  local command_name="$1"
+  local command_path
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
 }
 
 validate_output_dir_arg() {
@@ -199,7 +288,7 @@ verify_private_output_file() {
 write_private_status_snapshot() {
   local path="$1"
   shift
-  python3 - "$path" "$@" <<'PY'
+  "$python3_cmd" - "$path" "$@" <<'PY'
 from __future__ import annotations
 
 import os
@@ -416,6 +505,9 @@ require_helper "$status_helper"
 require_helper "$tracks_helper"
 require_helper "$support_helper"
 require_helper "$shutdown_helper"
+if [[ "$skip_status" -eq 0 ]]; then
+  python3_cmd="$(require_local_command python3)"
+fi
 
 prepare_private_output_dir "Output directory" "$output_dir"
 

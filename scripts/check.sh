@@ -540,6 +540,8 @@ grep -q 'Status reports and Pi verification include the configured anchor radius
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
 grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' README.md
@@ -1075,6 +1077,11 @@ grep -q 'At least one post-trip collection or shutdown step must run' scripts/po
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'expected current user ${current_uid}' scripts/post_trip_collect_pi.sh
+grep -q 'require_local_command python3' scripts/post_trip_collect_pi.sh
+grep -q 'validate_trusted_local_command' scripts/post_trip_collect_pi.sh
+grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/post_trip_collect_pi.sh
+grep -q '"$python3_cmd" - "$path" "$@"' scripts/post_trip_collect_pi.sh
+! grep -q '^  python3 -' scripts/post_trip_collect_pi.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/post_trip_collect_pi.sh
 grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
 grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json' scripts/post_trip_collect_pi.sh
@@ -5102,6 +5109,29 @@ EOF
 chmod +x "$post_trip_repo/scripts/"*.sh
 mkdir -p "$post_trip_output_dir"
 chmod 0777 "$post_trip_output_dir"
+post_trip_fake_python_bin="$tmpdir/post-trip-fake-python-bin"
+mkdir -p "$post_trip_fake_python_bin"
+cat >"$post_trip_fake_python_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "untrusted fake python should not run" >&2
+exit 99
+EOF
+chmod +x "$post_trip_fake_python_bin/python3"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
+  PATH="$post_trip_fake_python_bin:$PATH" \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$tmpdir/post-trip-untrusted-python-output" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject an untrusted local python3 command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
   "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
   pi@example.invalid "$post_trip_output_dir" \
