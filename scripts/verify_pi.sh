@@ -933,6 +933,7 @@ if expected_config_path:
         "gpsd_port": int(parser.get("gps", "gpsd_port", fallback="2947").strip()),
         "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
         "track_retention_days": int(parser.get("tracking", "retention_days", fallback="90").strip()),
+        "anchor_radius_meters": float(parser.get("anchor", "radius_meters", fallback="50").strip()),
     }
     expected_package_zip = expected_package_filename(
         expected_config["chart_package"],

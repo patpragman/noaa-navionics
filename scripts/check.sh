@@ -510,6 +510,8 @@ grep -q 'when drift exceeds `\[anchor\].radius_meters`' README.md
 grep -q 'when drift exceeds `\[anchor\].radius_meters`' docs/sailboat-pi.md
 grep -q 'Use `--radius-meters N` for a one-off override' README.md
 grep -q 'Use `--radius-meters N` for a one-off override' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
+grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -1199,6 +1201,7 @@ grep -q 'GPSD config file integrity' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
 grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
 grep -q 'status report track_log track_output is a symlink' scripts/verify_pi.sh
+grep -q '"anchor_radius_meters": float' scripts/verify_pi.sh
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh
 grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
@@ -3051,6 +3054,8 @@ grep -q 'test_write_manifest_rejects_symlinked_output_ancestor' tests/test_downl
 grep -q 'Chart output directory permission tightening is revalidated before creating locks, archives, extracted trees, or manifests' README.md
 grep -q 'Chart output directory permission tightening is revalidated before creating locks, archives, extracted trees, or manifests' docs/sailboat-pi.md
 grep -q '"min_free_gb": app_config.min_free_gb' src/noaa_navionics/report.py
+grep -q '"anchor_radius_meters": app_config.anchor_radius_meters' src/noaa_navionics/report.py
+grep -q 'Anchor radius:' src/noaa_navionics/report.py
 grep -q '"extract_path": extract_path' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py

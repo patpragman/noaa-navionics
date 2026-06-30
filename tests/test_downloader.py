@@ -5745,7 +5745,10 @@ class StatusReportTests(unittest.TestCase):
                 "mode = gpsd\n"
                 "\n"
                 "[tracking]\n"
-                f"output = {charts}\n",
+                f"output = {charts}\n"
+                "\n"
+                "[anchor]\n"
+                "radius_meters = 65\n",
                 encoding="utf-8",
             )
 
@@ -5837,6 +5840,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["config"]["keep_zip"], True)
             self.assertEqual(report["config"]["force"], True)
             self.assertEqual(report["config"]["min_free_gb"], 3.5)
+            self.assertEqual(report["config"]["anchor_radius_meters"], 65.0)
             self.assertEqual(report["host"]["boot_id"], "12345678-1234-4234-8234-123456789abc")
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
@@ -5904,6 +5908,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(report["ok"])
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
+            self.assertIn("Anchor radius: 65.0 m", text)
             self.assertIn("Boot ID: 12345678-1234-4234-8234-123456789abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("source_revision_path_is_symlink=False", text)

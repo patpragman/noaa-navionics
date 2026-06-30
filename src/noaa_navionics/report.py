@@ -315,6 +315,7 @@ def format_status_text(report: dict[str, object]) -> str:
         f"source_revision_symlink_component="
         f"{report.get('app', {}).get('source_revision_symlink_component', '')}",
         f"Config: {report.get('config_path', '')}",
+        f"Anchor radius: {report.get('config', {}).get('anchor_radius_meters', '')} m",
         f"Ready: {'yes' if report.get('ok') else 'no'}",
         "",
         "Checks:",
@@ -510,6 +511,7 @@ def _config_summary(app_config: AppConfig) -> dict[str, object]:
         "gpsd_port": app_config.gpsd_port,
         "track_output": str(app_config.track_output),
         "track_retention_days": app_config.track_retention_days,
+        "anchor_radius_meters": app_config.anchor_radius_meters,
     }
 
 
