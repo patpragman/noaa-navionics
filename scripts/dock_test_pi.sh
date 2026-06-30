@@ -50,6 +50,7 @@ verify_args=()
 remote_reboot_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 validate_ssh_target() {
   local value="$1"
@@ -319,11 +320,11 @@ wait_for_ssh_up() {
 }
 
 ssh_available() {
-  ssh "${ssh_probe_options[@]}" "$target" "true" >/dev/null 2>&1
+  ssh "${ssh_probe_options[@]}" "$target" "${remote_system_path} && export PATH && true" >/dev/null 2>&1
 }
 
 remote_boot_id() {
-  ssh "${ssh_batch_options[@]}" "$target" "cat /proc/sys/kernel/random/boot_id"
+  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id"
 }
 
 validate_remote_reboot_command_trust() {
@@ -338,10 +339,8 @@ validate_remote_reboot_command_trust() {
       ;;
   esac
 
-  ssh "${ssh_batch_options[@]}" "$target" "sh -s -- '$reboot_cmd'" <<'REMOTE_REBOOT_TRUST'
+  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- '$reboot_cmd'" <<'REMOTE_REBOOT_TRUST'
 set -eu
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export PATH
 
 reboot_cmd="$1"
 
@@ -400,7 +399,7 @@ REMOTE_REBOOT_TRUST
 remote_reboot_command() {
   local reboot_cmd
 
-  if ! reboot_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
+  if ! reboot_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
     echo "Could not find the remote reboot command on $target." >&2
     return 1
   fi
@@ -419,7 +418,7 @@ check_remote_noninteractive_reboot_available() {
     return 1
   fi
 
-  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
+  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sudo -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
     printf 'OK   noninteractive sudo can run %s\n' "$remote_reboot_cmd"
     return 0
   fi
@@ -436,7 +435,7 @@ request_reboot() {
     remote_reboot_cmd="$(remote_reboot_command)"
   fi
 
-  if ssh "${ssh_batch_options[@]}" "$target" "sudo -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
+  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sudo -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
     return 0
   fi
 
