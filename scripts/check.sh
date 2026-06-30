@@ -1275,10 +1275,15 @@ grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
 grep -q 'def _validate_stale_lock_for_cleanup' src/noaa_navionics/downloader.py
+grep -q 'def _read_chart_update_lock_text' src/noaa_navionics/downloader.py
+grep -q 'fd = os.open(lock_path, flags)' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path has permissions' src/noaa_navionics/downloader.py
+grep -q 'chart update lock path is not a regular file; leaving it in place' src/noaa_navionics/downloader.py
+grep -q 'with os.fdopen(fd, encoding="ascii", errors="ignore") as handle' src/noaa_navionics/downloader.py
+! grep -q 'lock_path.read_text(encoding="ascii", errors="ignore")' src/noaa_navionics/downloader.py
 grep -q 'test_stale_download_lock_cleanup_rejects_writable_lock_file' tests/test_downloader.py
-grep -q 'stale lock cleanup refuses misowned or group/world-writable lock files' README.md
-grep -q 'stale lock cleanup refuses misowned or group/world-writable lock files' docs/sailboat-pi.md
+grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or group/world-writable lock files' README.md
+grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or group/world-writable lock files' docs/sailboat-pi.md
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
 grep -q 'lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
 grep -q 'os.fchmod(lock_fd, 0o600)' src/noaa_navionics/downloader.py

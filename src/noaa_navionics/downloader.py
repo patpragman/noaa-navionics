@@ -648,10 +648,12 @@ def _chart_update_lock(output_path: Path):
         try:
             if lock_path.is_symlink():
                 return
-            if lock_path.read_text(encoding="ascii", errors="ignore") == lock_text:
+            if _read_chart_update_lock_text(lock_path) == lock_text:
                 lock_path.unlink()
                 _fsync_directory(output_path)
         except FileNotFoundError:
+            pass
+        except RuntimeError:
             pass
 
 
@@ -678,15 +680,12 @@ def _validate_stale_lock_for_cleanup(lock_path: Path) -> None:
 
 def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_SECONDS) -> bool:
     try:
-        age_seconds = time.time() - lock_path.stat().st_mtime
+        age_seconds = time.time() - lock_path.lstat().st_mtime
     except OSError:
         return False
     if age_seconds <= stale_seconds:
         return False
-    try:
-        lock_text = lock_path.read_text(encoding="ascii", errors="ignore")
-    except OSError:
-        return False
+    lock_text = _read_chart_update_lock_text(lock_path)
     owner_pid = _lock_field(lock_text, "pid")
     owner_boot_id = _lock_field(lock_text, "boot_id")
     if owner_pid and owner_pid.isdigit():
@@ -696,6 +695,41 @@ def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_
         if _pid_is_running(int(owner_pid)):
             return False
     return True
+
+
+def _read_chart_update_lock_text(lock_path: Path) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(lock_path, flags)
+    except FileNotFoundError:
+        raise
+    except OSError as exc:
+        if lock_path.is_symlink():
+            raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
+        raise RuntimeError(f"could not open chart update lock: {lock_path}: {exc}") from exc
+
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"chart update lock path is not a regular file; leaving it in place: {lock_path}")
+        expected_uid = os.getuid()
+        if opened.st_uid != expected_uid:
+            raise RuntimeError(
+                f"chart update lock path is owned by uid {opened.st_uid}, "
+                f"expected {expected_uid}; leaving it in place: {lock_path}"
+            )
+        mode = opened.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"chart update lock path has permissions {mode:04o}, "
+                f"expected no group/other write bits; leaving it in place: {lock_path}"
+            )
+        with os.fdopen(fd, encoding="ascii", errors="ignore") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _lock_field(lock_text: str, name: str) -> str:
