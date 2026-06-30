@@ -163,7 +163,8 @@ try:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(tmp_path, target)
-    fd = os.open(target.parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(target.parent, flags)
     try:
         os.fsync(fd)
     finally:
@@ -353,7 +354,8 @@ try:
     with tmp_path.open("rb") as handle:
         os.fsync(handle.fileno())
     os.replace(tmp_path, target)
-    fd = os.open(target.parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(target.parent, flags)
     try:
         os.fsync(fd)
     finally:

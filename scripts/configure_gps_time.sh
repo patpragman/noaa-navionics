@@ -34,7 +34,8 @@ path = Path(sys.argv[1])
 with path.open("rb") as handle:
     os.fsync(handle.fileno())
 try:
-    fd = os.open(path.parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path.parent, flags)
 except OSError:
     fd = None
 if fd is not None:
@@ -119,7 +120,8 @@ finally:
             pass
 
 try:
-    parent_fd = os.open(parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    parent_fd = os.open(parent, flags)
 except OSError:
     parent_fd = None
 if parent_fd is not None:

@@ -503,7 +503,8 @@ try:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(tmp_path, target)
-    fd = os.open(repo, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(repo, flags)
     try:
         os.fsync(fd)
     finally:
@@ -590,7 +591,8 @@ def validate_deployment_parent() -> None:
         )
 
 def fsync_parent() -> None:
-    fd = os.open(repo.parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(repo.parent, flags)
     try:
         os.fsync(fd)
     finally:
@@ -700,7 +702,8 @@ try:
             raise RuntimeError(f'Refusing to replace non-directory deployment path: {repo}')
         repo.rename(previous)
     staging.rename(repo)
-    fd = os.open(repo.parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(repo.parent, flags)
     try:
         os.fsync(fd)
     finally:
@@ -708,7 +711,8 @@ try:
 except Exception:
     if not repo.exists() and previous.exists():
         previous.rename(repo)
-        fd = os.open(repo.parent, os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(repo.parent, flags)
         try:
             os.fsync(fd)
         finally:
@@ -717,7 +721,8 @@ except Exception:
 else:
     if previous.exists() or previous.is_symlink():
         remove_path(previous, label="previous deployment path")
-    fd = os.open(repo.parent, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(repo.parent, flags)
     try:
         os.fsync(fd)
     finally:

@@ -78,7 +78,8 @@ for arg in sys.argv[1:]:
     synced_dirs.add(path.parent)
 for directory in synced_dirs:
     try:
-        fd = os.open(directory, os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(directory, flags)
     except OSError:
         continue
     try:
@@ -434,7 +435,8 @@ if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
     fail("Python shutil.rmtree is not symlink-attack resistant on this platform; leaving stale launcher lock in place")
 shutil.rmtree(lock)
 try:
-    fd = os.open(cache, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(cache, flags)
 except OSError:
     fd = None
 if fd is not None:

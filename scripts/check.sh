@@ -397,7 +397,7 @@ grep -q 'ensure_private_directory "$config_dir" "NOAA Navionics config directory
 grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/install_raspberry_pi.sh
 grep -q 'chmod 0700 "$target"' scripts/install_raspberry_pi.sh
 grep -q 'if path.is_dir():' scripts/install_raspberry_pi.sh
-test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/install_raspberry_pi.sh)" -ge 2
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/install_raspberry_pi.sh)" -ge 4
 grep -q 'Installer sync helpers use no-follow directory opens' README.md
 grep -q 'Installer sync helpers use no-follow directory opens' docs/sailboat-pi.md
 grep -q 'validate_user_directory_path' scripts/provision_sailboat_pi.sh
@@ -405,6 +405,11 @@ grep -q 'ensure_private_directory "$(dirname "$config")" "NOAA Navionics config 
 grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/provision_sailboat_pi.sh
 grep -q 'ensure_private_directory "$autostart_dir" "desktop autostart directory"' scripts/provision_sailboat_pi.sh
 grep -q 'if path.is_dir():' scripts/provision_sailboat_pi.sh
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh)" -ge 1
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/deploy_to_pi.sh)" -ge 5
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/start_chartplotter.sh)" -ge 2
+grep -q 'Deployment, provisioning, and startup sync helpers use no-follow directory opens' README.md
+grep -q 'Deployment, provisioning, and startup sync helpers use no-follow directory opens' docs/sailboat-pi.md
 grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
@@ -998,6 +1003,7 @@ grep -q 'first_symlink_ancestor' scripts/configure_desktop_autologin.sh
 grep -q 'has permissions {mode:04o}, expected no group/other write bits' scripts/configure_desktop_autologin.sh
 grep -q 'LightDM autologin config is a symlink' scripts/configure_desktop_autologin.sh
 grep -q 'LightDM autologin config path contains a symlink' scripts/configure_desktop_autologin.sh
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/configure_desktop_autologin.sh)" -ge 1
 grep -q 'pwd.getpwnam' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user home does not exist' scripts/configure_desktop_autologin.sh
 grep -q 'Autologin user does not own home directory' scripts/configure_desktop_autologin.sh
@@ -1015,6 +1021,7 @@ grep -q 'first_symlink_ancestor' scripts/configure_gpsd.sh
 grep -q 'GPSD config is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory .* has permissions' scripts/configure_gpsd.sh
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/configure_gpsd.sh)" -ge 3
 grep -q 'Refusing to write a non-standard GPSD config path' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _read_existing_config, _reject_unsafe_config_path, read_config' scripts/configure_gpsd.sh
@@ -1096,6 +1103,7 @@ grep -q 'first_symlink_ancestor' scripts/configure_gps_time.sh
 grep -q 'Chrony config is a symlink' scripts/configure_gps_time.sh
 grep -q 'Chrony config directory is a symlink' scripts/configure_gps_time.sh
 grep -q 'Chrony config directory .* has permissions' scripts/configure_gps_time.sh
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/configure_gps_time.sh)" -ge 2
 grep -q 'expected no group/other write bits' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
 grep -q 'could not open chrony config' scripts/configure_gps_time.sh
