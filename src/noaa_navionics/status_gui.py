@@ -63,6 +63,39 @@ def format_panel_summary(report: dict[str, object]) -> str:
     return f"{failures} reported readiness check(s) need attention."
 
 
+def format_gps_summary(report: dict[str, object]) -> str:
+    gps_fix = report.get("gps_fix")
+    if not isinstance(gps_fix, dict) or not gps_fix.get("source"):
+        return "GPS: not reported"
+    source = str(gps_fix.get("source", "GPS"))
+    state = "OK" if gps_fix.get("ok") else "FAIL"
+    pieces = [f"{source} {state}"]
+    latitude = gps_fix.get("latitude")
+    longitude = gps_fix.get("longitude")
+    if isinstance(latitude, (int, float)) and isinstance(longitude, (int, float)):
+        pieces.append(f"{latitude:.6f}, {longitude:.6f}")
+    timestamp = gps_fix.get("timestamp")
+    if timestamp:
+        pieces.append(str(timestamp))
+    satellites = gps_fix.get("satellites")
+    if satellites is not None:
+        pieces.append(f"{satellites} sats")
+    hdop = gps_fix.get("hdop")
+    if hdop is not None:
+        pieces.append(f"HDOP {hdop}")
+    speed = gps_fix.get("speed_knots")
+    if isinstance(speed, (int, float)):
+        pieces.append(f"{speed:.1f} kt")
+    course = gps_fix.get("course_degrees")
+    if isinstance(course, (int, float)):
+        pieces.append(f"{course:.1f} deg")
+    if len(pieces) == 1:
+        detail = str(gps_fix.get("detail", "")).strip()
+        if detail:
+            pieces.append(detail)
+    return " | ".join(pieces)
+
+
 def available_position_mark_path(path: Path) -> Path:
     target = Path(path).expanduser()
     if not target.exists():
@@ -160,6 +193,7 @@ class StatusApp(tk.Tk):
 
         self.headline = tk.StringVar(value="Checking...")
         self.summary = tk.StringVar(value="Waiting for the first status refresh.")
+        self.gps_summary = tk.StringVar(value="GPS: waiting for status refresh.")
         self.last_report = tk.StringVar(value="")
         self._build()
         self.after(100, self.refresh_now)
@@ -169,28 +203,29 @@ class StatusApp(tk.Tk):
         root = ttk.Frame(self, padding=16)
         root.pack(fill=tk.BOTH, expand=True)
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(2, weight=1)
+        root.rowconfigure(3, weight=1)
 
         ttk.Label(root, textvariable=self.headline, font=("TkDefaultFont", 22, "bold")).grid(
             row=0, column=0, sticky=tk.W
         )
         ttk.Label(root, textvariable=self.summary).grid(row=1, column=0, sticky=tk.W, pady=(4, 12))
+        ttk.Label(root, textvariable=self.gps_summary).grid(row=2, column=0, sticky=tk.W, pady=(0, 12))
 
         self.tree = ttk.Treeview(root, columns=("status", "detail"), show="headings", height=12)
         self.tree.heading("status", text="Status")
         self.tree.heading("detail", text="Detail")
         self.tree.column("status", width=90, stretch=False)
         self.tree.column("detail", width=520)
-        self.tree.grid(row=2, column=0, sticky=tk.NSEW)
+        self.tree.grid(row=3, column=0, sticky=tk.NSEW)
         scroll = ttk.Scrollbar(root, orient=tk.VERTICAL, command=self.tree.yview)
-        scroll.grid(row=2, column=1, sticky=tk.NS)
+        scroll.grid(row=3, column=1, sticky=tk.NS)
         self.tree.configure(yscrollcommand=scroll.set)
 
         self.tree.tag_configure("ok", foreground="#0a6f2a")
         self.tree.tag_configure("fail", foreground="#b00020")
 
         buttons = ttk.Frame(root)
-        buttons.grid(row=3, column=0, sticky=tk.EW, pady=(12, 0))
+        buttons.grid(row=4, column=0, sticky=tk.EW, pady=(12, 0))
         self.refresh_button = ttk.Button(buttons, text="Refresh", command=self.refresh_now)
         self.refresh_button.pack(side=tk.LEFT)
         self.mark_button = ttk.Button(buttons, text="Mark", command=lambda: self.mark_position(mob=False))
@@ -203,7 +238,7 @@ class StatusApp(tk.Tk):
         self.anchor_button = ttk.Button(buttons, text="Anchor Check", command=self.anchor_check)
         self.anchor_button.pack(side=tk.LEFT, padx=(10, 0))
         ttk.Button(buttons, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
-        ttk.Label(root, textvariable=self.last_report).grid(row=4, column=0, sticky=tk.W, pady=(8, 0))
+        ttk.Label(root, textvariable=self.last_report).grid(row=5, column=0, sticky=tk.W, pady=(8, 0))
 
     def refresh_now(self) -> None:
         if self.worker is not None and self.worker.is_alive():
@@ -284,6 +319,7 @@ class StatusApp(tk.Tk):
         rows = status_rows(report)
         self.headline.set(status_headline(report))
         self.summary.set(format_panel_summary(report))
+        self.gps_summary.set(format_gps_summary(report))
         for item in self.tree.get_children():
             self.tree.delete(item)
         for row in rows:
@@ -311,6 +347,7 @@ class StatusApp(tk.Tk):
         summary = format_anchor_check(distance, radius_meters)
         self.headline.set("NOT READY" if distance > radius_meters else "READY")
         self.summary.set(summary)
+        self.gps_summary.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
         self.last_report.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
         self._schedule_refresh()
 
@@ -318,6 +355,7 @@ class StatusApp(tk.Tk):
         self._set_busy(False)
         self.headline.set("NOT READY")
         self.summary.set(message)
+        self.gps_summary.set("GPS: unavailable")
         self._schedule_refresh()
 
     def _set_busy(self, busy: bool) -> None:

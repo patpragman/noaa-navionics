@@ -2324,6 +2324,27 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(status_gui_module.status_headline(report), "READY")
         self.assertEqual(status_gui_module.format_panel_summary(report), "All reported navigation readiness checks are passing.")
 
+    def test_status_gui_formats_structured_gps_summary(self):
+        report = {
+            "gps_fix": {
+                "source": "GPSD",
+                "ok": True,
+                "latitude": 61.2181,
+                "longitude": -149.9003,
+                "timestamp": "2026-06-30T12:34:56Z",
+                "satellites": 9,
+                "hdop": 0.9,
+                "speed_knots": 4.2,
+                "course_degrees": 181.5,
+            },
+        }
+
+        self.assertEqual(
+            status_gui_module.format_gps_summary(report),
+            "GPSD OK | 61.218100, -149.900300 | 2026-06-30T12:34:56Z | 9 sats | HDOP 0.9 | 4.2 kt | 181.5 deg",
+        )
+        self.assertEqual(status_gui_module.format_gps_summary({}), "GPS: not reported")
+
     def test_cli_status_gui_forwards_arguments(self):
         calls = []
         original = status_gui_module.main

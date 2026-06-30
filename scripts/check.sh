@@ -2585,6 +2585,7 @@ grep -q 'sync requires writable chart storage with enough free space' src/noaa_n
 grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
+grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
@@ -2603,8 +2604,8 @@ grep -q 'status-gui' src/noaa_navionics/cli.py
 grep -q 'anchor-radius-meters' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
-grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' README.md
-grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' docs/sailboat-pi.md
+grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' README.md
+grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded two-fix drift check' README.md
@@ -2640,6 +2641,7 @@ grep -q 'test_gui_gps_fix_rejects_volatile_serial_override' tests/test_downloade
 grep -q 'test_gui_gps_fix_rejects_fix_without_quality_fields' tests/test_downloader.py
 grep -q 'test_status_gui_summarizes_readiness_rows' tests/test_downloader.py
 grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader.py
+grep -q 'test_status_gui_formats_structured_gps_summary' tests/test_downloader.py
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
