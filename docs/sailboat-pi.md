@@ -191,7 +191,7 @@ Maintenance GUI:
 noaa-navionics-gui
 ```
 
-The GUI can load `~/.config/noaa-navionics/config.ini`, choose complete onboard chart packages, sync the configured chart package with the same complete-chart guard as the CLI, write `~/.cache/noaa-navionics/status.json`, run preflight checks with the configured chart, GPSD, baud, chart-age, and track-storage values, and register the configured chart/GPSD connection with OpenCPN. The OpenCPN config writer creates the config directory with private permissions when needed, refuses symlinked OpenCPN config files or path components, misowned config directories, or group/world-writable config directories, and forces private `0600` backup and replacement config files. Close OpenCPN before using the GUI's OpenCPN configuration button.
+The GUI can load `~/.config/noaa-navionics/config.ini`, choose complete onboard chart packages, sync the configured chart package with the same complete-chart guard as the CLI, write `~/.cache/noaa-navionics/status.json`, run preflight checks with the configured chart, GPSD, baud, chart-age, and track-storage values, and register the configured chart/GPSD connection with OpenCPN. The OpenCPN config writer creates the config directory with private permissions when needed, refuses symlinked, non-regular, misowned, or group/world-writable OpenCPN config files, symlinked path components, misowned config directories, or group/world-writable config directories, and forces private `0600` backup and replacement config files. Close OpenCPN before using the GUI's OpenCPN configuration button.
 
 ## Charts
 

@@ -569,6 +569,23 @@ class OpenCPNConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "OpenCPN config path is a symlink"):
                 read_chart_directories(link_config)
 
+    def test_read_chart_directories_rejects_nonregular_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.mkdir()
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN config path is not a regular file"):
+                read_chart_directories(config)
+
+    def test_read_chart_directories_rejects_writable_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.write_text("[ChartDirectories]\n", encoding="utf-8")
+            config.chmod(0o620)
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN config path .* has permissions"):
+                read_chart_directories(config)
+
     def test_configure_chart_directory_is_idempotent_and_backs_up_existing_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

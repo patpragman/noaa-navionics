@@ -263,6 +263,21 @@ def _reject_unsafe_config_path(path: Path) -> None:
     symlink_component = _first_symlink_ancestor(path.parent)
     if symlink_component is not None:
         raise RuntimeError(f"OpenCPN config directory is a symlink: {symlink_component}")
+    if not path.exists():
+        return
+    if not path.is_file():
+        raise RuntimeError(f"OpenCPN config path is not a regular file: {path}")
+    try:
+        path_stat = path.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect OpenCPN config path {path}: {exc}") from exc
+    if path_stat.st_uid != os.getuid():
+        raise RuntimeError(f"OpenCPN config path {path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}")
+    mode = path_stat.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"OpenCPN config path {path} has permissions {mode:04o}, expected no group/other write bits"
+        )
 
 
 def _first_symlink_ancestor(path: Path) -> Optional[Path]:
