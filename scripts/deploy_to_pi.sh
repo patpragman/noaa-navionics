@@ -233,8 +233,98 @@ local_command_exists() {
   validate_trusted_local_command "$command_name" "$command_path"
 }
 
+remote_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+validate_remote_deploy_command_trust() {
+  local command_name="$1"
+  local command_path="$2"
+  local command_path_quoted
+  local command_name_quoted
+
+  if [[ "$command_path" != /* || "$command_path" =~ [[:space:]\"\'] ]]; then
+    echo "Remote deploy command ${command_name} path is unsafe: $command_path" >&2
+    return 1
+  fi
+  if ! remote_path_in_trusted_system_dir "$command_path"; then
+    echo "Remote deploy command ${command_name} is not in a trusted system directory: $command_path" >&2
+    return 1
+  fi
+
+  command_path_quoted="$(printf '%q' "$command_path")"
+  command_name_quoted="$(printf '%q' "$command_name")"
+  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_name_quoted}" <<'REMOTE_DEPLOY_COMMAND_TRUST'
+set -eu
+
+command_path="$1"
+command_name="$2"
+
+check_trusted_system_path() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  echo "Remote deploy command ${command_name} resolves outside trusted system directories: $1" >&2
+  return 1
+}
+
+check_owner_and_mode() {
+  item_kind="$1"
+  item_path="$2"
+  stat_output="$(stat -Lc '%u %a' -- "$item_path")"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [ "$owner_uid" != "0" ]; then
+    echo "Remote deploy command ${command_name} ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    return 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Remote deploy command ${command_name} ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      return 1
+      ;;
+  esac
+}
+
+check_directory_chain() {
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_owner_and_mode directory "$directory"
+    [ "$directory" = "/" ] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+check_trusted_system_path "$command_path"
+resolved_path="$(readlink -f -- "$command_path")"
+check_trusted_system_path "$resolved_path"
+if [ ! -f "$resolved_path" ]; then
+  echo "Remote deploy command ${command_name} is not a regular file after resolution: ${command_path} -> ${resolved_path}" >&2
+  exit 1
+fi
+if [ ! -x "$resolved_path" ]; then
+  echo "Remote deploy command ${command_name} is not executable after resolution: ${command_path} -> ${resolved_path}" >&2
+  exit 1
+fi
+check_directory_chain "$command_path"
+check_directory_chain "$resolved_path"
+check_owner_and_mode file "$resolved_path"
+REMOTE_DEPLOY_COMMAND_TRUST
+}
+
 remote_command_exists() {
   local command_name="$1"
+  local command_path
+  local status=0
   case "$command_name" in
     python3|rsync|tar)
       ;;
@@ -243,7 +333,11 @@ remote_command_exists() {
       return 2
       ;;
   esac
-  ssh "${ssh_connect_options[@]}" "$target" "${remote_system_path} && export PATH && command -v ${command_name} >/dev/null 2>&1"
+  command_path="$(ssh "${ssh_connect_options[@]}" "$target" "${remote_system_path} && export PATH && command -v ${command_name}")" || status="$?"
+  if [[ "$status" -ne 0 || -z "$command_path" ]]; then
+    return "$status"
+  fi
+  validate_remote_deploy_command_trust "$command_name" "$command_path"
 }
 
 require_remote_command_available() {

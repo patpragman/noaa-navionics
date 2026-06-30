@@ -312,6 +312,13 @@ grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAlive
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v ${command_name}' scripts/deploy_to_pi.sh
+grep -q 'validate_remote_deploy_command_trust "$command_name" "$command_path"' scripts/deploy_to_pi.sh
+grep -q 'remote_path_in_trusted_system_dir' scripts/deploy_to_pi.sh
+grep -q 'Remote deploy command ${command_name} is not in a trusted system directory' scripts/deploy_to_pi.sh
+grep -q 'Remote deploy command ${command_name} resolves outside trusted system directories' scripts/deploy_to_pi.sh
+grep -q 'Remote deploy command ${command_name} ${item_kind} is owned by uid' scripts/deploy_to_pi.sh
+grep -q 'Remote deploy command ${command_name} ${item_kind} has permissions' scripts/deploy_to_pi.sh
+grep -q 'readlink -f -- "$command_path"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=' scripts/deploy_to_pi.sh
 grep -q -- '--rsync-path="${remote_system_path} rsync"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && tar -xzf - -C' scripts/deploy_to_pi.sh
@@ -335,8 +342,8 @@ grep -q 'promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$rem
 grep -q 'remote_staging_dir="${remote_dir_trimmed}.deploying"' scripts/deploy_to_pi.sh
 grep -q 'remote_previous_dir="${remote_dir_trimmed}.previous"' scripts/deploy_to_pi.sh
 grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
-grep -q 'pins remote deploy command lookup to trusted system directories' README.md
-grep -q 'pins remote deploy command lookup to trusted system directories' docs/sailboat-pi.md
+grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' README.md
+grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' docs/sailboat-pi.md
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment path under symlink' scripts/deploy_to_pi.sh
@@ -3634,6 +3641,46 @@ if [[ "$deploy_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--opencpn-restart-delay must be a non-negative integer' "$deploy_output"
+
+deploy_fake_ssh_bin="$tmpdir/deploy-fake-ssh-bin"
+mkdir -p "$deploy_fake_ssh_bin"
+cat >"$deploy_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+args="$*"
+case "$args" in
+  *"command -v python3"*)
+    printf '%s\n' /usr/bin/python3
+    exit 0
+    ;;
+  *"sh -s -- /usr/bin/python3 python3"*)
+    exit 0
+    ;;
+  *"command -v rsync"*)
+    exit 1
+    ;;
+  *"command -v tar"*)
+    printf '%s\n' /home/pi/bin/tar
+    exit 0
+    ;;
+esac
+echo "unexpected fake deploy ssh invocation: $args" >&2
+exit 1
+EOF
+chmod +x "$deploy_fake_ssh_bin/ssh"
+
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  PATH="$deploy_fake_ssh_bin:$PATH" \
+  scripts/deploy_to_pi.sh pi@example.invalid --allow-dirty --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject untrusted remote tar with exit 2" >&2
+  exit 1
+fi
+grep -q 'Remote deploy command tar is not in a trusted system directory: /home/pi/bin/tar' "$deploy_output"
+grep -q 'Could not confirm required remote command on the Pi: tar' "$deploy_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout nope >"$dock_output" 2>&1
