@@ -562,6 +562,21 @@ def parse_key_value_text(text, comment_prefixes):
         values[key.strip()] = value.strip()
     return sections, values
 
+def install_wanted_by_targets(lines):
+    targets = []
+    section = ""
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip()
+            continue
+        if section != "Install" or not line.startswith("WantedBy="):
+            continue
+        targets.extend(target for target in line.split("=", 1)[1].split() if target)
+    return targets
+
 def verify_status_file_owner_and_mode(summary, path, stat_result, label, expected_uid):
     status_uid = summary.get("uid")
     if status_uid is None:
@@ -1640,7 +1655,11 @@ for unit, expected_target in expected_unit_files.items():
     if live_unit_symlink_component is not None:
         raise SystemExit(f"status report {unit} path contains a symlink: {live_unit_symlink_component}")
     try:
-        unit_stat = expected_unit_path.stat()
+        unit_text, unit_stat = read_trusted_text_file(
+            expected_unit_path,
+            f"status report {unit}",
+            os.getuid(),
+        )
         unit_dir_stat = expected_unit_path.parent.stat()
     except OSError as exc:
         raise SystemExit(f"could not inspect status report {unit} ownership: {exc}") from exc
@@ -1687,13 +1706,20 @@ for unit, expected_target in expected_unit_files.items():
             f"status report {unit} directory has permissions {unit_dir_mode:04o}, "
             "expected no group/other write bits"
         )
+    wanted_by = state.get("wanted_by")
+    if not isinstance(wanted_by, list):
+        raise SystemExit(f"status report {unit} install targets were not parsed: {expected_unit_path}")
+    status_wanted_by = [str(value) for value in wanted_by]
+    live_wanted_by = install_wanted_by_targets(unit_text.splitlines())
+    if status_wanted_by != live_wanted_by:
+        raise SystemExit(
+            f"status report {unit} WantedBy={','.join(status_wanted_by) or '<missing>'} "
+            f"does not match live unit file {','.join(live_wanted_by) or '<missing>'}"
+        )
     if expected_target:
-        wanted_by = state.get("wanted_by")
-        if not isinstance(wanted_by, list):
-            raise SystemExit(f"status report {unit} install targets were not parsed: {expected_unit_path}")
-        if expected_target not in {str(value) for value in wanted_by}:
+        if expected_target not in set(live_wanted_by):
             raise SystemExit(
-                f"status report {unit} WantedBy={','.join(str(value) for value in wanted_by) or '<missing>'} "
+                f"status report {unit} WantedBy={','.join(status_wanted_by) or '<missing>'} "
                 f"expected {expected_target}"
             )
 expected_revision = os.environ.get("NOAA_NAVIONICS_EXPECTED_REVISION", "unknown")

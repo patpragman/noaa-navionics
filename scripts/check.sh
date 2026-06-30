@@ -818,6 +818,10 @@ grep -q 'status report {unit} directory_uid' scripts/verify_pi.sh
 grep -q 'status report {unit} mode' scripts/verify_pi.sh
 grep -q 'status report {unit} directory_mode' scripts/verify_pi.sh
 grep -q 'expected no group/other write bits' scripts/verify_pi.sh
+grep -q 'def install_wanted_by_targets' scripts/verify_pi.sh
+grep -q 'unit_text, unit_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'live_wanted_by = install_wanted_by_targets' scripts/verify_pi.sh
+grep -q 'does not match live unit file' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'display power command' scripts/verify_pi.sh
