@@ -79,6 +79,7 @@ grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
 grep -q 'python3-tk' scripts/install_raspberry_pi.sh
+grep -q 'OpenCPN executable directory is owned by uid' scripts/start_chartplotter.sh
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
@@ -702,6 +703,7 @@ grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'production verification requires launcher settings from' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
+grep -q 'check_root_directory_integrity "$(dirname "$path")" "OpenCPN command directory"' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_user_private_regular_file_integrity "$launcher_env" "chartplotter launcher environment"' scripts/verify_pi.sh
 grep -q 'check_root_regular_file_integrity' scripts/verify_pi.sh
@@ -1425,8 +1427,8 @@ grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
 grep -q 'status-reported user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' README.md
 grep -q "status artifact's user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode fields" docs/sailboat-pi.md
-grep -q 'requires a root-owned OpenCPN executable on Raspberry Pi hardware' README.md
-grep -q 'rejects non-root OpenCPN executables on Raspberry Pi hardware' docs/sailboat-pi.md
+grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware' README.md
+grep -q 'rejects non-root OpenCPN executables or executable directories on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'rejects symlinked cache parents' README.md
 grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py

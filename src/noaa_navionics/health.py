@@ -263,6 +263,18 @@ def check_opencpn() -> CheckResult:
             False,
             f"OpenCPN command directory has permissions {parent_mode:04o}, expected no group/other write bits: {path.parent}",
         )
+    if _is_raspberry_pi() and parent_stat.st_uid != 0:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command directory is owned by uid {parent_stat.st_uid}, expected root: {path.parent}",
+        )
+    if not _is_raspberry_pi() and parent_stat.st_uid not in {0, os.getuid()}:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command directory is owned by uid {parent_stat.st_uid}, expected root or {os.getuid()}: {path.parent}",
+        )
     if _is_raspberry_pi() and stat_result.st_uid != 0:
         return CheckResult(
             "OpenCPN",

@@ -609,6 +609,7 @@ validate_opencpn_binary_candidate() {
   local mode
   local parent_dir
   local parent_stat
+  local parent_owner_uid
   local parent_mode_text
   local parent_mode
   local symlink_component
@@ -656,10 +657,19 @@ validate_opencpn_binary_candidate() {
     echo "Could not inspect OpenCPN executable directory: $parent_dir" >&2
     return 1
   }
+  parent_owner_uid="${parent_stat%% *}"
   parent_mode_text="${parent_stat#* }"
   parent_mode=$((8#$parent_mode_text))
   if (( parent_mode & 022 )); then
     echo "OpenCPN executable directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$parent_owner_uid" != "0" ]]; then
+    echo "OpenCPN executable directory is owned by uid ${parent_owner_uid}, expected root on Raspberry Pi: $parent_dir" >&2
+    return 1
+  fi
+  if [[ "$parent_owner_uid" != "0" && "$parent_owner_uid" != "$(id -u)" ]]; then
+    echo "OpenCPN executable directory is owned by uid ${parent_owner_uid}, expected root or $(id -u): $parent_dir" >&2
     return 1
   fi
   if is_raspberry_pi && [[ "$owner_uid" != "0" ]]; then

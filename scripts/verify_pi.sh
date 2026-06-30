@@ -1970,6 +1970,7 @@ check_opencpn_command_integrity() {
       return 1
       ;;
   esac
+  check_root_directory_integrity "$(dirname "$path")" "OpenCPN command directory" || return 1
   check_root_executable_file_integrity "$path" "OpenCPN command"
 }
 

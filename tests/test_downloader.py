@@ -8509,6 +8509,27 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("expected root", result.detail)
 
+    def test_check_opencpn_requires_root_parent_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "opencpn"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_opencpn()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("OpenCPN command directory is owned by uid", result.detail)
+            self.assertIn("expected root", result.detail)
+
     def test_parse_throttled_value(self):
         self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)
         self.assertEqual(_parse_throttled_value("throttled=3"), 3)
