@@ -1432,10 +1432,10 @@ if expected_config_path:
     if status_enc_cell_count <= 0:
         raise SystemExit(f"status report manifest has no ENC cells: {expected_manifest_path}")
     actual_enc_cell_count = count_enc_cells(extract_path)
-    if actual_enc_cell_count < manifest_file_enc_cell_count:
+    if actual_enc_cell_count != manifest_file_enc_cell_count:
         raise SystemExit(
             f"status report manifest extract path {extract_path} has {actual_enc_cell_count} ENC cells, "
-            f"expected at least {manifest_file_enc_cell_count}"
+            f"expected exactly {manifest_file_enc_cell_count}"
         )
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}

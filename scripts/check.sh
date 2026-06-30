@@ -669,7 +669,9 @@ grep -q 'status report manifest extract path is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path is not a directory' scripts/verify_pi.sh
 grep -q 'def count_enc_cells' scripts/verify_pi.sh
-grep -q 'expected at least {manifest_file_enc_cell_count}' scripts/verify_pi.sh
+grep -q 'expected exactly {manifest_file_enc_cell_count}' scripts/verify_pi.sh
+grep -q 'exact live ENC cell count' README.md
+grep -q 'exact live ENC cell count' docs/sailboat-pi.md
 grep -q '"ENC cell count"' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
