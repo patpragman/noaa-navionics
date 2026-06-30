@@ -15,6 +15,7 @@ skip_apt=0
 allow_non_pi=0
 apt_get_cmd=""
 sudo_cmd=""
+python3_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -33,7 +34,7 @@ EOF
 }
 
 sync_paths() {
-  python3 - "$@" <<'PY'
+  "$python3_cmd" - "$@" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -95,7 +96,7 @@ PY
 }
 
 sync_tree() {
-  python3 - "$1" <<'PY'
+  "$python3_cmd" - "$1" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -151,7 +152,7 @@ PY
 }
 
 reset_private_venv() {
-  python3 - "$venv_dir" "$data_dir" <<'PY'
+  "$python3_cmd" - "$venv_dir" "$data_dir" <<'PY'
 from pathlib import Path
 import shutil
 import sys
@@ -184,7 +185,7 @@ PY
 write_source_revision() {
   local revision="$1"
   validate_user_install_path "$revision_file" "source revision file" regular
-  python3 - "$revision_file" "$revision" <<'PY'
+  "$python3_cmd" - "$revision_file" "$revision" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -228,7 +229,7 @@ validate_user_install_path() {
   local target="$1"
   local label="$2"
   local expected_kind="$3"
-  python3 - "$target" "$label" "$expected_kind" <<'PY'
+  "$python3_cmd" - "$target" "$label" "$expected_kind" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -316,7 +317,7 @@ install_root_text_atomic() {
   local text="$3"
   local sudo_cmd_value
   sudo_cmd_value="$(sudo_command)" || return 1
-  "$sudo_cmd_value" python3 - "$target" "$mode" "$text" <<'PY'
+  "$sudo_cmd_value" "$python3_cmd" - "$target" "$mode" "$text" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -479,7 +480,7 @@ verify_installed_command_link() {
   local target="$1"
   local label="$2"
   validate_user_install_path "$target" "$label" link
-  python3 - "$target" "$label" "$venv_dir" <<'PY'
+  "$python3_cmd" - "$target" "$label" "$venv_dir" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -526,7 +527,7 @@ verify_installed_user_executable() {
   local target="$1"
   local label="$2"
   validate_user_install_path "$target" "$label" regular
-  python3 - "$target" "$label" <<'PY'
+  "$python3_cmd" - "$target" "$label" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -682,6 +683,13 @@ sudo_command() {
   printf '%s\n' "$sudo_cmd"
 }
 
+python3_command() {
+  if [[ -z "$python3_cmd" ]]; then
+    python3_cmd="$(trusted_root_command_path python3 "Python command")" || return 1
+  fi
+  printf '%s\n' "$python3_cmd"
+}
+
 ensure_gpsd_client_tools() {
   if check_root_command_integrity cgps "GPSD client command"; then
     return 0
@@ -773,6 +781,8 @@ EOF
   exit 2
 fi
 
+python3_cmd="$(python3_command)" || exit 2
+
 validate_user_install_path "${HOME}/.local/bin" "user command directory" directory
 validate_user_install_path "$data_dir" "NOAA Navionics data directory" directory
 validate_user_install_path "$venv_dir" "private virtual environment" directory
@@ -806,7 +816,7 @@ ensure_private_directory "$data_dir" "NOAA Navionics data directory"
 ensure_private_directory "$config_dir" "NOAA Navionics config directory"
 ensure_private_directory "$systemd_user_dir" "user systemd directory"
 reset_private_venv
-python3 -m venv "$venv_dir"
+"$python3_cmd" -m venv "$venv_dir"
 "${venv_dir}/bin/python" -m pip install --disable-pip-version-check --no-index --no-build-isolation --no-use-pep517 "${repo_root}"
 sync_tree "$venv_dir"
 link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
