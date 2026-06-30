@@ -841,6 +841,9 @@ grep -q 'chartplotter launcher stale lock recovery' scripts/verify_pi.sh
 grep -q 'production verification requires launcher settings from' scripts/verify_pi.sh
 grep -q 'chartplotter launcher GPS wait persisted' scripts/verify_pi.sh
 grep -q 'check_launcher_env_production_settings' scripts/verify_pi.sh
+grep -q 'could not open launcher environment' scripts/verify_pi.sh
+grep -q 'launcher environment is not a regular file' scripts/verify_pi.sh
+grep -q 'handle.read().splitlines()' scripts/verify_pi.sh
 grep -q 'check_root_directory_integrity "$(dirname "$path")" "OpenCPN command directory"' scripts/verify_pi.sh
 grep -q 'check_user_regular_file_integrity' scripts/verify_pi.sh
 grep -q 'check_user_private_regular_file_integrity "$launcher_env" "chartplotter launcher environment"' scripts/verify_pi.sh
@@ -1767,6 +1770,8 @@ grep -q 'readiness report fails if the persisted launcher environment is missing
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
 grep -q 'Pi verification compares status-reported launcher settings only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before rejecting fail-open startup' README.md
+grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before rejecting fail-open startup' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md

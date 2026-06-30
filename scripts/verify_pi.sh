@@ -1948,13 +1948,31 @@ check_launcher_env_production_settings() {
   local path="$1"
   python3 - "$path" <<'PY'
 from pathlib import Path
+import os
+import stat
 import sys
 
 path = Path(sys.argv[1]).expanduser()
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
-    lines = path.read_text(encoding="utf-8").splitlines()
+    fd = os.open(path, flags)
 except OSError as exc:
-    raise SystemExit(f"could not read launcher environment {path}: {exc}") from exc
+    raise SystemExit(f"could not open launcher environment {path}: {exc}") from exc
+try:
+    env_stat = os.fstat(fd)
+    if not stat.S_ISREG(env_stat.st_mode):
+        raise SystemExit(f"launcher environment is not a regular file: {path}")
+    if env_stat.st_uid != os.getuid():
+        raise SystemExit(f"launcher environment {path} is owned by uid {env_stat.st_uid}, expected {os.getuid()}")
+    env_mode = env_stat.st_mode & 0o777
+    if env_mode != 0o600:
+        raise SystemExit(f"launcher environment {path} has permissions {env_mode:04o}, expected private 0600")
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        lines = handle.read().splitlines()
+finally:
+    if fd >= 0:
+        os.close(fd)
 values = {}
 for raw_line in lines:
     line = raw_line.strip()
