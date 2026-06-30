@@ -180,6 +180,14 @@ scripts/export_pi_opencpn_data.sh pi@raspberrypi.local
 
 The OpenCPN export helper writes a local `.tgz` containing trusted regular OpenCPN config, `navobj.xml` route/waypoint data, and GPX/XML layer files when present. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 
+Export commissioning settings before reimaging or replacing storage:
+
+```bash
+scripts/export_pi_settings.sh pi@raspberrypi.local
+```
+
+The settings export helper writes a local `.tgz` containing trusted NOAA Navionics config, launcher policy, source revision, user service/autostart files, and readable GPSD/chrony/LightDM settings. It does not deploy, reboot, start services, download charts, or copy logs, GPX tracks, NOAA chart archives, or extracted ENC cells.
+
 Shut the Pi down cleanly before cutting boat power:
 
 ```bash

@@ -483,6 +483,8 @@ grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
+grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
@@ -491,6 +493,8 @@ grep -q 'containing only regular private `.gpx` files' README.md
 grep -q 'containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q '`navobj.xml` route/waypoint data' README.md
 grep -q '`navobj.xml` route/waypoint data' docs/sailboat-pi.md
+grep -q 'trusted NOAA Navionics config, launcher policy, source revision' README.md
+grep -q 'trusted NOAA Navionics config, launcher policy, source revision' docs/sailboat-pi.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' README.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
@@ -794,6 +798,12 @@ grep -q 'navobj.xml' scripts/export_pi_opencpn_data.sh
 grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.sh
 grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
+grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
+grep -q 'launcher.env' scripts/export_pi_settings.sh
+grep -q 'source-revision' scripts/export_pi_settings.sh
+grep -q '50-noaa-navionics-autologin.conf' scripts/export_pi_settings.sh
+grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
+grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4688,6 +4698,60 @@ grep -q 'navobj.xml' "$opencpn_export_fake_ssh_stdin"
 grep -q 'refusing to export symlinked OpenCPN file' "$opencpn_export_fake_ssh_stdin"
 grep -q 'OpenCPN user config, routes, waypoints' "$opencpn_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$opencpn_export_fake_ssh_stdin"
+
+set +e
+scripts/export_pi_settings.sh root@example.invalid >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not export settings as root@' "$verify_output"
+
+settings_export_symlink="$tmpdir/settings-export-output-link"
+ln -s "$tmpdir" "$settings_export_symlink"
+set +e
+scripts/export_pi_settings.sh pi@example.invalid "$settings_export_symlink" >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject symlinked output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not be a symlink' "$verify_output"
+
+settings_export_fake_ssh_bin="$tmpdir/settings-export-fake-ssh-bin"
+settings_export_fake_ssh_args="$tmpdir/settings-export-fake-ssh-args"
+settings_export_fake_ssh_stdin="$tmpdir/settings-export-fake-ssh-stdin"
+settings_export_output_dir="$tmpdir/settings-exports"
+mkdir -p "$settings_export_fake_ssh_bin"
+cat >"$settings_export_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake-settings-export\n'
+EOF
+chmod +x "$settings_export_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
+  PATH="$settings_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_output_dir" >"$verify_output" 2>&1
+grep -q 'Exported Pi commissioning settings:' "$verify_output"
+settings_export_path="$(sed -n 's/^Exported Pi commissioning settings: //p' "$verify_output")"
+test -s "$settings_export_path"
+grep -q -- '-o BatchMode=yes' "$settings_export_fake_ssh_args"
+grep -q 'pi@example.invalid' "$settings_export_fake_ssh_args"
+grep -q 'python3 -s' "$settings_export_fake_ssh_args"
+grep -q 'tarfile.open' "$settings_export_fake_ssh_stdin"
+grep -q 'launcher.env' "$settings_export_fake_ssh_stdin"
+grep -q 'source-revision' "$settings_export_fake_ssh_stdin"
+grep -q 'noaa-navionics-preflight.service' "$settings_export_fake_ssh_stdin"
+grep -q '50-noaa-navionics-autologin.conf' "$settings_export_fake_ssh_stdin"
+grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' "$settings_export_fake_ssh_stdin"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1
