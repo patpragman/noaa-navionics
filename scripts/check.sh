@@ -643,6 +643,11 @@ grep -q 'status report manifest download_skipped' scripts/verify_pi.sh
 grep -q 'status report manifest created_at ' scripts/verify_pi.sh
 grep -q 'does not match manifest file bytes' scripts/verify_pi.sh
 grep -q 'does not match manifest file enc_cell_count' scripts/verify_pi.sh
+grep -q 'actual_enc_cell_count' src/noaa_navionics/report.py
+grep -q 'status report manifest actual_enc_cell_count' scripts/verify_pi.sh
+grep -q 'actual_enc_cell_count: 1' tests/test_downloader.py
+grep -q 'manifest-recorded and live ENC cell counts' README.md
+grep -q 'manifest-recorded and live ENC cell counts' docs/sailboat-pi.md
 grep -q 'manifest_field_pairs' scripts/verify_pi.sh
 grep -q 'expected_package_filename' scripts/verify_pi.sh
 grep -q 'expected_package_url' scripts/verify_pi.sh

@@ -17,7 +17,7 @@ import tempfile
 import time
 
 from .config import AppConfig, read_config
-from .downloader import MANIFEST_NAME, read_manifest
+from .downloader import MANIFEST_NAME, count_enc_cells, read_manifest
 from .health import CheckResult, run_preflight
 from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
 from . import __version__
@@ -319,6 +319,7 @@ def format_status_text(report: dict[str, object]) -> str:
             "extract_path_is_symlink",
             "extract_path_symlink_component",
             "enc_cell_count",
+            "actual_enc_cell_count",
         ):
             if key in manifest:
                 lines.append(f"{key}: {manifest[key]}")
@@ -889,6 +890,17 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
                 str(extract_path_symlink_component) if extract_path_symlink_component is not None else ""
             ),
             "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
+            "actual_enc_cell_count": (
+                count_enc_cells(extract_path_obj)
+                if (
+                    extract_path_obj is not None
+                    and extract_path_obj.exists()
+                    and extract_path_obj.is_dir()
+                    and not extract_path_obj.is_symlink()
+                    and extract_path_symlink_component is None
+                )
+                else 0
+            ),
         }
     )
     if (

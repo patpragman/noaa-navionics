@@ -1307,6 +1307,11 @@ if expected_config_path:
         "enc_cell_count",
         "status report",
     )
+    status_actual_enc_cell_count = parse_manifest_int(
+        manifest.get("actual_enc_cell_count", 0),
+        "actual_enc_cell_count",
+        "status report",
+    )
     if status_download_bytes != manifest_file_download_bytes:
         raise SystemExit(
             f"status report manifest download_bytes {manifest.get('download_bytes', 0)} "
@@ -1432,6 +1437,11 @@ if expected_config_path:
     if status_enc_cell_count <= 0:
         raise SystemExit(f"status report manifest has no ENC cells: {expected_manifest_path}")
     actual_enc_cell_count = count_enc_cells(extract_path)
+    if status_actual_enc_cell_count != actual_enc_cell_count:
+        raise SystemExit(
+            f"status report manifest actual_enc_cell_count {status_actual_enc_cell_count} "
+            f"does not match live ENC cell count {actual_enc_cell_count}"
+        )
     if actual_enc_cell_count != manifest_file_enc_cell_count:
         raise SystemExit(
             f"status report manifest extract path {extract_path} has {actual_enc_cell_count} ENC cells, "
