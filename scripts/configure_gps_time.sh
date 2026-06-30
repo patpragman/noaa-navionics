@@ -351,7 +351,7 @@ install_root_file_atomic() {
 }
 
 validate_chrony_config_path() {
-  python3 - "$chrony_conf" "$dry_run" <<'PY'
+  "$python3_cmd" - "$chrony_conf" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -473,12 +473,14 @@ EOF
   exit 2
 fi
 
+python3_cmd="$(python3_command)" || exit 2
+
 validate_chrony_config_path
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-python3 - "$chrony_conf" "$tmp" "$dry_run" <<'PY'
+"$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -575,7 +577,6 @@ fi
 
 sudo_cmd="$(sudo_command)" || exit 2
 systemctl_cmd="$(systemctl_command)" || exit 2
-python3_cmd="$(python3_command)" || exit 2
 
 if [[ -e "$chrony_conf" ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"

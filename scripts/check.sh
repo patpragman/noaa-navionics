@@ -1567,6 +1567,8 @@ grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")
 grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/configure_gps_time.sh
 grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_gps_time.sh
 grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/configure_gps_time.sh
+grep -q '"$python3_cmd" - "$chrony_conf" "$dry_run"' scripts/configure_gps_time.sh
+grep -q '"$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run"' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$backup"' scripts/configure_gps_time.sh
@@ -1574,6 +1576,7 @@ grep -q '"$sudo_cmd" "$systemctl_cmd" enable --now chrony' scripts/configure_gps
 grep -q '"$sudo_cmd" "$systemctl_cmd" restart chrony' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
 ! grep -q 'sudo systemctl' scripts/configure_gps_time.sh
+! grep -Eq '(^|[[:space:]])python3[[:space:]]+-' scripts/configure_gps_time.sh
 ! grep -q '"$sudo_cmd" python3' scripts/configure_gps_time.sh
 grep -q 'GPS time setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
 grep -q 'GPS time setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
@@ -1581,14 +1584,16 @@ python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/configure_gps_time.sh").read_text(encoding="utf-8")
-sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2')
-systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
 python_resolve = text.index('python3_cmd="$(python3_command)" || exit 2')
-backup = text.index('backup_root_file_private "$chrony_conf" "$backup"')
-install = text.index('install_root_file_atomic "$tmp" "$chrony_conf" 0644')
-restart = text.index('"$sudo_cmd" "$systemctl_cmd" restart chrony')
-if not sudo_resolve < systemctl_resolve < python_resolve < backup < install < restart:
-    raise SystemExit("GPS time setup must validate sudo, systemctl, and Python before backup, install, and service restart")
+validate = text.index('validate_chrony_config_path', python_resolve)
+generate = text.index('"$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run"', validate)
+sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2', generate)
+systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2', sudo_resolve)
+backup = text.index('backup_root_file_private "$chrony_conf" "$backup"', systemctl_resolve)
+install = text.index('install_root_file_atomic "$tmp" "$chrony_conf" 0644', backup)
+restart = text.index('"$sudo_cmd" "$systemctl_cmd" restart chrony', install)
+if not python_resolve < validate < generate < sudo_resolve < systemctl_resolve < backup < install < restart:
+    raise SystemExit("GPS time setup must validate Python before chrony config helpers and sudo/systemctl before root changes")
 PY
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is a symlink when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
