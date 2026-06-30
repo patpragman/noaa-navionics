@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import tempfile
 import time
 import xml.etree.ElementTree as ET
@@ -511,6 +512,7 @@ def _chart_update_lock(output_path: Path):
                 raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
             if _lock_is_stale(lock_path):
                 try:
+                    _validate_stale_lock_for_cleanup(lock_path)
                     lock_path.unlink()
                     _fsync_directory(output_path)
                 except FileNotFoundError:
@@ -557,6 +559,27 @@ def _chart_update_lock(output_path: Path):
                 _fsync_directory(output_path)
         except FileNotFoundError:
             pass
+
+
+def _validate_stale_lock_for_cleanup(lock_path: Path) -> None:
+    try:
+        lock_stat = lock_path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect stale chart update lock before cleanup: {lock_path}: {exc}") from exc
+    if not stat.S_ISREG(lock_stat.st_mode):
+        raise RuntimeError(f"chart update lock path is not a regular file; leaving it in place: {lock_path}")
+    expected_uid = os.getuid()
+    if lock_stat.st_uid != expected_uid:
+        raise RuntimeError(
+            f"chart update lock path is owned by uid {lock_stat.st_uid}, "
+            f"expected {expected_uid}; leaving it in place: {lock_path}"
+        )
+    mode = lock_stat.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"chart update lock path has permissions {mode:04o}, "
+            f"expected no group/other write bits; leaving it in place: {lock_path}"
+        )
 
 
 def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_SECONDS) -> bool:

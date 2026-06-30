@@ -976,6 +976,11 @@ grep -q 'test_forced_download_rejects_zip_without_enc_cells_before_replacing_arc
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
+grep -q 'def _validate_stale_lock_for_cleanup' src/noaa_navionics/downloader.py
+grep -q 'chart update lock path has permissions' src/noaa_navionics/downloader.py
+grep -q 'test_stale_download_lock_cleanup_rejects_writable_lock_file' tests/test_downloader.py
+grep -q 'stale lock cleanup refuses misowned or group/world-writable lock files' README.md
+grep -q 'stale lock cleanup refuses misowned or group/world-writable lock files' docs/sailboat-pi.md
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
 grep -q 'lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
 grep -q 'os.fchmod(lock_fd, 0o600)' src/noaa_navionics/downloader.py

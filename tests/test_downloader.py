@@ -2159,6 +2159,23 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(result.skipped)
             self.assertFalse(lock.exists())
 
+    def test_stale_download_lock_cleanup_rejects_writable_lock_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "chart.zip").write_bytes(b"existing")
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("stale\n", encoding="ascii")
+            os.chmod(lock, 0o620)
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(lock, (old_time, old_time))
+            package = Package("Stale lock test", "https://example.invalid/chart.zip", "chart.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart update lock path has permissions"):
+                download_package(package, root)
+
+            self.assertTrue(lock.exists())
+            self.assertEqual(lock.read_text(encoding="ascii"), "stale\n")
+
     def test_old_download_lock_with_live_owner_is_not_replaced(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
