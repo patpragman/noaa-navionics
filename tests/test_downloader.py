@@ -528,6 +528,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             root = Path(tmpdir)
             config = root / ".opencpn" / "opencpn.conf"
             charts = root / "charts" / "noaa-enc"
+            charts.mkdir(parents=True)
 
             result = configure_chart_directory(charts, config_path=config)
 
@@ -539,6 +540,46 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(read_chart_directories(config), [charts.resolve()])
             self.assertTrue(chart_directory_configured(charts, config))
 
+    def test_configure_chart_directory_rejects_missing_chart_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "missing-charts"
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN chart directory does not exist"):
+                configure_chart_directory(charts, config_path=config)
+
+            self.assertFalse(config.exists())
+
+    def test_configure_chart_directory_rejects_non_directory_chart_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "charts"
+            charts.write_text("not a directory\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN chart directory is not a directory"):
+                configure_chart_directory(charts, config_path=config)
+
+            self.assertFalse(config.exists())
+
+    def test_configure_chart_directory_rejects_symlinked_chart_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            real_charts = root / "real-charts"
+            real_charts.mkdir()
+            chart_link = root / "charts"
+            try:
+                chart_link.symlink_to(real_charts, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN chart directory path contains a symlink"):
+                configure_chart_directory(chart_link, config_path=config)
+
+            self.assertFalse(config.exists())
+
     def test_configure_chart_directory_rejects_writable_config_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -546,9 +587,11 @@ class OpenCPNConfigTests(unittest.TestCase):
             parent.mkdir()
             parent.chmod(0o777)
             config = parent / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
             try:
                 with self.assertRaisesRegex(RuntimeError, "no group/other write bits"):
-                    configure_chart_directory(root / "charts", config_path=config)
+                    configure_chart_directory(charts, config_path=config)
             finally:
                 parent.chmod(0o700)
 
@@ -559,8 +602,10 @@ class OpenCPNConfigTests(unittest.TestCase):
             parent.mkdir()
             parent.chmod(0o755)
             config = parent / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
 
-            configure_chart_directory(root / "charts", config_path=config)
+            configure_chart_directory(charts, config_path=config)
 
             self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(config.stat().st_mode), 0o600)
@@ -575,9 +620,11 @@ class OpenCPNConfigTests(unittest.TestCase):
                 link_parent.symlink_to(real_parent, target_is_directory=True)
             except OSError as exc:
                 self.skipTest(f"symlinks unavailable: {exc}")
+            charts = root / "charts"
+            charts.mkdir()
 
             with self.assertRaisesRegex(RuntimeError, "symlink"):
-                configure_chart_directory(root / "charts", config_path=link_parent / "opencpn.conf")
+                configure_chart_directory(charts, config_path=link_parent / "opencpn.conf")
 
     def test_configure_chart_directory_rejects_symlinked_config_ancestor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -589,10 +636,12 @@ class OpenCPNConfigTests(unittest.TestCase):
                 link_config_root.symlink_to(real_config_root, target_is_directory=True)
             except OSError as exc:
                 self.skipTest(f"symlinks unavailable: {exc}")
+            charts = root / "charts"
+            charts.mkdir()
 
             with self.assertRaisesRegex(RuntimeError, "OpenCPN config directory is a symlink"):
                 configure_chart_directory(
-                    root / "charts",
+                    charts,
                     config_path=link_config_root / "opencpn" / "opencpn.conf",
                 )
 
@@ -602,6 +651,7 @@ class OpenCPNConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             charts = root / "charts"
+            charts.mkdir()
             real_config = root / "real-opencpn.conf"
             configure_chart_directory(charts, config_path=real_config)
             link_config = root / "opencpn.conf"
@@ -635,6 +685,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             root = Path(tmpdir)
             config = root / "opencpn.conf"
             charts = root / "charts"
+            charts.mkdir()
             config.write_text("[Settings]\nShowStatusBar=1\n\n[ChartDirectories]\nChartDir4=/old\n", encoding="utf-8")
 
             result = configure_chart_directory(charts, config_path=config)
@@ -691,9 +742,11 @@ class OpenCPNConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             config = root / ".opencpn" / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
             original_umask = os.umask(0)
             try:
-                configure_chart_directory(root / "charts", config_path=config)
+                configure_chart_directory(charts, config_path=config)
             finally:
                 os.umask(original_umask)
 
@@ -703,6 +756,8 @@ class OpenCPNConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             config = root / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
             config.write_text("[Settings]\nShowStatusBar=1\n", encoding="utf-8")
             fixed_part = root / "opencpn.conf.part"
             fixed_part.write_text("other writer\n", encoding="utf-8")
@@ -710,7 +765,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             original_fsync = opencpn_module.os.fsync
             opencpn_module.os.fsync = lambda fd: calls.append(fd)
             try:
-                result = configure_chart_directory(root / "charts", config_path=config)
+                result = configure_chart_directory(charts, config_path=config)
             finally:
                 opencpn_module.os.fsync = original_fsync
 
@@ -738,7 +793,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             root = Path(tmpdir)
             config = root / "opencpn.conf"
             charts = root / "missing-charts"
-            configure_chart_directory(charts, config_path=config)
+            config.write_text(f"[ChartDirectories]\nChartDir1={charts}\n", encoding="utf-8")
 
             configured = check_opencpn_chart_config(charts, config)
 
@@ -853,6 +908,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             app_config = root / "config.ini"
             opencpn_config = root / "opencpn.conf"
             charts = root / "charts"
+            charts.mkdir()
             app_config.write_text(
                 "[charts]\n"
                 "package = state\n"
@@ -892,6 +948,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             app_config = root / "config.ini"
             opencpn_config = root / "opencpn.conf"
             charts = root / "charts"
+            charts.mkdir()
             app_config.write_text(
                 "[charts]\n"
                 "package = state\n"

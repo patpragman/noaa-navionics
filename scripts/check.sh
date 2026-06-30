@@ -1378,7 +1378,10 @@ grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/opencpn.py
 grep -q 'def _reject_unsafe_config_path' src/noaa_navionics/opencpn.py
+grep -q 'def _validate_chart_directory_for_opencpn' src/noaa_navionics/opencpn.py
 grep -q 'def _first_symlink_ancestor' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN chart directory does not exist' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN chart directory path contains a symlink' src/noaa_navionics/opencpn.py
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config path is not a regular file' src/noaa_navionics/opencpn.py
@@ -1396,12 +1399,17 @@ grep -q 'removes stale enabled OpenCPN GPSD endpoints' docs/sailboat-pi.md
 grep -q 'rejects extra enabled OpenCPN GPSD endpoints' README.md
 grep -q 'rejects extra enabled OpenCPN GPSD endpoints' docs/sailboat-pi.md
 grep -q 'test_configure_chart_directory_rejects_symlinked_config_ancestor' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_rejects_missing_chart_directory' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_rejects_non_directory_chart_path' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_rejects_symlinked_chart_directory' tests/test_downloader.py
 grep -q 'test_configure_chart_directory_tightens_public_config_parent' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_nonregular_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_writable_config_file' tests/test_downloader.py
 grep -q 'symlinked, non-regular, misowned, or group/world-writable OpenCPN config files' README.md
 grep -q 'symlinked, non-regular, misowned, or group/world-writable OpenCPN config files' docs/sailboat-pi.md
+grep -q 'refuses to register missing, non-directory, or symlinked chart directories' README.md
+grep -q 'refuses to register missing, non-directory, or symlinked chart directories' docs/sailboat-pi.md
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
 grep -q 'os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)' src/noaa_navionics/opencpn.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/opencpn.py

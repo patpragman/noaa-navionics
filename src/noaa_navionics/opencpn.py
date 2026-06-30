@@ -126,6 +126,7 @@ def configure_chart_directory(
 ) -> OpenCPNConfigResult:
     target = opencpn_config_path(config_path)
     _reject_unsafe_config_path(target)
+    _validate_chart_directory_for_opencpn(Path(chart_dir).expanduser())
     wanted = _normalize_chart_dir(chart_dir)
     original = target.read_text(encoding="utf-8", errors="ignore") if target.exists() else ""
     updated, changed, key = _set_chart_directory(original, wanted)
@@ -316,6 +317,16 @@ def _reject_unsafe_config_path(path: Path) -> None:
         raise RuntimeError(
             f"OpenCPN config path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
+
+
+def _validate_chart_directory_for_opencpn(path: Path) -> None:
+    symlink_component = _first_symlink_ancestor(path)
+    if symlink_component is not None:
+        raise RuntimeError(f"OpenCPN chart directory path contains a symlink: {symlink_component}")
+    if not path.exists():
+        raise RuntimeError(f"OpenCPN chart directory does not exist: {path}")
+    if not path.is_dir():
+        raise RuntimeError(f"OpenCPN chart directory is not a directory: {path}")
 
 
 def _first_symlink_ancestor(path: Path) -> Optional[Path]:
