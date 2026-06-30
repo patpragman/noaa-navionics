@@ -920,6 +920,13 @@ if expected_config_path:
         opencpn_stat = opencpn_config_file.stat()
     except OSError as exc:
         raise SystemExit(f"could not inspect status report OpenCPN config {opencpn_config_file}: {exc}") from exc
+    verify_status_file_owner_and_mode(
+        opencpn_config,
+        opencpn_config_file,
+        opencpn_stat,
+        "OpenCPN config",
+        os.getuid(),
+    )
     if opencpn_stat.st_uid != os.getuid():
         raise SystemExit(
             f"status report OpenCPN config {opencpn_config_file} is owned by uid "

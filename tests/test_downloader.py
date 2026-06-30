@@ -3288,6 +3288,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["opencpn_config"]["is_symlink"], False)
             self.assertEqual(report["opencpn_config"]["directory_is_symlink"], False)
             self.assertEqual(report["opencpn_config"]["config_symlink_component"], "")
+            self.assertEqual(report["opencpn_config"]["uid"], os.getuid())
+            self.assertEqual(report["opencpn_config"]["mode"], "0600")
             self.assertEqual(report["opencpn_config"]["chart_directories"], [str(charts.resolve())])
             self.assertTrue(report["opencpn_config"]["data_connections"])
             self.assertEqual(report["desktop"]["autostart"]["path"], str(autostart))
@@ -3343,6 +3345,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("is_symlink=False", text)
             self.assertIn("directory_is_symlink=False", text)
             self.assertIn("config_symlink_component=", text)
+            self.assertIn(f"uid={os.getuid()} mode=0600", text)
             self.assertIn("Desktop Startup:", text)
             self.assertIn(f"autostart={autostart}", text)
             self.assertIn("is_symlink=False", text)
@@ -3854,6 +3857,34 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("OpenCPN config directory is a symlink", summary["error"])
             self.assertNotIn("chart_directories", summary)
             self.assertNotIn("data_connections", summary)
+
+    def test_opencpn_config_summary_rejects_nonregular_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.mkdir()
+
+            summary = report_module._opencpn_config_summary(config)
+
+            self.assertEqual(summary["path"], str(config))
+            self.assertEqual(summary["exists"], True)
+            self.assertIn("OpenCPN config path is not a regular file", summary["error"])
+            self.assertNotIn("chart_directories", summary)
+            self.assertNotIn("data_connections", summary)
+
+    def test_opencpn_config_summary_records_owner_and_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            config = root / "opencpn.conf"
+            configure_chart_directory(charts, config_path=config)
+            config.chmod(0o640)
+
+            summary = report_module._opencpn_config_summary(config)
+
+            self.assertEqual(summary["uid"], os.getuid())
+            self.assertEqual(summary["mode"], "0640")
+            self.assertEqual(summary["chart_directories"], [str(charts.resolve())])
 
     def test_manifest_summary_rejects_symlinked_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:

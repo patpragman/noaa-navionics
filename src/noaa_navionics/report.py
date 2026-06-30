@@ -369,6 +369,7 @@ def format_status_text(report: dict[str, object]) -> str:
             f"is_symlink={opencpn_config.get('is_symlink', '')} "
             f"directory_is_symlink={opencpn_config.get('directory_is_symlink', '')} "
             f"config_symlink_component={opencpn_config.get('config_symlink_component', '')} "
+            f"uid={opencpn_config.get('uid', '')} mode={opencpn_config.get('mode', '')} "
             f"chart_directories={chart_dir_text} data_connections={connection_count}".rstrip()
         )
     desktop = report.get("desktop", {})
@@ -959,7 +960,7 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
     symlink_component = _first_symlink_ancestor(config_path.parent)
     summary: dict[str, object] = {
         "path": str(config_path),
-        "exists": config_path.is_file(),
+        "exists": config_path.exists(),
         "is_symlink": config_path.is_symlink(),
         "directory_is_symlink": config_path.parent.is_symlink(),
         "config_symlink_component": str(symlink_component) if symlink_component is not None else "",
@@ -972,6 +973,16 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
         return summary
     if not config_path.exists():
         return summary
+    if not config_path.is_file():
+        summary["error"] = f"OpenCPN config path is not a regular file: {config_path}"
+        return summary
+    try:
+        stat_result = config_path.stat()
+    except OSError as exc:
+        summary["error"] = str(exc)
+        return summary
+    summary["uid"] = stat_result.st_uid
+    summary["mode"] = f"{stat_result.st_mode & 0o777:04o}"
     try:
         summary["chart_directories"] = [str(chart_dir) for chart_dir in read_chart_directories(config_path)]
         summary["data_connections"] = read_data_connections(config_path)

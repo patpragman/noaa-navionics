@@ -1248,11 +1248,16 @@ grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
 grep -q 'LAUNCHER_ENV_KEYS' src/noaa_navionics/report.py
 grep -q 'OpenCPN config path is a symlink' src/noaa_navionics/report.py
+grep -q 'OpenCPN config path is not a regular file' src/noaa_navionics/report.py
 grep -q 'OpenCPN config directory is a symlink' src/noaa_navionics/report.py
 grep -q '"config_symlink_component"' src/noaa_navionics/report.py
+grep -q '"uid"' src/noaa_navionics/report.py
+grep -q '"mode"' src/noaa_navionics/report.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/test_downloader.py
-grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' README.md
-grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components' docs/sailboat-pi.md
+grep -q 'test_opencpn_config_summary_rejects_nonregular_config' tests/test_downloader.py
+grep -q 'test_opencpn_config_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components and non-regular, writable, or misowned OpenCPN config files' README.md
+grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components and non-regular, writable, or misowned OpenCPN config files' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment is not a regular file' src/noaa_navionics/report.py
 grep -q 'launcher environment is owned by uid' src/noaa_navionics/report.py
@@ -1348,8 +1353,8 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' docs/s
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
-grep -q 'status-reported user unit owner/mode' README.md
-grep -q "status artifact's user unit owner/mode fields" docs/sailboat-pi.md
+grep -q 'status-reported user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' README.md
+grep -q "status artifact's user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode fields" docs/sailboat-pi.md
 grep -q 'requires a root-owned OpenCPN executable on Raspberry Pi hardware' README.md
 grep -q 'rejects non-root OpenCPN executables on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'rejects symlinked cache parents' README.md
