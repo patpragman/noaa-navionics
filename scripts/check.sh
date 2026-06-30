@@ -618,6 +618,8 @@ grep -q 'GPX trackpoint has non-finite coordinates' scripts/verify_pi.sh
 grep -q 'GPX trackpoint latitude is outside -90..90' scripts/verify_pi.sh
 grep -q 'GPX trackpoint longitude is outside -180..180' scripts/verify_pi.sh
 grep -q 'GPX trackpoint has invalid 0,0 coordinates' scripts/verify_pi.sh
+grep -q 'GPX trackpoint has invalid negative HDOP' scripts/verify_pi.sh
+test "$(grep -c 'status report track_log latest_hdop is negative' scripts/verify_pi.sh)" -ge 2
 grep -q 'def first_symlink_ancestor' scripts/verify_pi.sh
 grep -q 'track_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh

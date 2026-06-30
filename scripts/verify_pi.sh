@@ -980,6 +980,8 @@ if expected_config_path:
             raise SystemExit(f"status report track_log latest_hdop is not numeric: {latest_hdop!r}")
         if not math.isfinite(float(latest_hdop)):
             raise SystemExit(f"status report track_log latest_hdop is not finite: {latest_hdop!r}")
+        if float(latest_hdop) < 0.0:
+            raise SystemExit(f"status report track_log latest_hdop is negative: {latest_hdop:g}")
         if float(latest_hdop) > 5.0:
             raise SystemExit(f"status report track_log latest_hdop is weak: {latest_hdop:g}")
     opencpn_config = report.get("opencpn_config")
@@ -1744,6 +1746,8 @@ if latest_hdop is not None:
         raise SystemExit(f"status report track_log latest_hdop is not numeric: {latest_hdop!r}")
     if not math.isfinite(float(latest_hdop)):
         raise SystemExit(f"status report track_log latest_hdop is not finite: {latest_hdop!r}")
+    if float(latest_hdop) < 0.0:
+        raise SystemExit(f"status report track_log latest_hdop is negative: {latest_hdop:g}")
     if float(latest_hdop) > 5.0:
         raise SystemExit(f"status report track_log latest_hdop is weak: {latest_hdop:g}")
 PY
@@ -3248,6 +3252,8 @@ def trackpoint_quality(trackpoint):
             return None, f"GPX trackpoint has non-numeric HDOP: {hdop_text}"
         if not math.isfinite(hdop):
             return None, f"GPX trackpoint has non-finite HDOP: {hdop_text}"
+        if hdop < 0.0:
+            return None, f"GPX trackpoint has invalid negative HDOP: {hdop:g}"
         if hdop > 5.0:
             return None, f"GPX trackpoint has weak HDOP: {hdop:g}"
         quality["hdop"] = hdop
