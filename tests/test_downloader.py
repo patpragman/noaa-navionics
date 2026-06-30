@@ -4849,6 +4849,37 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(check.ok)
             self.assertIn("missing satellite or HDOP quality fields", check.detail)
 
+    def test_track_log_summary_rejects_negative_hdop(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            track_path = tracks / "track-20260629.gpx"
+            track_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f'  <trk><trkseg><trkpt lat="61.2181" lon="-149.9003">'
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}</time>"
+                "<hdop>-0.1</hdop>"
+                "</trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            track_path.chmod(0o600)
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("negative HDOP", check.detail)
+
     def test_track_log_summary_rejects_public_tracks_directory(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -6940,6 +6971,21 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(rmc_fix.speed_knots)
         self.assertIsNone(rmc_fix.course_degrees)
 
+    def test_parse_nmea_drops_impossible_optional_quality_and_motion(self):
+        gga = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,-0.1,545.4,M,46.9,M,,"
+        rmc = "$GPRMC,123519,A,4807.038,N,01131.000,E,-1.0,361.0,230394,003.1,W"
+
+        gga_fix = parse_nmea_sentence(gga)
+        rmc_fix = parse_nmea_sentence(rmc)
+
+        self.assertIsNotNone(gga_fix)
+        self.assertIsNotNone(rmc_fix)
+        assert gga_fix is not None
+        assert rmc_fix is not None
+        self.assertIsNone(gga_fix.hdop)
+        self.assertIsNone(rmc_fix.speed_knots)
+        self.assertIsNone(rmc_fix.course_degrees)
+
     def test_gga_time_without_date_uses_nearest_utc_day(self):
         before_midnight = _parse_time_today("000010", now=datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
         after_midnight = _parse_time_today("235950", now=datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))
@@ -7518,6 +7564,11 @@ class GpsTests(unittest.TestCase):
 
         self.assertIn("HDOP", gps_fix_quality_failure(fix))
 
+    def test_shared_gps_quality_rejects_negative_hdop(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=-0.1)
+
+        self.assertIn("negative HDOP", gps_fix_quality_failure(fix))
+
     def test_shared_gps_quality_rejects_null_island_fix(self):
         fix = GPSFix(latitude=0.0, longitude=0.0, satellites=8, hdop=1.2)
 
@@ -7719,6 +7770,19 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(fix.course_degrees)
         self.assertIsNone(fix.altitude_m)
 
+    def test_parse_gpsd_tpv_drops_impossible_optional_motion(self):
+        payload = (
+            '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+            '"lat":61.2181,"lon":-149.9003,"speed":-0.1,"track":361.0,"alt":-12.3}'
+        )
+        fix = parse_gpsd_tpv(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertIsNone(fix.speed_knots)
+        self.assertIsNone(fix.course_degrees)
+        self.assertEqual(fix.altitude_m, -12.3)
+
     def test_parse_gpsd_sky_uses_usat_and_hdop(self):
         payload = '{"class":"SKY","uSat":7,"nSat":11,"hdop":1.4}'
         fix = parse_gpsd_sky(payload)
@@ -7729,6 +7793,15 @@ class GpsTests(unittest.TestCase):
 
     def test_parse_gpsd_sky_drops_non_finite_hdop(self):
         payload = '{"class":"SKY","uSat":7,"hdop":NaN}'
+        fix = parse_gpsd_sky(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.satellites, 7)
+        self.assertIsNone(fix.hdop)
+
+    def test_parse_gpsd_sky_drops_negative_hdop(self):
+        payload = '{"class":"SKY","uSat":7,"hdop":-0.1}'
         fix = parse_gpsd_sky(payload)
 
         self.assertIsNotNone(fix)

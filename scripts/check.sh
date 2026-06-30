@@ -1174,6 +1174,8 @@ grep -q 'non-finite coordinates' src/noaa_navionics/gps.py
 grep -q 'outside -90..90' src/noaa_navionics/gps.py
 grep -q 'outside -180..180' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: 0.000000, 0.000000 coordinates' src/noaa_navionics/gps.py
+grep -q 'invalid GPS fix: negative HDOP' src/noaa_navionics/gps.py
+grep -q 'test_shared_gps_quality_rejects_negative_hdop' tests/test_downloader.py
 grep -q 'missing_quality_detail' src/noaa_navionics/health.py
 ! grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
@@ -1379,6 +1381,18 @@ grep -q 'if lat is None or lon is None:' src/noaa_navionics/gps.py
 grep -q 'minutes < 0.0 or minutes >= 60.0' src/noaa_navionics/gps.py
 grep -q 'def _finite_float_or_none' src/noaa_navionics/gps.py
 grep -q 'math.isfinite(parsed)' src/noaa_navionics/gps.py
+grep -q 'def _non_negative_float_or_none' src/noaa_navionics/gps.py
+grep -q 'def _course_degrees_or_none' src/noaa_navionics/gps.py
+grep -q 'speed_mps = _non_negative_float_or_none' src/noaa_navionics/gps.py
+grep -q 'track = _course_degrees_or_none' src/noaa_navionics/gps.py
+grep -q 'hdop = _non_negative_float_or_none' src/noaa_navionics/gps.py
+grep -q 'speed_knots=_non_negative_float_or_none' src/noaa_navionics/gps.py
+grep -q 'course_degrees=_course_degrees_or_none' src/noaa_navionics/gps.py
+grep -q 'test_parse_nmea_drops_impossible_optional_quality_and_motion' tests/test_downloader.py
+grep -q 'test_parse_gpsd_tpv_drops_impossible_optional_motion' tests/test_downloader.py
+grep -q 'test_parse_gpsd_sky_drops_negative_hdop' tests/test_downloader.py
+grep -q 'ignore malformed, non-finite, negative, or out-of-range optional speed, course, satellite-count, or HDOP values' README.md
+grep -q 'ignore malformed, non-finite, negative, or out-of-range optional speed, course, satellite-count, or HDOP values' docs/sailboat-pi.md
 grep -q 'def _non_negative_int_or_none' src/noaa_navionics/gps.py
 grep -q 'mode = _non_negative_int_or_none' src/noaa_navionics/gps.py
 grep -q 'return _finite_float_or_none(value)' src/noaa_navionics/gps.py
@@ -1657,7 +1671,11 @@ grep -q 'latest_satellites' src/noaa_navionics/report.py
 grep -q 'latest_hdop' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint has non-finite coordinates' src/noaa_navionics/report.py
+grep -q 'GPX trackpoint has invalid negative HDOP' src/noaa_navionics/report.py
 grep -q 'test_track_log_summary_rejects_non_finite_trackpoint_coordinates' tests/test_downloader.py
+grep -q 'test_track_log_summary_rejects_negative_hdop' tests/test_downloader.py
+grep -q 'negative GPX HDOP' README.md
+grep -q 'negative GPX HDOP' docs/sailboat-pi.md
 grep -q 'test_track_log_summary_rejects_missing_trackpoint_quality' tests/test_downloader.py
 grep -q 'test_read_trusted_gpx_track_file_rejects_writable_track_file_before_parsing' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downloader.py

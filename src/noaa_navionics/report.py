@@ -858,6 +858,8 @@ def _gpx_trackpoint_quality(trackpoint: str) -> tuple[Optional[dict[str, object]
             return None, f"GPX trackpoint has non-numeric HDOP: {hdop_text}"
         if not math.isfinite(hdop):
             return None, f"GPX trackpoint has non-finite HDOP: {hdop_text}"
+        if hdop < 0.0:
+            return None, f"GPX trackpoint has invalid negative HDOP: {hdop:g}"
         if hdop > 5.0:
             return None, f"GPX trackpoint has weak HDOP: {hdop:g}"
         quality["hdop"] = hdop

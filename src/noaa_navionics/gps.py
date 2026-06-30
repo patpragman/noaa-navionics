@@ -163,8 +163,8 @@ def parse_gpsd_tpv(payload: str) -> Optional[GPSFix]:
     time_value = data.get("time")
     if isinstance(time_value, str) and time_value:
         timestamp = _parse_iso_time(time_value)
-    speed_mps = _finite_float_or_none(data.get("speed"))
-    track = _finite_float_or_none(data.get("track"))
+    speed_mps = _non_negative_float_or_none(data.get("speed"))
+    track = _course_degrees_or_none(data.get("track"))
     altitude = _finite_float_or_none(data.get("alt"))
     return GPSFix(
         timestamp=timestamp,
@@ -183,7 +183,7 @@ def parse_gpsd_sky(payload: str) -> Optional[GPSFix]:
     if data.get("class") != "SKY":
         return None
     satellites = _gpsd_used_satellites(data)
-    hdop = _finite_float_or_none(data.get("hdop"))
+    hdop = _non_negative_float_or_none(data.get("hdop"))
     return GPSFix(
         satellites=satellites,
         hdop=hdop,
@@ -249,6 +249,20 @@ def _finite_float_or_none(value: object) -> Optional[float]:
     return parsed if math.isfinite(parsed) else None
 
 
+def _non_negative_float_or_none(value: object) -> Optional[float]:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0.0:
+        return None
+    return parsed
+
+
+def _course_degrees_or_none(value: object) -> Optional[float]:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0.0 or parsed > 360.0:
+        return None
+    return parsed
+
+
 def _non_negative_int_or_none(value: object) -> Optional[int]:
     parsed = _finite_float_or_none(value)
     if parsed is None or parsed < 0 or not parsed.is_integer():
@@ -298,6 +312,8 @@ def gps_fix_quality_failure(
         return "invalid GPS fix: 0.000000, 0.000000 coordinates"
     if fix.satellites is not None and fix.satellites < min_satellites:
         return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
+    if fix.hdop is not None and fix.hdop < 0.0:
+        return f"invalid GPS fix: negative HDOP {fix.hdop:g}"
     if fix.hdop is not None and fix.hdop > max_hdop:
         return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
     return ""
@@ -447,8 +463,8 @@ def _parse_rmc(fields: list[str], raw: str) -> Optional[GPSFix]:
         timestamp=timestamp,
         latitude=lat,
         longitude=lon,
-        speed_knots=_float_or_none(fields[7]),
-        course_degrees=_float_or_none(fields[8]),
+        speed_knots=_non_negative_float_or_none(fields[7]),
+        course_degrees=_course_degrees_or_none(fields[8]),
         fix_quality=1,
         source_sentence=raw,
     )
@@ -468,7 +484,7 @@ def _parse_gga(fields: list[str], raw: str) -> Optional[GPSFix]:
         longitude=lon,
         fix_quality=quality,
         satellites=_int_or_none(fields[7]),
-        hdop=_float_or_none(fields[8]),
+        hdop=_non_negative_float_or_none(fields[8]),
         altitude_m=_float_or_none(fields[9]),
         source_sentence=raw,
     )
