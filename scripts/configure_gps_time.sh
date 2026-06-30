@@ -559,7 +559,6 @@ fi
 
 systemctl_cmd="$(systemctl_command)" || exit 2
 
-sudo mkdir -p "$(dirname "$chrony_conf")"
 if [[ -e "$chrony_conf" ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
   backup="${chrony_conf}.noaa-navionics.${stamp}.bak"

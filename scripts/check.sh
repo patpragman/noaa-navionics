@@ -1441,6 +1441,7 @@ grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_
 grep -q 'backup_root_file_private "$chrony_conf" "$backup"' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gps_time.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gps_time.sh
+! grep -q 'sudo mkdir -p "$(dirname "$chrony_conf")"' scripts/configure_gps_time.sh
 ! grep -q 'source.read_text(encoding="utf-8")' scripts/configure_gps_time.sh
 ! grep -q 'sudo cp -a "$chrony_conf"' scripts/configure_gps_time.sh
 grep -q 'status_attempts=3' scripts/verify_pi.sh
