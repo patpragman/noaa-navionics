@@ -2271,6 +2271,10 @@ grep -q 'position mark requires satellite or HDOP quality data' src/noaa_navioni
 grep -q 'expected a new regular GPX position mark file' src/noaa_navionics/gps.py
 grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
+grep -q 'test_gpx_position_mark_rejects_symlinked_target_file' tests/test_downloader.py
+grep -q 'test_gpx_position_mark_does_not_overwrite_existing_file' tests/test_downloader.py
+grep -q 'will not follow symlinked targets or overwrite an existing waypoint' README.md
+grep -q 'will not follow symlinked targets or overwrite an existing waypoint' docs/sailboat-pi.md
 grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_run_without_post_anchor_fix' tests/test_downloader.py
