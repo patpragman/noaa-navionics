@@ -13,6 +13,7 @@ dry_run=0
 check_device=1
 systemctl_cmd=""
 sudo_cmd=""
+python3_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -135,9 +136,16 @@ sudo_command() {
   printf '%s\n' "$sudo_cmd"
 }
 
+python3_command() {
+  if [[ -z "$python3_cmd" ]]; then
+    python3_cmd="$(require_trusted_system_command python3 "Python command")" || return 1
+  fi
+  printf '%s\n' "$python3_cmd"
+}
+
 sync_path() {
   local path="$1"
-  "$sudo_cmd" python3 - "$path" <<'PY'
+  "$sudo_cmd" "$python3_cmd" - "$path" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -175,7 +183,7 @@ verify_promoted_root_file() {
   local source="$1"
   local target="$2"
   local mode="$3"
-  "$sudo_cmd" python3 - "$source" "$target" "$mode" <<'PY'
+  "$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -222,7 +230,7 @@ PY
 backup_root_file_private() {
   local source="$1"
   local backup="$2"
-  "$sudo_cmd" python3 - "$source" "$backup" <<'PY'
+  "$sudo_cmd" "$python3_cmd" - "$source" "$backup" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -680,6 +688,7 @@ fi
 
 sudo_cmd="$(sudo_command)" || exit 2
 systemctl_cmd="$(systemctl_command)" || exit 2
+python3_cmd="$(python3_command)" || exit 2
 
 if [[ -e "$gpsd_conf" ]]; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"

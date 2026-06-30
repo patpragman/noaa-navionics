@@ -10,6 +10,7 @@ allow_non_pi=0
 dry_run=0
 systemctl_cmd=""
 sudo_cmd=""
+python3_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -134,9 +135,16 @@ sudo_command() {
   printf '%s\n' "$sudo_cmd"
 }
 
+python3_command() {
+  if [[ -z "$python3_cmd" ]]; then
+    python3_cmd="$(require_trusted_system_command python3 "Python command")" || return 1
+  fi
+  printf '%s\n' "$python3_cmd"
+}
+
 sync_path() {
   local path="$1"
-  "$sudo_cmd" python3 - "$path" <<'PY'
+  "$sudo_cmd" "$python3_cmd" - "$path" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -178,7 +186,7 @@ verify_promoted_root_file() {
     printf '+ verify_promoted_root_file %q %q %q\n' "$source" "$target" "$mode"
     return 0
   fi
-  "$sudo_cmd" python3 - "$source" "$target" "$mode" <<'PY'
+  "$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -510,9 +518,11 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo
   sudo_cmd="sudo"
   systemctl_cmd="systemctl"
+  python3_cmd="python3"
 else
   sudo_cmd="$(sudo_command)" || exit 2
   systemctl_cmd="$(systemctl_command)" || exit 2
+  python3_cmd="$(python3_command)" || exit 2
 fi
 
 install_root_file_atomic "$tmp" "$autologin_conf" 0644

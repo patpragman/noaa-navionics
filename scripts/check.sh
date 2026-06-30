@@ -1368,23 +1368,29 @@ grep -q 'require_trusted_system_command()' scripts/configure_desktop_autologin.s
 grep -q 'path_in_trusted_system_dir()' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_desktop_autologin.sh
 grep -q 'sudo_cmd="$(require_trusted_system_command sudo "Sudo command")"' scripts/configure_desktop_autologin.sh
+grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")"' scripts/configure_desktop_autologin.sh
 grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/configure_desktop_autologin.sh
 grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_desktop_autologin.sh
+grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/configure_desktop_autologin.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_desktop_autologin.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_desktop_autologin.sh
 grep -q 'run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target' scripts/configure_desktop_autologin.sh
 grep -q 'run "$sudo_cmd" "$systemctl_cmd" enable lightdm.service' scripts/configure_desktop_autologin.sh
 ! grep -q 'run sudo systemctl' scripts/configure_desktop_autologin.sh
-grep -q 'Desktop autologin setup resolves sudo and systemctl through trusted root-owned command checks' README.md
-grep -q 'Desktop autologin setup resolves sudo and systemctl through trusted root-owned command checks' docs/sailboat-pi.md
+! grep -q '"$sudo_cmd" python3' scripts/configure_desktop_autologin.sh
+grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
+grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/configure_desktop_autologin.sh").read_text(encoding="utf-8")
 sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2')
 systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
+python_resolve = text.index('python3_cmd="$(python3_command)" || exit 2')
 install = text.index('install_root_file_atomic "$tmp" "$autologin_conf" 0644')
 target = text.index('run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target')
-if not sudo_resolve < systemctl_resolve < install < target:
-    raise SystemExit("desktop autologin setup must validate sudo and systemctl before file install and graphical target changes")
+if not sudo_resolve < systemctl_resolve < python_resolve < install < target:
+    raise SystemExit("desktop autologin setup must validate sudo, systemctl, and Python before file install and graphical target changes")
 PY
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
@@ -1428,29 +1434,36 @@ grep -q 'require_trusted_system_command()' scripts/configure_gpsd.sh
 grep -q 'path_in_trusted_system_dir()' scripts/configure_gpsd.sh
 grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_gpsd.sh
 grep -q 'sudo_cmd="$(require_trusted_system_command sudo "Sudo command")"' scripts/configure_gpsd.sh
+grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")"' scripts/configure_gpsd.sh
 grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/configure_gpsd.sh
 grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_gpsd.sh
+grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/configure_gpsd.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_gpsd.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_gpsd.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$backup"' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" daemon-reload' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
 ! grep -q 'sudo systemctl' scripts/configure_gpsd.sh
+! grep -q '"$sudo_cmd" python3' scripts/configure_gpsd.sh
 grep -q 'backup_root_file_private "$gpsd_conf" "$backup"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
 ! grep -q 'sudo cp -a /etc/default/gpsd' scripts/configure_gpsd.sh
-grep -q 'GPSD setup resolves sudo and systemctl through trusted root-owned command checks' README.md
-grep -q 'GPSD setup resolves sudo and systemctl through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'GPSD setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
+grep -q 'GPSD setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/configure_gpsd.sh").read_text(encoding="utf-8")
 sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2')
 systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
+python_resolve = text.index('python3_cmd="$(python3_command)" || exit 2')
 backup = text.index('backup_root_file_private "$gpsd_conf" "$backup"')
 install = text.index('install_root_file_atomic "$tmp" "$gpsd_conf" 0644')
 reload = text.index('"$sudo_cmd" "$systemctl_cmd" daemon-reload')
-if not sudo_resolve < systemctl_resolve < backup < install < reload:
-    raise SystemExit("GPSD setup must validate sudo and systemctl before backup, install, and daemon reload")
+if not sudo_resolve < systemctl_resolve < python_resolve < backup < install < reload:
+    raise SystemExit("GPSD setup must validate sudo, systemctl, and Python before backup, install, and daemon reload")
 PY
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' README.md
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
@@ -1468,6 +1481,10 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'verify_promoted_root_file "$source" "$target" "$mode"' "$script"
   grep -q 'sync_path "$target"' "$script"
   grep -q 'sudo_command()' "$script"
+  grep -q 'python3_command()' "$script"
+  grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")"' "$script"
+  grep -q '"$sudo_cmd" "$python3_cmd" -' "$script"
+  ! grep -q '"$sudo_cmd" python3' "$script"
   grep -q 'root file sync target is a symlink' "$script"
   grep -q 'root file sync target is not a regular file' "$script"
   grep -q 'promoted root config does not match source' "$script"
@@ -1502,25 +1519,32 @@ grep -q 'require_trusted_system_command()' scripts/configure_gps_time.sh
 grep -q 'path_in_trusted_system_dir()' scripts/configure_gps_time.sh
 grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_gps_time.sh
 grep -q 'sudo_cmd="$(require_trusted_system_command sudo "Sudo command")"' scripts/configure_gps_time.sh
+grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")"' scripts/configure_gps_time.sh
 grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/configure_gps_time.sh
 grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_gps_time.sh
+grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/configure_gps_time.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_gps_time.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_gps_time.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$backup"' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" enable --now chrony' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" restart chrony' scripts/configure_gps_time.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
 ! grep -q 'sudo systemctl' scripts/configure_gps_time.sh
-grep -q 'GPS time setup resolves sudo and systemctl through trusted root-owned command checks' README.md
-grep -q 'GPS time setup resolves sudo and systemctl through trusted root-owned command checks' docs/sailboat-pi.md
+! grep -q '"$sudo_cmd" python3' scripts/configure_gps_time.sh
+grep -q 'GPS time setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
+grep -q 'GPS time setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/configure_gps_time.sh").read_text(encoding="utf-8")
 sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2')
 systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
+python_resolve = text.index('python3_cmd="$(python3_command)" || exit 2')
 backup = text.index('backup_root_file_private "$chrony_conf" "$backup"')
 install = text.index('install_root_file_atomic "$tmp" "$chrony_conf" 0644')
 restart = text.index('"$sudo_cmd" "$systemctl_cmd" restart chrony')
-if not sudo_resolve < systemctl_resolve < backup < install < restart:
-    raise SystemExit("GPS time setup must validate sudo and systemctl before backup, install, and service restart")
+if not sudo_resolve < systemctl_resolve < python_resolve < backup < install < restart:
+    raise SystemExit("GPS time setup must validate sudo, systemctl, and Python before backup, install, and service restart")
 PY
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is a symlink when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
