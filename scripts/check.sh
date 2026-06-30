@@ -870,6 +870,10 @@ done
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS config is a symlink when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS config is not a regular file when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS config .* is owned by uid' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS config .* has permissions' scripts/provision_sailboat_pi.sh
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'does not match requested --device' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
@@ -881,6 +885,10 @@ grep -q 'GPS device path is not a character device' scripts/provision_sailboat_p
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chrony GPS time config is a symlink when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chrony GPS time config is not a regular file when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chrony GPS time config .* is owned by uid' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chrony GPS time config .* has permissions' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service chrony.service chrony --skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'not line.lstrip().startswith("#")' scripts/provision_sailboat_pi.sh
@@ -3002,6 +3010,48 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'does not match requested --device' "$provision_output"
+
+skip_gpsd_writable_home="$tmpdir/skip-gpsd-writable-home"
+mkdir -p "$skip_gpsd_writable_home/.config/noaa-navionics"
+cat >"$skip_gpsd_writable_home/.config/noaa-navionics/config.ini" <<EOF
+[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = yes
+force = yes
+max_age_days = 30
+min_free_gb = 2.0
+
+[gps]
+mode = gpsd
+device = /dev/serial/by-id/mock-gps
+baud = 4800
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+
+[tracking]
+output = ~/charts/noaa-enc
+retention_days = 90
+EOF
+chmod 0622 "$skip_gpsd_writable_home/.config/noaa-navionics/config.ini"
+set +e
+HOME="$skip_gpsd_writable_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
+provision_code=$?
+set -e
+chmod 0600 "$skip_gpsd_writable_home/.config/noaa-navionics/config.ini"
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-gpsd with a group/world-writable existing config" >&2
+  exit 1
+fi
+grep -q 'Existing GPS config .* has permissions 0622' "$provision_output"
 
 skip_gps_time_home="$tmpdir/skip-gps-time-home"
 mkdir -p "$skip_gps_time_home/.local/bin"

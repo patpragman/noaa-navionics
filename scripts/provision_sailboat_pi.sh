@@ -116,13 +116,42 @@ validate_existing_gps_config() {
   if ! python3 - "$config" "$check_device" "$device" <<'PY'
 from configparser import ConfigParser
 from pathlib import Path
+import os
 import sys
 
 config_path = Path(sys.argv[1]).expanduser()
 check_device = sys.argv[2] == "1"
 expected_device = sys.argv[3].strip()
+
+def first_symlink_ancestor(path):
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
+
 if not config_path.exists():
     raise SystemExit("Existing config is required when --skip-gpsd is used with unattended startup")
+if config_path.is_symlink():
+    raise SystemExit(f"Existing GPS config is a symlink when --skip-gpsd is used: {config_path}")
+symlink_component = first_symlink_ancestor(config_path.parent)
+if symlink_component is not None:
+    raise SystemExit(f"Existing GPS config directory is a symlink when --skip-gpsd is used: {symlink_component}")
+if not config_path.is_file():
+    raise SystemExit(f"Existing GPS config is not a regular file when --skip-gpsd is used: {config_path}")
+try:
+    stat_result = config_path.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect existing GPS config when --skip-gpsd is used: {config_path}: {exc}") from exc
+if stat_result.st_uid != os.getuid():
+    raise SystemExit(
+        f"Existing GPS config {config_path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+    )
+mode_bits = stat_result.st_mode & 0o777
+if mode_bits & 0o022:
+    raise SystemExit(
+        f"Existing GPS config {config_path} has permissions {mode_bits:04o}, expected no group/other write bits"
+    )
 parser = ConfigParser()
 if not parser.read(config_path):
     raise SystemExit(f"could not read config: {config_path}")
@@ -169,11 +198,45 @@ PY
 validate_existing_gps_time_config() {
   if ! python3 - <<'PY'
 from pathlib import Path
+import os
 
 chrony_conf = Path("/etc/chrony/chrony.conf")
 expected = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
+
+def first_symlink_ancestor(path):
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
+
 if not chrony_conf.exists():
     raise SystemExit("Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup")
+if chrony_conf.is_symlink():
+    raise SystemExit(f"Existing chrony GPS time config is a symlink when --skip-gps-time is used: {chrony_conf}")
+symlink_component = first_symlink_ancestor(chrony_conf.parent)
+if symlink_component is not None:
+    raise SystemExit(
+        f"Existing chrony GPS time config directory is a symlink when --skip-gps-time is used: {symlink_component}"
+    )
+if not chrony_conf.is_file():
+    raise SystemExit(
+        f"Existing chrony GPS time config is not a regular file when --skip-gps-time is used: {chrony_conf}"
+    )
+try:
+    stat_result = chrony_conf.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect chrony config: {chrony_conf}: {exc}") from exc
+if stat_result.st_uid != 0:
+    raise SystemExit(
+        f"Existing chrony GPS time config {chrony_conf} is owned by uid {stat_result.st_uid}, expected 0"
+    )
+mode_bits = stat_result.st_mode & 0o777
+if mode_bits & 0o022:
+    raise SystemExit(
+        f"Existing chrony GPS time config {chrony_conf} has permissions {mode_bits:04o}, "
+        "expected no group/other write bits"
+    )
 try:
     text = chrony_conf.read_text(encoding="utf-8")
 except OSError as exc:
