@@ -1682,6 +1682,35 @@ check_root_regular_file_integrity() {
   fi
 }
 
+check_root_executable_file_integrity() {
+  local path="$1"
+  local label="$2"
+
+  check_root_regular_file_integrity "$path" "$label" || return 1
+  if [[ ! -x "$path" ]]; then
+    printf '%s is not executable: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+}
+
+check_opencpn_command_integrity() {
+  local path
+
+  path="$(command -v opencpn 2>/dev/null)" || {
+    printf 'OpenCPN command was not found on PATH\n' >&2
+    return 1
+  }
+  case "$path" in
+    /*)
+      ;;
+    *)
+      printf 'OpenCPN command path is not absolute: %s\n' "$path" >&2
+      return 1
+      ;;
+  esac
+  check_root_executable_file_integrity "$path" "OpenCPN command"
+}
+
 check_root_directory_integrity() {
   local path="$1"
   local label="$2"
@@ -2458,7 +2487,9 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher environment directory symlink guard" grep -Fq 'launcher environment directory is a symlink' "$launcher"
   check "chartplotter launcher fail-closed default" grep -Fq 'Not starting OpenCPN automatically because readiness failed' "$launcher"
   check "chartplotter launcher explicit fail-open override" grep -Fq 'NOAA_NAVIONICS_START_ON_FAILED_READINESS' "$launcher"
-  check "chartplotter launcher ENC parse" grep -Fq 'opencpn -parse_all_enc' "$launcher"
+  check "chartplotter launcher OpenCPN resolver" grep -Fq 'resolve_opencpn_binary' "$launcher"
+  check "chartplotter launcher OpenCPN binary integrity" grep -Fq 'validate_opencpn_binary_candidate' "$launcher"
+  check "chartplotter launcher ENC parse" grep -Fq '"$opencpn_bin" -parse_all_enc' "$launcher"
   check "chartplotter launcher display awake" grep -Fq 'keep_display_awake' "$launcher"
   check "chartplotter launcher display failure logging" grep -Fq 'xset command(s) failed' "$launcher"
   check "chartplotter launcher readiness warning" grep -Fq 'show_preflight_warning' "$launcher"
@@ -2535,6 +2566,7 @@ if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "
   check "source revision matches" test "$installed_revision" = "$NOAA_NAVIONICS_EXPECTED_REVISION"
 fi
 check "OpenCPN command" command -v opencpn
+check "OpenCPN command integrity" check_opencpn_command_integrity
 check "display power command" command -v xset
 check "Tkinter readiness warning support" check_tkinter_available
 check "process lookup command" command -v pgrep

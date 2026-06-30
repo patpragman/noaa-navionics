@@ -99,11 +99,15 @@ grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_c
 grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "$launcher_lock_dir"' scripts/start_chartplotter.sh
+grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
+grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
+grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
+grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
 python3 - <<'PY'
 from pathlib import Path
 
 text = Path("scripts/start_chartplotter.sh").read_text(encoding="utf-8")
-opencpn_start = text.index('opencpn -parse_all_enc &')
+opencpn_start = text.index('"$opencpn_bin" -parse_all_enc &')
 tail = text[opencpn_start:]
 wait_index = tail.index('wait "$opencpn_pid"')
 release_index = tail.find("release_launcher_lock")
@@ -2875,6 +2879,7 @@ grep -q 'xset s off' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset s noblank' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q -- '--gps-seconds 17' "$launcher_home/.cache/noaa-navionics/noaa.log"
+grep -q "Using OpenCPN binary: $tmpdir/opencpn" "$launcher_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_symlink_env_home="$tmpdir/launcher-symlink-env-home"
 launcher_symlink_env_target="$tmpdir/launcher-symlink-env-target"

@@ -18,6 +18,7 @@ start_on_failed_readiness=0
 opencpn_restarts=3
 opencpn_restart_delay=5
 lock_acquired=0
+opencpn_bin=""
 
 reexec_without_ambient_launcher_settings() {
   local key
@@ -530,6 +531,87 @@ run_readiness_report() {
   return 1
 }
 
+validate_opencpn_binary_candidate() {
+  local candidate="$1"
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_mode_text
+  local parent_mode
+  local symlink_component
+
+  if [[ -z "$candidate" ]]; then
+    return 1
+  fi
+  case "$candidate" in
+    /*)
+      ;;
+    *)
+      echo "OpenCPN executable path is not absolute: $candidate" >&2
+      return 1
+      ;;
+  esac
+  if [[ -L "$candidate" ]]; then
+    echo "OpenCPN executable is a symlink: $candidate" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$candidate")"
+  if symlink_component="$(first_symlink_ancestor "$parent_dir")"; then
+    echo "OpenCPN executable path contains a symlink: $symlink_component" >&2
+    return 1
+  fi
+  if [[ ! -f "$candidate" ]]; then
+    echo "OpenCPN executable is not a regular file: $candidate" >&2
+    return 1
+  fi
+  if [[ ! -x "$candidate" ]]; then
+    echo "OpenCPN executable is not executable: $candidate" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$candidate" 2>/dev/null)" || {
+    echo "Could not inspect OpenCPN executable: $candidate" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "OpenCPN executable has permissions ${mode_text}, expected no group/other write bits: $candidate" >&2
+    return 1
+  fi
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect OpenCPN executable directory: $parent_dir" >&2
+    return 1
+  }
+  parent_mode_text="${parent_stat#* }"
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "OpenCPN executable directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  if [[ "$owner_uid" != "0" && "$owner_uid" != "$(id -u)" ]]; then
+    echo "OpenCPN executable is owned by uid ${owner_uid}, expected root or $(id -u): $candidate" >&2
+    return 1
+  fi
+  return 0
+}
+
+resolve_opencpn_binary() {
+  local path_candidate
+
+  path_candidate="$(command -v opencpn 2>/dev/null || true)"
+  if validate_opencpn_binary_candidate "$path_candidate"; then
+    opencpn_bin="$path_candidate"
+    echo "Using OpenCPN binary: $opencpn_bin"
+    return 0
+  fi
+  echo "OpenCPN is not installed at a trusted executable path; install opencpn before launching chartplotter." >&2
+  return 127
+}
+
 run_opencpn_supervised() {
   local restart_count=0
   local opencpn_pid
@@ -540,7 +622,7 @@ run_opencpn_supervised() {
       return 0
     fi
     echo "Launching OpenCPN with ENC processing."
-    opencpn -parse_all_enc &
+    "$opencpn_bin" -parse_all_enc &
     opencpn_pid=$!
     for _ in 1 2 3 4 5; do
       if opencpn_running || ! kill -0 "$opencpn_pid" 2>/dev/null; then
@@ -618,9 +700,6 @@ if ! run_readiness_report; then
   echo "Starting OpenCPN despite failed readiness because NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled." >&2
 fi
 
-if ! command -v opencpn >/dev/null 2>&1; then
-  echo "OpenCPN is not installed or not on PATH; install opencpn before launching chartplotter." >&2
-  exit 127
-fi
+resolve_opencpn_binary
 
 run_opencpn_supervised
