@@ -317,8 +317,7 @@ def _download_package_unlocked(
                 if total is not None and written != total:
                     raise URLError(f"incomplete download: received {written} of {total} bytes")
         except (HTTPError, URLError, TimeoutError, ConnectionError, HTTPException, OSError) as exc:
-            if tmp_path.exists():
-                tmp_path.unlink()
+            _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
             if attempt < retries and _retryable_download_error(exc):
                 time.sleep(retry_delay)
                 continue
@@ -330,10 +329,7 @@ def _download_package_unlocked(
         try:
             _validate_downloaded_zip(tmp_path)
         except Exception:
-            try:
-                tmp_path.unlink()
-            except FileNotFoundError:
-                pass
+            _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
             raise
     os.replace(tmp_path, destination)
     _fsync_directory(output_path)
@@ -400,6 +396,32 @@ def _remove_download_archive(path: Path, output_path: Path) -> None:
     if mode & 0o022:
         raise RuntimeError(
             f"chart archive path {path} has permissions {mode:04o}, expected no group/other write bits"
+        )
+    path.unlink()
+    _fsync_directory(output_path)
+
+
+def _remove_interrupted_download_partial(path: Path, output_path: Path, *, missing_ok: bool = False) -> None:
+    try:
+        stat_result = path.lstat()
+    except FileNotFoundError:
+        if missing_ok:
+            return
+        raise
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect partial download before cleanup {path}: {exc}") from exc
+    if stat.S_ISLNK(stat_result.st_mode):
+        raise RuntimeError(f"partial download path is a symlink before cleanup: {path}")
+    if not stat.S_ISREG(stat_result.st_mode):
+        raise RuntimeError(f"partial download path is not a regular file before cleanup: {path}")
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"partial download path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"partial download path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
     path.unlink()
     _fsync_directory(output_path)

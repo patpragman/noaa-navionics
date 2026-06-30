@@ -2664,6 +2664,81 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(calls["count"], 2)
 
+    def test_download_cleanup_rejects_symlinked_interrupted_partial(self):
+        original = downloader_module.urlopen
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "do-not-remove"
+            target.write_text("keep\n", encoding="ascii")
+
+            class ReplacingReadResponse:
+                headers = {"Content-Length": "5"}
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    return None
+
+                def read(self, size=-1):
+                    partial = root / "chart.zip.part"
+                    partial.unlink()
+                    partial.symlink_to(target)
+                    raise IncompleteRead(b"cha", 5)
+
+            def fake_urlopen(request, timeout=60):
+                return ReplacingReadResponse()
+
+            try:
+                downloader_module.urlopen = fake_urlopen
+                package = Package("Retry test", "https://example.invalid/chart.zip", "chart.zip")
+                with self.assertRaisesRegex(RuntimeError, "partial download path is a symlink before cleanup"):
+                    download_package(package, root, retries=2, retry_delay=0)
+            finally:
+                downloader_module.urlopen = original
+
+            self.assertTrue((root / "chart.zip.part").is_symlink())
+            self.assertEqual(target.read_text(encoding="ascii"), "keep\n")
+
+    def test_download_cleanup_rejects_writable_interrupted_partial(self):
+        original = downloader_module.urlopen
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+
+            class WritablePartialReadResponse:
+                headers = {"Content-Length": "5"}
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    return None
+
+                def read(self, size=-1):
+                    os.chmod(root / "chart.zip.part", 0o622)
+                    raise IncompleteRead(b"cha", 5)
+
+            def fake_urlopen(request, timeout=60):
+                return WritablePartialReadResponse()
+
+            try:
+                downloader_module.urlopen = fake_urlopen
+                package = Package("Retry test", "https://example.invalid/chart.zip", "chart.zip")
+                with self.assertRaisesRegex(RuntimeError, "partial download path .* has permissions 0622"):
+                    download_package(package, root, retries=2, retry_delay=0)
+            finally:
+                downloader_module.urlopen = original
+
+            partial = root / "chart.zip.part"
+            try:
+                self.assertTrue(partial.exists())
+                self.assertEqual(partial.stat().st_mode & 0o777, 0o622)
+            finally:
+                if partial.exists() and not partial.is_symlink():
+                    os.chmod(partial, 0o600)
+
     def test_download_lock_blocks_concurrent_chart_update(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
