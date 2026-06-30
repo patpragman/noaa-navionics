@@ -158,8 +158,12 @@ grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
 grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher Pi OpenCPN root owner' scripts/verify_pi.sh
 grep -q 'OpenCPN command is a symlink' src/noaa_navionics/health.py
+grep -q 'OpenCPN command directory is not a trusted system directory' src/noaa_navionics/health.py
 grep -q 'expected root' src/noaa_navionics/health.py
 grep -q 'test_check_opencpn_requires_root_owner_on_pi' tests/test_downloader.py
+grep -q 'test_check_opencpn_rejects_untrusted_directory_on_pi' tests/test_downloader.py
+grep -q 'untrusted-directory OpenCPN commands' README.md
+grep -q 'untrusted-directory OpenCPN commands' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 

@@ -352,6 +352,12 @@ def check_opencpn() -> CheckResult:
             False,
             f"OpenCPN command is owned by uid {stat_result.st_uid}, expected root or {os.getuid()}: {path}",
         )
+    if _is_raspberry_pi() and path.parent not in TRUSTED_SYSTEM_COMMAND_DIRS:
+        return CheckResult(
+            "OpenCPN",
+            False,
+            f"OpenCPN command directory is not a trusted system directory: {path.parent}",
+        )
     return CheckResult("OpenCPN", True, f"trusted executable at {path}")
 
 

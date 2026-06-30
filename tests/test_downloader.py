@@ -11084,6 +11084,42 @@ class PiHealthTests(unittest.TestCase):
             self.assertIn("OpenCPN command directory is owned by uid", result.detail)
             self.assertIn("expected root", result.detail)
 
+    def test_check_opencpn_rejects_untrusted_directory_on_pi(self):
+        fake = Path("/opt/opencpn/bin/opencpn")
+
+        class FakeStat:
+            def __init__(self, mode: int, uid: int = 0):
+                self.st_mode = mode
+                self.st_uid = uid
+
+        def fake_stat(path: Path, *args: object, **kwargs: object) -> FakeStat:
+            if path == fake:
+                return FakeStat(stat.S_IFREG | 0o755)
+            if path == fake.parent:
+                return FakeStat(stat.S_IFDIR | 0o755)
+            raise FileNotFoundError(path)
+
+        def fake_is_file(path: Path) -> bool:
+            return path == fake
+
+        def fake_is_symlink(path: Path) -> bool:
+            return False
+
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._is_raspberry_pi = lambda: True
+            with patch.object(health_module.shutil, "which", return_value=str(fake)):
+                with patch.object(Path, "is_file", fake_is_file):
+                    with patch.object(Path, "is_symlink", fake_is_symlink):
+                        with patch.object(Path, "stat", fake_stat):
+                            with patch.object(os, "access", return_value=True):
+                                result = check_opencpn()
+        finally:
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("OpenCPN command directory is not a trusted system directory", result.detail)
+
     def test_parse_throttled_value(self):
         self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)
         self.assertEqual(_parse_throttled_value("throttled=3"), 3)
