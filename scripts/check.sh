@@ -586,6 +586,8 @@ grep -q 'newest GPX trackpoint is stale' scripts/verify_pi.sh
 grep -q 'timestamped trackpoint' scripts/verify_pi.sh
 grep -q 'trackpoint_position' scripts/verify_pi.sh
 grep -q 'trackpoint_quality' scripts/verify_pi.sh
+grep -q 'read_trusted_track_file' scripts/verify_pi.sh
+grep -q 'changed before it could be read' scripts/verify_pi.sh
 grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' scripts/verify_pi.sh
 grep -q 'GPX trackpoint has non-finite coordinates' scripts/verify_pi.sh
 grep -q 'GPX trackpoint latitude is outside -90..90' scripts/verify_pi.sh
@@ -1572,8 +1574,8 @@ grep -q 'test_track_log_summary_rejects_missing_trackpoint_quality' tests/test_d
 grep -q 'test_read_trusted_gpx_track_file_rejects_writable_track_file_before_parsing' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output_ancestor' tests/test_downloader.py
-grep -q 'Status reports read candidate GPX track files only after a no-follow descriptor' README.md
-grep -q 'Status reports read candidate GPX track files only after a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification read candidate GPX track files only after a no-follow descriptor' README.md
+grep -q 'Status reports and Pi verification read candidate GPX track files only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py

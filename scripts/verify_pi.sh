@@ -3147,7 +3147,7 @@ from pathlib import Path
 import math
 import os
 import re
-import stat
+import stat as stat_module
 import sys
 import time
 
@@ -3161,7 +3161,7 @@ except OSError as exc:
     raise SystemExit(f"could not open config: {config_path}: {exc}") from exc
 try:
     config_stat = os.fstat(fd)
-    if not stat.S_ISREG(config_stat.st_mode):
+    if not stat_module.S_ISREG(config_stat.st_mode):
         raise SystemExit(f"config is not a regular file: {config_path}")
     if config_stat.st_uid != os.getuid():
         raise SystemExit(f"config {config_path} is owned by uid {config_stat.st_uid}, expected {os.getuid()}")
@@ -3253,6 +3253,30 @@ def trackpoint_quality(trackpoint):
         quality["hdop"] = hdop
     return quality, ""
 
+def read_trusted_track_file(path, expected_stat):
+    read_flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        track_fd = os.open(path, read_flags)
+    except OSError as exc:
+        return None, None, f"could not open {path}: {exc}"
+    try:
+        opened_stat = os.fstat(track_fd)
+        if not stat_module.S_ISREG(opened_stat.st_mode):
+            return None, None, f"{path} is not a regular GPX track file after opening"
+        if (opened_stat.st_dev, opened_stat.st_ino) != (expected_stat.st_dev, expected_stat.st_ino):
+            return None, None, f"{path} changed before it could be read"
+        if opened_stat.st_uid != os.getuid():
+            return None, None, f"{path} is owned by uid {opened_stat.st_uid}, expected {os.getuid()}"
+        opened_mode = opened_stat.st_mode & 0o777
+        if opened_mode & 0o077:
+            return None, None, f"{path} permissions are {opened_mode:04o}, expected private 0600"
+        with os.fdopen(track_fd, encoding="utf-8", errors="replace") as handle:
+            track_fd = -1
+            return opened_stat, handle.read(), ""
+    finally:
+        if track_fd >= 0:
+            os.close(track_fd)
+
 while True:
     now = time.time()
     symlink_component = first_symlink_ancestor(tracks_dir)
@@ -3314,12 +3338,11 @@ while True:
                 candidates.append((stat.st_mtime, path, stat))
         candidates.sort(reverse=True)
         for _mtime, path, stat in candidates:
-            try:
-                text = path.read_text(encoding="utf-8", errors="replace")
-            except OSError as exc:
-                last_detail = f"could not read {path}: {exc}"
+            opened_stat, text, read_error = read_trusted_track_file(path, stat)
+            if read_error:
+                last_detail = read_error
                 continue
-            if stat.st_mtime + 5 < boot_epoch:
+            if opened_stat.st_mtime + 5 < boot_epoch:
                 continue
             trackpoint_times = re.findall(r"<trkpt\b.*?</trkpt>", text, flags=re.DOTALL)
             if not trackpoint_times:
