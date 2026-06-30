@@ -9,6 +9,7 @@ dry_run=0
 chrony_conf="/etc/chrony/chrony.conf"
 restart_gpsd=1
 systemctl_cmd=""
+sudo_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -123,9 +124,16 @@ systemctl_command() {
   printf '%s\n' "$systemctl_cmd"
 }
 
+sudo_command() {
+  if [[ -z "$sudo_cmd" ]]; then
+    sudo_cmd="$(require_trusted_system_command sudo "Sudo command")" || return 1
+  fi
+  printf '%s\n' "$sudo_cmd"
+}
+
 sync_path() {
   local path="$1"
-  sudo python3 - "$path" <<'PY'
+  "$sudo_cmd" python3 - "$path" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -163,7 +171,7 @@ verify_promoted_root_file() {
   local source="$1"
   local target="$2"
   local mode="$3"
-  sudo python3 - "$source" "$target" "$mode" <<'PY'
+  "$sudo_cmd" python3 - "$source" "$target" "$mode" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -210,7 +218,7 @@ PY
 backup_root_file_private() {
   local source="$1"
   local backup="$2"
-  sudo python3 - "$source" "$backup" <<'PY'
+  "$sudo_cmd" python3 - "$source" "$backup" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -311,23 +319,23 @@ install_root_file_atomic() {
   validate_chrony_config_path
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
-  sudo install -d -m 0755 "$target_dir"
+  "$sudo_cmd" install -d -m 0755 "$target_dir"
   validate_chrony_config_path
-  target_tmp="$(sudo mktemp "${target_dir}/.${target_name}.XXXXXX")"
-  if ! sudo install -m "$mode" "$source" "$target_tmp"; then
-    sudo rm -f "$target_tmp"
+  target_tmp="$("$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! "$sudo_cmd" install -m "$mode" "$source" "$target_tmp"; then
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
   if ! sync_path "$target_tmp"; then
-    sudo rm -f "$target_tmp"
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
   if ! validate_chrony_config_path; then
-    sudo rm -f "$target_tmp"
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
-  if ! sudo mv -f "$target_tmp" "$target"; then
-    sudo rm -f "$target_tmp"
+  if ! "$sudo_cmd" mv -f "$target_tmp" "$target"; then
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
   verify_promoted_root_file "$source" "$target" "$mode"
@@ -557,6 +565,7 @@ if ! command -v chronyd >/dev/null 2>&1 && ! command -v chronyc >/dev/null 2>&1;
   exit 2
 fi
 
+sudo_cmd="$(sudo_command)" || exit 2
 systemctl_cmd="$(systemctl_command)" || exit 2
 
 if [[ -e "$chrony_conf" ]]; then
@@ -566,10 +575,10 @@ if [[ -e "$chrony_conf" ]]; then
 fi
 
 install_root_file_atomic "$tmp" "$chrony_conf" 0644
-sudo "$systemctl_cmd" enable --now chrony
-sudo "$systemctl_cmd" restart chrony
+"$sudo_cmd" "$systemctl_cmd" enable --now chrony
+"$sudo_cmd" "$systemctl_cmd" restart chrony
 if [[ "$restart_gpsd" -eq 1 ]]; then
-  sudo "$systemctl_cmd" restart gpsd.socket gpsd.service
+  "$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service
 fi
 
 cat <<EOF

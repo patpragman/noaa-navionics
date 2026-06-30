@@ -9,6 +9,7 @@ autologin_session=""
 allow_non_pi=0
 dry_run=0
 systemctl_cmd=""
+sudo_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -126,9 +127,16 @@ systemctl_command() {
   printf '%s\n' "$systemctl_cmd"
 }
 
+sudo_command() {
+  if [[ -z "$sudo_cmd" ]]; then
+    sudo_cmd="$(require_trusted_system_command sudo "Sudo command")" || return 1
+  fi
+  printf '%s\n' "$sudo_cmd"
+}
+
 sync_path() {
   local path="$1"
-  sudo python3 - "$path" <<'PY'
+  "$sudo_cmd" python3 - "$path" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -170,7 +178,7 @@ verify_promoted_root_file() {
     printf '+ verify_promoted_root_file %q %q %q\n' "$source" "$target" "$mode"
     return 0
   fi
-  sudo python3 - "$source" "$target" "$mode" <<'PY'
+  "$sudo_cmd" python3 - "$source" "$target" "$mode" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -238,23 +246,23 @@ install_root_file_atomic() {
   validate_lightdm_autologin_path
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
-  sudo install -d -m 0755 "$target_dir"
+  "$sudo_cmd" install -d -m 0755 "$target_dir"
   validate_lightdm_autologin_path
-  target_tmp="$(sudo mktemp "${target_dir}/.${target_name}.XXXXXX")"
-  if ! sudo install -m "$mode" "$source" "$target_tmp"; then
-    sudo rm -f "$target_tmp"
+  target_tmp="$("$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! "$sudo_cmd" install -m "$mode" "$source" "$target_tmp"; then
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
   if ! sync_path "$target_tmp"; then
-    sudo rm -f "$target_tmp"
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
   if ! validate_lightdm_autologin_path; then
-    sudo rm -f "$target_tmp"
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
-  if ! sudo mv -f "$target_tmp" "$target"; then
-    sudo rm -f "$target_tmp"
+  if ! "$sudo_cmd" mv -f "$target_tmp" "$target"; then
+    "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
   verify_promoted_root_file "$source" "$target" "$mode"
@@ -500,13 +508,15 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo "Would write $autologin_conf:"
   cat "$tmp"
   echo
+  sudo_cmd="sudo"
   systemctl_cmd="systemctl"
 else
+  sudo_cmd="$(sudo_command)" || exit 2
   systemctl_cmd="$(systemctl_command)" || exit 2
 fi
 
 install_root_file_atomic "$tmp" "$autologin_conf" 0644
-run sudo "$systemctl_cmd" set-default graphical.target
-run sudo "$systemctl_cmd" enable lightdm.service
+run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target
+run "$sudo_cmd" "$systemctl_cmd" enable lightdm.service
 
 echo "Configured graphical autologin for $autologin_user using X11 session $autologin_session"
