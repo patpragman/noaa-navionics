@@ -60,6 +60,7 @@ from noaa_navionics.gps import (
     parse_gpsd_sky,
     parse_gpsd_tpv,
     parse_nmea_sentence,
+    read_nmea_lines,
 )
 from noaa_navionics.health import (
     check_chart_dir,
@@ -1103,8 +1104,21 @@ class OpenCPNConfigTests(unittest.TestCase):
                 deadline=None,
                 gpsd_connect_retry=False,
                 gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
             ):
-                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, gpsd_connect_retry, gpsd_idle_timeout))
+                calls.append(
+                    (
+                        device,
+                        baud,
+                        sample,
+                        gpsd,
+                        gpsd_host,
+                        gpsd_port,
+                        gpsd_connect_retry,
+                        gpsd_idle_timeout,
+                        serial_idle_timeout,
+                    )
+                )
                 return iter([fix])
 
             try:
@@ -1116,7 +1130,10 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 1)
-            self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947, True, 300.0)])
+            self.assertEqual(
+                calls,
+                [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947, True, 300.0, None)],
+            )
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((track_output / "tracks" / expected_name).exists())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
@@ -1158,10 +1175,12 @@ class OpenCPNConfigTests(unittest.TestCase):
                 deadline=None,
                 gpsd_connect_retry=False,
                 gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
             ):
                 self.assertIsNotNone(deadline)
                 self.assertFalse(gpsd_connect_retry)
                 self.assertIsNone(gpsd_idle_timeout)
+                self.assertIsNone(serial_idle_timeout)
                 return iter([fix])
 
             try:
@@ -1214,8 +1233,9 @@ class OpenCPNConfigTests(unittest.TestCase):
                 deadline=None,
                 gpsd_connect_retry=False,
                 gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
             ):
-                calls.append((device, baud, sample, gpsd, gpsd_connect_retry, gpsd_idle_timeout))
+                calls.append((device, baud, sample, gpsd, gpsd_connect_retry, gpsd_idle_timeout, serial_idle_timeout))
                 return iter([fix])
 
             try:
@@ -1241,7 +1261,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 0)
-            self.assertEqual(calls, [("/dev/serial/by-id/override-gps", 9600, None, False, False, None)])
+            self.assertEqual(calls, [("/dev/serial/by-id/override-gps", 9600, None, False, False, None, None)])
             self.assertFalse(configured_output.exists())
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((explicit_output / "tracks" / expected_name).exists())
@@ -1554,6 +1574,45 @@ class OpenCPNConfigTests(unittest.TestCase):
 
         self.assertEqual(fixes, [fix])
         self.assertEqual(calls[0]["idle_timeout"], 300.0)
+
+    def test_read_fixes_passes_live_serial_idle_timeout(self):
+        calls = []
+        original_open = cli_module.open_nmea_stream
+        original_read_lines = cli_module.read_nmea_lines
+
+        class FakeStream:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+        def fake_open_nmea_stream(device, baud=4800):
+            calls.append(("open", device, baud))
+            return FakeStream()
+
+        def fake_read_nmea_lines(stream, *, idle_timeout=None):
+            calls.append(("read", idle_timeout))
+            return iter(["$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"])
+
+        try:
+            cli_module.open_nmea_stream = fake_open_nmea_stream
+            cli_module.read_nmea_lines = fake_read_nmea_lines
+            fixes = list(
+                cli_module._read_fixes(
+                    "/dev/serial/by-id/mock-gps",
+                    4800,
+                    None,
+                    serial_idle_timeout=300.0,
+                )
+            )
+        finally:
+            cli_module.open_nmea_stream = original_open
+            cli_module.read_nmea_lines = original_read_lines
+
+        self.assertEqual(calls, [("open", "/dev/serial/by-id/mock-gps", 4800), ("read", 300.0)])
+        self.assertEqual(len(fixes), 1)
+        self.assertAlmostEqual(fixes[0].latitude, 48.1173, places=4)
 
 
 class GuiTests(unittest.TestCase):
@@ -8310,6 +8369,21 @@ class GpsTests(unittest.TestCase):
                 list(iter_gpsd_fixes(timeout=1, idle_timeout=300.0))
         finally:
             gps_module.socket.create_connection = original_socket
+
+    def test_read_nmea_lines_raises_on_idle_timeout(self):
+        original_monotonic = gps_module.time.monotonic
+
+        class IdleStream:
+            def read(self, size=-1):
+                return b""
+
+        clock_values = iter([100.0, 401.0])
+        try:
+            gps_module.time.monotonic = lambda: next(clock_values)
+            with self.assertRaisesRegex(TimeoutError, "no NMEA bytes within 300s"):
+                next(read_nmea_lines(IdleStream(), idle_timeout=300.0))
+        finally:
+            gps_module.time.monotonic = original_monotonic
 
     def test_iter_gpsd_fixes_stops_after_max_duration_without_fixes(self):
         original_socket = gps_module.socket.create_connection

@@ -190,6 +190,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=300.0,
         help="restart live GPSD logging after this many quiet seconds; 0 disables",
     )
+    track.add_argument(
+        "--serial-idle-timeout",
+        type=_non_negative_float,
+        default=300.0,
+        help="restart live serial logging after this many quiet seconds; 0 disables",
+    )
     track.add_argument("--rotate-daily", action="store_true", help="write one GPX file per UTC day")
     track.add_argument(
         "--retention-days",
@@ -442,6 +448,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_idle_timeout=args.gpsd_idle_timeout
                 if use_gpsd and deadline is None and not args.sample and args.gpsd_idle_timeout
                 else None,
+                serial_idle_timeout=args.serial_idle_timeout
+                if not use_gpsd and deadline is None and not args.sample and args.serial_idle_timeout
+                else None,
             )
             fixes = _trackable_fixes(fixes)
             previous_handlers = _install_track_stop_handlers()
@@ -512,6 +521,7 @@ def _read_fixes(
     gpsd_connect_retry: bool = False,
     gpsd_retry_delay: float = 5.0,
     gpsd_idle_timeout: Optional[float] = None,
+    serial_idle_timeout: Optional[float] = None,
 ):
     if gpsd:
         timeout = 10.0
@@ -552,7 +562,11 @@ def _read_fixes(
         return
     _validate_live_serial_device(device)
     with open_nmea_stream(device, baud=baud) as stream:
-        lines = _read_nmea_lines_until(stream, deadline) if deadline is not None else read_nmea_lines(stream)
+        lines = (
+            _read_nmea_lines_until(stream, deadline)
+            if deadline is not None
+            else read_nmea_lines(stream, idle_timeout=serial_idle_timeout)
+        )
         yield from iter_fixes(lines)
 
 

@@ -133,13 +133,17 @@ def open_nmea_stream(device: str, baud: int = 4800) -> BinaryIO:
     return os.fdopen(fd, "rb", buffering=0)
 
 
-def read_nmea_lines(stream: BinaryIO) -> Iterator[str]:
+def read_nmea_lines(stream: BinaryIO, *, idle_timeout: Optional[float] = None) -> Iterator[str]:
     buffer = b""
+    last_data_monotonic = time.monotonic()
     while True:
         chunk = stream.read(1)
         if not chunk:
+            if idle_timeout is not None and time.monotonic() - last_data_monotonic >= idle_timeout:
+                raise TimeoutError(f"no NMEA bytes within {idle_timeout:g}s")
             time.sleep(0.05)
             continue
+        last_data_monotonic = time.monotonic()
         buffer += chunk
         if chunk in (b"\n", b"\r"):
             line = buffer.decode("ascii", errors="ignore").strip()
