@@ -2237,6 +2237,10 @@ grep -q 'reboot sudo preflight' scripts/dock_test_pi.sh
 grep -q 'request_reboot' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
+grep -q 'validate_boot_id_value' scripts/dock_test_pi.sh
+grep -q 'validate_boot_id_value "pre-reboot" "$before_boot_id"' scripts/dock_test_pi.sh
+grep -q 'validate_boot_id_value "post-reboot" "$after_boot_id"' scripts/dock_test_pi.sh
+grep -q 'expected Linux boot_id value' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
 grep -q -- '--expected-boot-id "$after_boot_id"' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
@@ -2252,6 +2256,8 @@ grep -q 'pins remote reboot probes and sudo calls to trusted system command dire
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' docs/sailboat-pi.md
 grep -q 'pins its remote command path to trusted system directories' README.md
 grep -q 'pins its remote command path to trusted system directories' docs/sailboat-pi.md
+grep -q 'valid Linux `boot_id` values' README.md
+grep -q 'valid Linux `boot_id` values' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
 grep -q 'only after rejecting a missing launcher environment, symlinked launcher environment files or path components' README.md
@@ -2266,6 +2272,15 @@ preflight_call_index = text.index("check_remote_noninteractive_reboot_available"
 deploy_index = text.index('"${repo_root}/scripts/deploy_to_pi.sh"', preflight_call_index)
 if deploy_index < preflight_call_index:
     raise SystemExit("dock test reboot sudo preflight must run before deploy/provision")
+
+before_index = text.index('before_boot_id="$(remote_boot_id)"')
+before_guard_index = text.index('validate_boot_id_value "pre-reboot" "$before_boot_id"', before_index)
+request_reboot_index = text.index('\nrequest_reboot\n', before_guard_index)
+after_index = text.index('after_boot_id="$(remote_boot_id)"', request_reboot_index)
+after_guard_index = text.index('validate_boot_id_value "post-reboot" "$after_boot_id"', after_index)
+strict_verify_index = text.index('--expected-boot-id "$after_boot_id"', after_guard_index)
+if not before_index < before_guard_index < request_reboot_index < after_index < after_guard_index < strict_verify_index:
+    raise SystemExit("dock test must validate collected boot IDs before reboot comparison and strict verify")
 PY
 
 install_output="$(mktemp)"

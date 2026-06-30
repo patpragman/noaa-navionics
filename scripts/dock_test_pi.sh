@@ -413,6 +413,20 @@ remote_boot_id() {
   ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id"
 }
 
+validate_boot_id_value() {
+  local label="$1"
+  local value="$2"
+
+  if [[ -z "$value" ]]; then
+    echo "${label} boot ID is empty" >&2
+    return 1
+  fi
+  if [[ ! "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+    echo "${label} boot ID is invalid; expected Linux boot_id value: $value" >&2
+    return 1
+  fi
+}
+
 validate_remote_reboot_command_trust() {
   local reboot_cmd="$1"
 
@@ -557,11 +571,13 @@ fi
 
 printf '\n[reboot]\n'
 before_boot_id="$(remote_boot_id)"
+validate_boot_id_value "pre-reboot" "$before_boot_id" || exit 1
 request_reboot
 wait_for_ssh_down
 wait_for_ssh_up
 after_boot_id="$(remote_boot_id)"
-if [[ -z "$after_boot_id" || "$after_boot_id" == "$before_boot_id" ]]; then
+validate_boot_id_value "post-reboot" "$after_boot_id" || exit 1
+if [[ "$after_boot_id" == "$before_boot_id" ]]; then
   echo "Pi SSH returned, but boot ID did not change after reboot request" >&2
   exit 1
 fi
