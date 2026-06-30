@@ -10734,15 +10734,15 @@ class PiHealthTests(unittest.TestCase):
             fake = bin_dir / "chronyc"
             fake.write_text("#!/bin/sh\necho '#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms'\n", encoding="ascii")
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
                 result = check_chrony_gps_time_source(seconds=0)
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertTrue(result.ok)
             self.assertIn("GPS", result.detail)
@@ -10753,15 +10753,15 @@ class PiHealthTests(unittest.TestCase):
             fake = bin_dir / "chronyc"
             fake.write_text("#!/bin/sh\necho '#? GPS 0 4 0 - +0ns[ +0ns] +/- 0ns'\n", encoding="ascii")
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
                 result = check_chrony_gps_time_source()
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertFalse(result.ok)
             self.assertIn("not usable", result.detail)
@@ -10772,15 +10772,15 @@ class PiHealthTests(unittest.TestCase):
             fake = bin_dir / "chronyc"
             fake.write_text("#!/bin/sh\necho '#- GPS 0 4 377 8 +12us[ +20us] +/- 100ms'\n", encoding="ascii")
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
                 result = check_chrony_gps_time_source(seconds=0)
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertFalse(result.ok)
             self.assertIn("not usable", result.detail)
@@ -10810,15 +10810,15 @@ class PiHealthTests(unittest.TestCase):
                 encoding="ascii",
             )
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
                 result = check_chrony_gps_time_source(seconds=1, poll_interval=0.01)
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertTrue(result.ok)
             self.assertEqual(counter.read_text(encoding="ascii").strip(), "2")
@@ -10828,6 +10828,26 @@ class PiHealthTests(unittest.TestCase):
             bin_dir = Path(tmpdir)
             fake = bin_dir / "chronyc"
             fake.write_text("#!/bin/sh\necho '^* 192.0.2.1 2 6 377 10 +1ms[ +1ms] +/- 20ms'\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
+                result = check_chrony_gps_time_source(seconds=0)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPS refclock", result.detail)
+
+    def test_check_chrony_gps_time_source_rejects_user_owned_chronyc_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "chronyc"
+            fake.write_text("#!/bin/sh\necho '#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms'\n", encoding="ascii")
             fake.chmod(0o755)
             original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
@@ -10839,8 +10859,8 @@ class PiHealthTests(unittest.TestCase):
                 os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
 
-            self.assertFalse(result.ok)
-            self.assertIn("GPS refclock", result.detail)
+        self.assertFalse(result.ok)
+        self.assertIn("Chrony command directory is not a trusted system directory", result.detail)
 
     def test_check_display_power_tool_reports_missing_xset(self):
         original_path = os.environ.get("PATH", "")

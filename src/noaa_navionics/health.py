@@ -468,9 +468,10 @@ def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.co
 def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float = 1.0) -> CheckResult:
     if not _is_raspberry_pi():
         return CheckResult("GPS Time Source", True, "not a Raspberry Pi; skipping chrony GPS source check")
-    chronyc = shutil.which("chronyc")
-    if chronyc is None:
-        return CheckResult("GPS Time Source", False, "chronyc not found; install chrony")
+    chronyc, error = _trusted_system_command("chronyc", "Chrony command")
+    if error:
+        return CheckResult("GPS Time Source", False, f"{error}; install chrony")
+    assert chronyc is not None
     deadline = time.monotonic() + max(0.0, seconds)
     result = _check_chrony_gps_time_source_once(chronyc)
     while not result.ok and time.monotonic() < deadline:
@@ -482,10 +483,10 @@ def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float =
     return result
 
 
-def _check_chrony_gps_time_source_once(chronyc: str) -> CheckResult:
+def _check_chrony_gps_time_source_once(chronyc: Path) -> CheckResult:
     try:
         completed = subprocess.run(
-            [chronyc, "sources", "-n"],
+            [str(chronyc), "sources", "-n"],
             check=False,
             text=True,
             stdout=subprocess.PIPE,

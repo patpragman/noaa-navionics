@@ -1395,6 +1395,8 @@ grep -q 'GPS Time Source' src/noaa_navionics/health.py
 grep -q 'def check_chrony_gps_time_config' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_config()' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/health.py
+grep -q '_trusted_system_command("chronyc", "Chrony command")' src/noaa_navionics/health.py
+grep -q 'test_check_chrony_gps_time_source_rejects_user_owned_chronyc_on_pi' tests/test_downloader.py
 grep -q 'CHRONY_GPSD_REFCLOCK' src/noaa_navionics/health.py
 grep -q 'Chrony config is not a regular file' src/noaa_navionics/health.py
 grep -q 'Chrony config .* is owned by uid' src/noaa_navionics/health.py
