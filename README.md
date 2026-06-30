@@ -172,6 +172,14 @@ scripts/export_pi_tracks.sh pi@raspberrypi.local
 
 The track export helper validates the SSH target, reads the Pi's onboard config, and writes a local `.tgz` containing only regular private `.gpx` files from the configured track directory plus an export manifest. Use `--days N` to export only recent track files. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 
+Export OpenCPN user navigation data before SD-card swaps or maintenance:
+
+```bash
+scripts/export_pi_opencpn_data.sh pi@raspberrypi.local
+```
+
+The OpenCPN export helper writes a local `.tgz` containing trusted regular OpenCPN config, `navobj.xml` route/waypoint data, and GPX/XML layer files when present. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+
 Shut the Pi down cleanly before cutting boat power:
 
 ```bash

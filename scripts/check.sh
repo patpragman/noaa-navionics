@@ -481,12 +481,16 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
+grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
 grep -q 'extracted ENC cells, or GPX track contents' docs/sailboat-pi.md
 grep -q 'containing only regular private `.gpx` files' README.md
 grep -q 'containing only regular private `.gpx` files' docs/sailboat-pi.md
+grep -q '`navobj.xml` route/waypoint data' README.md
+grep -q '`navobj.xml` route/waypoint data' docs/sailboat-pi.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' README.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
@@ -786,6 +790,10 @@ grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
+grep -q 'navobj.xml' scripts/export_pi_opencpn_data.sh
+grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.sh
+grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
+grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4627,6 +4635,59 @@ grep -q 'configured GPX track directory' "$track_export_fake_ssh_stdin"
 grep -q 'refusing to export symlinked GPX track' "$track_export_fake_ssh_stdin"
 grep -q 'tracks/{path.name}' "$track_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$track_export_fake_ssh_stdin"
+
+set +e
+scripts/export_pi_opencpn_data.sh root@example.invalid >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not export OpenCPN data as root@' "$verify_output"
+
+opencpn_export_symlink="$tmpdir/opencpn-export-output-link"
+ln -s "$tmpdir" "$opencpn_export_symlink"
+set +e
+scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_symlink" >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject symlinked output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not be a symlink' "$verify_output"
+
+opencpn_export_fake_ssh_bin="$tmpdir/opencpn-export-fake-ssh-bin"
+opencpn_export_fake_ssh_args="$tmpdir/opencpn-export-fake-ssh-args"
+opencpn_export_fake_ssh_stdin="$tmpdir/opencpn-export-fake-ssh-stdin"
+opencpn_export_output_dir="$tmpdir/opencpn-exports"
+mkdir -p "$opencpn_export_fake_ssh_bin"
+cat >"$opencpn_export_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake-opencpn-export\n'
+EOF
+chmod +x "$opencpn_export_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
+  PATH="$opencpn_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_output_dir" >"$verify_output" 2>&1
+grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
+opencpn_export_path="$(sed -n 's/^Exported Pi OpenCPN user data: //p' "$verify_output")"
+test -s "$opencpn_export_path"
+grep -q -- '-o BatchMode=yes' "$opencpn_export_fake_ssh_args"
+grep -q 'pi@example.invalid' "$opencpn_export_fake_ssh_args"
+grep -q 'python3 -s' "$opencpn_export_fake_ssh_args"
+grep -q 'tarfile.open' "$opencpn_export_fake_ssh_stdin"
+grep -q 'navobj.xml' "$opencpn_export_fake_ssh_stdin"
+grep -q 'refusing to export symlinked OpenCPN file' "$opencpn_export_fake_ssh_stdin"
+grep -q 'OpenCPN user config, routes, waypoints' "$opencpn_export_fake_ssh_stdin"
+grep -q 'NOAA chart archives and extracted ENC cells are not included' "$opencpn_export_fake_ssh_stdin"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1
