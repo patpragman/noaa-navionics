@@ -9045,6 +9045,77 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("0.000000, 0.000000", result.detail)
 
+    def test_check_gps_sample_rejects_symlinked_sample(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "real-sample.nmea"
+            target.write_text(sentence, encoding="ascii")
+            sample = root / "sample.nmea"
+            try:
+                sample.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_gps_sample(sample)
+
+            self.assertFalse(result.ok)
+            self.assertIn("GPS sample path is a symlink", result.detail)
+
+    def test_check_gps_sample_rejects_writable_sample(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample = Path(tmpdir) / "sample.nmea"
+            sample.write_text(sentence, encoding="ascii")
+            sample.chmod(0o666)
+
+            result = check_gps_sample(sample)
+
+            self.assertFalse(result.ok)
+            self.assertIn("has permissions 0666", result.detail)
+
+    def test_check_gps_sample_rejects_replaced_sample_before_parsing(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
+        original_open = health_module.os.open
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                sample = root / "sample.nmea"
+                sample.write_text(sentence, encoding="ascii")
+                replacement = root / "replacement.nmea"
+                replacement.write_text(sentence, encoding="ascii")
+                replaced = False
+
+                def replacing_open(path, flags, *args, **kwargs):
+                    nonlocal replaced
+                    if Path(path) == sample and not replaced:
+                        replacement.replace(sample)
+                        replaced = True
+                    return original_open(path, flags, *args, **kwargs)
+
+                health_module.os.open = replacing_open
+                result = check_gps_sample(sample)
+        finally:
+            health_module.os.open = original_open
+
+        self.assertFalse(result.ok)
+        self.assertIn("GPS sample path changed before it could be read", result.detail)
+
+    def test_cli_sample_reader_rejects_symlinked_sample(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "real-sample.nmea"
+            target.write_text(sentence, encoding="ascii")
+            sample = root / "sample.nmea"
+            try:
+                sample.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "GPS sample path is a symlink"):
+                list(cli_module._read_fixes("", 4800, str(sample)))
+
     def test_check_gps_device_uses_configured_baud(self):
         captured = {}
         original = health_module.open_nmea_stream

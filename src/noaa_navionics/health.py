@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Iterator, Optional, TextIO
 from urllib.parse import urlparse
 import hashlib
 import importlib.util
@@ -1069,17 +1070,61 @@ def check_gps_sample(sample: Path) -> CheckResult:
         return CheckResult("GPS", False, f"sample file not found: {path}")
     quality_detail = ""
     missing_quality_detail = ""
-    with path.open(encoding="ascii", errors="ignore") as handle:
-        for fix in iter_fixes(handle):
-            quality_detail = gps_fix_quality_failure(fix)
-            if quality_detail:
-                continue
-            if not gps_fix_has_quality_fields(fix):
-                missing_quality_detail = "NMEA fix missing satellite or HDOP quality fields"
-                continue
-            return CheckResult("GPS", True, _fix_detail(fix))
+    try:
+        with open_trusted_gps_sample(path) as handle:
+            for fix in iter_fixes(handle):
+                quality_detail = gps_fix_quality_failure(fix)
+                if quality_detail:
+                    continue
+                if not gps_fix_has_quality_fields(fix):
+                    missing_quality_detail = "NMEA fix missing satellite or HDOP quality fields"
+                    continue
+                return CheckResult("GPS", True, _fix_detail(fix))
+    except OSError as exc:
+        return CheckResult("GPS", False, f"cannot read sample file {path}: {exc}")
+    except RuntimeError as exc:
+        return CheckResult("GPS", False, str(exc))
     suffix = f"; {quality_detail}" if quality_detail else (f"; {missing_quality_detail}" if missing_quality_detail else "")
     return CheckResult("GPS", False, f"no valid fix found in {path}{suffix}")
+
+
+@contextmanager
+def open_trusted_gps_sample(sample: Path) -> Iterator[TextIO]:
+    path = Path(sample).expanduser()
+    if path.is_symlink():
+        raise RuntimeError(f"GPS sample path is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"GPS sample directory is a symlink: {symlink_component}")
+    try:
+        expected_stat = path.stat()
+    except FileNotFoundError:
+        raise
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect GPS sample path {path}: {exc}") from exc
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags)
+    try:
+        stat_result = os.fstat(fd)
+        if stat_result.st_dev != expected_stat.st_dev or stat_result.st_ino != expected_stat.st_ino:
+            raise RuntimeError(f"GPS sample path changed before it could be read: {path}")
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"GPS sample path is not a regular file: {path}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(
+                f"GPS sample path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"GPS sample path {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        with os.fdopen(fd, encoding="ascii", errors="ignore") as handle:
+            fd = -1
+            yield handle
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def check_gps_device_path(device: str) -> CheckResult:

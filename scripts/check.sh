@@ -1606,6 +1606,8 @@ grep -q 'test_cli_deadline_nmea_reader_rejects_overlong_unterminated_fragment' t
 grep -q 'test_check_gps_device_rejects_overlong_unterminated_nmea_fragment' tests/test_downloader.py
 grep -q 'NMEA readers reject overlong unterminated fragments' README.md
 grep -q 'NMEA readers reject overlong unterminated fragments' docs/sailboat-pi.md
+grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow descriptor checks' README.md
+grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow descriptor checks' docs/sailboat-pi.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' README.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
 grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
@@ -1800,6 +1802,10 @@ grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'gpsd_connect_retry=use_gpsd and deadline is None and not args.sample' src/noaa_navionics/cli.py
+grep -q 'open_trusted_gps_sample(Path(sample))' src/noaa_navionics/cli.py
+grep -q 'GPS sample path changed before it could be read' src/noaa_navionics/health.py
+grep -q 'test_check_gps_sample_rejects_replaced_sample_before_parsing' tests/test_downloader.py
+grep -q 'test_cli_sample_reader_rejects_symlinked_sample' tests/test_downloader.py
 grep -q 'yielded_fix = True' src/noaa_navionics/cli.py
 grep -q 'or yielded_fix' src/noaa_navionics/cli.py
 grep -q 'GPSD unavailable at' src/noaa_navionics/cli.py

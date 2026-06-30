@@ -42,7 +42,7 @@ from .gps import (
     open_nmea_stream,
     read_nmea_lines,
 )
-from .health import check_chart_package, check_disk_space, run_preflight
+from .health import check_chart_package, check_disk_space, open_trusted_gps_sample, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
 from .report import (
     DEFAULT_LAUNCHER_ENV_PATH,
@@ -599,7 +599,7 @@ def _read_fixes(
                 time.sleep(max(0.1, gpsd_retry_delay))
         return
     if sample:
-        with Path(sample).expanduser().open(encoding="ascii", errors="ignore") as handle:
+        with open_trusted_gps_sample(Path(sample)) as handle:
             yield from iter_fixes(handle)
         return
     _validate_live_serial_device(device)
