@@ -504,8 +504,8 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
-grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
@@ -895,6 +895,9 @@ grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bun
 grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
 grep -q 'mktemp -d "${cache_dir}/support-bundle.XXXXXX"' scripts/collect_pi_support_bundle.sh
 grep -q 'support bundle cache directory must be user-owned private 0700' scripts/collect_pi_support_bundle.sh
+grep -q 'support bundle cleanup requires Python shutil.rmtree with symlink-attack resistance' scripts/collect_pi_support_bundle.sh
+grep -q 'not getattr(shutil.rmtree, "avoids_symlink_attacks", False)' scripts/collect_pi_support_bundle.sh
+grep -q 'shutil.rmtree(bundle_root)' scripts/collect_pi_support_bundle.sh
 grep -q 'src_fd = os.open(source, os.O_RDONLY | nofollow)' scripts/collect_pi_support_bundle.sh
 grep -q 'file changed before copy' scripts/collect_pi_support_bundle.sh
 grep -q 'shutil.copyfileobj(src_handle, dst_handle)' scripts/collect_pi_support_bundle.sh

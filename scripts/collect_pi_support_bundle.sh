@@ -362,7 +362,49 @@ cleanup_remote_bundle() {
   case "$bundle_root" in
     "$cache_dir"/support-bundle.*)
       if [[ -d "$bundle_root" && ! -L "$bundle_root" ]]; then
-        rm -rf -- "$bundle_root"
+        if ! command -v python3 >/dev/null 2>&1; then
+          printf 'python3 missing; leaving support bundle temporary directory in place: %s\n' "$bundle_root" >&2
+          return 0
+        fi
+        if ! python3 - "$cache_dir" "$bundle_root" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import shutil
+import stat
+import sys
+
+cache_dir = Path(sys.argv[1])
+bundle_root = Path(sys.argv[2])
+
+try:
+    if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+        raise RuntimeError(
+            "support bundle cleanup requires Python shutil.rmtree with symlink-attack resistance"
+        )
+    cache_stat = cache_dir.lstat()
+    root_stat = bundle_root.lstat()
+    if stat.S_ISLNK(cache_stat.st_mode) or stat.S_ISLNK(root_stat.st_mode):
+        raise RuntimeError("support bundle cleanup paths must not be symlinks")
+    if not stat.S_ISDIR(cache_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+        raise RuntimeError("support bundle cleanup paths must be real directories")
+    if cache_stat.st_uid != os.getuid() or root_stat.st_uid != os.getuid():
+        raise RuntimeError("support bundle cleanup paths must be owned by the current user")
+    if stat.S_IMODE(cache_stat.st_mode) != 0o700 or stat.S_IMODE(root_stat.st_mode) != 0o700:
+        raise RuntimeError("support bundle cleanup paths must be private 0700 directories")
+    if bundle_root.parent != cache_dir or not bundle_root.name.startswith("support-bundle."):
+        raise RuntimeError(f"refusing to clean unexpected support bundle path: {bundle_root}")
+    shutil.rmtree(bundle_root)
+except FileNotFoundError:
+    pass
+except Exception as exc:
+    print(exc, file=sys.stderr)
+    raise SystemExit(1) from exc
+PY
+        then
+          printf 'leaving support bundle temporary directory in place: %s\n' "$bundle_root" >&2
+        fi
       fi
       ;;
   esac
