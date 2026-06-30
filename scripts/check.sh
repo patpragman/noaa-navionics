@@ -190,11 +190,20 @@ grep -q 'does not leave an unsupervised chartplotter process behind' README.md
 grep -q 'does not leave an unsupervised chartplotter process behind' docs/sailboat-pi.md
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
 grep -q 'import json' scripts/start_chartplotter.sh
+grep -q 'def open_trusted_status_report' scripts/start_chartplotter.sh
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/start_chartplotter.sh
+grep -q 'stat.S_ISREG(status.st_mode)' scripts/start_chartplotter.sh
+grep -q 'status.st_uid != os.getuid()' scripts/start_chartplotter.sh
+grep -q 'mode & 0o077' scripts/start_chartplotter.sh
+grep -q 'os.fdopen(fd, encoding="utf-8")' scripts/start_chartplotter.sh
+! grep -q 'with path.open(encoding="utf-8") as handle' scripts/start_chartplotter.sh
 grep -q 'Failed checks' scripts/start_chartplotter.sh
 grep -q 'button_text="Dismiss"' scripts/start_chartplotter.sh
 grep -q 'button_text="Start OpenCPN"' scripts/start_chartplotter.sh
 grep -q 'text=button_text' scripts/start_chartplotter.sh
 grep -q 'Readiness warning displayed' scripts/start_chartplotter.sh
+grep -q 'no-follow descriptor-confirmed private status file' README.md
+grep -q 'no-follow descriptor-confirmed private status file' docs/sailboat-pi.md
 grep -q 'Not starting OpenCPN automatically because readiness failed' scripts/start_chartplotter.sh
 grep -q 'xset s noblank' scripts/start_chartplotter.sh
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh

@@ -572,6 +572,8 @@ show_preflight_warning() {
   if python3 - "$status_report" "$warning_seconds" "$action_text" "$button_text" <<'PY'
 from pathlib import Path
 import json
+import os
+import stat
 import sys
 import tkinter as tk
 
@@ -580,9 +582,34 @@ seconds = int(sys.argv[2])
 action_text = sys.argv[3]
 button_text = sys.argv[4]
 
-def failed_checks(path):
+def open_trusted_status_report(path):
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
-        with path.open(encoding="utf-8") as handle:
+        fd = os.open(path, flags)
+    except OSError:
+        return None
+    try:
+        status = os.fstat(fd)
+        if not stat.S_ISREG(status.st_mode):
+            return None
+        if status.st_uid != os.getuid():
+            return None
+        mode = status.st_mode & 0o777
+        if mode & 0o077:
+            return None
+        handle = os.fdopen(fd, encoding="utf-8")
+        fd = -1
+        return handle
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+def failed_checks(path):
+    handle = open_trusted_status_report(path)
+    if handle is None:
+        return []
+    try:
+        with handle:
             report = json.load(handle)
     except Exception:
         return []
