@@ -680,6 +680,19 @@ class OpenCPNConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "OpenCPN config path .* has permissions"):
                 read_chart_directories(config)
 
+    def test_read_data_connections_rejects_writable_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.write_text(
+                "[Settings/NMEADataSource]\n"
+                "DataConnections=1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;GPSd;0;;0;0;\n",
+                encoding="utf-8",
+            )
+            config.chmod(0o620)
+
+            with self.assertRaisesRegex(RuntimeError, "OpenCPN config path .* has permissions"):
+                read_data_connections(config)
+
     def test_configure_chart_directory_is_idempotent_and_backs_up_existing_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

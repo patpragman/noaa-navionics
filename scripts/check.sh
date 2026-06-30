@@ -1440,8 +1440,13 @@ grep -q 'test_configure_chart_directory_tightens_public_config_parent' tests/tes
 grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_nonregular_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_writable_config_file' tests/test_downloader.py
+grep -q 'test_read_data_connections_rejects_writable_config_file' tests/test_downloader.py
 grep -q 'symlinked, non-regular, misowned, or group/world-writable OpenCPN config files' README.md
 grep -q 'symlinked, non-regular, misowned, or group/world-writable OpenCPN config files' docs/sailboat-pi.md
+grep -q 'def _open_trusted_config' src/noaa_navionics/opencpn.py
+grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' README.md
+grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'refuses to register missing, non-directory, or symlinked chart directories' README.md
 grep -q 'refuses to register missing, non-directory, or symlinked chart directories' docs/sailboat-pi.md
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
@@ -1503,8 +1508,8 @@ grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/te
 grep -q 'test_opencpn_config_summary_rejects_nonregular_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_public_directory_mode' tests/test_downloader.py
-grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components and non-regular, writable, or misowned OpenCPN config files' README.md
-grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components and non-regular, writable, or misowned OpenCPN config files' docs/sailboat-pi.md
+grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' README.md
+grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment is not a regular file' src/noaa_navionics/report.py
 grep -q 'launcher environment is owned by uid' src/noaa_navionics/report.py

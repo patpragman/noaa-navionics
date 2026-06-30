@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 import os
 import re
+import stat
 import tempfile
 
 
@@ -60,7 +61,7 @@ def read_chart_directories(config_path: Optional[Path] = None) -> list[Path]:
     _reject_unsafe_config_path(path)
     if not path.exists():
         return []
-    text = path.read_text(encoding="utf-8", errors="ignore")
+    text = _read_config_text(path)
     return [Path(value).expanduser() for _, value in _chart_dir_entries(text)]
 
 
@@ -74,7 +75,7 @@ def read_data_connections(config_path: Optional[Path] = None) -> list[str]:
     _reject_unsafe_config_path(path)
     if not path.exists():
         return []
-    text = path.read_text(encoding="utf-8", errors="ignore")
+    text = _read_config_text(path)
     value = _data_connections_value(text)
     return [part for part in value.split("|") if part] if value else []
 
@@ -128,7 +129,7 @@ def configure_chart_directory(
     _reject_unsafe_config_path(target)
     _validate_chart_directory_for_opencpn(Path(chart_dir).expanduser())
     wanted = _normalize_chart_dir(chart_dir)
-    original = target.read_text(encoding="utf-8", errors="ignore") if target.exists() else ""
+    original = _read_config_text(target) if target.exists() else ""
     updated, changed, key = _set_chart_directory(original, wanted)
     backup_path = None
 
@@ -158,7 +159,7 @@ def configure_gpsd_connection(
 ) -> OpenCPNGPSDConfigResult:
     target = opencpn_config_path(config_path)
     _reject_unsafe_config_path(target)
-    original = target.read_text(encoding="utf-8", errors="ignore") if target.exists() else ""
+    original = _read_config_text(target) if target.exists() else ""
     updated, changed = _set_gpsd_connection(original, host, port)
     backup_path = None
 
@@ -212,7 +213,7 @@ def _write_backup(target: Path) -> Path:
     backup_path = _available_backup_path(target, stamp)
     fd = os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as handle:
-        handle.write(target.read_bytes())
+        handle.write(_read_config_bytes(target))
         handle.flush()
         os.fsync(handle.fileno())
     _fsync_directory(backup_path.parent)
@@ -317,6 +318,45 @@ def _reject_unsafe_config_path(path: Path) -> None:
         raise RuntimeError(
             f"OpenCPN config path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
+
+
+def _open_trusted_config(path: Path) -> int:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        if path.is_symlink():
+            raise RuntimeError(f"OpenCPN config path is a symlink: {path}")
+        raise
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"OpenCPN config path is not a regular file: {path}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(
+                f"OpenCPN config path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"OpenCPN config path {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        return fd
+    except Exception:
+        os.close(fd)
+        raise
+
+
+def _read_config_text(path: Path) -> str:
+    fd = _open_trusted_config(path)
+    with os.fdopen(fd, encoding="utf-8", errors="ignore") as handle:
+        return handle.read()
+
+
+def _read_config_bytes(path: Path) -> bytes:
+    fd = _open_trusted_config(path)
+    with os.fdopen(fd, "rb") as handle:
+        return handle.read()
 
 
 def _validate_chart_directory_for_opencpn(path: Path) -> None:
