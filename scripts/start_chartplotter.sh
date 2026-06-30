@@ -730,6 +730,9 @@ try:
         raise SystemExit(
             f"chartplotter launcher lock directory is owned by uid {lock_stat.st_uid}, expected {expected_uid}: {lock}"
         )
+    lock_mode = lock_stat.st_mode & 0o777
+    if lock_mode & 0o077:
+        raise SystemExit(f"chartplotter launcher lock directory has permissions {lock_mode:04o}, expected private 0700: {lock}")
     fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=dir_fd)
     try:
         opened = os.fstat(fd)
