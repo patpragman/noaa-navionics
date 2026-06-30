@@ -6781,6 +6781,24 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse((target / "track.gpx").exists())
 
+    def test_gpx_logger_rejects_symlinked_track_file(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "target.gpx"
+            link = root / "track.gpx"
+            target.write_text("existing\n", encoding="utf-8")
+            try:
+                link.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "expected a new regular GPX track file"):
+                with GPXTrackLogger(link, name="Test") as logger:
+                    logger.append(fix)
+
+            self.assertEqual(target.read_text(encoding="utf-8"), "existing\n")
+
     def test_gpx_logger_does_not_overwrite_existing_file(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:

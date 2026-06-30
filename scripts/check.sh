@@ -1183,9 +1183,10 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_tree' src/noaa_navionics/downloader.py
-grep -q 'os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)' src/noaa_navionics/gps.py
+grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'def _fsync_directory' src/noaa_navionics/gps.py
+grep -q 'expected a new regular GPX track file' src/noaa_navionics/gps.py
 grep -q 'fix_quality is not None and self.fix_quality != 0' src/noaa_navionics/gps.py
 grep -q 'if gps_fix_quality_failure(fix):' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: missing coordinates' src/noaa_navionics/gps.py
@@ -1227,6 +1228,7 @@ grep -q 'os.chmod(parent, 0o700)' src/noaa_navionics/gps.py
 grep -q 'test_gpx_logger_tightens_public_track_parent' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_misowned_track_parent' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_symlinked_track_parent' tests/test_downloader.py
+grep -q 'test_gpx_logger_rejects_symlinked_track_file' tests/test_downloader.py
 grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/cli.py
 grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
@@ -1234,6 +1236,8 @@ grep -q 'is owned by uid .* expected' src/noaa_navionics/cli.py
 grep -q 'test_log_rotating_tracks_rejects_symlinked_base_directory' tests/test_downloader.py
 grep -q 'GPX logging rejects symlinked track-output parent components' README.md
 grep -q 'GPX logger also refuses symlinked track-output parent components' docs/sailboat-pi.md
+grep -q 'symlinked GPX output files' README.md
+grep -q 'symlinked GPX output files' docs/sailboat-pi.md
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
 grep -q 'def _prepare_home_status_cache_parent' src/noaa_navionics/report.py
@@ -1723,8 +1727,8 @@ grep -q 'permissions are.*expected private 0700' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
 grep -q 'private user-owned `0700` tracks directory' README.md
 grep -q 'private user-owned `0700` tracks directory' docs/sailboat-pi.md
-grep -q 'private `0600` permissions' README.md
-grep -q 'private `0600` permissions' docs/sailboat-pi.md
+grep -q 'private `0600` no-follow opens' README.md
+grep -q 'private `0600` no-follow opens' docs/sailboat-pi.md
 grep -q 'service-created track files also use a private `0077` umask' README.md
 grep -q 'service-created track files also use a private `0077` umask' docs/sailboat-pi.md
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service

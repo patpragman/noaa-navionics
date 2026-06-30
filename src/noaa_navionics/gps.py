@@ -325,7 +325,13 @@ class GPXTrackLogger:
         if parent_stat.st_uid != os.getuid():
             raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
         os.chmod(parent, 0o700)
-        fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        if self.path.is_symlink():
+            raise RuntimeError(f"{self.path} is a symlink, expected a new regular GPX track file")
+        fd = os.open(
+            self.path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
         try:
             self.file = os.fdopen(fd, "w", encoding="utf-8")
         except Exception:
