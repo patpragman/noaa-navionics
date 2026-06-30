@@ -184,6 +184,12 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--file", help="explicit GPX output file")
     track.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     track.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
+    track.add_argument(
+        "--gpsd-idle-timeout",
+        type=_non_negative_float,
+        default=300.0,
+        help="restart live GPSD logging after this many quiet seconds; 0 disables",
+    )
     track.add_argument("--rotate-daily", action="store_true", help="write one GPX file per UTC day")
     track.add_argument(
         "--retention-days",
@@ -433,6 +439,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_port=app_config.gpsd_port,
                 deadline=deadline,
                 gpsd_connect_retry=use_gpsd and deadline is None and not args.sample,
+                gpsd_idle_timeout=args.gpsd_idle_timeout
+                if use_gpsd and deadline is None and not args.sample and args.gpsd_idle_timeout
+                else None,
             )
             fixes = _trackable_fixes(fixes)
             previous_handlers = _install_track_stop_handlers()
@@ -502,6 +511,7 @@ def _read_fixes(
     deadline: Optional[float] = None,
     gpsd_connect_retry: bool = False,
     gpsd_retry_delay: float = 5.0,
+    gpsd_idle_timeout: Optional[float] = None,
 ):
     if gpsd:
         timeout = 10.0
@@ -512,12 +522,15 @@ def _read_fixes(
         yielded_fix = False
         while True:
             try:
-                for fix in iter_gpsd_fixes(
-                    host=gpsd_host,
-                    port=gpsd_port,
-                    timeout=timeout,
-                    max_duration=max_duration,
-                ):
+                gpsd_kwargs = {
+                    "host": gpsd_host,
+                    "port": gpsd_port,
+                    "timeout": timeout,
+                    "max_duration": max_duration,
+                }
+                if gpsd_idle_timeout is not None:
+                    gpsd_kwargs["idle_timeout"] = gpsd_idle_timeout
+                for fix in iter_gpsd_fixes(**gpsd_kwargs):
                     if deadline is not None and time.monotonic() > deadline:
                         break
                     yielded_fix = True

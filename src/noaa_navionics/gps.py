@@ -199,6 +199,7 @@ def iter_gpsd_fixes(
     timeout: float = 10.0,
     *,
     max_duration: Optional[float] = None,
+    idle_timeout: Optional[float] = None,
     sky_max_age_seconds: float = 10.0,
 ) -> Iterator[GPSFix]:
     latest_sky: Optional[GPSFix] = None
@@ -207,17 +208,22 @@ def iter_gpsd_fixes(
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.sendall(b'?WATCH={"enable":true,"json":true};\n')
         if deadline is None:
-            sock.settimeout(None)
+            sock.settimeout(idle_timeout)
         with sock.makefile("r", encoding="utf-8", errors="ignore") as handle:
             while True:
                 if deadline is not None:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         break
-                    sock.settimeout(max(0.001, remaining))
+                    read_timeout = max(0.001, remaining)
+                    if idle_timeout is not None:
+                        read_timeout = min(read_timeout, idle_timeout)
+                    sock.settimeout(read_timeout)
                 try:
                     line = handle.readline()
-                except TimeoutError:
+                except TimeoutError as exc:
+                    if deadline is None and idle_timeout is not None:
+                        raise TimeoutError(f"no GPSD messages within {idle_timeout:g}s") from exc
                     break
                 if not line:
                     break

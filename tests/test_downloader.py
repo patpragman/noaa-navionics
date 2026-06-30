@@ -1102,8 +1102,9 @@ class OpenCPNConfigTests(unittest.TestCase):
                 gpsd_port=2947,
                 deadline=None,
                 gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
             ):
-                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, gpsd_connect_retry))
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, gpsd_connect_retry, gpsd_idle_timeout))
                 return iter([fix])
 
             try:
@@ -1115,7 +1116,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 1)
-            self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947, True)])
+            self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947, True, 300.0)])
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((track_output / "tracks" / expected_name).exists())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
@@ -1156,9 +1157,11 @@ class OpenCPNConfigTests(unittest.TestCase):
                 gpsd_port=2947,
                 deadline=None,
                 gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
             ):
                 self.assertIsNotNone(deadline)
                 self.assertFalse(gpsd_connect_retry)
+                self.assertIsNone(gpsd_idle_timeout)
                 return iter([fix])
 
             try:
@@ -1210,8 +1213,9 @@ class OpenCPNConfigTests(unittest.TestCase):
                 gpsd_port=2947,
                 deadline=None,
                 gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
             ):
-                calls.append((device, baud, sample, gpsd, gpsd_connect_retry))
+                calls.append((device, baud, sample, gpsd, gpsd_connect_retry, gpsd_idle_timeout))
                 return iter([fix])
 
             try:
@@ -1237,7 +1241,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 0)
-            self.assertEqual(calls, [("/dev/serial/by-id/override-gps", 9600, None, False, False)])
+            self.assertEqual(calls, [("/dev/serial/by-id/override-gps", 9600, None, False, False, None)])
             self.assertFalse(configured_output.exists())
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((explicit_output / "tracks" / expected_name).exists())
@@ -1518,6 +1522,38 @@ class OpenCPNConfigTests(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
         self.assertEqual(sleeps, [])
+
+    def test_read_fixes_passes_live_gpsd_idle_timeout(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        calls = []
+        original_iter = cli_module.iter_gpsd_fixes
+
+        def fake_iter_gpsd_fixes(**kwargs):
+            calls.append(kwargs)
+            return iter([fix])
+
+        try:
+            cli_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            fixes = list(
+                cli_module._read_fixes(
+                    "/dev/serial/by-id/mock-gps",
+                    4800,
+                    None,
+                    gpsd=True,
+                    gpsd_idle_timeout=300.0,
+                )
+            )
+        finally:
+            cli_module.iter_gpsd_fixes = original_iter
+
+        self.assertEqual(fixes, [fix])
+        self.assertEqual(calls[0]["idle_timeout"], 300.0)
 
 
 class GuiTests(unittest.TestCase):
@@ -8202,6 +8238,78 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(calls, [(("127.0.0.1", 2947), 7)])
         self.assertEqual(fake_socket.timeouts, [None])
         self.assertAlmostEqual(fix.latitude, 61.2181)
+
+    def test_iter_gpsd_fixes_sets_idle_timeout_for_unbounded_stream(self):
+        original_socket = gps_module.socket.create_connection
+
+        class FakeSocket:
+            def __init__(self):
+                self.timeouts = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":61.2181,"lon":-149.9003}\n'
+                )
+
+            def settimeout(self, timeout):
+                self.timeouts.append(timeout)
+
+        fake_socket = FakeSocket()
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: fake_socket
+            fix = next(iter_gpsd_fixes(timeout=1, idle_timeout=300.0))
+        finally:
+            gps_module.socket.create_connection = original_socket
+
+        self.assertEqual(fake_socket.timeouts, [300.0])
+        self.assertAlmostEqual(fix.latitude, 61.2181)
+
+    def test_iter_gpsd_fixes_raises_on_idle_timeout(self):
+        original_socket = gps_module.socket.create_connection
+
+        class IdleHandle:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def readline(self):
+                raise TimeoutError("idle")
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return IdleHandle()
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            with self.assertRaisesRegex(TimeoutError, "no GPSD messages within 300s"):
+                list(iter_gpsd_fixes(timeout=1, idle_timeout=300.0))
+        finally:
+            gps_module.socket.create_connection = original_socket
 
     def test_iter_gpsd_fixes_stops_after_max_duration_without_fixes(self):
         original_socket = gps_module.socket.create_connection

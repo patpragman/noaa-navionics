@@ -1647,12 +1647,18 @@ grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py
 grep -q 'sky_max_age_seconds' src/noaa_navionics/gps.py
 grep -q 'max_duration' src/noaa_navionics/gps.py
+grep -q 'idle_timeout' src/noaa_navionics/gps.py
 grep -q 'sock.settimeout' src/noaa_navionics/gps.py
-grep -q 'sock.settimeout(None)' src/noaa_navionics/gps.py
-grep -q 'keeps the connected stream unbounded through temporary GPSD quiet periods' README.md
-grep -q 'keeps the connected stream unbounded through temporary GPSD quiet periods' docs/sailboat-pi.md
+grep -q 'sock.settimeout(idle_timeout)' src/noaa_navionics/gps.py
+grep -q 'no GPSD messages within' src/noaa_navionics/gps.py
+grep -q 'test_iter_gpsd_fixes_raises_on_idle_timeout' tests/test_downloader.py
+grep -q 'test_read_fixes_passes_live_gpsd_idle_timeout' tests/test_downloader.py
+grep -q 'after 300 quiet seconds by default' README.md
+grep -q 'after 300 quiet seconds by default' docs/sailboat-pi.md
 grep -q 'max_duration=seconds' src/noaa_navionics/health.py
-grep -q 'max_duration=max_duration' src/noaa_navionics/cli.py
+grep -q '"max_duration": max_duration' src/noaa_navionics/cli.py
+grep -q 'gpsd_idle_timeout' src/noaa_navionics/cli.py
+grep -q -- '--gpsd-idle-timeout' src/noaa_navionics/cli.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
 grep -q 'gps.add_argument("--seconds", type=_positive_float' src/noaa_navionics/cli.py
 grep -q 'deadline = time.monotonic() + args.seconds if args.seconds else None' src/noaa_navionics/cli.py
