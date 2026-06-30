@@ -340,6 +340,70 @@ launcher_lock_path_safe_for_cleanup() {
   return 0
 }
 
+remove_stale_launcher_lock() {
+  python3 - "$cache_dir" "$launcher_lock_dir" <<'PY'
+from pathlib import Path
+import os
+import shutil
+import stat
+import sys
+
+cache = Path(sys.argv[1]).expanduser()
+lock = Path(sys.argv[2]).expanduser()
+expected_uid = os.getuid()
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+if cache.is_symlink():
+    fail(f"chartplotter launcher cache path became unsafe; leaving lock in place: {cache}")
+if lock.is_symlink():
+    fail(f"chartplotter launcher lock path became unsafe; leaving it in place: {lock}")
+if not lock.exists():
+    raise SystemExit(0)
+if not lock.is_dir():
+    fail(f"chartplotter launcher lock path is no longer a directory; leaving it in place: {lock}")
+try:
+    lock.resolve(strict=False).relative_to(cache.resolve(strict=True))
+except ValueError:
+    fail(f"chartplotter launcher lock path is outside cache directory: {lock}")
+except OSError as exc:
+    fail(f"could not inspect chartplotter launcher lock path: {exc}")
+
+for path in [lock, *lock.rglob("*")]:
+    try:
+        path_stat = path.lstat()
+    except OSError as exc:
+        fail(f"could not inspect chartplotter launcher lock path before cleanup: {path}: {exc}")
+    if stat.S_ISLNK(path_stat.st_mode):
+        fail(f"chartplotter launcher lock path contains a symlink; leaving it in place: {path}")
+    mode = path_stat.st_mode & 0o777
+    if path_stat.st_uid != expected_uid:
+        fail(
+            f"chartplotter launcher lock path is owned by uid {path_stat.st_uid}, "
+            f"expected {expected_uid}; leaving it in place: {path}"
+        )
+    if mode & 0o022:
+        fail(
+            f"chartplotter launcher lock path has permissions {mode:04o}, "
+            f"expected no group/other write bits; leaving it in place: {path}"
+        )
+
+if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+    fail("Python shutil.rmtree is not symlink-attack resistant on this platform; leaving stale launcher lock in place")
+shutil.rmtree(lock)
+try:
+    fd = os.open(cache, os.O_RDONLY)
+except OSError:
+    fd = None
+if fd is not None:
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+PY
+}
+
 launcher_lock_from_current_boot() {
   local current
   local lock_boot_id=""
@@ -410,8 +474,9 @@ acquire_launcher_lock() {
   if ! launcher_lock_path_safe_for_cleanup; then
     exit 1
   fi
-  rm -rf "$launcher_lock_dir"
-  sync_paths "$launcher_lock_dir" || true
+  if ! remove_stale_launcher_lock; then
+    exit 1
+  fi
   if mkdir "$launcher_lock_dir" 2>/dev/null; then
     chmod 0700 "$launcher_lock_dir"
     write_launcher_lock_files

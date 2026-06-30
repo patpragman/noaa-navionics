@@ -96,9 +96,14 @@ grep -q 'expected private 0600' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_from_current_boot' scripts/start_chartplotter.sh
 grep -q 'Launcher lock is from a previous boot; treating lock as stale' scripts/start_chartplotter.sh
 grep -q 'is not a chartplotter launcher; treating lock as stale' scripts/start_chartplotter.sh
-grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
+grep -q 'remove_stale_launcher_lock' scripts/start_chartplotter.sh
+grep -q 'shutil.rmtree(lock)' scripts/start_chartplotter.sh
+grep -q 'shutil.rmtree is not symlink-attack resistant' scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place' scripts/start_chartplotter.sh
+grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris' README.md
+grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris' docs/sailboat-pi.md
+! grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' scripts/start_chartplotter.sh
-grep -Fq 'sync_paths "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
 grep -q 'is_raspberry_pi' scripts/start_chartplotter.sh
@@ -3239,6 +3244,29 @@ test ! -e "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.launch.l
 grep -q 'Removing stale chartplotter launcher lock' "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited with status 0' "$launcher_dirty_lock_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_symlink_child_lock_home="$tmpdir/launcher-symlink-child-lock-home"
+launcher_symlink_child_target="$tmpdir/launcher-symlink-child-target"
+mkdir -p "$launcher_symlink_child_lock_home/.local/bin" "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock" "$launcher_symlink_child_target"
+printf '%s\n' "$$" >"$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/pid"
+ln -s "$launcher_symlink_child_target" "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/extra-link"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_symlink_child_lock_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+printf '#!/usr/bin/env bash\nprintf "fake opencpn start\\n" >"$HOME/.cache/noaa-navionics/opencpn-started"\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_symlink_child_lock_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+set +e
+HOME="$launcher_symlink_child_lock_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_symlink_child_lock_code=$?
+set -e
+if [[ "$launcher_symlink_child_lock_code" -eq 0 ]]; then
+  cat "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject stale lock cleanup with symlink debris" >&2
+  exit 1
+fi
+test -L "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.launch.lock/extra-link"
+test -d "$launcher_symlink_child_target"
+test ! -e "$launcher_symlink_child_lock_home/.cache/noaa-navionics/opencpn-started"
+grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place' "$launcher_symlink_child_lock_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_old_boot_lock_home="$tmpdir/launcher-old-boot-lock-home"
 mkdir -p "$launcher_old_boot_lock_home/.local/bin" "$launcher_old_boot_lock_home/.cache/noaa-navionics/chartplotter.launch.lock"
