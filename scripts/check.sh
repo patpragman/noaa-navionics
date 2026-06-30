@@ -1303,6 +1303,10 @@ grep -q 'test_extract_zip_rejects_symlinked_previous_debris_without_promoting_it
 grep -q 'test_extract_zip_rejects_previous_debris_with_symlinked_child' tests/test_downloader.py
 grep -q 'unsafe `.previous` extraction debris' README.md
 grep -q 'unsafe `.previous` extraction debris' docs/sailboat-pi.md
+grep -q 'shutil.rmtree is not symlink-attack resistant' src/noaa_navionics/downloader.py
+grep -q 'test_extract_zip_cleanup_requires_symlink_safe_rmtree' tests/test_downloader.py
+grep -q 'Python runtime without symlink-attack-resistant `shutil.rmtree`' README.md
+grep -q 'Python runtime without symlink-attack-resistant `shutil.rmtree`' docs/sailboat-pi.md
 grep -q 'def _pid_is_running' src/noaa_navionics/downloader.py
 grep -q 'def _current_boot_id' src/noaa_navionics/downloader.py
 grep -q 'STATE_PACKAGES' src/noaa_navionics/downloader.py

@@ -3559,6 +3559,33 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((root / "AK_ENCs").exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
+    def test_extract_zip_cleanup_requires_symlink_safe_rmtree(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            previous = root / ".AK_ENCs.previous"
+            previous.mkdir()
+            (previous / "old.000").write_text("old", encoding="ascii")
+            original = getattr(downloader_module.shutil.rmtree, "avoids_symlink_attacks", None)
+            try:
+                downloader_module.shutil.rmtree.avoids_symlink_attacks = False
+                with self.assertRaisesRegex(RuntimeError, "shutil.rmtree is not symlink-attack resistant"):
+                    extract_zip(archive, root / "AK_ENCs")
+            finally:
+                if original is None:
+                    try:
+                        del downloader_module.shutil.rmtree.avoids_symlink_attacks
+                    except AttributeError:
+                        pass
+                else:
+                    downloader_module.shutil.rmtree.avoids_symlink_attacks = original
+
+            self.assertTrue(previous.is_dir())
+            self.assertEqual((previous / "old.000").read_text(encoding="ascii"), "old")
+            self.assertFalse((root / "AK_ENCs").exists())
+
     def test_extract_zip_syncs_extracted_tree_and_parent_directory(self):
         calls = []
         original_fsync = downloader_module.os.fsync

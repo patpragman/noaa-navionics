@@ -520,6 +520,11 @@ def _remove_path(path: Path, *, missing_ok: bool = False, label: str = "chart up
     try:
         _validate_removable_chart_tree(path, label=label)
         if path.is_dir() and not path.is_symlink():
+            if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+                raise RuntimeError(
+                    "Python shutil.rmtree is not symlink-attack resistant on this platform; "
+                    f"leaving {label} in place: {path}"
+                )
             shutil.rmtree(path)
         else:
             path.unlink()
