@@ -247,7 +247,7 @@ The status report includes readiness checks, NOAA Navionics user unit path-compo
 The boot readiness service reads `~/.config/noaa-navionics/launcher.env` so it uses the same GPS fix wait as the chartplotter launcher.
 It is written through a unique temporary file and atomic replace, so overlapping launcher and readiness-service writes cannot corrupt the JSON artifact.
 The status JSON writer rejects symlinked cache parent components, tightens a user-owned `~/.cache` parent to private `0700` before creating the private report directory, syncs the file and replacement directory entry to disk, and strict verification rejects symlinked, misowned, or public cache parents, public cache directories, or public status files.
-Pi verification also reads `vcgencmd get_throttled` live and fails on active under-voltage, frequency capping, throttling, or soft thermal limiting.
+Pi verification also reads `vcgencmd get_throttled` live and fails on any current or historical under-voltage, frequency capping, throttling, or soft thermal limiting reported since boot.
 It also records the current Linux boot ID and installed source revision through synced private `0600` atomic file writes so you can confirm the Pi is running the expected deployment and that the recorded revision path contains no symlinked component. On Raspberry Pi targets, readiness fails if that deployed source revision is missing, symlinked, non-regular, misowned, group/world-writable, recorded through a symlinked path component, or recorded as `unknown`.
 
 Expected checks:
@@ -271,7 +271,7 @@ Expected checks:
 - Graphical boot and LightDM autologin configured with an installed X11 session for unattended startup
 - Configured local GPS device path exists when GPSD is using a local receiver
 - At least `[charts] min_free_gb` free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path; `/mnt`, `/media`, and `/run/media` storage paths must actually be mounted
-- No active Raspberry Pi under-voltage or throttling
+- No current or since-boot Raspberry Pi under-voltage or throttling
 - Raspberry Pi thermal sensor or `vcgencmd measure_temp` readable, and temperature below the hard limit
 - Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode
 - Chart refresh timer, including its bounded NOAA TCP connectivity check, track logger, boot readiness service, GPSD socket/service, and chrony service are in the expected state

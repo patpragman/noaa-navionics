@@ -1698,8 +1698,7 @@ check_raspberry_pi_throttling_state() {
   local output
   local value_text
   local value
-  local active=()
-  local historical=()
+  local reported=()
 
   if ! output="$(vcgencmd get_throttled 2>&1)"; then
     printf 'vcgencmd get_throttled failed: %s\n' "$output" >&2
@@ -1717,21 +1716,18 @@ check_raspberry_pi_throttling_state() {
   fi
   value=$((value_text))
 
-  (( value & (1 << 0) )) && active+=("under-voltage")
-  (( value & (1 << 1) )) && active+=("frequency capped")
-  (( value & (1 << 2) )) && active+=("currently throttled")
-  (( value & (1 << 3) )) && active+=("soft temperature limit active")
-  (( value & (1 << 16) )) && historical+=("under-voltage occurred")
-  (( value & (1 << 17) )) && historical+=("frequency cap occurred")
-  (( value & (1 << 18) )) && historical+=("throttling occurred")
-  (( value & (1 << 19) )) && historical+=("soft temperature limit occurred")
+  (( value & (1 << 0) )) && reported+=("under-voltage")
+  (( value & (1 << 1) )) && reported+=("frequency capped")
+  (( value & (1 << 2) )) && reported+=("currently throttled")
+  (( value & (1 << 3) )) && reported+=("soft temperature limit active")
+  (( value & (1 << 16) )) && reported+=("under-voltage occurred")
+  (( value & (1 << 17) )) && reported+=("frequency cap occurred")
+  (( value & (1 << 18) )) && reported+=("throttling occurred")
+  (( value & (1 << 19) )) && reported+=("soft temperature limit occurred")
 
-  if [[ "${#active[@]}" -gt 0 ]]; then
-    printf 'active Raspberry Pi power or thermal throttling: %s\n' "${active[*]}" >&2
+  if [[ "${#reported[@]}" -gt 0 ]]; then
+    printf 'Raspberry Pi power or thermal throttling reported since boot: %s\n' "${reported[*]}" >&2
     return 1
-  fi
-  if [[ "${#historical[@]}" -gt 0 ]]; then
-    printf 'WARN historical Raspberry Pi throttling events since boot: %s\n' "${historical[*]}" >&2
   fi
 }
 
