@@ -327,6 +327,9 @@ def format_status_text(report: dict[str, object]) -> str:
                     f"is_symlink={state.get('is_symlink', '')} "
                     f"directory_is_symlink={state.get('directory_is_symlink', '')} "
                     f"path_symlink_component={state.get('path_symlink_component', '')} "
+                    f"uid={state.get('uid', '')} mode={state.get('mode', '')} "
+                    f"directory_uid={state.get('directory_uid', '')} "
+                    f"directory_mode={state.get('directory_mode', '')} "
                     f"wanted_by={wanted_by_text}"
                 )
     launcher_settings = report.get("launcher_settings", {})
@@ -843,6 +846,13 @@ def _user_unit_file_summary() -> dict[str, object]:
             "directory_is_symlink": path.parent.is_symlink(),
             "path_symlink_component": str(symlink_component) if symlink_component is not None else "",
         }
+        try:
+            directory_stat = path.parent.stat()
+        except OSError as exc:
+            state["directory_error"] = str(exc)
+        else:
+            state["directory_uid"] = directory_stat.st_uid
+            state["directory_mode"] = f"{directory_stat.st_mode & 0o777:04o}"
         if path.is_symlink():
             state["error"] = f"user unit file path is a symlink: {path}"
             summary[unit] = state
@@ -853,6 +863,9 @@ def _user_unit_file_summary() -> dict[str, object]:
             continue
         if path.is_file():
             try:
+                stat_result = path.stat()
+                state["uid"] = stat_result.st_uid
+                state["mode"] = f"{stat_result.st_mode & 0o777:04o}"
                 lines = path.read_text(encoding="utf-8").splitlines()
             except OSError as exc:
                 state["error"] = str(exc)
@@ -1425,9 +1438,28 @@ def _unit_file_install_target_check(
     symlink_component = str(state.get("path_symlink_component", "")).strip()
     if symlink_component:
         return CheckResult(name, False, f"{unit} unit file path contains a symlink: {symlink_component}")
+    directory_error = str(state.get("directory_error", "")).strip()
+    if directory_error:
+        return CheckResult(name, False, f"{unit} unit file directory unreadable at {Path(path).parent}: {directory_error}")
     error = str(state.get("error", ""))
     if error:
         return CheckResult(name, False, f"{unit} unit file unreadable at {path}: {error}")
+    owner_check = _owned_by_current_user(state, "uid")
+    if owner_check:
+        return CheckResult(name, False, f"{unit} unit file {owner_check}: {path}")
+    directory_owner_check = _owned_by_current_user(state, "directory_uid")
+    if directory_owner_check:
+        return CheckResult(name, False, f"{unit} unit file directory {directory_owner_check}: {Path(path).parent}")
+    mode_check = _not_group_or_other_writable(state, "mode")
+    if mode_check:
+        return CheckResult(name, False, f"{unit} unit file {mode_check}: {path}")
+    directory_mode_check = _not_group_or_other_writable(state, "directory_mode")
+    if directory_mode_check:
+        return CheckResult(
+            name,
+            False,
+            f"{unit} unit file directory {directory_mode_check}: {Path(path).parent}",
+        )
     wanted_by = state.get("wanted_by")
     if not isinstance(wanted_by, list):
         return CheckResult(name, False, f"{unit} has no parsed WantedBy target at {path}")
@@ -1438,6 +1470,32 @@ def _unit_file_install_target_check(
             f"{unit} WantedBy={','.join(str(value) for value in wanted_by) or '<missing>'} expected {expected_target}",
         )
     return CheckResult(name, True, f"{unit} installs into {expected_target}")
+
+
+def _owned_by_current_user(summary: dict[str, object], key: str) -> str:
+    value = summary.get(key)
+    if value is None or value == "":
+        return f"{key}=<missing>, expected {os.getuid()}"
+    try:
+        uid = int(str(value))
+    except ValueError:
+        return f"{key}={value}, expected {os.getuid()}"
+    if uid != os.getuid():
+        return f"{key}={uid}, expected {os.getuid()}"
+    return ""
+
+
+def _not_group_or_other_writable(summary: dict[str, object], key: str) -> str:
+    value = str(summary.get(key, "")).strip()
+    if not value:
+        return f"{key}=<missing>, expected no group/other write bits"
+    try:
+        mode = int(value, 8)
+    except ValueError:
+        return f"{key}={value}, expected octal permissions"
+    if mode & 0o022:
+        return f"{key}={mode:04o}, expected no group/other write bits"
+    return ""
 
 
 def _summary_has_loaded_properties(summary: dict[str, object]) -> bool:

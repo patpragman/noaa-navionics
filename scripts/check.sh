@@ -1229,12 +1229,18 @@ grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py
 grep -q 'user unit file path is a symlink' src/noaa_navionics/report.py
 grep -q 'user unit file directory is a symlink' src/noaa_navionics/report.py
 grep -q 'unit file path contains a symlink' src/noaa_navionics/report.py
+grep -q 'directory_uid' src/noaa_navionics/report.py
+grep -q 'expected no group/other write bits' src/noaa_navionics/report.py
 grep -q 'status report {unit} path contains a symlink' scripts/verify_pi.sh
 grep -q 'section != "Install"' src/noaa_navionics/report.py
 grep -q 'wanted_by' src/noaa_navionics/report.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_file' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_directory' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_ancestor' tests/test_downloader.py
+grep -q 'test_user_unit_file_summary_records_owner_and_permissions' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_public_unit_file_permissions' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_public_unit_directory_permissions' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_misowned_unit_file' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_install_target' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_directory' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_ancestor' tests/test_downloader.py
@@ -1262,6 +1268,7 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' README
 grep -q 'missing or disabled chart-refresh service still fails readiness' docs/sailboat-pi.md
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
+grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
 grep -q 'rejects symlinked cache parents' README.md
 grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py

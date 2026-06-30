@@ -108,6 +108,23 @@ from noaa_navionics.report import (
 )
 
 
+def trusted_unit_file(path: str, wanted_by: list[str], **overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "path": path,
+        "exists": True,
+        "is_symlink": False,
+        "directory_is_symlink": False,
+        "path_symlink_component": "",
+        "uid": os.getuid(),
+        "mode": "0600",
+        "directory_uid": os.getuid(),
+        "directory_mode": "0700",
+        "wanted_by": wanted_by,
+    }
+    state.update(overrides)
+    return state
+
+
 class PackageForTests(unittest.TestCase):
     def test_state_package(self):
         package = package_for(state="ak")
@@ -4178,6 +4195,26 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("user unit file directory is a symlink", state["error"])
             self.assertNotIn("wanted_by", state)
 
+    def test_user_unit_file_summary_records_owner_and_permissions(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            unit_dir = root / ".config/systemd/user"
+            unit_dir.mkdir(parents=True)
+            os.chmod(unit_dir, 0o700)
+            unit_file = unit_dir / "noaa-navionics.timer"
+            unit_file.write_text("[Install]\nWantedBy=timers.target\n", encoding="utf-8")
+            os.chmod(unit_file, 0o600)
+
+            with patch.dict(os.environ, {"HOME": str(root)}):
+                summary = _user_unit_file_summary()
+
+            state = summary["noaa-navionics.timer"]
+            self.assertEqual(state["uid"], os.getuid())
+            self.assertEqual(state["mode"], "0600")
+            self.assertEqual(state["directory_uid"], os.getuid())
+            self.assertEqual(state["directory_mode"], "0700")
+            self.assertEqual(state["wanted_by"], ["timers.target"])
+
     def test_service_readiness_checks_accept_expected_onboard_units(self):
         services = {
             "available": True,
@@ -4281,10 +4318,22 @@ class StatusReportTests(unittest.TestCase):
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
         unit_files = {
-            "noaa-navionics.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics.service", "exists": True, "wanted_by": []},
-            "noaa-navionics.timer": {"path": "/home/pi/.config/systemd/user/noaa-navionics.timer", "exists": True, "wanted_by": ["timers.target"]},
-            "noaa-navionics-track.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-track.service", "exists": True, "wanted_by": ["default.target"]},
-            "noaa-navionics-preflight.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.service",
+                [],
+            ),
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
@@ -4327,7 +4376,10 @@ class StatusReportTests(unittest.TestCase):
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
         unit_files = {
-            "noaa-navionics.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics.service", "exists": True, "wanted_by": []},
+            "noaa-navionics.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.service",
+                [],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
@@ -4352,9 +4404,18 @@ class StatusReportTests(unittest.TestCase):
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
         unit_files = {
-            "noaa-navionics.timer": {"path": "/home/pi/.config/systemd/user/noaa-navionics.timer", "exists": True, "wanted_by": ["timers.target"]},
-            "noaa-navionics-track.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-track.service", "exists": True, "wanted_by": ["default.target"]},
-            "noaa-navionics-preflight.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
@@ -4362,6 +4423,118 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertEqual(len(install_checks), 3)
         self.assertTrue(all(check.ok for check in install_checks))
+
+    def test_service_readiness_checks_fail_public_unit_file_permissions(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_files = {
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+                mode="0666",
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        timer_install = next(check for check in checks if check.name == "Chart Timer Install")
+
+        self.assertFalse(timer_install.ok)
+        self.assertIn("mode=0666", timer_install.detail)
+        self.assertIn("expected no group/other write bits", timer_install.detail)
+
+    def test_service_readiness_checks_fail_public_unit_directory_permissions(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_files = {
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+                directory_mode="0777",
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        timer_install = next(check for check in checks if check.name == "Chart Timer Install")
+
+        self.assertFalse(timer_install.ok)
+        self.assertIn("directory_mode=0777", timer_install.detail)
+        self.assertIn("expected no group/other write bits", timer_install.detail)
+
+    def test_service_readiness_checks_fail_misowned_unit_file(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unexpected_uid = os.getuid() + 1
+        unit_files = {
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+                uid=unexpected_uid,
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        timer_install = next(check for check in checks if check.name == "Chart Timer Install")
+
+        self.assertFalse(timer_install.ok)
+        self.assertIn(f"uid={unexpected_uid}", timer_install.detail)
+        self.assertIn(f"expected {os.getuid()}", timer_install.detail)
 
     def test_service_readiness_checks_fail_symlinked_unit_file_install_target(self):
         services = {
@@ -4383,16 +4556,14 @@ class StatusReportTests(unittest.TestCase):
                 "exists": True,
                 "is_symlink": True,
             },
-            "noaa-navionics-track.service": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                "exists": True,
-                "wanted_by": ["default.target"],
-            },
-            "noaa-navionics-preflight.service": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
-                "exists": True,
-                "wanted_by": ["default.target"],
-            },
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
@@ -4416,23 +4587,19 @@ class StatusReportTests(unittest.TestCase):
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
         unit_files = {
-            "noaa-navionics.timer": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics.timer",
-                "exists": True,
-                "is_symlink": False,
-                "directory_is_symlink": True,
-                "wanted_by": ["timers.target"],
-            },
-            "noaa-navionics-track.service": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                "exists": True,
-                "wanted_by": ["default.target"],
-            },
-            "noaa-navionics-preflight.service": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
-                "exists": True,
-                "wanted_by": ["default.target"],
-            },
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+                directory_is_symlink=True,
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
@@ -4456,24 +4623,19 @@ class StatusReportTests(unittest.TestCase):
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
         unit_files = {
-            "noaa-navionics.timer": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics.timer",
-                "exists": True,
-                "is_symlink": False,
-                "directory_is_symlink": False,
-                "path_symlink_component": "/home/pi",
-                "wanted_by": ["timers.target"],
-            },
-            "noaa-navionics-track.service": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                "exists": True,
-                "wanted_by": ["default.target"],
-            },
-            "noaa-navionics-preflight.service": {
-                "path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
-                "exists": True,
-                "wanted_by": ["default.target"],
-            },
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+                path_symlink_component="/home/pi",
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
@@ -4848,9 +5010,18 @@ class StatusReportTests(unittest.TestCase):
             "chrony.service": {"enabled": "enabled", "active": "active"},
         }
         unit_files = {
-            "noaa-navionics.timer": {"path": "/home/pi/.config/systemd/user/noaa-navionics.timer", "exists": True, "wanted_by": ["default.target"]},
-            "noaa-navionics-track.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-track.service", "exists": True, "wanted_by": ["default.target"]},
-            "noaa-navionics-preflight.service": {"path": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service", "exists": True, "wanted_by": ["default.target"]},
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["default.target"],
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
         }
 
         checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
