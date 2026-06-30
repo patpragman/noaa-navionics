@@ -650,12 +650,41 @@ grep -q 'verify_installed_user_executable' scripts/install_raspberry_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/install_raspberry_pi.sh
 grep -q 'install -m "$mode" "$source" "$tmp"' scripts/install_raspberry_pi.sh
 grep -q 'ln -s "$source" "$tmp"' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_install_path "$target_dir" "installed user file directory" directory' scripts/install_raspberry_pi.sh
+grep -q 'validate_user_install_path "$target_dir" "installed command symlink directory" directory' scripts/install_raspberry_pi.sh
 test "$(grep -c 'validate_user_install_path "$target" "installed user file" regular' scripts/install_raspberry_pi.sh)" -ge 2
 test "$(grep -c 'validate_user_install_path "$target" "installed command symlink" link' scripts/install_raspberry_pi.sh)" -ge 2
 grep -q 'mv -f "$tmp" "$target"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$target"' scripts/install_raspberry_pi.sh
-grep -q 'Installer revalidates helper, unit, and command-link targets immediately before promotion' README.md
-grep -q 'Installer revalidates helper, unit, and command-link targets immediately before promotion' docs/sailboat-pi.md
+grep -q 'Installer revalidates user directories after creating or tightening them before placing temporary files there' README.md
+grep -q 'Installer revalidates user directories after creating or tightening them before placing temporary files there' docs/sailboat-pi.md
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/install_raspberry_pi.sh").read_text(encoding="utf-8")
+ensure_start = text.index("ensure_private_directory()")
+ensure_mkdir = text.index('mkdir -p "$target"', ensure_start)
+ensure_validate_after_mkdir = text.index('validate_user_install_path "$target" "$label" directory', ensure_mkdir)
+ensure_chmod = text.index('chmod 0700 "$target"', ensure_validate_after_mkdir)
+ensure_validate_after_chmod = text.index('validate_user_install_path "$target" "$label" directory', ensure_chmod)
+ensure_sync = text.index('sync_paths "$target"', ensure_validate_after_chmod)
+file_start = text.index("install_user_file_atomic()")
+file_mkdir = text.index('mkdir -p "$target_dir"', file_start)
+file_validate_dir = text.index('validate_user_install_path "$target_dir" "installed user file directory" directory', file_mkdir)
+file_mktemp = text.index('mktemp "${target_dir}/.${target_name}.XXXXXX"', file_validate_dir)
+file_promote = text.index('mv -f "$tmp" "$target"', file_mktemp)
+link_start = text.index("link_user_atomic()")
+link_mkdir = text.index('mkdir -p "$target_dir"', link_start)
+link_validate_dir = text.index('validate_user_install_path "$target_dir" "installed command symlink directory" directory', link_mkdir)
+link_mktemp = text.index('mktemp "${target_dir}/.${target_name}.XXXXXX"', link_validate_dir)
+link_promote = text.index('mv -f "$tmp" "$target"', link_mktemp)
+if not ensure_mkdir < ensure_validate_after_mkdir < ensure_chmod < ensure_validate_after_chmod < ensure_sync:
+    raise SystemExit("installer private directories must be revalidated after mkdir and chmod before syncing")
+if not file_mkdir < file_validate_dir < file_mktemp < file_promote:
+    raise SystemExit("installer user file directory must be revalidated before creating a temp file")
+if not link_mkdir < link_validate_dir < link_mktemp < link_promote:
+    raise SystemExit("installer command-link directory must be revalidated before creating a temp link")
+PY
 grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755' scripts/install_raspberry_pi.sh

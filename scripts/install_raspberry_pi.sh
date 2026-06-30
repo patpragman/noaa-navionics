@@ -307,7 +307,9 @@ ensure_private_directory() {
   local label="$2"
   validate_user_install_path "$target" "$label" directory
   mkdir -p "$target"
+  validate_user_install_path "$target" "$label" directory
   chmod 0700 "$target"
+  validate_user_install_path "$target" "$label" directory
   sync_paths "$target"
 }
 
@@ -429,6 +431,7 @@ install_user_file_atomic() {
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
   mkdir -p "$target_dir"
+  validate_user_install_path "$target_dir" "installed user file directory" directory
   tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
   if ! install -m "$mode" "$source" "$tmp"; then
     rm -f "$tmp"
@@ -459,6 +462,7 @@ link_user_atomic() {
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
   mkdir -p "$target_dir"
+  validate_user_install_path "$target_dir" "installed command symlink directory" directory
   tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
   rm -f "$tmp"
   if ! ln -s "$source" "$tmp"; then
