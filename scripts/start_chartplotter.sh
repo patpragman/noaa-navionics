@@ -500,6 +500,55 @@ launcher_lock_path_safe_for_cleanup() {
   return 0
 }
 
+read_launcher_lock_file() {
+  local name="$1"
+  local label="$2"
+  python3 - "$launcher_lock_dir" "$name" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+lock = Path(sys.argv[1]).expanduser()
+name = sys.argv[2]
+label = sys.argv[3]
+expected_uid = os.getuid()
+
+if "/" in name or name in {"", ".", ".."}:
+    raise SystemExit(f"{label} name is unsafe: {name}")
+if lock.is_symlink():
+    raise SystemExit(f"chartplotter launcher lock path contains a symlink: {lock}")
+
+dir_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+dir_fd = os.open(lock, dir_flags)
+try:
+    lock_stat = os.fstat(dir_fd)
+    if not stat.S_ISDIR(lock_stat.st_mode):
+        raise SystemExit(f"chartplotter launcher lock path is not a directory after opening: {lock}")
+    if lock_stat.st_uid != expected_uid:
+        raise SystemExit(
+            f"chartplotter launcher lock directory is owned by uid {lock_stat.st_uid}, expected {expected_uid}: {lock}"
+        )
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=dir_fd)
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"{label} is not a regular file")
+        if opened.st_uid != expected_uid:
+            raise SystemExit(f"{label} is owned by uid {opened.st_uid}, expected {expected_uid}")
+        mode = opened.st_mode & 0o777
+        if mode & 0o022:
+            raise SystemExit(f"{label} has permissions {mode:04o}, expected no group/other write bits")
+        data = os.read(fd, 4096).decode("ascii", "ignore").splitlines()
+        if data:
+            sys.stdout.write(data[0])
+    finally:
+        os.close(fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 remove_stale_launcher_lock() {
   python3 - "$cache_dir" "$launcher_lock_dir" <<'PY'
 from pathlib import Path
@@ -572,7 +621,7 @@ launcher_lock_from_current_boot() {
   if [[ -z "$current" || ! -r "${launcher_lock_dir}/boot_id" ]]; then
     return 0
   fi
-  read -r lock_boot_id <"${launcher_lock_dir}/boot_id" || lock_boot_id=""
+  lock_boot_id="$(read_launcher_lock_file boot_id "chartplotter launcher lock boot ID" 2>/dev/null || true)"
   [[ "$lock_boot_id" == "$current" ]]
 }
 
@@ -690,7 +739,7 @@ acquire_launcher_lock() {
     echo "Launcher lock is from a previous boot; treating lock as stale."
   else
     if [[ -r "${launcher_lock_dir}/pid" ]]; then
-      read -r owner_pid <"${launcher_lock_dir}/pid" || owner_pid=""
+      owner_pid="$(read_launcher_lock_file pid "chartplotter launcher lock pid" 2>/dev/null || true)"
     fi
     if [[ "$owner_pid" =~ ^[0-9]+$ ]] && kill -0 "$owner_pid" 2>/dev/null && process_looks_like_launcher "$owner_pid"; then
       if opencpn_running; then

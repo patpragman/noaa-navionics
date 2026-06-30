@@ -89,13 +89,18 @@ grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/start_chartplotter.sh
 ! grep -q 'with path.open("rb") as handle' scripts/start_chartplotter.sh
 grep -q 'write_private_file("pid", pid_text)' scripts/start_chartplotter.sh
 grep -q 'write_private_file("boot_id", boot_id_text)' scripts/start_chartplotter.sh
+grep -q 'read_launcher_lock_file()' scripts/start_chartplotter.sh
+grep -q 'read_launcher_lock_file boot_id "chartplotter launcher lock boot ID"' scripts/start_chartplotter.sh
+grep -q 'read_launcher_lock_file pid "chartplotter launcher lock pid"' scripts/start_chartplotter.sh
 grep -q 'os.open(name, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock directory has permissions' scripts/start_chartplotter.sh
-grep -q 'writes lock PID and boot-ID files through no-follow descriptor opens' README.md
-grep -q 'writes lock PID and boot-ID files through no-follow descriptor opens' docs/sailboat-pi.md
+grep -q 'writes and reads lock PID and boot-ID files through no-follow descriptor opens' README.md
+grep -q 'writes and reads lock PID and boot-ID files through no-follow descriptor opens' docs/sailboat-pi.md
 ! grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -Fq '>"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -Fq '>"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
+! grep -q 'read -r owner_pid <"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
+! grep -q 'read -r lock_boot_id <"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
 grep -q 'python3-tk' scripts/install_raspberry_pi.sh
