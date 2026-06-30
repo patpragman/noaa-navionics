@@ -1572,8 +1572,11 @@ grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
   grep -q 'install_root_file_atomic' "$script"
   grep -q 'verify_promoted_root_file' "$script"
+  grep -q 'verify_root_temp_file' "$script"
   grep -q '"$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX"' "$script"
+  grep -q 'verify_root_temp_file "$target_tmp" 0600' "$script"
   grep -q '"$sudo_cmd" install -m "$mode" "$source" "$target_tmp"' "$script"
+  grep -q 'verify_root_temp_file "$target_tmp" "$mode"' "$script"
   grep -q 'sync_path "$target_tmp"' "$script"
   grep -q '"$sudo_cmd" mv -f "$target_tmp" "$target"' "$script"
   grep -q 'verify_promoted_root_file "$source" "$target" "$mode"' "$script"
@@ -1585,6 +1588,10 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   ! grep -q '"$sudo_cmd" python3' "$script"
   grep -q 'root file sync target is a symlink' "$script"
   grep -q 'root file sync target is not a regular file' "$script"
+  grep -q 'root config temporary file is a symlink' "$script"
+  grep -q 'root config temporary file is not a regular file' "$script"
+  grep -q 'root config temporary file .* expected root' "$script"
+  grep -q 'root config temporary file .* expected {expected_mode:04o}' "$script"
   grep -q 'promoted root config does not match source' "$script"
   grep -q 'promoted root config.*expected' "$script"
   grep -q 'os.open(path, os.O_RDONLY | nofollow)' "$script"
@@ -1735,7 +1742,9 @@ grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' README.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'GPSD setup, GPS time setup, and desktop autologin revalidate root target paths before temporary-file creation and immediately before promotion' README.md
+grep -q 'verify their root-owned temporary config files through no-follow descriptors before and after copying content' README.md
 grep -q 'Promoted root config files are verified against their source through regular no-follow file descriptors before syncing' docs/sailboat-pi.md
+grep -q 'verify root-owned temporary config files through no-follow descriptors before and after copying content' docs/sailboat-pi.md
 grep -q 'verifies the promoted config against its source through regular no-follow file descriptors before syncing' docs/sailboat-pi.md
 grep -q 'Production provisioning reads the existing onboard GPS config only after a no-follow descriptor' README.md
 grep -q 'provisioning reads the existing onboard GPS config only after a no-follow descriptor' docs/sailboat-pi.md

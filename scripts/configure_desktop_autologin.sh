@@ -230,6 +230,40 @@ if target_bytes != source_bytes:
 PY
 }
 
+verify_root_temp_file() {
+  local path="$1"
+  local mode="$2"
+  "$sudo_cmd" "$python3_cmd" - "$path" "$mode" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+expected_mode = int(sys.argv[2], 8)
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    if path.is_symlink():
+        raise SystemExit(f"root config temporary file is a symlink: {path}") from exc
+    raise SystemExit(f"could not open root config temporary file: {path}: {exc}") from exc
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"root config temporary file is not a regular file: {path}")
+    if opened.st_uid != 0:
+        raise SystemExit(f"root config temporary file {path} is owned by uid {opened.st_uid}, expected root")
+    mode = opened.st_mode & 0o777
+    if mode != expected_mode:
+        raise SystemExit(
+            f"root config temporary file {path} has permissions {mode:04o}, expected {expected_mode:04o}"
+        )
+finally:
+    os.close(fd)
+PY
+}
+
 run() {
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+'
@@ -257,7 +291,15 @@ install_root_file_atomic() {
   "$sudo_cmd" install -d -m 0755 "$target_dir"
   validate_lightdm_autologin_path
   target_tmp="$("$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX")"
+  if ! verify_root_temp_file "$target_tmp" 0600; then
+    "$sudo_cmd" rm -f "$target_tmp"
+    return 1
+  fi
   if ! "$sudo_cmd" install -m "$mode" "$source" "$target_tmp"; then
+    "$sudo_cmd" rm -f "$target_tmp"
+    return 1
+  fi
+  if ! verify_root_temp_file "$target_tmp" "$mode"; then
     "$sudo_cmd" rm -f "$target_tmp"
     return 1
   fi
