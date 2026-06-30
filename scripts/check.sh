@@ -1428,7 +1428,9 @@ grep -q 'launcher log cache parent directory is owned by uid' scripts/verify_pi.
 grep -q 'launcher log cache parent directory has permissions' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock pid file has permissions' scripts/verify_pi.sh
 grep -q 'def _fsync_directory' src/noaa_navionics/cli.py
+grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/cli.py
 grep -q '_fsync_directory(tracks_dir)' src/noaa_navionics/cli.py
+grep -q 'test_gpx_track_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'charts.package must be one of' src/noaa_navionics/config.py
 grep -q 'package can be: state, cgd, region, chart, all' src/noaa_navionics/config.py
 grep -q 'package can be: state, cgd, region, chart, all' examples/noaa-navionics.ini

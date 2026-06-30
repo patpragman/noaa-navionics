@@ -769,7 +769,8 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
 
 def _fsync_directory(path: Path) -> None:
     try:
-        fd = os.open(Path(path), os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(Path(path), flags)
     except OSError:
         return
     try:

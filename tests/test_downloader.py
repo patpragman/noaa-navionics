@@ -7549,6 +7549,25 @@ class GpsTests(unittest.TestCase):
         self.assertEqual([path.name for path in removed], ["track-20260401.gpx"])
         self.assertGreaterEqual(len(calls), 1)
 
+    def test_gpx_track_directory_sync_uses_no_follow_open(self):
+        calls = []
+        original_open = cli_module.os.open
+
+        def fake_open(path, flags):
+            calls.append((Path(path), flags))
+            raise OSError("stop before opening")
+
+        cli_module.os.open = fake_open
+        try:
+            cli_module._fsync_directory(Path("/tmp"))
+        finally:
+            cli_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], Path("/tmp"))
+        self.assertTrue(calls[0][1] & getattr(os, "O_DIRECTORY", 0))
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+
     def test_prune_old_track_logs_rejects_symlinked_old_track(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tracks = Path(tmpdir) / "tracks"
