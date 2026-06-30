@@ -1277,6 +1277,73 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertTrue((track_output / "tracks" / expected_name).exists())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 
+    def test_cli_mark_position_writes_mob_waypoint_to_configured_track_output(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "configured-tracks"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
+            ):
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, deadline))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                stdout = StringIO()
+                with redirect_stdout(stdout):
+                    code = cli_module.main(["mark-position", "--config", str(app_config), "--mob", "--seconds", "12"])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][:6], ("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947))
+            self.assertIsNotNone(calls[0][6])
+            mark_path = track_output / "tracks" / f"mob-{fix.timestamp.strftime('%Y%m%dT%H%M%SZ')}.gpx"
+            self.assertTrue(mark_path.exists())
+            text = mark_path.read_text(encoding="utf-8")
+            self.assertIn('<wpt lat="61.21810000" lon="-149.90030000">', text)
+            self.assertIn("<name>MOB</name>", text)
+            self.assertIn("<desc>Man overboard position mark</desc>", text)
+            self.assertIn("<sat>9</sat>", text)
+            self.assertIn("<hdop>0.9</hdop>", text)
+            self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
+            self.assertIn(f"Marked position: {mark_path}", stdout.getvalue())
+
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -2116,6 +2183,44 @@ class GuiTests(unittest.TestCase):
             ],
         )
 
+    def test_status_gui_write_current_position_mark_uses_configured_track_output(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_output = root / "tracks-root"
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[charts]\n"
+                f"output = {root / 'charts'}\n"
+                "\n"
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fix
+
+            try:
+                status_gui_module.read_configured_gps_fix = lambda app_config, **kwargs: fix
+                path, returned_fix = status_gui_module.write_current_position_mark(config_path, mob=True)
+            finally:
+                status_gui_module.read_configured_gps_fix = original
+
+            self.assertIs(returned_fix, fix)
+            self.assertEqual(path, track_output / "tracks" / "mob-20260630T123456Z.gpx")
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("<name>MOB</name>", text)
+            self.assertIn("<desc>Man overboard position mark</desc>", text)
+
     def test_gui_download_rejects_low_disk_before_download(self):
         package = package_for(state="AK")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2768,6 +2873,7 @@ class CLIValidationTests(unittest.TestCase):
 
     def test_track_logger_rejects_non_positive_duration(self):
         self.assert_parse_error(["log-track", "--seconds", "0"])
+        self.assert_parse_error(["mark-position", "--seconds", "0"])
 
     def test_track_logger_rejects_negative_retention_days(self):
         self.assert_parse_error(["log-track", "--retention-days", "-1"])
@@ -9367,6 +9473,57 @@ class GpsTests(unittest.TestCase):
                     logger.append(fix)
 
             self.assertEqual(path.read_text(encoding="utf-8"), "existing")
+
+    def test_gpx_position_mark_writes_private_waypoint_file(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+            altitude_m=12.3,
+            satellites=9,
+            hdop=0.9,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "tracks" / "mark.gpx"
+            written = gps_module.write_gpx_position_mark(
+                path,
+                fix,
+                name="MOB & Crew",
+                description="Port <rail>",
+            )
+
+            self.assertEqual(written, path)
+            text = path.read_text(encoding="utf-8")
+            self.assertIn('<wpt lat="61.21810000" lon="-149.90030000">', text)
+            self.assertIn("<ele>12.30</ele>", text)
+            self.assertIn("<time>2026-06-30T12:34:56Z</time>", text)
+            self.assertIn("<name>MOB &amp; Crew</name>", text)
+            self.assertIn("<desc>Port &lt;rail&gt;</desc>", text)
+            self.assertIn("<sat>9</sat>", text)
+            self.assertIn("<hdop>0.9</hdop>", text)
+            self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+
+    def test_gpx_position_mark_rejects_missing_quality_fields(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "tracks" / "mark.gpx"
+
+            with self.assertRaisesRegex(ValueError, "satellite or HDOP"):
+                gps_module.write_gpx_position_mark(path, fix)
+
+            self.assertFalse(path.exists())
+
+    def test_gpx_position_mark_path_uses_utc_timestamp(self):
+        timestamp = datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc)
+        self.assertEqual(
+            gps_module.gpx_position_mark_path(Path("/tracks"), timestamp, prefix="MOB!"),
+            Path("/tracks/tracks/MOB-20260630T123456Z.gpx"),
+        )
 
     def test_daily_track_path_uses_utc_date(self):
         timestamp = datetime(2026, 6, 29, 23, 30, tzinfo=timezone.utc)

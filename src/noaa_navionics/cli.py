@@ -35,12 +35,14 @@ from .gps import (
     daily_track_path,
     default_track_path,
     first_symlink_ancestor,
+    gpx_position_mark_path,
     gps_fix_has_quality_fields,
     gps_fix_quality_failure,
     iter_fixes,
     iter_gpsd_fixes,
     open_nmea_stream,
     read_nmea_lines,
+    write_gpx_position_mark,
 )
 from .health import check_chart_package, check_disk_space, open_trusted_gps_sample, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
@@ -221,6 +223,19 @@ def build_parser() -> argparse.ArgumentParser:
     gps.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
     gps.add_argument("--once", action="store_true", help="exit after the first valid fix")
     gps.add_argument("--seconds", type=_positive_float, help="stop after this many seconds if no fix is read")
+
+    mark = subparsers.add_parser("mark-position", help="record the current GPS position as a GPX waypoint")
+    mark.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    mark.add_argument("--device", help="NMEA serial device")
+    mark.add_argument("--baud", type=int, help="serial baud rate")
+    mark.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
+    mark.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
+    mark.add_argument("--seconds", type=_positive_float, default=10.0, help="seconds to wait for a GPS fix")
+    mark.add_argument("--output", "-o", help="base output directory; defaults to [tracking].output")
+    mark.add_argument("--file", help="explicit GPX waypoint output file")
+    mark.add_argument("--name", default="Position mark", help="GPX waypoint name")
+    mark.add_argument("--description", default="", help="GPX waypoint description")
+    mark.add_argument("--mob", action="store_true", help="record a MOB-named position mark")
 
     track = subparsers.add_parser("log-track", help="record GPS fixes to a GPX track")
     track.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -495,6 +510,44 @@ def main(argv: Optional[list[str]] = None) -> int:
                 if args.once or count >= 1 and args.sample:
                     return 0
             return 1
+
+        if args.command == "mark-position":
+            app_config = read_config(Path(args.config))
+            use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
+            device = args.device or app_config.gps_device
+            if not use_gpsd and not args.sample:
+                _validate_live_serial_device(device)
+            base_output = Path(args.output).expanduser() if args.output else app_config.track_output
+            deadline = time.monotonic() + args.seconds
+            fix = _first_trackable_fix(
+                _read_fixes(
+                    device,
+                    args.baud or app_config.gps_baud,
+                    args.sample,
+                    gpsd=use_gpsd,
+                    gpsd_host=app_config.gpsd_host,
+                    gpsd_port=app_config.gpsd_port,
+                    deadline=deadline,
+                )
+            )
+            if fix is None:
+                print("No usable GPS fix was available for a position mark.", file=sys.stderr)
+                return 1
+            name = "MOB" if args.mob else args.name
+            description = args.description
+            if args.mob and not description:
+                description = "Man overboard position mark"
+            output = (
+                Path(args.file).expanduser()
+                if args.file
+                else _available_track_path(
+                    gpx_position_mark_path(base_output, fix.timestamp, prefix="mob" if args.mob else "mark")
+                )
+            )
+            path = write_gpx_position_mark(output, fix, name=name, description=description)
+            print(f"Marked position: {path}")
+            print(_format_fix(fix))
+            return 0
 
         if args.command == "log-track":
             app_config = read_config(Path(args.config))
@@ -800,6 +853,12 @@ def _track_fix_freshness_failure(
     if age_seconds < -future_tolerance_seconds:
         return f"fix timestamp is in the future by {-age_seconds:.0f}s"
     return ""
+
+
+def _first_trackable_fix(fixes):
+    for fix in _trackable_fixes(fixes):
+        return fix
+    return None
 
 
 class _TrackLoggerStop(Exception):

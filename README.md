@@ -60,7 +60,7 @@ For a focused onboard helm-readiness panel, run:
 noaa-navionics-status-gui
 ```
 
-The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display.
+The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display. Use its Mark or MOB buttons to write a private GPX waypoint from the current quality-checked GPS fix into the configured track export area.
 
 ## CLI Examples
 
@@ -195,6 +195,14 @@ scripts/export_pi_tracks.sh pi@raspberrypi.local
 ```
 
 The track export helper validates the SSH target, reads the Pi's onboard config, and writes a local `.tgz` containing only regular private `.gpx` files from the configured track directory plus an export manifest. Use `--days N` to export only recent track files. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+
+Mark the current GPS position while underway:
+
+```bash
+noaa-navionics mark-position --mob
+```
+
+The position-mark command reads one quality-checked GPSD or serial fix from the onboard config and writes a private GPX waypoint file under the configured track output's `tracks/` directory, so track exports include the mark. Use `--name` and `--description` for routine marks, or `--mob` for a MOB-named waypoint.
 
 Collect post-trip artifacts after returning to the dock:
 

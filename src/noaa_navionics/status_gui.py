@@ -10,7 +10,9 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-from .config import DEFAULT_CONFIG_PATH
+from .config import DEFAULT_CONFIG_PATH, read_config
+from .gps import GPSFix, gpx_position_mark_path, write_gpx_position_mark
+from .gui import format_gps_fix, read_configured_gps_fix
 from .report import build_status_report, write_status_report
 
 
@@ -59,6 +61,35 @@ def format_panel_summary(report: dict[str, object]) -> str:
     if failures == 0:
         return "All reported navigation readiness checks are passing."
     return f"{failures} reported readiness check(s) need attention."
+
+
+def available_position_mark_path(path: Path) -> Path:
+    target = Path(path).expanduser()
+    if not target.exists():
+        return target
+    stem = target.stem
+    suffix = target.suffix
+    for index in range(1, 1000):
+        candidate = target.with_name(f"{stem}-{index}{suffix}")
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError(f"could not find available position mark filename near {target}")
+
+
+def write_current_position_mark(
+    config_path: Path,
+    *,
+    gps_seconds: float = 10.0,
+    mob: bool = False,
+) -> tuple[Path, GPSFix]:
+    app_config = read_config(config_path)
+    fix = read_configured_gps_fix(app_config, gps_seconds=gps_seconds)
+    path = available_position_mark_path(
+        gpx_position_mark_path(app_config.track_output, fix.timestamp, prefix="mob" if mob else "mark")
+    )
+    name = "MOB" if mob else "Position mark"
+    description = "Man overboard position mark" if mob else ""
+    return write_gpx_position_mark(path, fix, name=name, description=description), fix
 
 
 def _non_negative_float(value: str) -> float:
@@ -128,15 +159,27 @@ class StatusApp(tk.Tk):
         buttons.grid(row=3, column=0, sticky=tk.EW, pady=(12, 0))
         self.refresh_button = ttk.Button(buttons, text="Refresh", command=self.refresh_now)
         self.refresh_button.pack(side=tk.LEFT)
+        self.mark_button = ttk.Button(buttons, text="Mark", command=lambda: self.mark_position(mob=False))
+        self.mark_button.pack(side=tk.LEFT, padx=(10, 0))
+        self.mob_button = ttk.Button(buttons, text="MOB", command=lambda: self.mark_position(mob=True))
+        self.mob_button.pack(side=tk.LEFT, padx=(10, 0))
         ttk.Button(buttons, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
         ttk.Label(root, textvariable=self.last_report).grid(row=4, column=0, sticky=tk.W, pady=(8, 0))
 
     def refresh_now(self) -> None:
         if self.worker is not None and self.worker.is_alive():
             return
-        self.refresh_button.configure(state=tk.DISABLED)
+        self._set_busy(True)
         self.summary.set("Refreshing status...")
         self.worker = Thread(target=self._refresh_worker, daemon=True)
+        self.worker.start()
+
+    def mark_position(self, *, mob: bool = False) -> None:
+        if self.worker is not None and self.worker.is_alive():
+            return
+        self._set_busy(True)
+        self.summary.set("Recording current GPS position...")
+        self.worker = Thread(target=self._mark_worker, kwargs={"mob": mob}, daemon=True)
         self.worker.start()
 
     def _refresh_worker(self) -> None:
@@ -148,12 +191,22 @@ class StatusApp(tk.Tk):
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
 
+    def _mark_worker(self, *, mob: bool) -> None:
+        try:
+            path, fix = write_current_position_mark(self.config_path, gps_seconds=self.gps_seconds, mob=mob)
+            self.queue.put(("mark", (path, format_gps_fix(fix))))
+        except Exception as exc:  # pragma: no cover - UI path
+            self.queue.put(("error", str(exc)))
+
     def _poll_queue(self) -> None:
         try:
             while True:
                 kind, payload = self.queue.get_nowait()
                 if kind == "report":
                     self._show_report(payload)
+                elif kind == "mark":
+                    path, lines = payload
+                    self._show_mark(path, lines)
                 elif kind == "error":
                     self._show_error(str(payload))
         except Empty:
@@ -161,7 +214,7 @@ class StatusApp(tk.Tk):
         self.after(150, self._poll_queue)
 
     def _show_report(self, report: dict[str, object]) -> None:
-        self.refresh_button.configure(state=tk.NORMAL)
+        self._set_busy(False)
         rows = status_rows(report)
         self.headline.set(status_headline(report))
         self.summary.set(format_panel_summary(report))
@@ -181,11 +234,23 @@ class StatusApp(tk.Tk):
             self.last_report.set("Status report was not written to disk.")
         self._schedule_refresh()
 
+    def _show_mark(self, path: Path, lines: list[str]) -> None:
+        self._set_busy(False)
+        self.summary.set(f"Saved position mark: {path}")
+        self.last_report.set(" | ".join(lines))
+        self._schedule_refresh()
+
     def _show_error(self, message: str) -> None:
-        self.refresh_button.configure(state=tk.NORMAL)
+        self._set_busy(False)
         self.headline.set("NOT READY")
         self.summary.set(message)
         self._schedule_refresh()
+
+    def _set_busy(self, busy: bool) -> None:
+        state = tk.DISABLED if busy else tk.NORMAL
+        self.refresh_button.configure(state=state)
+        self.mark_button.configure(state=state)
+        self.mob_button.configure(state=state)
 
     def _schedule_refresh(self) -> None:
         if self.after_id is not None:

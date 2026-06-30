@@ -366,26 +366,7 @@ class GPXTrackLogger:
 
     def __enter__(self) -> "GPXTrackLogger":
         parent = self.path.parent
-        symlink_component = first_symlink_ancestor(parent)
-        if symlink_component is not None:
-            raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
-        parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-        symlink_component = first_symlink_ancestor(parent)
-        if symlink_component is not None:
-            raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
-        parent_stat = parent.stat()
-        if parent_stat.st_uid != os.getuid():
-            raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
-        os.chmod(parent, 0o700)
-        symlink_component = first_symlink_ancestor(parent)
-        if symlink_component is not None:
-            raise RuntimeError(f"{symlink_component} became a symlink after permission tightening")
-        parent_stat = parent.stat()
-        if parent_stat.st_uid != os.getuid():
-            raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
-        parent_mode = parent_stat.st_mode & 0o777
-        if parent_mode & 0o077:
-            raise RuntimeError(f"{parent} has permissions {parent_mode:04o}, expected private 0700")
+        _prepare_private_gpx_parent(parent)
         if self.path.is_symlink():
             raise RuntimeError(f"{self.path} is a symlink, expected a new regular GPX track file")
         fd = os.open(
@@ -451,6 +432,101 @@ class GPXTrackLogger:
                 return
         os.fsync(self.file.fileno())
         self._last_fsync_monotonic = current
+
+
+def gpx_position_mark_path(base_dir: Path, timestamp: Optional[datetime] = None, *, prefix: str = "mark") -> Path:
+    current = timestamp or datetime.now(timezone.utc)
+    stamp = current.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_prefix = "".join(char if char.isalnum() or char in ("-", "_") else "-" for char in prefix).strip("-_")
+    if not safe_prefix:
+        safe_prefix = "mark"
+    return Path(base_dir).expanduser() / "tracks" / f"{safe_prefix}-{stamp}.gpx"
+
+
+def write_gpx_position_mark(
+    path: Path,
+    fix: GPSFix,
+    *,
+    name: str = "Position mark",
+    description: str = "",
+) -> Path:
+    target = Path(path).expanduser()
+    if fix.latitude is None or fix.longitude is None:
+        raise ValueError("position mark requires GPS coordinates")
+    if fix.timestamp is None:
+        raise ValueError("position mark requires a timestamped GPS fix")
+    quality_failure = gps_fix_quality_failure(fix)
+    if quality_failure:
+        raise ValueError(quality_failure)
+    if not gps_fix_has_quality_fields(fix):
+        raise ValueError("position mark requires satellite or HDOP quality data")
+    _prepare_private_gpx_parent(target.parent)
+    if target.is_symlink():
+        raise RuntimeError(f"{target} is a symlink, expected a new regular GPX position mark file")
+    fd = os.open(
+        target,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
+    )
+    created = True
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            created = False
+            _write_gpx_position_mark(handle, fix, name=name, description=description)
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_directory(target.parent)
+        _fsync_directory(target.parent.parent)
+    except Exception:
+        if created:
+            os.close(fd)
+        try:
+            target.unlink()
+        except FileNotFoundError:
+            pass
+        raise
+    return target
+
+
+def _write_gpx_position_mark(handle: TextIO, fix: GPSFix, *, name: str, description: str) -> None:
+    handle.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    handle.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')
+    handle.write(f'  <wpt lat="{fix.latitude:.8f}" lon="{fix.longitude:.8f}">\n')
+    if fix.altitude_m is not None:
+        handle.write(f"    <ele>{fix.altitude_m:.2f}</ele>\n")
+    handle.write(f"    <time>{fix.timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}</time>\n")
+    handle.write(f"    <name>{escape(name)}</name>\n")
+    if description:
+        handle.write(f"    <desc>{escape(description)}</desc>\n")
+    if fix.satellites is not None:
+        handle.write(f"    <sat>{fix.satellites}</sat>\n")
+    if fix.hdop is not None:
+        handle.write(f"    <hdop>{fix.hdop:g}</hdop>\n")
+    handle.write("  </wpt>\n")
+    handle.write("</gpx>\n")
+
+
+def _prepare_private_gpx_parent(parent: Path) -> None:
+    symlink_component = first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
+    parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    symlink_component = first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
+    parent_stat = parent.stat()
+    if parent_stat.st_uid != os.getuid():
+        raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
+    os.chmod(parent, 0o700)
+    symlink_component = first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} became a symlink after permission tightening")
+    parent_stat = parent.stat()
+    if parent_stat.st_uid != os.getuid():
+        raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o077:
+        raise RuntimeError(f"{parent} has permissions {parent_mode:04o}, expected private 0700")
 
 
 def _fsync_directory(path: Path) -> None:

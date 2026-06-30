@@ -500,6 +500,10 @@ grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'noaa-navionics mark-position --mob' README.md
+grep -q 'noaa-navionics mark-position --mob' docs/sailboat-pi.md
+grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" README.md
+grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" docs/sailboat-pi.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -835,6 +839,12 @@ grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
+grep -q 'mark-position' src/noaa_navionics/cli.py
+grep -q 'gpx_position_mark_path' src/noaa_navionics/cli.py
+grep -q 'write_gpx_position_mark' src/noaa_navionics/cli.py
+grep -q 'No usable GPS fix was available for a position mark' src/noaa_navionics/cli.py
+grep -q 'Marked position:' src/noaa_navionics/cli.py
+grep -q 'Man overboard position mark' src/noaa_navionics/cli.py
 grep -q 'navobj.xml' scripts/export_pi_opencpn_data.sh
 grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.sh
 grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
@@ -2217,6 +2227,14 @@ grep -q 'test_gpx_logger_directory_sync_uses_no_follow_open' tests/test_download
 grep -q 'GPX directory sync uses no-follow directory opens' README.md
 grep -q 'GPX directory sync uses no-follow directory opens' docs/sailboat-pi.md
 grep -q 'expected a new regular GPX track file' src/noaa_navionics/gps.py
+grep -q 'def write_gpx_position_mark' src/noaa_navionics/gps.py
+grep -q 'def gpx_position_mark_path' src/noaa_navionics/gps.py
+grep -q '<wpt lat=' src/noaa_navionics/gps.py
+grep -q 'position mark requires satellite or HDOP quality data' src/noaa_navionics/gps.py
+grep -q 'expected a new regular GPX position mark file' src/noaa_navionics/gps.py
+grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloader.py
+grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
+grep -q 'mark-position", "--seconds", "0"' tests/test_downloader.py
 grep -q 'def _coordinate_in_range' src/noaa_navionics/gps.py
 grep -q '_coordinate_in_range(self.latitude, latitude=True)' src/noaa_navionics/gps.py
 grep -q '_coordinate_in_range(self.longitude, latitude=False)' src/noaa_navionics/gps.py
@@ -2534,8 +2552,12 @@ grep -q 'sync requires writable chart storage with enough free space' src/noaa_n
 grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
+grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
+grep -q 'def available_position_mark_path' src/noaa_navionics/status_gui.py
 grep -q 'READY' src/noaa_navionics/status_gui.py
 grep -q 'NOT READY' src/noaa_navionics/status_gui.py
+grep -q 'text="MOB"' src/noaa_navionics/status_gui.py
+grep -q 'write_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
 grep -q 'build_status_report(config_path=self.config_path, gps_seconds=self.gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_status_report(report, self.output_path)' src/noaa_navionics/status_gui.py
 grep -q 'status-gui' src/noaa_navionics/cli.py
@@ -2543,6 +2565,8 @@ grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' README.md
 grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' docs/sailboat-pi.md
+grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' README.md
+grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -2575,6 +2599,8 @@ grep -q 'test_gui_gps_fix_rejects_fix_without_quality_fields' tests/test_downloa
 grep -q 'test_status_gui_summarizes_readiness_rows' tests/test_downloader.py
 grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader.py
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
+grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
+grep -q 'test_cli_mark_position_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py
