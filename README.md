@@ -148,6 +148,14 @@ scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-i
 
 This is a live Pi check for the current startup state before leaving the dock. It requires strict chartplotter-started verification, exact GPS receiver matching, chart readiness, GPSD, chrony GPS time, and GPX track logging, but it does not replace the rebooted dock acceptance test for new or changed installations.
 
+Run a lightweight read-only status snapshot on an already commissioned Pi:
+
+```bash
+scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10
+```
+
+The status helper runs the Pi's installed `noaa-navionics status-report` over batch-mode SSH and prints the text report, or JSON with `--json`. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
+
 Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
 
 ```bash

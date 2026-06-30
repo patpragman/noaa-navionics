@@ -13,6 +13,7 @@ bash -n \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
   scripts/pre_departure_check_pi.sh \
+  scripts/check_pi_status.sh \
   scripts/refresh_pi_charts.sh \
   scripts/collect_pi_support_bundle.sh \
   scripts/verify_pi_recovery_exports.sh \
@@ -475,6 +476,12 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
+grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
+grep -q 'lightweight read-only status snapshot' README.md
+grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
+grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
+grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30' docs/sailboat-pi.md
 grep -q 'No chart data is downloaded on the local computer' README.md
@@ -858,6 +865,13 @@ grep -Fq -- '--expected-gps-device "$device"' scripts/pre_departure_check_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
 grep -q 'check_expected_gps_device_matches' scripts/verify_pi.sh
 grep -q 'GPSD device matches expected' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
+grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
+grep -q 'status-report' scripts/check_pi_status.sh
+grep -q -- '--config "${HOME}/.config/noaa-navionics/config.ini"' scripts/check_pi_status.sh
+grep -q 'expected private venv symlink' scripts/check_pi_status.sh
+grep -q 'Do not check NOAA Navionics status as root@' scripts/check_pi_status.sh
+! grep -q -- '--output' scripts/check_pi_status.sh
 [[ "$(grep -c 'parser.read_string(config_text, source=str(config_path))' scripts/verify_pi.sh)" -ge 3 ]]
 grep -q 'config_text = handle.read()' scripts/verify_pi.sh
 grep -q 'Do not verify root@' scripts/verify_pi.sh
@@ -4507,6 +4521,55 @@ grep -Fxq -- '3' "$pre_departure_args"
 grep -Fxq -- '--allow-dirty' "$pre_departure_args"
 grep -Fxq -- 'pi@example.invalid' "$pre_departure_args"
 grep -q 'Pre-departure check passed' "$verify_output"
+
+set +e
+scripts/check_pi_status.sh root@example.invalid >"$verify_output" 2>&1
+status_snapshot_code=$?
+set -e
+if [[ "$status_snapshot_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not check NOAA Navionics status as root@' "$verify_output"
+
+set +e
+scripts/check_pi_status.sh pi@example.invalid --gps-seconds nope >"$verify_output" 2>&1
+status_snapshot_code=$?
+set -e
+if [[ "$status_snapshot_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject invalid --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
+
+status_fake_ssh_bin="$tmpdir/status-fake-ssh-bin"
+status_fake_ssh_args="$tmpdir/status-fake-ssh-args"
+status_fake_ssh_stdin="$tmpdir/status-fake-ssh-stdin"
+mkdir -p "$status_fake_ssh_bin"
+cat >"$status_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake status report\n'
+EOF
+chmod +x "$status_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$status_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$status_fake_ssh_stdin" \
+  PATH="$status_fake_ssh_bin:$PATH" \
+  scripts/check_pi_status.sh pi@example.invalid --gps-seconds 12 --json >"$verify_output" 2>&1
+grep -q 'fake status report' "$verify_output"
+grep -q -- '-o BatchMode=yes' "$status_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS=12' "$status_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_STATUS_JSON=1' "$status_fake_ssh_args"
+grep -q 'pi@example.invalid' "$status_fake_ssh_args"
+grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
+grep -q 'status-report' "$status_fake_ssh_stdin"
+grep -q -- '--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
+grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"
+! grep -q -- '--output' "$status_fake_ssh_stdin"
 
 set +e
 scripts/refresh_pi_charts.sh root@example.invalid >"$verify_output" 2>&1
