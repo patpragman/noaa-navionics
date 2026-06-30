@@ -504,8 +504,8 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, copies selected Pi files through no-follow descriptor revalidation' README.md
-grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
+grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
@@ -889,6 +889,10 @@ grep -q 'src_fd = os.open(source, os.O_RDONLY | nofollow)' scripts/collect_pi_su
 grep -q 'file changed before copy' scripts/collect_pi_support_bundle.sh
 grep -q 'shutil.copyfileobj(src_handle, dst_handle)' scripts/collect_pi_support_bundle.sh
 grep -q 'os.replace(tmp_path, target)' scripts/collect_pi_support_bundle.sh
+grep -q 'config_fd = os.open(config_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
+grep -q 'onboard config changed before storage metadata parse' scripts/collect_pi_support_bundle.sh
+grep -q 'parser.read_file(config_handle)' scripts/collect_pi_support_bundle.sh
+! grep -q 'parser.read(config_path)' scripts/collect_pi_support_bundle.sh
 grep -q '"$cache_dir"/support-bundle.\*)' scripts/collect_pi_support_bundle.sh
 grep -q 'tarfile.open' scripts/export_pi_tracks.sh
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh

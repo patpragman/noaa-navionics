@@ -474,11 +474,34 @@ collect_configured_storage_metadata() {
 from configparser import ConfigParser
 from pathlib import Path
 import os
+import stat
 import sys
 
 config_path = Path(sys.argv[1]).expanduser()
+if config_path.is_symlink():
+    raise SystemExit(f"onboard config is a symlink: {config_path}")
+for candidate in [config_path.parent, *config_path.parent.parents]:
+    if candidate.is_symlink():
+        raise SystemExit(f"onboard config parent path contains a symlink: {candidate}")
+try:
+    expected = config_path.lstat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect onboard config: {exc}") from exc
+if not stat.S_ISREG(expected.st_mode):
+    raise SystemExit(f"onboard config is not a regular file: {config_path}")
+if expected.st_uid != os.getuid():
+    raise SystemExit(f"onboard config is owned by uid {expected.st_uid}, expected {os.getuid()}: {config_path}")
+mode = stat.S_IMODE(expected.st_mode)
+if mode & 0o077:
+    raise SystemExit(f"onboard config has permissions {mode:04o}, expected private 0600: {config_path}")
+config_fd = os.open(config_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+opened = os.fstat(config_fd)
+if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+    os.close(config_fd)
+    raise SystemExit(f"onboard config changed before storage metadata parse: {config_path}")
 parser = ConfigParser()
-parser.read(config_path)
+with os.fdopen(config_fd, encoding="utf-8") as config_handle:
+    parser.read_file(config_handle)
 chart_text = parser.get("charts", "output", fallback="~/charts/noaa-enc")
 chart_output = Path(os.path.expanduser(chart_text))
 track_text = parser.get("tracking", "output", fallback=str(chart_output))
