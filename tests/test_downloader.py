@@ -8907,6 +8907,32 @@ class GpsTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
 
+    def test_gpx_logger_rejects_track_parent_when_tightening_fails(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
+        original_chmod = gps_module.os.chmod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            parent = Path(tmpdir) / "tracks"
+            parent.mkdir()
+            parent.chmod(0o755)
+            path = parent / "track.gpx"
+
+            def no_op_chmod(path_arg, mode):
+                if Path(path_arg) == parent:
+                    return None
+                return original_chmod(path_arg, mode)
+
+            try:
+                gps_module.os.chmod = no_op_chmod
+                with self.assertRaisesRegex(RuntimeError, "has permissions 0755, expected private 0700"):
+                    with GPXTrackLogger(path, name="Test") as logger:
+                        logger.append(fix)
+            finally:
+                gps_module.os.chmod = original_chmod
+                parent.chmod(0o700)
+
+            self.assertFalse(path.exists())
+
     def test_gpx_logger_rejects_misowned_track_parent(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -8987,6 +9013,27 @@ class GpsTests(unittest.TestCase):
             self.assertEqual((Path(tmpdir) / "tracks").stat().st_mode & 0o777, 0o700)
             self.assertIn('lat="1.00000000"', outputs[0].read_text(encoding="utf-8"))
             self.assertIn('lat="3.00000000"', outputs[1].read_text(encoding="utf-8"))
+
+    def test_prepare_private_tracks_dir_rejects_directory_when_tightening_fails(self):
+        original_chmod = cli_module.os.chmod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracks = Path(tmpdir) / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o755)
+
+            def no_op_chmod(path_arg, mode):
+                if Path(path_arg) == tracks:
+                    return None
+                return original_chmod(path_arg, mode)
+
+            try:
+                cli_module.os.chmod = no_op_chmod
+                with self.assertRaisesRegex(RuntimeError, "has permissions 0755, expected private 0700"):
+                    cli_module._prepare_private_tracks_dir(tracks)
+            finally:
+                cli_module.os.chmod = original_chmod
+                tracks.chmod(0o700)
 
     def test_log_rotating_tracks_rejects_symlinked_tracks_directory(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)

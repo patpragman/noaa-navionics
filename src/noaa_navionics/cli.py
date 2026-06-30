@@ -872,6 +872,15 @@ def _prepare_private_tracks_dir(tracks_dir: Path) -> None:
     if stat_result.st_uid != os.getuid():
         raise RuntimeError(f"{path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}")
     os.chmod(path, 0o700)
+    symlink_component = first_symlink_ancestor(path)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} became a symlink after permission tightening")
+    stat_result = path.stat()
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(f"{path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}")
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o077:
+        raise RuntimeError(f"{path} has permissions {mode:04o}, expected private 0700")
     _fsync_directory(path)
     _fsync_directory(path.parent)
 

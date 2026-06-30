@@ -377,6 +377,15 @@ class GPXTrackLogger:
         if parent_stat.st_uid != os.getuid():
             raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
         os.chmod(parent, 0o700)
+        symlink_component = first_symlink_ancestor(parent)
+        if symlink_component is not None:
+            raise RuntimeError(f"{symlink_component} became a symlink after permission tightening")
+        parent_stat = parent.stat()
+        if parent_stat.st_uid != os.getuid():
+            raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
+        parent_mode = parent_stat.st_mode & 0o777
+        if parent_mode & 0o077:
+            raise RuntimeError(f"{parent} has permissions {parent_mode:04o}, expected private 0700")
         if self.path.is_symlink():
             raise RuntimeError(f"{self.path} is a symlink, expected a new regular GPX track file")
         fd = os.open(
