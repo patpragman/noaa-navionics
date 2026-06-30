@@ -485,6 +485,8 @@ grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
+grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
 grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
@@ -495,6 +497,8 @@ grep -q '`navobj.xml` route/waypoint data' README.md
 grep -q '`navobj.xml` route/waypoint data' docs/sailboat-pi.md
 grep -q 'trusted NOAA Navionics config, launcher policy, source revision' README.md
 grep -q 'trusted NOAA Navionics config, launcher policy, source revision' docs/sailboat-pi.md
+grep -q 'read-only settings, OpenCPN user-data, GPX track, and support-bundle exports' README.md
+grep -q 'read-only settings, OpenCPN user-data, GPX track, and support-bundle exports' docs/sailboat-pi.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' README.md
 grep -q 'read one quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
@@ -804,6 +808,11 @@ grep -q 'source-revision' scripts/export_pi_settings.sh
 grep -q '50-noaa-navionics-autologin.conf' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
+grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4752,6 +4761,68 @@ grep -q 'source-revision' "$settings_export_fake_ssh_stdin"
 grep -q 'noaa-navionics-preflight.service' "$settings_export_fake_ssh_stdin"
 grep -q '50-noaa-navionics-autologin.conf' "$settings_export_fake_ssh_stdin"
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' "$settings_export_fake_ssh_stdin"
+
+set +e
+scripts/export_pi_recovery_bundle.sh root@example.invalid >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not export recovery bundles as root@' "$verify_output"
+
+set +e
+scripts/export_pi_recovery_bundle.sh pi@example.invalid --track-days nope >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject invalid --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be a non-negative integer' "$verify_output"
+
+recovery_export_symlink="$tmpdir/recovery-export-output-link"
+ln -s "$tmpdir" "$recovery_export_symlink"
+set +e
+scripts/export_pi_recovery_bundle.sh pi@example.invalid "$recovery_export_symlink" >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject symlinked output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not be a symlink' "$verify_output"
+
+recovery_repo="$tmpdir/recovery-repo"
+recovery_log="$tmpdir/recovery-helper-calls"
+recovery_output_dir="$tmpdir/recovery-output"
+mkdir -p "$recovery_repo/scripts"
+cp scripts/export_pi_recovery_bundle.sh "$recovery_repo/scripts/export_pi_recovery_bundle.sh"
+for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh; do
+  cat >"$recovery_repo/scripts/$helper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$(basename "$0")|$*" >>"$NOAA_NAVIONICS_FAKE_RECOVERY_LOG"
+printf 'fake %s\n' "$(basename "$0")"
+EOF
+  chmod +x "$recovery_repo/scripts/$helper"
+done
+NOAA_NAVIONICS_FAKE_RECOVERY_LOG="$recovery_log" \
+  "$recovery_repo/scripts/export_pi_recovery_bundle.sh" \
+  pi@example.invalid "$recovery_output_dir" --track-days 14 >"$verify_output" 2>&1
+grep -q 'Pi recovery exports written to:' "$verify_output"
+grep -q 'Exporting commissioning settings' "$verify_output"
+grep -q 'Exporting OpenCPN user data' "$verify_output"
+grep -q 'Exporting GPX tracks' "$verify_output"
+grep -q 'Collecting diagnostic support bundle' "$verify_output"
+test -d "$(sed -n 's/^Pi recovery exports written to: //p' "$verify_output")"
+grep -Eq '^export_pi_settings.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
+grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
+grep -Eq '^export_pi_tracks.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 14$' "$recovery_log"
+grep -Eq '^collect_pi_support_bundle.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1

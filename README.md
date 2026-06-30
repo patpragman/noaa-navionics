@@ -188,6 +188,14 @@ scripts/export_pi_settings.sh pi@raspberrypi.local
 
 The settings export helper writes a local `.tgz` containing trusted NOAA Navionics config, launcher policy, source revision, user service/autostart files, and readable GPSD/chrony/LightDM settings. It does not deploy, reboot, start services, download charts, or copy logs, GPX tracks, NOAA chart archives, or extracted ENC cells.
 
+Export a full recovery set before a trip or maintenance window:
+
+```bash
+scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30
+```
+
+The recovery export helper creates one timestamped local directory, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+
 Shut the Pi down cleanly before cutting boat power:
 
 ```bash
