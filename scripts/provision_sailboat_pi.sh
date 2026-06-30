@@ -996,7 +996,9 @@ ensure_private_directory() {
     return 0
   fi
   mkdir -p "$target"
+  validate_user_directory_path "$target" "$label"
   chmod 0700 "$target"
+  validate_user_directory_path "$target" "$label"
   sync_paths "$target"
 }
 
@@ -1015,6 +1017,7 @@ install_file_atomic() {
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
   mkdir -p "$target_dir"
+  validate_user_directory_path "$target_dir" "provisioned user file directory"
   tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
   if ! install -m "$mode" "$source" "$tmp"; then
     rm -f "$tmp"

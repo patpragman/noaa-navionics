@@ -2845,8 +2845,8 @@ grep -q 'verify_launcher_env "$launcher_env" "$gps_seconds" "$opencpn_restarts" 
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh
 grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailboat_pi.sh
 grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
-grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment and promoted user service/autostart files through no-follow descriptors' README.md
-grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment and promoted user service/autostart files through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'Provisioning revalidates user directories after creating or tightening them before placing temporary files there' README.md
+grep -q 'Provisioning revalidates user directories after creating or tightening them before placing temporary files there' docs/sailboat-pi.md
 grep -q 'Provisioning requires the installed private `~/.local/bin/noaa-navionics` symlink to resolve into `~/.local/share/noaa-navionics/venv/bin/noaa-navionics`' README.md
 grep -q 'Provisioning requires the installed private `~/.local/bin/noaa-navionics` symlink to resolve into `~/.local/share/noaa-navionics/venv/bin/noaa-navionics`' docs/sailboat-pi.md
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
@@ -2862,6 +2862,8 @@ grep -q 'install_file_atomic' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/provision_sailboat_pi.sh
 grep -q 'install -m "$mode" "$source" "$tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$tmp"' scripts/provision_sailboat_pi.sh
+test "$(grep -c 'validate_user_directory_path "$target" "$label"' scripts/provision_sailboat_pi.sh)" -ge 3
+grep -q 'validate_user_directory_path "$target_dir" "provisioned user file directory"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_install_path "$target" "provisioned user file"' scripts/provision_sailboat_pi.sh)" -ge 2
 grep -q 'mv -f "$tmp" "$target"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$target"' scripts/provision_sailboat_pi.sh
@@ -2873,12 +2875,23 @@ from pathlib import Path
 
 text = Path("scripts/provision_sailboat_pi.sh").read_text(encoding="utf-8")
 install_start = text.index("install_file_atomic()")
+install_mkdir = text.index('mkdir -p "$target_dir"', install_start)
+install_validate_dir = text.index('validate_user_directory_path "$target_dir" "provisioned user file directory"', install_mkdir)
+install_mktemp = text.index('mktemp "${target_dir}/.${target_name}.XXXXXX"', install_validate_dir)
 promote = text.index('mv -f "$tmp" "$target"', install_start)
 verify = text.index('verify_promoted_user_file "$source" "$target" "$mode"', promote)
 sync = text.index('sync_paths "$target"', verify)
 daemon = text.index('run "$systemctl_cmd" --user daemon-reload')
-if not promote < verify < sync < daemon:
+ensure_start = text.index("ensure_private_directory()")
+ensure_mkdir = text.index('mkdir -p "$target"', ensure_start)
+ensure_validate_after_mkdir = text.index('validate_user_directory_path "$target" "$label"', ensure_mkdir)
+ensure_chmod = text.index('chmod 0700 "$target"', ensure_validate_after_mkdir)
+ensure_validate_after_chmod = text.index('validate_user_directory_path "$target" "$label"', ensure_chmod)
+ensure_sync = text.index('sync_paths "$target"', ensure_validate_after_chmod)
+if not install_mkdir < install_validate_dir < install_mktemp < promote < verify < sync < daemon:
     raise SystemExit("promoted user files must be verified before sync and daemon reload")
+if not ensure_mkdir < ensure_validate_after_mkdir < ensure_chmod < ensure_validate_after_chmod < ensure_sync:
+    raise SystemExit("private directory provisioning must revalidate after mkdir and chmod before syncing")
 PY
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644' scripts/provision_sailboat_pi.sh
