@@ -2363,6 +2363,25 @@ class ManifestTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 2)
 
+    def test_chart_directory_sync_uses_no_follow_open(self):
+        calls = []
+        original_open = downloader_module.os.open
+
+        def fake_open(path, flags):
+            calls.append((Path(path), flags))
+            raise OSError("stop before opening")
+
+        downloader_module.os.open = fake_open
+        try:
+            downloader_module._fsync_directory(Path("/tmp"))
+        finally:
+            downloader_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], Path("/tmp"))
+        self.assertTrue(calls[0][1] & getattr(os, "O_DIRECTORY", 0))
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+
     def test_download_rejects_existing_partial_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir)
