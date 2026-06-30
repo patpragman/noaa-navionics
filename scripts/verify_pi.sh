@@ -2013,16 +2013,11 @@ check_raspberry_pi_throttling_state() {
     printf 'vcgencmd get_throttled failed: %s\n' "$output" >&2
     return 1
   fi
-  if [[ "$output" != throttled=* ]]; then
+  if [[ ! "$output" =~ ^throttled=(0x[[:xdigit:]]+|[0-9]+)$ ]]; then
     printf 'unexpected vcgencmd get_throttled output: %s\n' "$output" >&2
     return 1
   fi
-  value_text="${output#throttled=}"
-  value_text="${value_text%%[[:space:]]*}"
-  if [[ ! "$value_text" =~ ^(0x[[:xdigit:]]+|[0-9]+)$ ]]; then
-    printf 'unexpected vcgencmd get_throttled value: %s\n' "$output" >&2
-    return 1
-  fi
+  value_text="${BASH_REMATCH[1]}"
   value=$((value_text))
 
   (( value & (1 << 0) )) && reported+=("under-voltage")

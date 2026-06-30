@@ -1403,9 +1403,10 @@ _THROTTLE_BITS = {
 
 
 def _parse_throttled_value(output: str) -> Optional[int]:
-    if "=" not in output:
+    match = re.fullmatch(r"throttled=(0x[0-9A-Fa-f]+|[0-9]+)", output.strip())
+    if not match:
         return None
-    value = output.split("=", 1)[1].strip()
+    value = match.group(1)
     try:
         return int(value, 16 if value.lower().startswith("0x") else 10)
     except ValueError:

@@ -868,10 +868,14 @@ grep -q '"Pi Thermal"' scripts/verify_pi.sh
 grep -q '"Chrony Config"' scripts/verify_pi.sh
 grep -q 'temperature sensor unavailable on Raspberry Pi' src/noaa_navionics/health.py
 grep -q 'throttling reported since boot' src/noaa_navionics/health.py
+grep -q 're.fullmatch(r"throttled=' src/noaa_navionics/health.py
+grep -Fq '[[ ! "$output" =~ ^throttled=(0x[[:xdigit:]]+|[0-9]+)$ ]]' scripts/verify_pi.sh
 ! grep -q 'healthy now; historical events' src/noaa_navionics/health.py
 grep -q 'measure_temp' src/noaa_navionics/health.py
 grep -q 'vcgencmd measure_temp' README.md
 grep -q 'vcgencmd measure_temp' docs/sailboat-pi.md
+grep -q 'well-formed `vcgencmd get_throttled` value' README.md
+grep -q 'well-formed `vcgencmd get_throttled` value' docs/sailboat-pi.md
 grep -q '"GPSD Config"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
@@ -903,6 +907,7 @@ grep -q 'process lookup command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
 grep -q 'vcgencmd get_throttled failed' scripts/verify_pi.sh
+grep -q 'unexpected vcgencmd get_throttled output' scripts/verify_pi.sh
 grep -q 'Raspberry Pi power or thermal throttling reported since boot' scripts/verify_pi.sh
 grep -q 'Pi power state' scripts/verify_pi.sh
 grep -q 'local bin directory integrity' scripts/verify_pi.sh

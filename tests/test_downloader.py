@@ -9745,6 +9745,9 @@ class PiHealthTests(unittest.TestCase):
         self.assertEqual(_parse_throttled_value("throttled=0x50000"), 0x50000)
         self.assertEqual(_parse_throttled_value("throttled=3"), 3)
         self.assertIsNone(_parse_throttled_value("not-throttled"))
+        self.assertIsNone(_parse_throttled_value("other=0x0"))
+        self.assertIsNone(_parse_throttled_value("throttled=0x0 warning"))
+        self.assertIsNone(_parse_throttled_value("warning\nthrottled=0x0"))
 
     def test_check_pi_throttling_reports_active_under_voltage(self):
         with tempfile.TemporaryDirectory() as tmpdir:
