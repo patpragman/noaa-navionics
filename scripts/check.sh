@@ -191,6 +191,9 @@ grep -q 'Refusing source revision write under symlinked deployment path' scripts
 grep -q 'Deployment directory is not ready for source revision write' scripts/deploy_to_pi.sh
 grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
+grep -q 'validate_trusted_local_ssh' scripts/deploy_to_pi.sh
+grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/deploy_to_pi.sh
+grep -q 'Local ssh command is not in a trusted system directory' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
@@ -253,6 +256,10 @@ grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
 grep -q 'require_local_command ssh' scripts/verify_pi.sh
+grep -q 'validate_trusted_local_ssh' scripts/dock_test_pi.sh
+grep -q 'validate_trusted_local_ssh' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/dock_test_pi.sh
+grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
@@ -265,6 +272,8 @@ grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--allow-dirty' scripts/verify_pi.sh
 grep -q 'Refusing to verify a dirty local worktree as production evidence' scripts/verify_pi.sh
 grep -q 'verify_args+=("$1")' scripts/dock_test_pi.sh
+grep -q 'trusted local SSH command' README.md
+grep -q 'trusted local SSH command' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
@@ -2243,6 +2252,7 @@ chmod +x "$dock_fake_ssh_bin/ssh"
 
 set +e
 NOAA_NAVIONICS_FAKE_REBOOT_PATH=/home/pi/bin/reboot \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$dock_fake_ssh_bin:$PATH" \
   scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
 dock_code=$?
@@ -2257,6 +2267,7 @@ grep -q 'Remote reboot command is not in a trusted system directory: /home/pi/bi
 set +e
 NOAA_NAVIONICS_FAKE_REBOOT_PATH=/usr/sbin/reboot \
 NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR='Remote reboot command file is owned by uid 1000, expected 0: /usr/sbin/reboot' \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$dock_fake_ssh_bin:$PATH" \
   scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
 dock_code=$?
@@ -2343,6 +2354,22 @@ if [[ "$verify_code" -ne 2 ]]; then
 fi
 grep -q 'boot ID must be the Linux boot_id value' "$verify_output"
 
+untrusted_local_ssh_bin="$tmpdir/untrusted-local-ssh-bin"
+mkdir -p "$untrusted_local_ssh_bin"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$untrusted_local_ssh_bin/ssh"
+chmod +x "$untrusted_local_ssh_bin/ssh"
+set +e
+PATH="$untrusted_local_ssh_bin:$PATH" \
+  scripts/verify_pi.sh --allow-dirty pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject an untrusted local ssh command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local ssh command is not in a trusted system directory' "$verify_output"
+
 verify_revision_repo="$tmpdir/verify-revision-repo"
 mkdir -p "$verify_revision_repo/scripts" "$verify_revision_repo/bin"
 cp scripts/verify_pi.sh "$verify_revision_repo/scripts/verify_pi.sh"
@@ -2361,12 +2388,14 @@ git -C "$verify_revision_repo" commit -q -m initial
 verify_clean_revision="$(git -C "$verify_revision_repo" rev-parse --short HEAD)"
 verify_fake_ssh_args="$tmpdir/verify-fake-ssh-args"
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
 grep -Fq "NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}" "$verify_fake_ssh_args"
 printf '# dirty change\n' >>"$verify_revision_repo/scripts/verify_pi.sh"
 set +e
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
 verify_code=$?
@@ -2378,6 +2407,7 @@ if [[ "$verify_code" -ne 2 ]]; then
 fi
 grep -q 'Refusing to verify a dirty local worktree as production evidence' "$verify_output"
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" --allow-dirty pi@example.invalid >"$verify_output" 2>&1
 grep -Fq "NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}-dirty" "$verify_fake_ssh_args"
