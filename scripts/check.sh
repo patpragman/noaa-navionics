@@ -1211,6 +1211,7 @@ grep -q 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.chart
 grep -q 'chart service loaded sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
 grep -q 'chart service loaded restart' scripts/verify_pi.sh
+grep -q 'chart service restart delay' scripts/verify_pi.sh
 grep -q 'chart service loaded restart delay' scripts/verify_pi.sh
 grep -q 'chart service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'chart service loaded start limit burst' scripts/verify_pi.sh
@@ -1229,6 +1230,7 @@ grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded restart' scripts/verify_pi.sh
+grep -q 'track service restart delay' scripts/verify_pi.sh
 grep -q 'track service loaded restart delay' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service loaded start limit interval' scripts/verify_pi.sh
@@ -2609,6 +2611,7 @@ grep -q 'chart service loaded type' scripts/verify_pi.sh
 grep -q 'track service loaded type' scripts/verify_pi.sh
 grep -q 'preflight service loaded type' scripts/verify_pi.sh
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
+grep -q 'RestartSec=10' systemd/noaa-navionics-track.service
 grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'UMask=0077' systemd/noaa-navionics-track.service
 grep -q 'chart service private files' scripts/verify_pi.sh
