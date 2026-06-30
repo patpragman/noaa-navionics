@@ -3026,10 +3026,10 @@ if [[ "$require_chartplotter_started" -eq 1 ]]; then
   check "chartplotter started after boot" wait_for_chartplotter_started
   check "chartplotter launcher lock live" check_launcher_lock_live
   check "display power disabled after boot" check_live_display_power_disabled
-  if opencpn_running; then
-    check "OpenCPN running" true
+  if opencpn_supervised_running; then
+    check "launcher-supervised OpenCPN running" true
   else
-    check "OpenCPN running" false
+    check "launcher-supervised OpenCPN running" false
   fi
   check "OpenCPN ENC parse argument" check_opencpn_enc_parse_argument
   check "OpenCPN stable after startup" check_opencpn_stable

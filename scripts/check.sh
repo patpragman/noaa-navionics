@@ -503,6 +503,7 @@ grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc'
 grep -q 'launcher-supervised OpenCPN exited within' scripts/verify_pi.sh
 grep -q 'launcher-supervised `opencpn` child process' README.md
 grep -q 'launcher-supervised `opencpn` child process' docs/sailboat-pi.md
+grep -q 'launcher-supervised OpenCPN is running' docs/sailboat-pi.md
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
 grep -q 'check_recent_track_log' scripts/verify_pi.sh
@@ -545,7 +546,8 @@ grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/verify_pi.sh
 grep -q 'opencpn_process_active' scripts/verify_pi.sh
 grep -Fq 'state="${stat_line##*) }"' scripts/verify_pi.sh
 grep -Fq '[[ -n "$state" && "$state" != "Z" ]]' scripts/verify_pi.sh
-grep -q 'OpenCPN running' scripts/verify_pi.sh
+grep -q 'launcher-supervised OpenCPN running' scripts/verify_pi.sh
+! grep -q 'check "OpenCPN running"' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report boot ID' scripts/verify_pi.sh
