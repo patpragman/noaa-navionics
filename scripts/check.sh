@@ -479,6 +479,10 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'configured chart manifests and storage listings' README.md
+grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
+grep -q 'extracted ENC cells, or GPX track contents' README.md
+grep -q 'extracted ENC cells, or GPX track contents' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'read-only diagnostic evidence' README.md
@@ -767,6 +771,10 @@ grep -q 'recent-user-journal' scripts/collect_pi_support_bundle.sh
 grep -q 'recent-system-journal' scripts/collect_pi_support_bundle.sh
 grep -q 'chartplotter.log' scripts/collect_pi_support_bundle.sh
 grep -q 'status.json' scripts/collect_pi_support_bundle.sh
+grep -q 'noaa-navionics-manifest.json' scripts/collect_pi_support_bundle.sh
+grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
+grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
+grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4533,6 +4541,10 @@ grep -q 'bash -s' "$support_fake_ssh_args"
 grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
+grep -q 'configured-storage-paths.txt' "$support_fake_ssh_stdin"
+grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
+grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"
+grep -q 'configured-track-storage-tree' "$support_fake_ssh_stdin"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1

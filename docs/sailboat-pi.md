@@ -89,7 +89,7 @@ Collect a diagnostic support bundle from the Pi before changing anything:
 scripts/collect_pi_support_bundle.sh pi@raspberrypi.local
 ```
 
-The support bundle is a local `.tgz` containing Pi-side NOAA Navionics config, status reports, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, or download charts.
+The support bundle is a local `.tgz` containing Pi-side NOAA Navionics config, status reports, configured chart manifests and storage listings, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, download charts, or copy NOAA chart archives, extracted ENC cells, or GPX track contents.
 
 Shut the Pi down cleanly before cutting boat power:
 

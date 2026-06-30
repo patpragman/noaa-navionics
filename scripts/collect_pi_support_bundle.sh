@@ -291,6 +291,58 @@ copy_glob() {
   fi
 }
 
+collect_configured_storage_metadata() {
+  local config="${HOME}/.config/noaa-navionics/config.ini"
+  local path_report="${commands_dir}/configured-storage-paths.txt"
+  local key
+  local value
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    write_note "python3 missing; could not parse configured chart and track paths"
+    return 0
+  fi
+  if [[ ! -f "$config" || -L "$config" ]]; then
+    write_note "onboard config missing or symlinked; could not parse configured chart and track paths"
+    return 0
+  fi
+  if ! python3 - "$config" >"$path_report" <<'PY'
+from configparser import ConfigParser
+from pathlib import Path
+import os
+import sys
+
+config_path = Path(sys.argv[1]).expanduser()
+parser = ConfigParser()
+parser.read(config_path)
+chart_text = parser.get("charts", "output", fallback="~/charts/noaa-enc")
+chart_output = Path(os.path.expanduser(chart_text))
+track_text = parser.get("tracking", "output", fallback=str(chart_output))
+track_output = Path(os.path.expanduser(track_text))
+print(f"chart_output\t{chart_output}")
+print(f"chart_manifest\t{chart_output / 'noaa-navionics-manifest.json'}")
+print(f"track_output\t{track_output}")
+print(f"track_directory\t{track_output / 'tracks'}")
+PY
+  then
+    write_note "could not parse onboard config for chart and track paths"
+    return 0
+  fi
+
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      chart_manifest)
+        copy_regular_if_readable "$value"
+        ;;
+      chart_output)
+        run_command configured-chart-storage-tree bash -lc 'find "$1" -maxdepth 2 -mindepth 1 -ls 2>&1 || true' _ "$value"
+        ;;
+      track_output)
+        run_command configured-track-storage-tree bash -lc 'find "$1" -maxdepth 2 -mindepth 1 \( -type d -o -name "*.gpx" \) -ls 2>&1 || true' _ "$value"
+        ;;
+    esac
+  done <"$path_report"
+}
+
 copy_regular_if_readable "${HOME}/.config/noaa-navionics/config.ini"
 copy_regular_if_readable "${HOME}/.config/noaa-navionics/launcher.env"
 copy_regular_if_readable "${HOME}/.cache/noaa-navionics/status.json"
@@ -303,6 +355,7 @@ copy_glob "${HOME}"/.config/systemd/user/noaa-navionics*.service "${HOME}"/.conf
 copy_regular_if_readable /etc/default/gpsd
 copy_regular_if_readable /etc/chrony/conf.d/noaa-navionics-gpsd.conf
 copy_regular_if_readable /etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf
+collect_configured_storage_metadata
 
 run_command date-utc date -u
 run_command uname uname -a
@@ -328,7 +381,7 @@ printf 'NOAA Navionics Raspberry Pi support bundle\n' >"${bundle_root}/README.tx
 printf 'Collected: ' >>"${bundle_root}/README.txt"
 date -u >>"${bundle_root}/README.txt"
 printf 'Target user: %s\n' "$(id -un 2>/dev/null || printf unknown)" >>"${bundle_root}/README.txt"
-printf 'This bundle is diagnostic evidence only. It does not include downloaded NOAA chart archives or GPX track logs by default.\n' >>"${bundle_root}/README.txt"
+printf 'This bundle is diagnostic evidence only. It includes configured chart manifests and storage listings. It does not include downloaded NOAA chart archives, extracted ENC cells, or GPX track contents by default.\n' >>"${bundle_root}/README.txt"
 
 tar -C "$bundle_root" -czf - .
 REMOTE
