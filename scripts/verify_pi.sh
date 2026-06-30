@@ -2390,6 +2390,30 @@ check_opencpn_command_integrity() {
   check_root_executable_file_integrity "$path" "OpenCPN command"
 }
 
+display_power_command_path() {
+  local path
+
+  path="$(command -v xset 2>/dev/null)" || {
+    printf 'display power command xset was not found on PATH\n' >&2
+    return 1
+  }
+  case "$path" in
+    /*)
+      ;;
+    *)
+      printf 'display power command path is not absolute: %s\n' "$path" >&2
+      return 1
+      ;;
+  esac
+  check_root_directory_integrity "$(dirname "$path")" "display power command directory" || return 1
+  check_root_executable_file_integrity "$path" "display power command"
+  printf '%s\n' "$path"
+}
+
+check_display_power_command_integrity() {
+  display_power_command_path >/dev/null
+}
+
 check_root_directory_integrity() {
   local path="$1"
   local label="$2"
@@ -3282,6 +3306,7 @@ check_live_display_power_disabled() {
   local display=""
   local xauthority=""
   local output=""
+  local xset_path=""
 
   if [[ ! -r "${launcher_lock}/pid" ]]; then
     printf 'chartplotter launcher lock pid is unreadable: %s\n' "${launcher_lock}/pid" >&2
@@ -3299,13 +3324,14 @@ check_live_display_power_disabled() {
     return 1
   fi
   check_chartplotter_xauthority_integrity "$xauthority" || return 1
+  xset_path="$(display_power_command_path)" || return 1
   if [[ -n "$xauthority" ]]; then
-    output="$(DISPLAY="$display" XAUTHORITY="$xauthority" xset q 2>&1)" || {
+    output="$(DISPLAY="$display" XAUTHORITY="$xauthority" "$xset_path" q 2>&1)" || {
       printf 'xset q failed for chartplotter display %s: %s\n' "$display" "$output" >&2
       return 1
     }
   else
-    output="$(DISPLAY="$display" xset q 2>&1)" || {
+    output="$(DISPLAY="$display" "$xset_path" q 2>&1)" || {
       printf 'xset q failed for chartplotter display %s: %s\n' "$display" "$output" >&2
       return 1
     }
@@ -3795,7 +3821,7 @@ if [[ -s "$revision_file" && "${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}" != "
 fi
 check "OpenCPN command" command -v opencpn
 check "OpenCPN command integrity" check_opencpn_command_integrity
-check "display power command" command -v xset
+check "display power command integrity" check_display_power_command_integrity
 check "Tkinter readiness warning support" check_tkinter_available
 check "process lookup command" command -v pgrep
 check "Pi power command" command -v vcgencmd

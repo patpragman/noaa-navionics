@@ -260,7 +260,7 @@ Expected checks:
 - Raspberry Pi clock is synchronized before chart-age and GPX timestamp checks are trusted
 - Tkinter available for the GUI
 - OpenCPN installed as a trusted non-writable command, root-owned on Raspberry Pi
-- `xset` available so the launcher can disable X11 display blanking and DPMS sleep
+- trusted root-owned `xset` available so the launcher can disable X11 display blanking and DPMS sleep and the verifier can prove it stayed disabled
 - `pgrep` available from `procps` so launcher and verifier process checks work
 - `vcgencmd` available on Raspberry Pi so under-voltage and throttling can be checked
 - Chartplotter startup log has no display-awake command failures or OpenCPN exit marker after the current boot

@@ -749,6 +749,17 @@ grep -q 'launcher failed to disable one or more display power settings' scripts/
 grep -q 'check_live_display_power_disabled' scripts/verify_pi.sh
 grep -q 'display power disabled after boot' scripts/verify_pi.sh
 grep -q 'xset q failed for chartplotter display' scripts/verify_pi.sh
+grep -q 'display_power_command_path()' scripts/verify_pi.sh
+grep -q 'check_display_power_command_integrity()' scripts/verify_pi.sh
+grep -q 'display power command xset was not found on PATH' scripts/verify_pi.sh
+grep -q 'display power command path is not absolute' scripts/verify_pi.sh
+grep -q 'check_root_directory_integrity "$(dirname "$path")" "display power command directory"' scripts/verify_pi.sh
+grep -q 'check_root_executable_file_integrity "$path" "display power command"' scripts/verify_pi.sh
+grep -q 'xset_path="$(display_power_command_path)"' scripts/verify_pi.sh
+grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" "$xset_path" q' scripts/verify_pi.sh
+grep -q 'DISPLAY="$display" "$xset_path" q' scripts/verify_pi.sh
+grep -q 'trusted root-owned `xset` from `x11-xserver-utils`' README.md
+grep -q 'trusted root-owned `xset`' docs/sailboat-pi.md
 grep -q 'display screen saver timeout is not disabled' scripts/verify_pi.sh
 grep -q 'display DPMS is not disabled' scripts/verify_pi.sh
 grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/verify_pi.sh
@@ -976,7 +987,10 @@ grep -q 'live_wanted_by = install_wanted_by_targets' scripts/verify_pi.sh
 grep -q 'does not match live unit file' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
-grep -q 'display power command' scripts/verify_pi.sh
+grep -q 'check "display power command integrity" check_display_power_command_integrity' scripts/verify_pi.sh
+! grep -q 'check "display power command" command -v xset' scripts/verify_pi.sh
+! grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" xset q' scripts/verify_pi.sh
+! grep -q 'DISPLAY="$display" xset q' scripts/verify_pi.sh
 grep -q 'process lookup command' scripts/verify_pi.sh
 grep -q 'Pi power command' scripts/verify_pi.sh
 grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
