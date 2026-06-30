@@ -12,6 +12,7 @@ bash -n \
   scripts/install_raspberry_pi.sh \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
+  scripts/pre_trip_prepare_pi.sh \
   scripts/pre_departure_check_pi.sh \
   scripts/check_pi_status.sh \
   scripts/refresh_pi_charts.sh \
@@ -476,6 +477,10 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
+grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
@@ -871,6 +876,13 @@ grep -Fq -- '--expected-gps-device "$device"' scripts/pre_departure_check_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
 grep -q 'check_expected_gps_device_matches' scripts/verify_pi.sh
 grep -q 'GPSD device matches expected' scripts/verify_pi.sh
+grep -q 'export_pi_recovery_bundle.sh' scripts/pre_trip_prepare_pi.sh
+grep -q 'verify_pi_recovery_exports.sh' scripts/pre_trip_prepare_pi.sh
+grep -q 'refresh_pi_charts.sh' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
+grep -q -- '--status --gps-seconds "$gps_seconds"' scripts/pre_trip_prepare_pi.sh
+grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
+grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -4496,6 +4508,96 @@ if [[ "$pre_departure_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is volatile' "$verify_output"
+
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to require --device with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required unless --skip-pre-departure is used' "$verify_output"
+
+set +e
+scripts/pre_trip_prepare_pi.sh root@example.invalid --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not run pre-trip preparation as root@' "$verify_output"
+
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject volatile GPS device paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPS device path is volatile' "$verify_output"
+
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --skip-refresh --skip-recovery --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject running no preparation steps with exit 2" >&2
+  exit 1
+fi
+grep -q 'At least one pre-trip preparation step must run' "$verify_output"
+
+pre_trip_repo="$tmpdir/pre-trip-repo"
+pre_trip_log="$tmpdir/pre-trip-helper-calls"
+pre_trip_output_dir="$tmpdir/pre-trip-output"
+mkdir -p "$pre_trip_repo/scripts"
+cp scripts/pre_trip_prepare_pi.sh "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh"
+cat >"$pre_trip_repo/scripts/refresh_pi_charts.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'refresh|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf 'fake refresh\n'
+EOF
+cat >"$pre_trip_repo/scripts/export_pi_recovery_bundle.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'recovery|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+mkdir -p "$2/noaa-navionics-pi-recovery-test"
+printf 'Pi recovery exports written to: %s/noaa-navionics-pi-recovery-test\n' "$2"
+EOF
+cat >"$pre_trip_repo/scripts/verify_pi_recovery_exports.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'verify-recovery|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf 'fake verify recovery\n'
+EOF
+cat >"$pre_trip_repo/scripts/pre_departure_check_pi.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf 'fake pre-departure\n'
+EOF
+chmod +x "$pre_trip_repo/scripts/"*.sh
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_output_dir" \
+  --track-days 14 \
+  --gps-seconds 17 \
+  --retries 6 \
+  --retry-delay 9 \
+  --force-refresh \
+  --allow-dirty \
+  --opencpn-restarts 2 \
+  --opencpn-restart-delay 3 >"$verify_output" 2>&1
+grep -q 'Pre-trip Pi preparation completed for pi@example.invalid' "$verify_output"
+grep -Fxq "refresh|pi@example.invalid --retries 6 --retry-delay 9 --status --gps-seconds 17 --force" "$pre_trip_log"
+grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$pre_trip_log"
+grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test" "$pre_trip_log"
+grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
 
 pre_departure_repo="$tmpdir/pre-departure-repo"
 pre_departure_args="$tmpdir/pre-departure-args"

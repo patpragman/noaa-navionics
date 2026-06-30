@@ -102,6 +102,14 @@ For a production-style Raspberry Pi chartplotter setup, use this project with Op
 
 See [docs/sailboat-pi.md](docs/sailboat-pi.md).
 
+Run the normal pre-trip dock workflow against an already commissioned Pi:
+
+```bash
+scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
+The pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
+
 Deploy to a Raspberry Pi over SSH:
 
 ```bash

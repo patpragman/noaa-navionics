@@ -67,6 +67,14 @@ The dock test preflights noninteractive sudo reboot access before deploying or p
 `--skip-autologin` is rejected for the dock acceptance test because that test must prove the production desktop startup path; use direct deploy/provision commands with both `--skip-autologin` and `--skip-services` only for weaker manual or headless testing.
 For deliberate test deployments from a dirty worktree, pass `--allow-dirty` to the dock test as well.
 
+Run the normal pre-trip dock workflow against an already commissioned Pi:
+
+```bash
+scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
+```
+
+The pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
+
 Before leaving the dock on an already commissioned Pi, run the no-deploy, no-reboot pre-departure check:
 
 ```bash
