@@ -542,6 +542,8 @@ grep -q 'recovery export helper tightens the local output directory and timestam
 grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
+grep -q 'recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file' README.md
+grep -q 'recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file' docs/sailboat-pi.md
 grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
@@ -911,6 +913,8 @@ grep -q 'README.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'unsupported non-regular member' scripts/verify_pi_recovery_exports.sh
+grep -q 'recovery directory has permissions .* expected private 0700' scripts/verify_pi_recovery_exports.sh
+grep -q 'archive has permissions .* expected private 0600' scripts/verify_pi_recovery_exports.sh
 grep -q 'Verified Pi recovery exports' scripts/verify_pi_recovery_exports.sh
 grep -q 'NOAA_NAVIONICS_RESTORE_APPLY' scripts/restore_pi_recovery_user_data.sh
 grep -q 'Dry run only. Re-run with --apply to write files.' scripts/restore_pi_recovery_user_data.sh
@@ -5421,11 +5425,13 @@ def add_text(archive, name, text):
 
 
 def build_archive(directory, name, manifest, extra_member):
-    with tarfile.open(directory / name, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    path = directory / name
+    with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         add_text(archive, "README.txt", "recovery fixture\n")
         if manifest is not None:
             add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
         add_text(archive, extra_member, "fixture\n")
+    path.chmod(0o600)
 
 
 root = Path(sys.argv[1])
@@ -5454,7 +5460,9 @@ with tarfile.open(
 ) as archive:
     add_text(archive, "./README.txt", "support fixture\n")
     add_text(archive, "./commands/date-utc.txt", "2026-01-01\n")
+(root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz").chmod(0o600)
 PY
+chmod 0700 "$recovery_verify_dir"
 
 scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
 grep -q 'Verified Pi recovery exports:' "$verify_output"
@@ -5462,6 +5470,19 @@ grep -q 'commissioning settings:' "$verify_output"
 grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
+
+chmod 0755 "$recovery_verify_dir"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+chmod 0700 "$recovery_verify_dir"
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject public recovery directory with exit 1" >&2
+  exit 1
+fi
+grep -q 'recovery directory has permissions 0755, expected private 0700' "$verify_output"
 
 rm -f "$recovery_verify_dir"/noaa-navionics-pi-support-*.tgz
 set +e

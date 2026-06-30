@@ -96,6 +96,33 @@ def validate_member_name(name: str, archive_path: Path) -> str:
     return normalized
 
 
+def first_symlink_ancestor(path: Path):
+    current = Path(path).expanduser()
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
+
+
+def assert_private_recovery_directory(path: Path) -> None:
+    if path.is_symlink():
+        fail(f"recovery directory is a symlink: {path}")
+    symlink = first_symlink_ancestor(path.parent)
+    if symlink is not None:
+        fail(f"recovery directory parent path contains a symlink: {symlink}")
+    try:
+        result = path.lstat()
+    except OSError as exc:
+        fail(f"could not inspect recovery directory {path}: {exc}")
+    if not stat.S_ISDIR(result.st_mode):
+        fail(f"recovery directory must be a real directory: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"recovery directory is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o700:
+        fail(f"recovery directory has permissions {mode:04o}, expected private 0700: {path}")
+
+
 def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
     if archive_path.is_symlink():
         fail(f"archive must not be a symlink: {archive_path}")
@@ -105,9 +132,11 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
         fail(f"could not inspect archive {archive_path}: {exc}")
     if not stat.S_ISREG(result.st_mode):
         fail(f"archive must be a regular file: {archive_path}")
+    if result.st_uid != os.getuid():
+        fail(f"archive is owned by uid {result.st_uid}, expected {os.getuid()}: {archive_path}")
     mode = stat.S_IMODE(result.st_mode)
-    if mode & 0o022:
-        fail(f"archive has permissions {mode:04o}, expected no group/other write bits: {archive_path}")
+    if mode & 0o077:
+        fail(f"archive has permissions {mode:04o}, expected private 0600: {archive_path}")
     if result.st_size <= 0:
         fail(f"archive is empty: {archive_path}")
     if not os.access(archive_path, os.R_OK):
@@ -168,6 +197,7 @@ def find_archive(recovery_dir: Path, spec: dict[str, object]) -> Path:
 
 def main() -> None:
     recovery_dir = Path(sys.argv[1])
+    assert_private_recovery_directory(recovery_dir)
     summaries = []
     for spec in ARCHIVES:
         archive_path = find_archive(recovery_dir, spec)

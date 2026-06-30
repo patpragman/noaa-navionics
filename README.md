@@ -243,7 +243,7 @@ Export a full recovery set before a trip or maintenance window:
 scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30
 ```
 
-The recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
+The recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`, then runs the read-only settings, OpenCPN user-data, GPX track, and support-bundle exports into that directory. The recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file before trusting its contents. It does not deploy, reboot, start services, download charts, or copy NOAA chart archives or extracted ENC cells.
 Verify that local recovery directory before relying on it for an SD-card recovery:
 
 ```bash
