@@ -93,7 +93,10 @@ for current_root, dirnames, filenames in os.walk(root):
         except OSError:
             continue
     for dirname in dirnames:
-        fsync_dir(current / dirname)
+        directory_path = current / dirname
+        if directory_path.is_symlink():
+            continue
+        fsync_dir(directory_path)
     fsync_dir(current)
 fsync_dir(root.parent)
 PY

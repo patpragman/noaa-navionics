@@ -382,6 +382,9 @@ grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
 grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
 grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
 grep -q 'file_path.is_symlink()' scripts/install_raspberry_pi.sh
+grep -q 'directory_path.is_symlink()' scripts/install_raspberry_pi.sh
+grep -q 'venv tree sync skips symlinked directories' README.md
+grep -q 'venv tree sync skips symlinked directories' docs/sailboat-pi.md
 grep -q 'validate_user_install_path' scripts/install_raspberry_pi.sh
 grep -q 'path contains a symlink' scripts/install_raspberry_pi.sh
 grep -q 'expected no group/other write bits' scripts/install_raspberry_pi.sh
