@@ -480,8 +480,8 @@ grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/se
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
@@ -504,16 +504,16 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
-grep -q 'support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'track export helper validates the SSH target, tightens the local output directory to user-owned private `0700`' README.md
-grep -q 'track export helper validates the SSH target, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -534,26 +534,34 @@ grep -q '`--radius-meters N` for a one-off radius override' README.md
 grep -q '`--radius-meters N` for a one-off radius override' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
+grep -q 'post-trip helper rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'post-trip helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'OpenCPN export helper tightens the local output directory to user-owned private `0700`' README.md
-grep -q 'OpenCPN export helper tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'OpenCPN export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'settings export helper tightens the local output directory to user-owned private `0700`' README.md
-grep -q 'settings export helper tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'settings export helper rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'settings export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
-grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
-grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'recovery export helper rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'recovery export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier also requires the timestamped recovery directory to be user-owned private `0700` storage and each archive to be a user-owned private `0600` file' README.md
@@ -961,6 +969,19 @@ grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive has permissions .* expected private 0600' scripts/restore_pi_recovery_user_data.sh
+for export_wrapper in \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_recovery_bundle.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/post_trip_collect_pi.sh \
+  scripts/pre_trip_prepare_pi.sh; do
+  grep -q 'reject_symlinked_path_components()' "$export_wrapper"
+  grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$export_wrapper"
+  grep -q 'path contains a symlink' "$export_wrapper"
+  grep -q 'reject_symlinked_path_components "$label" "$path"' "$export_wrapper"
+done
 grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
@@ -4852,6 +4873,32 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
 fi
 grep -q 'At least one pre-trip preparation step must run' "$verify_output"
 
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --output-dir / --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject broad output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
+pre_trip_real_parent="$tmpdir/pre-trip-real-parent"
+pre_trip_symlink_parent="$tmpdir/pre-trip-symlink-parent"
+mkdir -p "$pre_trip_real_parent"
+ln -s "$pre_trip_real_parent" "$pre_trip_symlink_parent"
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --output-dir "$pre_trip_symlink_parent/output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject symlinked output parent with exit 2" >&2
+  exit 1
+fi
+grep -q 'path contains a symlink' "$verify_output"
+
 pre_trip_repo="$tmpdir/pre-trip-repo"
 pre_trip_log="$tmpdir/pre-trip-helper-calls"
 pre_trip_output_dir="$tmpdir/pre-trip-output"
@@ -4945,6 +4992,32 @@ if [[ "$post_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'At least one post-trip collection or shutdown step must run' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid / --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject broad output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
+post_trip_real_parent="$tmpdir/post-trip-real-parent"
+post_trip_symlink_parent="$tmpdir/post-trip-symlink-parent"
+mkdir -p "$post_trip_real_parent"
+ln -s "$post_trip_real_parent" "$post_trip_symlink_parent"
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$post_trip_symlink_parent/output" --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject symlinked output parent with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory path contains a symlink' "$verify_output"
 
 post_trip_repo="$tmpdir/post-trip-repo"
 post_trip_log="$tmpdir/post-trip-helper-calls"
@@ -5468,6 +5541,32 @@ if [[ "$recovery_export_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Output directory must not be a symlink' "$verify_output"
+
+set +e
+scripts/export_pi_recovery_bundle.sh pi@example.invalid / >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject broad output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
+recovery_export_real_parent="$tmpdir/recovery-export-real-parent"
+recovery_export_symlink_parent="$tmpdir/recovery-export-symlink-parent"
+mkdir -p "$recovery_export_real_parent"
+ln -s "$recovery_export_real_parent" "$recovery_export_symlink_parent"
+set +e
+scripts/export_pi_recovery_bundle.sh pi@example.invalid "$recovery_export_symlink_parent/output" >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject symlinked output parent with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory path contains a symlink' "$verify_output"
 
 recovery_repo="$tmpdir/recovery-repo"
 recovery_log="$tmpdir/recovery-helper-calls"

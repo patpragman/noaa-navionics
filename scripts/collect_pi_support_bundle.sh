@@ -190,10 +190,53 @@ validate_output_dir_arg() {
     echo "Output directory must not contain quotes: $value" >&2
     exit 2
   fi
+  case "$value" in
+    .|..|/|/home|/tmp|/var|/etc|/usr|/bin|/sbin|/opt|"$HOME"|"$HOME"/)
+      echo "Output directory must be a dedicated export directory, not a broad or system path: $value" >&2
+      exit 2
+      ;;
+  esac
   if [[ -L "$value" ]]; then
     echo "Output directory must not be a symlink: $value" >&2
     exit 2
   fi
+}
+
+reject_symlinked_path_components() {
+  local label="$1"
+  local path="$2"
+  local current
+  local component
+  local remaining
+
+  if [[ "$path" == /* ]]; then
+    current="/"
+    remaining="${path#/}"
+  else
+    current="."
+    remaining="$path"
+  fi
+
+  while [[ -n "$remaining" ]]; do
+    component="${remaining%%/*}"
+    if [[ "$component" == "$remaining" ]]; then
+      remaining=""
+    else
+      remaining="${remaining#*/}"
+    fi
+    if [[ -z "$component" || "$component" == "." ]]; then
+      continue
+    fi
+    if [[ "$current" == "/" ]]; then
+      current="/$component"
+    else
+      current="${current}/${component}"
+    fi
+    if [[ -L "$current" ]]; then
+      echo "$label path contains a symlink: $current" >&2
+      exit 2
+    fi
+  done
 }
 
 prepare_private_output_dir() {
@@ -205,7 +248,9 @@ prepare_private_output_dir() {
   local stat_output
 
   current_uid="$(id -u)"
+  reject_symlinked_path_components "$label" "$path"
   mkdir -p -- "$path"
+  reject_symlinked_path_components "$label" "$path"
   if [[ ! -d "$path" || -L "$path" ]]; then
     echo "$label must be a real directory: $path" >&2
     exit 2
