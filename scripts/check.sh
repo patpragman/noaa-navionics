@@ -1355,7 +1355,27 @@ grep -q 'safe_by_id_chars' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
 grep -q 'GPS by-id device path is not a symlink' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
+grep -q 'require_trusted_system_command()' scripts/configure_gps_time.sh
+grep -q 'path_in_trusted_system_dir()' scripts/configure_gps_time.sh
+grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_gps_time.sh
+grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_gps_time.sh
+grep -q 'sudo "$systemctl_cmd" enable --now chrony' scripts/configure_gps_time.sh
+grep -q 'sudo "$systemctl_cmd" restart chrony' scripts/configure_gps_time.sh
+grep -q 'sudo "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/configure_gps_time.sh
+! grep -q 'sudo systemctl' scripts/configure_gps_time.sh
+grep -q 'GPS time setup resolves systemctl through trusted root-owned command checks' README.md
+grep -q 'GPS time setup resolves systemctl through trusted root-owned command checks' docs/sailboat-pi.md
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/configure_gps_time.sh").read_text(encoding="utf-8")
+resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
+backup = text.index('backup_root_file_private "$chrony_conf" "$backup"')
+install = text.index('install_root_file_atomic "$tmp" "$chrony_conf" 0644')
+restart = text.index('sudo "$systemctl_cmd" restart chrony')
+if not resolve < backup < install < restart:
+    raise SystemExit("GPS time setup must validate systemctl before backup, install, and service restart")
+PY
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is a symlink when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is not a regular file when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
@@ -1383,7 +1403,7 @@ grep -q 'validate_user_install_path "$autostart_entry" "chartplotter desktop aut
 grep -q -- '--no-device-check cannot be used while unattended startup is enabled' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin for manual testing' scripts/provision_sailboat_pi.sh
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
-grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
+grep -q 'sudo "$systemctl_cmd" restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
 grep -q 'validate_chrony_config_path' scripts/configure_gps_time.sh
 test "$(grep -c 'validate_chrony_config_path' scripts/configure_gps_time.sh)" -ge 5
