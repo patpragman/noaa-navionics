@@ -208,15 +208,21 @@ install_root_file_atomic() {
   local target_dir
   local target_name
   local target_tmp
+  validate_chrony_config_path
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
   sudo install -d -m 0755 "$target_dir"
+  validate_chrony_config_path
   target_tmp="$(sudo mktemp "${target_dir}/.${target_name}.XXXXXX")"
   if ! sudo install -m "$mode" "$source" "$target_tmp"; then
     sudo rm -f "$target_tmp"
     return 1
   fi
   if ! sync_path "$target_tmp"; then
+    sudo rm -f "$target_tmp"
+    return 1
+  fi
+  if ! validate_chrony_config_path; then
     sudo rm -f "$target_tmp"
     return 1
   fi

@@ -1240,6 +1240,7 @@ grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autol
 grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
+test "$(grep -c 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh)" -ge 5
 grep -q 'first_symlink_ancestor' scripts/configure_desktop_autologin.sh
 grep -q 'has permissions {mode:04o}, expected no group/other write bits' scripts/configure_desktop_autologin.sh
 grep -q 'LightDM autologin config is a symlink' scripts/configure_desktop_autologin.sh
@@ -1258,6 +1259,7 @@ grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
 grep -q 'prepare_app_config_path' scripts/configure_gpsd.sh
 grep -q 'validate_gpsd_config_path' scripts/configure_gpsd.sh
+test "$(grep -c 'validate_gpsd_config_path' scripts/configure_gpsd.sh)" -ge 5
 grep -q -- '--gpsd-conf PATH' scripts/configure_gpsd.sh
 grep -q 'first_symlink_ancestor' scripts/configure_gpsd.sh
 grep -q 'GPSD config is a symlink' scripts/configure_gpsd.sh
@@ -1281,6 +1283,8 @@ grep -q 'backup_root_file_private "$gpsd_conf" "$backup"' scripts/configure_gpsd
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
 ! grep -q 'sudo cp -a /etc/default/gpsd' scripts/configure_gpsd.sh
+grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' README.md
+grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
@@ -1354,6 +1358,7 @@ grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_ti
 grep -q 'sudo systemctl restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh
 grep -q 'validate_chrony_config_path' scripts/configure_gps_time.sh
+test "$(grep -c 'validate_chrony_config_path' scripts/configure_gps_time.sh)" -ge 5
 grep -q 'first_symlink_ancestor' scripts/configure_gps_time.sh
 grep -q 'Chrony config is a symlink' scripts/configure_gps_time.sh
 grep -q 'Chrony config directory is a symlink' scripts/configure_gps_time.sh
@@ -1401,7 +1406,7 @@ grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against
 grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against the inspected file' docs/sailboat-pi.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' README.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
-grep -q 'GPSD setup, GPS time setup, and desktop autologin verify promoted root files against their source through no-follow descriptors before syncing them' README.md
+grep -q 'GPSD setup, GPS time setup, and desktop autologin revalidate root target paths before temporary-file creation and immediately before promotion' README.md
 grep -q 'Promoted root config files are verified against their source through regular no-follow file descriptors before syncing' docs/sailboat-pi.md
 grep -q 'verifies the promoted config against its source through regular no-follow file descriptors before syncing' docs/sailboat-pi.md
 grep -q 'Production provisioning reads the existing onboard GPS config only after a no-follow descriptor' README.md
