@@ -2357,31 +2357,78 @@ opencpn_process_active() {
   [[ -n "$state" && "$state" != "Z" ]]
 }
 
+opencpn_process_supervised_by_launcher() {
+  local pid="$1"
+  local launcher_pid="$2"
+  local parent_pid=""
+  if [[ ! "$pid" =~ ^[0-9]+$ || ! "$launcher_pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/status" ]]; then
+    return 1
+  fi
+  parent_pid="$(awk '/^PPid:/ {print $2; exit}' "/proc/${pid}/status" 2>/dev/null || true)"
+  [[ "$parent_pid" == "$launcher_pid" ]]
+}
+
+launcher_lock_pid() {
+  local owner_pid=""
+  if [[ ! -r "${launcher_lock}/pid" ]]; then
+    return 1
+  fi
+  read -r owner_pid <"${launcher_lock}/pid" || return 1
+  [[ "$owner_pid" =~ ^[0-9]+$ ]] || return 1
+  printf '%s\n' "$owner_pid"
+}
+
+opencpn_supervised_running() {
+  local launcher_pid
+  local pid
+  launcher_pid="$(launcher_lock_pid)" || return 1
+  while IFS= read -r pid; do
+    if opencpn_process_active "$pid" && opencpn_process_supervised_by_launcher "$pid" "$launcher_pid"; then
+      return 0
+    fi
+  done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
+  return 1
+}
+
 check_opencpn_enc_parse_argument() {
   local pid
   local arg
+  local launcher_pid
+  local saw_supervised=0
+  launcher_pid="$(launcher_lock_pid)" || {
+    printf 'chartplotter launcher lock pid is unreadable; cannot tie OpenCPN to launcher supervision\n' >&2
+    return 1
+  }
   while IFS= read -r pid; do
     if ! opencpn_process_active "$pid" || [[ ! -r "/proc/${pid}/cmdline" ]]; then
       continue
     fi
+    if ! opencpn_process_supervised_by_launcher "$pid" "$launcher_pid"; then
+      continue
+    fi
+    saw_supervised=1
     while IFS= read -r -d '' arg; do
       if [[ "$arg" == "-parse_all_enc" ]]; then
         return 0
       fi
     done <"/proc/${pid}/cmdline"
   done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
-  printf 'no active OpenCPN process was started with -parse_all_enc\n' >&2
+  if [[ "$saw_supervised" -eq 0 ]]; then
+    printf 'no active OpenCPN process is supervised by chartplotter launcher pid %s\n' "$launcher_pid" >&2
+  else
+    printf 'no launcher-supervised OpenCPN process was started with -parse_all_enc\n' >&2
+  fi
   return 1
 }
 
 check_opencpn_stable() {
-  if ! opencpn_running; then
-    printf 'OpenCPN is not running before stability wait\n' >&2
+  if ! opencpn_supervised_running; then
+    printf 'no active OpenCPN process is supervised by the chartplotter launcher before stability wait\n' >&2
     return 1
   fi
   sleep "$opencpn_stability_seconds"
-  if ! opencpn_running; then
-    printf 'OpenCPN exited within %ss of startup verification\n' "$opencpn_stability_seconds" >&2
+  if ! opencpn_supervised_running; then
+    printf 'launcher-supervised OpenCPN exited within %ss of startup verification\n' "$opencpn_stability_seconds" >&2
     return 1
   fi
 }

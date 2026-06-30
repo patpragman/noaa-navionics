@@ -496,6 +496,13 @@ grep -q 'production verification requires launcher settings from' scripts/verify
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
+grep -q 'opencpn_process_supervised_by_launcher' scripts/verify_pi.sh
+grep -q '/^PPid:/' scripts/verify_pi.sh
+grep -q 'no active OpenCPN process is supervised by chartplotter launcher pid' scripts/verify_pi.sh
+grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
+grep -q 'launcher-supervised OpenCPN exited within' scripts/verify_pi.sh
+grep -q 'launcher-supervised `opencpn` child process' README.md
+grep -q 'launcher-supervised `opencpn` child process' docs/sailboat-pi.md
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh
 grep -q 'check_recent_track_log' scripts/verify_pi.sh
@@ -706,7 +713,8 @@ grep -q 'chartplotter launcher OpenCPN restart setting' scripts/verify_pi.sh
 grep -q 'chartplotter launcher OpenCPN restart loop' scripts/verify_pi.sh
 grep -q 'check_opencpn_enc_parse_argument' scripts/verify_pi.sh
 grep -q 'OpenCPN ENC parse argument' scripts/verify_pi.sh
-grep -q 'no active OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
+grep -q 'no active OpenCPN process is supervised by chartplotter launcher pid' scripts/verify_pi.sh
+grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher previous-boot lock recovery' scripts/verify_pi.sh
