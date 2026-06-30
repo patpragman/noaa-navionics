@@ -2863,10 +2863,17 @@ grep -q 'text="MOB"' src/noaa_navionics/status_gui.py
 grep -q 'text="Anchor Check"' src/noaa_navionics/status_gui.py
 grep -q 'anchor-radius-meters' src/noaa_navionics/status_gui.py
 grep -q 'anchor-samples' src/noaa_navionics/status_gui.py
+grep -q 'action-gps-seconds' src/noaa_navionics/status_gui.py
+grep -q 'action_gps_seconds=args.action_gps_seconds' src/noaa_navionics/status_gui.py
+grep -q 'self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
+grep -q 'action-gps-seconds' src/noaa_navionics/cli.py
+grep -Fq 'status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])' src/noaa_navionics/cli.py
 grep -q 'write_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
+grep -q 'write_current_position_mark(self.config_path, gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py
+grep -q 'gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'build_status_report(config_path=self.config_path, gps_seconds=self.gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_status_report(report, self.output_path)' src/noaa_navionics/status_gui.py
 grep -q 'status-gui' src/noaa_navionics/cli.py
@@ -2877,6 +2884,8 @@ grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' READM
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
+grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
+grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' README.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
@@ -2921,11 +2930,13 @@ grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader
 grep -q 'test_status_gui_formats_structured_gps_summary' tests/test_downloader.py
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
+grep -q 'test_status_gui_position_mark_uses_action_gps_seconds' tests/test_downloader.py
 grep -q 'test_status_gui_position_mark_rejects_stale_fix' tests/test_downloader.py
 grep -q 'test_status_gui_position_mark_rejects_future_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_stale_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_future_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_uses_action_gps_seconds' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py
 grep -q 'test_status_gui_reads_configured_anchor_radius' tests/test_downloader.py

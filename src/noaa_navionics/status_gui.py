@@ -265,6 +265,7 @@ class StatusApp(tk.Tk):
         config_path: Path = DEFAULT_CONFIG_PATH,
         output_path: Optional[Path] = DEFAULT_STATUS_REPORT,
         gps_seconds: float = 10.0,
+        action_gps_seconds: Optional[float] = None,
         refresh_seconds: float = 60.0,
         anchor_radius_meters: Optional[float] = None,
         anchor_samples: int = 1,
@@ -277,6 +278,7 @@ class StatusApp(tk.Tk):
         self.config_path = Path(config_path).expanduser()
         self.output_path = Path(output_path).expanduser() if output_path is not None else None
         self.gps_seconds = gps_seconds
+        self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds
         self.refresh_seconds = refresh_seconds
         if anchor_radius_meters is None:
             anchor_radius_meters = _configured_anchor_radius(self.config_path)
@@ -387,7 +389,7 @@ class StatusApp(tk.Tk):
 
     def _mark_worker(self, *, mob: bool) -> None:
         try:
-            path, fix = write_current_position_mark(self.config_path, gps_seconds=self.gps_seconds, mob=mob)
+            path, fix = write_current_position_mark(self.config_path, gps_seconds=self.action_gps_seconds, mob=mob)
             self.queue.put(("mark", (path, format_gps_fix(fix))))
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
@@ -396,7 +398,7 @@ class StatusApp(tk.Tk):
         try:
             distance, radius, anchor_fix, current_fix = check_anchor_drift(
                 self.config_path,
-                gps_seconds=self.gps_seconds,
+                gps_seconds=self.action_gps_seconds,
                 radius_meters=radius_meters,
                 anchor_samples=anchor_samples,
             )
@@ -520,6 +522,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-output", action="store_true", help="do not write a JSON status report")
     parser.add_argument("--gps-seconds", type=_non_negative_float, default=10.0, help="seconds to wait for a GPS fix")
     parser.add_argument(
+        "--action-gps-seconds",
+        type=_non_negative_float,
+        help="seconds to wait for Mark, MOB, and Anchor Check GPS fixes; defaults to --gps-seconds",
+    )
+    parser.add_argument(
         "--refresh-seconds",
         type=_non_negative_float,
         default=60.0,
@@ -546,6 +553,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         config_path=Path(args.config),
         output_path=output_path,
         gps_seconds=args.gps_seconds,
+        action_gps_seconds=args.action_gps_seconds,
         refresh_seconds=args.refresh_seconds,
         anchor_radius_meters=args.anchor_radius_meters,
         anchor_samples=args.anchor_samples,

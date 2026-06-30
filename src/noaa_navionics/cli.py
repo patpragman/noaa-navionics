@@ -190,6 +190,11 @@ def build_parser() -> argparse.ArgumentParser:
     status_gui.add_argument("--no-output", action="store_true", help="do not write a JSON status report")
     status_gui.add_argument("--gps-seconds", type=_non_negative_float, default=10.0, help="seconds to wait for a GPS fix")
     status_gui.add_argument(
+        "--action-gps-seconds",
+        type=_non_negative_float,
+        help="seconds to wait for Mark, MOB, and Anchor Check GPS fixes; defaults to --gps-seconds",
+    )
+    status_gui.add_argument(
         "--refresh-seconds",
         type=_non_negative_float,
         default=60.0,
@@ -452,6 +457,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "--refresh-seconds",
                 str(args.refresh_seconds),
             ]
+            if args.action_gps_seconds is not None:
+                status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])
             if args.anchor_radius_meters is not None:
                 status_gui_args.extend(["--anchor-radius-meters", str(args.anchor_radius_meters)])
             status_gui_args.extend(["--anchor-samples", str(args.anchor_samples)])

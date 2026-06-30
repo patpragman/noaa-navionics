@@ -2682,6 +2682,8 @@ class GuiTests(unittest.TestCase):
                     "/tmp/status.json",
                     "--gps-seconds",
                     "12",
+                    "--action-gps-seconds",
+                    "4",
                     "--refresh-seconds",
                     "0",
                     "--anchor-radius-meters",
@@ -2704,6 +2706,8 @@ class GuiTests(unittest.TestCase):
                     "12.0",
                     "--refresh-seconds",
                     "0.0",
+                    "--action-gps-seconds",
+                    "4.0",
                     "--anchor-radius-meters",
                     "75.0",
                     "--anchor-samples",
@@ -2751,6 +2755,42 @@ class GuiTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("<name>MOB</name>", text)
             self.assertIn("<desc>Man overboard position mark</desc>", text)
+
+    def test_status_gui_position_mark_uses_action_gps_seconds(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_output = root / "tracks-root"
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            calls = []
+            original = status_gui_module.read_configured_gps_fix
+
+            def fake_read_configured_gps_fix(app_config, **kwargs):
+                calls.append(kwargs)
+                return fix
+
+            try:
+                status_gui_module.read_configured_gps_fix = fake_read_configured_gps_fix
+                status_gui_module.write_current_position_mark(config_path, gps_seconds=4.0, mob=True)
+            finally:
+                status_gui_module.read_configured_gps_fix = original
+
+            self.assertEqual(calls, [{"gps_seconds": 4.0}])
 
     def test_status_gui_position_mark_rejects_stale_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -2867,6 +2907,42 @@ class GuiTests(unittest.TestCase):
             self.assertIn("Anchor OK", status_gui_module.format_anchor_check(1.0, radius))
             self.assertTrue(status_gui_module.anchor_alarm_active(distance, radius))
             self.assertFalse(status_gui_module.anchor_alarm_active(radius, radius))
+
+    def test_status_gui_anchor_check_uses_action_gps_seconds(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            now = datetime.now(timezone.utc) - timedelta(seconds=2)
+            fixes = [
+                GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.9),
+                GPSFix(
+                    timestamp=now + timedelta(seconds=1),
+                    latitude=61.0,
+                    longitude=-148.99,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+            ]
+            calls = []
+            original = status_gui_module.read_configured_gps_fixes
+
+            def fake_read_configured_gps_fixes(app_config, *, count, gps_seconds=10.0, **kwargs):
+                calls.append((count, gps_seconds, kwargs))
+                return fixes
+
+            try:
+                status_gui_module.read_configured_gps_fixes = fake_read_configured_gps_fixes
+                status_gui_module.check_anchor_drift(config_path, gps_seconds=4.0, radius_meters=50.0)
+            finally:
+                status_gui_module.read_configured_gps_fixes = original
+
+            self.assertEqual(calls, [(2, 4.0, {})])
 
     def test_status_gui_anchor_check_rejects_stale_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -3728,6 +3804,7 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])
         self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
+        self.assert_parse_error(["status-gui", "--action-gps-seconds", "-1"])
         self.assert_parse_error(["status-gui", "--anchor-radius-meters", "0"])
         self.assert_parse_error(["status-gui", "--anchor-samples", "0"])
 
