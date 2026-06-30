@@ -73,6 +73,7 @@ from noaa_navionics.health import (
     check_gpsd_startup_config,
     check_gps_sample,
     check_display_power_tool,
+    check_chrony_gps_time_config,
     check_chrony_gps_time_source,
     check_opencpn,
     check_opencpn_chart_config,
@@ -7941,6 +7942,74 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("timedatectl", result.detail)
+
+    def test_check_chrony_gps_time_config_skips_non_pi(self):
+        original_is_pi = health_module._is_raspberry_pi
+        try:
+            health_module._is_raspberry_pi = lambda: False
+            result = check_chrony_gps_time_config()
+        finally:
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("skipping", result.detail)
+
+    def test_check_chrony_gps_time_config_accepts_managed_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_config(config)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertTrue(result.ok)
+            self.assertIn("GPSD SHM 0", result.detail)
+
+    def test_check_chrony_gps_time_config_rejects_commented_refclock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.write_text("# refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_config(config)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("uncommented NOAA Navionics GPSD SHM 0", result.detail)
+
+    def test_check_chrony_gps_time_config_rejects_nonregular_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.mkdir()
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_config(config)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("Chrony config is not a regular file", result.detail)
+
+    def test_check_chrony_gps_time_config_rejects_writable_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            config.chmod(0o666)
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_chrony_gps_time_config(config)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("has permissions 0666", result.detail)
 
     def test_check_chrony_gps_time_source_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi

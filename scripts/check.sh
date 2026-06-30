@@ -607,6 +607,7 @@ grep -q '"Chart Package"' scripts/verify_pi.sh
 grep -q '"Chart Update Debris"' scripts/verify_pi.sh
 grep -q '"Pi Power"' scripts/verify_pi.sh
 grep -q '"Pi Thermal"' scripts/verify_pi.sh
+grep -q '"Chrony Config"' scripts/verify_pi.sh
 grep -q 'temperature sensor unavailable on Raspberry Pi' src/noaa_navionics/health.py
 grep -q 'measure_temp' src/noaa_navionics/health.py
 grep -q 'vcgencmd measure_temp' README.md
@@ -907,14 +908,24 @@ grep -q 'deployed source revision path is a symlink' src/noaa_navionics/health.p
 grep -q 'deployed source revision is not recorded' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
+grep -q 'def check_chrony_gps_time_config' src/noaa_navionics/health.py
+grep -q 'check_chrony_gps_time_config()' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/health.py
+grep -q 'CHRONY_GPSD_REFCLOCK' src/noaa_navionics/health.py
+grep -q 'Chrony config is not a regular file' src/noaa_navionics/health.py
+grep -q 'Chrony config .* is owned by uid' src/noaa_navionics/health.py
+grep -q 'Chrony config .* has permissions' src/noaa_navionics/health.py
+grep -q 'test_check_chrony_gps_time_config_accepts_managed_refclock' tests/test_downloader.py
+grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_downloader.py
+grep -q 'Readiness also rejects unsafe chrony config paths' README.md
+grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -Fq 'line[1] in "*+"' src/noaa_navionics/health.py
 grep -Fq '^#[*+].*GPS' scripts/verify_pi.sh
 grep -q 'uncommented chrony GPSD time-source config' README.md
 grep -q 'uncommented GPSD time-source config' docs/sailboat-pi.md
-grep -q 'symlinked chrony config path components' README.md
-grep -q 'symlinked chrony config path components' docs/sailboat-pi.md
+grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' README.md
+grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' docs/sailboat-pi.md
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py

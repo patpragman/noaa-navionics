@@ -30,6 +30,7 @@ from .opencpn import chart_directory_configured, gpsd_connection_configured, ope
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 REMOVABLE_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
+CHRONY_GPSD_REFCLOCK = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,7 @@ def run_preflight(
             results.append(check_gps_device_path(gps_device))
             results.append(check_gpsd_startup_config(gps_device))
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
+        results.append(check_chrony_gps_time_config())
         results.append(check_chrony_gps_time_source(seconds=gps_seconds))
         results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
@@ -283,6 +285,54 @@ def check_display_power_tool() -> CheckResult:
         path is not None,
         path or "missing; install x11-xserver-utils so the launcher can disable display blanking",
     )
+
+
+def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.conf")) -> CheckResult:
+    if not _is_raspberry_pi():
+        return CheckResult("Chrony Config", True, "not a Raspberry Pi; skipping chrony config check")
+    path = Path(config_path).expanduser()
+    if path.is_symlink():
+        return CheckResult("Chrony Config", False, f"Chrony config is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        return CheckResult("Chrony Config", False, f"Chrony config directory is a symlink: {symlink_component}")
+    if path.exists() and not path.is_file():
+        return CheckResult("Chrony Config", False, f"Chrony config is not a regular file: {path}")
+    if path.exists():
+        try:
+            stat_result = path.stat()
+        except OSError as exc:
+            return CheckResult("Chrony Config", False, f"could not inspect Chrony config {path}: {exc}")
+        expected_uid = 0 if path == Path("/etc/chrony/chrony.conf") else os.getuid()
+        if stat_result.st_uid != expected_uid:
+            return CheckResult(
+                "Chrony Config",
+                False,
+                f"Chrony config {path} is owned by uid {stat_result.st_uid}, expected {expected_uid}",
+            )
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            return CheckResult(
+                "Chrony Config",
+                False,
+                f"Chrony config {path} has permissions {mode:04o}, expected no group/other write bits",
+            )
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        return CheckResult("Chrony Config", False, f"could not read Chrony config {path}: {exc}")
+    configured = any(
+        line.strip() == CHRONY_GPSD_REFCLOCK
+        for line in lines
+        if not line.lstrip().startswith("#")
+    )
+    if not configured:
+        return CheckResult(
+            "Chrony Config",
+            False,
+            f"{path} does not contain an uncommented NOAA Navionics GPSD SHM 0 time source",
+        )
+    return CheckResult("Chrony Config", True, f"{path} contains the NOAA Navionics GPSD SHM 0 time source")
 
 
 def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float = 1.0) -> CheckResult:

@@ -1306,6 +1306,7 @@ required_checks = {
     "Pi Thermal",
     "OpenCPN GPSD",
     "GPSD Config",
+    "Chrony Config",
     "GPSD",
     "GPS Time Source",
 }
