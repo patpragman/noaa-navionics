@@ -404,8 +404,9 @@ class StatusApp(tk.Tk):
         alarm = anchor_alarm_active(distance, radius_meters)
         self.headline.set("NOT READY" if alarm else "READY")
         self.summary.set(summary)
-        self.gps_summary.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
-        self.last_report.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
+        details = f"Anchor {_format_anchor_fix_detail(anchor_fix)} | Current {_format_anchor_fix_detail(current_fix)}"
+        self.gps_summary.set(details)
+        self.last_report.set(details)
         if alarm:
             self.bell()
         self._schedule_refresh()
@@ -436,6 +437,17 @@ class StatusApp(tk.Tk):
 
 def _fix_coordinates(fix: GPSFix) -> str:
     return f"{fix.latitude:.6f}, {fix.longitude:.6f}"
+
+
+def _format_anchor_fix_detail(fix: GPSFix) -> str:
+    pieces = [_fix_coordinates(fix)]
+    if fix.timestamp is not None:
+        pieces.append(fix.timestamp.isoformat().replace("+00:00", "Z"))
+    if fix.satellites is not None:
+        pieces.append(f"{fix.satellites} sats")
+    if fix.hdop is not None:
+        pieces.append(f"HDOP {fix.hdop:g}")
+    return "; ".join(pieces)
 
 
 def _configured_anchor_radius(config_path: Path) -> float:

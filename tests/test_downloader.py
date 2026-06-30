@@ -2723,6 +2723,20 @@ class GuiTests(unittest.TestCase):
             self.assertIs(current_fix, fixes[-1])
             self.assertAlmostEqual(distance, 0.0, places=3)
 
+    def test_status_gui_formats_anchor_fix_quality_detail(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=8,
+            hdop=1.1,
+        )
+
+        self.assertEqual(
+            status_gui_module._format_anchor_fix_detail(fix),
+            "61.218100, -149.900300; 2026-06-30T12:34:56Z; 8 sats; HDOP 1.1",
+        )
+
     def test_status_gui_reads_configured_anchor_radius(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             config_path = Path(tmpdir) / "config.ini"

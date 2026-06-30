@@ -2602,6 +2602,7 @@ grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
+grep -q 'def _format_anchor_fix_detail' src/noaa_navionics/status_gui.py
 grep -q 'def anchor_alarm_active' src/noaa_navionics/status_gui.py
 grep -q 'def _configured_anchor_radius' src/noaa_navionics/status_gui.py
 grep -q 'def available_position_mark_path' src/noaa_navionics/status_gui.py
@@ -2627,8 +2628,8 @@ grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded drift check with an optional averaged anchor sample count' README.md
 grep -q 'use Anchor Check for a bounded drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
-grep -q 'rings the display bell when that check exceeds the radius' README.md
-grep -q 'rings the display bell when that check exceeds the radius' docs/sailboat-pi.md
+grep -q 'shows anchor/current GPS quality and rings the display bell' README.md
+grep -q 'shows anchor/current GPS quality and rings the display bell' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -2665,6 +2666,7 @@ grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
+grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py
 grep -q 'test_status_gui_reads_configured_anchor_radius' tests/test_downloader.py
 grep -q 'test_cli_mark_position_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
