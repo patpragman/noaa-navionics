@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 import os
+import stat
 import tempfile
 
 
@@ -101,7 +102,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     parser = ConfigParser()
     _reject_unsafe_config_path(cfg_path)
     if cfg_path.exists():
-        parser.read(cfg_path)
+        _read_existing_config(parser, cfg_path)
 
     charts = parser["charts"] if parser.has_section("charts") else {}
     gps = parser["gps"] if parser.has_section("gps") else {}
@@ -336,6 +337,38 @@ def _reject_unsafe_config_path(path: Path) -> None:
         raise RuntimeError(
             f"NOAA Navionics config {path} has permissions {mode:04o}, expected no group/other write bits"
         )
+
+
+def _read_existing_config(parser: ConfigParser, path: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        if path.is_symlink():
+            raise RuntimeError(f"NOAA Navionics config is a symlink: {path}") from exc
+        raise RuntimeError(f"could not open NOAA Navionics config {path}: {exc}") from exc
+
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"NOAA Navionics config is not a regular file when opened: {path}")
+        if opened.st_uid != os.getuid():
+            raise RuntimeError(
+                f"NOAA Navionics config {path} is owned by uid {opened.st_uid}, expected {os.getuid()}"
+            )
+        mode = opened.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(
+                f"NOAA Navionics config {path} has permissions {mode:04o}, expected no group/other write bits"
+            )
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            parser.read_file(handle, source=str(path))
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _first_symlink_ancestor(path: Path) -> Optional[Path]:

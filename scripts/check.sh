@@ -1797,6 +1797,13 @@ grep -q 'readiness report fails if the persisted launcher environment is missing
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
 grep -q 'Pi verification compares status-reported launcher settings only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'def _read_existing_config' src/noaa_navionics/config.py
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config is not a regular file when opened' src/noaa_navionics/config.py
+grep -q 'parser.read_file(handle, source=str(path))' src/noaa_navionics/config.py
+! grep -q 'parser.read(cfg_path)' src/noaa_navionics/config.py
+grep -q 'Onboard config reads use a no-follow descriptor' README.md
+grep -q 'Config reads use a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' README.md
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md

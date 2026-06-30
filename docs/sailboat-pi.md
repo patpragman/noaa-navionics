@@ -90,7 +90,7 @@ noaa-navionics init-config
 nano ~/.config/noaa-navionics/config.ini
 ```
 
-Config reads and `init-config` writes refuse symlinked, non-regular, misowned, or group/world-writable config files, plus symlinked config path components. `init-config` creates the config directory with private `0700` permissions when needed, refuses misowned or group/world-writable config directories, then writes through a unique private `0600` temporary file, syncs to disk, and atomically replaces `config.ini`.
+Config reads use a no-follow descriptor and refuse symlinked, non-regular, misowned, or group/world-writable config files, plus symlinked config path components, before trusting chart, GPS, or track settings. `init-config` writes refuse the same unsafe paths, creates the config directory with private `0700` permissions when needed, refuses misowned or group/world-writable config directories, then writes through a unique private `0600` temporary file, syncs to disk, and atomically replaces `config.ini`.
 
 Default config:
 
