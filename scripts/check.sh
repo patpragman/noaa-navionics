@@ -939,6 +939,10 @@ grep -Fq -- '--expected-gps-device "$device"' scripts/pre_departure_check_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
 grep -q 'check_expected_gps_device_matches' scripts/verify_pi.sh
 grep -q 'GPSD device matches expected' scripts/verify_pi.sh
+grep -q '_monitorable_fixes' src/noaa_navionics/cli.py
+grep -q 'Skipping low-detail GPS monitor fix' tests/test_downloader.py
+grep -q 'gps-monitor --once` exits successfully only after a fresh timestamped GPS fix with satellite or HDOP quality data' README.md
+grep -q 'gps-monitor --once` exits successfully only after a fresh timestamped GPS fix with satellite or HDOP quality data' docs/sailboat-pi.md
 grep -q 'export_pi_recovery_bundle.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'verify_pi_recovery_exports.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_pi_charts.sh' scripts/pre_trip_prepare_pi.sh
@@ -2362,9 +2366,12 @@ grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps a
 grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
 grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
-grep -q 'Skipping weak track fix' src/noaa_navionics/cli.py
-grep -q 'Skipping untimestamped track fix' src/noaa_navionics/cli.py
-grep -q 'Skipping low-detail track fix' src/noaa_navionics/cli.py
+grep -q 'Skipping weak {skip_subject} fix' src/noaa_navionics/cli.py
+grep -q 'Skipping untimestamped {skip_subject} fix' src/noaa_navionics/cli.py
+grep -q 'Skipping low-detail {skip_subject} fix' src/noaa_navionics/cli.py
+grep -q 'Skipping weak track fix' tests/test_downloader.py
+grep -q 'Skipping untimestamped track fix' tests/test_downloader.py
+grep -q 'Skipping low-detail track fix' tests/test_downloader.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is stale' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/cli.py

@@ -556,15 +556,18 @@ def main(argv: Optional[list[str]] = None) -> int:
                 _validate_live_serial_device(device)
             count = 0
             deadline = time.monotonic() + args.seconds if args.seconds else None
-            for fix in _read_fixes(
-                device,
-                args.baud or app_config.gps_baud,
-                args.sample,
-                gpsd=use_gpsd,
-                gpsd_host=app_config.gpsd_host,
-                gpsd_port=app_config.gpsd_port,
-                deadline=deadline,
-            ):
+            fixes = _monitorable_fixes(
+                _read_fixes(
+                    device,
+                    args.baud or app_config.gps_baud,
+                    args.sample,
+                    gpsd=use_gpsd,
+                    gpsd_host=app_config.gpsd_host,
+                    gpsd_port=app_config.gpsd_port,
+                    deadline=deadline,
+                )
+            )
+            for fix in fixes:
                 print(_format_fix(fix))
                 count += 1
                 if args.once or count >= 1 and args.sample:
@@ -897,18 +900,43 @@ def _trackable_fixes(
     max_fix_age_seconds: float = 300.0,
     future_tolerance_seconds: float = 0.0,
 ):
+    yield from _quality_checked_fixes(
+        fixes,
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+        skip_subject="track",
+        action="write reliable GPX trackpoint",
+    )
+
+
+def _monitorable_fixes(fixes):
+    yield from _quality_checked_fixes(
+        fixes,
+        skip_subject="GPS monitor",
+        action="report a reliable live position",
+    )
+
+
+def _quality_checked_fixes(
+    fixes,
+    *,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
+    skip_subject: str,
+    action: str,
+):
     last_skip_detail = ""
     for fix in fixes:
         quality_detail = gps_fix_quality_failure(fix)
         if quality_detail:
             if quality_detail != last_skip_detail:
-                print(f"Skipping weak track fix: {quality_detail}", file=sys.stderr)
+                print(f"Skipping weak {skip_subject} fix: {quality_detail}", file=sys.stderr)
                 last_skip_detail = quality_detail
             continue
         if fix.timestamp is None:
-            detail = "fix has no timestamp; cannot write reliable GPX trackpoint"
+            detail = f"fix has no timestamp; cannot {action}"
             if detail != last_skip_detail:
-                print(f"Skipping untimestamped track fix: {detail}", file=sys.stderr)
+                print(f"Skipping untimestamped {skip_subject} fix: {detail}", file=sys.stderr)
                 last_skip_detail = detail
             continue
         freshness_detail = _track_fix_freshness_failure(
@@ -918,13 +946,13 @@ def _trackable_fixes(
         )
         if freshness_detail:
             if freshness_detail != last_skip_detail:
-                print(f"Skipping stale track fix: {freshness_detail}", file=sys.stderr)
+                print(f"Skipping stale {skip_subject} fix: {freshness_detail}", file=sys.stderr)
                 last_skip_detail = freshness_detail
             continue
         if not gps_fix_has_quality_fields(fix):
-            detail = "fix missing satellite or HDOP quality fields; cannot write reliable GPX trackpoint"
+            detail = f"fix missing satellite or HDOP quality fields; cannot {action}"
             if detail != last_skip_detail:
-                print(f"Skipping low-detail track fix: {detail}", file=sys.stderr)
+                print(f"Skipping low-detail {skip_subject} fix: {detail}", file=sys.stderr)
                 last_skip_detail = detail
             continue
         last_skip_detail = ""

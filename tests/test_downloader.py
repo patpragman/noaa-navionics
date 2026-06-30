@@ -2092,7 +2092,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                 encoding="utf-8",
             )
             fix = GPSFix(
-                timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+                timestamp=datetime.now(timezone.utc),
                 latitude=1.0,
                 longitude=2.0,
                 satellites=8,
@@ -2127,6 +2127,53 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(calls[0][:6], ("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947))
             self.assertIsNotNone(calls[0][6])
             self.assertFalse(calls[0][7])
+
+    def test_cli_gps_monitor_rejects_position_only_fix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n",
+                encoding="utf-8",
+            )
+            position_only = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.2181,
+                longitude=-149.9003,
+            )
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+            ):
+                return iter([position_only])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(["gps-monitor", "--config", str(app_config), "--once", "--seconds", "0.1"])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("Skipping low-detail GPS monitor fix", stderr.getvalue())
+            self.assertIn("cannot report a reliable live position", stderr.getvalue())
 
     def test_cli_gps_monitor_seconds_returns_nonzero_without_fix(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -10781,6 +10828,7 @@ class GpsTests(unittest.TestCase):
             fixes = list(_trackable_fixes(iter([position_only])))
 
         self.assertEqual(fixes, [])
+        self.assertIn("Skipping low-detail track fix", stderr.getvalue())
         self.assertIn("missing satellite or HDOP quality fields", stderr.getvalue())
 
     def test_trackable_fixes_skip_position_only_before_quality_fix(self):
