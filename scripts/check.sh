@@ -1843,9 +1843,16 @@ grep -q '"$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/
 grep -q 'backup_root_file_private "$gpsd_conf" "$backup"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
+grep -q '"$python3_cmd" - "$tmp" "$device"' scripts/configure_gpsd.sh
+grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_gpsd.sh
+grep -q 'generated GPSD config temp .* expected 0600' scripts/configure_gpsd.sh
+grep -q 'os.fsync(handle.fileno())' scripts/configure_gpsd.sh
+! grep -q 'cat >"$tmp"' scripts/configure_gpsd.sh
 ! grep -q 'sudo cp -a /etc/default/gpsd' scripts/configure_gpsd.sh
 grep -q 'GPSD setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
 grep -q 'GPSD setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'writes the generated GPSD temp file through a no-follow private descriptor' README.md
+grep -q 'writes the generated GPSD temp file through a no-follow private descriptor' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
