@@ -468,11 +468,7 @@ def normalize_host(value):
     value = value.strip().lower()
     return "127.0.0.1" if value == "localhost" else value
 
-def parse_opencpn_config(path):
-    try:
-        text = Path(path).expanduser().read_text(encoding="utf-8", errors="ignore")
-    except OSError as exc:
-        raise SystemExit(f"could not read OpenCPN config {path}: {exc}") from exc
+def parse_opencpn_config_text(text):
     section = ""
     chart_directories = []
     data_connections = []
@@ -530,11 +526,7 @@ def unexpected_gpsd_connections(data_connections, host, port):
         if configured_host != expected_host or configured_port != port
     ]
 
-def parse_key_value_file(path, comment_prefixes):
-    try:
-        text = Path(path).expanduser().read_text(encoding="utf-8")
-    except OSError as exc:
-        raise SystemExit(f"could not read {path}: {exc}") from exc
+def parse_key_value_text(text, comment_prefixes):
     sections = []
     values = {}
     for raw_line in text.splitlines():
@@ -582,7 +574,7 @@ def verify_status_file_owner_and_mode(summary, path, stat_result, label, expecte
             "expected no group/other write bits"
         )
 
-def read_private_user_file_text(path, label):
+def read_trusted_text_file(path, label, expected_uid, *, private_mode=None, errors="strict"):
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -592,17 +584,28 @@ def read_private_user_file_text(path, label):
         file_stat = os.fstat(fd)
         if not stat.S_ISREG(file_stat.st_mode):
             raise SystemExit(f"{label} is not a regular file: {path}")
-        if file_stat.st_uid != os.getuid():
-            raise SystemExit(f"{label} {path} is owned by uid {file_stat.st_uid}, expected {os.getuid()}")
+        if file_stat.st_uid != expected_uid:
+            raise SystemExit(f"{label} {path} is owned by uid {file_stat.st_uid}, expected {expected_uid}")
         file_mode = file_stat.st_mode & 0o777
-        if file_mode != 0o600:
-            raise SystemExit(f"{label} {path} has permissions {file_mode:04o}, expected private 0600")
-        with os.fdopen(fd, encoding="utf-8") as handle:
+        if private_mode is not None:
+            if file_mode != private_mode:
+                raise SystemExit(
+                    f"{label} {path} has permissions {file_mode:04o}, "
+                    f"expected private {private_mode:04o}"
+                )
+        elif file_mode & 0o022:
+            raise SystemExit(
+                f"{label} {path} has permissions {file_mode:04o}, expected no group/other write bits"
+            )
+        with os.fdopen(fd, encoding="utf-8", errors=errors) as handle:
             fd = -1
             return handle.read(), file_stat
     finally:
         if fd >= 0:
             os.close(fd)
+
+def read_private_user_file_text(path, label):
+    return read_trusted_text_file(path, label, os.getuid(), private_mode=0o600)
 
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
@@ -1037,10 +1040,12 @@ if expected_config_path:
         raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_file}")
     if not opencpn_config_file.is_file():
         raise SystemExit(f"status report OpenCPN config is not a regular file: {opencpn_config_file}")
-    try:
-        opencpn_stat = opencpn_config_file.stat()
-    except OSError as exc:
-        raise SystemExit(f"could not inspect status report OpenCPN config {opencpn_config_file}: {exc}") from exc
+    opencpn_text, opencpn_stat = read_trusted_text_file(
+        opencpn_config_file,
+        "OpenCPN config",
+        os.getuid(),
+        errors="ignore",
+    )
     verify_status_file_owner_and_mode(
         opencpn_config,
         opencpn_config_file,
@@ -1059,7 +1064,7 @@ if expected_config_path:
             f"status report OpenCPN config {opencpn_config_file} has permissions {opencpn_mode:04o}, "
             "expected no group/other write bits"
         )
-    live_chart_directories, live_data_connections = parse_opencpn_config(opencpn_config_path)
+    live_chart_directories, live_data_connections = parse_opencpn_config_text(opencpn_text)
     normalized_status_chart_directories = [normalize_path(str(value)) for value in status_chart_directories]
     normalized_status_data_connections = [str(value) for value in status_data_connections]
     if normalized_status_chart_directories != live_chart_directories:
@@ -1130,10 +1135,11 @@ if expected_config_path:
         )
     if not autostart_file.is_file():
         raise SystemExit(f"status report desktop autostart is not a regular file: {autostart_file}")
-    try:
-        autostart_stat = autostart_file.stat()
-    except OSError as exc:
-        raise SystemExit(f"could not inspect status report desktop autostart {autostart_file}: {exc}") from exc
+    autostart_text, autostart_stat = read_trusted_text_file(
+        autostart_file,
+        "desktop autostart",
+        os.getuid(),
+    )
     verify_status_file_owner_and_mode(
         autostart,
         autostart_file,
@@ -1144,7 +1150,7 @@ if expected_config_path:
     autostart_values = autostart.get("values")
     if not isinstance(autostart_values, dict):
         raise SystemExit(f"status report desktop autostart values were not parsed: {autostart_path}")
-    _autostart_sections, live_autostart_values = parse_key_value_file(autostart_path, ("#",))
+    _autostart_sections, live_autostart_values = parse_key_value_text(autostart_text, ("#",))
     if autostart_values != live_autostart_values:
         raise SystemExit("status report desktop autostart values do not match live desktop file")
     expected_autostart = {
@@ -1190,10 +1196,11 @@ if expected_config_path:
         )
     if not lightdm_file.is_file():
         raise SystemExit(f"status report LightDM autologin config is not a regular file: {lightdm_file}")
-    try:
-        lightdm_stat = lightdm_file.stat()
-    except OSError as exc:
-        raise SystemExit(f"could not inspect status report LightDM autologin config {lightdm_file}: {exc}") from exc
+    lightdm_text, lightdm_stat = read_trusted_text_file(
+        lightdm_file,
+        "LightDM autologin config",
+        0,
+    )
     verify_status_file_owner_and_mode(
         lightdm,
         lightdm_file,
@@ -1205,7 +1212,7 @@ if expected_config_path:
     lightdm_sections = lightdm.get("sections")
     if not isinstance(lightdm_values, dict) or not isinstance(lightdm_sections, list):
         raise SystemExit(f"status report LightDM autologin values were not parsed: {lightdm_path}")
-    live_lightdm_sections, live_lightdm_values = parse_key_value_file(lightdm_path, ("#", ";"))
+    live_lightdm_sections, live_lightdm_values = parse_key_value_text(lightdm_text, ("#", ";"))
     if lightdm_values != live_lightdm_values or [str(value) for value in lightdm_sections] != live_lightdm_sections:
         raise SystemExit("status report LightDM autologin values do not match live LightDM config")
     if "Seat:*" not in {str(value) for value in lightdm_sections}:

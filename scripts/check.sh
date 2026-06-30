@@ -626,7 +626,16 @@ grep -q 'not stat.S_ISREG(status_stat.st_mode)' scripts/verify_pi.sh
 grep -q 'os.fdopen(fd, encoding="utf-8")' scripts/verify_pi.sh
 ! grep -q 'with status_path.open(encoding="utf-8") as handle' scripts/verify_pi.sh
 grep -q 'def read_private_user_file_text' scripts/verify_pi.sh
+grep -q 'def read_trusted_text_file' scripts/verify_pi.sh
 grep -q 'launcher_text, launcher_env_stat = read_private_user_file_text' scripts/verify_pi.sh
+grep -q 'opencpn_text, opencpn_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'autostart_text, autostart_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'lightdm_text, lightdm_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'parse_opencpn_config_text(opencpn_text)' scripts/verify_pi.sh
+grep -q 'parse_key_value_text(autostart_text' scripts/verify_pi.sh
+grep -q 'parse_key_value_text(lightdm_text' scripts/verify_pi.sh
+! grep -q 'def parse_key_value_file' scripts/verify_pi.sh
+! grep -q 'parse_opencpn_config(opencpn_config_path)' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 ! grep -q 'launcher_env_file.read_text(encoding="utf-8")' scripts/verify_pi.sh
 grep -q 'parsing that status artifact only through the no-follow descriptor it verified' README.md
@@ -1742,10 +1751,10 @@ grep -q 'readiness report fails if the persisted launcher environment is missing
 grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'Status reports parse launcher settings only after a no-follow descriptor read' README.md
 grep -q 'Pi verification compares status-reported launcher settings only after a no-follow descriptor read' docs/sailboat-pi.md
-grep -q 'Status reports parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
+grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
-grep -q 'Status reports parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
