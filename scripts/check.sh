@@ -1672,6 +1672,12 @@ grep -q 'actual udev symlinks' docs/sailboat-pi.md
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
 grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py
+grep -q 'NMEA_CHECKSUM_HEX' src/noaa_navionics/gps.py
+grep -q 'len(supplied) != 2' src/noaa_navionics/gps.py
+grep -q 'test_parse_nmea_rejects_bad_checksum' tests/test_downloader.py
+grep -q 'test_parse_nmea_rejects_malformed_checksum_suffix' tests/test_downloader.py
+grep -q 'trailing-garbage checksum suffixes' README.md
+grep -q 'trailing-garbage checksum suffixes' docs/sailboat-pi.md
 grep -q 'sky_max_age_seconds' src/noaa_navionics/gps.py
 grep -q 'max_duration' src/noaa_navionics/gps.py
 grep -q 'idle_timeout' src/noaa_navionics/gps.py

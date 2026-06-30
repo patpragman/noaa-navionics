@@ -7383,6 +7383,23 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.satellites, 8)
         self.assertEqual(fix.altitude_m, 545.4)
 
+    def test_parse_nmea_rejects_bad_checksum(self):
+        sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*46"
+
+        with self.assertRaisesRegex(ValueError, "NMEA checksum failed"):
+            parse_nmea_sentence(sentence)
+        self.assertEqual(list(iter_fixes([sentence])), [])
+
+    def test_parse_nmea_rejects_malformed_checksum_suffix(self):
+        for sentence in (
+            "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*4Z",
+            "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47TRAILING",
+        ):
+            with self.subTest(sentence=sentence):
+                with self.assertRaisesRegex(ValueError, "NMEA checksum failed"):
+                    parse_nmea_sentence(sentence)
+                self.assertEqual(list(iter_fixes([sentence])), [])
+
     def test_iter_fixes_rejects_gga_without_fix_quality(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,,08,0.9,545.4,M,46.9,M,,"
         fix = parse_nmea_sentence(sentence)

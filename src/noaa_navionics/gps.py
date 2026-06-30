@@ -22,6 +22,7 @@ BAUD_RATES = {
     115200: termios.B115200,
 }
 NMEA_MAX_LINE_BYTES = 4096
+NMEA_CHECKSUM_HEX = frozenset("0123456789ABCDEFabcdef")
 
 
 @dataclass(frozen=True)
@@ -78,10 +79,12 @@ def parse_nmea_sentence(sentence: str) -> Optional[GPSFix]:
 
 def checksum_ok(sentence: str) -> bool:
     body, supplied = sentence.strip()[1:].split("*", 1)
+    if len(supplied) != 2 or any(char not in NMEA_CHECKSUM_HEX for char in supplied):
+        return False
     value = 0
     for char in body:
         value ^= ord(char)
-    return f"{value:02X}" == supplied[:2].upper()
+    return f"{value:02X}" == supplied.upper()
 
 
 def iter_fixes(lines: Iterable[str]) -> Iterator[GPSFix]:
