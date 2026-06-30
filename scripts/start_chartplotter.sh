@@ -19,6 +19,7 @@ opencpn_restarts=3
 opencpn_restart_delay=5
 lock_acquired=0
 opencpn_bin=""
+opencpn_child_pid=""
 
 reexec_without_ambient_launcher_settings() {
   local key
@@ -476,6 +477,22 @@ release_launcher_lock() {
   fi
 }
 
+terminate_opencpn_child() {
+  local child_pid="$opencpn_child_pid"
+  if [[ -n "$child_pid" && "$child_pid" =~ ^[0-9]+$ ]] && kill -0 "$child_pid" 2>/dev/null; then
+    echo "Forwarding launcher shutdown to OpenCPN child process ${child_pid}."
+    kill -TERM "$child_pid" 2>/dev/null || true
+    wait "$child_pid" 2>/dev/null || true
+  fi
+  opencpn_child_pid=""
+}
+
+shutdown_launcher() {
+  trap - INT TERM
+  terminate_opencpn_child
+  exit 143
+}
+
 acquire_launcher_lock() {
   local owner_pid=""
   validate_launcher_lock_path
@@ -741,16 +758,21 @@ run_opencpn_supervised() {
     echo "Launching OpenCPN with ENC processing."
     "$opencpn_bin" -parse_all_enc &
     opencpn_pid=$!
+    opencpn_child_pid="$opencpn_pid"
     for _ in 1 2 3 4 5; do
       if opencpn_running || ! kill -0 "$opencpn_pid" 2>/dev/null; then
         break
       fi
       sleep 1
     done
+    while opencpn_process_active "$opencpn_pid"; do
+      sleep 1
+    done
     set +e
     wait "$opencpn_pid"
     opencpn_status=$?
     set -e
+    opencpn_child_pid=""
     printf '[%s] OpenCPN exited with status %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$opencpn_status"
     if [[ "$opencpn_status" -eq 0 ]]; then
       echo "OpenCPN exited cleanly; not restarting."
@@ -803,6 +825,7 @@ exec > >(tee -a "$log_file") 2>&1
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 acquire_launcher_lock
+trap shutdown_launcher INT TERM
 validate_launcher_env_path
 load_launcher_settings
 keep_display_awake

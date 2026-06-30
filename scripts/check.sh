@@ -176,6 +176,14 @@ grep -q 'Unknown launcher environment key' scripts/start_chartplotter.sh
 grep -q 'run_opencpn_supervised' scripts/start_chartplotter.sh
 grep -q 'Restarting OpenCPN after nonzero exit status' scripts/start_chartplotter.sh
 grep -q 'OpenCPN exited cleanly; not restarting' scripts/start_chartplotter.sh
+grep -q 'terminate_opencpn_child' scripts/start_chartplotter.sh
+grep -q 'Forwarding launcher shutdown to OpenCPN child process' scripts/start_chartplotter.sh
+grep -q 'trap shutdown_launcher INT TERM' scripts/start_chartplotter.sh
+grep -q 'opencpn_child_pid="$opencpn_pid"' scripts/start_chartplotter.sh
+grep -q 'while opencpn_process_active "$opencpn_pid"' scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher OpenCPN shutdown forwarding' scripts/verify_pi.sh
+grep -q 'does not leave an unsupervised chartplotter process behind' README.md
+grep -q 'does not leave an unsupervised chartplotter process behind' docs/sailboat-pi.md
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
 grep -q 'import json' scripts/start_chartplotter.sh
 grep -q 'Failed checks' scripts/start_chartplotter.sh
