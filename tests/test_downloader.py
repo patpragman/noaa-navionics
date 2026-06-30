@@ -3463,6 +3463,47 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["source_revision_symlink_component"], str(link_root))
             self.assertIn("source revision directory is a symlink", summary["source_revision_error"])
 
+    def test_app_summary_rejects_nonregular_source_revision(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.mkdir()
+
+            original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+            os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
+            try:
+                summary = report_module._app_summary()
+            finally:
+                if original_revision_path is None:
+                    os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
+                else:
+                    os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = original_revision_path
+
+            self.assertEqual(summary["source_revision"], "unknown")
+            self.assertEqual(summary["source_revision_exists"], True)
+            self.assertIn("source revision path is not a regular file", summary["source_revision_error"])
+
+    def test_app_summary_rejects_writable_source_revision(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            revision.chmod(0o620)
+
+            original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
+            os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
+            try:
+                summary = report_module._app_summary()
+            finally:
+                revision.chmod(0o600)
+                if original_revision_path is None:
+                    os.environ.pop("NOAA_NAVIONICS_SOURCE_REVISION_PATH", None)
+                else:
+                    os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = original_revision_path
+
+            self.assertEqual(summary["source_revision"], "unknown")
+            self.assertEqual(summary["source_revision_mode"], "0620")
+            self.assertIn("source revision path", summary["source_revision_error"])
+            self.assertIn("has permissions 0620", summary["source_revision_error"])
+
     def test_launcher_settings_summary_rejects_symlinked_environment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -7545,6 +7586,36 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("deployed source revision directory is a symlink", result.detail)
             self.assertIn(str(link_root), result.detail)
+
+    def test_check_source_revision_rejects_nonregular_revision_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.mkdir()
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("not a regular file", result.detail)
+
+    def test_check_source_revision_rejects_writable_revision_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("abc123\n", encoding="utf-8")
+            revision.chmod(0o620)
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                revision.chmod(0o600)
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("has permissions 0620", result.detail)
 
     def test_check_source_revision_rejects_unknown_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:

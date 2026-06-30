@@ -444,6 +444,7 @@ def _app_summary() -> dict[str, object]:
         "version": __version__,
         "source_revision": "unknown",
         "source_revision_path": str(source_revision_path),
+        "source_revision_exists": source_revision_path.exists(),
         "source_revision_path_is_symlink": source_revision_is_symlink,
         "source_revision_directory_is_symlink": source_revision_directory_is_symlink,
         "source_revision_symlink_component": (
@@ -458,6 +459,30 @@ def _app_summary() -> dict[str, object]:
             f"source revision directory is a symlink: {source_revision_symlink_component}"
         )
         return summary
+    if source_revision_path.exists():
+        if not source_revision_path.is_file():
+            summary["source_revision_error"] = f"source revision path is not a regular file: {source_revision_path}"
+            return summary
+        try:
+            source_revision_stat = source_revision_path.stat()
+        except OSError as exc:
+            summary["source_revision_error"] = f"could not inspect source revision path {source_revision_path}: {exc}"
+            return summary
+        source_revision_mode = source_revision_stat.st_mode & 0o777
+        summary["source_revision_uid"] = source_revision_stat.st_uid
+        summary["source_revision_mode"] = f"{source_revision_mode:04o}"
+        if source_revision_stat.st_uid != os.getuid():
+            summary["source_revision_error"] = (
+                f"source revision path {source_revision_path} is owned by uid "
+                f"{source_revision_stat.st_uid}, expected {os.getuid()}"
+            )
+            return summary
+        if source_revision_mode & 0o022:
+            summary["source_revision_error"] = (
+                f"source revision path {source_revision_path} has permissions "
+                f"{source_revision_mode:04o}, expected no group/other write bits"
+            )
+            return summary
     summary["source_revision"] = _source_revision(source_revision_path)
     return summary
 

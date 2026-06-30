@@ -122,6 +122,30 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
             False,
             f"deployed source revision directory is a symlink: {symlink_component}",
         )
+    if revision_path.exists():
+        if not revision_path.is_file():
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"deployed source revision path is not a regular file: {revision_path}",
+            )
+        try:
+            revision_stat = revision_path.stat()
+        except OSError as exc:
+            return CheckResult("Source Revision", False, f"could not inspect deployed source revision: {exc}")
+        if revision_stat.st_uid != os.getuid():
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"deployed source revision path is owned by uid {revision_stat.st_uid}, expected {os.getuid()}: {revision_path}",
+            )
+        mode = revision_stat.st_mode & 0o777
+        if mode & 0o022:
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"deployed source revision path has permissions {mode:04o}, expected no group/other write bits: {revision_path}",
+            )
     try:
         revision = revision_path.read_text(encoding="utf-8").strip()
     except OSError as exc:
