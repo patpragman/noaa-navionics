@@ -2289,6 +2289,7 @@ grep -q 'NOAA Navionics config parent is not a directory' src/noaa_navionics/con
 grep -q 'NOAA Navionics config directory .* is owned by uid' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
 grep -q 'could not make NOAA Navionics config directory private' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config directory became a symlink after permission tightening' src/noaa_navionics/config.py
 grep -q 'expected private 0700' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config is a symlink' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config is not a regular file' src/noaa_navionics/config.py
@@ -2299,6 +2300,7 @@ grep -q 'test_write_default_config_rejects_symlinked_ancestor' tests/test_downlo
 grep -q 'test_write_default_config_rejects_symlinked_config_file_when_overwriting' tests/test_downloader.py
 grep -q 'test_write_default_config_rejects_unsafe_existing_config_when_overwriting' tests/test_downloader.py
 grep -q 'test_write_default_config_tightens_public_parent' tests/test_downloader.py
+grep -q 'test_write_default_config_rejects_parent_when_tightening_fails' tests/test_downloader.py
 grep -q 'test_write_default_config_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
@@ -2389,6 +2391,7 @@ grep -q 'OpenCPN config path is not a regular file' src/noaa_navionics/opencpn.p
 grep -q 'OpenCPN config path .* has permissions' src/noaa_navionics/opencpn.py
 grep -q 'OpenCPN config directory .* has permissions' src/noaa_navionics/opencpn.py
 grep -q 'os.chmod(parent, 0o700)' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN config directory became a symlink after permission tightening' src/noaa_navionics/opencpn.py
 grep -q 'expected private 0700' src/noaa_navionics/opencpn.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
 grep -q 'unexpected enabled GPSD connection' src/noaa_navionics/health.py
@@ -2404,6 +2407,7 @@ grep -q 'test_configure_chart_directory_rejects_missing_chart_directory' tests/t
 grep -q 'test_configure_chart_directory_rejects_non_directory_chart_path' tests/test_downloader.py
 grep -q 'test_configure_chart_directory_rejects_symlinked_chart_directory' tests/test_downloader.py
 grep -q 'test_configure_chart_directory_tightens_public_config_parent' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_rejects_config_parent_when_tightening_fails' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_nonregular_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_writable_config_file' tests/test_downloader.py

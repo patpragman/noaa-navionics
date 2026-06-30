@@ -326,6 +326,27 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(parent.stat().st_mode & 0o777, 0o700)
             self.assertEqual((parent / "config.ini").stat().st_mode & 0o777, 0o600)
 
+    def test_write_default_config_rejects_parent_when_tightening_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / ".config" / "noaa-navionics"
+            parent.mkdir(parents=True)
+            parent.chmod(0o755)
+            original_chmod = config_module.os.chmod
+
+            def fake_chmod(path, mode):
+                if Path(path) == parent and mode == 0o700:
+                    return None
+                return original_chmod(path, mode)
+
+            config_module.os.chmod = fake_chmod
+            try:
+                with self.assertRaisesRegex(RuntimeError, "expected private 0700"):
+                    write_default_config(parent / "config.ini")
+            finally:
+                config_module.os.chmod = original_chmod
+                parent.chmod(0o700)
+
     def test_write_default_config_rejects_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -726,6 +747,30 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(config.stat().st_mode), 0o600)
+
+    def test_configure_chart_directory_rejects_config_parent_when_tightening_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / ".opencpn"
+            parent.mkdir()
+            parent.chmod(0o755)
+            config = parent / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
+            original_chmod = opencpn_module.os.chmod
+
+            def fake_chmod(path, mode):
+                if Path(path) == parent and mode == 0o700:
+                    return None
+                return original_chmod(path, mode)
+
+            opencpn_module.os.chmod = fake_chmod
+            try:
+                with self.assertRaisesRegex(RuntimeError, "expected private 0700"):
+                    configure_chart_directory(charts, config_path=config)
+            finally:
+                opencpn_module.os.chmod = original_chmod
+                parent.chmod(0o700)
 
     def test_configure_chart_directory_rejects_symlinked_config_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:

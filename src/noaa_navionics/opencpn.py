@@ -291,7 +291,18 @@ def _prepare_config_parent(target: Path) -> None:
             os.chmod(parent, 0o700)
         except OSError as exc:
             raise RuntimeError(f"could not make OpenCPN config directory private: {parent}: {exc}") from exc
-    parent_mode = parent.stat().st_mode & 0o777
+    symlink_component = _first_symlink_ancestor(parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"OpenCPN config directory became a symlink after permission tightening: {symlink_component}")
+    try:
+        parent_stat = parent.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect OpenCPN config directory {parent}: {exc}") from exc
+    if parent_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"OpenCPN config directory {parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}"
+        )
+    parent_mode = parent_stat.st_mode & 0o777
     if parent_mode & 0o077:
         raise RuntimeError(
             f"OpenCPN config directory {parent} has permissions {parent_mode:04o}, "
