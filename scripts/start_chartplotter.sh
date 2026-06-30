@@ -485,6 +485,10 @@ load_launcher_settings() {
 
 validate_launcher_env_path() {
   local launcher_env_dir
+  local launcher_env_dir_stat
+  local launcher_env_dir_uid
+  local launcher_env_dir_mode_text
+  local launcher_env_dir_mode
   local env_stat
   local env_uid
   local env_mode
@@ -496,6 +500,25 @@ validate_launcher_env_path() {
   fi
   if symlink_component="$(first_symlink_ancestor "$(dirname "$launcher_env_dir")")"; then
     echo "NOAA Navionics launcher environment path contains a symlink: $symlink_component" >&2
+    exit 1
+  fi
+  if [[ ! -d "$launcher_env_dir" ]]; then
+    echo "NOAA Navionics launcher environment directory is not a directory: $launcher_env_dir" >&2
+    exit 1
+  fi
+  launcher_env_dir_stat="$(stat -c '%u %a' "$launcher_env_dir" 2>/dev/null || true)"
+  if [[ -z "$launcher_env_dir_stat" ]]; then
+    echo "Could not inspect NOAA Navionics launcher environment directory: $launcher_env_dir" >&2
+    exit 1
+  fi
+  read -r launcher_env_dir_uid launcher_env_dir_mode_text <<<"$launcher_env_dir_stat"
+  if [[ "$launcher_env_dir_uid" != "$(id -u)" ]]; then
+    echo "NOAA Navionics launcher environment directory is owned by uid ${launcher_env_dir_uid}, expected $(id -u): $launcher_env_dir" >&2
+    exit 1
+  fi
+  launcher_env_dir_mode=$((8#$launcher_env_dir_mode_text))
+  if (( launcher_env_dir_mode & 077 )); then
+    printf 'NOAA Navionics launcher environment directory has permissions %04o, expected private 0700: %s\n' "$launcher_env_dir_mode" "$launcher_env_dir" >&2
     exit 1
   fi
   if [[ ! -e "$launcher_env" ]]; then
