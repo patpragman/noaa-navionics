@@ -2884,6 +2884,21 @@ finally:
 PY
 }
 
+current_boot_id() {
+  python3 - <<'PY'
+from pathlib import Path
+import re
+
+try:
+    value = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+except OSError as exc:
+    raise SystemExit(f"could not read current boot ID: {exc}") from exc
+if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value):
+    raise SystemExit(f"current boot ID is not a Linux boot_id value: {value or '<empty>'}")
+print(value)
+PY
+}
+
 read_proc_env_value() {
   local pid="$1"
   local key="$2"
@@ -2982,14 +2997,38 @@ opencpn_supervised_running() {
   [[ -n "$(supervised_opencpn_pids)" ]]
 }
 
+read_proc_exe_path() {
+  local pid="$1"
+  python3 - "$pid" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+pid = sys.argv[1]
+if not pid.isdigit():
+    raise SystemExit(f"process pid is invalid: {pid}")
+proc_exe = f"/proc/{pid}/exe"
+try:
+    target = os.readlink(proc_exe)
+except OSError as exc:
+    raise SystemExit(f"could not read process executable for pid {pid}: {exc}") from exc
+if not target.startswith("/"):
+    raise SystemExit(f"process executable path is not absolute for pid {pid}: {target}")
+try:
+    resolved = Path(target).resolve(strict=True)
+except OSError as exc:
+    raise SystemExit(f"could not resolve process executable for pid {pid}: {target}: {exc}") from exc
+print(resolved)
+PY
+}
+
 check_opencpn_process_executable_integrity() {
   local pid
   local executable
   local checked=0
   while IFS= read -r pid; do
     checked=1
-    executable="$(readlink -f "/proc/${pid}/exe" 2>/dev/null || true)"
-    if [[ -z "$executable" ]]; then
+    if ! executable="$(read_proc_exe_path "$pid")" || [[ -z "$executable" ]]; then
       printf 'launcher-supervised OpenCPN executable is unreadable for pid %s\n' "$pid" >&2
       return 1
     fi
@@ -3210,7 +3249,7 @@ check_launcher_lock_live() {
     printf 'chartplotter launcher lock boot ID file has permissions %s, expected 600: %s\n' "${boot_id_mode:-<missing>}" "${launcher_lock}/boot_id" >&2
     return 1
   fi
-  current_boot_id="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+  current_boot_id="$(current_boot_id 2>/dev/null || true)"
   if [[ -z "$current_boot_id" ]]; then
     printf 'could not read current boot ID for chartplotter launcher lock verification\n' >&2
     return 1
@@ -3227,10 +3266,6 @@ check_launcher_lock_live() {
   fi
   if ! kill -0 "$owner_pid" 2>/dev/null; then
     printf 'chartplotter launcher lock owner is not running: %s\n' "$owner_pid" >&2
-    return 1
-  fi
-  if [[ ! -r "/proc/${owner_pid}/cmdline" ]]; then
-    printf 'chartplotter launcher lock owner cmdline is unreadable: %s\n' "$owner_pid" >&2
     return 1
   fi
   if ! process_cmdline_has_launcher_name "$owner_pid"; then
@@ -3253,7 +3288,7 @@ check_live_display_power_disabled() {
     return 1
   fi
   owner_pid="$(read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid")" || owner_pid=""
-  if [[ ! "$owner_pid" =~ ^[0-9]+$ || ! -r "/proc/${owner_pid}/environ" ]]; then
+  if [[ ! "$owner_pid" =~ ^[0-9]+$ ]]; then
     printf 'chartplotter launcher environment is unreadable for pid: %s\n' "${owner_pid:-<empty>}" >&2
     return 1
   fi

@@ -618,6 +618,9 @@ grep -q 'production verification requires launcher settings from' scripts/verify
 grep -q 'read_private_user_file()' scripts/verify_pi.sh
 grep -q 'read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid"' scripts/verify_pi.sh
 grep -q 'read_private_user_file "${launcher_lock}/boot_id" "chartplotter launcher lock boot ID"' scripts/verify_pi.sh
+grep -q 'current_boot_id()' scripts/verify_pi.sh
+grep -q 'current boot ID is not a Linux boot_id value' scripts/verify_pi.sh
+grep -q 'current_boot_id="$(current_boot_id 2>/dev/null || true)"' scripts/verify_pi.sh
 grep -q 'read_proc_env_value()' scripts/verify_pi.sh
 grep -q 'reject_proc_env_prefix()' scripts/verify_pi.sh
 grep -q 'data.split(b"\\0")' scripts/verify_pi.sh
@@ -648,7 +651,12 @@ grep -q 'process_cmdline_has_launcher_name "$owner_pid"' scripts/verify_pi.sh
 grep -q 'supervised_opencpn_pids' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_executable_integrity' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_display_environment' scripts/verify_pi.sh
-grep -q '/proc/${pid}/exe' scripts/verify_pi.sh
+grep -q 'read_proc_exe_path()' scripts/verify_pi.sh
+grep -q 'target = os.readlink(proc_exe)' scripts/verify_pi.sh
+grep -q 'resolved = Path(target).resolve(strict=True)' scripts/verify_pi.sh
+grep -q 'read_proc_exe_path "$pid"' scripts/verify_pi.sh
+grep -q 'proc_exe = f"/proc/{pid}/exe"' scripts/verify_pi.sh
+! grep -Fq 'readlink -f "/proc/${pid}/exe"' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN executable integrity' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN display environment' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN executable is unreadable' scripts/verify_pi.sh
@@ -674,8 +682,8 @@ grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' docs/sailboat-pi.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' README.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' docs/sailboat-pi.md
-grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, and environments as explicit `/proc` data' README.md
-grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, and environments as explicit `/proc` data' docs/sailboat-pi.md
+grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments as explicit `/proc` data' README.md
+grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments as explicit `/proc` data' docs/sailboat-pi.md
 grep -q 'running on that same live X display from a trusted root-owned executable' README.md
 grep -q 'running on that same live X display from a trusted root-owned executable' docs/sailboat-pi.md
 grep -q 'trusted `XAUTHORITY` file when present' README.md
