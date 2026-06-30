@@ -472,7 +472,7 @@ validate_remote_root_command_trust() {
 
   command_path_quoted="$(printf '%q' "$command_path")"
   command_label_quoted="$(printf '%q' "$command_label")"
-  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_label_quoted}" <<'REMOTE_ROOT_COMMAND_TRUST'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && /bin/sh -s -- ${command_path_quoted} ${command_label_quoted}" <<'REMOTE_ROOT_COMMAND_TRUST'
 set -eu
 
 command_path="$1"

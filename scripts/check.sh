@@ -389,6 +389,7 @@ grep -q 'local_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available python3' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available tar' scripts/deploy_to_pi.sh
+grep -Fq '/bin/sh -s -- ${command_path_quoted} ${command_name_quoted}' scripts/deploy_to_pi.sh
 grep -q 'deploy_with_rsync' scripts/deploy_to_pi.sh
 grep -q 'deploy_with_tar' scripts/deploy_to_pi.sh
 grep -q 'prepare_remote_deploy_staging' scripts/deploy_to_pi.sh
@@ -456,9 +457,10 @@ grep -q 'Local ${command_name} command is not executable after resolution' scrip
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/verify_pi.sh
 grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=' scripts/verify_pi.sh
+grep -Fq '/bin/bash -s' scripts/verify_pi.sh
 ! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
-grep -q 'pins its remote command path to trusted system directories before launching the remote verifier' README.md
-grep -q 'pins its remote command path to trusted system directories before launching the remote verifier' docs/sailboat-pi.md
+grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
+grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
 grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
 grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
@@ -474,6 +476,8 @@ grep -q 'verify_args+=("$1")' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("$1")' scripts/pre_departure_check_pi.sh
 grep -q 'trusted executable local deployment commands' README.md
 grep -q 'trusted executable local deployment commands' docs/sailboat-pi.md
+grep -q 'remote command trust probes use the fixed `/bin/sh` entrypoint, while longer remote operational helpers use `/bin/bash`, after pinning `PATH`' README.md
+grep -q 'remote command trust probes use the fixed `/bin/sh` entrypoint, while longer remote operational helpers use `/bin/bash`, after pinning `PATH`' docs/sailboat-pi.md
 grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
@@ -492,12 +496,14 @@ grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
 grep -q "status helper validates the Pi's installed private venv command path and runs that resolved executable" README.md
 grep -q "status helper validates the Pi's installed private venv command path and runs that resolved executable" docs/sailboat-pi.md
+grep -Fq '/bin/bash -s' scripts/check_pi_status.sh
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
 grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" README.md
 grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" docs/sailboat-pi.md
+grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
 grep -q 'live fix time, signed age, position' README.md
@@ -616,6 +622,7 @@ grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'shutdown helper validates the SSH target plus trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories' README.md
 grep -q 'shutdown helper validates the SSH target plus trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories' docs/sailboat-pi.md
+grep -Fq '/bin/bash -s' scripts/shutdown_pi_safely.sh
 grep -q 'read-only diagnostic evidence' README.md
 grep -q 'read-only diagnostic evidence' docs/sailboat-pi.md
 grep -q 'Use `--dry-run` to prove that path without powering off' README.md
@@ -1025,9 +1032,10 @@ for remote_python_export_wrapper in \
   grep -q 'Remote python3 command is not in a trusted system directory' "$remote_python_export_wrapper"
   grep -q 'remote_python_cmd="$(remote_python_command)"' "$remote_python_export_wrapper"
   grep -q 'remote_python_cmd_quoted="$(printf '\''%q'\'' "$remote_python_cmd")"' "$remote_python_export_wrapper"
+  grep -Fq '/bin/sh -s -- ${command_path_quoted}' "$remote_python_export_wrapper"
   ! grep -q '${remote_system_path} && export PATH && python3 -s' "$remote_python_export_wrapper"
 done
-grep -Fq '${remote_system_path} && export PATH && bash -s -- ${remote_python_cmd_quoted}' scripts/collect_pi_support_bundle.sh
+grep -Fq '${remote_system_path} && export PATH && /bin/bash -s -- ${remote_python_cmd_quoted}' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$src" "$dest"' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$config"' scripts/collect_pi_support_bundle.sh
@@ -3644,6 +3652,7 @@ grep -q 'remote_reboot_command' scripts/dock_test_pi.sh
 grep -q 'remote_sudo_command' scripts/dock_test_pi.sh
 grep -q 'remote_python_command' scripts/dock_test_pi.sh
 grep -q 'validate_remote_root_command_trust' scripts/dock_test_pi.sh
+grep -Fq '/bin/sh -s -- ${command_path_quoted} ${command_label_quoted}' scripts/dock_test_pi.sh
 grep -q 'validate_remote_reboot_command_trust' scripts/dock_test_pi.sh
 grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/dock_test_pi.sh
 grep -q 'Remote ${command_label} command ${item_kind} is owned by uid' scripts/dock_test_pi.sh
@@ -3693,8 +3702,8 @@ grep -q 'root-owned, executable, non-group/world-writable commands in trusted sy
 grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' docs/sailboat-pi.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' README.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' docs/sailboat-pi.md
-grep -q 'pins its remote command path to trusted system directories' README.md
-grep -q 'pins its remote command path to trusted system directories' docs/sailboat-pi.md
+grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
+grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
 grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' README.md
 grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
@@ -4605,7 +4614,7 @@ case "$args" in
     printf '%s\n' /usr/bin/python3
     exit 0
     ;;
-  *"sh -s -- /usr/bin/python3 python3"*)
+  *"/bin/sh -s -- /usr/bin/python3 python3"*)
     exit 0
     ;;
   *"command -v rsync"*)
@@ -4698,7 +4707,7 @@ if [[ "$args" == *"command -v python3"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
   exit 0
 fi
-if [[ "$args" == *"sh -s -- /usr/sbin/reboot reboot"* ]]; then
+if [[ "$args" == *"/bin/sh -s -- /usr/sbin/reboot reboot"* ]]; then
   if [[ -n "${NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR:-}" ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_REBOOT_TRUST_ERROR" >&2
     exit 1
@@ -4709,14 +4718,14 @@ if [[ "$args" == *"sh -s -- /usr/sbin/reboot reboot"* ]]; then
   fi
   exit 0
 fi
-if [[ "$args" == *"sh -s -- /usr/bin/sudo sudo"* ]]; then
+if [[ "$args" == *"/bin/sh -s -- /usr/bin/sudo sudo"* ]]; then
   if [[ -n "${NOAA_NAVIONICS_FAKE_SUDO_TRUST_ERROR:-}" ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_SUDO_TRUST_ERROR" >&2
     exit 1
   fi
   exit 0
 fi
-if [[ "$args" == *"sh -s -- /usr/bin/python3 python3"* ]]; then
+if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3 python3"* ]]; then
   if [[ -n "${NOAA_NAVIONICS_FAKE_PYTHON_TRUST_ERROR:-}" ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_PYTHON_TRUST_ERROR" >&2
     exit 1
@@ -5441,6 +5450,7 @@ grep -q 'fake status report' "$verify_output"
 grep -q -- '-o BatchMode=yes' "$status_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS=12' "$status_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_STATUS_JSON=1' "$status_fake_ssh_args"
+grep -q '/bin/bash -s' "$status_fake_ssh_args"
 grep -q 'pi@example.invalid' "$status_fake_ssh_args"
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
 grep -q 'check_installed_command_tree' "$status_fake_ssh_stdin"
@@ -5518,6 +5528,7 @@ grep -q 'NOAA_NAVIONICS_REFRESH_RETRIES=7' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_RETRY_DELAY=11' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS=1' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS=13' "$refresh_fake_ssh_args"
+grep -q '/bin/bash -s' "$refresh_fake_ssh_args"
 grep -q 'pi@example.invalid' "$refresh_fake_ssh_args"
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' "$refresh_fake_ssh_stdin"
@@ -5566,7 +5577,7 @@ if [[ "$args" == *"command -v python3"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
   exit 0
 fi
-if [[ "$args" == *"&& sh -s -- /usr/bin/python3"* ]]; then
+if [[ "$args" == *"&& /bin/sh -s -- /usr/bin/python3"* ]]; then
   cat >/dev/null
   exit 0
 fi
@@ -5605,7 +5616,7 @@ test "$(stat -c '%a' "$support_bundle_path")" = 600
 test "$(stat -c '%u' "$support_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$support_fake_ssh_args"
 grep -q 'pi@example.invalid' "$support_fake_ssh_args"
-grep -q 'bash -s -- /usr/bin/python3' "$support_fake_ssh_args"
+grep -q '/bin/bash -s -- /usr/bin/python3' "$support_fake_ssh_args"
 grep -q 'python3_cmd="${1:-}"' "$support_fake_ssh_stdin"
 grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' "$support_fake_ssh_stdin"
 grep -q '"$python3_cmd" - "$src" "$dest"' "$support_fake_ssh_stdin"
@@ -5665,7 +5676,7 @@ if [[ "$args" == *"command -v python3"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
   exit 0
 fi
-if [[ "$args" == *"sh -s -- /usr/bin/python3"* ]]; then
+if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
   cat >/dev/null
   exit 0
 fi
@@ -5747,7 +5758,7 @@ if [[ "$args" == *"command -v python3"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
   exit 0
 fi
-if [[ "$args" == *"sh -s -- /usr/bin/python3"* ]]; then
+if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
   cat >/dev/null
   exit 0
 fi
@@ -5814,7 +5825,7 @@ if [[ "$args" == *"command -v python3"* ]]; then
   printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
   exit 0
 fi
-if [[ "$args" == *"sh -s -- /usr/bin/python3"* ]]; then
+if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
   cat >/dev/null
   exit 0
 fi
@@ -6324,6 +6335,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   scripts/shutdown_pi_safely.sh pi@example.invalid --dry-run >"$verify_output" 2>&1
 grep -q 'Pi shutdown dry run passed for pi@example.invalid' "$verify_output"
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=1' "$shutdown_fake_ssh_args"
+grep -q '/bin/bash -s' "$shutdown_fake_ssh_args"
 grep -q 'pi@example.invalid' "$shutdown_fake_ssh_args"
 grep -q 'require_remote_command sync' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command sudo' "$shutdown_fake_ssh_stdin"

@@ -209,7 +209,7 @@ validate_ssh_target "$target"
 ssh_cmd="$(require_local_command ssh)"
 dry_run_quoted="$(printf '%q' "$dry_run")"
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=${dry_run_quoted} bash -s" <<'REMOTE'
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=${dry_run_quoted} /bin/bash -s" <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH

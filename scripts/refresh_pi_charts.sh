@@ -255,7 +255,7 @@ retry_delay_quoted="$(printf '%q' "$retry_delay")"
 status_quoted="$(printf '%q' "$status")"
 gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REFRESH_FORCE=${force_quoted} NOAA_NAVIONICS_REFRESH_RETRIES=${retries_quoted} NOAA_NAVIONICS_REFRESH_RETRY_DELAY=${retry_delay_quoted} NOAA_NAVIONICS_REFRESH_STATUS=${status_quoted} NOAA_NAVIONICS_REFRESH_GPS_SECONDS=${gps_seconds_quoted} bash -s" <<'REMOTE'
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REFRESH_FORCE=${force_quoted} NOAA_NAVIONICS_REFRESH_RETRIES=${retries_quoted} NOAA_NAVIONICS_REFRESH_RETRY_DELAY=${retry_delay_quoted} NOAA_NAVIONICS_REFRESH_STATUS=${status_quoted} NOAA_NAVIONICS_REFRESH_GPS_SECONDS=${gps_seconds_quoted} /bin/bash -s" <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH

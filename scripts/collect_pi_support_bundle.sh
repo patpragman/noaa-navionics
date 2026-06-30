@@ -203,7 +203,7 @@ validate_remote_python_command_trust() {
   fi
 
   command_path_quoted="$(printf '%q' "$command_path")"
-  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted}" <<'REMOTE_PYTHON_COMMAND_TRUST'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && /bin/sh -s -- ${command_path_quoted}" <<'REMOTE_PYTHON_COMMAND_TRUST'
 set -eu
 
 command_path="$1"
@@ -431,7 +431,7 @@ cleanup_partial() {
 }
 trap cleanup_partial EXIT
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && bash -s -- ${remote_python_cmd_quoted}" >"$partial_path" <<'REMOTE'
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && /bin/bash -s -- ${remote_python_cmd_quoted}" >"$partial_path" <<'REMOTE'
 set -euo pipefail
 python3_cmd="${1:-}"
 if [[ "$python3_cmd" != /* || "$python3_cmd" =~ [[:space:]\"\'] ]]; then
