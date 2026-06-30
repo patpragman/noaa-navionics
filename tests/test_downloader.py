@@ -7004,6 +7004,23 @@ class GpsTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 5)
 
+    def test_gpx_logger_directory_sync_uses_no_follow_open(self):
+        calls = []
+        original_open = gps_module.os.open
+
+        def fake_open(path, flags):
+            calls.append((Path(path), flags))
+            raise OSError("stop before opening")
+
+        gps_module.os.open = fake_open
+        try:
+            gps_module._fsync_directory(Path("/tmp"))
+        finally:
+            gps_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+
     def test_gpx_logger_skips_missing_quality_fields(self):
         fix = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),

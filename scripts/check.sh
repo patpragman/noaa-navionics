@@ -1340,6 +1340,10 @@ grep -q 'def _fsync_tree' src/noaa_navionics/downloader.py
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/gps.py
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'def _fsync_directory' src/noaa_navionics/gps.py
+grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/gps.py
+grep -q 'test_gpx_logger_directory_sync_uses_no_follow_open' tests/test_downloader.py
+grep -q 'GPX directory sync uses no-follow directory opens' README.md
+grep -q 'GPX directory sync uses no-follow directory opens' docs/sailboat-pi.md
 grep -q 'expected a new regular GPX track file' src/noaa_navionics/gps.py
 grep -q 'fix_quality is not None and self.fix_quality != 0' src/noaa_navionics/gps.py
 grep -q 'if gps_fix_quality_failure(fix):' src/noaa_navionics/gps.py
