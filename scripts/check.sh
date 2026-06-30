@@ -1345,9 +1345,12 @@ grep -q 'OpenCPN config directory is a symlink' src/noaa_navionics/report.py
 grep -q '"config_symlink_component"' src/noaa_navionics/report.py
 grep -q '"uid"' src/noaa_navionics/report.py
 grep -q '"mode"' src/noaa_navionics/report.py
+grep -q '"directory_uid"' src/noaa_navionics/report.py
+grep -q '"directory_mode"' src/noaa_navionics/report.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config_ancestor' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_nonregular_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_opencpn_config_summary_records_public_directory_mode' tests/test_downloader.py
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components and non-regular, writable, or misowned OpenCPN config files' README.md
 grep -q 'Status reports and Pi verification reject symlinked OpenCPN config path components and non-regular, writable, or misowned OpenCPN config files' docs/sailboat-pi.md
 grep -q 'launcher environment path is a symlink' src/noaa_navionics/report.py

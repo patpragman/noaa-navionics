@@ -4106,7 +4106,26 @@ class StatusReportTests(unittest.TestCase):
 
             self.assertEqual(summary["uid"], os.getuid())
             self.assertEqual(summary["mode"], "0640")
+            self.assertEqual(summary["directory_uid"], os.getuid())
+            self.assertEqual(summary["directory_mode"], "0700")
             self.assertEqual(summary["chart_directories"], [str(charts.resolve())])
+
+    def test_opencpn_config_summary_records_public_directory_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config_dir = root / "opencpn"
+            config_dir.mkdir()
+            config = config_dir / "opencpn.conf"
+            config.write_text("[ChartDirectories]\n", encoding="utf-8")
+            config.chmod(0o600)
+            config_dir.chmod(0o755)
+            try:
+                summary = report_module._opencpn_config_summary(config)
+            finally:
+                config_dir.chmod(0o700)
+
+            self.assertEqual(summary["directory_uid"], os.getuid())
+            self.assertEqual(summary["directory_mode"], "0755")
 
     def test_manifest_summary_rejects_symlinked_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:

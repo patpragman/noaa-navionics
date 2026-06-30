@@ -933,10 +933,28 @@ if expected_config_path:
             f"{opencpn_dir_stat.st_uid}, expected {os.getuid()}"
         )
     opencpn_dir_mode = opencpn_dir_stat.st_mode & 0o777
-    if opencpn_dir_mode & 0o022:
+    status_opencpn_dir_uid = opencpn_config.get("directory_uid")
+    try:
+        parsed_opencpn_dir_uid = int(status_opencpn_dir_uid)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(
+            f"status report OpenCPN config directory_uid is invalid: {status_opencpn_dir_uid!r}"
+        ) from exc
+    if parsed_opencpn_dir_uid != opencpn_dir_stat.st_uid:
+        raise SystemExit(
+            f"status report OpenCPN config directory_uid {parsed_opencpn_dir_uid} "
+            f"does not match live owner {opencpn_dir_stat.st_uid}: {opencpn_config_dir}"
+        )
+    status_opencpn_dir_mode = str(opencpn_config.get("directory_mode", "")).strip()
+    if status_opencpn_dir_mode != f"{opencpn_dir_mode:04o}":
+        raise SystemExit(
+            f"status report OpenCPN config directory_mode {status_opencpn_dir_mode or '<missing>'} "
+            f"does not match live permissions {opencpn_dir_mode:04o}: {opencpn_config_dir}"
+        )
+    if opencpn_dir_mode & 0o077:
         raise SystemExit(
             f"status report OpenCPN config directory {opencpn_config_dir} has permissions "
-            f"{opencpn_dir_mode:04o}, expected no group/other write bits"
+            f"{opencpn_dir_mode:04o}, expected private 0700"
         )
     if opencpn_config_file.is_symlink():
         raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_file}")

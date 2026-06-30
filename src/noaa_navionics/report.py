@@ -1025,6 +1025,14 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
     if symlink_component is not None:
         summary["error"] = f"OpenCPN config directory is a symlink: {symlink_component}"
         return summary
+    if config_path.parent.exists():
+        try:
+            directory_stat = config_path.parent.stat()
+        except OSError as exc:
+            summary["error"] = f"could not inspect OpenCPN config directory {config_path.parent}: {exc}"
+            return summary
+        summary["directory_uid"] = directory_stat.st_uid
+        summary["directory_mode"] = f"{directory_stat.st_mode & 0o777:04o}"
     if not config_path.exists():
         return summary
     if not config_path.is_file():
