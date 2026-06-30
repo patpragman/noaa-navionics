@@ -187,7 +187,7 @@ Collect a diagnostic support bundle from the Pi before changing anything:
 scripts/collect_pi_support_bundle.sh pi@raspberrypi.local
 ```
 
-The support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, and writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config, status reports, configured chart manifests and storage listings, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, download charts, or copy NOAA chart archives, extracted ENC cells, or GPX track contents.
+The support bundle helper tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, copies selected Pi files through no-follow descriptor revalidation, and writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config, status reports, configured chart manifests and storage listings, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, download charts, or copy NOAA chart archives, extracted ENC cells, or GPX track contents.
 
 Export GPX track logs after a trip:
 

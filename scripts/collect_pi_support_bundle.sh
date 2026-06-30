@@ -331,6 +331,7 @@ write_note() {
 copy_regular_if_readable() {
   local src="$1"
   local dest
+  local copy_error
   if [[ -L "$src" ]]; then
     write_note "skipped symlink: $src"
     return 0
@@ -343,10 +344,84 @@ copy_regular_if_readable() {
     write_note "skipped non-regular file: $src"
     return 0
   fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    write_note "python3 missing; could not safely copy: $src"
+    return 0
+  fi
   dest="${files_dir}${src}"
   mkdir -p -- "$(dirname -- "$dest")"
-  if cp -p -- "$src" "$dest" 2>"${dest}.copy-error"; then
-    rm -f -- "${dest}.copy-error"
+  copy_error="${dest}.copy-error"
+  if python3 - "$src" "$dest" 2>"$copy_error" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import shutil
+import stat
+import sys
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+tmp_path: Path | None = None
+src_fd = -1
+dst_fd = -1
+
+try:
+    expected = source.lstat()
+    if stat.S_ISLNK(expected.st_mode):
+        raise RuntimeError(f"refusing to copy symlink: {source}")
+    if not stat.S_ISREG(expected.st_mode):
+        raise RuntimeError(f"refusing to copy non-regular file: {source}")
+
+    src_fd = os.open(source, os.O_RDONLY | nofollow)
+    opened = os.fstat(src_fd)
+    if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+        raise RuntimeError(f"file changed before copy: {source}")
+    if not stat.S_ISREG(opened.st_mode):
+        raise RuntimeError(f"opened source is not regular: {source}")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow
+    for attempt in range(100):
+        candidate = target.with_name(f".{target.name}.copy-{os.getpid()}-{attempt}")
+        try:
+            dst_fd = os.open(candidate, flags, 0o600)
+            tmp_path = candidate
+            break
+        except FileExistsError:
+            continue
+    else:
+        raise RuntimeError(f"could not create temporary copy for {target}")
+
+    mode = stat.S_IMODE(opened.st_mode) & 0o777
+    os.fchmod(dst_fd, mode)
+    with os.fdopen(src_fd, "rb") as src_handle:
+        src_fd = -1
+        with os.fdopen(dst_fd, "wb") as dst_handle:
+            dst_fd = -1
+            shutil.copyfileobj(src_handle, dst_handle)
+            dst_handle.flush()
+            os.fsync(dst_handle.fileno())
+    os.utime(tmp_path, ns=(opened.st_atime_ns, opened.st_mtime_ns), follow_symlinks=False)
+    os.replace(tmp_path, target)
+    tmp_path = None
+except Exception as exc:
+    print(exc, file=sys.stderr)
+    raise SystemExit(1) from exc
+finally:
+    if src_fd >= 0:
+        os.close(src_fd)
+    if dst_fd >= 0:
+        os.close(dst_fd)
+    if tmp_path is not None:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+PY
+  then
+    rm -f -- "$copy_error"
   else
     write_note "could not copy: $src"
   fi
