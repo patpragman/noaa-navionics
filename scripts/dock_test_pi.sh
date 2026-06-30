@@ -50,6 +50,7 @@ verify_args=()
 remote_reboot_cmd=""
 remote_sudo_cmd=""
 remote_python_cmd=""
+ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -158,6 +159,7 @@ require_local_command() {
     exit 2
   fi
   validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
 }
 
 local_path_in_trusted_system_dir() {
@@ -386,7 +388,7 @@ fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-require_local_command ssh
+ssh_cmd="$(require_local_command ssh)"
 
 wait_for_ssh_down() {
   local deadline=$((SECONDS + 60))
@@ -412,14 +414,14 @@ wait_for_ssh_up() {
 }
 
 ssh_available() {
-  ssh "${ssh_probe_options[@]}" "$target" "${remote_system_path} && export PATH && true" >/dev/null 2>&1
+  "$ssh_cmd" "${ssh_probe_options[@]}" "$target" "${remote_system_path} && export PATH && true" >/dev/null 2>&1
 }
 
 remote_boot_id() {
   if [[ -z "$remote_python_cmd" ]]; then
     remote_python_cmd="$(remote_python_command)"
   fi
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_python_cmd' -" <<'REMOTE_BOOT_ID'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_python_cmd' -" <<'REMOTE_BOOT_ID'
 from pathlib import Path
 import re
 
@@ -464,7 +466,7 @@ validate_remote_root_command_trust() {
 
   command_path_quoted="$(printf '%q' "$command_path")"
   command_label_quoted="$(printf '%q' "$command_label")"
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_label_quoted}" <<'REMOTE_ROOT_COMMAND_TRUST'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_label_quoted}" <<'REMOTE_ROOT_COMMAND_TRUST'
 set -eu
 
 command_path="$1"
@@ -533,7 +535,7 @@ validate_remote_reboot_command_trust() {
 remote_reboot_command() {
   local reboot_cmd
 
-  if ! reboot_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
+  if ! reboot_cmd="$("$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v reboot" 2>/dev/null)" || [[ -z "$reboot_cmd" ]]; then
     echo "Could not find the remote reboot command on $target." >&2
     return 1
   fi
@@ -550,7 +552,7 @@ remote_reboot_command() {
 remote_sudo_command() {
   local sudo_cmd
 
-  if ! sudo_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v sudo" 2>/dev/null)" || [[ -z "$sudo_cmd" ]]; then
+  if ! sudo_cmd="$("$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v sudo" 2>/dev/null)" || [[ -z "$sudo_cmd" ]]; then
     echo "Could not find the remote sudo command on $target." >&2
     return 1
   fi
@@ -567,7 +569,7 @@ remote_sudo_command() {
 remote_python_command() {
   local python_cmd
 
-  if ! python_cmd="$(ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v python3" 2>/dev/null)" || [[ -z "$python_cmd" ]]; then
+  if ! python_cmd="$("$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v python3" 2>/dev/null)" || [[ -z "$python_cmd" ]]; then
     echo "Could not find the remote python3 command on $target." >&2
     return 1
   fi
@@ -589,7 +591,7 @@ check_remote_noninteractive_reboot_available() {
     return 1
   fi
 
-  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
+  if "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n -l '$remote_reboot_cmd'" >/dev/null 2>&1; then
     printf 'OK   noninteractive sudo can run %s\n' "$remote_reboot_cmd"
     return 0
   fi
@@ -609,7 +611,7 @@ request_reboot() {
     remote_sudo_cmd="$(remote_sudo_command)"
   fi
 
-  if ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
+  if "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
     return 0
   fi
 

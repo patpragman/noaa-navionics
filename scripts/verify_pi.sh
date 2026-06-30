@@ -26,6 +26,8 @@ opencpn_restarts=3
 opencpn_restart_delay=5
 expected_gps_device=""
 expected_boot_id=""
+ssh_cmd=""
+git_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -55,6 +57,7 @@ require_local_command() {
     exit 2
   fi
   validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
 }
 
 local_path_in_trusted_system_dir() {
@@ -304,12 +307,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_ssh_target "$target"
-require_local_command ssh
+ssh_cmd="$(require_local_command ssh)"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-require_local_command git
-expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
-worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
+git_cmd="$(require_local_command git)"
+expected_revision="$("$git_cmd" -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+worktree_status="$("$git_cmd" -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
 if [[ "$expected_revision" != "unknown" && -n "$worktree_status" ]]; then
   if [[ "$allow_dirty" -eq 0 ]]; then
     cat >&2 <<EOF
@@ -328,7 +331,7 @@ opencpn_restart_delay_quoted="$(printf '%q' "$opencpn_restart_delay")"
 expected_gps_device_quoted="$(printf '%q' "$expected_gps_device")"
 expected_boot_id_quoted="$(printf '%q' "$expected_boot_id")"
 
-ssh -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} NOAA_NAVIONICS_EXPECTED_BOOT_ID=${expected_boot_id_quoted} bash -s" <<'REMOTE'
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} NOAA_NAVIONICS_EXPECTED_BOOT_ID=${expected_boot_id_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH

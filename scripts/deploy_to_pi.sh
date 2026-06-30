@@ -34,6 +34,8 @@ saw_provision_option=0
 allow_dirty=0
 skip_services=0
 skip_autologin=0
+ssh_cmd=""
+git_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -142,6 +144,7 @@ require_local_command() {
     exit 2
   fi
   validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
 }
 
 local_path_in_trusted_system_dir() {
@@ -233,6 +236,16 @@ local_command_exists() {
   validate_trusted_local_command "$command_name" "$command_path"
 }
 
+local_command_path() {
+  local command_name="$1"
+  local command_path
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    return 1
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
+}
+
 remote_path_in_trusted_system_dir() {
   case "$1" in
     /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
@@ -259,7 +272,7 @@ validate_remote_deploy_command_trust() {
 
   command_path_quoted="$(printf '%q' "$command_path")"
   command_name_quoted="$(printf '%q' "$command_name")"
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_name_quoted}" <<'REMOTE_DEPLOY_COMMAND_TRUST'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted} ${command_name_quoted}" <<'REMOTE_DEPLOY_COMMAND_TRUST'
 set -eu
 
 command_path="$1"
@@ -333,7 +346,7 @@ remote_command_path() {
       return 2
       ;;
   esac
-  command_path="$(ssh "${ssh_connect_options[@]}" "$target" "${remote_system_path} && export PATH && command -v ${command_name}")" || status="$?"
+  command_path="$("$ssh_cmd" "${ssh_connect_options[@]}" "$target" "${remote_system_path} && export PATH && command -v ${command_name}")" || status="$?"
   if [[ "$status" -ne 0 || -z "$command_path" ]]; then
     return "$status"
   fi
@@ -524,9 +537,9 @@ remote_dir_trimmed="${remote_dir%/}"
 remote_staging_dir="${remote_dir_trimmed}.deploying"
 remote_previous_dir="${remote_dir_trimmed}.previous"
 remote_staging_dir_quoted="$(quote_remote_dir_for_shell "$remote_staging_dir")"
-require_local_command git
-source_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
-worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
+git_cmd="$(require_local_command git)"
+source_revision="$("$git_cmd" -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+worktree_status="$("$git_cmd" -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
 if [[ "$source_revision" != "unknown" && -n "$worktree_status" ]]; then
   if [[ "$allow_dirty" -eq 0 ]]; then
     cat >&2 <<EOF
@@ -538,7 +551,7 @@ EOF
   source_revision="${source_revision}-dirty"
 fi
 
-require_local_command ssh
+ssh_cmd="$(require_local_command ssh)"
 require_remote_command_available python3 >/dev/null
 
 write_remote_source_revision() {
@@ -548,7 +561,7 @@ write_remote_source_revision() {
   local revision_env
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   revision_env="$(printf '%q' "$revision_value")"
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -671,7 +684,7 @@ prepare_remote_deploy_staging() {
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   staging_dir_env="$(printf '%q' "$staging_dir_value")"
   previous_dir_env="$(printf '%q' "$previous_dir_value")"
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import shutil
@@ -781,7 +794,7 @@ promote_remote_deploy_staging() {
   remote_dir_env="$(printf '%q' "$remote_dir_value")"
   staging_dir_env="$(printf '%q' "$staging_dir_value")"
   previous_dir_env="$(printf '%q' "$previous_dir_value")"
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_STAGING_DIR=${staging_dir_env} NOAA_NAVIONICS_PREVIOUS_DIR=${previous_dir_env} python3 - <<'PY'
 from pathlib import Path
 import os
 import shutil
@@ -874,13 +887,14 @@ PY"
 }
 
 deploy_with_rsync() {
-  local remote_rsync_cmd="$1"
+  local local_rsync_cmd="$1"
+  local remote_rsync_cmd="$2"
   local remote_rsync_cmd_quoted
 
   remote_rsync_cmd_quoted="$(printf '%q' "$remote_rsync_cmd")"
 
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
-  rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4" \
+  "$local_rsync_cmd" -az --delete -e "$ssh_cmd -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4" \
     --rsync-path="${remote_system_path} && export PATH && ${remote_rsync_cmd_quoted}" \
     --exclude '.git/' \
     --exclude '__pycache__/' \
@@ -901,7 +915,8 @@ deploy_with_rsync() {
 }
 
 deploy_with_tar() {
-  local remote_tar_cmd="$1"
+  local local_tar_cmd="$1"
+  local remote_tar_cmd="$2"
   local remote_tar_cmd_quoted
 
   remote_tar_cmd_quoted="$(printf '%q' "$remote_tar_cmd")"
@@ -909,7 +924,7 @@ deploy_with_tar() {
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
   (
     cd "$repo_root"
-    tar \
+    "$local_tar_cmd" \
       --exclude='./.git' \
       --exclude='./__pycache__' \
       --exclude='*/__pycache__' \
@@ -934,18 +949,20 @@ deploy_with_tar() {
       --exclude='*.zip' \
       --exclude='ENCProdCat_19115.xml' \
       -czf - .
-  ) | ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && ${remote_tar_cmd_quoted} -xzf - -C ${remote_staging_dir_quoted}"
+  ) | "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && ${remote_tar_cmd_quoted} -xzf - -C ${remote_staging_dir_quoted}"
   promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
 
 deploy_sources() {
   local remote_rsync_cmd
+  local local_rsync_cmd
   local remote_tar_cmd
+  local local_tar_cmd
   local rsync_status
 
-  if local_command_exists rsync; then
+  if local_rsync_cmd="$(local_command_path rsync)"; then
     if remote_rsync_cmd="$(remote_command_path rsync)"; then
-      deploy_with_rsync "$remote_rsync_cmd"
+      deploy_with_rsync "$local_rsync_cmd" "$remote_rsync_cmd"
       return 0
     fi
     rsync_status="$?"
@@ -961,9 +978,9 @@ EOF
     echo "Local rsync is unavailable; bootstrapping copy with tar over SSH." >&2
   fi
 
-  require_local_command tar
+  local_tar_cmd="$(require_local_command tar)"
   remote_tar_cmd="$(require_remote_command_available tar)"
-  deploy_with_tar "$remote_tar_cmd"
+  deploy_with_tar "$local_tar_cmd" "$remote_tar_cmd"
 }
 
 deploy_sources
@@ -973,7 +990,7 @@ remote_install_args=()
 for arg in "${install_args[@]}"; do
   remote_install_args+=("$(printf '%q' "$arg")")
 done
-ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
 
 if [[ "$provision" -eq 1 ]]; then
   remote_args=()
@@ -981,5 +998,5 @@ if [[ "$provision" -eq 1 ]]; then
     [[ "$arg" == "--provision" ]] && continue
     remote_args+=("$(printf '%q' "$arg")")
   done
-  ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
+  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
 fi

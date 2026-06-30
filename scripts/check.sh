@@ -300,14 +300,17 @@ grep -q 'os.fsync(fd)' scripts/deploy_to_pi.sh
 grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' README.md
 grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' docs/sailboat-pi.md
 grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
-grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
-grep -q 'require_local_command git' scripts/deploy_to_pi.sh
+grep -q 'ssh_cmd="$(require_local_command ssh)"' scripts/deploy_to_pi.sh
+grep -q 'git_cmd="$(require_local_command git)"' scripts/deploy_to_pi.sh
+grep -q 'source_revision="$("$git_cmd" -C "$repo_root" rev-parse --short HEAD' scripts/deploy_to_pi.sh
 grep -q 'validate_trusted_local_command' scripts/deploy_to_pi.sh
 grep -q 'validate_trusted_local_command "$command_name" "$command_path"' scripts/deploy_to_pi.sh
+grep -q 'printf '\''%s\\n'\'' "$command_path"' scripts/deploy_to_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/deploy_to_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/deploy_to_pi.sh
 grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/deploy_to_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/deploy_to_pi.sh
+grep -q '"$ssh_cmd" "${ssh_batch_options\[@\]}" "$target"' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
@@ -323,14 +326,17 @@ grep -q 'Remote deploy command ${command_name} ${item_kind} has permissions' scr
 grep -q 'readlink -f -- "$command_path"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=' scripts/deploy_to_pi.sh
 grep -q 'remote_rsync_cmd="$(remote_command_path rsync)"' scripts/deploy_to_pi.sh
-grep -q 'deploy_with_rsync "$remote_rsync_cmd"' scripts/deploy_to_pi.sh
+grep -q 'local_rsync_cmd="$(local_command_path rsync)"' scripts/deploy_to_pi.sh
+grep -q 'deploy_with_rsync "$local_rsync_cmd" "$remote_rsync_cmd"' scripts/deploy_to_pi.sh
 grep -q 'remote_tar_cmd="$(require_remote_command_available tar)"' scripts/deploy_to_pi.sh
-grep -q 'deploy_with_tar "$remote_tar_cmd"' scripts/deploy_to_pi.sh
+grep -q 'local_tar_cmd="$(require_local_command tar)"' scripts/deploy_to_pi.sh
+grep -q 'deploy_with_tar "$local_tar_cmd" "$remote_tar_cmd"' scripts/deploy_to_pi.sh
 grep -q -- '--rsync-path="${remote_system_path} && export PATH && ${remote_rsync_cmd_quoted}"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && ${remote_tar_cmd_quoted} -xzf - -C' scripts/deploy_to_pi.sh
 ! grep -q -- '--rsync-path="${remote_system_path} rsync"' scripts/deploy_to_pi.sh
 ! grep -q '${remote_system_path} && export PATH && tar -xzf - -C' scripts/deploy_to_pi.sh
-grep -q 'rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
+grep -q '"$local_rsync_cmd" -az --delete -e "$ssh_cmd -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
+grep -q '"$local_tar_cmd" \\' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/verify_pi.sh
 grep -q 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' scripts/verify_pi.sh
@@ -338,7 +344,7 @@ grep -q 'export PATH' scripts/verify_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
 grep -q 'ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/dock_test_pi.sh
-grep -q 'local_command_exists rsync' scripts/deploy_to_pi.sh
+grep -q 'local_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available python3' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available tar' scripts/deploy_to_pi.sh
@@ -353,8 +359,8 @@ grep -q 'remote_previous_dir="${remote_dir_trimmed}.previous"' scripts/deploy_to
 grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
 grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' README.md
 grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' docs/sailboat-pi.md
-grep -q 'uses the validated absolute remote `rsync` or `tar` path for the actual copy command' README.md
-grep -q 'uses the validated absolute remote `rsync` or `tar` path for the actual copy command' docs/sailboat-pi.md
+grep -q 'uses the validated absolute local and remote `rsync` or `tar` paths for the actual copy command' README.md
+grep -q 'uses the validated absolute local and remote `rsync` or `tar` paths for the actual copy command' docs/sailboat-pi.md
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment path under symlink' scripts/deploy_to_pi.sh
@@ -392,24 +398,26 @@ grep -Fq -- "--exclude='*.egg-info'" scripts/deploy_to_pi.sh
 grep -Fq -- "--exclude='*/.venv'" scripts/deploy_to_pi.sh
 grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
-grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
-grep -q 'require_local_command ssh' scripts/verify_pi.sh
-grep -q 'require_local_command git' scripts/verify_pi.sh
+grep -q 'ssh_cmd="$(require_local_command ssh)"' scripts/dock_test_pi.sh
+grep -q 'ssh_cmd="$(require_local_command ssh)"' scripts/verify_pi.sh
+grep -q 'git_cmd="$(require_local_command git)"' scripts/verify_pi.sh
 grep -q 'validate_trusted_local_command' scripts/dock_test_pi.sh
 grep -q 'validate_trusted_local_command' scripts/verify_pi.sh
+grep -q 'printf '\''%s\\n'\'' "$command_path"' scripts/dock_test_pi.sh
+grep -q 'printf '\''%s\\n'\'' "$command_path"' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/dock_test_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/verify_pi.sh
-grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
+grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=' scripts/verify_pi.sh
 ! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
 grep -q 'pins its remote command path to trusted system directories before launching the remote verifier' README.md
 grep -q 'pins its remote command path to trusted system directories before launching the remote verifier' docs/sailboat-pi.md
-grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
-grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
+grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
+grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/deploy_to_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
@@ -2882,7 +2890,7 @@ grep -Fq '${remote_system_path} && export PATH && '"'"'$remote_sudo_cmd'"'"' -n 
 grep -q -- "-n -l '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
 grep -q "'\$remote_sudo_cmd' -n '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
 ! grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
-grep -q 'ssh -T "${ssh_batch_options\[@\]}" "$target"' scripts/verify_pi.sh
+grep -q '"$ssh_cmd" -T "${ssh_batch_options\[@\]}" "$target"' scripts/verify_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/deploy_to_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/verify_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/dock_test_pi.sh
