@@ -2777,6 +2777,22 @@ opencpn_process_supervised_by_launcher() {
   [[ "$parent_pid" == "$launcher_pid" ]]
 }
 
+process_cmdline_has_launcher_name() {
+  local pid="$1"
+  local arg
+  local arg_name
+  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/cmdline" ]]; then
+    return 1
+  fi
+  while IFS= read -r -d '' arg; do
+    arg_name="${arg##*/}"
+    if [[ "$arg_name" == "noaa-navionics-start-chartplotter" || "$arg_name" == "start_chartplotter.sh" ]]; then
+      return 0
+    fi
+  done <"/proc/${pid}/cmdline"
+  return 1
+}
+
 read_private_user_file() {
   local path="$1"
   local label="$2"
@@ -3152,9 +3168,8 @@ check_launcher_lock_live() {
     printf 'chartplotter launcher lock owner cmdline is unreadable: %s\n' "$owner_pid" >&2
     return 1
   fi
-  cmdline="$(tr '\0' ' ' <"/proc/${owner_pid}/cmdline" 2>/dev/null || true)"
-  if [[ "$cmdline" != *"noaa-navionics-start-chartplotter"* && "$cmdline" != *"start_chartplotter.sh"* ]]; then
-    printf 'chartplotter launcher lock owner is not the launcher: %s\n' "${cmdline:-<empty>}" >&2
+  if ! process_cmdline_has_launcher_name "$owner_pid"; then
+    printf 'chartplotter launcher lock owner is not the launcher: %s\n' "$owner_pid" >&2
     return 1
   fi
   reject_proc_env_prefix "$owner_pid" "NOAA_NAVIONICS_" \

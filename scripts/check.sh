@@ -86,6 +86,9 @@ grep -q 'OpenCPN executable directory is owned by uid' scripts/start_chartplotte
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
+grep -Fq 'arg_name="${arg##*/}"' scripts/start_chartplotter.sh
+grep -q 'noaa-navionics-start-chartplotter" || "$arg_name" == "start_chartplotter.sh"' scripts/start_chartplotter.sh
+! grep -Fq 'cmdline="$(tr '\''\0'\'' '\'' '\'' <"/proc/${pid}/cmdline"' scripts/start_chartplotter.sh
 grep -q 'current_boot_id' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_lock_path' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_path_safe_for_cleanup' scripts/start_chartplotter.sh
@@ -584,6 +587,10 @@ grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'opencpn_process_supervised_by_launcher' scripts/verify_pi.sh
+grep -q 'process_cmdline_has_launcher_name' scripts/verify_pi.sh
+grep -Fq 'arg_name="${arg##*/}"' scripts/verify_pi.sh
+grep -q 'process_cmdline_has_launcher_name "$owner_pid"' scripts/verify_pi.sh
+! grep -Fq 'cmdline="$(tr '\''\0'\'' '\'' '\'' <"/proc/${owner_pid}/cmdline"' scripts/verify_pi.sh
 grep -q 'supervised_opencpn_pids' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_executable_integrity' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_display_environment' scripts/verify_pi.sh

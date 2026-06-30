@@ -351,12 +351,18 @@ opencpn_process_active() {
 
 process_looks_like_launcher() {
   local pid="$1"
-  local cmdline
+  local arg
+  local arg_name
   if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/cmdline" ]]; then
     return 1
   fi
-  cmdline="$(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true)"
-  [[ "$cmdline" == *"noaa-navionics-start-chartplotter"* || "$cmdline" == *"start_chartplotter.sh"* ]]
+  while IFS= read -r -d '' arg; do
+    arg_name="${arg##*/}"
+    if [[ "$arg_name" == "noaa-navionics-start-chartplotter" || "$arg_name" == "start_chartplotter.sh" ]]; then
+      return 0
+    fi
+  done <"/proc/${pid}/cmdline"
+  return 1
 }
 
 current_boot_id() {
