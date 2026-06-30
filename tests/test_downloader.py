@@ -409,6 +409,25 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(list(root.glob(".config.ini.*.part")))
             self.assertGreaterEqual(len(calls), 2)
 
+    def test_write_default_config_directory_sync_uses_no_follow_open(self):
+        calls = []
+        original_open = config_module.os.open
+
+        def fake_open(path, flags):
+            calls.append((Path(path), flags))
+            raise OSError("stop before opening")
+
+        config_module.os.open = fake_open
+        try:
+            config_module._fsync_directory(Path("/tmp"))
+        finally:
+            config_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], Path("/tmp"))
+        self.assertTrue(calls[0][1] & getattr(os, "O_DIRECTORY", 0))
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+
     def test_custom_config_package_kwargs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "config.ini"

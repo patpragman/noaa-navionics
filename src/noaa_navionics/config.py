@@ -382,7 +382,8 @@ def _first_symlink_ancestor(path: Path) -> Optional[Path]:
 
 def _fsync_directory(path: Path) -> None:
     try:
-        fd = os.open(Path(path), os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(Path(path), flags)
     except OSError:
         return
     try:
