@@ -825,6 +825,7 @@ reset_private_venv
 sync_tree "$venv_dir"
 link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"
 link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"
+link_user_atomic "${venv_dir}/bin/noaa-navionics-status-gui" "${HOME}/.local/bin/noaa-navionics-status-gui"
 install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755
 install_user_file_atomic "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" 0755
 install_user_file_atomic "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time" 0755
@@ -852,6 +853,7 @@ install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service"
 
 verify_installed_command_link "${HOME}/.local/bin/noaa-navionics" "installed CLI command symlink"
 verify_installed_command_link "${HOME}/.local/bin/noaa-navionics-gui" "installed GUI command symlink"
+verify_installed_command_link "${HOME}/.local/bin/noaa-navionics-status-gui" "installed status GUI command symlink"
 verify_installed_user_executable "${HOME}/.local/bin/noaa-navionics-start-chartplotter" "installed chartplotter launcher"
 verify_installed_user_executable "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" "installed desktop autologin helper"
 verify_installed_user_executable "${HOME}/.local/bin/noaa-navionics-configure-gps-time" "installed GPS time helper"

@@ -162,6 +162,17 @@ def build_parser() -> argparse.ArgumentParser:
     list_packages.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
 
     gui = subparsers.add_parser("gui", help="launch the Tkinter GUI")
+    status_gui = subparsers.add_parser("status-gui", help="launch the Tkinter readiness status GUI")
+    status_gui.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    status_gui.add_argument("--output", default="~/.cache/noaa-navionics/status.json", help="JSON status report path")
+    status_gui.add_argument("--no-output", action="store_true", help="do not write a JSON status report")
+    status_gui.add_argument("--gps-seconds", type=_non_negative_float, default=10.0, help="seconds to wait for a GPS fix")
+    status_gui.add_argument(
+        "--refresh-seconds",
+        type=_non_negative_float,
+        default=60.0,
+        help="seconds between automatic refreshes; 0 disables",
+    )
 
     init_config = subparsers.add_parser("init-config", help="write a default onboard config file")
     init_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -356,6 +367,24 @@ def main(argv: Optional[list[str]] = None) -> int:
             from .gui import main as gui_main
 
             gui_main()
+            return 0
+
+        if args.command == "status-gui":
+            from .status_gui import main as status_gui_main
+
+            status_gui_args = [
+                "--config",
+                args.config,
+                "--gps-seconds",
+                str(args.gps_seconds),
+                "--refresh-seconds",
+                str(args.refresh_seconds),
+            ]
+            if args.no_output:
+                status_gui_args.append("--no-output")
+            else:
+                status_gui_args.extend(["--output", args.output])
+            status_gui_main(status_gui_args)
             return 0
 
         if args.command == "init-config":

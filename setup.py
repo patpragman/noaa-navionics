@@ -16,6 +16,7 @@ setup(
         "console_scripts": [
             "noaa-navionics=noaa_navionics.cli:main",
             "noaa-navionics-gui=noaa_navionics.gui:main",
+            "noaa-navionics-status-gui=noaa_navionics.status_gui:main",
         ],
     },
 )

@@ -739,6 +739,8 @@ grep -q 'direct installs from a dirty Git worktree' docs/sailboat-pi.md
 grep -q 'console_scripts' setup.py
 grep -q 'noaa-navionics=noaa_navionics.cli:main' setup.py
 grep -q 'noaa-navionics-gui=noaa_navionics.gui:main' setup.py
+grep -q 'noaa-navionics-status-gui=noaa_navionics.status_gui:main' setup.py
+grep -q 'noaa-navionics-status-gui = "noaa_navionics.status_gui:main"' pyproject.toml
 ! grep -q '^build-backend' pyproject.toml
 grep -q 'trusted vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'python3-setuptools procps' scripts/install_raspberry_pi.sh
@@ -786,6 +788,7 @@ if not link_mkdir < link_validate_dir < link_mktemp < link_promote:
 PY
 grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics" "${HOME}/.local/bin/noaa-navionics"' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics-gui" "${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
+grep -q 'link_user_atomic "${venv_dir}/bin/noaa-navionics-status-gui" "${HOME}/.local/bin/noaa-navionics-status-gui"' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/start_chartplotter.sh" "${HOME}/.local/bin/noaa-navionics-start-chartplotter" 0755' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/configure_desktop_autologin.sh" "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" 0755' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic "${repo_root}/scripts/configure_gps_time.sh" "${HOME}/.local/bin/noaa-navionics-configure-gps-time" 0755' scripts/install_raspberry_pi.sh
@@ -795,6 +798,7 @@ grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics-track.ser
 grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "${systemd_user_dir}/noaa-navionics-preflight.service" 0644' scripts/install_raspberry_pi.sh
 ! grep -q 'cp "${repo_root}/systemd' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
+grep -q '"${HOME}/.local/bin/noaa-navionics-status-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
 grep -q 'os.chmod(tmp_path, 0o600)' scripts/install_raspberry_pi.sh
 grep -q 'Do not run the Raspberry Pi installer as root' scripts/install_raspberry_pi.sh
@@ -1431,6 +1435,9 @@ grep -q 'private venv directory integrity' scripts/verify_pi.sh
 grep -q 'check_command_symlink_to_private_venv' scripts/verify_pi.sh
 grep -q 'noaa-navionics command symlink' scripts/verify_pi.sh
 grep -q 'noaa-navionics GUI command symlink' scripts/verify_pi.sh
+grep -q 'status_gui_bin="${HOME}/.local/bin/noaa-navionics-status-gui"' scripts/verify_pi.sh
+grep -q 'noaa-navionics status GUI command symlink' scripts/verify_pi.sh
+grep -q '${venv_dir}/bin/noaa-navionics-status-gui' scripts/verify_pi.sh
 grep -q 'chartplotter launcher file integrity' scripts/verify_pi.sh
 grep -q 'desktop autologin helper file integrity' scripts/verify_pi.sh
 grep -q 'GPS time helper file integrity' scripts/verify_pi.sh
@@ -2524,6 +2531,18 @@ grep -q 'without satellite or HDOP quality data' src/noaa_navionics/gui.py
 grep -q 'download requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
+grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
+grep -q 'def status_rows' src/noaa_navionics/status_gui.py
+grep -q 'def status_headline' src/noaa_navionics/status_gui.py
+grep -q 'READY' src/noaa_navionics/status_gui.py
+grep -q 'NOT READY' src/noaa_navionics/status_gui.py
+grep -q 'build_status_report(config_path=self.config_path, gps_seconds=self.gps_seconds)' src/noaa_navionics/status_gui.py
+grep -q 'write_status_report(report, self.output_path)' src/noaa_navionics/status_gui.py
+grep -q 'status-gui' src/noaa_navionics/cli.py
+grep -q 'noaa-navionics-status-gui' README.md
+grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
+grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' README.md
+grep -q 'large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -2553,6 +2572,9 @@ grep -q 'test_gui_download_rejects_missing_storage_before_creating_directory' te
 grep -q 'test_gui_gps_fix_reads_configured_gpsd_and_formats_position' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_volatile_serial_override' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_fix_without_quality_fields' tests/test_downloader.py
+grep -q 'test_status_gui_summarizes_readiness_rows' tests/test_downloader.py
+grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader.py
+grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py

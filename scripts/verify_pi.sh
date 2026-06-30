@@ -349,6 +349,7 @@ systemd_user_dir="${HOME}/.config/systemd/user"
 config="${HOME}/.config/noaa-navionics/config.ini"
 bin="${HOME}/.local/bin/noaa-navionics"
 gui_bin="${HOME}/.local/bin/noaa-navionics-gui"
+status_gui_bin="${HOME}/.local/bin/noaa-navionics-status-gui"
 launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 desktop_autologin="${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 gps_time_helper="${HOME}/.local/bin/noaa-navionics-configure-gps-time"
@@ -3893,6 +3894,10 @@ check "noaa-navionics command symlink" check_command_symlink_to_private_venv "$b
 check "noaa-navionics GUI command" test -x "$gui_bin"
 if [[ -e "$gui_bin" || -L "$gui_bin" ]]; then
   check "noaa-navionics GUI command symlink" check_command_symlink_to_private_venv "$gui_bin" "noaa-navionics GUI command" "${venv_dir}/bin/noaa-navionics-gui"
+fi
+check "noaa-navionics status GUI command" test -x "$status_gui_bin"
+if [[ -e "$status_gui_bin" || -L "$status_gui_bin" ]]; then
+  check "noaa-navionics status GUI command symlink" check_command_symlink_to_private_venv "$status_gui_bin" "noaa-navionics status GUI command" "${venv_dir}/bin/noaa-navionics-status-gui"
 fi
 check "chartplotter launcher" test -x "$launcher"
 if [[ -e "$launcher" || -L "$launcher" ]]; then

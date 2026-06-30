@@ -300,6 +300,14 @@ noaa-navionics-gui
 
 The GUI can load `~/.config/noaa-navionics/config.ini`, choose complete onboard chart packages, check writable chart storage and free space before creating a manual-download output directory, read one quality-checked GPSD or serial GPS fix, sync the configured chart package with the same complete-chart guard as the CLI, write `~/.cache/noaa-navionics/status.json`, run preflight checks with the configured chart, GPSD, baud, chart-age, and track-storage values, and register the configured chart/GPSD connection with OpenCPN. The OpenCPN config writer creates or tightens the config directory to private `0700` permissions when writing, refuses symlinked, non-regular, misowned, or group/world-writable OpenCPN config files, symlinked path components, or misowned config directories, and forces private `0600` backup and replacement config files. Close OpenCPN before using the GUI's OpenCPN configuration button.
 
+Helm-readiness panel:
+
+```bash
+noaa-navionics-status-gui
+```
+
+The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display.
+
 ## Charts
 
 Download Alaska charts:

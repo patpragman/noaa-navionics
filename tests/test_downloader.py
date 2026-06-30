@@ -31,6 +31,7 @@ from noaa_navionics import cli as cli_module
 from noaa_navionics import gui as gui_module
 from noaa_navionics import opencpn as opencpn_module
 from noaa_navionics import report as report_module
+from noaa_navionics import status_gui as status_gui_module
 from noaa_navionics.downloader import (
     DOWNLOAD_LOCK_NAME,
     MANIFEST_NAME,
@@ -2040,6 +2041,80 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(set(gui_module.PACKAGE_KIND_OPTIONS), config_module.CHART_PACKAGES)
         self.assertNotIn("updates", gui_module.PACKAGE_KIND_OPTIONS)
         self.assertNotIn("catalog", gui_module.PACKAGE_KIND_OPTIONS)
+
+    def test_status_gui_summarizes_readiness_rows(self):
+        report = {
+            "ok": False,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [
+                {"name": "Charts", "ok": True, "detail": "fresh"},
+                {"name": "GPS", "ok": False, "detail": "no fix"},
+            ],
+            "service_checks": [
+                {"name": "Track Log", "ok": True, "detail": "recent point"},
+            ],
+        }
+
+        rows = status_gui_module.status_rows(report)
+
+        self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
+        self.assertEqual(rows[0], status_gui_module.StatusRow("Overall", False, "generated 2026-06-30T12:00:00Z"))
+        self.assertIn(status_gui_module.StatusRow("GPS", False, "no fix"), rows)
+        self.assertEqual(status_gui_module.count_failures(rows), 2)
+        self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
+
+    def test_status_gui_reports_ready_when_all_rows_pass(self):
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
+            "service_checks": [{"name": "Track Log", "ok": True, "detail": "recent point"}],
+        }
+
+        self.assertEqual(status_gui_module.status_headline(report), "READY")
+        self.assertEqual(status_gui_module.format_panel_summary(report), "All reported navigation readiness checks are passing.")
+
+    def test_cli_status_gui_forwards_arguments(self):
+        calls = []
+        original = status_gui_module.main
+
+        def fake_status_gui_main(argv=None):
+            calls.append(list(argv or []))
+
+        try:
+            status_gui_module.main = fake_status_gui_main
+            result = cli_module.main(
+                [
+                    "status-gui",
+                    "--config",
+                    "/tmp/config.ini",
+                    "--output",
+                    "/tmp/status.json",
+                    "--gps-seconds",
+                    "12",
+                    "--refresh-seconds",
+                    "0",
+                ]
+            )
+        finally:
+            status_gui_module.main = original
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            calls,
+            [
+                [
+                    "--config",
+                    "/tmp/config.ini",
+                    "--gps-seconds",
+                    "12.0",
+                    "--refresh-seconds",
+                    "0.0",
+                    "--output",
+                    "/tmp/status.json",
+                ]
+            ],
+        )
 
     def test_gui_download_rejects_low_disk_before_download(self):
         package = package_for(state="AK")
