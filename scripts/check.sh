@@ -1124,12 +1124,18 @@ grep -q 'def _first_symlink_ancestor' src/noaa_navionics/config.py
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config is a symlink' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config is not a regular file' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config .* is owned by uid' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config .* has permissions' src/noaa_navionics/config.py
 grep -q 'test_write_default_config_rejects_symlinked_ancestor' tests/test_downloader.py
 grep -q 'test_write_default_config_rejects_symlinked_config_file_when_overwriting' tests/test_downloader.py
+grep -q 'test_write_default_config_rejects_unsafe_existing_config_when_overwriting' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_ancestor' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent_when_config_missing' tests/test_downloader.py
+grep -q 'test_read_config_rejects_nonregular_config_file' tests/test_downloader.py
+grep -q 'test_read_config_rejects_writable_config_file' tests/test_downloader.py
 grep -q 'symlinked config path components' README.md
 grep -q 'symlinked config path components' docs/sailboat-pi.md
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py

@@ -41,7 +41,7 @@ from noaa_navionics.downloader import (
     read_manifest,
     search_catalog,
 )
-from noaa_navionics.config import AppConfig, package_kwargs, read_config, write_default_config
+from noaa_navionics.config import AppConfig, default_config_text, package_kwargs, read_config, write_default_config
 from noaa_navionics.cli import (
     _TrackLoggerStop,
     _log_rotating_tracks,
@@ -356,6 +356,36 @@ class ConfigTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory is a symlink"):
                 read_config(link_parent / "missing.ini")
+
+    def test_read_config_rejects_nonregular_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.ini"
+            config_path.mkdir()
+
+            with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config is not a regular file"):
+                read_config(config_path)
+
+    def test_read_config_rejects_writable_config_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.ini"
+            config_path.write_text(default_config_text(), encoding="utf-8")
+            config_path.chmod(0o620)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config .* has permissions"):
+                    read_config(config_path)
+            finally:
+                config_path.chmod(0o600)
+
+    def test_write_default_config_rejects_unsafe_existing_config_when_overwriting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.ini"
+            config_path.write_text(default_config_text(), encoding="utf-8")
+            config_path.chmod(0o620)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config .* has permissions"):
+                    write_default_config(config_path, overwrite=True)
+            finally:
+                config_path.chmod(0o600)
 
     def test_write_default_config_uses_unique_synced_temp_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:

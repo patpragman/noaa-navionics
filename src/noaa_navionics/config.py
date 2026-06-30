@@ -99,11 +99,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     defaults = default_config()
     cfg_path = config_path(path)
     parser = ConfigParser()
-    if cfg_path.is_symlink():
-        raise RuntimeError(f"NOAA Navionics config is a symlink: {cfg_path}")
-    symlink_component = _first_symlink_ancestor(cfg_path.parent)
-    if symlink_component is not None:
-        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {symlink_component}")
+    _reject_unsafe_config_path(cfg_path)
     if cfg_path.exists():
         parser.read(cfg_path)
 
@@ -187,8 +183,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
 
 def write_default_config(path: Optional[Path] = None, *, overwrite: bool = False) -> Path:
     target = config_path(path)
-    if target.is_symlink():
-        raise RuntimeError(f"NOAA Navionics config is a symlink: {target}")
+    _reject_unsafe_config_path(target)
     if target.exists() and not overwrite:
         raise FileExistsError(f"config already exists: {target}")
     _prepare_config_parent(target)
@@ -263,8 +258,7 @@ def _validate_chart_package_value(package: str, value: str) -> None:
 
 
 def _write_text_atomic(target: Path, text: str) -> None:
-    if target.is_symlink():
-        raise RuntimeError(f"NOAA Navionics config is a symlink: {target}")
+    _reject_unsafe_config_path(target)
     _prepare_config_parent(target)
     tmp_path = None
     try:
@@ -315,6 +309,32 @@ def _prepare_config_parent(target: Path) -> None:
         raise RuntimeError(
             f"NOAA Navionics config directory {parent} has permissions {parent_mode:04o}, "
             "expected no group/other write bits"
+        )
+
+
+def _reject_unsafe_config_path(path: Path) -> None:
+    path = Path(path).expanduser()
+    if path.is_symlink():
+        raise RuntimeError(f"NOAA Navionics config is a symlink: {path}")
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        raise RuntimeError(f"NOAA Navionics config directory is a symlink: {symlink_component}")
+    if not path.exists():
+        return
+    if not path.is_file():
+        raise RuntimeError(f"NOAA Navionics config is not a regular file: {path}")
+    try:
+        path_stat = path.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect NOAA Navionics config {path}: {exc}") from exc
+    if path_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"NOAA Navionics config {path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}"
+        )
+    mode = path_stat.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"NOAA Navionics config {path} has permissions {mode:04o}, expected no group/other write bits"
         )
 
 
