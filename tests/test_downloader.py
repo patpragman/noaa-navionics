@@ -2342,6 +2342,40 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("manifest path is a symlink", result.detail)
 
+    def test_manifest_nonregular_path_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / MANIFEST_NAME).mkdir()
+
+            result = check_chart_manifest(root, max_age_days=1)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest path is not a regular file", result.detail)
+
+    def test_manifest_writable_file_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            manifest = root / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"path":"","url":"file:///test.zip","bytes":1,"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            manifest.chmod(0o666)
+
+            result = check_chart_manifest(root, max_age_days=1)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest path", result.detail)
+            self.assertIn("has permissions 0666", result.detail)
+
     def test_manifest_without_extracted_cells_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -3317,6 +3351,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["manifest"]["is_symlink"], False)
             self.assertEqual(report["manifest"]["directory_is_symlink"], False)
             self.assertEqual(report["manifest"]["manifest_symlink_component"], "")
+            self.assertEqual(report["manifest"]["uid"], os.getuid())
+            self.assertEqual(report["manifest"]["mode"], "0644")
             self.assertEqual(report["manifest"]["created_at"], now)
             self.assertEqual(report["manifest"]["created_at_source"], "download")
             self.assertEqual(report["manifest"]["package"], "Test")
@@ -3356,6 +3392,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("is_symlink: False", text)
             self.assertIn("directory_is_symlink: False", text)
             self.assertIn("manifest_symlink_component: ", text)
+            self.assertIn(f"uid: {os.getuid()}", text)
+            self.assertIn("mode: 0644", text)
             self.assertIn("package_filename: AK_ENCs.zip", text)
             self.assertIn("url: file:///test.zip", text)
             self.assertIn("download_path_is_symlink: False", text)
@@ -3963,6 +4001,44 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["manifest_symlink_component"], str(link_root))
             self.assertIn("manifest directory is a symlink", summary["error"])
             self.assertNotIn("created_at", summary)
+
+    def test_manifest_summary_rejects_nonregular_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            charts = Path(tmpdir) / "charts"
+            charts.mkdir()
+            manifest = charts / MANIFEST_NAME
+            manifest.mkdir()
+
+            summary = report_module._manifest_summary(charts)
+
+            self.assertEqual(summary["path"], str(manifest))
+            self.assertEqual(summary["exists"], True)
+            self.assertIn("manifest path is not a regular file", summary["error"])
+            self.assertNotIn("created_at", summary)
+
+    def test_manifest_summary_records_owner_and_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            charts = Path(tmpdir) / "charts"
+            charts.mkdir()
+            extract = charts / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            manifest = charts / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"2000-01-01T00:00:00Z",'
+                '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
+                '"download":{"path":"","url":"file:///test.zip","bytes":1,"sha256":"abc","skipped":false},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            manifest.chmod(0o640)
+
+            summary = report_module._manifest_summary(charts)
+
+            self.assertEqual(summary["uid"], os.getuid())
+            self.assertEqual(summary["mode"], "0640")
+            self.assertEqual(summary["package_filename"], "AK_ENCs.zip")
 
     def test_manifest_summary_marks_symlinked_recorded_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:

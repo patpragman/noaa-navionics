@@ -528,6 +528,25 @@ def check_chart_manifest(
         return CheckResult("Manifest", False, f"manifest path is a symlink: {manifest_path}")
     if not manifest_path.exists():
         return CheckResult("Manifest", False, f"missing {manifest_path}")
+    if not manifest_path.is_file():
+        return CheckResult("Manifest", False, f"manifest path is not a regular file: {manifest_path}")
+    try:
+        manifest_stat = manifest_path.stat()
+    except OSError as exc:
+        return CheckResult("Manifest", False, f"could not inspect manifest path {manifest_path}: {exc}")
+    if manifest_stat.st_uid != os.getuid():
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest path {manifest_path} is owned by uid {manifest_stat.st_uid}, expected {os.getuid()}",
+        )
+    manifest_mode = manifest_stat.st_mode & 0o777
+    if manifest_mode & 0o022:
+        return CheckResult(
+            "Manifest",
+            False,
+            f"manifest path {manifest_path} has permissions {manifest_mode:04o}, expected no group/other write bits",
+        )
     try:
         manifest = read_manifest(path)
         created = _parse_manifest_time(str(manifest.get("created_at", "")))

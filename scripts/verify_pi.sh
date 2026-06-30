@@ -1128,6 +1128,19 @@ if expected_config_path:
     live_manifest_symlink_component = first_symlink_ancestor(manifest_file_path.parent)
     if live_manifest_symlink_component is not None:
         raise SystemExit(f"status report manifest path contains a symlink: {live_manifest_symlink_component}")
+    if not manifest_file_path.is_file():
+        raise SystemExit(f"status report manifest path is not a regular file: {manifest_file_path}")
+    try:
+        manifest_stat = manifest_file_path.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report manifest path {manifest_file_path}: {exc}") from exc
+    verify_status_file_owner_and_mode(
+        manifest,
+        manifest_file_path,
+        manifest_stat,
+        "manifest",
+        os.getuid(),
+    )
     with manifest_file_path.open(encoding="utf-8") as manifest_handle:
         manifest_file = json.load(manifest_handle)
     package_section = manifest_file.get("package", {})

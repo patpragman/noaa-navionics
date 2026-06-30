@@ -571,6 +571,9 @@ grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh
 grep -q 'status report manifest path is a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest path is not a regular file' scripts/verify_pi.sh
+grep -q 'verify_status_file_owner_and_mode' scripts/verify_pi.sh
+grep -q '"manifest",' scripts/verify_pi.sh
 grep -q 'status report manifest does not exist' scripts/verify_pi.sh
 grep -q 'status report manifest missing' scripts/verify_pi.sh
 grep -q 'status report manifest missing created_at_source' scripts/verify_pi.sh
@@ -941,6 +944,11 @@ grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'unverified-cache' src/noaa_navionics/health.py
 grep -q 'chart directory is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest path is a symlink' src/noaa_navionics/health.py
+grep -q 'manifest path is not a regular file' src/noaa_navionics/health.py
+grep -q 'manifest path .* is owned by uid' src/noaa_navionics/health.py
+grep -q 'manifest path .* has permissions' src/noaa_navionics/health.py
+grep -q 'test_manifest_nonregular_path_fails' tests/test_downloader.py
+grep -q 'test_manifest_writable_file_fails' tests/test_downloader.py
 grep -q 'manifest extract path is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest extract path contains a symlink' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py
@@ -1407,6 +1415,9 @@ grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'status report launcher settings path contains a symlink' scripts/verify_pi.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
+grep -q 'manifest path is not a regular file' src/noaa_navionics/report.py
+grep -q 'test_manifest_summary_rejects_nonregular_manifest' tests/test_downloader.py
+grep -q 'test_manifest_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest download path contains a symlink' scripts/verify_pi.sh
@@ -1422,8 +1433,8 @@ grep -q 'test_manifest_summary_rejects_symlinked_manifest_ancestor' tests/test_d
 grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
-grep -q 'manifest, retained-download, or extract path components' README.md
-grep -q 'manifest, retained-download, or extract path components' docs/sailboat-pi.md
+grep -q 'desktop autostart, LightDM autologin, and manifest files' README.md
+grep -q 'desktop autostart, LightDM autologin, and manifest files' docs/sailboat-pi.md
 grep -q 'readiness report fails if the persisted launcher environment is not regular, owned by the wrong account, group/world-writable' README.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md

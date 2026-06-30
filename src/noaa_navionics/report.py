@@ -278,6 +278,8 @@ def format_status_text(report: dict[str, object]) -> str:
             "is_symlink",
             "directory_is_symlink",
             "manifest_symlink_component",
+            "uid",
+            "mode",
             "package",
             "package_filename",
             "url",
@@ -753,6 +755,16 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
         return summary
     if not manifest_path.exists():
         return summary
+    if not manifest_path.is_file():
+        summary["error"] = f"manifest path is not a regular file: {manifest_path}"
+        return summary
+    try:
+        stat_result = manifest_path.stat()
+    except OSError as exc:
+        summary["error"] = str(exc)
+        return summary
+    summary["uid"] = stat_result.st_uid
+    summary["mode"] = f"{stat_result.st_mode & 0o777:04o}"
     try:
         manifest = read_manifest(chart_output)
     except Exception as exc:
