@@ -211,8 +211,10 @@ def _write_backup(target: Path) -> Path:
     _prepare_config_parent(target)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = _available_backup_path(target, stamp)
-    fd = os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    backup_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(backup_path, backup_flags, 0o600)
     with os.fdopen(fd, "wb") as handle:
+        os.fchmod(handle.fileno(), 0o600)
         handle.write(_read_config_bytes(target))
         handle.flush()
         os.fsync(handle.fileno())
@@ -380,7 +382,8 @@ def _first_symlink_ancestor(path: Path) -> Optional[Path]:
 
 def _fsync_directory(path: Path) -> None:
     try:
-        fd = os.open(Path(path), os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(Path(path), flags)
     except OSError:
         return
     try:

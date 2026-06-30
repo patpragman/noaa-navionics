@@ -754,6 +754,46 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
             self.assertEqual(backup.read_text(encoding="utf-8"), "original\n")
 
+    def test_opencpn_backup_uses_no_follow_private_open(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.write_text("original\n", encoding="utf-8")
+            calls = []
+            original_open = opencpn_module.os.open
+
+            def capturing_open(path, flags, mode=0o777):
+                calls.append((Path(path), flags, mode))
+                return original_open(path, flags, mode)
+
+            opencpn_module.os.open = capturing_open
+            try:
+                backup = opencpn_module._write_backup(config)
+            finally:
+                opencpn_module.os.open = original_open
+
+            backup_calls = [call for call in calls if call[0] == backup]
+            self.assertEqual(len(backup_calls), 1)
+            self.assertTrue(backup_calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+            self.assertEqual(backup_calls[0][2], 0o600)
+            self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+
+    def test_opencpn_directory_sync_uses_no_follow_open(self):
+        calls = []
+        original_open = opencpn_module.os.open
+
+        def fake_open(path, flags):
+            calls.append((Path(path), flags))
+            raise OSError("stop before opening")
+
+        opencpn_module.os.open = fake_open
+        try:
+            opencpn_module._fsync_directory(Path("/tmp"))
+        finally:
+            opencpn_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+
     def test_configure_chart_directory_writes_private_config_with_permissive_umask(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
