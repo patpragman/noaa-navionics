@@ -500,8 +500,12 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'support bundle helper tightens the local output directory to private `0700`' README.md
+grep -q 'support bundle helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, tightens the local output directory to private `0700`' README.md
+grep -q 'track export helper validates the SSH target, tightens the local output directory to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'noaa-navionics mark-position --mob' README.md
@@ -526,10 +530,16 @@ grep -q 'continues exporting tracks/support even when the status snapshot report
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper tightens the local output directory to private `0700`' README.md
+grep -q 'OpenCPN export helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'settings export helper tightens the local output directory to private `0700`' README.md
+grep -q 'settings export helper tightens the local output directory to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
+grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`' README.md
+grep -q 'recovery export helper tightens the local output directory and timestamped recovery folder to private `0700`' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'It does not contact the Pi' README.md
@@ -850,11 +860,13 @@ grep -q 'noaa-navionics-manifest.json' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
+grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'tarfile.open' scripts/export_pi_tracks.sh
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
+grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
 grep -q 'mark-position' src/noaa_navionics/cli.py
 grep -q 'anchor-watch' src/noaa_navionics/cli.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
@@ -872,17 +884,21 @@ grep -q 'navobj.xml' scripts/export_pi_opencpn_data.sh
 grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.sh
 grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
+grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
 grep -q 'source-revision' scripts/export_pi_settings.sh
 grep -q '50-noaa-navionics-autologin.conf' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
+grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
 grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
+grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_recovery_bundle.sh
+grep -q 'prepare_private_output_dir "Recovery output directory" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-settings-\*.tgz' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-opencpn-\*.tgz' scripts/verify_pi_recovery_exports.sh
@@ -5083,6 +5099,8 @@ cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-support-bundle\n'
 EOF
 chmod +x "$support_fake_ssh_bin/ssh"
+mkdir -p "$support_output_dir"
+chmod 0777 "$support_output_dir"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
@@ -5091,6 +5109,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
 grep -q 'Collected Pi support bundle:' "$verify_output"
 support_bundle_path="$(sed -n 's/^Collected Pi support bundle: //p' "$verify_output")"
 test -s "$support_bundle_path"
+test "$(stat -c '%a' "$support_output_dir")" = 700
 grep -q -- '-o BatchMode=yes' "$support_fake_ssh_args"
 grep -q 'pi@example.invalid' "$support_fake_ssh_args"
 grep -q 'bash -s' "$support_fake_ssh_args"
@@ -5149,6 +5168,8 @@ cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-track-export\n'
 EOF
 chmod +x "$track_export_fake_ssh_bin/ssh"
+mkdir -p "$track_export_output_dir"
+chmod 0777 "$track_export_output_dir"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
@@ -5157,6 +5178,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
 grep -q 'Exported Pi GPX tracks:' "$verify_output"
 track_export_path="$(sed -n 's/^Exported Pi GPX tracks: //p' "$verify_output")"
 test -s "$track_export_path"
+test "$(stat -c '%a' "$track_export_output_dir")" = 700
 grep -q -- '-o BatchMode=yes' "$track_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$track_export_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS=7 python3 -s' "$track_export_fake_ssh_args"
@@ -5202,6 +5224,8 @@ cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-opencpn-export\n'
 EOF
 chmod +x "$opencpn_export_fake_ssh_bin/ssh"
+mkdir -p "$opencpn_export_output_dir"
+chmod 0777 "$opencpn_export_output_dir"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
@@ -5210,6 +5234,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
 grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
 opencpn_export_path="$(sed -n 's/^Exported Pi OpenCPN user data: //p' "$verify_output")"
 test -s "$opencpn_export_path"
+test "$(stat -c '%a' "$opencpn_export_output_dir")" = 700
 grep -q -- '-o BatchMode=yes' "$opencpn_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$opencpn_export_fake_ssh_args"
 grep -q 'python3 -s' "$opencpn_export_fake_ssh_args"
@@ -5255,6 +5280,8 @@ cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-settings-export\n'
 EOF
 chmod +x "$settings_export_fake_ssh_bin/ssh"
+mkdir -p "$settings_export_output_dir"
+chmod 0777 "$settings_export_output_dir"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
@@ -5263,6 +5290,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
 grep -q 'Exported Pi commissioning settings:' "$verify_output"
 settings_export_path="$(sed -n 's/^Exported Pi commissioning settings: //p' "$verify_output")"
 test -s "$settings_export_path"
+test "$(stat -c '%a' "$settings_export_output_dir")" = 700
 grep -q -- '-o BatchMode=yes' "$settings_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$settings_export_fake_ssh_args"
 grep -q 'python3 -s' "$settings_export_fake_ssh_args"
@@ -5321,6 +5349,8 @@ printf 'fake %s\n' "$(basename "$0")"
 EOF
   chmod +x "$recovery_repo/scripts/$helper"
 done
+mkdir -p "$recovery_output_dir"
+chmod 0777 "$recovery_output_dir"
 NOAA_NAVIONICS_FAKE_RECOVERY_LOG="$recovery_log" \
   "$recovery_repo/scripts/export_pi_recovery_bundle.sh" \
   pi@example.invalid "$recovery_output_dir" --track-days 14 >"$verify_output" 2>&1
@@ -5329,7 +5359,10 @@ grep -q 'Exporting commissioning settings' "$verify_output"
 grep -q 'Exporting OpenCPN user data' "$verify_output"
 grep -q 'Exporting GPX tracks' "$verify_output"
 grep -q 'Collecting diagnostic support bundle' "$verify_output"
-test -d "$(sed -n 's/^Pi recovery exports written to: //p' "$verify_output")"
+recovery_export_dir="$(sed -n 's/^Pi recovery exports written to: //p' "$verify_output")"
+test -d "$recovery_export_dir"
+test "$(stat -c '%a' "$recovery_output_dir")" = 700
+test "$(stat -c '%a' "$recovery_export_dir")" = 700
 grep -Eq '^export_pi_settings.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^export_pi_tracks.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 14$' "$recovery_log"

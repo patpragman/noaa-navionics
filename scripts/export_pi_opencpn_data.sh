@@ -194,15 +194,39 @@ validate_output_dir_arg() {
   fi
 }
 
+prepare_private_output_dir() {
+  local label="$1"
+  local path="$2"
+  local mode
+
+  mkdir -p -- "$path"
+  if [[ ! -d "$path" || -L "$path" ]]; then
+    echo "$label must be a real directory: $path" >&2
+    exit 2
+  fi
+  if ! chmod 0700 -- "$path"; then
+    echo "Could not tighten $label permissions to 0700: $path" >&2
+    exit 2
+  fi
+  if [[ ! -d "$path" || -L "$path" ]]; then
+    echo "$label must remain a real directory after tightening: $path" >&2
+    exit 2
+  fi
+  if ! mode="$(stat -Lc '%a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect $label permissions: $path" >&2
+    exit 2
+  fi
+  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "700" ]]; then
+    echo "$label has permissions ${mode}, expected private 0700: $path" >&2
+    exit 2
+  fi
+}
+
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 ssh_cmd="$(require_local_command ssh)"
 
-mkdir -p -- "$output_dir"
-if [[ ! -d "$output_dir" || -L "$output_dir" ]]; then
-  echo "Output path must be a real directory: $output_dir" >&2
-  exit 2
-fi
+prepare_private_output_dir "Output directory" "$output_dir"
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 safe_target="$(printf '%s' "$target" | tr '@.' '___')"
