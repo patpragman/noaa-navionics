@@ -123,6 +123,14 @@ noaa-navionics mark-position --mob
 
 The position-mark command reads one quality-checked GPSD or serial fix from the onboard config and writes a private GPX waypoint file under the configured track output's `tracks/` directory, so track exports include the mark. Use `--name` and `--description` for routine marks, or `--mob` for a MOB-named waypoint.
 
+Watch anchor drift from the current position or an explicit anchor point:
+
+```bash
+noaa-navionics anchor-watch --radius-meters 50
+```
+
+The anchor watch reads quality-checked GPSD or serial fixes from the onboard config, uses the first accepted fix as the anchor unless `--anchor-lat` and `--anchor-lon` are provided, prints distance updates, and exits non-zero with an audible terminal bell when drift exceeds the radius. It does not change charts, OpenCPN config, or services.
+
 Collect post-trip artifacts after returning to the dock:
 
 ```bash

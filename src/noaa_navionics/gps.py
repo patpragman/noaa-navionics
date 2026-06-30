@@ -24,6 +24,7 @@ BAUD_RATES = {
 NMEA_MAX_LINE_BYTES = 4096
 GPSD_MAX_MESSAGE_BYTES = 65536
 NMEA_CHECKSUM_HEX = frozenset("0123456789ABCDEFabcdef")
+EARTH_RADIUS_METERS = 6371008.8
 
 
 @dataclass(frozen=True)
@@ -344,6 +345,39 @@ def gps_fix_quality_failure(
     if fix.hdop is not None and fix.hdop > max_hdop:
         return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
     return ""
+
+
+def distance_meters(
+    latitude1: object,
+    longitude1: object,
+    latitude2: object,
+    longitude2: object,
+) -> float:
+    lat1 = _finite_float_or_none(latitude1)
+    lon1 = _finite_float_or_none(longitude1)
+    lat2 = _finite_float_or_none(latitude2)
+    lon2 = _finite_float_or_none(longitude2)
+    if (
+        lat1 is None
+        or lon1 is None
+        or lat2 is None
+        or lon2 is None
+        or not _coordinate_in_range(lat1, latitude=True)
+        or not _coordinate_in_range(lat2, latitude=True)
+        or not _coordinate_in_range(lon1, latitude=False)
+        or not _coordinate_in_range(lon2, latitude=False)
+    ):
+        raise ValueError("coordinates must be finite latitude/longitude values in range")
+
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    haversine = (
+        math.sin(delta_phi / 2.0) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    )
+    return 2.0 * EARTH_RADIUS_METERS * math.asin(min(1.0, math.sqrt(haversine)))
 
 
 def gps_fix_has_quality_fields(fix: GPSFix) -> bool:

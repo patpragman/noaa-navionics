@@ -34,6 +34,7 @@ from .gps import (
     NMEA_MAX_LINE_BYTES,
     daily_track_path,
     default_track_path,
+    distance_meters,
     first_symlink_ancestor,
     gpx_position_mark_path,
     gps_fix_has_quality_fields,
@@ -100,6 +101,25 @@ def _positive_float(value: str) -> float:
     if not math.isfinite(parsed) or parsed <= 0:
         raise argparse.ArgumentTypeError("must be greater than 0")
     return parsed
+
+
+def _coordinate_float(value: str, *, latitude: bool) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    limit = 90.0 if latitude else 180.0
+    if not math.isfinite(parsed) or parsed < -limit or parsed > limit:
+        raise argparse.ArgumentTypeError(f"must be between {-limit:g} and {limit:g}")
+    return parsed
+
+
+def _latitude_arg(value: str) -> float:
+    return _coordinate_float(value, latitude=True)
+
+
+def _longitude_arg(value: str) -> float:
+    return _coordinate_float(value, latitude=False)
 
 
 def _non_negative_float(value: str) -> float:
@@ -236,6 +256,17 @@ def build_parser() -> argparse.ArgumentParser:
     mark.add_argument("--name", default="Position mark", help="GPX waypoint name")
     mark.add_argument("--description", default="", help="GPX waypoint description")
     mark.add_argument("--mob", action="store_true", help="record a MOB-named position mark")
+
+    anchor = subparsers.add_parser("anchor-watch", help="alarm when GPS drifts outside an anchor radius")
+    anchor.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    anchor.add_argument("--device", help="NMEA serial device")
+    anchor.add_argument("--baud", type=int, help="serial baud rate")
+    anchor.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
+    anchor.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
+    anchor.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
+    anchor.add_argument("--radius-meters", type=_positive_float, default=50.0, help="drift radius before alarming")
+    anchor.add_argument("--anchor-lat", type=_latitude_arg, help="explicit anchor latitude")
+    anchor.add_argument("--anchor-lon", type=_longitude_arg, help="explicit anchor longitude")
 
     track = subparsers.add_parser("log-track", help="record GPS fixes to a GPX track")
     track.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
@@ -548,6 +579,36 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"Marked position: {path}")
             print(_format_fix(fix))
             return 0
+
+        if args.command == "anchor-watch":
+            app_config = read_config(Path(args.config))
+            use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
+            device = args.device or app_config.gps_device
+            if not use_gpsd and not args.sample:
+                _validate_live_serial_device(device)
+            deadline = time.monotonic() + args.seconds if args.seconds else None
+            live_stream = deadline is None and not args.sample
+            fixes = _trackable_fixes(
+                _read_fixes(
+                    device,
+                    args.baud or app_config.gps_baud,
+                    args.sample,
+                    gpsd=use_gpsd,
+                    gpsd_host=app_config.gpsd_host,
+                    gpsd_port=app_config.gpsd_port,
+                    deadline=deadline,
+                    gpsd_connect_retry=use_gpsd and live_stream,
+                    gpsd_idle_timeout=_live_idle_timeout(300.0, live=use_gpsd and live_stream),
+                    serial_idle_timeout=_live_idle_timeout(300.0, live=not use_gpsd and live_stream),
+                )
+            )
+            return _run_anchor_watch(
+                fixes,
+                radius_meters=args.radius_meters,
+                anchor_latitude=args.anchor_lat,
+                anchor_longitude=args.anchor_lon,
+                live_stream=live_stream,
+            )
 
         if args.command == "log-track":
             app_config = read_config(Path(args.config))
@@ -884,6 +945,53 @@ def _raise_track_logger_stop(signum, frame) -> None:
     except ValueError:
         name = str(signum)
     raise _TrackLoggerStop(name)
+
+
+def _run_anchor_watch(
+    fixes,
+    *,
+    radius_meters: float,
+    anchor_latitude: Optional[float],
+    anchor_longitude: Optional[float],
+    live_stream: bool,
+) -> int:
+    if (anchor_latitude is None) != (anchor_longitude is None):
+        raise ValueError("--anchor-lat and --anchor-lon must be used together")
+
+    anchor_set_from_fix = anchor_latitude is None
+    anchor_fix_seen = False
+    checked = 0
+    for fix in fixes:
+        if anchor_latitude is None or anchor_longitude is None:
+            anchor_latitude = fix.latitude
+            anchor_longitude = fix.longitude
+            anchor_fix_seen = True
+            print(f"Anchor set: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
+            print(_format_fix(fix))
+            continue
+
+        checked += 1
+        distance = distance_meters(anchor_latitude, anchor_longitude, fix.latitude, fix.longitude)
+        print(f"Anchor distance: {distance:.1f} m  radius {radius_meters:g} m  {_format_fix(fix)}")
+        if distance > radius_meters:
+            print(
+                f"\aANCHOR ALARM: {distance:.1f} m from anchor; radius {radius_meters:g} m",
+                file=sys.stderr,
+            )
+            return 1
+
+    if anchor_set_from_fix and anchor_fix_seen:
+        if live_stream:
+            print("Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.", file=sys.stderr)
+            return 1
+        return 0
+    if checked > 0:
+        if live_stream:
+            print("Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.", file=sys.stderr)
+            return 1
+        return 0
+    print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
+    return 1
 
 
 def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:

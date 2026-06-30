@@ -56,6 +56,7 @@ from noaa_navionics.gps import (
     GPXTrackLogger,
     _parse_time_today,
     daily_track_path,
+    distance_meters,
     gps_fix_quality_failure,
     iter_fixes,
     iter_gpsd_fixes,
@@ -1343,6 +1344,132 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
             self.assertIn(f"Marked position: {mark_path}", stdout.getvalue())
+
+    def test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.0,
+                longitude=-148.99,
+                satellites=9,
+                hdop=0.9,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
+            ):
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, deadline))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "anchor-watch",
+                            "--config",
+                            str(app_config),
+                            "--anchor-lat",
+                            "61.0",
+                            "--anchor-lon",
+                            "-149.0",
+                            "--radius-meters",
+                            "50",
+                            "--seconds",
+                            "12",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][:6], ("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947))
+            self.assertIsNotNone(calls[0][6])
+            self.assertIn("Anchor distance:", stdout.getvalue())
+            self.assertIn("ANCHOR ALARM", stderr.getvalue())
+
+    def test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n",
+                encoding="utf-8",
+            )
+            now = datetime.now(timezone.utc)
+            fixes = [
+                GPSFix(
+                    timestamp=now,
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+                GPSFix(
+                    timestamp=now + timedelta(seconds=1),
+                    latitude=61.00001,
+                    longitude=-149.00001,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+            ]
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(*args, **kwargs):
+                return iter(fixes)
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "anchor-watch",
+                            "--config",
+                            str(app_config),
+                            "--radius-meters",
+                            "50",
+                            "--seconds",
+                            "2",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertIn("Anchor set: 61.000000, -149.000000", stdout.getvalue())
+            self.assertIn("Anchor distance:", stdout.getvalue())
+            self.assertEqual(stderr.getvalue(), "")
 
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -2874,6 +3001,10 @@ class CLIValidationTests(unittest.TestCase):
     def test_track_logger_rejects_non_positive_duration(self):
         self.assert_parse_error(["log-track", "--seconds", "0"])
         self.assert_parse_error(["mark-position", "--seconds", "0"])
+        self.assert_parse_error(["anchor-watch", "--seconds", "0"])
+        self.assert_parse_error(["anchor-watch", "--radius-meters", "0"])
+        self.assert_parse_error(["anchor-watch", "--anchor-lat", "91"])
+        self.assert_parse_error(["anchor-watch", "--anchor-lon", "181"])
 
     def test_track_logger_rejects_negative_retention_days(self):
         self.assert_parse_error(["log-track", "--retention-days", "-1"])
@@ -9045,6 +9176,21 @@ class GpsTests(unittest.TestCase):
                 "/dev/serial/by-id/mock-gps -> /dev/ttyACM0",
             ),
         )
+
+    def test_distance_meters_uses_haversine_distance(self):
+        self.assertAlmostEqual(distance_meters(0.0, 0.0, 0.0, 1.0), 111195.1, delta=1.0)
+        self.assertAlmostEqual(distance_meters(61.0, -149.0, 61.0, -149.0), 0.0, delta=0.001)
+
+    def test_distance_meters_rejects_invalid_coordinates(self):
+        for coordinates in (
+            (91.0, 0.0, 0.0, 0.0),
+            (0.0, 181.0, 0.0, 0.0),
+            (0.0, 0.0, float("nan"), 0.0),
+            (0.0, 0.0, 0.0, "bad"),
+        ):
+            with self.subTest(coordinates=coordinates):
+                with self.assertRaisesRegex(ValueError, "coordinates must be finite"):
+                    distance_meters(*coordinates)
 
     def test_parse_gga_sentence(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
