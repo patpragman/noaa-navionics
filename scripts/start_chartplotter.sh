@@ -500,6 +500,97 @@ display_power_command_path() {
   printf '%s\n' "$path_candidate"
 }
 
+validate_process_lookup_command_candidate() {
+  local candidate="$1"
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_owner_uid
+  local parent_mode_text
+  local parent_mode
+  local symlink_component
+
+  if [[ -z "$candidate" ]]; then
+    echo "Process lookup command pgrep was not found on PATH" >&2
+    return 1
+  fi
+  case "$candidate" in
+    /*)
+      ;;
+    *)
+      echo "Process lookup command path is not absolute: $candidate" >&2
+      return 1
+      ;;
+  esac
+  if [[ -L "$candidate" ]]; then
+    echo "Process lookup command is a symlink: $candidate" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$candidate")"
+  if symlink_component="$(first_symlink_ancestor "$parent_dir")"; then
+    echo "Process lookup command path contains a symlink: $symlink_component" >&2
+    return 1
+  fi
+  if [[ ! -f "$candidate" ]]; then
+    echo "Process lookup command is not a regular file: $candidate" >&2
+    return 1
+  fi
+  if [[ ! -x "$candidate" ]]; then
+    echo "Process lookup command is not executable: $candidate" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$candidate" 2>/dev/null)" || {
+    echo "Could not inspect process lookup command: $candidate" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "Process lookup command has permissions ${mode_text}, expected no group/other write bits: $candidate" >&2
+    return 1
+  fi
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect process lookup command directory: $parent_dir" >&2
+    return 1
+  }
+  parent_owner_uid="${parent_stat%% *}"
+  parent_mode_text="${parent_stat#* }"
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "Process lookup command directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$parent_owner_uid" != "0" ]]; then
+    echo "Process lookup command directory is owned by uid ${parent_owner_uid}, expected root on Raspberry Pi: $parent_dir" >&2
+    return 1
+  fi
+  if [[ "$parent_owner_uid" != "0" && "$parent_owner_uid" != "$(id -u)" ]]; then
+    echo "Process lookup command directory is owned by uid ${parent_owner_uid}, expected root or $(id -u): $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$owner_uid" != "0" ]]; then
+    echo "Process lookup command is owned by uid ${owner_uid}, expected root on Raspberry Pi: $candidate" >&2
+    return 1
+  fi
+  if [[ "$owner_uid" != "0" && "$owner_uid" != "$(id -u)" ]]; then
+    echo "Process lookup command is owned by uid ${owner_uid}, expected root or $(id -u): $candidate" >&2
+    return 1
+  fi
+  return 0
+}
+
+process_lookup_command_path() {
+  local path_candidate
+
+  path_candidate="$(command -v pgrep 2>/dev/null || true)"
+  validate_process_lookup_command_candidate "$path_candidate" || return 1
+  printf '%s\n' "$path_candidate"
+}
+
 keep_display_awake() {
   local xset_bin=""
   if [[ -n "${DISPLAY:-}" ]] && xset_bin="$(display_power_command_path)"; then
@@ -520,12 +611,13 @@ keep_display_awake() {
 
 opencpn_running() {
   local pid
-  if command -v pgrep >/dev/null 2>&1; then
+  local pgrep_bin
+  if pgrep_bin="$(process_lookup_command_path)"; then
     while IFS= read -r pid; do
       if opencpn_process_active "$pid"; then
         return 0
       fi
-    done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
+    done < <("$pgrep_bin" -u "$(id -u)" -x opencpn 2>/dev/null || true)
   fi
   return 1
 }

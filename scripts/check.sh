@@ -184,7 +184,17 @@ grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
 grep -q 'opencpn_process_active' scripts/start_chartplotter.sh
-grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
+grep -q 'validate_process_lookup_command_candidate' scripts/start_chartplotter.sh
+grep -q 'process_lookup_command_path' scripts/start_chartplotter.sh
+grep -q 'Process lookup command pgrep was not found on PATH' scripts/start_chartplotter.sh
+grep -q 'Process lookup command path is not absolute' scripts/start_chartplotter.sh
+grep -q 'Process lookup command is a symlink' scripts/start_chartplotter.sh
+grep -q 'Process lookup command directory is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q 'Process lookup command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q '"$pgrep_bin" -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
+! grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
+grep -q 'resolves `pgrep` to a trusted executable path' README.md
+grep -q 'resolves `pgrep` to a trusted executable path' docs/sailboat-pi.md
 grep -q 'stat_text.rsplit(") ", 1)' scripts/start_chartplotter.sh
 grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/start_chartplotter.sh
 ! grep -q 'cat "/proc/${pid}/stat"' scripts/start_chartplotter.sh
