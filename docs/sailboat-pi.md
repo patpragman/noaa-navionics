@@ -273,7 +273,7 @@ Expected checks:
 - At least `[charts] min_free_gb` free disk space on writable chart storage, and on separate track storage when `[tracking] output` uses a different path; `/mnt`, `/media`, and `/run/media` storage paths must actually be mounted
 - No current or since-boot Raspberry Pi under-voltage or throttling
 - Raspberry Pi thermal sensor or `vcgencmd measure_temp` readable, and temperature below the hard limit
-- Fresh valid GPSD fix, or a fresh valid direct NMEA fix when intentionally using serial mode
+- Fresh navigation-quality GPSD fix with satellite or HDOP quality fields, or a fresh valid direct NMEA fix when intentionally using serial mode
 - Chart refresh timer, including its bounded NOAA TCP connectivity check, track logger, boot readiness service, GPSD socket/service, and chrony service are in the expected state
 - During the dock test after reboot, the status report and chartplotter launcher ran during the current boot, the private user-owned launcher lock is owned by a live launcher process, and OpenCPN is running
 

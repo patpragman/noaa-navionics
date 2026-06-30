@@ -964,6 +964,9 @@ grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' READ
 grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' docs/sailboat-pi.md
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
+grep -q 'GPSD fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py
+grep -q 'GPSD readiness requires satellite-count or HDOP quality fields' README.md
+grep -q 'Fresh navigation-quality GPSD fix with satellite or HDOP quality fields' docs/sailboat-pi.md
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
 grep -q 'cannot verify freshness' src/noaa_navionics/health.py
 grep -q 'weak GPS fix' src/noaa_navionics/gps.py
@@ -971,7 +974,8 @@ grep -q 'non-finite coordinates' src/noaa_navionics/gps.py
 grep -q 'outside -90..90' src/noaa_navionics/gps.py
 grep -q 'outside -180..180' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: 0.000000, 0.000000 coordinates' src/noaa_navionics/gps.py
-grep -q 'pending_without_quality' src/noaa_navionics/health.py
+grep -q 'missing_quality_detail' src/noaa_navionics/health.py
+! grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
 grep -q 'unverified-cache' src/noaa_navionics/health.py

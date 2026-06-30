@@ -7547,7 +7547,30 @@ class GpsTests(unittest.TestCase):
         self.assertIn("6 satellites", result.detail)
         self.assertIn("61.100000", result.detail)
 
-    def test_check_gpsd_accepts_fresh_timestamped_fix(self):
+    def test_check_gpsd_rejects_position_only_fix_before_stream_error(self):
+        original = health_module.iter_gpsd_fixes
+        position_only = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+        )
+
+        def fixes(**kwargs):
+            yield position_only
+            raise RuntimeError("stream ended")
+
+        try:
+            health_module.iter_gpsd_fixes = fixes
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("stream ended", result.detail)
+        self.assertIn("missing satellite or HDOP quality fields", result.detail)
+
+    def test_check_gpsd_rejects_position_only_fix_without_quality_fields(self):
         original = health_module.iter_gpsd_fixes
         fresh = GPSFix(
             timestamp=datetime.now(timezone.utc),
@@ -7562,8 +7585,8 @@ class GpsTests(unittest.TestCase):
         finally:
             health_module.iter_gpsd_fixes = original
 
-        self.assertTrue(result.ok)
-        self.assertIn("61.000000", result.detail)
+        self.assertFalse(result.ok)
+        self.assertIn("missing satellite or HDOP quality fields", result.detail)
 
     def test_check_gpsd_bounds_gpsd_iterator_by_wait_seconds(self):
         original = health_module.iter_gpsd_fixes
