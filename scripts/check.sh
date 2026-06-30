@@ -476,7 +476,7 @@ grep -q -- '--expected-gps-device' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
 grep -q 'check_expected_gps_device_matches' scripts/verify_pi.sh
 grep -q 'GPSD device matches expected' scripts/verify_pi.sh
-[[ "$(grep -c 'parser.read_string(config_text, source=str(config_path))' scripts/verify_pi.sh)" -ge 2 ]]
+[[ "$(grep -c 'parser.read_string(config_text, source=str(config_path))' scripts/verify_pi.sh)" -ge 3 ]]
 grep -q 'config_text = handle.read()' scripts/verify_pi.sh
 grep -q 'Do not verify root@' scripts/verify_pi.sh
 grep -q 'verification user is not root' scripts/verify_pi.sh
@@ -651,6 +651,8 @@ grep -q 'onboard app config through a no-follow descriptor read' README.md
 grep -q 'onboard app config through a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'GPSD device comparisons through that same trusted config read path' README.md
 grep -q 'GPSD device comparisons through that same trusted config read path' docs/sailboat-pi.md
+grep -q 'recent GPX trackpoint verification uses that same trusted config read path' README.md
+grep -q 'recent GPX trackpoint verification uses that same trusted config read path' docs/sailboat-pi.md
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh

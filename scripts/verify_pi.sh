@@ -3007,15 +3007,40 @@ from pathlib import Path
 import math
 import os
 import re
+import stat
 import sys
 import time
 
 config_path = Path(sys.argv[1]).expanduser()
 timeout = max(10.0, float(sys.argv[2]))
 max_trackpoint_age = 600.0
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(config_path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open config: {config_path}: {exc}") from exc
+try:
+    config_stat = os.fstat(fd)
+    if not stat.S_ISREG(config_stat.st_mode):
+        raise SystemExit(f"config is not a regular file: {config_path}")
+    if config_stat.st_uid != os.getuid():
+        raise SystemExit(f"config {config_path} is owned by uid {config_stat.st_uid}, expected {os.getuid()}")
+    config_mode = config_stat.st_mode & 0o777
+    if config_mode & 0o022:
+        raise SystemExit(
+            f"config {config_path} has permissions {config_mode:04o}, expected no group/other write bits"
+        )
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        config_text = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
 parser = ConfigParser()
-if not parser.read(config_path):
-    raise SystemExit(f"could not read config: {config_path}")
+try:
+    parser.read_string(config_text, source=str(config_path))
+except Exception as exc:
+    raise SystemExit(f"could not parse config: {config_path}: {exc}") from exc
 chart_output = parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()
 track_output = parser.get("tracking", "output", fallback=chart_output).strip()
 if not track_output:
