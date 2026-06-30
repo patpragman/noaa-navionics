@@ -384,6 +384,30 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config is not a regular file"):
                 read_config(config_path)
 
+    def test_read_config_rejects_non_directory_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / "config-parent"
+            parent.write_text("not a directory\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config parent is not a directory"):
+                read_config(parent / "config.ini")
+
+    def test_read_config_rejects_writable_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / "config-parent"
+            parent.mkdir()
+            config_path = parent / "config.ini"
+            config_path.write_text(default_config_text(), encoding="utf-8")
+            config_path.chmod(0o600)
+            parent.chmod(0o777)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config directory .* has permissions"):
+                    read_config(config_path)
+            finally:
+                parent.chmod(0o700)
+
     def test_read_config_rejects_writable_config_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.ini"

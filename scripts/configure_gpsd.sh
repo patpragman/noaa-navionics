@@ -393,7 +393,7 @@ parser.set("gps", "gpsd_port", "2947")
 
 tmp_path = None
 try:
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=str(config_path.parent), delete=False) as handle:
         tmp_path = Path(handle.name)
         parser.write(handle)
         handle.flush()

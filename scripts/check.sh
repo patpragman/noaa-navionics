@@ -1345,6 +1345,7 @@ PY
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' README.md
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
+grep -q 'dir=str(config_path.parent)' scripts/configure_gpsd.sh
 grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
 for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
@@ -2004,6 +2005,8 @@ grep -q 'test_write_manifest_rejects_writable_manifest_target' tests/test_downlo
 grep -q 'Manifest writes refuse existing symlinked or non-regular manifest targets' README.md
 grep -q 'Manifest writes refuse existing symlinked or non-regular manifest targets' docs/sailboat-pi.md
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config parent is not a directory' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config directory .* is owned by uid' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
 grep -q 'could not make NOAA Navionics config directory private' src/noaa_navionics/config.py
 grep -q 'expected private 0700' src/noaa_navionics/config.py
@@ -2022,8 +2025,12 @@ grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_ancestor' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent_when_config_missing' tests/test_downloader.py
 grep -q 'test_read_config_rejects_nonregular_config_file' tests/test_downloader.py
+grep -q 'test_read_config_rejects_non_directory_parent' tests/test_downloader.py
+grep -q 'test_read_config_rejects_writable_parent' tests/test_downloader.py
 grep -q 'Writes create or tighten the config directory to private `0700` permissions' README.md
 grep -q 'creates or tightens the config directory to private `0700` permissions' docs/sailboat-pi.md
+grep -q 'misowned or group/world-writable config directories' README.md
+grep -q 'misowned or group/world-writable config directories' docs/sailboat-pi.md
 grep -q 'Config directory sync uses no-follow directory opens' README.md
 grep -q 'Config directory sync uses no-follow directory opens' docs/sailboat-pi.md
 grep -q 'test_read_config_rejects_writable_config_file' tests/test_downloader.py

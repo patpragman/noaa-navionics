@@ -331,6 +331,24 @@ def _reject_unsafe_config_path(path: Path) -> None:
     symlink_component = _first_symlink_ancestor(path.parent)
     if symlink_component is not None:
         raise RuntimeError(f"NOAA Navionics config directory is a symlink: {symlink_component}")
+    if path.parent.exists():
+        if not path.parent.is_dir():
+            raise RuntimeError(f"NOAA Navionics config parent is not a directory: {path.parent}")
+        try:
+            parent_stat = path.parent.stat()
+        except OSError as exc:
+            raise RuntimeError(f"could not inspect NOAA Navionics config directory {path.parent}: {exc}") from exc
+        if parent_stat.st_uid != os.getuid():
+            raise RuntimeError(
+                f"NOAA Navionics config directory {path.parent} is owned by uid "
+                f"{parent_stat.st_uid}, expected {os.getuid()}"
+            )
+        parent_mode = parent_stat.st_mode & 0o777
+        if parent_mode & 0o022:
+            raise RuntimeError(
+                f"NOAA Navionics config directory {path.parent} has permissions {parent_mode:04o}, "
+                "expected no group/other write bits"
+            )
     if not path.exists():
         return
     if not path.is_file():
