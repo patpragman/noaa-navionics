@@ -2793,15 +2793,18 @@ grep -q 'require_trusted_system_command()' scripts/provision_sailboat_pi.sh
 grep -q 'path_in_trusted_system_dir()' scripts/provision_sailboat_pi.sh
 grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/provision_sailboat_pi.sh
 grep -q 'loginctl_cmd="$(require_trusted_system_command loginctl "Loginctl command")"' scripts/provision_sailboat_pi.sh
+grep -q 'sudo_cmd="$(require_trusted_system_command sudo "Sudo command")"' scripts/provision_sailboat_pi.sh
+grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/provision_sailboat_pi.sh
 grep -q 'trusted systemctl is required to validate existing' scripts/provision_sailboat_pi.sh
-grep -q 'run sudo "$loginctl_cmd" enable-linger "$USER"' scripts/provision_sailboat_pi.sh
+grep -q 'run "$sudo_cmd" "$loginctl_cmd" enable-linger "$USER"' scripts/provision_sailboat_pi.sh
+! grep -q 'run sudo "$loginctl_cmd" enable-linger "$USER"' scripts/provision_sailboat_pi.sh
 grep -q 'run "$systemctl_cmd" --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' docs/sailboat-pi.md
 grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' README.md
 grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' docs/sailboat-pi.md
-grep -q 'resolves systemctl and loginctl through trusted root-owned command checks' README.md
-grep -q 'resolves systemctl and loginctl through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'resolves sudo, systemctl, and loginctl through trusted root-owned command checks' README.md
+grep -q 'resolves sudo, systemctl, and loginctl through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'run "$systemctl_cmd" --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
 grep -q 'run "$systemctl_cmd" --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
 grep -q 'run "$systemctl_cmd" --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh

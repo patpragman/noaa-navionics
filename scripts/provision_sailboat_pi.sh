@@ -25,6 +25,7 @@ venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 bin="${HOME}/.local/bin/noaa-navionics"
 systemctl_cmd=""
 loginctl_cmd=""
+sudo_cmd=""
 
 sync_paths() {
   python3 - "$@" <<'PY'
@@ -240,6 +241,13 @@ loginctl_command() {
     loginctl_cmd="$(require_trusted_system_command loginctl "Loginctl command")" || return 1
   fi
   printf '%s\n' "$loginctl_cmd"
+}
+
+sudo_command() {
+  if [[ -z "$sudo_cmd" ]]; then
+    sudo_cmd="$(require_trusted_system_command sudo "Sudo command")" || return 1
+  fi
+  printf '%s\n' "$sudo_cmd"
 }
 
 same_path() {
@@ -1318,6 +1326,7 @@ run "$bin" configure-opencpn --config "$config"
 if [[ "$skip_services" -eq 0 ]]; then
   systemctl_cmd="$(systemctl_command)" || exit 2
   loginctl_cmd="$(loginctl_command)" || exit 2
+  sudo_cmd="$(sudo_command)" || exit 2
   validate_user_install_path "$chart_service" "chart refresh user service"
   validate_user_install_path "$chart_timer" "chart refresh user timer"
   validate_user_install_path "$track_service" "track logger user service"
@@ -1329,7 +1338,7 @@ if [[ "$skip_services" -eq 0 ]]; then
   install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644
   run "$systemctl_cmd" --user daemon-reload
   require_loaded_user_units
-  run sudo "$loginctl_cmd" enable-linger "$USER"
+  run "$sudo_cmd" "$loginctl_cmd" enable-linger "$USER"
   run "$systemctl_cmd" --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
   run "$systemctl_cmd" --user enable --now noaa-navionics.timer
   run "$systemctl_cmd" --user enable --now noaa-navionics-track.service
