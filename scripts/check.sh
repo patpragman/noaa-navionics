@@ -629,6 +629,8 @@ grep -q '"Pi Power"' scripts/verify_pi.sh
 grep -q '"Pi Thermal"' scripts/verify_pi.sh
 grep -q '"Chrony Config"' scripts/verify_pi.sh
 grep -q 'temperature sensor unavailable on Raspberry Pi' src/noaa_navionics/health.py
+grep -q 'throttling reported since boot' src/noaa_navionics/health.py
+! grep -q 'healthy now; historical events' src/noaa_navionics/health.py
 grep -q 'measure_temp' src/noaa_navionics/health.py
 grep -q 'vcgencmd measure_temp' README.md
 grep -q 'vcgencmd measure_temp' docs/sailboat-pi.md

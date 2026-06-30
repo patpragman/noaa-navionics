@@ -8634,7 +8634,7 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("under-voltage", result.detail)
 
-    def test_check_pi_throttling_allows_historical_events(self):
+    def test_check_pi_throttling_rejects_historical_events(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             bin_dir = Path(tmpdir)
             fake = bin_dir / "vcgencmd"
@@ -8646,8 +8646,9 @@ class PiHealthTests(unittest.TestCase):
                 result = check_pi_throttling()
             finally:
                 os.environ["PATH"] = original_path
-            self.assertTrue(result.ok)
-            self.assertIn("historical", result.detail)
+            self.assertFalse(result.ok)
+            self.assertIn("under-voltage occurred", result.detail)
+            self.assertIn("throttling occurred", result.detail)
 
     def test_check_pi_throttling_reports_missing_command_on_pi(self):
         original_path = os.environ.get("PATH", "")

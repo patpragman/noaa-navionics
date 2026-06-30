@@ -929,18 +929,12 @@ def check_pi_throttling() -> CheckResult:
     value = _parse_throttled_value(output)
     if value is None:
         return CheckResult("Pi Power", False, f"unexpected throttling output: {output}")
-    active = []
-    historical = []
+    reported = []
     for bit, label in _THROTTLE_BITS.items():
         if value & (1 << bit):
-            if bit < 16:
-                active.append(label)
-            else:
-                historical.append(label)
-    if active:
-        return CheckResult("Pi Power", False, "active throttling: " + ", ".join(active))
-    if historical:
-        return CheckResult("Pi Power", True, "healthy now; historical events: " + ", ".join(historical))
+            reported.append(label)
+    if reported:
+        return CheckResult("Pi Power", False, "throttling reported since boot: " + ", ".join(reported))
     return CheckResult("Pi Power", True, "no under-voltage or throttling reported")
 
 
