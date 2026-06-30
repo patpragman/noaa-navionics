@@ -508,6 +508,9 @@ grep -q 'launcher-supervised OpenCPN executable directory' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN DISPLAY' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN XAUTHORITY' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN inherited NOAA_NAVIONICS' scripts/verify_pi.sh
+grep -q 'chartplotter launcher XAUTHORITY path is not absolute' scripts/verify_pi.sh
+grep -q 'chartplotter launcher XAUTHORITY file' scripts/verify_pi.sh
+grep -q 'check_user_regular_file_integrity "$launcher_xauthority" "chartplotter launcher XAUTHORITY file"' scripts/verify_pi.sh
 grep -q '/^PPid:/' scripts/verify_pi.sh
 grep -q 'no active OpenCPN process is supervised by the chartplotter launcher' scripts/verify_pi.sh
 grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh
@@ -518,6 +521,8 @@ grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' docs/sailboat-pi.md
 grep -q 'running on that same live X display from a trusted root-owned executable' README.md
 grep -q 'running on that same live X display from a trusted root-owned executable' docs/sailboat-pi.md
+grep -q 'trusted `XAUTHORITY` file when present' README.md
+grep -q 'trusted `XAUTHORITY` file when present' docs/sailboat-pi.md
 grep -q 'launcher-supervised OpenCPN is running' docs/sailboat-pi.md
 grep -q 'OpenCPN stable after startup' scripts/verify_pi.sh
 grep -q 'wait_for_chrony_gps_source' scripts/verify_pi.sh

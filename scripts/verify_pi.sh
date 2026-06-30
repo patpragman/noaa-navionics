@@ -2453,6 +2453,17 @@ check_opencpn_process_display_environment() {
     printf 'chartplotter launcher has no DISPLAY environment; cannot verify OpenCPN display environment\n' >&2
     return 1
   fi
+  if [[ -n "$launcher_xauthority" ]]; then
+    case "$launcher_xauthority" in
+      /*)
+        ;;
+      *)
+        printf 'chartplotter launcher XAUTHORITY path is not absolute: %s\n' "$launcher_xauthority" >&2
+        return 1
+        ;;
+    esac
+    check_user_regular_file_integrity "$launcher_xauthority" "chartplotter launcher XAUTHORITY file" || return 1
+  fi
   while IFS= read -r pid; do
     checked=1
     opencpn_display=""
