@@ -443,6 +443,7 @@ write_remote_source_revision() {
   ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_SOURCE_REVISION=${revision_env} python3 - <<'PY'
 from pathlib import Path
 import os
+import stat
 import tempfile
 
 repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
@@ -511,6 +512,32 @@ try:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(tmp_path, target)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(target, flags)
+    except OSError as exc:
+        if target.is_symlink():
+            raise SystemExit(f'Promoted source revision file is a symlink: {target}') from exc
+        raise SystemExit(f'Could not open promoted source revision file: {target}: {exc}') from exc
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f'Promoted source revision path is not a regular file: {target}')
+        if opened.st_uid != expected_uid:
+            raise SystemExit(
+                f'Promoted source revision is owned by uid {opened.st_uid}, expected {expected_uid}: {target}'
+            )
+        mode = opened.st_mode & 0o777
+        if mode & 0o022:
+            raise SystemExit(
+                f'Promoted source revision has permissions {mode:04o}, expected no group/other write bits: {target}'
+            )
+        content = os.read(fd, 4096).decode('utf-8', errors='strict')
+        if content != revision + '\n':
+            raise SystemExit(f'Promoted source revision content mismatch: {target}')
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(repo, flags)
     try:

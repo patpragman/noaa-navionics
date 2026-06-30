@@ -242,6 +242,14 @@ grep -q 'Refusing source revision write because {label} has permissions' scripts
 grep -q 'Refusing to replace symlink source revision file' scripts/deploy_to_pi.sh
 grep -q 'Refusing source revision write under symlinked deployment path' scripts/deploy_to_pi.sh
 grep -q 'Deployment directory is not ready for source revision write' scripts/deploy_to_pi.sh
+grep -q 'Promoted source revision file is a symlink' scripts/deploy_to_pi.sh
+grep -q 'Promoted source revision path is not a regular file' scripts/deploy_to_pi.sh
+grep -q 'Promoted source revision content mismatch' scripts/deploy_to_pi.sh
+grep -q 'fd = os.open(target, flags)' scripts/deploy_to_pi.sh
+grep -q 'stat.S_ISREG(opened.st_mode)' scripts/deploy_to_pi.sh
+grep -q 'os.fsync(fd)' scripts/deploy_to_pi.sh
+grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' README.md
+grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' docs/sailboat-pi.md
 grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
 grep -q 'require_local_command git' scripts/deploy_to_pi.sh
