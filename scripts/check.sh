@@ -872,10 +872,13 @@ grep -q 're.fullmatch(r"throttled=' src/noaa_navionics/health.py
 grep -Fq '[[ ! "$output" =~ ^throttled=(0x[[:xdigit:]]+|[0-9]+)$ ]]' scripts/verify_pi.sh
 ! grep -q 'healthy now; historical events' src/noaa_navionics/health.py
 grep -q 'measure_temp' src/noaa_navionics/health.py
+grep -q "re.fullmatch(r\"temp=.*'C\"" src/noaa_navionics/health.py
 grep -q 'vcgencmd measure_temp' README.md
 grep -q 'vcgencmd measure_temp' docs/sailboat-pi.md
 grep -q 'well-formed `vcgencmd get_throttled` value' README.md
 grep -q 'well-formed `vcgencmd get_throttled` value' docs/sailboat-pi.md
+grep -q 'well-formed `vcgencmd measure_temp` value' README.md
+grep -q 'well-formed `vcgencmd measure_temp` value' docs/sailboat-pi.md
 grep -q '"GPSD Config"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh

@@ -9859,6 +9859,9 @@ class PiHealthTests(unittest.TestCase):
         self.assertEqual(_parse_vcgencmd_temperature("temp=42.5'C"), 42.5)
         self.assertEqual(_parse_vcgencmd_temperature("temp=47'C"), 47.0)
         self.assertIsNone(_parse_vcgencmd_temperature("temperature unavailable"))
+        self.assertIsNone(_parse_vcgencmd_temperature("temp=42.5"))
+        self.assertIsNone(_parse_vcgencmd_temperature("warning temp=42.5'C"))
+        self.assertIsNone(_parse_vcgencmd_temperature("temp=42.5'C warning"))
 
     def test_read_sysfs_pi_temperature(self):
         with tempfile.TemporaryDirectory() as tmpdir:

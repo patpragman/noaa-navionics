@@ -1452,7 +1452,7 @@ def _read_vcgencmd_temperature() -> Optional[float]:
 
 
 def _parse_vcgencmd_temperature(output: str) -> Optional[float]:
-    match = re.search(r"temp=([+-]?(?:\d+(?:\.\d*)?|\.\d+))", output.strip())
+    match = re.fullmatch(r"temp=([+-]?(?:\d+(?:\.\d*)?|\.\d+))'C", output.strip())
     if not match:
         return None
     try:
