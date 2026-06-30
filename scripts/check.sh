@@ -1173,6 +1173,8 @@ grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Install' src/noaa_navionics/report.py
+grep -q '".local/bin/noaa-navionics"' src/noaa_navionics/report.py
+grep -q 'test_service_readiness_checks_fail_loaded_command_wrong_path' tests/test_downloader.py
 grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py

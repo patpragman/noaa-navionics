@@ -1073,6 +1073,7 @@ def _service_readiness_checks(
                     ),
                     contains={
                         "ExecStartPre": [
+                            ".local/bin/noaa-navionics",
                             "noaa-navionics wait-network",
                             "--host",
                             "www.charts.noaa.gov",
@@ -1080,6 +1081,7 @@ def _service_readiness_checks(
                             "--seconds 300",
                         ],
                         "ExecStart": [
+                            ".local/bin/noaa-navionics",
                             "noaa-navionics sync-charts",
                             "--config",
                             "noaa-navionics/config.ini",
@@ -1121,6 +1123,7 @@ def _service_readiness_checks(
                     ),
                     contains={
                         "ExecStart": [
+                            ".local/bin/noaa-navionics",
                             "noaa-navionics log-track",
                             "--config",
                             "noaa-navionics/config.ini",
@@ -1152,6 +1155,7 @@ def _service_readiness_checks(
                         "Wants": "noaa-navionics-track.service",
                         "After": "noaa-navionics-track.service",
                         "ExecStart": [
+                            ".local/bin/noaa-navionics",
                             "noaa-navionics status-report",
                             "--config",
                             "noaa-navionics/config.ini",

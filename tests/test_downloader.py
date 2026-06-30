@@ -5244,6 +5244,89 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("missing --config", chart_settings.detail)
         self.assertIn("missing --retries 5", chart_settings.detail)
 
+    def test_service_readiness_checks_fail_loaded_command_wrong_path(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {
+                "enabled": "static",
+                "active": "inactive",
+                "properties": {
+                    "ExecStartPre": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
+                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "Type": "oneshot",
+                    "TimeoutStartUSec": "2h",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30min",
+                    "StartLimitIntervalUSec": "6h",
+                    "StartLimitBurst": "3",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
+                    "UMask": "0077",
+                },
+            },
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {
+                "enabled": "enabled",
+                "active": "active",
+                "properties": {
+                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "Type": "simple",
+                    "StandardOutput": "null",
+                    "Restart": "on-failure",
+                    "RestartUSec": "10s",
+                    "StartLimitIntervalUSec": "10min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
+                    "UMask": "0077",
+                },
+            },
+            "noaa-navionics-preflight.service": {
+                "enabled": "enabled",
+                "active": "inactive",
+                "properties": {
+                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 60 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "Wants": "noaa-navionics-track.service",
+                    "After": "noaa-navionics-track.service",
+                    "Type": "oneshot",
+                    "Environment": "NOAA_NAVIONICS_GPS_SECONDS=60",
+                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Result": "success",
+                    "ExecMainStatus": "0",
+                    "ExecMainStartTimestampMonotonic": "123456789",
+                    "TimeoutStartUSec": "infinity",
+                    "Restart": "on-failure",
+                    "RestartUSec": "30s",
+                    "StartLimitIntervalUSec": "30min",
+                    "StartLimitBurst": "60",
+                    "NoNewPrivileges": "yes",
+                    "PrivateTmp": "yes",
+                    "ProtectSystem": "full",
+                    "UMask": "0077",
+                },
+            },
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        chart_settings = next(check for check in checks if check.name == "Chart Sync Settings")
+        track_settings = next(check for check in checks if check.name == "Track Logger Settings")
+        boot_settings = next(check for check in checks if check.name == "Boot Readiness Settings")
+
+        self.assertFalse(chart_settings.ok)
+        self.assertIn("missing .local/bin/noaa-navionics", chart_settings.detail)
+        self.assertFalse(track_settings.ok)
+        self.assertIn("missing .local/bin/noaa-navionics", track_settings.detail)
+        self.assertFalse(boot_settings.ok)
+        self.assertIn("missing .local/bin/noaa-navionics", boot_settings.detail)
+
     def test_service_readiness_checks_fail_disabled_chart_timer(self):
         services = {
             "available": True,
