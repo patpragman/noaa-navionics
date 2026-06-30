@@ -275,8 +275,7 @@ def _download_package_unlocked(
                 )
             extracted_to = extract_zip(destination, output_path / destination.stem)
             if not keep_zip:
-                destination.unlink()
-                _fsync_directory(output_path)
+                _remove_download_archive(destination, output_path)
             result = DownloadResult(destination, package.url, bytes_written, True, extracted_to, digest)
             write_manifest(output_path, package, result)
         return result
@@ -341,8 +340,7 @@ def _download_package_unlocked(
     if extract and destination.suffix.lower() == ".zip":
         extracted_to = extract_zip(destination, output_path / destination.stem)
         if not keep_zip:
-            destination.unlink()
-            _fsync_directory(output_path)
+            _remove_download_archive(destination, output_path)
 
     result = DownloadResult(destination, download_url, written, False, extracted_to, digest)
     write_manifest(output_path, package, result)
@@ -364,6 +362,28 @@ def _validate_existing_download_path(path: Path) -> os.stat_result:
             f"chart download path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
     return stat_result
+
+
+def _remove_download_archive(path: Path, output_path: Path) -> None:
+    try:
+        stat_result = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect chart archive before removal {path}: {exc}") from exc
+    if stat.S_ISLNK(stat_result.st_mode):
+        raise RuntimeError(f"chart archive path is a symlink before removal: {path}")
+    if not stat.S_ISREG(stat_result.st_mode):
+        raise RuntimeError(f"chart archive path is not a regular file before removal: {path}")
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"chart archive path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"chart archive path {path} has permissions {mode:04o}, expected no group/other write bits"
+        )
+    path.unlink()
+    _fsync_directory(output_path)
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:

@@ -1179,6 +1179,11 @@ grep -q 'STATE_PACKAGES' src/noaa_navionics/downloader.py
 grep -q 'COAST_GUARD_DISTRICT_PACKAGES' src/noaa_navionics/downloader.py
 grep -q 'REGION_PACKAGES' src/noaa_navionics/downloader.py
 grep -q 'if not keep_zip' src/noaa_navionics/downloader.py
+grep -q 'def _remove_download_archive' src/noaa_navionics/downloader.py
+grep -q 'chart archive path is a symlink before removal' src/noaa_navionics/downloader.py
+grep -q 'test_existing_zip_no_keep_zip_rejects_symlink_swapped_before_removal' tests/test_downloader.py
+grep -q 'ZIP is revalidated as a regular trusted archive immediately before removal' README.md
+grep -q 'ZIP is revalidated as a regular trusted archive immediately before removal' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py

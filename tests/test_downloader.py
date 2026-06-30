@@ -1995,6 +1995,39 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["created_at_source"], "previous-manifest")
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
 
+    def test_existing_zip_no_keep_zip_rejects_symlink_swapped_before_removal(self):
+        original_extract_zip = downloader_module.extract_zip
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            archive_path = output / "AK_ENCs.zip"
+            target = root / "target.zip"
+            target.write_text("do not remove\n", encoding="utf-8")
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
+
+            def replacing_extract(zip_path, destination):
+                extracted_to = original_extract_zip(zip_path, destination)
+                archive_path.unlink()
+                try:
+                    archive_path.symlink_to(target)
+                except OSError as exc:
+                    self.skipTest(f"symlinks unavailable: {exc}")
+                return extracted_to
+
+            try:
+                downloader_module.extract_zip = replacing_extract
+                with self.assertRaisesRegex(RuntimeError, "chart archive path is a symlink before removal"):
+                    download_package(package, output, extract=True, keep_zip=False)
+            finally:
+                downloader_module.extract_zip = original_extract_zip
+
+            self.assertTrue(archive_path.is_symlink())
+            self.assertEqual(target.read_text(encoding="utf-8"), "do not remove\n")
+
     def test_existing_zip_without_previous_manifest_fails_before_extracting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir)
