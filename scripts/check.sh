@@ -1038,6 +1038,10 @@ grep -q 'missing_quality_detail' src/noaa_navionics/health.py
 ! grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py
 grep -q 'manifest recorded' src/noaa_navionics/health.py
+grep -q 'manifest recorded {manifest_cell_count} ENC cells but found {actual_cell_count}' src/noaa_navionics/health.py
+grep -q 'test_manifest_with_extra_unrecorded_cells_fails' tests/test_downloader.py
+grep -q 'exactly the manifest-recorded ENC cell count' README.md
+grep -q 'exactly the manifest-recorded ENC cell count' docs/sailboat-pi.md
 grep -q 'unverified-cache' src/noaa_navionics/health.py
 grep -q 'chart directory is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest path is a symlink' src/noaa_navionics/health.py

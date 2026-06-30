@@ -2642,7 +2642,31 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_manifest(root)
 
             self.assertFalse(result.ok)
-            self.assertIn("only 1 remain", result.detail)
+            self.assertIn("manifest recorded 2 ENC cells but found 1", result.detail)
+
+    def test_manifest_with_extra_unrecorded_cells_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            extra_cell = extract / "US5AK4CM" / "US5AK4CM.000"
+            cell.parent.mkdir(parents=True)
+            extra_cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            extra_cell.write_text("extra", encoding="ascii")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest recorded 1 ENC cells but found 2", result.detail)
 
     def test_manifest_extract_path_outside_chart_dir_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -626,11 +626,11 @@ def check_chart_manifest(
     actual_cell_count = count_enc_cells(extract_path)
     if actual_cell_count <= 0:
         return CheckResult("Manifest", False, f"no ENC cells found at manifest extract path: {extract_path}")
-    if actual_cell_count < manifest_cell_count:
+    if actual_cell_count != manifest_cell_count:
         return CheckResult(
             "Manifest",
             False,
-            f"manifest recorded {manifest_cell_count} ENC cells but only {actual_cell_count} remain at {extract_path}",
+            f"manifest recorded {manifest_cell_count} ENC cells but found {actual_cell_count} at {extract_path}",
         )
     stale_chart_dirs = _unexpected_enc_dirs(path, extract_path)
     if stale_chart_dirs:
