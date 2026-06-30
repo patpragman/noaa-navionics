@@ -255,6 +255,8 @@ prepare_private_cache_dir() {
   local cache_parent_mode
   local cache_dir_stat
   local cache_dir_uid
+  local cache_dir_mode_text
+  local cache_dir_mode
   local symlink_component
   cache_parent="$(dirname "$cache_dir")"
   if [[ -L "$cache_parent" ]]; then
@@ -286,18 +288,67 @@ prepare_private_cache_dir() {
     echo "Tightening NOAA Navionics cache parent directory permissions from ${cache_parent_mode_text} to 700: $cache_parent"
     chmod 0700 "$cache_parent"
   fi
+  if [[ -L "$cache_parent" ]]; then
+    echo "NOAA Navionics cache parent directory became a symlink after permission tightening: $cache_parent" >&2
+    exit 1
+  fi
+  cache_parent_stat="$(stat -c '%u %a' "$cache_parent" 2>/dev/null || true)"
+  if [[ -z "$cache_parent_stat" ]]; then
+    echo "Could not reinspect NOAA Navionics cache parent directory: $cache_parent" >&2
+    exit 1
+  fi
+  cache_parent_uid="${cache_parent_stat%% *}"
+  cache_parent_mode_text="${cache_parent_stat#* }"
+  if [[ "$cache_parent_uid" != "$(id -u)" ]]; then
+    echo "NOAA Navionics cache parent directory is owned by uid ${cache_parent_uid}, expected $(id -u): $cache_parent" >&2
+    exit 1
+  fi
+  cache_parent_mode=$((8#$cache_parent_mode_text))
+  if (( cache_parent_mode & 077 )); then
+    printf 'NOAA Navionics cache parent directory has permissions %04o, expected private 0700: %s\n' "$cache_parent_mode" "$cache_parent" >&2
+    exit 1
+  fi
   mkdir -p "$cache_dir"
-  cache_dir_stat="$(stat -c '%u' "$cache_dir" 2>/dev/null || true)"
+  if [[ -L "$cache_dir" ]]; then
+    echo "NOAA Navionics cache directory became a symlink after creation: $cache_dir" >&2
+    exit 1
+  fi
+  cache_dir_stat="$(stat -c '%u %a' "$cache_dir" 2>/dev/null || true)"
   if [[ -z "$cache_dir_stat" ]]; then
     echo "Could not inspect NOAA Navionics cache directory: $cache_dir" >&2
     exit 1
   fi
-  cache_dir_uid="$cache_dir_stat"
+  cache_dir_uid="${cache_dir_stat%% *}"
+  cache_dir_mode_text="${cache_dir_stat#* }"
   if [[ "$cache_dir_uid" != "$(id -u)" ]]; then
     echo "NOAA Navionics cache directory is owned by uid ${cache_dir_uid}, expected $(id -u): $cache_dir" >&2
     exit 1
   fi
+  cache_dir_mode=$((8#$cache_dir_mode_text))
+  if (( cache_dir_mode & 077 )); then
+    echo "Tightening NOAA Navionics cache directory permissions from ${cache_dir_mode_text} to 700: $cache_dir"
+  fi
   chmod 0700 "$cache_dir"
+  if [[ -L "$cache_dir" ]]; then
+    echo "NOAA Navionics cache directory became a symlink after permission tightening: $cache_dir" >&2
+    exit 1
+  fi
+  cache_dir_stat="$(stat -c '%u %a' "$cache_dir" 2>/dev/null || true)"
+  if [[ -z "$cache_dir_stat" ]]; then
+    echo "Could not reinspect NOAA Navionics cache directory: $cache_dir" >&2
+    exit 1
+  fi
+  cache_dir_uid="${cache_dir_stat%% *}"
+  cache_dir_mode_text="${cache_dir_stat#* }"
+  if [[ "$cache_dir_uid" != "$(id -u)" ]]; then
+    echo "NOAA Navionics cache directory is owned by uid ${cache_dir_uid}, expected $(id -u): $cache_dir" >&2
+    exit 1
+  fi
+  cache_dir_mode=$((8#$cache_dir_mode_text))
+  if (( cache_dir_mode & 077 )); then
+    printf 'NOAA Navionics cache directory has permissions %04o, expected private 0700: %s\n' "$cache_dir_mode" "$cache_dir" >&2
+    exit 1
+  fi
   sync_paths "$cache_parent" "$cache_dir" || true
 }
 

@@ -77,7 +77,13 @@ grep -q 'NOAA Navionics cache parent directory is a symlink' scripts/start_chart
 grep -q 'NOAA Navionics cache path contains a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache parent directory is owned by uid' scripts/start_chartplotter.sh
 grep -q 'Tightening NOAA Navionics cache parent directory permissions' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache parent directory became a symlink after permission tightening' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache parent directory has permissions .* expected private 0700' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache directory is owned by uid' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache directory became a symlink after creation' scripts/start_chartplotter.sh
+grep -q 'Tightening NOAA Navionics cache directory permissions' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache directory became a symlink after permission tightening' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache directory has permissions .* expected private 0700' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log is not a regular file' scripts/start_chartplotter.sh
 grep -q 'os.O_WRONLY | os.O_APPEND | os.O_CREAT | nofollow' scripts/start_chartplotter.sh
@@ -151,6 +157,8 @@ grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-
 grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' docs/sailboat-pi.md
 grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` only after opening it through a no-follow descriptor' README.md
 grep -q 'through a no-follow descriptor, rotates and syncs that log after 1 MB' docs/sailboat-pi.md
+grep -q 'revalidates both cache directories after creation or tightening before creating runtime files' README.md
+grep -q 'revalidates both cache directories after creation or tightening before creating runtime files' docs/sailboat-pi.md
 ! grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "$launcher_lock_dir" || true' scripts/start_chartplotter.sh
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
@@ -4984,6 +4992,19 @@ HOME="$launcher_public_cache_parent_home" PATH="$tmpdir:$PATH" scripts/start_cha
 test "$(stat -c '%a' "$launcher_public_cache_parent_home/.cache")" = 700
 grep -q 'Tightening NOAA Navionics cache parent directory permissions from 755 to 700' "$launcher_public_cache_parent_output"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_public_cache_parent_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_public_cache_dir_home="$tmpdir/launcher-public-cache-dir-home"
+launcher_public_cache_dir_output="$tmpdir/launcher-public-cache-dir.out"
+mkdir -p "$launcher_public_cache_dir_home/.local/bin" "$launcher_public_cache_dir_home/.config/noaa-navionics" "$launcher_public_cache_dir_home/.cache/noaa-navionics"
+chmod 0700 "$launcher_public_cache_dir_home/.config/noaa-navionics" "$launcher_public_cache_dir_home/.cache"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$launcher_public_cache_dir_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_public_cache_dir_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_public_cache_dir_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_public_cache_dir_home/.local/bin/noaa-navionics"
+chmod 0755 "$launcher_public_cache_dir_home/.cache/noaa-navionics"
+HOME="$launcher_public_cache_dir_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_public_cache_dir_output" 2>&1
+test "$(stat -c '%a' "$launcher_public_cache_dir_home/.cache/noaa-navionics")" = 700
+grep -q 'Tightening NOAA Navionics cache directory permissions from 755 to 700' "$launcher_public_cache_dir_output"
 
 launcher_symlink_rotated_log_home="$tmpdir/launcher-symlink-rotated-log-home"
 launcher_symlink_rotated_log_target="$tmpdir/launcher-symlink-rotated-log-target"
