@@ -910,6 +910,8 @@ grep -q 'chart timer loaded persistent' scripts/verify_pi.sh
 grep -q 'chart timer loaded randomized delay' scripts/verify_pi.sh
 grep -q 'chart timer install target' scripts/verify_pi.sh
 grep -q 'check_unit_install_target' scripts/verify_pi.sh
+grep -q 'could not open unit file' scripts/verify_pi.sh
+grep -q 'unit file is not a regular file' scripts/verify_pi.sh
 grep -q 'section == "Install"' scripts/verify_pi.sh
 grep -q 'track service rotate daily' scripts/verify_pi.sh
 grep -q 'track service loaded fragment path' scripts/verify_pi.sh
@@ -1671,8 +1673,8 @@ grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_directory' tests/tes
 grep -q 'test_user_unit_file_summary_rejects_symlinked_unit_ancestor' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_records_owner_and_permissions' tests/test_downloader.py
 grep -q 'test_user_unit_file_summary_rejects_writable_unit_file_before_parsing' tests/test_downloader.py
-grep -q 'Status reports parse user systemd unit install targets only after a no-follow descriptor read' README.md
-grep -q 'Status reports parse user systemd unit install targets only after a no-follow descriptor read' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' README.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'test_service_readiness_checks_fail_public_unit_file_permissions' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_public_unit_directory_permissions' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_misowned_unit_file' tests/test_downloader.py
@@ -1783,10 +1785,12 @@ grep -q 'Production Pi verification reads that private launcher environment thro
 grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' README.md
 grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md

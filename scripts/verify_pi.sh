@@ -2491,16 +2491,32 @@ check_unit_install_target() {
   local expected_target="$2"
   python3 - "$path" "$expected_target" <<'PY'
 from pathlib import Path
+import os
+import stat
 import sys
 
 path = Path(sys.argv[1]).expanduser()
 expected = sys.argv[2]
-if not path.is_file():
-    raise SystemExit(f"missing unit file: {path}")
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
-    lines = path.read_text(encoding="utf-8").splitlines()
+    fd = os.open(path, flags)
 except OSError as exc:
-    raise SystemExit(f"could not read unit file {path}: {exc}") from exc
+    raise SystemExit(f"could not open unit file {path}: {exc}") from exc
+try:
+    unit_stat = os.fstat(fd)
+    if not stat.S_ISREG(unit_stat.st_mode):
+        raise SystemExit(f"unit file is not a regular file: {path}")
+    if unit_stat.st_uid != os.getuid():
+        raise SystemExit(f"unit file {path} is owned by uid {unit_stat.st_uid}, expected {os.getuid()}")
+    unit_mode = unit_stat.st_mode & 0o777
+    if unit_mode & 0o022:
+        raise SystemExit(f"unit file {path} has permissions {unit_mode:04o}, expected no group/other write bits")
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        lines = handle.read().splitlines()
+finally:
+    if fd >= 0:
+        os.close(fd)
 targets = []
 section = ""
 for raw_line in lines:
