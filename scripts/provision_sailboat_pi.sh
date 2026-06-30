@@ -731,6 +731,10 @@ install_file_atomic() {
     rm -f "$tmp"
     return 1
   fi
+  if ! validate_user_install_path "$target" "provisioned user file"; then
+    rm -f "$tmp"
+    return 1
+  fi
   if ! mv -f "$tmp" "$target"; then
     rm -f "$tmp"
     return 1
@@ -878,6 +882,10 @@ write_launcher_env() {
       return 1
     fi
     if ! sync_paths "$launcher_env_tmp"; then
+      rm -f "$launcher_env_tmp"
+      return 1
+    fi
+    if ! validate_user_install_path "$launcher_env" "chartplotter launcher environment"; then
       rm -f "$launcher_env_tmp"
       return 1
     fi

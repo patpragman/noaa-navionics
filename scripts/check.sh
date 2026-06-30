@@ -1983,7 +1983,10 @@ grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s' scripts/provision_sailboat_pi.
 grep -q 'mktemp "${launcher_env_dir}/.launcher.env.XXXXXX"' scripts/provision_sailboat_pi.sh
 grep -q 'chmod 0600 "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
+test "$(grep -c 'validate_user_install_path "$launcher_env" "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh)" -ge 2
 grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
+grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion' README.md
+grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion' docs/sailboat-pi.md
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
 grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
@@ -1997,6 +2000,7 @@ grep -q 'install_file_atomic' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/provision_sailboat_pi.sh
 grep -q 'install -m "$mode" "$source" "$tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$tmp"' scripts/provision_sailboat_pi.sh
+test "$(grep -c 'validate_user_install_path "$target" "provisioned user file"' scripts/provision_sailboat_pi.sh)" -ge 2
 grep -q 'mv -f "$tmp" "$target"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$target"' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644' scripts/provision_sailboat_pi.sh
