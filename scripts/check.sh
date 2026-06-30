@@ -2103,8 +2103,12 @@ grep -q 'chmod 0600 "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_install_path "$launcher_env" "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh)" -ge 2
 grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
-grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion' README.md
-grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion' docs/sailboat-pi.md
+grep -q 'verify_launcher_env "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"' scripts/provision_sailboat_pi.sh
+grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh
+grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailboat_pi.sh
+grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
+grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment through a no-follow descriptor' README.md
+grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
 grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
@@ -2842,6 +2846,71 @@ if [[ "$provision_code" -eq 0 ]]; then
 fi
 grep -q 'chartplotter launcher environment path contains a symlink' "$provision_output"
 ! grep -q 'NOAA_NAVIONICS_GPS_SECONDS' "$provision_output"
+
+provision_verify_home="$tmpdir/provision-verify-home"
+mkdir -p "$provision_verify_home/.local/bin"
+cat >"$provision_verify_home/.local/bin/noaa-navionics" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+  init-config)
+    shift
+    config=""
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+        --config)
+          config="${2:-}"
+          shift 2
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    mkdir -p "$(dirname "$config")"
+    printf '[charts]\noutput = %s/charts\n[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/mock-gps\n' "$HOME" >"$config"
+    ;;
+  configure-opencpn)
+    exit 0
+    ;;
+  status-report)
+    output=""
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+        --output)
+          output="${2:-}"
+          shift 2
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    mkdir -p "$(dirname "$output")"
+    printf '{"ready":true}\n' >"$output"
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+EOF
+chmod +x "$provision_verify_home/.local/bin/noaa-navionics"
+HOME="$provision_verify_home" \
+  scripts/provision_sailboat_pi.sh \
+    --allow-non-pi \
+    --skip-gpsd \
+    --skip-gps-time \
+    --skip-sync \
+    --skip-services \
+    --skip-autologin \
+    --gps-seconds 37 \
+    --opencpn-restarts 2 \
+    --opencpn-restart-delay 4 >"$provision_output" 2>&1
+grep -q 'Provisioning complete.' "$provision_output"
+test "$(stat -c '%a' "$provision_verify_home/.config/noaa-navionics/launcher.env")" = 600
+grep -Fxq 'NOAA_NAVIONICS_GPS_SECONDS=37' "$provision_verify_home/.config/noaa-navionics/launcher.env"
+grep -Fxq 'NOAA_NAVIONICS_OPENCPN_RESTARTS=2' "$provision_verify_home/.config/noaa-navionics/launcher.env"
+grep -Fxq 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=4' "$provision_verify_home/.config/noaa-navionics/launcher.env"
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --sync-retries 0 >"$deploy_output" 2>&1

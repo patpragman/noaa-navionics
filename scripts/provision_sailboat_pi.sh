@@ -894,7 +894,62 @@ write_launcher_env() {
       return 1
     fi
     sync_paths "$launcher_env"
+    verify_launcher_env "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"
   fi
+}
+
+verify_launcher_env() {
+  local path="$1"
+  local expected_gps_seconds="$2"
+  local expected_opencpn_restarts="$3"
+  local expected_opencpn_restart_delay="$4"
+  python3 - "$path" "$expected_gps_seconds" "$expected_opencpn_restarts" "$expected_opencpn_restart_delay" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+expected = {
+    "NOAA_NAVIONICS_GPS_SECONDS": sys.argv[2],
+    "NOAA_NAVIONICS_OPENCPN_RESTARTS": sys.argv[3],
+    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": sys.argv[4],
+}
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open promoted launcher environment {path}: {exc}") from exc
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"promoted launcher environment is not a regular file: {path}")
+    if opened.st_uid != os.getuid():
+        raise SystemExit(
+            f"promoted launcher environment {path} is owned by uid {opened.st_uid}, expected {os.getuid()}"
+        )
+    mode = opened.st_mode & 0o777
+    if mode != 0o600:
+        raise SystemExit(f"promoted launcher environment {path} has permissions {mode:04o}, expected 0600")
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        actual = {}
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                raise SystemExit(f"promoted launcher environment contains malformed line: {raw_line.rstrip()}")
+            key, value = line.split("=", 1)
+            actual[key.strip()] = value.strip()
+finally:
+    if fd >= 0:
+        os.close(fd)
+if actual != expected:
+    raise SystemExit(
+        f"promoted launcher environment {path} has values {actual!r}, expected {expected!r}"
+    )
+PY
 }
 
 if same_path "$config" "$default_config"; then
