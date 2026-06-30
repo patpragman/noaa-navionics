@@ -1222,7 +1222,7 @@ class OpenCPNConfigTests(unittest.TestCase):
                             "--config",
                             str(app_config),
                             "--device",
-                            "/dev/ttyUSB-test",
+                            "/dev/serial/by-id/override-gps",
                             "--baud",
                             "9600",
                             "--output",
@@ -1236,10 +1236,41 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 0)
-            self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False, False)])
+            self.assertEqual(calls, [("/dev/serial/by-id/override-gps", 9600, None, False, False)])
             self.assertFalse(configured_output.exists())
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((explicit_output / "tracks" / expected_name).exists())
+
+    def test_cli_log_track_rejects_volatile_explicit_serial_device(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {root / 'tracks'}\n",
+                encoding="utf-8",
+            )
+
+            stderr = StringIO()
+            with redirect_stdout(StringIO()), redirect_stderr(stderr):
+                code = cli_module.main(
+                    [
+                        "log-track",
+                        "--config",
+                        str(app_config),
+                        "--device",
+                        "/dev/ttyUSB0",
+                        "--seconds",
+                        "0.1",
+                    ]
+                )
+
+            self.assertEqual(code, 2)
+            self.assertIn("volatile USB name", stderr.getvalue())
 
     def test_cli_gps_monitor_seconds_bounds_gpsd_wait(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1330,6 +1361,35 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(len(calls), 1)
             self.assertEqual(calls[0][:4], ("/dev/serial/by-id/mock-gps", 4800, None, False))
             self.assertIsNotNone(calls[0][4])
+
+    def test_cli_gps_monitor_rejects_volatile_explicit_serial_device(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n",
+                encoding="utf-8",
+            )
+
+            stderr = StringIO()
+            with redirect_stdout(StringIO()), redirect_stderr(stderr):
+                code = cli_module.main(
+                    [
+                        "gps-monitor",
+                        "--config",
+                        str(app_config),
+                        "--device",
+                        "/dev/ttyACM0",
+                        "--seconds",
+                        "0.1",
+                    ]
+                )
+
+            self.assertEqual(code, 2)
+            self.assertIn("volatile USB name", stderr.getvalue())
 
     def test_cli_log_track_seconds_fails_when_no_usable_fix_is_written(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

@@ -13,7 +13,14 @@ import stat
 import time
 import sys
 
-from .config import DEFAULT_CONFIG_PATH, package_kwargs, read_config, write_default_config
+from .config import (
+    DEFAULT_CONFIG_PATH,
+    _stable_gps_device_path,
+    _volatile_usb_device_path,
+    package_kwargs,
+    read_config,
+    write_default_config,
+)
 from .downloader import (
     BASE_URL,
     CATALOG_NAME,
@@ -389,10 +396,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.command == "gps-monitor":
             app_config = read_config(Path(args.config))
             use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
+            device = args.device or app_config.gps_device
+            if not use_gpsd and not args.sample:
+                _validate_live_serial_device(device)
             count = 0
             deadline = time.monotonic() + args.seconds if args.seconds else None
             for fix in _read_fixes(
-                args.device or app_config.gps_device,
+                device,
                 args.baud or app_config.gps_baud,
                 args.sample,
                 gpsd=use_gpsd,
@@ -409,10 +419,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.command == "log-track":
             app_config = read_config(Path(args.config))
             use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
+            device = args.device or app_config.gps_device
+            if not use_gpsd and not args.sample:
+                _validate_live_serial_device(device)
             base_output = Path(args.output).expanduser() if args.output else app_config.track_output
             deadline = time.monotonic() + args.seconds if args.seconds else None
             fixes = _read_fixes(
-                args.device or app_config.gps_device,
+                device,
                 args.baud or app_config.gps_baud,
                 args.sample,
                 gpsd=use_gpsd,
@@ -524,9 +537,21 @@ def _read_fixes(
         with Path(sample).expanduser().open(encoding="ascii", errors="ignore") as handle:
             yield from iter_fixes(handle)
         return
+    _validate_live_serial_device(device)
     with open_nmea_stream(device, baud=baud) as stream:
         lines = _read_nmea_lines_until(stream, deadline) if deadline is not None else read_nmea_lines(stream)
         yield from iter_fixes(lines)
+
+
+def _validate_live_serial_device(device: str) -> None:
+    if not device:
+        raise ValueError("GPS serial device is required")
+    if _volatile_usb_device_path(device):
+        raise ValueError("GPS serial device uses a volatile USB name; use /dev/serial/by-id/... instead")
+    if not _stable_gps_device_path(device):
+        raise ValueError(
+            "GPS serial device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps"
+        )
 
 
 def _read_nmea_lines_until(stream, deadline: float):
