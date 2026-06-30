@@ -433,12 +433,17 @@ def format_status_text(report: dict[str, object]) -> str:
         coordinates = ""
         if "latest_latitude" in track_log and "latest_longitude" in track_log:
             coordinates = f" {track_log.get('latest_latitude')},{track_log.get('latest_longitude')}"
+        quality = ""
+        if "latest_satellites" in track_log:
+            quality += f" satellites={track_log.get('latest_satellites')}"
+        if "latest_hdop" in track_log:
+            quality += f" hdop={track_log.get('latest_hdop')}"
         lines.append(
             f"track_output={track_log.get('track_output', '')} "
             f"tracks_dir={track_log.get('tracks_dir', '')} ok={track_log.get('ok', '')} "
             f"track_output_is_symlink={track_log.get('track_output_is_symlink', '')} "
             f"track_storage_symlink_component={track_log.get('track_storage_symlink_component', '')} "
-            f"dir_mode={track_log.get('tracks_mode', '')} latest={latest}{coordinates} "
+            f"dir_mode={track_log.get('tracks_mode', '')} latest={latest}{coordinates}{quality} "
             f"mode={track_log.get('latest_mode', '')} "
             f"detail={track_log.get('detail', '')}".rstrip()
         )
@@ -670,10 +675,15 @@ def _track_log_summary_once(
             continue
         newest_time = None
         newest_position = None
+        newest_quality = None
         for trackpoint in trackpoints:
             position, position_error = _gpx_trackpoint_position(trackpoint)
             if position is None:
                 last_detail = f"{path} {position_error}"
+                continue
+            quality, quality_error = _gpx_trackpoint_quality(trackpoint)
+            if quality is None:
+                last_detail = f"{path} {quality_error}"
                 continue
             match = re.search(r"<time>([^<]+)</time>", trackpoint)
             if not match:
@@ -688,8 +698,9 @@ def _track_log_summary_once(
             if newest_time is None or track_time > newest_time:
                 newest_time = track_time
                 newest_position = position
-        if newest_time is None or newest_position is None:
-            last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped position yet"
+                newest_quality = quality
+        if newest_time is None or newest_position is None or newest_quality is None:
+            last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped quality position yet"
             continue
         track_epoch = newest_time.timestamp()
         if boot_time is not None and track_epoch + 5 < boot_time:
@@ -703,17 +714,26 @@ def _track_log_summary_once(
             last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
             continue
         latitude, longitude = newest_position
+        quality_detail = _format_trackpoint_quality(newest_quality)
+        detail = f"{path} {latitude:.6f},{longitude:.6f}"
+        if quality_detail:
+            detail = f"{detail} {quality_detail}"
+        latest_fields: dict[str, object] = {
+            "ok": True,
+            "latest_path": str(path),
+            "latest_time": newest_time.isoformat().replace("+00:00", "Z"),
+            "latest_latitude": latitude,
+            "latest_longitude": longitude,
+            "age_seconds": age,
+            "latest_mode": f"{stat.st_mode & 0o777:04o}",
+            "detail": detail,
+        }
+        if newest_quality.get("satellites") is not None:
+            latest_fields["latest_satellites"] = newest_quality["satellites"]
+        if newest_quality.get("hdop") is not None:
+            latest_fields["latest_hdop"] = newest_quality["hdop"]
         summary.update(
-            {
-                "ok": True,
-                "latest_path": str(path),
-                "latest_time": newest_time.isoformat().replace("+00:00", "Z"),
-                "latest_latitude": latitude,
-                "latest_longitude": longitude,
-                "age_seconds": age,
-                "latest_mode": f"{stat.st_mode & 0o777:04o}",
-                "detail": f"{path} {latitude:.6f},{longitude:.6f}",
-            }
+            latest_fields
         )
         return summary
     summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
@@ -752,6 +772,44 @@ def _gpx_trackpoint_position(trackpoint: str) -> tuple[Optional[tuple[float, flo
     if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
         return None, "GPX trackpoint has invalid 0,0 coordinates"
     return (latitude, longitude), ""
+
+
+def _gpx_trackpoint_quality(trackpoint: str) -> tuple[Optional[dict[str, object]], str]:
+    sat_match = re.search(r"<sat>([^<]+)</sat>", trackpoint)
+    hdop_match = re.search(r"<hdop>([^<]+)</hdop>", trackpoint)
+    if not sat_match and not hdop_match:
+        return None, "GPX trackpoint is missing satellite or HDOP quality fields"
+    quality: dict[str, object] = {"satellites": None, "hdop": None}
+    if sat_match:
+        sat_text = sat_match.group(1).strip()
+        try:
+            satellites = int(sat_text)
+        except ValueError:
+            return None, f"GPX trackpoint has non-numeric satellite count: {sat_text}"
+        if satellites < 4:
+            return None, f"GPX trackpoint has weak satellite count: {satellites}"
+        quality["satellites"] = satellites
+    if hdop_match:
+        hdop_text = hdop_match.group(1).strip()
+        try:
+            hdop = float(hdop_text)
+        except ValueError:
+            return None, f"GPX trackpoint has non-numeric HDOP: {hdop_text}"
+        if not math.isfinite(hdop):
+            return None, f"GPX trackpoint has non-finite HDOP: {hdop_text}"
+        if hdop > 5.0:
+            return None, f"GPX trackpoint has weak HDOP: {hdop:g}"
+        quality["hdop"] = hdop
+    return quality, ""
+
+
+def _format_trackpoint_quality(quality: dict[str, object]) -> str:
+    pieces = []
+    if quality.get("satellites") is not None:
+        pieces.append(f"{quality['satellites']} satellites")
+    if quality.get("hdop") is not None:
+        pieces.append(f"HDOP {quality['hdop']:g}")
+    return "; ".join(pieces)
 
 
 def _track_log_readiness_check(track_log: dict[str, object]) -> CheckResult:

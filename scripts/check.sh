@@ -504,6 +504,8 @@ grep -q 'max_trackpoint_age = 600.0' scripts/verify_pi.sh
 grep -q 'newest GPX trackpoint is stale' scripts/verify_pi.sh
 grep -q 'timestamped trackpoint' scripts/verify_pi.sh
 grep -q 'trackpoint_position' scripts/verify_pi.sh
+grep -q 'trackpoint_quality' scripts/verify_pi.sh
+grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' scripts/verify_pi.sh
 grep -q 'GPX trackpoint has non-finite coordinates' scripts/verify_pi.sh
 grep -q 'GPX trackpoint latitude is outside -90..90' scripts/verify_pi.sh
 grep -q 'GPX trackpoint longitude is outside -180..180' scripts/verify_pi.sh
@@ -1138,6 +1140,8 @@ grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untim
 grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields(fix)' src/noaa_navionics/gps.py
+grep -q '<sat>{fix.satellites}</sat>' src/noaa_navionics/gps.py
+grep -q '<hdop>{fix.hdop:g}</hdop>' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
@@ -1333,12 +1337,17 @@ grep -q 'def _first_symlink_ancestor' src/noaa_navionics/report.py
 grep -q '"track_output_is_symlink"' src/noaa_navionics/report.py
 grep -q '"track_storage_symlink_component"' src/noaa_navionics/report.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/report.py
+grep -q 'def _gpx_trackpoint_quality' src/noaa_navionics/report.py
+grep -q 'latest_satellites' src/noaa_navionics/report.py
+grep -q 'latest_hdop' src/noaa_navionics/report.py
+grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint has non-finite coordinates' src/noaa_navionics/report.py
 grep -q 'test_track_log_summary_rejects_non_finite_trackpoint_coordinates' tests/test_downloader.py
+grep -q 'test_track_log_summary_rejects_missing_trackpoint_quality' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output_ancestor' tests/test_downloader.py
-grep -q 'Status reports and Pi verification reject symlinked GPX storage path components and non-finite GPX trackpoint coordinates' README.md
-grep -q 'Status reports and Pi verification reject symlinked GPX storage path components and non-finite GPX trackpoint coordinates' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification reject symlinked GPX storage path components, missing GPX satellite/HDOP quality fields, and non-finite GPX trackpoint coordinates' README.md
+grep -q 'Status reports and Pi verification reject symlinked GPX storage path components, missing GPX satellite/HDOP quality fields, and non-finite GPX trackpoint coordinates' docs/sailboat-pi.md
 grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py

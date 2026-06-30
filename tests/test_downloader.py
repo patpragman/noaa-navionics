@@ -4376,8 +4376,41 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["latest_mode"], "0600")
             self.assertAlmostEqual(summary["latest_latitude"], 61.2181)
             self.assertAlmostEqual(summary["latest_longitude"], -149.9003)
+            self.assertEqual(summary["latest_satellites"], 8)
+            self.assertEqual(summary["latest_hdop"], 1.2)
             self.assertTrue(check.ok)
             self.assertIn("61.218100", check.detail)
+            self.assertIn("8 satellites", check.detail)
+
+    def test_track_log_summary_rejects_missing_trackpoint_quality(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            track_path = tracks / "track-20260629.gpx"
+            track_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f'  <trk><trkseg><trkpt lat="61.2181" lon="-149.9003">'
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}</time>"
+                "</trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            track_path.chmod(0o600)
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("missing satellite or HDOP quality fields", check.detail)
 
     def test_track_log_summary_rejects_public_tracks_directory(self):
         timestamp = datetime.now(timezone.utc)
@@ -6521,6 +6554,8 @@ class GpsTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("<trkpt lat=\"48.11730000\" lon=\"11.51666667\">", text)
             self.assertIn("<ele>545.40</ele>", text)
+            self.assertIn("<sat>8</sat>", text)
+            self.assertIn("<hdop>0.9</hdop>", text)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_gpx_logger_skips_invalid_direct_fix(self):

@@ -364,6 +364,10 @@ class GPXTrackLogger:
         if fix.altitude_m is not None:
             self.file.write(f"      <ele>{fix.altitude_m:.2f}</ele>\n")
         self.file.write(f"      <time>{fix.timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}</time>\n")
+        if fix.satellites is not None:
+            self.file.write(f"      <sat>{fix.satellites}</sat>\n")
+        if fix.hdop is not None:
+            self.file.write(f"      <hdop>{fix.hdop:g}</hdop>\n")
         self.file.write("    </trkpt>\n")
         self.file.flush()
         self._sync_to_disk()

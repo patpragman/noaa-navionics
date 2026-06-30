@@ -389,6 +389,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -889,6 +890,22 @@ if expected_config_path:
             f"status report track_log latest_mode {status_latest_mode or '<missing>'} "
             f"does not match file permissions {latest_track_mode:04o}"
         )
+    latest_satellites = track_log.get("latest_satellites")
+    latest_hdop = track_log.get("latest_hdop")
+    if latest_satellites is None and latest_hdop is None:
+        raise SystemExit("status report track_log has no latest satellite or HDOP quality fields")
+    if latest_satellites is not None:
+        if isinstance(latest_satellites, bool) or not isinstance(latest_satellites, int):
+            raise SystemExit(f"status report track_log latest_satellites is not an integer: {latest_satellites!r}")
+        if latest_satellites < 4:
+            raise SystemExit(f"status report track_log latest_satellites is weak: {latest_satellites}")
+    if latest_hdop is not None:
+        if isinstance(latest_hdop, bool) or not isinstance(latest_hdop, (int, float)):
+            raise SystemExit(f"status report track_log latest_hdop is not numeric: {latest_hdop!r}")
+        if not math.isfinite(float(latest_hdop)):
+            raise SystemExit(f"status report track_log latest_hdop is not finite: {latest_hdop!r}")
+        if float(latest_hdop) > 5.0:
+            raise SystemExit(f"status report track_log latest_hdop is weak: {latest_hdop:g}")
     opencpn_config = report.get("opencpn_config")
     if not isinstance(opencpn_config, dict):
         raise SystemExit("status report has no opencpn_config section")
@@ -1605,6 +1622,22 @@ for field in ("latest_latitude", "latest_longitude", "age_seconds"):
     value = track_log.get(field)
     if not isinstance(value, (int, float)):
         raise SystemExit(f"status report track_log {field} is not numeric: {value!r}")
+latest_satellites = track_log.get("latest_satellites")
+latest_hdop = track_log.get("latest_hdop")
+if latest_satellites is None and latest_hdop is None:
+    raise SystemExit("status report track_log has no latest satellite or HDOP quality fields")
+if latest_satellites is not None:
+    if isinstance(latest_satellites, bool) or not isinstance(latest_satellites, int):
+        raise SystemExit(f"status report track_log latest_satellites is not an integer: {latest_satellites!r}")
+    if latest_satellites < 4:
+        raise SystemExit(f"status report track_log latest_satellites is weak: {latest_satellites}")
+if latest_hdop is not None:
+    if isinstance(latest_hdop, bool) or not isinstance(latest_hdop, (int, float)):
+        raise SystemExit(f"status report track_log latest_hdop is not numeric: {latest_hdop!r}")
+    if not math.isfinite(float(latest_hdop)):
+        raise SystemExit(f"status report track_log latest_hdop is not finite: {latest_hdop!r}")
+    if float(latest_hdop) > 5.0:
+        raise SystemExit(f"status report track_log latest_hdop is weak: {latest_hdop:g}")
 PY
 }
 
@@ -2688,6 +2721,34 @@ def trackpoint_position(trackpoint):
         return None, "GPX trackpoint has invalid 0,0 coordinates"
     return (latitude, longitude), ""
 
+def trackpoint_quality(trackpoint):
+    sat_match = re.search(r"<sat>([^<]+)</sat>", trackpoint)
+    hdop_match = re.search(r"<hdop>([^<]+)</hdop>", trackpoint)
+    if not sat_match and not hdop_match:
+        return None, "GPX trackpoint is missing satellite or HDOP quality fields"
+    quality = {"satellites": None, "hdop": None}
+    if sat_match:
+        sat_text = sat_match.group(1).strip()
+        try:
+            satellites = int(sat_text)
+        except ValueError:
+            return None, f"GPX trackpoint has non-numeric satellite count: {sat_text}"
+        if satellites < 4:
+            return None, f"GPX trackpoint has weak satellite count: {satellites}"
+        quality["satellites"] = satellites
+    if hdop_match:
+        hdop_text = hdop_match.group(1).strip()
+        try:
+            hdop = float(hdop_text)
+        except ValueError:
+            return None, f"GPX trackpoint has non-numeric HDOP: {hdop_text}"
+        if not math.isfinite(hdop):
+            return None, f"GPX trackpoint has non-finite HDOP: {hdop_text}"
+        if hdop > 5.0:
+            return None, f"GPX trackpoint has weak HDOP: {hdop:g}"
+        quality["hdop"] = hdop
+    return quality, ""
+
 while True:
     now = time.time()
     symlink_component = first_symlink_ancestor(tracks_dir)
@@ -2762,10 +2823,15 @@ while True:
                 continue
             newest_track_time = None
             newest_track_position = None
+            newest_track_quality = None
             for trackpoint in trackpoint_times:
                 position, position_error = trackpoint_position(trackpoint)
                 if position is None:
                     last_detail = f"{path} {position_error}"
+                    continue
+                quality, quality_error = trackpoint_quality(trackpoint)
+                if quality is None:
+                    last_detail = f"{path} {quality_error}"
                     continue
                 match = re.search(r"<time>([^<]+)</time>", trackpoint)
                 if not match:
@@ -2780,8 +2846,9 @@ while True:
                 if newest_track_time is None or track_time > newest_track_time:
                     newest_track_time = track_time
                     newest_track_position = position
-            if newest_track_time is None:
-                last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped position yet"
+                    newest_track_quality = quality
+            if newest_track_time is None or newest_track_quality is None:
+                last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped quality position yet"
                 continue
             track_epoch = newest_track_time.timestamp()
             if track_epoch + 5 < boot_epoch:
@@ -2795,7 +2862,13 @@ while True:
             if age > max_trackpoint_age:
                 last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
                 continue
-            print(f"{path} {newest_track_position[0]:.6f},{newest_track_position[1]:.6f}")
+            quality_pieces = []
+            if newest_track_quality.get("satellites") is not None:
+                quality_pieces.append(f"{newest_track_quality['satellites']} satellites")
+            if newest_track_quality.get("hdop") is not None:
+                quality_pieces.append(f"HDOP {newest_track_quality['hdop']:g}")
+            quality_detail = (" " + "; ".join(quality_pieces)) if quality_pieces else ""
+            print(f"{path} {newest_track_position[0]:.6f},{newest_track_position[1]:.6f}{quality_detail}")
             raise SystemExit(0)
     else:
         last_detail = f"{tracks_dir} does not exist"
