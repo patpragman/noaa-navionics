@@ -324,6 +324,7 @@ grep -q -- '--rsync-path="${remote_system_path} rsync"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && tar -xzf - -C' scripts/deploy_to_pi.sh
 grep -q 'rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
+grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/verify_pi.sh
 grep -q 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' scripts/verify_pi.sh
 grep -q 'export PATH' scripts/verify_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
@@ -393,6 +394,10 @@ grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/dock_test_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
+grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=' scripts/verify_pi.sh
+! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
+grep -q 'pins its remote command path to trusted system directories before launching the remote verifier' README.md
+grep -q 'pins its remote command path to trusted system directories before launching the remote verifier' docs/sailboat-pi.md
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
@@ -3901,6 +3906,7 @@ NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
 grep -Fq "NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}" "$verify_fake_ssh_args"
+grep -Fq "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}" "$verify_fake_ssh_args"
 printf '# dirty change\n' >>"$verify_revision_repo/scripts/verify_pi.sh"
 set +e
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
