@@ -1712,6 +1712,13 @@ grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/config.py
 grep -q 'def _first_symlink_ancestor' src/noaa_navionics/config.py
+grep -q 'def _validate_manifest_replace_target' src/noaa_navionics/downloader.py
+grep -q 'refusing to replace symlinked chart manifest path' src/noaa_navionics/downloader.py
+grep -q 'test_write_manifest_rejects_symlinked_manifest_target' tests/test_downloader.py
+grep -q 'test_write_manifest_rejects_nonregular_manifest_target' tests/test_downloader.py
+grep -q 'test_write_manifest_rejects_writable_manifest_target' tests/test_downloader.py
+grep -q 'Manifest writes refuse existing symlinked or non-regular manifest targets' README.md
+grep -q 'Manifest writes refuse existing symlinked or non-regular manifest targets' docs/sailboat-pi.md
 grep -q 'parent.mkdir(parents=True, mode=0o700, exist_ok=True)' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config directory .* has permissions' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config is a symlink' src/noaa_navionics/config.py

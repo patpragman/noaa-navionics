@@ -2589,6 +2589,56 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse((real_storage / "charts").exists())
 
+    def test_write_manifest_rejects_symlinked_manifest_target(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "charts"
+            output.mkdir()
+            target = root / "target-manifest.json"
+            target.write_text("do not replace\n", encoding="utf-8")
+            manifest = output / MANIFEST_NAME
+            try:
+                manifest.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+
+            with self.assertRaisesRegex(RuntimeError, "refusing to replace symlinked chart manifest path"):
+                downloader_module.write_manifest(output, package, result)
+
+            self.assertTrue(manifest.is_symlink())
+            self.assertEqual(target.read_text(encoding="utf-8"), "do not replace\n")
+
+    def test_write_manifest_rejects_nonregular_manifest_target(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            (output / MANIFEST_NAME).mkdir()
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+
+            with self.assertRaisesRegex(RuntimeError, "refusing to replace non-regular chart manifest path"):
+                downloader_module.write_manifest(output, package, result)
+
+    def test_write_manifest_rejects_writable_manifest_target(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            manifest = output / MANIFEST_NAME
+            manifest.write_text("do not replace\n", encoding="utf-8")
+            manifest.chmod(0o622)
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+
+            try:
+                with self.assertRaisesRegex(
+                    RuntimeError, "refusing to replace chart manifest path .* with permissions 0622"
+                ):
+                    downloader_module.write_manifest(output, package, result)
+            finally:
+                manifest.chmod(0o600)
+
+            self.assertEqual(manifest.read_text(encoding="utf-8"), "do not replace\n")
+
     def test_write_manifest_syncs_file_and_directory(self):
         calls = []
         original_fsync = downloader_module.os.fsync

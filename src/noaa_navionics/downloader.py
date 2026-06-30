@@ -829,6 +829,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
         },
     }
     target = output_path / MANIFEST_NAME
+    _validate_manifest_replace_target(target)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -852,6 +853,30 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
             except FileNotFoundError:
                 pass
     return target
+
+
+def _validate_manifest_replace_target(target: Path) -> None:
+    if target.is_symlink():
+        raise RuntimeError(f"refusing to replace symlinked chart manifest path: {target}")
+    if not target.exists():
+        return
+    if not target.is_file():
+        raise RuntimeError(f"refusing to replace non-regular chart manifest path: {target}")
+    try:
+        stat_result = target.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect chart manifest path before replacement {target}: {exc}") from exc
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"refusing to replace chart manifest path {target} owned by uid {stat_result.st_uid}, "
+            f"expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"refusing to replace chart manifest path {target} with permissions {mode:04o}; "
+            "expected no group/other write bits"
+        )
 
 
 def _prepare_output_dir(output_path: Path) -> None:
