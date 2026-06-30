@@ -1004,7 +1004,7 @@ def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) ->
     symlink_component = _first_symlink_ancestor(path.parent)
     summary: dict[str, object] = {
         "path": str(path),
-        "exists": path.is_file(),
+        "exists": path.exists(),
         "is_symlink": path.is_symlink(),
         "directory_is_symlink": path.parent.is_symlink(),
         "path_symlink_component": str(symlink_component) if symlink_component is not None else "",
@@ -1017,6 +1017,16 @@ def _key_value_file_summary(path: Path, *, comment_prefixes: tuple[str, ...]) ->
         return summary
     if not path.exists():
         return summary
+    if not path.is_file():
+        summary["error"] = f"key-value file path is not a regular file: {path}"
+        return summary
+    try:
+        stat_result = path.stat()
+    except OSError as exc:
+        summary["error"] = str(exc)
+        return summary
+    summary["uid"] = stat_result.st_uid
+    summary["mode"] = f"{stat_result.st_mode & 0o777:04o}"
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
@@ -1390,6 +1400,13 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             failures.append(f"desktop autostart path contains a symlink: {autostart_symlink_component}")
         if str(autostart.get("error", "")):
             failures.append(f"desktop autostart unreadable at {path}: {autostart.get('error')}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                autostart,
+                label="desktop autostart",
+                expected_uid=os.getuid(),
+            )
+        )
         values = autostart.get("values")
         if not isinstance(values, dict):
             failures.append(f"desktop autostart values were not parsed at {path}")
@@ -1432,6 +1449,13 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             failures.append(f"LightDM autologin config path contains a symlink: {lightdm_symlink_component}")
         if str(lightdm.get("error", "")):
             failures.append(f"LightDM autologin config unreadable at {path}: {lightdm.get('error')}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                lightdm,
+                label="LightDM autologin config",
+                expected_uid=0,
+            )
+        )
         sections = {str(section) for section in lightdm.get("sections", [])} if isinstance(lightdm.get("sections"), list) else set()
         if "Seat:*" not in sections:
             failures.append("LightDM autologin config missing [Seat:*] section")
@@ -1458,6 +1482,35 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
         return CheckResult("Desktop Startup", False, "; ".join(failures))
     active = str(summary.get("lightdm_active", "")).strip() or "<unknown>"
     return CheckResult("Desktop Startup", True, f"desktop autostart and LightDM autologin are configured; lightdm active={active}")
+
+
+def _key_value_file_integrity_failures(
+    summary: dict[str, object],
+    *,
+    label: str,
+    expected_uid: int,
+) -> list[str]:
+    failures = []
+    path = str(summary.get("path", "<unknown>"))
+    uid = summary.get("uid")
+    if uid is not None:
+        try:
+            parsed_uid = int(uid)
+        except (TypeError, ValueError):
+            failures.append(f"{label} owner was not parsed at {path}")
+        else:
+            if parsed_uid != expected_uid:
+                failures.append(f"{label} is owned by uid {parsed_uid}, expected {expected_uid}: {path}")
+    mode = str(summary.get("mode", "")).strip()
+    if mode:
+        try:
+            parsed_mode = int(mode, 8)
+        except ValueError:
+            failures.append(f"{label} permissions were not parsed at {path}: {mode}")
+        else:
+            if parsed_mode & 0o022:
+                failures.append(f"{label} has permissions {mode}, expected no group/other write bits: {path}")
+    return failures
 
 
 def _safe_xsession_name(value: str) -> bool:

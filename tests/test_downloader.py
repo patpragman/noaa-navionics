@@ -3213,6 +3213,7 @@ class StatusReportTests(unittest.TestCase):
                 "X-GNOME-Autostart-enabled=true\n",
                 encoding="utf-8",
             )
+            autostart.chmod(0o644)
             lightdm_autologin = root / "50-noaa-navionics-autologin.conf"
             lightdm_autologin.write_text(
                 "[Seat:*]\n"
@@ -3221,6 +3222,7 @@ class StatusReportTests(unittest.TestCase):
                 "autologin-session=missing-test-session\n",
                 encoding="utf-8",
             )
+            lightdm_autologin.chmod(0o644)
             original_revision_path = os.environ.get("NOAA_NAVIONICS_SOURCE_REVISION_PATH")
             original_boot_id_path = report_module.BOOT_ID_PATH
             original_launcher_env_path = report_module.DEFAULT_LAUNCHER_ENV_PATH
@@ -3292,11 +3294,15 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["autostart"]["is_symlink"], False)
             self.assertEqual(report["desktop"]["autostart"]["directory_is_symlink"], False)
             self.assertEqual(report["desktop"]["autostart"]["path_symlink_component"], "")
+            self.assertEqual(report["desktop"]["autostart"]["uid"], os.getuid())
+            self.assertEqual(report["desktop"]["autostart"]["mode"], "0644")
             self.assertEqual(report["desktop"]["autostart"]["values"]["Exec"], 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"')
             self.assertEqual(report["desktop"]["lightdm_autologin"]["path"], str(lightdm_autologin))
             self.assertEqual(report["desktop"]["lightdm_autologin"]["is_symlink"], False)
             self.assertEqual(report["desktop"]["lightdm_autologin"]["directory_is_symlink"], False)
             self.assertEqual(report["desktop"]["lightdm_autologin"]["path_symlink_component"], "")
+            self.assertEqual(report["desktop"]["lightdm_autologin"]["uid"], os.getuid())
+            self.assertEqual(report["desktop"]["lightdm_autologin"]["mode"], "0644")
             self.assertEqual(report["desktop"]["lightdm_autologin"]["values"]["autologin-user-timeout"], "0")
             self.assertEqual(report["desktop"]["graphical_target"], "graphical.target")
             self.assertEqual(report["desktop"]["lightdm_enabled"], "enabled")
@@ -3746,6 +3752,30 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["path_symlink_component"], str(link_home))
             self.assertIn("key-value file directory is a symlink", summary["error"])
             self.assertNotIn("values", summary)
+
+    def test_key_value_file_summary_rejects_nonregular_startup_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "noaa-navionics-chartplotter.desktop"
+            path.mkdir()
+
+            summary = _key_value_file_summary(path, comment_prefixes=("#",))
+
+            self.assertEqual(summary["path"], str(path))
+            self.assertEqual(summary["exists"], True)
+            self.assertIn("key-value file path is not a regular file", summary["error"])
+            self.assertNotIn("values", summary)
+
+    def test_key_value_file_summary_records_owner_and_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "noaa-navionics-chartplotter.desktop"
+            path.write_text("[Desktop Entry]\nName=NOAA Navionics Chartplotter\n", encoding="utf-8")
+            path.chmod(0o640)
+
+            summary = _key_value_file_summary(path, comment_prefixes=("#",))
+
+            self.assertEqual(summary["uid"], os.getuid())
+            self.assertEqual(summary["mode"], "0640")
+            self.assertEqual(summary["values"]["Name"], "NOAA Navionics Chartplotter")
 
     def test_opencpn_config_summary_rejects_symlinked_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -5170,6 +5200,66 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(desktop_check.ok)
         self.assertIn("desktop autostart path contains a symlink: /home/pi", desktop_check.detail)
         self.assertIn("LightDM autologin config path contains a symlink: /etc/lightdm", desktop_check.detail)
+
+    def test_service_readiness_checks_fail_unsafe_desktop_startup_files(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(
+            services,
+            system_services,
+            desktop={
+                "autostart": {
+                    "path": "/home/pi/.config/autostart/noaa-navionics-chartplotter.desktop",
+                    "exists": True,
+                    "is_symlink": False,
+                    "directory_is_symlink": False,
+                    "uid": os.getuid() + 1,
+                    "mode": "0666",
+                    "values": {
+                        "Type": "Application",
+                        "Name": "NOAA Navionics Chartplotter",
+                        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                        "Terminal": "false",
+                        "X-GNOME-Autostart-enabled": "true",
+                    },
+                },
+                "lightdm_autologin": {
+                    "path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf",
+                    "exists": True,
+                    "is_symlink": False,
+                    "directory_is_symlink": False,
+                    "uid": os.getuid() + 1,
+                    "mode": "0666",
+                    "sections": ["Seat:*"],
+                    "values": {
+                        "autologin-user": "pi",
+                        "autologin-user-timeout": "0",
+                        "autologin-session": "LXDE-pi",
+                    },
+                },
+                "graphical_target": "graphical.target",
+                "lightdm_enabled": "enabled",
+            },
+            gps_mode="gpsd",
+        )
+        desktop_check = next(check for check in checks if check.name == "Desktop Startup")
+
+        self.assertFalse(desktop_check.ok)
+        self.assertIn("desktop autostart is owned by uid", desktop_check.detail)
+        self.assertIn("desktop autostart has permissions 0666", desktop_check.detail)
+        self.assertIn("LightDM autologin config is owned by uid", desktop_check.detail)
+        self.assertIn("LightDM autologin config has permissions 0666", desktop_check.detail)
 
     def test_service_readiness_checks_fail_stale_unit_file_install_target(self):
         services = {

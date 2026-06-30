@@ -1256,8 +1256,15 @@ grep -q 'test_launcher_settings_summary_rejects_nonregular_environment' tests/te
 grep -q 'test_launcher_settings_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_misowned_environment' tests/test_downloader.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
+grep -q 'key-value file path is not a regular file' src/noaa_navionics/report.py
 grep -q 'key-value file directory is a symlink' src/noaa_navionics/report.py
+grep -q 'def _key_value_file_integrity_failures' src/noaa_navionics/report.py
+grep -q 'is owned by uid' src/noaa_navionics/report.py
+grep -q 'has permissions.*expected no group/other write bits' src/noaa_navionics/report.py
 grep -q '"path_symlink_component"' src/noaa_navionics/report.py
+grep -q 'test_key_value_file_summary_rejects_nonregular_startup_file' tests/test_downloader.py
+grep -q 'test_key_value_file_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_unsafe_desktop_startup_files' tests/test_downloader.py
 grep -q 'desktop autostart path is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart directory is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart path contains a symlink' src/noaa_navionics/report.py
@@ -1395,8 +1402,8 @@ grep -q 'desktop autostart and LightDM autologin path-component integrity' READM
 grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
-grep -q 'Status reports and Pi verification also reject symlinked desktop autostart' README.md
-grep -q 'Status reports and Pi verification also reject symlinked desktop autostart' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification also reject symlinked, non-regular, writable, or misowned desktop autostart' README.md
+grep -q 'Status reports and Pi verification also reject symlinked, non-regular, writable, or misowned desktop autostart' docs/sailboat-pi.md
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
