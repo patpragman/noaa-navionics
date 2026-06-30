@@ -13,6 +13,7 @@ bash -n \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
   scripts/pre_departure_check_pi.sh \
+  scripts/collect_pi_support_bundle.sh \
   scripts/start_chartplotter.sh \
   scripts/configure_desktop_autologin.sh \
   scripts/configure_gpsd.sh \
@@ -470,6 +471,10 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
+grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'read-only diagnostic evidence' README.md
+grep -q 'read-only diagnostic evidence' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
@@ -492,6 +497,7 @@ grep -q 'validate_remote_dir' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/deploy_to_pi.sh
 grep -q 'validate_ssh_target' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/verify_pi.sh
+grep -q 'validate_ssh_target' scripts/collect_pi_support_bundle.sh
 grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/verify_pi.sh
@@ -502,12 +508,14 @@ grep -q 'GPS device path is volatile' scripts/verify_pi.sh
 grep -q 'GPS device path is volatile' scripts/pre_departure_check_pi.sh
 grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
+grep -q 'SSH target must be user@host' scripts/collect_pi_support_bundle.sh
 grep -q 'SSH target user contains unsafe characters' scripts/deploy_to_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/dock_test_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/verify_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/deploy_to_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/dock_test_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/verify_pi.sh
+grep -q 'SSH target host contains unsafe characters' scripts/collect_pi_support_bundle.sh
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/verify_pi.sh
@@ -739,6 +747,10 @@ grep -q 'allow_dirty=0' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/pre_departure_check_pi.sh
+grep -q 'recent-user-journal' scripts/collect_pi_support_bundle.sh
+grep -q 'recent-system-journal' scripts/collect_pi_support_bundle.sh
+grep -q 'chartplotter.log' scripts/collect_pi_support_bundle.sh
+grep -q 'status.json' scripts/collect_pi_support_bundle.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
@@ -3195,6 +3207,10 @@ tmpdir="$(mktemp -d)"
 workspace_tmpdir="$(mktemp -d "$repo_root/.check-tmp.XXXXXX")"
 trap 'rm -rf "${tmpdir:-}" "${workspace_tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
 
+support_remote_heredoc="$tmpdir/support-remote-heredoc.sh"
+awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh >"$support_remote_heredoc"
+bash -n "$support_remote_heredoc"
+
 write_test_launcher_env() {
   local home_dir="$1"
   mkdir -p "$home_dir/.config/noaa-navionics"
@@ -3526,6 +3542,17 @@ if [[ "$pre_departure_code" -ne 0 ]]; then
   exit 1
 fi
 grep -q 'Usage: scripts/pre_departure_check_pi.sh' "$verify_output"
+
+set +e
+scripts/collect_pi_support_bundle.sh --help >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 0 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/collect_pi_support_bundle.sh' "$verify_output"
 
 set +e
 scripts/install_raspberry_pi.sh --help >"$install_output" 2>&1
@@ -4348,6 +4375,57 @@ grep -Fxq -- '3' "$pre_departure_args"
 grep -Fxq -- '--allow-dirty' "$pre_departure_args"
 grep -Fxq -- 'pi@example.invalid' "$pre_departure_args"
 grep -q 'Pre-departure check passed' "$verify_output"
+
+set +e
+scripts/collect_pi_support_bundle.sh root@example.invalid >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not collect support bundles as root@' "$verify_output"
+
+support_symlink="$tmpdir/support-output-link"
+ln -s "$tmpdir" "$support_symlink"
+set +e
+scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_symlink" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject symlinked output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not be a symlink' "$verify_output"
+
+support_fake_ssh_bin="$tmpdir/support-fake-ssh-bin"
+support_fake_ssh_args="$tmpdir/support-fake-ssh-args"
+support_fake_ssh_stdin="$tmpdir/support-fake-ssh-stdin"
+support_output_dir="$tmpdir/support-bundles"
+mkdir -p "$support_fake_ssh_bin"
+cat >"$support_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake-support-bundle\n'
+EOF
+chmod +x "$support_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_output_dir" >"$verify_output" 2>&1
+grep -q 'Collected Pi support bundle:' "$verify_output"
+support_bundle_path="$(sed -n 's/^Collected Pi support bundle: //p' "$verify_output")"
+test -s "$support_bundle_path"
+grep -q -- '-o BatchMode=yes' "$support_fake_ssh_args"
+grep -q 'pi@example.invalid' "$support_fake_ssh_args"
+grep -q 'bash -s' "$support_fake_ssh_args"
+grep -q 'support-bundle' "$support_fake_ssh_stdin"
+grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
+grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
 
 set +e
 scripts/verify_pi.sh --expected-boot-id >"$verify_output" 2>&1

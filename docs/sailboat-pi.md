@@ -75,6 +75,14 @@ scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-i
 
 It reuses strict live verification for the current boot and requires the chartplotter startup path, exact GPS receiver, chart readiness, GPSD, chrony GPS time, and GPX track logging to pass. It is quicker operational evidence for the running Pi, not a replacement for rebooted dock acceptance after commissioning or system changes.
 
+Collect a diagnostic support bundle from the Pi before changing anything:
+
+```bash
+scripts/collect_pi_support_bundle.sh pi@raspberrypi.local
+```
+
+The support bundle is a local `.tgz` containing Pi-side NOAA Navionics config, status reports, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, or download charts.
+
 Manual install:
 
 ```bash
