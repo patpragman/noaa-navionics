@@ -2700,6 +2700,41 @@ class GuiTests(unittest.TestCase):
             self.assertTrue(status_gui_module.anchor_alarm_active(distance, radius))
             self.assertFalse(status_gui_module.anchor_alarm_active(radius, radius))
 
+    def test_status_gui_anchor_check_rejects_stale_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            stale_anchor_fix = GPSFix(
+                timestamp=datetime.now(timezone.utc) - timedelta(seconds=600),
+                latitude=61.0,
+                longitude=-149.0,
+                satellites=9,
+                hdop=0.9,
+            )
+            current_fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.0,
+                longitude=-148.99,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fixes
+
+            try:
+                status_gui_module.read_configured_gps_fixes = (
+                    lambda app_config, **kwargs: [stale_anchor_fix, current_fix]
+                )
+                with self.assertRaisesRegex(ValueError, "anchor check requires fresh GPS fix 1"):
+                    status_gui_module.check_anchor_drift(config_path)
+            finally:
+                status_gui_module.read_configured_gps_fixes = original
+
     def test_status_gui_anchor_check_averages_anchor_samples(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

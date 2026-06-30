@@ -144,6 +144,19 @@ def _position_mark_freshness_failure(
     max_fix_age_seconds: float,
     future_tolerance_seconds: float,
 ) -> str:
+    return _gps_fix_freshness_failure(
+        fix,
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+
+
+def _gps_fix_freshness_failure(
+    fix: GPSFix,
+    *,
+    max_fix_age_seconds: float,
+    future_tolerance_seconds: float,
+) -> str:
     if fix.timestamp is None:
         return "fix has no timestamp"
     timestamp = fix.timestamp
@@ -163,6 +176,8 @@ def check_anchor_drift(
     gps_seconds: float = 10.0,
     radius_meters: float = 50.0,
     anchor_samples: int = 1,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 30.0,
 ) -> tuple[float, float, GPSFix, GPSFix]:
     if not math.isfinite(radius_meters) or radius_meters <= 0:
         raise ValueError("anchor radius must be greater than 0")
@@ -170,6 +185,14 @@ def check_anchor_drift(
         raise ValueError("anchor samples must be at least 1")
     app_config = read_config(config_path)
     fixes = read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)
+    for index, fix in enumerate(fixes, start=1):
+        freshness_failure = _gps_fix_freshness_failure(
+            fix,
+            max_fix_age_seconds=max_fix_age_seconds,
+            future_tolerance_seconds=future_tolerance_seconds,
+        )
+        if freshness_failure:
+            raise ValueError(f"anchor check requires fresh GPS fix {index}: {freshness_failure}")
     anchor_fixes = fixes[:anchor_samples]
     current_fix = fixes[-1]
     anchor_fix = _average_anchor_fix(anchor_fixes)

@@ -2601,8 +2601,10 @@ grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
+grep -q 'def _gps_fix_freshness_failure' src/noaa_navionics/status_gui.py
 grep -q 'position mark requires a fresh GPS fix' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
+grep -q 'anchor check requires fresh GPS fix' src/noaa_navionics/status_gui.py
 grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
 grep -q 'def _format_anchor_fix_detail' src/noaa_navionics/status_gui.py
 grep -q 'def anchor_alarm_active' src/noaa_navionics/status_gui.py
@@ -2628,8 +2630,8 @@ grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' READM
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
-grep -q 'use Anchor Check for a bounded drift check with an optional averaged anchor sample count' README.md
-grep -q 'use Anchor Check for a bounded drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
+grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
+grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
 grep -q 'shows anchor/current GPS quality and rings the display bell' README.md
 grep -q 'shows anchor/current GPS quality and rings the display bell' docs/sailboat-pi.md
 python3 - <<'PY'
@@ -2667,6 +2669,7 @@ grep -q 'test_status_gui_formats_structured_gps_summary' tests/test_downloader.p
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
 grep -q 'test_status_gui_position_mark_rejects_stale_fix' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_rejects_stale_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py
