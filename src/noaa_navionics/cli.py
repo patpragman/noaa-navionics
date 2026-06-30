@@ -834,37 +834,57 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
         raise RuntimeError(f"{symlink_component} is a symlink, refusing to prune GPX track logs")
     if not tracks_dir.exists():
         return []
-    tracks_stat = tracks_dir.stat()
-    if not stat.S_ISDIR(tracks_stat.st_mode):
-        raise RuntimeError(f"{tracks_dir} is not a directory, refusing to prune GPX track logs")
-    if tracks_stat.st_uid != os.getuid():
-        raise RuntimeError(f"{tracks_dir} is owned by uid {tracks_stat.st_uid}, expected {os.getuid()}")
-    if stat.S_IMODE(tracks_stat.st_mode) & 0o077:
-        raise RuntimeError(f"{tracks_dir} has permissions {stat.S_IMODE(tracks_stat.st_mode):03o}, expected private 0700")
+    tracks_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        tracks_fd = os.open(tracks_dir, tracks_flags)
+    except OSError as exc:
+        raise RuntimeError(f"{tracks_dir} could not be opened safely for GPX pruning: {exc}") from exc
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).date()
     cutoff = current - timedelta(days=retention_days)
     removed: list[Path] = []
-    for path in tracks_dir.glob("track-*.gpx"):
-        track_date = _track_date_from_name(path)
-        if track_date is None or track_date >= cutoff:
-            continue
+    try:
+        tracks_stat = os.fstat(tracks_fd)
+        if not stat.S_ISDIR(tracks_stat.st_mode):
+            raise RuntimeError(f"{tracks_dir} is not a directory, refusing to prune GPX track logs")
+        if tracks_stat.st_uid != os.getuid():
+            raise RuntimeError(f"{tracks_dir} is owned by uid {tracks_stat.st_uid}, expected {os.getuid()}")
+        if stat.S_IMODE(tracks_stat.st_mode) & 0o077:
+            raise RuntimeError(f"{tracks_dir} has permissions {stat.S_IMODE(tracks_stat.st_mode):03o}, expected private 0700")
+        for path in tracks_dir.glob("track-*.gpx"):
+            track_date = _track_date_from_name(path)
+            if track_date is None or track_date >= cutoff:
+                continue
+            _validate_prunable_track_log(path, tracks_fd=tracks_fd)
+            try:
+                os.unlink(path.name, dir_fd=tracks_fd)
+            except OSError:
+                continue
+            removed.append(path)
+    finally:
+        os.close(tracks_fd)
+    if removed:
+        _fsync_directory(tracks_dir)
+    return removed
+
+
+def _validate_prunable_track_log(path: Path, *, tracks_fd: int) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path.name, flags, dir_fd=tracks_fd)
+    except OSError as exc:
         if path.is_symlink():
-            raise RuntimeError(f"{path} is a symlink, refusing to prune GPX track logs")
-        path_stat = path.stat()
+            raise RuntimeError(f"{path} is a symlink, refusing to prune GPX track logs") from exc
+        raise RuntimeError(f"{path} could not be opened safely for GPX pruning: {exc}") from exc
+    try:
+        path_stat = os.fstat(fd)
         if not stat.S_ISREG(path_stat.st_mode):
             raise RuntimeError(f"{path} is not a regular GPX track file, refusing to prune")
         if path_stat.st_uid != os.getuid():
             raise RuntimeError(f"{path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}")
         if stat.S_IMODE(path_stat.st_mode) & 0o022:
             raise RuntimeError(f"{path} has permissions {stat.S_IMODE(path_stat.st_mode):03o}, expected no group/other write bits")
-        try:
-            path.unlink()
-        except OSError:
-            continue
-        removed.append(path)
-    if removed:
-        _fsync_directory(tracks_dir)
-    return removed
+    finally:
+        os.close(fd)
 
 
 def _fsync_directory(path: Path) -> None:

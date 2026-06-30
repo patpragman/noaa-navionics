@@ -8420,6 +8420,49 @@ class GpsTests(unittest.TestCase):
 
             self.assertTrue(old_dir.is_dir())
 
+    def test_prune_old_track_logs_uses_no_follow_descriptor_before_unlink(self):
+        open_calls = []
+        unlink_calls = []
+        original_open = cli_module.os.open
+        original_unlink = cli_module.os.unlink
+
+        def recording_open(path, flags, mode=0o777, *, dir_fd=None):
+            open_calls.append((path, flags, dir_fd))
+            if dir_fd is None:
+                return original_open(path, flags, mode)
+            return original_open(path, flags, mode, dir_fd=dir_fd)
+
+        def recording_unlink(path, *, dir_fd=None):
+            unlink_calls.append((path, dir_fd))
+            return original_unlink(path, dir_fd=dir_fd)
+
+        cli_module.os.open = recording_open
+        cli_module.os.unlink = recording_unlink
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tracks = Path(tmpdir) / "tracks"
+                tracks.mkdir()
+                tracks.chmod(0o700)
+                old = tracks / "track-20260401.gpx"
+                old.write_text("old", encoding="utf-8")
+
+                removed = cli_module._prune_old_track_logs(
+                    Path(tmpdir),
+                    retention_days=30,
+                    now=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc),
+                )
+        finally:
+            cli_module.os.open = original_open
+            cli_module.os.unlink = original_unlink
+
+        self.assertEqual([path.name for path in removed], ["track-20260401.gpx"])
+        track_open = [call for call in open_calls if call[0] == "track-20260401.gpx"]
+        self.assertEqual(len(track_open), 1)
+        self.assertTrue(track_open[0][1] & getattr(os, "O_NOFOLLOW", 0))
+        self.assertIsNotNone(track_open[0][2])
+        track_unlink = [call for call in unlink_calls if call[0] == "track-20260401.gpx"]
+        self.assertEqual(track_unlink, [("track-20260401.gpx", track_open[0][2])])
+
     def test_parse_gpsd_tpv(self):
         payload = (
             '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
