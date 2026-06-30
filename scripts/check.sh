@@ -72,6 +72,9 @@ grep -q 'prepare_private_cache_dir' scripts/start_chartplotter.sh
 grep -q 'first_symlink_ancestor' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache parent directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache path contains a symlink' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache parent directory is owned by uid' scripts/start_chartplotter.sh
+grep -q 'Tightening NOAA Navionics cache parent directory permissions' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics cache directory is owned by uid' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log is not a regular file' scripts/start_chartplotter.sh
@@ -3231,6 +3234,21 @@ fi
 grep -q 'NOAA Navionics cache path contains a symlink' "$launcher_symlink_cache_ancestor_output"
 grep -q "$launcher_symlink_cache_ancestor_home" "$launcher_symlink_cache_ancestor_output"
 test ! -e "$launcher_symlink_cache_ancestor_real_home/.cache/noaa-navionics"
+
+launcher_public_cache_parent_home="$tmpdir/launcher-public-cache-parent-home"
+launcher_public_cache_parent_output="$tmpdir/launcher-public-cache-parent.out"
+mkdir -p "$launcher_public_cache_parent_home/.local/bin" "$launcher_public_cache_parent_home/.config/noaa-navionics" "$launcher_public_cache_parent_home/.cache"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$launcher_public_cache_parent_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_public_cache_parent_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_public_cache_parent_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
+chmod +x "$launcher_public_cache_parent_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+chmod 0777 "$launcher_public_cache_parent_home/.cache"
+HOME="$launcher_public_cache_parent_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >"$launcher_public_cache_parent_output" 2>&1
+test "$(stat -c '%a' "$launcher_public_cache_parent_home/.cache")" = 700
+grep -q 'Tightening NOAA Navionics cache parent directory permissions from 777 to 700' "$launcher_public_cache_parent_output"
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_public_cache_parent_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_symlink_rotated_log_home="$tmpdir/launcher-symlink-rotated-log-home"
 launcher_symlink_rotated_log_target="$tmpdir/launcher-symlink-rotated-log-target"
