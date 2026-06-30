@@ -3440,6 +3440,51 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((root / ".AK_ENCs.previous").exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
+    def test_extract_zip_rejects_symlinked_previous_debris_without_promoting_it(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            target = root / "previous-target"
+            target.mkdir()
+            previous = root / ".AK_ENCs.previous"
+            try:
+                previous.symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "previous chart extraction path is a symlink before cleanup"):
+                extract_zip(archive, root / "AK_ENCs")
+
+            self.assertTrue(previous.is_symlink())
+            self.assertTrue(target.is_dir())
+            self.assertFalse((root / "AK_ENCs").exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
+    def test_extract_zip_rejects_previous_debris_with_symlinked_child(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            previous = root / ".AK_ENCs.previous"
+            previous.mkdir()
+            target = root / "previous-child-target"
+            target.mkdir()
+            try:
+                (previous / "child-link").symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "previous chart extraction path is a symlink before cleanup"):
+                extract_zip(archive, root / "AK_ENCs")
+
+            self.assertTrue((previous / "child-link").is_symlink())
+            self.assertTrue(target.is_dir())
+            self.assertFalse((root / "AK_ENCs").exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
     def test_extract_zip_syncs_extracted_tree_and_parent_directory(self):
         calls = []
         original_fsync = downloader_module.os.fsync

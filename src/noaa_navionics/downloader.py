@@ -415,23 +415,27 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         shutil.rmtree(staging, ignore_errors=True)
         raise
 
+    moved_existing_to_previous = False
+    installed_staging = False
     try:
         if previous.exists() or previous.is_symlink():
-            _remove_path(previous)
+            _remove_path(previous, label="previous chart extraction")
         if destination.exists():
             destination.rename(previous)
+            moved_existing_to_previous = True
         staging.rename(destination)
+        installed_staging = True
         _fsync_directory(parent)
     except Exception:
-        if destination.exists():
-            _remove_path(destination)
-        if previous.exists() and not destination.exists():
+        if installed_staging and destination.exists():
+            _remove_path(destination, label="new chart extraction")
+        if moved_existing_to_previous and previous.exists() and not destination.exists():
             previous.rename(destination)
             _fsync_directory(parent)
         shutil.rmtree(staging, ignore_errors=True)
         raise
     else:
-        _remove_path(previous, missing_ok=True)
+        _remove_path(previous, missing_ok=True, label="previous chart extraction")
         _fsync_directory(parent)
     return destination
 
@@ -495,8 +499,9 @@ def _open_exclusive_private_binary(path: Path):
         raise
 
 
-def _remove_path(path: Path, *, missing_ok: bool = False) -> None:
+def _remove_path(path: Path, *, missing_ok: bool = False, label: str = "chart update path") -> None:
     try:
+        _validate_removable_chart_tree(path, label=label)
         if path.is_dir() and not path.is_symlink():
             shutil.rmtree(path)
         else:
@@ -504,6 +509,35 @@ def _remove_path(path: Path, *, missing_ok: bool = False) -> None:
     except FileNotFoundError:
         if not missing_ok:
             raise
+
+
+def _validate_removable_chart_tree(path: Path, *, label: str) -> None:
+    def validate_one(candidate: Path) -> os.stat_result:
+        try:
+            stat_result = candidate.lstat()
+        except FileNotFoundError:
+            raise
+        except OSError as exc:
+            raise RuntimeError(f"could not inspect {label} before cleanup {candidate}: {exc}") from exc
+        if stat.S_ISLNK(stat_result.st_mode):
+            raise RuntimeError(f"{label} path is a symlink before cleanup: {candidate}")
+        if not (stat.S_ISDIR(stat_result.st_mode) or stat.S_ISREG(stat_result.st_mode)):
+            raise RuntimeError(f"{label} path is not a regular file or directory before cleanup: {candidate}")
+        if stat_result.st_uid != os.getuid():
+            raise RuntimeError(f"{label} path {candidate} is owned by uid {stat_result.st_uid}, expected {os.getuid()}")
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            raise RuntimeError(f"{label} path {candidate} has permissions {mode:04o}, expected no group/other write bits")
+        return stat_result
+
+    root_stat = validate_one(path)
+    if not stat.S_ISDIR(root_stat.st_mode):
+        return
+    for current_root, dirnames, filenames in os.walk(path):
+        current = Path(current_root)
+        validate_one(current)
+        for name in [*dirnames, *filenames]:
+            validate_one(current / name)
 
 
 def _fsync_tree(root: Path) -> None:

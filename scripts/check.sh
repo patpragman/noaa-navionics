@@ -1173,6 +1173,13 @@ grep -q 'chart extraction destination is a symlink' src/noaa_navionics/downloade
 grep -q 'chart extraction destination is not a directory' src/noaa_navionics/downloader.py
 grep -q 'test_extract_zip_rejects_symlinked_destination_parent' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_non_directory_destination' tests/test_downloader.py
+grep -q 'moved_existing_to_previous' src/noaa_navionics/downloader.py
+grep -q 'def _validate_removable_chart_tree' src/noaa_navionics/downloader.py
+grep -q 'previous chart extraction path is a symlink before cleanup' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_symlinked_previous_debris_without_promoting_it' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_previous_debris_with_symlinked_child' tests/test_downloader.py
+grep -q 'unsafe `.previous` extraction debris' README.md
+grep -q 'unsafe `.previous` extraction debris' docs/sailboat-pi.md
 grep -q 'def _pid_is_running' src/noaa_navionics/downloader.py
 grep -q 'def _current_boot_id' src/noaa_navionics/downloader.py
 grep -q 'STATE_PACKAGES' src/noaa_navionics/downloader.py
