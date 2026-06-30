@@ -1297,6 +1297,50 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("volatile USB name", stderr.getvalue())
 
+    def test_cli_log_track_rejects_by_id_device_that_is_not_symlink(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {root / 'tracks'}\n",
+                encoding="utf-8",
+            )
+            original = cli_module._read_fixes
+
+            def fail_if_opened(*args, **kwargs):
+                raise AssertionError("non-symlink by-id device should be rejected before opening")
+
+            try:
+                cli_module._read_fixes = fail_if_opened
+                stderr = StringIO()
+                with (
+                    patch("noaa_navionics.cli.Path.exists", return_value=True),
+                    patch("noaa_navionics.cli.Path.is_symlink", return_value=False),
+                    redirect_stdout(StringIO()),
+                    redirect_stderr(stderr),
+                ):
+                    code = cli_module.main(
+                        [
+                            "log-track",
+                            "--config",
+                            str(app_config),
+                            "--device",
+                            "/dev/serial/by-id/mock-gps",
+                            "--seconds",
+                            "0.1",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 2)
+            self.assertIn("udev by-id symlink", stderr.getvalue())
+
     def test_cli_gps_monitor_seconds_bounds_gpsd_wait(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1415,6 +1459,48 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             self.assertEqual(code, 2)
             self.assertIn("volatile USB name", stderr.getvalue())
+
+    def test_cli_gps_monitor_rejects_by_id_device_that_is_not_symlink(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n",
+                encoding="utf-8",
+            )
+            original = cli_module._read_fixes
+
+            def fail_if_opened(*args, **kwargs):
+                raise AssertionError("non-symlink by-id device should be rejected before opening")
+
+            try:
+                cli_module._read_fixes = fail_if_opened
+                stderr = StringIO()
+                with (
+                    patch("noaa_navionics.cli.Path.exists", return_value=True),
+                    patch("noaa_navionics.cli.Path.is_symlink", return_value=False),
+                    redirect_stdout(StringIO()),
+                    redirect_stderr(stderr),
+                ):
+                    code = cli_module.main(
+                        [
+                            "gps-monitor",
+                            "--config",
+                            str(app_config),
+                            "--device",
+                            "/dev/serial/by-id/mock-gps",
+                            "--seconds",
+                            "0.1",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 2)
+            self.assertIn("udev by-id symlink", stderr.getvalue())
 
     def test_cli_log_track_seconds_fails_when_no_usable_fix_is_written(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

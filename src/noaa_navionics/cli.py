@@ -580,6 +580,10 @@ def _validate_live_serial_device(device: str) -> None:
         raise ValueError(
             "GPS serial device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps"
         )
+    path = Path(device).expanduser()
+    path_text = str(path)
+    if path_text.startswith("/dev/serial/by-id/") and path.exists() and not path.is_symlink():
+        raise ValueError(f"GPS serial device {path} is not a udev by-id symlink")
 
 
 def _read_nmea_lines_until(stream, deadline: float):
