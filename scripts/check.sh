@@ -87,7 +87,15 @@ grep -q 'opened = os.fstat(fd)' scripts/start_chartplotter.sh
 grep -q 'stat.S_ISREG(opened.st_mode)' scripts/start_chartplotter.sh
 grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/start_chartplotter.sh
 ! grep -q 'with path.open("rb") as handle' scripts/start_chartplotter.sh
-grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
+grep -q 'write_private_file("pid", pid_text)' scripts/start_chartplotter.sh
+grep -q 'write_private_file("boot_id", boot_id_text)' scripts/start_chartplotter.sh
+grep -q 'os.open(name, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher lock directory has permissions' scripts/start_chartplotter.sh
+grep -q 'writes lock PID and boot-ID files through no-follow descriptor opens' README.md
+grep -q 'writes lock PID and boot-ID files through no-follow descriptor opens' docs/sailboat-pi.md
+! grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
+! grep -Fq '>"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
+! grep -Fq '>"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
 grep -q 'python3-tk' scripts/install_raspberry_pi.sh
@@ -128,7 +136,7 @@ grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris'
 grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` only after opening it through a no-follow descriptor' README.md
 grep -q 'through a no-follow descriptor, rotates and syncs that log after 1 MB' docs/sailboat-pi.md
 ! grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
-grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' scripts/start_chartplotter.sh
+grep -Fq 'sync_paths "$launcher_lock_dir" || true' scripts/start_chartplotter.sh
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
 grep -q 'is_raspberry_pi' scripts/start_chartplotter.sh

@@ -578,16 +578,73 @@ launcher_lock_from_current_boot() {
 
 write_launcher_lock_files() {
   local boot_id
-  printf '%s\n' "$$" >"${launcher_lock_dir}/pid"
-  chmod 0600 "${launcher_lock_dir}/pid"
   boot_id="$(current_boot_id)"
-  if [[ -n "$boot_id" ]]; then
-    printf '%s\n' "$boot_id" >"${launcher_lock_dir}/boot_id"
-    chmod 0600 "${launcher_lock_dir}/boot_id"
-  else
-    rm -f "${launcher_lock_dir}/boot_id"
-  fi
-  sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir" || true
+  python3 - "$launcher_lock_dir" "$$" "$boot_id" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+lock = Path(sys.argv[1]).expanduser()
+pid_text = sys.argv[2]
+boot_id_text = sys.argv[3]
+expected_uid = os.getuid()
+
+if not pid_text.isdigit():
+    raise SystemExit(f"chartplotter launcher lock pid is invalid: {pid_text}")
+if lock.is_symlink():
+    raise SystemExit(f"chartplotter launcher lock path contains a symlink: {lock}")
+if not lock.is_dir():
+    raise SystemExit(f"chartplotter launcher lock path is not a directory: {lock}")
+
+dir_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+dir_fd = os.open(lock, dir_flags)
+try:
+    lock_stat = os.fstat(dir_fd)
+    if not stat.S_ISDIR(lock_stat.st_mode):
+        raise SystemExit(f"chartplotter launcher lock path is not a directory after opening: {lock}")
+    if lock_stat.st_uid != expected_uid:
+        raise SystemExit(
+            f"chartplotter launcher lock directory is owned by uid {lock_stat.st_uid}, expected {expected_uid}: {lock}"
+        )
+    lock_mode = lock_stat.st_mode & 0o777
+    if lock_mode & 0o077:
+        raise SystemExit(f"chartplotter launcher lock directory has permissions {lock_mode:04o}, expected private 0700: {lock}")
+
+    def write_private_file(name: str, value: str) -> None:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(name, flags, 0o600, dir_fd=dir_fd)
+        try:
+            opened = os.fstat(fd)
+            if not stat.S_ISREG(opened.st_mode):
+                raise SystemExit(f"chartplotter launcher lock {name} is not a regular file")
+            if opened.st_uid != expected_uid:
+                raise SystemExit(
+                    f"chartplotter launcher lock {name} is owned by uid {opened.st_uid}, expected {expected_uid}"
+                )
+            os.fchmod(fd, 0o600)
+            os.write(fd, f"{value}\n".encode("ascii"))
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    write_private_file("pid", pid_text)
+    if boot_id_text:
+        write_private_file("boot_id", boot_id_text)
+    else:
+        try:
+            existing = os.stat("boot_id", dir_fd=dir_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
+            if not stat.S_ISREG(existing.st_mode):
+                raise SystemExit("chartplotter launcher lock boot_id is not a regular file")
+            os.unlink("boot_id", dir_fd=dir_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+  sync_paths "$launcher_lock_dir" || true
 }
 
 release_launcher_lock() {
