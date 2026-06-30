@@ -2065,6 +2065,10 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["sync-charts", "--retry-delay", "-1"])
 
     def test_wait_network_rejects_invalid_values(self):
+        self.assert_parse_error(["wait-network", "--host", ""])
+        self.assert_parse_error(["wait-network", "--host", "bad host"])
+        self.assert_parse_error(["wait-network", "--host", "bad;host"])
+        self.assert_parse_error(["wait-network", "--host", "bad|host"])
         self.assert_parse_error(["wait-network", "--port", "0"])
         self.assert_parse_error(["wait-network", "--port", "65536"])
         self.assert_parse_error(["wait-network", "--seconds", "-1"])

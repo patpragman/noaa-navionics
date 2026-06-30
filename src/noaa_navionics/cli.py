@@ -71,6 +71,15 @@ def _tcp_port(value: str) -> int:
     return parsed
 
 
+def _network_host(value: str) -> str:
+    parsed = value.strip()
+    if not parsed:
+        raise argparse.ArgumentTypeError("must not be blank")
+    if any(char.isspace() for char in parsed) or any(char in parsed for char in (";", "|", '"', "'")):
+        raise argparse.ArgumentTypeError("must not contain whitespace, quotes, semicolons, or pipes")
+    return parsed
+
+
 def _non_negative_int(value: str) -> int:
     try:
         parsed = int(value)
@@ -126,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--retry-delay", type=_non_negative_float, default=10.0, help="seconds between retryable failures")
 
     wait_network = subparsers.add_parser("wait-network", help="wait for bounded TCP connectivity")
-    wait_network.add_argument("--host", default="www.charts.noaa.gov", help="host to probe")
+    wait_network.add_argument("--host", type=_network_host, default="www.charts.noaa.gov", help="host to probe")
     wait_network.add_argument("--port", type=_tcp_port, default=443, help="TCP port to probe")
     wait_network.add_argument("--seconds", type=_non_negative_float, default=300.0, help="maximum seconds to wait")
     wait_network.add_argument("--interval", type=_positive_float, default=5.0, help="seconds between probes")
