@@ -38,6 +38,13 @@ class OpenCPNGPSDConfigResult:
     dry_run: bool = False
 
 
+@dataclass(frozen=True)
+class OpenCPNGPSDConnection:
+    host: str
+    port: Optional[int]
+    raw: str
+
+
 def opencpn_config_path(explicit: Optional[Path] = None) -> Path:
     if explicit:
         return Path(explicit).expanduser()
@@ -79,15 +86,35 @@ def gpsd_connection_configured(
     config_path: Optional[Path] = None,
 ) -> bool:
     wanted_host = _normalize_host(host)
-    for connection in read_data_connections(config_path):
+    for connection in enabled_gpsd_connections(config_path):
+        if connection.host == wanted_host and connection.port == port:
+            return True
+    return False
+
+
+def enabled_gpsd_connections(config_path: Optional[Path] = None) -> list[OpenCPNGPSDConnection]:
+    return enabled_gpsd_connections_from_values(read_data_connections(config_path))
+
+
+def enabled_gpsd_connections_from_values(connections: list[str]) -> list[OpenCPNGPSDConnection]:
+    enabled: list[OpenCPNGPSDConnection] = []
+    for connection in connections:
         fields = connection.split(";")
         if len(fields) < 18:
             continue
-        if fields[0] != "1" or fields[1] != "2":
-            continue
-        if _normalize_host(fields[2]) == wanted_host and _int_or_none(fields[3]) == port and fields[17] == "1":
-            return True
-    return False
+        if fields[0] == "1" and fields[1] == "2" and fields[17] == "1":
+            enabled.append(
+                OpenCPNGPSDConnection(
+                    host=_normalize_host(fields[2]),
+                    port=_int_or_none(fields[3]),
+                    raw=connection,
+                )
+            )
+    return enabled
+
+
+def normalize_gpsd_host(host: str) -> str:
+    return _normalize_host(host)
 
 
 def configure_chart_directory(

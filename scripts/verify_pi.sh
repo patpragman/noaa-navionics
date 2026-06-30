@@ -506,6 +506,29 @@ def gpsd_connection_present(data_connections, host, port):
             return True
     return False
 
+def enabled_gpsd_connections(data_connections):
+    enabled = []
+    for connection in data_connections:
+        fields = connection.split(";")
+        if len(fields) < 18:
+            continue
+        if fields[0] != "1" or fields[1] != "2" or fields[17] != "1":
+            continue
+        try:
+            configured_port = int(fields[3])
+        except ValueError:
+            configured_port = None
+        enabled.append((normalize_host(fields[2]), configured_port))
+    return enabled
+
+def unexpected_gpsd_connections(data_connections, host, port):
+    expected_host = normalize_host(host)
+    return [
+        (configured_host, configured_port)
+        for configured_host, configured_port in enabled_gpsd_connections(data_connections)
+        if configured_host != expected_host or configured_port != port
+    ]
+
 def parse_key_value_file(path, comment_prefixes):
     try:
         text = Path(path).expanduser().read_text(encoding="utf-8")
@@ -1023,6 +1046,20 @@ if expected_config_path:
             f"OpenCPN config {opencpn_config_path} does not contain enabled GPSD connection "
             f"{expected_config['gpsd_host']}:{expected_config['gpsd_port']}"
         )
+    if expected_config["gps_mode"] == "gpsd":
+        unexpected_opencpn_gpsd = unexpected_gpsd_connections(
+            live_data_connections,
+            expected_config["gpsd_host"],
+            expected_config["gpsd_port"],
+        )
+        if unexpected_opencpn_gpsd:
+            endpoints = ", ".join(
+                f"{configured_host}:{configured_port if configured_port is not None else '<invalid-port>'}"
+                for configured_host, configured_port in unexpected_opencpn_gpsd
+            )
+            raise SystemExit(
+                f"OpenCPN config {opencpn_config_path} contains unexpected enabled GPSD connections: {endpoints}"
+            )
     desktop = report.get("desktop")
     if not isinstance(desktop, dict):
         raise SystemExit("status report has no desktop section")

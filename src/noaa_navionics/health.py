@@ -24,7 +24,13 @@ from .gps import (
     open_nmea_stream,
 )
 from .downloader import MANIFEST_NAME, count_enc_cells, package_for, read_manifest, sha256_file
-from .opencpn import chart_directory_configured, gpsd_connection_configured, opencpn_config_path
+from .opencpn import (
+    chart_directory_configured,
+    enabled_gpsd_connections,
+    gpsd_connection_configured,
+    normalize_gpsd_host,
+    opencpn_config_path,
+)
 
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
@@ -461,6 +467,22 @@ def check_opencpn_gpsd_config(
             f"missing {config_path}; run noaa-navionics configure-opencpn",
         )
     if gpsd_connection_configured(host=host, port=port, config_path=config_path):
+        expected_host = normalize_gpsd_host(host)
+        unexpected = [
+            connection
+            for connection in enabled_gpsd_connections(config_path)
+            if connection.host != expected_host or connection.port != port
+        ]
+        if unexpected:
+            endpoints = ", ".join(
+                f"{connection.host}:{connection.port if connection.port is not None else '<invalid-port>'}"
+                for connection in unexpected
+            )
+            return CheckResult(
+                "OpenCPN GPSD",
+                False,
+                f"unexpected enabled GPSD connection in {config_path}: {endpoints}; remove stale OpenCPN GPSD sources",
+            )
         return CheckResult("OpenCPN GPSD", True, f"GPSD {host}:{port} listed in {config_path}")
     return CheckResult(
         "OpenCPN GPSD",

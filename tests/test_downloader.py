@@ -816,6 +816,19 @@ class OpenCPNConfigTests(unittest.TestCase):
             configured = check_opencpn_gpsd_config(config_path=config)
             self.assertTrue(configured.ok)
 
+    def test_check_opencpn_gpsd_config_rejects_extra_enabled_gpsd_source(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+
+            configure_gpsd_connection(config_path=config, host="127.0.0.1", port=2947)
+            configure_gpsd_connection(config_path=config, host="192.0.2.20", port=2947)
+
+            result = check_opencpn_gpsd_config(config_path=config, host="127.0.0.1", port=2947)
+
+            self.assertFalse(result.ok)
+            self.assertIn("unexpected enabled GPSD connection", result.detail)
+            self.assertIn("192.0.2.20:2947", result.detail)
+
     def test_cli_configure_opencpn_skips_gpsd_for_serial_mode(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

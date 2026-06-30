@@ -1351,6 +1351,9 @@ grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gu
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/gui.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
+grep -q 'class OpenCPNGPSDConnection' src/noaa_navionics/opencpn.py
+grep -q 'def enabled_gpsd_connections' src/noaa_navionics/opencpn.py
+grep -q 'def enabled_gpsd_connections_from_values' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/opencpn.py
@@ -1364,6 +1367,11 @@ grep -q 'OpenCPN config directory .* has permissions' src/noaa_navionics/opencpn
 grep -q 'os.chmod(parent, 0o700)' src/noaa_navionics/opencpn.py
 grep -q 'expected private 0700' src/noaa_navionics/opencpn.py
 grep -q 'expected no group/other write bits' src/noaa_navionics/opencpn.py
+grep -q 'unexpected enabled GPSD connection' src/noaa_navionics/health.py
+grep -q 'unexpected enabled GPSD connections' scripts/verify_pi.sh
+grep -q 'test_check_opencpn_gpsd_config_rejects_extra_enabled_gpsd_source' tests/test_downloader.py
+grep -q 'rejects extra enabled OpenCPN GPSD endpoints' README.md
+grep -q 'rejects extra enabled OpenCPN GPSD endpoints' docs/sailboat-pi.md
 grep -q 'test_configure_chart_directory_rejects_symlinked_config_ancestor' tests/test_downloader.py
 grep -q 'test_configure_chart_directory_tightens_public_config_parent' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_downloader.py
