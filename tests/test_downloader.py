@@ -7174,6 +7174,7 @@ class GpsTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmpdir:
                 tracks = Path(tmpdir) / "tracks"
                 tracks.mkdir()
+                tracks.chmod(0o700)
                 old = tracks / "track-20260401.gpx"
                 old.write_text("old", encoding="utf-8")
 
@@ -7187,6 +7188,46 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual([path.name for path in removed], ["track-20260401.gpx"])
         self.assertGreaterEqual(len(calls), 1)
+
+    def test_prune_old_track_logs_rejects_symlinked_old_track(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracks = Path(tmpdir) / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            target = Path(tmpdir) / "target.gpx"
+            target.write_text("existing\n", encoding="utf-8")
+            old_link = tracks / "track-20260401.gpx"
+            try:
+                old_link.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "refusing to prune GPX track logs"):
+                cli_module._prune_old_track_logs(
+                    Path(tmpdir),
+                    retention_days=30,
+                    now=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc),
+                )
+
+            self.assertTrue(old_link.is_symlink())
+            self.assertEqual(target.read_text(encoding="utf-8"), "existing\n")
+
+    def test_prune_old_track_logs_rejects_nonregular_old_track(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracks = Path(tmpdir) / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            old_dir = tracks / "track-20260401.gpx"
+            old_dir.mkdir()
+
+            with self.assertRaisesRegex(RuntimeError, "not a regular GPX track file"):
+                cli_module._prune_old_track_logs(
+                    Path(tmpdir),
+                    retention_days=30,
+                    now=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc),
+                )
+
+            self.assertTrue(old_dir.is_dir())
 
     def test_parse_gpsd_tpv(self):
         payload = (

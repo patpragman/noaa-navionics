@@ -1239,6 +1239,12 @@ grep -q 'GPX logger also refuses symlinked track-output parent components' docs/
 grep -q 'symlinked GPX output files' README.md
 grep -q 'symlinked GPX output files' docs/sailboat-pi.md
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
+grep -q 'refusing to prune GPX track logs' src/noaa_navionics/cli.py
+grep -q 'not a regular GPX track file' src/noaa_navionics/cli.py
+grep -q 'test_prune_old_track_logs_rejects_symlinked_old_track' tests/test_downloader.py
+grep -q 'test_prune_old_track_logs_rejects_nonregular_old_track' tests/test_downloader.py
+grep -q 'Retention pruning refuses symlinked, non-regular, misowned, or group/world-writable old GPX entries' README.md
+grep -q 'Retention pruning refuses symlinked, non-regular, misowned, or group/world-writable old GPX entries' docs/sailboat-pi.md
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
 grep -q 'def _prepare_home_status_cache_parent' src/noaa_navionics/report.py
 grep -q 'status report parent directory' src/noaa_navionics/report.py

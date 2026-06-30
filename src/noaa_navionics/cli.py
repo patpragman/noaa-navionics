@@ -9,6 +9,7 @@ import math
 import os
 import signal
 import socket
+import stat
 import time
 import sys
 
@@ -728,8 +729,18 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
     if retention_days <= 0:
         return []
     tracks_dir = Path(base_output).expanduser() / "tracks"
+    symlink_component = first_symlink_ancestor(tracks_dir)
+    if symlink_component is not None:
+        raise RuntimeError(f"{symlink_component} is a symlink, refusing to prune GPX track logs")
     if not tracks_dir.exists():
         return []
+    tracks_stat = tracks_dir.stat()
+    if not stat.S_ISDIR(tracks_stat.st_mode):
+        raise RuntimeError(f"{tracks_dir} is not a directory, refusing to prune GPX track logs")
+    if tracks_stat.st_uid != os.getuid():
+        raise RuntimeError(f"{tracks_dir} is owned by uid {tracks_stat.st_uid}, expected {os.getuid()}")
+    if stat.S_IMODE(tracks_stat.st_mode) & 0o077:
+        raise RuntimeError(f"{tracks_dir} has permissions {stat.S_IMODE(tracks_stat.st_mode):03o}, expected private 0700")
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).date()
     cutoff = current - timedelta(days=retention_days)
     removed: list[Path] = []
@@ -737,6 +748,15 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
         track_date = _track_date_from_name(path)
         if track_date is None or track_date >= cutoff:
             continue
+        if path.is_symlink():
+            raise RuntimeError(f"{path} is a symlink, refusing to prune GPX track logs")
+        path_stat = path.stat()
+        if not stat.S_ISREG(path_stat.st_mode):
+            raise RuntimeError(f"{path} is not a regular GPX track file, refusing to prune")
+        if path_stat.st_uid != os.getuid():
+            raise RuntimeError(f"{path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}")
+        if stat.S_IMODE(path_stat.st_mode) & 0o022:
+            raise RuntimeError(f"{path} has permissions {stat.S_IMODE(path_stat.st_mode):03o}, expected no group/other write bits")
         try:
             path.unlink()
         except OSError:
