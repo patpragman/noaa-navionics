@@ -190,6 +190,8 @@ grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAlive
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
+grep -q 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' scripts/verify_pi.sh
+grep -q 'export PATH' scripts/verify_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
 grep -q 'ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
 grep -q 'local_command_exists rsync' scripts/deploy_to_pi.sh
@@ -1502,6 +1504,7 @@ grep -q 'Remote reboot command is not in a trusted system directory' scripts/doc
 grep -q 'Remote reboot command ${item_kind} is owned by uid' scripts/dock_test_pi.sh
 grep -q 'Remote reboot command ${item_kind} has permissions' scripts/dock_test_pi.sh
 grep -Fq 'readlink -f -- "$reboot_cmd"' scripts/dock_test_pi.sh
+grep -q 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' scripts/dock_test_pi.sh
 grep -q 'sudo -n -l' scripts/dock_test_pi.sh
 grep -q "sudo -n '\$remote_reboot_cmd'" scripts/dock_test_pi.sh
 ! grep -q 'sudo -n reboot' scripts/dock_test_pi.sh
@@ -1524,6 +1527,8 @@ grep -q 'preflights noninteractive sudo reboot access before deploying or provis
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
 grep -q 'root-owned, non-group/world-writable command in a trusted system directory' README.md
 grep -q 'root-owned, non-group/world-writable command in a trusted system directory' docs/sailboat-pi.md
+grep -q 'pins its remote command path to trusted system directories' README.md
+grep -q 'pins its remote command path to trusted system directories' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
 grep -q 'only after rejecting symlinked launcher environment files or path components' README.md

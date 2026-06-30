@@ -340,6 +340,8 @@ validate_remote_reboot_command_trust() {
 
   ssh "${ssh_batch_options[@]}" "$target" "sh -s -- '$reboot_cmd'" <<'REMOTE_REBOOT_TRUST'
 set -eu
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
 
 reboot_cmd="$1"
 

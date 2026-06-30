@@ -238,6 +238,8 @@ expected_boot_id_quoted="$(printf '%q' "$expected_boot_id")"
 
 ssh -T "${ssh_batch_options[@]}" "$target" "NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} NOAA_NAVIONICS_EXPECTED_BOOT_ID=${expected_boot_id_quoted} bash -s" <<'REMOTE'
 set -euo pipefail
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
 
 failures=0
 bin_dir="${HOME}/.local/bin"
