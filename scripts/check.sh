@@ -2477,7 +2477,7 @@ install_start = text.index("install_file_atomic()")
 promote = text.index('mv -f "$tmp" "$target"', install_start)
 verify = text.index('verify_promoted_user_file "$source" "$target" "$mode"', promote)
 sync = text.index('sync_paths "$target"', verify)
-daemon = text.index('run systemctl --user daemon-reload')
+daemon = text.index('run "$systemctl_cmd" --user daemon-reload')
 if not promote < verify < sync < daemon:
     raise SystemExit("promoted user files must be verified before sync and daemon reload")
 PY
@@ -2500,17 +2500,24 @@ grep -q 'require_user_unit_result_success noaa-navionics-preflight.service "boot
 grep -q 'Provisioning did not leave .* enabled' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning did not leave .* active' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning did not leave .* with a successful last run' scripts/provision_sailboat_pi.sh
-grep -q 'sudo loginctl enable-linger "$USER"' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
+grep -q 'require_trusted_system_command()' scripts/provision_sailboat_pi.sh
+grep -q 'path_in_trusted_system_dir()' scripts/provision_sailboat_pi.sh
+grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/provision_sailboat_pi.sh
+grep -q 'loginctl_cmd="$(require_trusted_system_command loginctl "Loginctl command")"' scripts/provision_sailboat_pi.sh
+grep -q 'trusted systemctl is required to validate existing' scripts/provision_sailboat_pi.sh
+grep -q 'run sudo "$loginctl_cmd" enable-linger "$USER"' scripts/provision_sailboat_pi.sh
+grep -q 'run "$systemctl_cmd" --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' docs/sailboat-pi.md
 grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' README.md
 grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' docs/sailboat-pi.md
-grep -q 'systemctl --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user enable noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
-grep -q 'systemctl --user restart noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
+grep -q 'resolves systemctl and loginctl through trusted root-owned command checks' README.md
+grep -q 'resolves systemctl and loginctl through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'run "$systemctl_cmd" --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
+grep -q 'run "$systemctl_cmd" --user enable --now noaa-navionics.timer' scripts/provision_sailboat_pi.sh
+grep -q 'run "$systemctl_cmd" --user restart noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
+grep -q 'run "$systemctl_cmd" --user enable noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
+grep -q 'run "$systemctl_cmd" --user restart noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 python3 - <<'PY'
 from pathlib import Path
@@ -3967,7 +3974,7 @@ import sys
 
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 guard_index = text.index("require_loaded_user_unit_property noaa-navionics.service ProtectSystem full")
-linger_index = text.index("sudo loginctl enable-linger")
+linger_index = text.index("loginctl enable-linger")
 enabled_index = text.index("require_user_unit_enabled noaa-navionics.timer")
 preflight_restart_index = text.index("systemctl --user restart noaa-navionics-preflight.service")
 preflight_success_index = text.index("require_user_unit_result_success noaa-navionics-preflight.service")

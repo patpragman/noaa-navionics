@@ -23,6 +23,8 @@ sync_retries=5
 sync_retry_delay=30
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 bin="${HOME}/.local/bin/noaa-navionics"
+systemctl_cmd=""
+loginctl_cmd=""
 
 sync_paths() {
   python3 - "$@" <<'PY'
@@ -132,6 +134,112 @@ require_non_negative_integer() {
     echo "$name must be a non-negative integer" >&2
     exit 2
   fi
+}
+
+path_in_trusted_system_dir() {
+  case "$1" in
+    /usr/local/sbin/*|/usr/local/bin/*|/usr/sbin/*|/usr/bin/*|/sbin/*|/bin/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+require_trusted_system_command() {
+  local command_name="$1"
+  local label="$2"
+  local command_path
+  local resolved_path
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_owner_uid
+  local parent_mode_text
+  local parent_mode
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "${label} was not found on PATH" >&2
+    return 1
+  fi
+  case "$command_path" in
+    /*)
+      ;;
+    *)
+      echo "${label} path is not absolute: $command_path" >&2
+      return 1
+      ;;
+  esac
+  if ! path_in_trusted_system_dir "$command_path"; then
+    echo "${label} is not in a trusted system directory: $command_path" >&2
+    return 1
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve ${label}: $command_path" >&2
+    return 1
+  fi
+  if ! path_in_trusted_system_dir "$resolved_path"; then
+    echo "${label} resolves outside trusted system directories: $command_path -> $resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -f "$resolved_path" ]]; then
+    echo "${label} is not a regular file after resolution: $command_path -> $resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "${label} is not executable: $resolved_path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$resolved_path" 2>/dev/null)" || {
+    echo "Could not inspect ${label}: $resolved_path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "${label} is owned by uid ${owner_uid}, expected root: $resolved_path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "${label} has permissions ${mode_text}, expected no group/other write bits: $resolved_path" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$resolved_path")"
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect ${label} directory: $parent_dir" >&2
+    return 1
+  }
+  parent_owner_uid="${parent_stat%% *}"
+  parent_mode_text="${parent_stat#* }"
+  if [[ "$parent_owner_uid" != "0" ]]; then
+    echo "${label} directory is owned by uid ${parent_owner_uid}, expected root: $parent_dir" >&2
+    return 1
+  fi
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "${label} directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  printf '%s\n' "$resolved_path"
+}
+
+systemctl_command() {
+  if [[ -z "$systemctl_cmd" ]]; then
+    systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")" || return 1
+  fi
+  printf '%s\n' "$systemctl_cmd"
+}
+
+loginctl_command() {
+  if [[ -z "$loginctl_cmd" ]]; then
+    loginctl_cmd="$(require_trusted_system_command loginctl "Loginctl command")" || return 1
+  fi
+  printf '%s\n' "$loginctl_cmd"
 }
 
 same_path() {
@@ -342,19 +450,20 @@ validate_existing_system_service() {
   local unit="$1"
   local label="$2"
   local skip_flag="$3"
+  local systemctl_bin
   local enabled
   local active
-  if ! command -v systemctl >/dev/null 2>&1; then
-    echo "systemctl is required to validate existing ${label} service state when ${skip_flag} is used" >&2
+  if ! systemctl_bin="$(systemctl_command)"; then
+    echo "trusted systemctl is required to validate existing ${label} service state when ${skip_flag} is used" >&2
     exit 2
   fi
-  if ! systemctl is-enabled --quiet "$unit"; then
-    enabled="$(systemctl is-enabled "$unit" 2>&1 || true)"
+  if ! "$systemctl_bin" is-enabled --quiet "$unit"; then
+    enabled="$("$systemctl_bin" is-enabled "$unit" 2>&1 || true)"
     echo "${label} service must already be enabled when ${skip_flag} is used with unattended startup: ${unit} is ${enabled:-unknown}" >&2
     exit 2
   fi
-  if ! systemctl is-active --quiet "$unit"; then
-    active="$(systemctl is-active "$unit" 2>&1 || true)"
+  if ! "$systemctl_bin" is-active --quiet "$unit"; then
+    active="$("$systemctl_bin" is-active "$unit" 2>&1 || true)"
     echo "${label} service must already be active when ${skip_flag} is used with unattended startup: ${unit} is ${active:-unknown}" >&2
     exit 2
   fi
@@ -936,12 +1045,14 @@ require_loaded_user_unit_property() {
   local property="$2"
   local expected="$3"
   local label="$4"
+  local systemctl_bin
   local loaded
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ require_loaded_user_unit_property %q %q %q %q\n' "$unit" "$property" "$expected" "$label"
     return 0
   fi
-  if ! loaded="$(systemctl --user show "$unit" -p "$property" 2>/dev/null)"; then
+  systemctl_bin="$(systemctl_command)" || exit 2
+  if ! loaded="$("$systemctl_bin" --user show "$unit" -p "$property" 2>/dev/null)"; then
     cat >&2 <<EOF
 Could not inspect loaded user unit property: $unit $property
 The unattended startup services were installed but not enabled. Check the user systemd manager with: systemctl --user status $unit
@@ -984,13 +1095,15 @@ require_loaded_user_units() {
 require_user_unit_enabled() {
   local unit="$1"
   local label="$2"
+  local systemctl_bin
   local state
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ require_user_unit_enabled %q %q\n' "$unit" "$label"
     return 0
   fi
-  if ! systemctl --user is-enabled --quiet "$unit"; then
-    state="$(systemctl --user is-enabled "$unit" 2>&1 || true)"
+  systemctl_bin="$(systemctl_command)" || exit 2
+  if ! "$systemctl_bin" --user is-enabled --quiet "$unit"; then
+    state="$("$systemctl_bin" --user is-enabled "$unit" 2>&1 || true)"
     cat >&2 <<EOF
 Provisioning did not leave $label enabled.
 Expected: systemctl --user is-enabled $unit -> enabled
@@ -1003,13 +1116,15 @@ EOF
 require_user_unit_active() {
   local unit="$1"
   local label="$2"
+  local systemctl_bin
   local state
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ require_user_unit_active %q %q\n' "$unit" "$label"
     return 0
   fi
-  if ! systemctl --user is-active --quiet "$unit"; then
-    state="$(systemctl --user is-active "$unit" 2>&1 || true)"
+  systemctl_bin="$(systemctl_command)" || exit 2
+  if ! "$systemctl_bin" --user is-active --quiet "$unit"; then
+    state="$("$systemctl_bin" --user is-active "$unit" 2>&1 || true)"
     cat >&2 <<EOF
 Provisioning did not leave $label active.
 Expected: systemctl --user is-active $unit -> active
@@ -1022,14 +1137,16 @@ EOF
 require_user_unit_result_success() {
   local unit="$1"
   local label="$2"
+  local systemctl_bin
   local result
   local status
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+ require_user_unit_result_success %q %q\n' "$unit" "$label"
     return 0
   fi
-  result="$(systemctl --user show "$unit" -p Result --value 2>/dev/null || true)"
-  status="$(systemctl --user show "$unit" -p ExecMainStatus --value 2>/dev/null || true)"
+  systemctl_bin="$(systemctl_command)" || exit 2
+  result="$("$systemctl_bin" --user show "$unit" -p Result --value 2>/dev/null || true)"
+  status="$("$systemctl_bin" --user show "$unit" -p ExecMainStatus --value 2>/dev/null || true)"
   if [[ "$result" != "success" || "$status" != "0" ]]; then
     cat >&2 <<EOF
 Provisioning did not leave $label with a successful last run.
@@ -1187,6 +1304,8 @@ fi
 run "$bin" configure-opencpn --config "$config"
 
 if [[ "$skip_services" -eq 0 ]]; then
+  systemctl_cmd="$(systemctl_command)" || exit 2
+  loginctl_cmd="$(loginctl_command)" || exit 2
   validate_user_install_path "$chart_service" "chart refresh user service"
   validate_user_install_path "$chart_timer" "chart refresh user timer"
   validate_user_install_path "$track_service" "track logger user service"
@@ -1196,14 +1315,14 @@ if [[ "$skip_services" -eq 0 ]]; then
   install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644
   install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644
   install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644
-  run systemctl --user daemon-reload
+  run "$systemctl_cmd" --user daemon-reload
   require_loaded_user_units
-  run sudo loginctl enable-linger "$USER"
-  run systemctl --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
-  run systemctl --user enable --now noaa-navionics.timer
-  run systemctl --user enable --now noaa-navionics-track.service
-  run systemctl --user restart noaa-navionics-track.service
-  run systemctl --user enable noaa-navionics-preflight.service
+  run sudo "$loginctl_cmd" enable-linger "$USER"
+  run "$systemctl_cmd" --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
+  run "$systemctl_cmd" --user enable --now noaa-navionics.timer
+  run "$systemctl_cmd" --user enable --now noaa-navionics-track.service
+  run "$systemctl_cmd" --user restart noaa-navionics-track.service
+  run "$systemctl_cmd" --user enable noaa-navionics-preflight.service
   require_user_unit_enabled noaa-navionics.timer "chart refresh timer"
   require_user_unit_enabled noaa-navionics-track.service "track logger service"
   require_user_unit_enabled noaa-navionics-preflight.service "boot readiness service"
@@ -1226,7 +1345,7 @@ if [[ "$skip_autologin" -eq 0 ]]; then
 fi
 
 if [[ "$skip_services" -eq 0 ]]; then
-  run systemctl --user restart noaa-navionics-preflight.service
+  run "$systemctl_cmd" --user restart noaa-navionics-preflight.service
   require_user_unit_result_success noaa-navionics-preflight.service "boot readiness service"
 fi
 
