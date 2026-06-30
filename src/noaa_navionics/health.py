@@ -42,6 +42,14 @@ DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revisi
 GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 REMOVABLE_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
 CHRONY_GPSD_REFCLOCK = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
+TRUSTED_SYSTEM_COMMAND_DIRS = {
+    Path("/usr/local/sbin"),
+    Path("/usr/local/bin"),
+    Path("/usr/sbin"),
+    Path("/usr/bin"),
+    Path("/sbin"),
+    Path("/bin"),
+}
 
 
 @dataclass(frozen=True)
@@ -347,12 +355,56 @@ def check_opencpn() -> CheckResult:
 
 
 def check_display_power_tool() -> CheckResult:
-    path = shutil.which("xset")
-    return CheckResult(
-        "Display Power",
-        path is not None,
-        path or "missing; install x11-xserver-utils so the launcher can disable display blanking",
-    )
+    path, error = _trusted_system_command("xset", "Display Power command")
+    if error:
+        return CheckResult(
+            "Display Power",
+            False,
+            f"{error}; install x11-xserver-utils so the launcher can disable display blanking",
+        )
+    assert path is not None
+    return CheckResult("Display Power", True, f"trusted executable at {path}")
+
+
+def _trusted_system_command(command: str, label: str) -> tuple[Optional[Path], str]:
+    found = shutil.which(command)
+    if found is None:
+        return None, f"{command} not found"
+    path = Path(found)
+    if not path.is_absolute():
+        return None, f"{label} path is not absolute: {path}"
+    if path.is_symlink():
+        return None, f"{label} is a symlink: {path}"
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if symlink_component is not None:
+        return None, f"{label} path contains a symlink: {symlink_component}"
+    if _is_raspberry_pi() and path.parent not in TRUSTED_SYSTEM_COMMAND_DIRS:
+        return None, f"{label} directory is not a trusted system directory: {path.parent}"
+    if not path.is_file():
+        return None, f"{label} is not a regular file: {path}"
+    if not os.access(path, os.X_OK):
+        return None, f"{label} is not executable: {path}"
+    try:
+        stat_result = path.stat()
+        parent_stat = path.parent.stat()
+    except OSError as exc:
+        return None, f"could not inspect {label} {path}: {exc}"
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        return None, f"{label} has permissions {mode:04o}, expected no group/other write bits: {path}"
+    parent_mode = parent_stat.st_mode & 0o777
+    if parent_mode & 0o022:
+        return None, (
+            f"{label} directory has permissions {parent_mode:04o}, "
+            f"expected no group/other write bits: {path.parent}"
+        )
+    expected_uids = {0} if _is_raspberry_pi() else {0, os.getuid()}
+    expected_text = "root" if _is_raspberry_pi() else f"root or {os.getuid()}"
+    if parent_stat.st_uid not in expected_uids:
+        return None, f"{label} directory is owned by uid {parent_stat.st_uid}, expected {expected_text}: {path.parent}"
+    if stat_result.st_uid not in expected_uids:
+        return None, f"{label} is owned by uid {stat_result.st_uid}, expected {expected_text}: {path}"
+    return path, ""
 
 
 def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.conf")) -> CheckResult:

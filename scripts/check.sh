@@ -796,6 +796,10 @@ grep -q 'check_root_executable_file_integrity "$path" "display power command"' s
 grep -q 'xset_path="$(display_power_command_path)"' scripts/verify_pi.sh
 grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" "$xset_path" q' scripts/verify_pi.sh
 grep -q 'DISPLAY="$display" "$xset_path" q' scripts/verify_pi.sh
+grep -q 'def _trusted_system_command' src/noaa_navionics/health.py
+grep -q 'TRUSTED_SYSTEM_COMMAND_DIRS' src/noaa_navionics/health.py
+grep -q '_trusted_system_command("xset", "Display Power command")' src/noaa_navionics/health.py
+grep -q 'test_check_display_power_tool_rejects_user_owned_xset_on_pi' tests/test_downloader.py
 grep -q 'trusted root-owned `xset` from `x11-xserver-utils`' README.md
 grep -q 'trusted root-owned `xset`' docs/sailboat-pi.md
 grep -q 'display screen saver timeout is not disabled' scripts/verify_pi.sh

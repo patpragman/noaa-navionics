@@ -10852,6 +10852,46 @@ class PiHealthTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("x11-xserver-utils", result.detail)
 
+    def test_check_display_power_tool_accepts_trusted_local_command_off_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "xset"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: False
+                result = check_display_power_tool()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("trusted executable", result.detail)
+
+    def test_check_display_power_tool_rejects_user_owned_xset_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "xset"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_display_power_tool()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("Display Power command directory is not a trusted system directory", result.detail)
+
     def test_check_opencpn_accepts_trusted_local_command(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             bin_dir = Path(tmpdir) / "bin"
