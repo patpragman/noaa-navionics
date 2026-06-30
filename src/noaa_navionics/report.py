@@ -141,7 +141,6 @@ def build_status_report(
     if gps_mode == "gpsd" and gps_sample is not None:
         checks.append(check_opencpn_gpsd_config(host=app_config.gpsd_host, port=app_config.gpsd_port))
     check_rows = [_check_result_dict(check) for check in checks]
-    gps_fix = _gps_fix_summary(checks)
     services = _service_summary()
     system_services = _system_service_summary()
     unit_files = _user_unit_file_summary()
@@ -163,8 +162,10 @@ def build_status_report(
         gps_mode=gps_mode,
     )
     service_checks.append(_track_log_readiness_check(track_log))
+    generated_at = datetime.now(timezone.utc)
+    gps_fix = _gps_fix_summary(checks, now=generated_at)
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_at": generated_at.isoformat().replace("+00:00", "Z"),
         "ok": all(check.ok for check in checks) and all(check.ok for check in service_checks),
         "host": {
             "name": socket.gethostname(),
@@ -202,7 +203,7 @@ def _check_result_dict(check: CheckResult) -> dict[str, object]:
     return row
 
 
-def _gps_fix_summary(checks: list[CheckResult]) -> dict[str, object]:
+def _gps_fix_summary(checks: list[CheckResult], *, now: Optional[datetime] = None) -> dict[str, object]:
     for check in checks:
         if check.name not in {"GPS", "GPSD"}:
             continue
@@ -213,12 +214,28 @@ def _gps_fix_summary(checks: list[CheckResult]) -> dict[str, object]:
         }
         if check.data is not None:
             summary.update(check.data)
+            timestamp = _parse_gps_fix_timestamp(check.data.get("timestamp"))
+            if timestamp is not None:
+                current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+                summary["age_seconds"] = max(0.0, (current - timestamp).total_seconds())
         return summary
     return {
         "source": "",
         "ok": False,
         "detail": "GPS fix check was not run",
     }
+
+
+def _parse_gps_fix_timestamp(value: object) -> Optional[datetime]:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc)
 
 
 def write_status_report(report: dict[str, object], output: Path) -> Path:
@@ -538,6 +555,9 @@ def _format_gps_fix_summary(gps_fix: dict[str, object]) -> str:
     timestamp = gps_fix.get("timestamp")
     if timestamp:
         pieces.append(f"time {timestamp}")
+    age_seconds = gps_fix.get("age_seconds")
+    if isinstance(age_seconds, (int, float)) and not isinstance(age_seconds, bool):
+        pieces.append(f"age {age_seconds:.0f}s")
     satellites = gps_fix.get("satellites")
     if satellites is not None:
         pieces.append(f"{satellites} satellites")

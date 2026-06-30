@@ -1945,6 +1945,16 @@ if gps_age_seconds < -30.0:
     raise SystemExit(f"status report gps_fix timestamp is in the future: {gps_timestamp}")
 if gps_age_seconds > 600.0:
     raise SystemExit(f"status report gps_fix timestamp is stale: {gps_age_seconds:g}s old")
+reported_gps_age_seconds = numeric_gps_fix_field("age_seconds")
+if reported_gps_age_seconds < 0.0:
+    raise SystemExit(f"status report gps_fix age_seconds is negative: {reported_gps_age_seconds:g}")
+if reported_gps_age_seconds > 600.0:
+    raise SystemExit(f"status report gps_fix age_seconds is stale: {reported_gps_age_seconds:g}s")
+if reported_gps_age_seconds - gps_age_seconds > 30.0:
+    raise SystemExit(
+        f"status report gps_fix age_seconds {reported_gps_age_seconds:g} "
+        f"is inconsistent with timestamp age {gps_age_seconds:g}"
+    )
 gps_satellites = gps_fix.get("satellites")
 gps_hdop = gps_fix.get("hdop")
 if gps_satellites is None and gps_hdop is None:

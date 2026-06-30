@@ -171,7 +171,7 @@ scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10
 ```
 
 The status helper runs the Pi's installed `noaa-navionics status-report` over batch-mode SSH and prints the text report, or JSON with `--json`. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
-Status JSON includes a top-level `gps_fix` object plus matching structured `data` on the GPS/GPSD readiness row, so support bundles and verification can inspect live fix time, position, satellite/HDOP quality, speed, course, and altitude without parsing prose.
+Status JSON includes a top-level `gps_fix` object plus matching structured `data` on the GPS/GPSD readiness row, so support bundles and verification can inspect live fix time, age, position, satellite/HDOP quality, speed, course, and altitude without parsing prose.
 
 Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
 

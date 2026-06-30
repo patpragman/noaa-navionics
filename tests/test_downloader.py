@@ -2332,6 +2332,7 @@ class GuiTests(unittest.TestCase):
                 "latitude": 61.2181,
                 "longitude": -149.9003,
                 "timestamp": "2026-06-30T12:34:56Z",
+                "age_seconds": 5.4,
                 "satellites": 9,
                 "hdop": 0.9,
                 "speed_knots": 4.2,
@@ -2341,7 +2342,7 @@ class GuiTests(unittest.TestCase):
 
         self.assertEqual(
             status_gui_module.format_gps_summary(report),
-            "GPSD OK | 61.218100, -149.900300 | 2026-06-30T12:34:56Z | 9 sats | HDOP 0.9 | 4.2 kt | 181.5 deg",
+            "GPSD OK | 61.218100, -149.900300 | 2026-06-30T12:34:56Z | age 5s | 9 sats | HDOP 0.9 | 4.2 kt | 181.5 deg",
         )
         self.assertEqual(status_gui_module.format_gps_summary({}), "GPS: not reported")
 
@@ -5876,6 +5877,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["gps_fix"]["longitude"], 11.516666666666667)
             self.assertEqual(report["gps_fix"]["satellites"], 8)
             self.assertEqual(report["gps_fix"]["hdop"], 0.9)
+            self.assertIsInstance(report["gps_fix"]["age_seconds"], float)
+            self.assertGreaterEqual(report["gps_fix"]["age_seconds"], 0.0)
             self.assertEqual(report["host"]["boot_id"], "12345678-1234-4234-8234-123456789abc")
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
@@ -5945,6 +5948,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("Ready: no", text)
             self.assertIn("Anchor radius: 65.0 m", text)
             self.assertIn("GPS fix: GPS ok; 48.117300, 11.516667; ", text)
+            self.assertIn("; age ", text)
             self.assertIn("Boot ID: 12345678-1234-4234-8234-123456789abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("source_revision_path_is_symlink=False", text)

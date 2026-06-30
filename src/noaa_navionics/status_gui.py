@@ -77,6 +77,9 @@ def format_gps_summary(report: dict[str, object]) -> str:
     timestamp = gps_fix.get("timestamp")
     if timestamp:
         pieces.append(str(timestamp))
+    age_seconds = gps_fix.get("age_seconds")
+    if isinstance(age_seconds, (int, float)) and not isinstance(age_seconds, bool):
+        pieces.append(f"age {age_seconds:.0f}s")
     satellites = gps_fix.get("satellites")
     if satellites is not None:
         pieces.append(f"{satellites} sats")
