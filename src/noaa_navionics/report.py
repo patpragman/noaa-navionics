@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -141,7 +140,8 @@ def build_status_report(
     )
     if gps_mode == "gpsd" and gps_sample is not None:
         checks.append(check_opencpn_gpsd_config(host=app_config.gpsd_host, port=app_config.gpsd_port))
-    check_rows = [asdict(check) for check in checks]
+    check_rows = [_check_result_dict(check) for check in checks]
+    gps_fix = _gps_fix_summary(checks)
     services = _service_summary()
     system_services = _system_service_summary()
     unit_files = _user_unit_file_summary()
@@ -185,8 +185,39 @@ def build_status_report(
         "opencpn_config": opencpn_config,
         "desktop": desktop,
         "track_log": track_log,
-        "service_checks": [asdict(check) for check in service_checks],
+        "gps_fix": gps_fix,
+        "service_checks": [_check_result_dict(check) for check in service_checks],
         "checks": check_rows,
+    }
+
+
+def _check_result_dict(check: CheckResult) -> dict[str, object]:
+    row: dict[str, object] = {
+        "name": check.name,
+        "ok": check.ok,
+        "detail": check.detail,
+    }
+    if check.data is not None:
+        row["data"] = check.data
+    return row
+
+
+def _gps_fix_summary(checks: list[CheckResult]) -> dict[str, object]:
+    for check in checks:
+        if check.name not in {"GPS", "GPSD"}:
+            continue
+        summary: dict[str, object] = {
+            "source": check.name,
+            "ok": check.ok,
+            "detail": check.detail,
+        }
+        if check.data is not None:
+            summary.update(check.data)
+        return summary
+    return {
+        "source": "",
+        "ok": False,
+        "detail": "GPS fix check was not run",
     }
 
 
@@ -317,9 +348,11 @@ def format_status_text(report: dict[str, object]) -> str:
         f"Config: {report.get('config_path', '')}",
         f"Anchor radius: {report.get('config', {}).get('anchor_radius_meters', '')} m",
         f"Ready: {'yes' if report.get('ok') else 'no'}",
-        "",
-        "Checks:",
     ]
+    gps_fix = report.get("gps_fix", {})
+    if isinstance(gps_fix, dict) and gps_fix.get("source"):
+        lines.append(f"GPS fix: {_format_gps_fix_summary(gps_fix)}")
+    lines.extend(["", "Checks:"])
     for check in report.get("checks", []):
         if not isinstance(check, dict):
             continue
@@ -492,6 +525,35 @@ def format_status_text(report: dict[str, object]) -> str:
             f"detail={track_log.get('detail', '')}".rstrip()
         )
     return "\n".join(lines)
+
+
+def _format_gps_fix_summary(gps_fix: dict[str, object]) -> str:
+    source = gps_fix.get("source", "")
+    ok = "ok" if gps_fix.get("ok") else "fail"
+    pieces = [f"{source} {ok}"]
+    latitude = gps_fix.get("latitude")
+    longitude = gps_fix.get("longitude")
+    if isinstance(latitude, (int, float)) and isinstance(longitude, (int, float)):
+        pieces.append(f"{latitude:.6f}, {longitude:.6f}")
+    timestamp = gps_fix.get("timestamp")
+    if timestamp:
+        pieces.append(f"time {timestamp}")
+    satellites = gps_fix.get("satellites")
+    if satellites is not None:
+        pieces.append(f"{satellites} satellites")
+    hdop = gps_fix.get("hdop")
+    if hdop is not None:
+        pieces.append(f"HDOP {hdop}")
+    speed = gps_fix.get("speed_knots")
+    if isinstance(speed, (int, float)):
+        pieces.append(f"speed {speed:.1f} kt")
+    course = gps_fix.get("course_degrees")
+    if isinstance(course, (int, float)):
+        pieces.append(f"course {course:.1f} deg")
+    detail = gps_fix.get("detail")
+    if len(pieces) == 1 and detail:
+        pieces.append(str(detail))
+    return "; ".join(pieces)
 
 
 def _config_summary(app_config: AppConfig) -> dict[str, object]:

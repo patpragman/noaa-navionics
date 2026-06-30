@@ -492,6 +492,8 @@ grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-d
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
+grep -q 'Status JSON includes a top-level `gps_fix` object plus matching structured `data`' README.md
+grep -q 'Status JSON includes a top-level `gps_fix` object plus matching structured `data`' docs/sailboat-pi.md
 grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
@@ -1138,6 +1140,12 @@ grep -q 'launcher-supervised OpenCPN running' scripts/verify_pi.sh
 ! grep -q 'check "OpenCPN running"' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh
+grep -q 'status report has no gps_fix section' scripts/verify_pi.sh
+grep -q 'status report gps_fix data does not match' scripts/verify_pi.sh
+grep -q 'status report gps_fix latitude is outside -90..90' scripts/verify_pi.sh
+grep -q 'status report gps_fix timestamp is stale' scripts/verify_pi.sh
+grep -q 'status report gps_fix has no satellite or HDOP quality fields' scripts/verify_pi.sh
+grep -q 'status report gps_fix source' scripts/verify_pi.sh
 grep -q 'status_stat = os.fstat(fd)' scripts/verify_pi.sh
 grep -q 'not stat.S_ISREG(status_stat.st_mode)' scripts/verify_pi.sh
 grep -q 'os.fdopen(fd, encoding="utf-8")' scripts/verify_pi.sh

@@ -5825,6 +5825,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("opencpn_config", report)
             self.assertIn("desktop", report)
             self.assertIn("track_log", report)
+            self.assertIn("gps_fix", report)
             self.assertIn("service_checks", report)
             self.assertEqual(report["app"]["source_revision"], "abc123")
             self.assertEqual(report["app"]["source_revision_path"], str(revision))
@@ -5841,6 +5842,17 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["config"]["force"], True)
             self.assertEqual(report["config"]["min_free_gb"], 3.5)
             self.assertEqual(report["config"]["anchor_radius_meters"], 65.0)
+            gps_check = next(check for check in report["checks"] if check["name"] == "GPS")
+            self.assertEqual(gps_check["data"]["latitude"], 48.1173)
+            self.assertEqual(gps_check["data"]["longitude"], 11.516666666666667)
+            self.assertEqual(gps_check["data"]["satellites"], 8)
+            self.assertEqual(gps_check["data"]["hdop"], 0.9)
+            self.assertEqual(gps_check["data"]["altitude_m"], 545.4)
+            self.assertEqual(report["gps_fix"]["source"], "GPS")
+            self.assertEqual(report["gps_fix"]["latitude"], 48.1173)
+            self.assertEqual(report["gps_fix"]["longitude"], 11.516666666666667)
+            self.assertEqual(report["gps_fix"]["satellites"], 8)
+            self.assertEqual(report["gps_fix"]["hdop"], 0.9)
             self.assertEqual(report["host"]["boot_id"], "12345678-1234-4234-8234-123456789abc")
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
@@ -5909,6 +5921,7 @@ class StatusReportTests(unittest.TestCase):
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
             self.assertIn("Anchor radius: 65.0 m", text)
+            self.assertIn("GPS fix: GPS ok; 48.117300, 11.516667; ", text)
             self.assertIn("Boot ID: 12345678-1234-4234-8234-123456789abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("source_revision_path_is_symlink=False", text)
@@ -10815,6 +10828,9 @@ class GpsTests(unittest.TestCase):
             result = check_gps_sample(path)
             self.assertTrue(result.ok)
             self.assertIn("48.117300", result.detail)
+            self.assertEqual(result.data["satellites"], 8)
+            self.assertEqual(result.data["hdop"], 0.9)
+            self.assertEqual(result.data["altitude_m"], 545.4)
 
     def test_check_gps_sample_rejects_weak_fix_quality(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,03,0.9,545.4,M,46.9,M,,\n"
@@ -11054,6 +11070,8 @@ class GpsTests(unittest.TestCase):
         self.assertIn("HDOP 0.9", result.detail)
         self.assertIn("speed 22.4 kt", result.detail)
         self.assertIn("course 84.4 deg", result.detail)
+        self.assertEqual(result.data["speed_knots"], 22.4)
+        self.assertEqual(result.data["course_degrees"], 84.4)
 
     def test_check_gps_device_rejects_overlong_unterminated_nmea_fragment(self):
         original = health_module.open_nmea_stream
@@ -11298,6 +11316,12 @@ class GpsTests(unittest.TestCase):
         self.assertIn("speed 4.2 kt", result.detail)
         self.assertIn("course 181.5 deg", result.detail)
         self.assertIn("altitude 12.3 m", result.detail)
+        self.assertEqual(result.data["timestamp"], timestamp.isoformat().replace("+00:00", "Z"))
+        self.assertEqual(result.data["latitude"], 61.1)
+        self.assertEqual(result.data["longitude"], -149.1)
+        self.assertEqual(result.data["speed_knots"], 4.2)
+        self.assertEqual(result.data["course_degrees"], 181.5)
+        self.assertEqual(result.data["altitude_m"], 12.3)
 
     def test_check_gpsd_rejects_position_only_fix_before_stream_error(self):
         original = health_module.iter_gpsd_fixes

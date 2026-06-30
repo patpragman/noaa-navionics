@@ -57,6 +57,7 @@ class CheckResult:
     name: str
     ok: bool
     detail: str
+    data: Optional[dict[str, object]] = None
 
 
 def run_preflight(
@@ -1265,7 +1266,7 @@ def check_gps_sample(sample: Path) -> CheckResult:
                 if not gps_fix_has_quality_fields(fix):
                     missing_quality_detail = "NMEA fix missing satellite or HDOP quality fields"
                     continue
-                return CheckResult("GPS", True, _fix_detail(fix))
+                return CheckResult("GPS", True, _fix_detail(fix), _fix_data(fix))
     except OSError as exc:
         return CheckResult("GPS", False, f"cannot read sample file {path}: {exc}")
     except RuntimeError as exc:
@@ -1528,7 +1529,7 @@ def check_gps_device(
                 if not gps_fix_has_quality_fields(fix):
                     missing_quality_detail = "; NMEA fix missing satellite or HDOP quality fields"
                     continue
-                return CheckResult("GPS", True, _fix_detail(fix))
+                return CheckResult("GPS", True, _fix_detail(fix), _fix_data(fix))
     except Exception as exc:
         return CheckResult("GPS", False, f"{device}: {exc}{missing_quality_detail}")
     fix_detail = (
@@ -1568,7 +1569,7 @@ def check_gpsd(
             if not gps_fix_has_quality_fields(fix):
                 missing_quality_detail = "; GPSD fix missing satellite or HDOP quality fields"
                 continue
-            return CheckResult("GPSD", True, _fix_detail(fix))
+            return CheckResult("GPSD", True, _fix_detail(fix), _fix_data(fix))
     except Exception as exc:
         return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}{missing_quality_detail}")
     fix_detail = (
@@ -1643,6 +1644,28 @@ def _fix_detail(fix: GPSFix) -> str:
     if fix.altitude_m is not None:
         pieces.append(f"altitude {fix.altitude_m:.1f} m")
     return "; ".join(pieces)
+
+
+def _fix_data(fix: GPSFix) -> dict[str, object]:
+    data: dict[str, object] = {
+        "latitude": fix.latitude,
+        "longitude": fix.longitude,
+    }
+    if fix.timestamp is not None:
+        data["timestamp"] = fix.timestamp.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    if fix.speed_knots is not None:
+        data["speed_knots"] = fix.speed_knots
+    if fix.course_degrees is not None:
+        data["course_degrees"] = fix.course_degrees
+    if fix.fix_quality is not None:
+        data["fix_quality"] = fix.fix_quality
+    if fix.satellites is not None:
+        data["satellites"] = fix.satellites
+    if fix.hdop is not None:
+        data["hdop"] = fix.hdop
+    if fix.altitude_m is not None:
+        data["altitude_m"] = fix.altitude_m
+    return data
 
 
 def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:

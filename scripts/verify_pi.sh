@@ -909,6 +909,7 @@ if status_user != os.environ.get("USER", ""):
 status_linger = str(user.get("linger", "")).strip()
 if status_linger != "yes":
     raise SystemExit(f"status report user linger={status_linger or '<missing>'}, expected yes")
+expected_config = {}
 if expected_config_path:
     parser = ConfigParser()
     try:
@@ -1885,6 +1886,91 @@ if any(not isinstance(check, dict) or check.get("ok") is not True for check in c
     raise SystemExit("status report contains a failed readiness check")
 if any(not isinstance(check, dict) or check.get("ok") is not True for check in service_checks):
     raise SystemExit("status report contains a failed service check")
+gps_fix = report.get("gps_fix")
+if not isinstance(gps_fix, dict):
+    raise SystemExit("status report has no gps_fix section")
+if gps_fix.get("ok") is not True:
+    raise SystemExit(f"status report gps_fix is not ok: {gps_fix.get('detail', '<missing detail>')}")
+gps_source = str(gps_fix.get("source", "")).strip()
+expected_gps_source = "GPSD" if expected_config.get("gps_mode") == "gpsd" else "GPS"
+if gps_source != expected_gps_source:
+    raise SystemExit(f"status report gps_fix source {gps_source or '<missing>'} is not {expected_gps_source}")
+gps_check = next(
+    (check for check in checks if isinstance(check, dict) and check.get("name") == gps_source),
+    None,
+)
+if not isinstance(gps_check, dict):
+    raise SystemExit(f"status report has no {gps_source} readiness check for gps_fix")
+gps_check_data = gps_check.get("data")
+if not isinstance(gps_check_data, dict):
+    raise SystemExit(f"status report {gps_source} readiness check has no structured data")
+for field in (
+    "latitude",
+    "longitude",
+    "timestamp",
+    "speed_knots",
+    "course_degrees",
+    "fix_quality",
+    "satellites",
+    "hdop",
+    "altitude_m",
+):
+    if field in gps_fix and gps_check_data.get(field) != gps_fix.get(field):
+        raise SystemExit(f"status report gps_fix data does not match {gps_source} check data for {field}")
+def numeric_gps_fix_field(field):
+    value = gps_fix.get(field)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise SystemExit(f"status report gps_fix {field} is not numeric: {value!r}")
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise SystemExit(f"status report gps_fix {field} is not finite: {value!r}")
+    return parsed
+gps_latitude = numeric_gps_fix_field("latitude")
+gps_longitude = numeric_gps_fix_field("longitude")
+if not (-90.0 <= gps_latitude <= 90.0):
+    raise SystemExit(f"status report gps_fix latitude is outside -90..90: {gps_latitude}")
+if not (-180.0 <= gps_longitude <= 180.0):
+    raise SystemExit(f"status report gps_fix longitude is outside -180..180: {gps_longitude}")
+if abs(gps_latitude) < 1e-12 and abs(gps_longitude) < 1e-12:
+    raise SystemExit("status report gps_fix coordinates are invalid 0,0")
+gps_timestamp = str(gps_fix.get("timestamp", "")).strip()
+if not gps_timestamp:
+    raise SystemExit("status report gps_fix has no timestamp")
+try:
+    gps_time = datetime.fromisoformat(gps_timestamp.replace("Z", "+00:00")).astimezone(timezone.utc)
+except ValueError as exc:
+    raise SystemExit(f"status report gps_fix timestamp is invalid: {gps_timestamp}") from exc
+gps_age_seconds = (datetime.now(timezone.utc) - gps_time).total_seconds()
+if gps_age_seconds < -30.0:
+    raise SystemExit(f"status report gps_fix timestamp is in the future: {gps_timestamp}")
+if gps_age_seconds > 600.0:
+    raise SystemExit(f"status report gps_fix timestamp is stale: {gps_age_seconds:g}s old")
+gps_satellites = gps_fix.get("satellites")
+gps_hdop = gps_fix.get("hdop")
+if gps_satellites is None and gps_hdop is None:
+    raise SystemExit("status report gps_fix has no satellite or HDOP quality fields")
+if gps_satellites is not None:
+    if isinstance(gps_satellites, bool) or not isinstance(gps_satellites, int):
+        raise SystemExit(f"status report gps_fix satellites is not an integer: {gps_satellites!r}")
+    if gps_satellites < 4:
+        raise SystemExit(f"status report gps_fix satellites is weak: {gps_satellites}")
+if gps_hdop is not None:
+    if isinstance(gps_hdop, bool) or not isinstance(gps_hdop, (int, float)):
+        raise SystemExit(f"status report gps_fix hdop is not numeric: {gps_hdop!r}")
+    if not math.isfinite(float(gps_hdop)):
+        raise SystemExit(f"status report gps_fix hdop is not finite: {gps_hdop!r}")
+    if float(gps_hdop) < 0.0:
+        raise SystemExit(f"status report gps_fix hdop is negative: {gps_hdop:g}")
+    if float(gps_hdop) > 5.0:
+        raise SystemExit(f"status report gps_fix hdop is weak: {gps_hdop:g}")
+for optional_field in ("speed_knots", "course_degrees", "altitude_m"):
+    if optional_field not in gps_fix:
+        continue
+    optional_value = numeric_gps_fix_field(optional_field)
+    if optional_field == "speed_knots" and optional_value < 0.0:
+        raise SystemExit(f"status report gps_fix {optional_field} is negative: {optional_value:g}")
+    if optional_field == "course_degrees" and not (0.0 <= optional_value <= 360.0):
+        raise SystemExit(f"status report gps_fix course_degrees is outside 0..360: {optional_value:g}")
 track_log = report.get("track_log")
 if not isinstance(track_log, dict):
     raise SystemExit("status report has no track_log section")
