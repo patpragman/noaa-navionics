@@ -14,6 +14,7 @@ revision_file="${data_dir}/source-revision"
 skip_apt=0
 allow_non_pi=0
 apt_get_cmd=""
+sudo_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -313,7 +314,9 @@ install_root_text_atomic() {
   local target="$1"
   local mode="$2"
   local text="$3"
-  sudo python3 - "$target" "$mode" "$text" <<'PY'
+  local sudo_cmd_value
+  sudo_cmd_value="$(sudo_command)" || return 1
+  "$sudo_cmd_value" python3 - "$target" "$mode" "$text" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -555,14 +558,18 @@ PY
 
 apt_update() {
   local apt_get_bin
+  local sudo_cmd_value
   apt_get_bin="$(apt_get_command)" || return 1
-  sudo env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" update
+  sudo_cmd_value="$(sudo_command)" || return 1
+  "$sudo_cmd_value" env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" update
 }
 
 apt_install() {
   local apt_get_bin
+  local sudo_cmd_value
   apt_get_bin="$(apt_get_command)" || return 1
-  sudo env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" install -y "$@"
+  sudo_cmd_value="$(sudo_command)" || return 1
+  "$sudo_cmd_value" env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" install -y "$@"
 }
 
 path_in_trusted_system_dir() {
@@ -666,6 +673,13 @@ apt_get_command() {
     apt_get_cmd="$(trusted_root_command_path apt-get "APT command")" || return 1
   fi
   printf '%s\n' "$apt_get_cmd"
+}
+
+sudo_command() {
+  if [[ -z "$sudo_cmd" ]]; then
+    sudo_cmd="$(trusted_root_command_path sudo "Sudo command")" || return 1
+  fi
+  printf '%s\n' "$sudo_cmd"
 }
 
 ensure_gpsd_client_tools() {
