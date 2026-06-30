@@ -14,6 +14,7 @@ bash -n \
   scripts/verify_pi.sh \
   scripts/pre_departure_check_pi.sh \
   scripts/collect_pi_support_bundle.sh \
+  scripts/shutdown_pi_safely.sh \
   scripts/start_chartplotter.sh \
   scripts/configure_desktop_autologin.sh \
   scripts/configure_gpsd.sh \
@@ -473,8 +474,12 @@ grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/se
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
+grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'read-only diagnostic evidence' README.md
 grep -q 'read-only diagnostic evidence' docs/sailboat-pi.md
+grep -q 'Use `--dry-run` to prove that path without powering off' README.md
+grep -q 'Use `--dry-run` to prove that path without powering off' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
@@ -498,6 +503,7 @@ grep -q 'validate_ssh_target' scripts/deploy_to_pi.sh
 grep -q 'validate_ssh_target' scripts/dock_test_pi.sh
 grep -q 'validate_ssh_target' scripts/verify_pi.sh
 grep -q 'validate_ssh_target' scripts/collect_pi_support_bundle.sh
+grep -q 'validate_ssh_target' scripts/shutdown_pi_safely.sh
 grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/verify_pi.sh
@@ -509,6 +515,7 @@ grep -q 'GPS device path is volatile' scripts/pre_departure_check_pi.sh
 grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
 grep -q 'SSH target must be user@host' scripts/collect_pi_support_bundle.sh
+grep -q 'SSH target must be user@host' scripts/shutdown_pi_safely.sh
 grep -q 'SSH target user contains unsafe characters' scripts/deploy_to_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/dock_test_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/verify_pi.sh
@@ -516,6 +523,7 @@ grep -q 'SSH target host contains unsafe characters' scripts/deploy_to_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/dock_test_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/verify_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/collect_pi_support_bundle.sh
+grep -q 'SSH target host contains unsafe characters' scripts/shutdown_pi_safely.sh
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/verify_pi.sh
@@ -751,6 +759,8 @@ grep -q 'recent-user-journal' scripts/collect_pi_support_bundle.sh
 grep -q 'recent-system-journal' scripts/collect_pi_support_bundle.sh
 grep -q 'chartplotter.log' scripts/collect_pi_support_bundle.sh
 grep -q 'status.json' scripts/collect_pi_support_bundle.sh
+grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
@@ -3210,6 +3220,9 @@ trap 'rm -rf "${tmpdir:-}" "${workspace_tmpdir:-}" "$install_output" "$provision
 support_remote_heredoc="$tmpdir/support-remote-heredoc.sh"
 awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh >"$support_remote_heredoc"
 bash -n "$support_remote_heredoc"
+shutdown_remote_heredoc="$tmpdir/shutdown-remote-heredoc.sh"
+awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/shutdown_pi_safely.sh >"$shutdown_remote_heredoc"
+bash -n "$shutdown_remote_heredoc"
 
 write_test_launcher_env() {
   local home_dir="$1"
@@ -3553,6 +3566,17 @@ if [[ "$support_bundle_code" -ne 0 ]]; then
   exit 1
 fi
 grep -q 'Usage: scripts/collect_pi_support_bundle.sh' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh --help >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 0 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/shutdown_pi_safely.sh' "$verify_output"
 
 set +e
 scripts/install_raspberry_pi.sh --help >"$install_output" 2>&1
@@ -4426,6 +4450,63 @@ grep -q 'bash -s' "$support_fake_ssh_args"
 grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
+
+set +e
+scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to require --confirm or --dry-run with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--confirm is required for a real Pi shutdown' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh root@example.invalid --dry-run >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not shut down root@' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh pi@example.invalid --confirm --dry-run >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject conflicting shutdown modes with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--confirm and --dry-run cannot be used together' "$verify_output"
+
+shutdown_fake_ssh_bin="$tmpdir/shutdown-fake-ssh-bin"
+shutdown_fake_ssh_args="$tmpdir/shutdown-fake-ssh-args"
+shutdown_fake_ssh_stdin="$tmpdir/shutdown-fake-ssh-stdin"
+mkdir -p "$shutdown_fake_ssh_bin"
+cat >"$shutdown_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+printf 'fake shutdown ssh completed\n'
+EOF
+chmod +x "$shutdown_fake_ssh_bin/ssh"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$shutdown_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$shutdown_fake_ssh_stdin" \
+  PATH="$shutdown_fake_ssh_bin:$PATH" \
+  scripts/shutdown_pi_safely.sh pi@example.invalid --dry-run >"$verify_output" 2>&1
+grep -q 'Pi shutdown dry run passed for pi@example.invalid' "$verify_output"
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=1' "$shutdown_fake_ssh_args"
+grep -q 'pi@example.invalid' "$shutdown_fake_ssh_args"
+grep -q 'require_remote_command sync' "$shutdown_fake_ssh_stdin"
+grep -q 'require_remote_command sudo' "$shutdown_fake_ssh_stdin"
+grep -q 'require_remote_command systemctl' "$shutdown_fake_ssh_stdin"
+grep -Fq '"$sudo_cmd" -n "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin"
 
 set +e
 scripts/verify_pi.sh --expected-boot-id >"$verify_output" 2>&1

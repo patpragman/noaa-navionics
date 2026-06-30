@@ -156,6 +156,14 @@ scripts/collect_pi_support_bundle.sh pi@raspberrypi.local
 
 The support bundle is a local `.tgz` containing Pi-side NOAA Navionics config, status reports, launcher logs, installed user units, selected OpenCPN/GPSD/chrony/LightDM config files when readable, recent relevant journal output, service state, device listings, disk space, and Pi health command output. It is read-only diagnostic evidence; it does not deploy, reboot, start services, or download charts.
 
+Shut the Pi down cleanly before cutting boat power:
+
+```bash
+scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm
+```
+
+The shutdown helper validates the SSH target, trusted remote `sync`, `sudo`, and `systemctl` command paths, flushes filesystem buffers, and requests `systemctl poweroff` through noninteractive sudo. Use `--dry-run` to prove that path without powering off.
+
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 
 ```bash
