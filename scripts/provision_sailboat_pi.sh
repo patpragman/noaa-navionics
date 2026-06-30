@@ -26,9 +26,10 @@ bin="${HOME}/.local/bin/noaa-navionics"
 systemctl_cmd=""
 loginctl_cmd=""
 sudo_cmd=""
+python3_cmd=""
 
 sync_paths() {
-  python3 - "$@" <<'PY'
+  "$python3_cmd" - "$@" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -250,8 +251,15 @@ sudo_command() {
   printf '%s\n' "$sudo_cmd"
 }
 
+python3_command() {
+  if [[ -z "$python3_cmd" ]]; then
+    python3_cmd="$(require_trusted_system_command python3 "Python command")" || return 1
+  fi
+  printf '%s\n' "$python3_cmd"
+}
+
 same_path() {
-  python3 - "$1" "$2" <<'PY'
+  "$python3_cmd" - "$1" "$2" <<'PY'
 from pathlib import Path
 import sys
 
@@ -262,7 +270,7 @@ PY
 }
 
 validate_existing_gps_config() {
-  if ! python3 - "$config" "$check_device" "$device" <<'PY'
+  if ! "$python3_cmd" - "$config" "$check_device" "$device" <<'PY'
 from configparser import ConfigParser, Error
 from pathlib import Path
 import os
@@ -378,7 +386,7 @@ PY
 }
 
 validate_existing_gps_time_config() {
-  if ! python3 - <<'PY'
+  if ! "$python3_cmd" - <<'PY'
 from pathlib import Path
 import os
 import stat as stat_module
@@ -478,7 +486,7 @@ validate_existing_system_service() {
 }
 
 validate_existing_charts() {
-  if ! python3 - "$repo_root" "$config" <<'PY'
+  if ! "$python3_cmd" - "$repo_root" "$config" <<'PY'
 from pathlib import Path
 import sys
 
@@ -669,6 +677,8 @@ EOF
   exit 2
 fi
 
+python3_cmd="$(python3_command)" || exit 2
+
 if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && ! -e "$device" ]]; then
   cat >&2 <<EOF
 GPS device does not exist: $device
@@ -726,7 +736,7 @@ run() {
 validate_user_install_path() {
   local target="$1"
   local label="$2"
-  python3 - "$target" "$label" <<'PY'
+  "$python3_cmd" - "$target" "$label" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -787,7 +797,7 @@ PY
 validate_user_directory_path() {
   local target="$1"
   local label="$2"
-  python3 - "$target" "$label" <<'PY'
+  "$python3_cmd" - "$target" "$label" <<'PY'
 from pathlib import Path
 import os
 import sys
@@ -838,7 +848,7 @@ PY
 verify_installed_noaa_navionics_command() {
   local target="$1"
   local expected_target="$2"
-  python3 - "$target" "$expected_target" <<'PY'
+  "$python3_cmd" - "$target" "$expected_target" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -1002,7 +1012,7 @@ verify_promoted_user_file() {
   local source="$1"
   local target="$2"
   local expected_mode="$3"
-  python3 - "$source" "$target" "$expected_mode" <<'PY'
+  "$python3_cmd" - "$source" "$target" "$expected_mode" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -1229,7 +1239,7 @@ verify_launcher_env() {
   local expected_gps_seconds="$2"
   local expected_opencpn_restarts="$3"
   local expected_opencpn_restart_delay="$4"
-  python3 - "$path" "$expected_gps_seconds" "$expected_opencpn_restarts" "$expected_opencpn_restart_delay" <<'PY'
+  "$python3_cmd" - "$path" "$expected_gps_seconds" "$expected_opencpn_restarts" "$expected_opencpn_restart_delay" <<'PY'
 from pathlib import Path
 import os
 import stat
