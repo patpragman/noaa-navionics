@@ -2330,6 +2330,34 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
             self.assertFalse((output / "AK_ENCs.zip.part").exists())
 
+    def test_download_revalidates_archive_target_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            outside = root / "outside.zip"
+            outside.write_text("outside\n", encoding="ascii")
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            original_validate = downloader_module._validate_downloaded_zip
+
+            def swap_archive_target(path):
+                original_validate(path)
+                try:
+                    (output / "AK_ENCs.zip").symlink_to(outside)
+                except OSError as exc:
+                    self.skipTest(f"symlinks unavailable: {exc}")
+
+            with patch("noaa_navionics.downloader._validate_downloaded_zip", side_effect=swap_archive_target):
+                with self.assertRaisesRegex(RuntimeError, "chart archive path is a symlink before promotion"):
+                    download_package(package, output, extract=True, keep_zip=True, force=True)
+
+            self.assertEqual(outside.read_text(encoding="ascii"), "outside\n")
+            self.assertTrue((output / "AK_ENCs.zip").is_symlink())
+            self.assertFalse((output / "AK_ENCs.zip.part").exists())
+            self.assertFalse((output / MANIFEST_NAME).exists())
+
     def test_download_manifest_records_final_response_url(self):
         original = downloader_module.urlopen
 
@@ -2748,6 +2776,36 @@ class ManifestTests(unittest.TestCase):
                 manifest.chmod(0o600)
 
             self.assertEqual(manifest.read_text(encoding="utf-8"), "do not replace\n")
+
+    def test_write_manifest_revalidates_manifest_target_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "charts"
+            output.mkdir()
+            outside = root / "outside-manifest.json"
+            outside.write_text("outside\n", encoding="utf-8")
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+            original_prepare = downloader_module._prepare_output_dir
+            calls = 0
+
+            def swapping_prepare(path):
+                nonlocal calls
+                calls += 1
+                original_prepare(path)
+                if calls == 2:
+                    try:
+                        (output / MANIFEST_NAME).symlink_to(outside)
+                    except OSError as exc:
+                        self.skipTest(f"symlinks unavailable: {exc}")
+
+            with patch("noaa_navionics.downloader._prepare_output_dir", side_effect=swapping_prepare):
+                with self.assertRaisesRegex(RuntimeError, "refusing to replace symlinked chart manifest path"):
+                    downloader_module.write_manifest(output, package, result)
+
+            self.assertEqual(outside.read_text(encoding="utf-8"), "outside\n")
+            self.assertTrue((output / MANIFEST_NAME).is_symlink())
+            self.assertFalse(list(output.glob(".noaa-navionics-manifest.json.*.part")))
 
     def test_write_manifest_syncs_file_and_directory(self):
         calls = []
@@ -4183,6 +4241,32 @@ class ManifestTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "chart extraction destination is a symlink"):
                 extract_zip(archive, destination)
+
+            self.assertTrue(destination.is_symlink())
+            self.assertFalse((real_destination / "US5AK3CM").exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
+    def test_extract_zip_revalidates_destination_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+            destination = root / "AK_ENCs"
+            real_destination = root / "real-charts"
+            real_destination.mkdir()
+            original_fsync_tree = downloader_module._fsync_tree
+
+            def swap_destination(path):
+                original_fsync_tree(path)
+                try:
+                    destination.symlink_to(real_destination, target_is_directory=True)
+                except OSError as exc:
+                    self.skipTest(f"symlinks unavailable: {exc}")
+
+            with patch("noaa_navionics.downloader._fsync_tree", side_effect=swap_destination):
+                with self.assertRaisesRegex(RuntimeError, "chart extraction destination is a symlink before promotion"):
+                    extract_zip(archive, destination)
 
             self.assertTrue(destination.is_symlink())
             self.assertFalse((real_destination / "US5AK3CM").exists())

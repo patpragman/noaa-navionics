@@ -331,6 +331,10 @@ def _download_package_unlocked(
         except Exception:
             _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
             raise
+    _prepare_output_dir(output_path)
+    if destination.is_symlink():
+        _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
+        raise RuntimeError(f"chart archive path is a symlink before promotion: {destination}")
     os.replace(tmp_path, destination)
     _fsync_directory(output_path)
     extracted_to = None
@@ -463,6 +467,9 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
     moved_existing_to_previous = False
     installed_staging = False
     try:
+        _prepare_output_dir(parent)
+        if destination.is_symlink():
+            raise RuntimeError(f"chart extraction destination is a symlink before promotion: {destination}")
         if previous.exists() or previous.is_symlink():
             _remove_path(previous, label="previous chart extraction")
         if destination.exists():
@@ -855,6 +862,8 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
             handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
+        _prepare_output_dir(output_path)
+        _validate_manifest_replace_target(target)
         os.replace(tmp_path, target)
         _fsync_directory(output_path)
     finally:

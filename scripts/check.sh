@@ -1554,6 +1554,13 @@ grep -q 'test_download_rejects_redirect_to_wrong_filename_before_writing_archive
 grep -q 'test_forced_download_rejects_bad_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_unsafe_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive' tests/test_downloader.py
+grep -q 'test_download_revalidates_archive_target_before_promotion' tests/test_downloader.py
+grep -q 'chart archive path is a symlink before promotion' src/noaa_navionics/downloader.py
+grep -q 'test_extract_zip_revalidates_destination_before_promotion' tests/test_downloader.py
+grep -q 'chart extraction destination is a symlink before promotion' src/noaa_navionics/downloader.py
+grep -q 'test_write_manifest_revalidates_manifest_target_before_promotion' tests/test_downloader.py
+grep -q 'Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement' README.md
+grep -q 'Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement' docs/sailboat-pi.md
 grep -q 'chart download path is not a regular file' src/noaa_navionics/downloader.py
 grep -q 'chart download path .* is owned by uid' src/noaa_navionics/downloader.py
 grep -q 'chart download path .* has permissions' src/noaa_navionics/downloader.py
