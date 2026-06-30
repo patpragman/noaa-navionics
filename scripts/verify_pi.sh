@@ -1799,6 +1799,13 @@ for unit, expected_target in expected_unit_files.items():
             f"status report {unit} WantedBy={','.join(status_wanted_by) or '<missing>'} "
             f"does not match live unit file {','.join(live_wanted_by) or '<missing>'}"
         )
+    status_lines = state.get("lines")
+    if not isinstance(status_lines, list):
+        raise SystemExit(f"status report {unit} has no parsed unit file lines: {expected_unit_path}")
+    normalized_status_lines = [str(line) for line in status_lines]
+    live_lines = unit_text.splitlines()
+    if normalized_status_lines != live_lines:
+        raise SystemExit(f"status report {unit} lines do not match live unit file: {expected_unit_path}")
     if expected_target:
         if expected_target not in set(live_wanted_by):
             raise SystemExit(
