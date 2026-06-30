@@ -258,6 +258,18 @@ class ConfigTests(unittest.TestCase):
             finally:
                 parent.chmod(0o700)
 
+    def test_write_default_config_tightens_public_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            parent = root / ".config" / "noaa-navionics"
+            parent.mkdir(parents=True)
+            parent.chmod(0o755)
+
+            write_default_config(parent / "config.ini")
+
+            self.assertEqual(parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual((parent / "config.ini").stat().st_mode & 0o777, 0o600)
+
     def test_write_default_config_rejects_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

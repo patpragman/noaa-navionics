@@ -201,7 +201,7 @@ Create the onboard config:
 noaa-navionics init-config
 ```
 
-Initial config reads and writes refuse symlinked, non-regular, misowned, or group/world-writable config files, plus symlinked config path components. Writes create the config directory with private `0700` permissions when needed, refuse misowned or group/world-writable config directories, then use a unique private `0600` temporary file, sync to disk, and atomically replace `config.ini`. Config directory sync uses no-follow directory opens after atomic replacement.
+Initial config reads and writes refuse symlinked, non-regular, misowned, or group/world-writable config files, plus symlinked config path components. Writes create or tighten the config directory to private `0700` permissions, refuse misowned or group/world-writable config directories, then use a unique private `0600` temporary file, sync to disk, and atomically replace `config.ini`. Config directory sync uses no-follow directory opens after atomic replacement.
 
 Download the configured chart package:
 
