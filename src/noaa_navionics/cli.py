@@ -64,6 +64,13 @@ def _positive_int(value: str) -> int:
     return parsed
 
 
+def _tcp_port(value: str) -> int:
+    parsed = _positive_int(value)
+    if parsed > 65535:
+        raise argparse.ArgumentTypeError("must be between 1 and 65535")
+    return parsed
+
+
 def _non_negative_int(value: str) -> int:
     try:
         parsed = int(value)
@@ -120,7 +127,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     wait_network = subparsers.add_parser("wait-network", help="wait for bounded TCP connectivity")
     wait_network.add_argument("--host", default="www.charts.noaa.gov", help="host to probe")
-    wait_network.add_argument("--port", type=_positive_int, default=443, help="TCP port to probe")
+    wait_network.add_argument("--port", type=_tcp_port, default=443, help="TCP port to probe")
     wait_network.add_argument("--seconds", type=_non_negative_float, default=300.0, help="maximum seconds to wait")
     wait_network.add_argument("--interval", type=_positive_float, default=5.0, help="seconds between probes")
     wait_network.add_argument("--timeout", type=_positive_float, default=5.0, help="per-probe TCP timeout")

@@ -2066,6 +2066,7 @@ class CLIValidationTests(unittest.TestCase):
 
     def test_wait_network_rejects_invalid_values(self):
         self.assert_parse_error(["wait-network", "--port", "0"])
+        self.assert_parse_error(["wait-network", "--port", "65536"])
         self.assert_parse_error(["wait-network", "--seconds", "-1"])
         self.assert_parse_error(["wait-network", "--interval", "0"])
         self.assert_parse_error(["wait-network", "--timeout", "nan"])

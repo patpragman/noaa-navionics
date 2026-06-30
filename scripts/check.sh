@@ -2527,6 +2527,9 @@ grep -q 'test_app_summary_rejects_symlinked_source_revision' tests/test_download
 grep -q 'test_check_source_revision_rejects_symlinked_revision_on_pi' tests/test_downloader.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
 grep -q 'wait-network' src/noaa_navionics/cli.py
+grep -q 'def _tcp_port' src/noaa_navionics/cli.py
+grep -q 'must be between 1 and 65535' src/noaa_navionics/cli.py
+grep -q 'wait_network.add_argument("--port", type=_tcp_port' src/noaa_navionics/cli.py
 grep -q 'socket.create_connection' src/noaa_navionics/cli.py
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics wait-network' src/noaa_navionics/report.py
