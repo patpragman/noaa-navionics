@@ -3347,6 +3347,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn(f"autostart={autostart}", text)
             self.assertIn("is_symlink=False", text)
             self.assertIn("path_symlink_component=", text)
+            self.assertIn(f"uid={os.getuid()} mode=0644", text)
             self.assertIn("created_at_source: download", text)
             self.assertIn("is_symlink: False", text)
             self.assertIn("directory_is_symlink: False", text)

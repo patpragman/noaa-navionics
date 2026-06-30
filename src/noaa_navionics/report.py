@@ -382,7 +382,8 @@ def format_status_text(report: dict[str, object]) -> str:
                 f"exists={autostart.get('exists', '')} "
                 f"is_symlink={autostart.get('is_symlink', '')} "
                 f"directory_is_symlink={autostart.get('directory_is_symlink', '')} "
-                f"path_symlink_component={autostart.get('path_symlink_component', '')}"
+                f"path_symlink_component={autostart.get('path_symlink_component', '')} "
+                f"uid={autostart.get('uid', '')} mode={autostart.get('mode', '')}".rstrip()
             )
         if isinstance(lightdm, dict):
             lines.append(
@@ -390,7 +391,8 @@ def format_status_text(report: dict[str, object]) -> str:
                 f"exists={lightdm.get('exists', '')} "
                 f"is_symlink={lightdm.get('is_symlink', '')} "
                 f"directory_is_symlink={lightdm.get('directory_is_symlink', '')} "
-                f"path_symlink_component={lightdm.get('path_symlink_component', '')}"
+                f"path_symlink_component={lightdm.get('path_symlink_component', '')} "
+                f"uid={lightdm.get('uid', '')} mode={lightdm.get('mode', '')}".rstrip()
             )
         lines.append(
             f"graphical_target={desktop.get('graphical_target', '')} "

@@ -545,6 +545,13 @@ grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
 grep -q 'status report launcher settings path is a symlink' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config path is a symlink' scripts/verify_pi.sh
+grep -q 'def verify_status_file_owner_and_mode' scripts/verify_pi.sh
+grep -q 'status report {label} uid' scripts/verify_pi.sh
+grep -q 'status report {label} mode' scripts/verify_pi.sh
+grep -q 'does not match live owner' scripts/verify_pi.sh
+grep -q 'does not match live permissions' scripts/verify_pi.sh
+grep -q 'status report desktop autostart is not a regular file' scripts/verify_pi.sh
+grep -q 'status report LightDM autologin config is not a regular file' scripts/verify_pi.sh
 grep -q 'config file integrity' scripts/verify_pi.sh
 grep -q 'source revision file integrity' scripts/verify_pi.sh
 grep -q 'Chrony config file integrity' scripts/verify_pi.sh

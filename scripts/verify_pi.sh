@@ -511,6 +511,38 @@ def parse_key_value_file(path, comment_prefixes):
         values[key.strip()] = value.strip()
     return sections, values
 
+def verify_status_file_owner_and_mode(summary, path, stat_result, label, expected_uid):
+    status_uid = summary.get("uid")
+    if status_uid is None:
+        raise SystemExit(f"status report {label} has no uid: {path}")
+    try:
+        parsed_uid = int(status_uid)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"status report {label} uid is invalid: {status_uid!r}") from exc
+    if parsed_uid != stat_result.st_uid:
+        raise SystemExit(
+            f"status report {label} uid {parsed_uid} does not match live owner "
+            f"{stat_result.st_uid}: {path}"
+        )
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f"status report {label} {path} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+        )
+    live_mode = stat_result.st_mode & 0o777
+    status_mode = str(summary.get("mode", "")).strip()
+    if not status_mode:
+        raise SystemExit(f"status report {label} has no mode: {path}")
+    if status_mode != f"{live_mode:04o}":
+        raise SystemExit(
+            f"status report {label} mode {status_mode} does not match live permissions "
+            f"{live_mode:04o}: {path}"
+        )
+    if live_mode & 0o022:
+        raise SystemExit(
+            f"status report {label} {path} has permissions {live_mode:04o}, "
+            "expected no group/other write bits"
+        )
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -954,6 +986,19 @@ if expected_config_path:
         raise SystemExit(
             f"status report desktop autostart path contains a symlink: {live_autostart_symlink_component}"
         )
+    if not autostart_file.is_file():
+        raise SystemExit(f"status report desktop autostart is not a regular file: {autostart_file}")
+    try:
+        autostart_stat = autostart_file.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report desktop autostart {autostart_file}: {exc}") from exc
+    verify_status_file_owner_and_mode(
+        autostart,
+        autostart_file,
+        autostart_stat,
+        "desktop autostart",
+        os.getuid(),
+    )
     autostart_values = autostart.get("values")
     if not isinstance(autostart_values, dict):
         raise SystemExit(f"status report desktop autostart values were not parsed: {autostart_path}")
@@ -1001,6 +1046,19 @@ if expected_config_path:
         raise SystemExit(
             f"status report LightDM autologin config path contains a symlink: {live_lightdm_symlink_component}"
         )
+    if not lightdm_file.is_file():
+        raise SystemExit(f"status report LightDM autologin config is not a regular file: {lightdm_file}")
+    try:
+        lightdm_stat = lightdm_file.stat()
+    except OSError as exc:
+        raise SystemExit(f"could not inspect status report LightDM autologin config {lightdm_file}: {exc}") from exc
+    verify_status_file_owner_and_mode(
+        lightdm,
+        lightdm_file,
+        lightdm_stat,
+        "LightDM autologin config",
+        0,
+    )
     lightdm_values = lightdm.get("values")
     lightdm_sections = lightdm.get("sections")
     if not isinstance(lightdm_values, dict) or not isinstance(lightdm_sections, list):
