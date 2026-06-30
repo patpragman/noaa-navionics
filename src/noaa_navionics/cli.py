@@ -724,6 +724,9 @@ def _prepare_private_tracks_dir(tracks_dir: Path) -> None:
     symlink_component = first_symlink_ancestor(path)
     if symlink_component is not None:
         raise RuntimeError(f"{symlink_component} is a symlink, expected a private tracks directory")
+    stat_result = path.stat()
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(f"{path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}")
     os.chmod(path, 0o700)
     _fsync_directory(path)
     _fsync_directory(path.parent)

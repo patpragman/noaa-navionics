@@ -321,6 +321,10 @@ class GPXTrackLogger:
         symlink_component = first_symlink_ancestor(parent)
         if symlink_component is not None:
             raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
+        parent_stat = parent.stat()
+        if parent_stat.st_uid != os.getuid():
+            raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
+        os.chmod(parent, 0o700)
         fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
             self.file = os.fdopen(fd, "w", encoding="utf-8")

@@ -1130,10 +1130,14 @@ grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py
+grep -q 'os.chmod(parent, 0o700)' src/noaa_navionics/gps.py
+grep -q 'test_gpx_logger_tightens_public_track_parent' tests/test_downloader.py
+grep -q 'test_gpx_logger_rejects_misowned_track_parent' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_symlinked_track_parent' tests/test_downloader.py
 grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/cli.py
 grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
+grep -q 'is owned by uid .* expected' src/noaa_navionics/cli.py
 grep -q 'test_log_rotating_tracks_rejects_symlinked_base_directory' tests/test_downloader.py
 grep -q 'GPX logging rejects symlinked track-output parent components' README.md
 grep -q 'GPX logger also refuses symlinked track-output parent components' docs/sailboat-pi.md
@@ -1593,8 +1597,8 @@ grep -q 'latest_mode' src/noaa_navionics/report.py
 grep -q 'tracks_mode' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0700' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
-grep -q 'private `0700` tracks directory' README.md
-grep -q 'private `0700` tracks directory' docs/sailboat-pi.md
+grep -q 'private user-owned `0700` tracks directory' README.md
+grep -q 'private user-owned `0700` tracks directory' docs/sailboat-pi.md
 grep -q 'private `0600` permissions' README.md
 grep -q 'private `0600` permissions' docs/sailboat-pi.md
 grep -q 'service-created track files also use a private `0077` umask' README.md

@@ -6533,6 +6533,35 @@ class GpsTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 5)
 
+    def test_gpx_logger_tightens_public_track_parent(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            parent = Path(tmpdir) / "tracks"
+            parent.mkdir()
+            parent.chmod(0o755)
+            path = parent / "track.gpx"
+
+            with GPXTrackLogger(path, name="Test") as logger:
+                logger.append(fix)
+
+            self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+
+    def test_gpx_logger_rejects_misowned_track_parent(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            parent = Path(tmpdir) / "tracks"
+            parent.mkdir()
+            path = parent / "track.gpx"
+            other_uid = os.getuid() + 1
+
+            with patch.object(gps_module.os, "getuid", return_value=other_uid):
+                with self.assertRaisesRegex(RuntimeError, "is owned by uid"):
+                    with GPXTrackLogger(path, name="Test") as logger:
+                        logger.append(fix)
+
+            self.assertFalse(path.exists())
+
     def test_gpx_logger_rejects_symlinked_track_parent(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0)
         with tempfile.TemporaryDirectory() as tmpdir:
