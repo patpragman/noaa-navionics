@@ -1674,7 +1674,7 @@ def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
     age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
     if age_seconds > max_fix_age_seconds:
         return f"last timestamped fix was stale ({age_seconds:.0f}s old)"
-    if age_seconds < -30:
+    if age_seconds < 0.0:
         return "fix timestamp is in the future"
     return ""
 

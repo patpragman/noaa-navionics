@@ -1978,6 +1978,8 @@ grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' docs
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'GPSD fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py
+grep -q 'if age_seconds < 0.0:' src/noaa_navionics/health.py
+grep -q 'test_check_gpsd_rejects_future_timestamped_fix' tests/test_downloader.py
 grep -q 'NMEA fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py
 grep -q 'def _rmc_mode_has_fix' src/noaa_navionics/gps.py
 grep -q 'test_parse_rmc_rejects_non_navigation_mode_fix' tests/test_downloader.py
@@ -2783,9 +2785,13 @@ grep -q 'latest_satellites' src/noaa_navionics/report.py
 grep -q 'latest_hdop' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint has non-finite coordinates' src/noaa_navionics/report.py
+grep -q 'newest GPX trackpoint timestamp is in the future' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint has invalid negative HDOP' src/noaa_navionics/report.py
 grep -q 'test_track_log_summary_rejects_non_finite_trackpoint_coordinates' tests/test_downloader.py
+grep -q 'test_track_log_summary_rejects_future_trackpoint' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_negative_hdop' tests/test_downloader.py
+grep -q 'future-dated GPX trackpoint timestamps' README.md
+grep -q 'future-dated GPX trackpoint timestamps' docs/sailboat-pi.md
 grep -q 'negative GPX HDOP' README.md
 grep -q 'negative GPX HDOP' docs/sailboat-pi.md
 grep -q 'test_track_log_summary_rejects_missing_trackpoint_quality' tests/test_downloader.py

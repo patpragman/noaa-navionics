@@ -7428,6 +7428,33 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("61.218100", check.detail)
             self.assertIn("8 satellites", check.detail)
 
+    def test_track_log_summary_rejects_future_trackpoint(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "tracks" / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(
+                    GPSFix(
+                        latitude=61.2181,
+                        longitude=-149.9003,
+                        timestamp=timestamp + timedelta(seconds=60),
+                        satellites=8,
+                        hdop=1.2,
+                    )
+                )
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp,
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("timestamp is in the future", check.detail)
+
     def test_track_log_summary_rejects_missing_trackpoint_quality(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -11594,6 +11621,26 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("stale", result.detail)
+
+    def test_check_gpsd_rejects_future_timestamped_fix(self):
+        original = health_module.iter_gpsd_fixes
+        future = GPSFix(
+            timestamp=datetime.now(timezone.utc) + timedelta(seconds=60),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([future])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("future", result.detail)
 
     def test_check_gpsd_rejects_untimestamped_fix(self):
         original = health_module.iter_gpsd_fixes

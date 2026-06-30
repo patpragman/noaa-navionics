@@ -917,7 +917,7 @@ def _track_log_summary_once(
             last_detail = f"{path} newest GPX trackpoint is older than current boot"
             continue
         age = current.timestamp() - track_epoch
-        if age < -30:
+        if age < 0.0:
             last_detail = f"{path} newest GPX trackpoint timestamp is in the future by {-age:.0f}s"
             continue
         if age > max_age_seconds:
