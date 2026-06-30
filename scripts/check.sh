@@ -16,6 +16,7 @@ bash -n \
   scripts/refresh_pi_charts.sh \
   scripts/collect_pi_support_bundle.sh \
   scripts/verify_pi_recovery_exports.sh \
+  scripts/restore_pi_recovery_user_data.sh \
   scripts/shutdown_pi_safely.sh \
   scripts/start_chartplotter.sh \
   scripts/configure_desktop_autologin.sh \
@@ -492,6 +493,12 @@ grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionic
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
+grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
+grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
+grep -q 'dry-run by default and requires `--apply` before writing' README.md
+grep -q 'dry-run by default and requires `--apply` before writing' docs/sailboat-pi.md
+grep -q 'does not restore root-owned GPSD, chrony, LightDM' README.md
+grep -q 'does not restore root-owned GPSD, chrony, LightDM' docs/sailboat-pi.md
 grep -q 'configured chart manifests and storage listings' README.md
 grep -q 'configured chart manifests and storage listings' docs/sailboat-pi.md
 grep -q 'extracted ENC cells, or GPX track contents' README.md
@@ -829,6 +836,14 @@ grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'unsupported non-regular member' scripts/verify_pi_recovery_exports.sh
 grep -q 'Verified Pi recovery exports' scripts/verify_pi_recovery_exports.sh
+grep -q 'NOAA_NAVIONICS_RESTORE_APPLY' scripts/restore_pi_recovery_user_data.sh
+grep -q 'Dry run only. Re-run with --apply to write files.' scripts/restore_pi_recovery_user_data.sh
+grep -q 'do not restore recovery user data as root' scripts/restore_pi_recovery_user_data.sh
+grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
+grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
+grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
+grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
+grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
@@ -4927,6 +4942,119 @@ if [[ "$recovery_verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Recovery directory must not be a symlink' "$verify_output"
+
+recovery_restore_dir="$tmpdir/recovery-restore"
+restore_home="$tmpdir/restore-home"
+mkdir -p "$recovery_restore_dir" "$restore_home"
+python3 - "$recovery_restore_dir" <<'PY'
+from pathlib import Path
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+def build_archive(directory, name, manifest, members):
+    with tarfile.open(directory / name, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+        add_text(archive, "README.txt", "restore fixture\n")
+        if manifest is not None:
+            add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
+        for member_name, text in members.items():
+            add_text(archive, member_name, text)
+
+
+root = Path(sys.argv[1])
+config = """[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = yes
+force = yes
+max_age_days = 30
+min_free_gb = 2.0
+
+[gps]
+mode = gpsd
+device = /dev/serial/by-id/mock-gps
+baud = 4800
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+
+[tracking]
+output = ~/tracks-store
+retention_days = 90
+"""
+build_archive(
+    root,
+    "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
+    {"file_count": 2},
+    {
+        "noaa-navionics/config.ini": config,
+        "noaa-navionics/launcher.env": "NOAA_NAVIONICS_GPS_SECONDS=60\n",
+    },
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000000Z.tgz",
+    {"file_count": 2},
+    {
+        "opencpn/navobj.xml": "<navobj />\n",
+        "opencpn/layers/route.gpx": "<gpx />\n",
+    },
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000000Z.tgz",
+    {"track_count": 1},
+    {"tracks/underway.gpx": "<gpx><trk /></gpx>\n"},
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz",
+    None,
+    {"commands/date-utc.txt": "2026-01-01\n"},
+)
+PY
+
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
+grep -q 'Dry run only. Re-run with --apply to write files.' "$verify_output"
+grep -q 'would restore settings:' "$verify_output"
+test ! -e "$restore_home/.config/noaa-navionics/config.ini"
+
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply >"$verify_output" 2>&1
+grep -q 'Restored 5 recovery user data file(s).' "$verify_output"
+grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' "$verify_output"
+grep -q 'device = /dev/serial/by-id/mock-gps' "$restore_home/.config/noaa-navionics/config.ini"
+grep -q 'NOAA_NAVIONICS_GPS_SECONDS=60' "$restore_home/.config/noaa-navionics/launcher.env"
+grep -q '<navobj />' "$restore_home/.opencpn/navobj.xml"
+grep -q '<gpx />' "$restore_home/.opencpn/layers/route.gpx"
+grep -q '<gpx><trk /></gpx>' "$restore_home/tracks-store/tracks/underway.gpx"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject existing targets without --overwrite with exit 1" >&2
+  exit 1
+fi
+grep -q 'restore target already exists; use --overwrite' "$verify_output"
+
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply --overwrite >"$verify_output" 2>&1
+grep -q 'Backed up replaced files under:' "$verify_output"
+test -f "$(find "$restore_home/.cache/noaa-navionics/recovery-restore-backups" -path '*/.config/noaa-navionics/config.ini' -type f | head -n 1)"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid >"$verify_output" 2>&1
