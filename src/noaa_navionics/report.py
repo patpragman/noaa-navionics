@@ -1195,6 +1195,7 @@ def _user_unit_file_summary() -> dict[str, object]:
                 state["error"] = str(exc)
             else:
                 state["wanted_by"] = _install_wanted_by_targets(lines)
+                state["lines"] = lines
         summary[unit] = state
     return summary
 
@@ -1678,6 +1679,61 @@ def _service_readiness_checks(
     if unit_files is not None:
         checks.extend(
             [
+                _unit_file_contains_check(
+                    unit_files,
+                    "noaa-navionics.service",
+                    "Chart Sync Unit File",
+                    [
+                        "Type=oneshot",
+                        "ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+                        "ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+                        "TimeoutStartSec=2h",
+                        "Restart=on-failure",
+                        "RestartSec=30min",
+                        "StartLimitIntervalSec=6h",
+                        "StartLimitBurst=3",
+                    ],
+                ),
+                _unit_file_contains_check(
+                    unit_files,
+                    "noaa-navionics.timer",
+                    "Chart Timer Unit File",
+                    [
+                        "OnCalendar=weekly",
+                        "Persistent=true",
+                        "RandomizedDelaySec=30min",
+                    ],
+                ),
+                _unit_file_contains_check(
+                    unit_files,
+                    "noaa-navionics-track.service",
+                    "Track Logger Unit File",
+                    [
+                        "Type=simple",
+                        "ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+                        "StandardOutput=null",
+                        "Restart=on-failure",
+                        "RestartSec=10",
+                        "StartLimitIntervalSec=10min",
+                        "StartLimitBurst=60",
+                    ],
+                ),
+                _unit_file_contains_check(
+                    unit_files,
+                    "noaa-navionics-preflight.service",
+                    "Boot Readiness Unit File",
+                    [
+                        "Wants=noaa-navionics-track.service",
+                        "After=noaa-navionics-track.service",
+                        "Type=oneshot",
+                        "ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
+                        "TimeoutStartSec=0",
+                        "Restart=on-failure",
+                        "RestartSec=30",
+                        "StartLimitIntervalSec=30min",
+                        "StartLimitBurst=60",
+                    ],
+                ),
                 _unit_file_install_target_check(
                     unit_files,
                     "noaa-navionics.timer",
@@ -2004,37 +2060,9 @@ def _unit_file_install_target_check(
     if not isinstance(state, dict):
         return CheckResult(name, False, f"{unit} missing from unit file summary")
     path = str(state.get("path", unit))
-    if state.get("exists") is not True:
-        return CheckResult(name, False, f"{unit} unit file is missing at {path}")
-    if state.get("is_symlink") is True:
-        return CheckResult(name, False, f"{unit} unit file path is a symlink: {path}")
-    if state.get("directory_is_symlink") is True:
-        return CheckResult(name, False, f"{unit} unit file directory is a symlink: {Path(path).parent}")
-    symlink_component = str(state.get("path_symlink_component", "")).strip()
-    if symlink_component:
-        return CheckResult(name, False, f"{unit} unit file path contains a symlink: {symlink_component}")
-    directory_error = str(state.get("directory_error", "")).strip()
-    if directory_error:
-        return CheckResult(name, False, f"{unit} unit file directory unreadable at {Path(path).parent}: {directory_error}")
-    error = str(state.get("error", ""))
-    if error:
-        return CheckResult(name, False, f"{unit} unit file unreadable at {path}: {error}")
-    owner_check = _owned_by_current_user(state, "uid")
-    if owner_check:
-        return CheckResult(name, False, f"{unit} unit file {owner_check}: {path}")
-    directory_owner_check = _owned_by_current_user(state, "directory_uid")
-    if directory_owner_check:
-        return CheckResult(name, False, f"{unit} unit file directory {directory_owner_check}: {Path(path).parent}")
-    mode_check = _not_group_or_other_writable(state, "mode")
-    if mode_check:
-        return CheckResult(name, False, f"{unit} unit file {mode_check}: {path}")
-    directory_mode_check = _not_group_or_other_writable(state, "directory_mode")
-    if directory_mode_check:
-        return CheckResult(
-            name,
-            False,
-            f"{unit} unit file directory {directory_mode_check}: {Path(path).parent}",
-        )
+    common_error = _unit_file_common_error(state, unit, path)
+    if common_error:
+        return CheckResult(name, False, common_error)
     wanted_by = state.get("wanted_by")
     if not isinstance(wanted_by, list):
         return CheckResult(name, False, f"{unit} has no parsed WantedBy target at {path}")
@@ -2045,6 +2073,60 @@ def _unit_file_install_target_check(
             f"{unit} WantedBy={','.join(str(value) for value in wanted_by) or '<missing>'} expected {expected_target}",
         )
     return CheckResult(name, True, f"{unit} installs into {expected_target}")
+
+
+def _unit_file_contains_check(
+    summary: dict[str, object],
+    unit: str,
+    name: str,
+    expected_lines: list[str],
+) -> CheckResult:
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        return CheckResult(name, False, f"{unit} missing from unit file summary")
+    path = str(state.get("path", unit))
+    common_error = _unit_file_common_error(state, unit, path)
+    if common_error:
+        return CheckResult(name, False, common_error)
+    lines = state.get("lines")
+    if not isinstance(lines, list):
+        return CheckResult(name, False, f"{unit} has no parsed unit file lines at {path}")
+    stripped_lines = {str(line).strip() for line in lines}
+    missing = [line for line in expected_lines if line not in stripped_lines]
+    if missing:
+        return CheckResult(name, False, f"{unit} missing unit file lines: {', '.join(missing)}")
+    return CheckResult(name, True, f"{unit} contains expected service settings")
+
+
+def _unit_file_common_error(state: dict[str, object], unit: str, path: str) -> str:
+    if state.get("exists") is not True:
+        return f"{unit} unit file is missing at {path}"
+    if state.get("is_symlink") is True:
+        return f"{unit} unit file path is a symlink: {path}"
+    if state.get("directory_is_symlink") is True:
+        return f"{unit} unit file directory is a symlink: {Path(path).parent}"
+    symlink_component = str(state.get("path_symlink_component", "")).strip()
+    if symlink_component:
+        return f"{unit} unit file path contains a symlink: {symlink_component}"
+    directory_error = str(state.get("directory_error", "")).strip()
+    if directory_error:
+        return f"{unit} unit file directory unreadable at {Path(path).parent}: {directory_error}"
+    error = str(state.get("error", ""))
+    if error:
+        return f"{unit} unit file unreadable at {path}: {error}"
+    owner_check = _owned_by_current_user(state, "uid")
+    if owner_check:
+        return f"{unit} unit file {owner_check}: {path}"
+    directory_owner_check = _owned_by_current_user(state, "directory_uid")
+    if directory_owner_check:
+        return f"{unit} unit file directory {directory_owner_check}: {Path(path).parent}"
+    mode_check = _not_group_or_other_writable(state, "mode")
+    if mode_check:
+        return f"{unit} unit file {mode_check}: {path}"
+    directory_mode_check = _not_group_or_other_writable(state, "directory_mode")
+    if directory_mode_check:
+        return f"{unit} unit file directory {directory_mode_check}: {Path(path).parent}"
+    return ""
 
 
 def _owned_by_current_user(summary: dict[str, object], key: str) -> str:

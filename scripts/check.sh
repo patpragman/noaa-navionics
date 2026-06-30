@@ -1050,13 +1050,21 @@ grep -q 'well-formed finite `vcgencmd measure_temp` value' docs/sailboat-pi.md
 grep -q '"GPSD Config"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
+grep -q '"Chart Sync Unit File"' scripts/verify_pi.sh
 grep -q '"Chart Timer Settings"' scripts/verify_pi.sh
+grep -q '"Chart Timer Unit File"' scripts/verify_pi.sh
 grep -q '"Chart Timer Install"' scripts/verify_pi.sh
 grep -q '"Track Logger Settings"' scripts/verify_pi.sh
+grep -q '"Track Logger Unit File"' scripts/verify_pi.sh
 grep -q '"Track Logger Install"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Settings"' scripts/verify_pi.sh
+grep -q '"Boot Readiness Unit File"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Run"' scripts/verify_pi.sh
 grep -q '"Boot Readiness Install"' scripts/verify_pi.sh
+grep -q 'installed unit-file directives' README.md
+grep -q 'full core readiness/service/unit-file/loaded-setting/service-run check names' README.md
+grep -q 'installed unit-file directives' docs/sailboat-pi.md
+grep -q 'full core readiness/service/unit-file/loaded-setting/service-run checks' docs/sailboat-pi.md
 grep -q '"Desktop Startup"' scripts/verify_pi.sh
 grep -q '"Launcher Settings"' scripts/verify_pi.sh
 grep -q 'status report has no unit_files section' scripts/verify_pi.sh
@@ -2174,12 +2182,20 @@ grep -q 'os.open(backup_path, backup_flags, 0o600)' src/noaa_navionics/opencpn.p
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
+grep -q 'Chart Sync Unit File' src/noaa_navionics/report.py
 grep -q 'Chart Timer Settings' src/noaa_navionics/report.py
+grep -q 'Chart Timer Unit File' src/noaa_navionics/report.py
 grep -q 'Chart Timer Install' src/noaa_navionics/report.py
 grep -q 'RandomizedDelayUSec.*30min' src/noaa_navionics/report.py
 grep -q 'Track Logger Settings' src/noaa_navionics/report.py
+grep -q 'Track Logger Unit File' src/noaa_navionics/report.py
 grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Track Log' src/noaa_navionics/report.py
+grep -q 'Boot Readiness Unit File' src/noaa_navionics/report.py
+grep -q 'def _unit_file_contains_check' src/noaa_navionics/report.py
+grep -q 'state\["lines"\] = lines' src/noaa_navionics/report.py
+grep -q 'test_service_readiness_checks_fail_stale_installed_unit_file_settings' tests/test_downloader.py
+grep -q 'trusted_unit_file_lines' tests/test_downloader.py
 grep -q 'def _user_summary' src/noaa_navionics/report.py
 grep -q '_trusted_system_command("loginctl", "Loginctl command")' src/noaa_navionics/report.py
 grep -q 'str(loginctl), "show-user"' src/noaa_navionics/report.py

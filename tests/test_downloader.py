@@ -116,6 +116,7 @@ from noaa_navionics.report import (
 
 
 def trusted_unit_file(path: str, wanted_by: list[str], **overrides: object) -> dict[str, object]:
+    unit_name = Path(path).name
     state: dict[str, object] = {
         "path": path,
         "exists": True,
@@ -127,9 +128,64 @@ def trusted_unit_file(path: str, wanted_by: list[str], **overrides: object) -> d
         "directory_uid": os.getuid(),
         "directory_mode": "0700",
         "wanted_by": wanted_by,
+        "lines": trusted_unit_file_lines(unit_name),
     }
     state.update(overrides)
     return state
+
+
+def trusted_unit_file_lines(unit_name: str) -> list[str]:
+    lines_by_unit = {
+        "noaa-navionics.service": [
+            "[Unit]",
+            "StartLimitIntervalSec=6h",
+            "StartLimitBurst=3",
+            "[Service]",
+            "Type=oneshot",
+            "ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+            "ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+            "TimeoutStartSec=2h",
+            "Restart=on-failure",
+            "RestartSec=30min",
+        ],
+        "noaa-navionics.timer": [
+            "[Timer]",
+            "OnCalendar=weekly",
+            "Persistent=true",
+            "RandomizedDelaySec=30min",
+            "[Install]",
+            "WantedBy=timers.target",
+        ],
+        "noaa-navionics-track.service": [
+            "[Unit]",
+            "StartLimitIntervalSec=10min",
+            "StartLimitBurst=60",
+            "[Service]",
+            "Type=simple",
+            "ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+            "StandardOutput=null",
+            "Restart=on-failure",
+            "RestartSec=10",
+            "[Install]",
+            "WantedBy=default.target",
+        ],
+        "noaa-navionics-preflight.service": [
+            "[Unit]",
+            "Wants=noaa-navionics-track.service",
+            "After=noaa-navionics-track.service",
+            "StartLimitIntervalSec=30min",
+            "StartLimitBurst=60",
+            "[Service]",
+            "Type=oneshot",
+            "ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
+            "TimeoutStartSec=0",
+            "Restart=on-failure",
+            "RestartSec=30",
+            "[Install]",
+            "WantedBy=default.target",
+        ],
+    }
+    return list(lines_by_unit.get(unit_name, []))
 
 
 class PackageForTests(unittest.TestCase):
@@ -6564,6 +6620,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(state["directory_uid"], os.getuid())
             self.assertEqual(state["directory_mode"], "0700")
             self.assertEqual(state["wanted_by"], ["timers.target"])
+            self.assertIn("WantedBy=timers.target", state["lines"])
 
     def test_user_unit_file_summary_rejects_writable_unit_file_before_parsing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -7502,6 +7559,51 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(timer_install.ok)
         self.assertIn("WantedBy=default.target", timer_install.detail)
         self.assertIn("expected timers.target", timer_install.detail)
+
+    def test_service_readiness_checks_fail_stale_installed_unit_file_settings(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        stale_lines = [
+            line
+            for line in trusted_unit_file_lines("noaa-navionics-track.service")
+            if line != "RestartSec=10"
+        ]
+        unit_files = {
+            "noaa-navionics.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.service",
+                [],
+            ),
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+                lines=stale_lines,
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        track_file = next(check for check in checks if check.name == "Track Logger Unit File")
+
+        self.assertFalse(track_file.ok)
+        self.assertIn("RestartSec=10", track_file.detail)
 
     def test_service_readiness_checks_fail_missing_loaded_unit_hardening(self):
         services = {
