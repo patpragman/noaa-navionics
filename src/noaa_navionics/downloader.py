@@ -921,7 +921,17 @@ def _prepare_output_dir(output_path: Path) -> None:
         os.chmod(output_path, 0o700)
     except OSError as exc:
         raise RuntimeError(f"could not make chart output directory private: {output_path}: {exc}") from exc
-    mode = output_path.stat().st_mode & 0o777
+    if output_path.is_symlink():
+        raise RuntimeError(f"chart output directory {output_path} became a symlink after permission tightening")
+    try:
+        stat_result = output_path.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect chart output directory after permission tightening {output_path}: {exc}") from exc
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"chart output directory {output_path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
     if mode & 0o077:
         raise RuntimeError(
             f"chart output directory {output_path} has permissions {mode:04o}, expected private 0700"

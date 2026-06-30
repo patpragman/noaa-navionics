@@ -2525,6 +2525,29 @@ class ManifestTests(unittest.TestCase):
 
             self.assertEqual(output.stat().st_mode & 0o777, 0o700)
 
+    def test_download_rejects_chart_output_directory_when_tightening_fails(self):
+        original_chmod = downloader_module.os.chmod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "charts"
+            output.mkdir()
+            os.chmod(output, 0o777)
+            package = Package("Test package", "file:///unused.zip", "AK_ENCs.zip")
+
+            def no_op_chmod(path, mode):
+                if Path(path) == output:
+                    return None
+                return original_chmod(path, mode)
+
+            try:
+                downloader_module.os.chmod = no_op_chmod
+                with self.assertRaisesRegex(RuntimeError, "chart output directory .* permissions 0777"):
+                    download_package(package, output)
+            finally:
+                downloader_module.os.chmod = original_chmod
+                output.chmod(0o700)
+
     def test_fsync_tree_uses_no_follow_file_opens(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
