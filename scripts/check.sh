@@ -508,9 +508,12 @@ grep -q 'launcher-supervised OpenCPN executable directory' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN DISPLAY' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN XAUTHORITY' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN inherited NOAA_NAVIONICS' scripts/verify_pi.sh
+grep -q 'check_chartplotter_xauthority_integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher XAUTHORITY path is not absolute' scripts/verify_pi.sh
 grep -q 'chartplotter launcher XAUTHORITY file' scripts/verify_pi.sh
-grep -q 'check_user_regular_file_integrity "$launcher_xauthority" "chartplotter launcher XAUTHORITY file"' scripts/verify_pi.sh
+grep -q 'check_user_regular_file_integrity "$xauthority" "chartplotter launcher XAUTHORITY file"' scripts/verify_pi.sh
+grep -q 'check_chartplotter_xauthority_integrity "$launcher_xauthority"' scripts/verify_pi.sh
+grep -q 'check_chartplotter_xauthority_integrity "$xauthority"' scripts/verify_pi.sh
 grep -q '/^PPid:/' scripts/verify_pi.sh
 grep -q 'no active OpenCPN process is supervised by the chartplotter launcher' scripts/verify_pi.sh
 grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc' scripts/verify_pi.sh

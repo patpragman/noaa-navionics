@@ -2421,6 +2421,22 @@ check_opencpn_process_executable_integrity() {
   fi
 }
 
+check_chartplotter_xauthority_integrity() {
+  local xauthority="$1"
+  if [[ -z "$xauthority" ]]; then
+    return 0
+  fi
+  case "$xauthority" in
+    /*)
+      ;;
+    *)
+      printf 'chartplotter launcher XAUTHORITY path is not absolute: %s\n' "$xauthority" >&2
+      return 1
+      ;;
+  esac
+  check_user_regular_file_integrity "$xauthority" "chartplotter launcher XAUTHORITY file"
+}
+
 check_opencpn_process_display_environment() {
   local launcher_pid
   local key
@@ -2453,17 +2469,7 @@ check_opencpn_process_display_environment() {
     printf 'chartplotter launcher has no DISPLAY environment; cannot verify OpenCPN display environment\n' >&2
     return 1
   fi
-  if [[ -n "$launcher_xauthority" ]]; then
-    case "$launcher_xauthority" in
-      /*)
-        ;;
-      *)
-        printf 'chartplotter launcher XAUTHORITY path is not absolute: %s\n' "$launcher_xauthority" >&2
-        return 1
-        ;;
-    esac
-    check_user_regular_file_integrity "$launcher_xauthority" "chartplotter launcher XAUTHORITY file" || return 1
-  fi
+  check_chartplotter_xauthority_integrity "$launcher_xauthority" || return 1
   while IFS= read -r pid; do
     checked=1
     opencpn_display=""
@@ -2714,6 +2720,7 @@ check_live_display_power_disabled() {
     printf 'chartplotter launcher has no DISPLAY environment; cannot verify live display power settings\n' >&2
     return 1
   fi
+  check_chartplotter_xauthority_integrity "$xauthority" || return 1
   if [[ -n "$xauthority" ]]; then
     output="$(DISPLAY="$display" XAUTHORITY="$xauthority" xset q 2>&1)" || {
       printf 'xset q failed for chartplotter display %s: %s\n' "$display" "$output" >&2
