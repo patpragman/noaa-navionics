@@ -4567,6 +4567,51 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn("UMask", report_module.USER_UNIT_PROPERTIES[unit])
                 self.assertIn("ProtectSystem", report_module.USER_UNIT_PROPERTIES[unit])
 
+    def test_service_summary_rejects_user_owned_systemctl_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "systemctl"
+            fake.write_text("#!/bin/sh\necho active\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                summary = report_module._service_summary()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(summary["available"])
+        self.assertIn("Systemctl command directory is not a trusted system directory", str(summary["detail"]))
+
+    def test_user_summary_rejects_user_owned_loginctl_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "loginctl"
+            fake.write_text("#!/bin/sh\necho Linger=yes\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_user = os.environ.get("USER")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                os.environ["USER"] = "pi"
+                health_module._is_raspberry_pi = lambda: True
+                summary = report_module._user_summary()
+            finally:
+                os.environ["PATH"] = original_path
+                if original_user is None:
+                    os.environ.pop("USER", None)
+                else:
+                    os.environ["USER"] = original_user
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertIn("Loginctl command directory is not a trusted system directory", str(summary["error"]))
+
     def test_build_and_write_status_report(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

@@ -9,7 +9,6 @@ import math
 import os
 import platform
 import re
-import shutil
 import socket
 import stat
 import subprocess
@@ -19,7 +18,7 @@ import time
 
 from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, count_enc_cells, read_manifest
-from .health import CheckResult, run_preflight
+from .health import CheckResult, run_preflight, _trusted_system_command
 from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
 from . import __version__
 
@@ -1018,8 +1017,9 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
 
 
 def _service_summary() -> dict[str, object]:
-    if shutil.which("systemctl") is None:
-        return {"available": False, "detail": "systemctl not found"}
+    _, error = _trusted_system_command("systemctl", "Systemctl command")
+    if error:
+        return {"available": False, "detail": error}
     units = [
         "noaa-navionics.service",
         "noaa-navionics.timer",
@@ -1037,8 +1037,9 @@ def _service_summary() -> dict[str, object]:
 
 
 def _system_service_summary() -> dict[str, object]:
-    if shutil.which("systemctl") is None:
-        return {"available": False, "detail": "systemctl not found"}
+    _, error = _trusted_system_command("systemctl", "Systemctl command")
+    if error:
+        return {"available": False, "detail": error}
     units = ["gpsd.socket", "gpsd.service", "chrony.service"]
     summary: dict[str, object] = {"available": True}
     for unit in units:
@@ -1055,12 +1056,14 @@ def _user_summary() -> dict[str, object]:
     if not name:
         summary["error"] = "USER is not set"
         return summary
-    if shutil.which("loginctl") is None:
-        summary["error"] = "loginctl not found"
+    loginctl, error = _trusted_system_command("loginctl", "Loginctl command")
+    if error:
+        summary["error"] = error
         return summary
+    assert loginctl is not None
     try:
         completed = subprocess.run(
-            ["loginctl", "show-user", name, "-p", "Linger"],
+            [str(loginctl), "show-user", name, "-p", "Linger"],
             check=False,
             text=True,
             stdout=subprocess.PIPE,
@@ -2113,12 +2116,16 @@ def _systemctl_user(args: list[str]) -> str:
 def _systemctl_user_show(unit: str, properties: list[str]) -> dict[str, str]:
     if not properties:
         return {}
+    systemctl, error = _trusted_system_command("systemctl", "Systemctl command")
+    if error:
+        return {"error": error}
+    assert systemctl is not None
     property_args = []
     for prop in properties:
         property_args.extend(["-p", prop])
     try:
         completed = subprocess.run(
-            ["systemctl", "--user", "show", unit, *property_args],
+            [str(systemctl), "--user", "show", unit, *property_args],
             check=False,
             text=True,
             stdout=subprocess.PIPE,
@@ -2143,6 +2150,12 @@ def _systemctl_system(args: list[str]) -> str:
 
 
 def _systemctl(command: list[str]) -> str:
+    if command and command[0] == "systemctl":
+        systemctl, error = _trusted_system_command("systemctl", "Systemctl command")
+        if error:
+            return f"error: {error}"
+        assert systemctl is not None
+        command = [str(systemctl), *command[1:]]
     try:
         completed = subprocess.run(
             command,

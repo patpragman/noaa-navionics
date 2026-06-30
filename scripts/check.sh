@@ -2053,7 +2053,11 @@ grep -q 'Track Logger Settings' src/noaa_navionics/report.py
 grep -q 'Track Logger Install' src/noaa_navionics/report.py
 grep -q 'Track Log' src/noaa_navionics/report.py
 grep -q 'def _user_summary' src/noaa_navionics/report.py
-grep -q 'loginctl", "show-user"' src/noaa_navionics/report.py
+grep -q '_trusted_system_command("loginctl", "Loginctl command")' src/noaa_navionics/report.py
+grep -q 'str(loginctl), "show-user"' src/noaa_navionics/report.py
+grep -q '_trusted_system_command("systemctl", "Systemctl command")' src/noaa_navionics/report.py
+grep -q 'test_service_summary_rejects_user_owned_systemctl_on_pi' tests/test_downloader.py
+grep -q 'test_user_summary_rejects_user_owned_loginctl_on_pi' tests/test_downloader.py
 grep -q 'User Linger' src/noaa_navionics/report.py
 grep -q 'status report user linger' scripts/verify_pi.sh
 grep -q '"User Linger"' scripts/verify_pi.sh
