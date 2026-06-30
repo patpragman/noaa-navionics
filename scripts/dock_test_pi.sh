@@ -410,7 +410,18 @@ ssh_available() {
 }
 
 remote_boot_id() {
-  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id"
+  ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && python3 -" <<'REMOTE_BOOT_ID'
+from pathlib import Path
+import re
+
+try:
+    value = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+except OSError as exc:
+    raise SystemExit(f"could not read remote boot ID: {exc}") from exc
+if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value):
+    raise SystemExit(f"remote boot ID is invalid; expected Linux boot_id value: {value or '<empty>'}")
+print(value)
+REMOTE_BOOT_ID
 }
 
 validate_boot_id_value() {

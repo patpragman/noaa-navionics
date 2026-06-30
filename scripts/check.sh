@@ -2423,7 +2423,10 @@ grep -q 'Remote reboot command ${item_kind} is owned by uid' scripts/dock_test_p
 grep -q 'Remote reboot command ${item_kind} has permissions' scripts/dock_test_pi.sh
 grep -Fq 'readlink -f -- "$reboot_cmd"' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && true' scripts/dock_test_pi.sh
-grep -q '${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id' scripts/dock_test_pi.sh
+grep -q '${remote_system_path} && export PATH && python3 -' scripts/dock_test_pi.sh
+grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/dock_test_pi.sh
+grep -q 'remote boot ID is invalid; expected Linux boot_id value' scripts/dock_test_pi.sh
+! grep -q '${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v reboot' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && sudo -n -l' scripts/dock_test_pi.sh
 grep -Fq '${remote_system_path} && export PATH && sudo -n '"'"'$remote_reboot_cmd'"'" scripts/dock_test_pi.sh
@@ -2457,8 +2460,8 @@ grep -q 'pins remote reboot probes and sudo calls to trusted system command dire
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' docs/sailboat-pi.md
 grep -q 'pins its remote command path to trusted system directories' README.md
 grep -q 'pins its remote command path to trusted system directories' docs/sailboat-pi.md
-grep -q 'valid Linux `boot_id` values' README.md
-grep -q 'valid Linux `boot_id` values' docs/sailboat-pi.md
+grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' README.md
+grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
 grep -q 'only after rejecting a missing launcher environment, symlinked launcher environment files or path components' README.md
