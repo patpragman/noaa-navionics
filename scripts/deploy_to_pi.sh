@@ -321,7 +321,7 @@ check_owner_and_mode file "$resolved_path"
 REMOTE_DEPLOY_COMMAND_TRUST
 }
 
-remote_command_exists() {
+remote_command_path() {
   local command_name="$1"
   local command_path
   local status=0
@@ -337,13 +337,23 @@ remote_command_exists() {
   if [[ "$status" -ne 0 || -z "$command_path" ]]; then
     return "$status"
   fi
-  validate_remote_deploy_command_trust "$command_name" "$command_path"
+  if ! validate_remote_deploy_command_trust "$command_name" "$command_path"; then
+    return 1
+  fi
+  printf '%s\n' "$command_path"
+}
+
+remote_command_exists() {
+  local command_name="$1"
+  remote_command_path "$command_name" >/dev/null
 }
 
 require_remote_command_available() {
   local command_name="$1"
+  local command_path
   local status
-  if remote_command_exists "$command_name"; then
+  if command_path="$(remote_command_path "$command_name")"; then
+    printf '%s\n' "$command_path"
     return 0
   fi
   status="$?"
@@ -529,7 +539,7 @@ EOF
 fi
 
 require_local_command ssh
-require_remote_command_available python3
+require_remote_command_available python3 >/dev/null
 
 write_remote_source_revision() {
   local remote_dir_value="$1"
@@ -864,9 +874,14 @@ PY"
 }
 
 deploy_with_rsync() {
+  local remote_rsync_cmd="$1"
+  local remote_rsync_cmd_quoted
+
+  remote_rsync_cmd_quoted="$(printf '%q' "$remote_rsync_cmd")"
+
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
   rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4" \
-    --rsync-path="${remote_system_path} rsync" \
+    --rsync-path="${remote_system_path} && export PATH && ${remote_rsync_cmd_quoted}" \
     --exclude '.git/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
@@ -886,6 +901,11 @@ deploy_with_rsync() {
 }
 
 deploy_with_tar() {
+  local remote_tar_cmd="$1"
+  local remote_tar_cmd_quoted
+
+  remote_tar_cmd_quoted="$(printf '%q' "$remote_tar_cmd")"
+
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
   (
     cd "$repo_root"
@@ -914,16 +934,18 @@ deploy_with_tar() {
       --exclude='*.zip' \
       --exclude='ENCProdCat_19115.xml' \
       -czf - .
-  ) | ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && tar -xzf - -C ${remote_staging_dir_quoted}"
+  ) | ssh "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && ${remote_tar_cmd_quoted} -xzf - -C ${remote_staging_dir_quoted}"
   promote_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
 }
 
 deploy_sources() {
+  local remote_rsync_cmd
+  local remote_tar_cmd
   local rsync_status
 
   if local_command_exists rsync; then
-    if remote_command_exists rsync; then
-      deploy_with_rsync
+    if remote_rsync_cmd="$(remote_command_path rsync)"; then
+      deploy_with_rsync "$remote_rsync_cmd"
       return 0
     fi
     rsync_status="$?"
@@ -940,8 +962,8 @@ EOF
   fi
 
   require_local_command tar
-  require_remote_command_available tar
-  deploy_with_tar
+  remote_tar_cmd="$(require_remote_command_available tar)"
+  deploy_with_tar "$remote_tar_cmd"
 }
 
 deploy_sources

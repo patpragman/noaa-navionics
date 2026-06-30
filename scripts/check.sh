@@ -312,7 +312,9 @@ grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAlive
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v ${command_name}' scripts/deploy_to_pi.sh
-grep -q 'validate_remote_deploy_command_trust "$command_name" "$command_path"' scripts/deploy_to_pi.sh
+grep -q 'remote_command_path()' scripts/deploy_to_pi.sh
+grep -q 'remote_command_path "$command_name" >/dev/null' scripts/deploy_to_pi.sh
+grep -q 'if ! validate_remote_deploy_command_trust "$command_name" "$command_path"; then' scripts/deploy_to_pi.sh
 grep -q 'remote_path_in_trusted_system_dir' scripts/deploy_to_pi.sh
 grep -q 'Remote deploy command ${command_name} is not in a trusted system directory' scripts/deploy_to_pi.sh
 grep -q 'Remote deploy command ${command_name} resolves outside trusted system directories' scripts/deploy_to_pi.sh
@@ -320,8 +322,14 @@ grep -q 'Remote deploy command ${command_name} ${item_kind} is owned by uid' scr
 grep -q 'Remote deploy command ${command_name} ${item_kind} has permissions' scripts/deploy_to_pi.sh
 grep -q 'readlink -f -- "$command_path"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=' scripts/deploy_to_pi.sh
-grep -q -- '--rsync-path="${remote_system_path} rsync"' scripts/deploy_to_pi.sh
-grep -q '${remote_system_path} && export PATH && tar -xzf - -C' scripts/deploy_to_pi.sh
+grep -q 'remote_rsync_cmd="$(remote_command_path rsync)"' scripts/deploy_to_pi.sh
+grep -q 'deploy_with_rsync "$remote_rsync_cmd"' scripts/deploy_to_pi.sh
+grep -q 'remote_tar_cmd="$(require_remote_command_available tar)"' scripts/deploy_to_pi.sh
+grep -q 'deploy_with_tar "$remote_tar_cmd"' scripts/deploy_to_pi.sh
+grep -q -- '--rsync-path="${remote_system_path} && export PATH && ${remote_rsync_cmd_quoted}"' scripts/deploy_to_pi.sh
+grep -q '${remote_system_path} && export PATH && ${remote_tar_cmd_quoted} -xzf - -C' scripts/deploy_to_pi.sh
+! grep -q -- '--rsync-path="${remote_system_path} rsync"' scripts/deploy_to_pi.sh
+! grep -q '${remote_system_path} && export PATH && tar -xzf - -C' scripts/deploy_to_pi.sh
 grep -q 'rsync -az --delete -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/verify_pi.sh
@@ -331,7 +339,7 @@ grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAlive
 grep -q 'ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/dock_test_pi.sh
 grep -q 'local_command_exists rsync' scripts/deploy_to_pi.sh
-grep -q 'remote_command_exists rsync' scripts/deploy_to_pi.sh
+grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available python3' scripts/deploy_to_pi.sh
 grep -q 'require_remote_command_available tar' scripts/deploy_to_pi.sh
 grep -q 'deploy_with_rsync' scripts/deploy_to_pi.sh
@@ -345,6 +353,8 @@ grep -q 'remote_previous_dir="${remote_dir_trimmed}.previous"' scripts/deploy_to
 grep -q 'bootstrapping copy with tar over SSH' scripts/deploy_to_pi.sh
 grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' README.md
 grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' docs/sailboat-pi.md
+grep -q 'uses the validated absolute remote `rsync` or `tar` path for the actual copy command' README.md
+grep -q 'uses the validated absolute remote `rsync` or `tar` path for the actual copy command' docs/sailboat-pi.md
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment path under symlink' scripts/deploy_to_pi.sh
