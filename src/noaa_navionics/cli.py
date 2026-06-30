@@ -587,6 +587,14 @@ def _read_fixes(
                         break
                     yielded_fix = True
                     yield fix
+                if gpsd_connect_retry and deadline is None and not yielded_fix:
+                    print(
+                        f"GPSD stream at {gpsd_host}:{gpsd_port} ended before any fixes; "
+                        f"retrying in {gpsd_retry_delay:g}s",
+                        file=sys.stderr,
+                    )
+                    time.sleep(max(0.1, gpsd_retry_delay))
+                    continue
                 return
             except OSError as exc:
                 if not gpsd_connect_retry or deadline is not None or yielded_fix:

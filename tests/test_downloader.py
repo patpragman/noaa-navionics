@@ -1588,6 +1588,81 @@ class OpenCPNConfigTests(unittest.TestCase):
         self.assertEqual(sleeps, [0.1])
         self.assertIn("GPSD unavailable at 127.0.0.1:2947", stderr.getvalue())
 
+    def test_read_fixes_retries_empty_gpsd_stream_before_first_fix(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        calls = []
+        sleeps = []
+        original_iter = cli_module.iter_gpsd_fixes
+        original_sleep = cli_module.time.sleep
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            calls.append((host, port, timeout, max_duration))
+            if len(calls) == 1:
+                return iter(())
+            return iter([fix])
+
+        try:
+            cli_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            cli_module.time.sleep = lambda seconds: sleeps.append(seconds)
+            stderr = StringIO()
+            with redirect_stderr(stderr):
+                fixes = list(
+                    cli_module._read_fixes(
+                        "/dev/serial/by-id/mock-gps",
+                        4800,
+                        None,
+                        gpsd=True,
+                        gpsd_connect_retry=True,
+                        gpsd_retry_delay=0.1,
+                    )
+                )
+        finally:
+            cli_module.iter_gpsd_fixes = original_iter
+            cli_module.time.sleep = original_sleep
+
+        self.assertEqual(fixes, [fix])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(sleeps, [0.1])
+        self.assertIn("ended before any fixes", stderr.getvalue())
+
+    def test_read_fixes_does_not_retry_empty_gpsd_stream_for_bounded_run(self):
+        calls = []
+        sleeps = []
+        original_iter = cli_module.iter_gpsd_fixes
+        original_sleep = cli_module.time.sleep
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            calls.append((host, port, timeout, max_duration))
+            return iter(())
+
+        try:
+            cli_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            cli_module.time.sleep = lambda seconds: sleeps.append(seconds)
+            fixes = list(
+                cli_module._read_fixes(
+                    "/dev/serial/by-id/mock-gps",
+                    4800,
+                    None,
+                    gpsd=True,
+                    deadline=time.monotonic() + 1,
+                    gpsd_connect_retry=True,
+                    gpsd_retry_delay=0.1,
+                )
+            )
+        finally:
+            cli_module.iter_gpsd_fixes = original_iter
+            cli_module.time.sleep = original_sleep
+
+        self.assertEqual(fixes, [])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sleeps, [])
+
     def test_read_fixes_does_not_retry_gpsd_failure_after_fix(self):
         fix = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),

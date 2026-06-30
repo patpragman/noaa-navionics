@@ -1870,6 +1870,10 @@ grep -q 'no GPSD messages within' src/noaa_navionics/gps.py
 grep -q 'no NMEA bytes within' src/noaa_navionics/gps.py
 grep -q 'test_iter_gpsd_fixes_raises_on_idle_timeout' tests/test_downloader.py
 grep -q 'test_read_fixes_passes_live_gpsd_idle_timeout' tests/test_downloader.py
+grep -q 'test_read_fixes_retries_empty_gpsd_stream_before_first_fix' tests/test_downloader.py
+grep -q 'ended before any fixes' src/noaa_navionics/cli.py
+grep -q 'first connected GPSD stream ends before any fix arrives' README.md
+grep -q 'first connected GPSD stream ends before any fix arrives' docs/sailboat-pi.md
 grep -q 'test_read_fixes_passes_live_serial_idle_timeout' tests/test_downloader.py
 grep -q 'test_read_nmea_lines_raises_on_idle_timeout' tests/test_downloader.py
 grep -q 'after 300 quiet seconds by default' README.md
