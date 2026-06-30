@@ -110,6 +110,12 @@ def _non_negative_float(value: str) -> float:
     return parsed
 
 
+def _live_idle_timeout(value: float, *, live: bool) -> Optional[float]:
+    if live and value > 0:
+        return value
+    return None
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="noaa-navionics",
@@ -469,6 +475,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 _validate_live_serial_device(device)
             base_output = Path(args.output).expanduser() if args.output else app_config.track_output
             deadline = time.monotonic() + args.seconds if args.seconds else None
+            live_stream = deadline is None and not args.sample
             fixes = _read_fixes(
                 device,
                 args.baud or app_config.gps_baud,
@@ -477,13 +484,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
                 deadline=deadline,
-                gpsd_connect_retry=use_gpsd and deadline is None and not args.sample,
-                gpsd_idle_timeout=args.gpsd_idle_timeout
-                if use_gpsd and deadline is None and not args.sample and args.gpsd_idle_timeout
-                else None,
-                serial_idle_timeout=args.serial_idle_timeout
-                if not use_gpsd and deadline is None and not args.sample and args.serial_idle_timeout
-                else None,
+                gpsd_connect_retry=use_gpsd and live_stream,
+                gpsd_idle_timeout=_live_idle_timeout(args.gpsd_idle_timeout, live=use_gpsd and live_stream),
+                serial_idle_timeout=_live_idle_timeout(args.serial_idle_timeout, live=not use_gpsd and live_stream),
             )
             fixes = _trackable_fixes(fixes)
             previous_handlers = _install_track_stop_handlers()

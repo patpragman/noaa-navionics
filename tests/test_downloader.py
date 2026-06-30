@@ -1289,6 +1289,127 @@ class OpenCPNConfigTests(unittest.TestCase):
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((track_output / "tracks" / expected_name).exists())
 
+    def test_cli_log_track_zero_gpsd_idle_timeout_disables_live_timeout(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "tracks"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=1.0,
+                longitude=2.0,
+                satellites=8,
+                hdop=1.2,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
+            ):
+                calls.append((gpsd, gpsd_connect_retry, gpsd_idle_timeout, serial_idle_timeout))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(
+                        [
+                            "log-track",
+                            "--config",
+                            str(app_config),
+                            "--rotate-daily",
+                            "--gpsd-idle-timeout",
+                            "0",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(calls, [(True, True, None, None)])
+
+    def test_cli_log_track_zero_serial_idle_timeout_disables_live_timeout(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "tracks"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=1.0,
+                longitude=2.0,
+                satellites=8,
+                hdop=1.2,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
+            ):
+                calls.append((gpsd, gpsd_connect_retry, gpsd_idle_timeout, serial_idle_timeout))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    code = cli_module.main(
+                        [
+                            "log-track",
+                            "--config",
+                            str(app_config),
+                            "--rotate-daily",
+                            "--serial-idle-timeout",
+                            "0",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(calls, [(False, False, None, None)])
+
     def test_cli_log_track_explicit_device_and_output_override_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

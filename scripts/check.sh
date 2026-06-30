@@ -2184,6 +2184,9 @@ grep -q 'first connected GPSD stream ends before any fix arrives' README.md
 grep -q 'first connected GPSD stream ends before any fix arrives' docs/sailboat-pi.md
 grep -q 'test_read_fixes_passes_live_serial_idle_timeout' tests/test_downloader.py
 grep -q 'test_read_nmea_lines_raises_on_idle_timeout' tests/test_downloader.py
+grep -q 'def _live_idle_timeout' src/noaa_navionics/cli.py
+grep -q 'test_cli_log_track_zero_gpsd_idle_timeout_disables_live_timeout' tests/test_downloader.py
+grep -q 'test_cli_log_track_zero_serial_idle_timeout_disables_live_timeout' tests/test_downloader.py
 grep -q 'after 300 quiet seconds by default' README.md
 grep -q 'after 300 quiet seconds by default' docs/sailboat-pi.md
 grep -q 'Live serial logging uses the same 300-second quiet limit' README.md
@@ -2249,7 +2252,8 @@ grep -q 'symlinked config path components' docs/sailboat-pi.md
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
-grep -q 'gpsd_connect_retry=use_gpsd and deadline is None and not args.sample' src/noaa_navionics/cli.py
+grep -q 'live_stream = deadline is None and not args.sample' src/noaa_navionics/cli.py
+grep -q 'gpsd_connect_retry=use_gpsd and live_stream' src/noaa_navionics/cli.py
 grep -q 'open_trusted_gps_sample(Path(sample))' src/noaa_navionics/cli.py
 grep -q 'GPS sample path changed before it could be read' src/noaa_navionics/health.py
 grep -q 'test_check_gps_sample_rejects_replaced_sample_before_parsing' tests/test_downloader.py
