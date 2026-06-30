@@ -631,17 +631,22 @@ grep -q 'launcher_text, launcher_env_stat = read_private_user_file_text' scripts
 grep -q 'opencpn_text, opencpn_stat = read_trusted_text_file' scripts/verify_pi.sh
 grep -q 'autostart_text, autostart_stat = read_trusted_text_file' scripts/verify_pi.sh
 grep -q 'lightdm_text, lightdm_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'config_text, config_stat = read_trusted_text_file' scripts/verify_pi.sh
+grep -q 'parser.read_string(config_text, source=expected_config_path)' scripts/verify_pi.sh
 grep -q 'parse_opencpn_config_text(opencpn_text)' scripts/verify_pi.sh
 grep -q 'parse_key_value_text(autostart_text' scripts/verify_pi.sh
 grep -q 'parse_key_value_text(lightdm_text' scripts/verify_pi.sh
 ! grep -q 'def parse_key_value_file' scripts/verify_pi.sh
 ! grep -q 'parse_opencpn_config(opencpn_config_path)' scripts/verify_pi.sh
+! grep -q 'parser.read(Path(expected_config_path).expanduser())' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 ! grep -q 'launcher_env_file.read_text(encoding="utf-8")' scripts/verify_pi.sh
 grep -q 'parsing that status artifact only through the no-follow descriptor it verified' README.md
 grep -q 'parses that status artifact only through the no-follow descriptor it verified' docs/sailboat-pi.md
 grep -q 'launcher settings matching a no-follow descriptor read of the live private launcher environment' README.md
 grep -q 'launcher settings matching a no-follow descriptor read of the live private launcher environment' docs/sailboat-pi.md
+grep -q 'onboard app config through a no-follow descriptor read' README.md
+grep -q 'onboard app config through a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh

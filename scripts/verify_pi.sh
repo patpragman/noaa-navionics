@@ -720,20 +720,11 @@ if expected_config_path:
         raise SystemExit(f"status report config path is a symlink: {config_file}")
     if not config_file.is_file():
         raise SystemExit(f"status report config path is not a regular file: {config_file}")
-    try:
-        config_stat = config_file.stat()
-    except OSError as exc:
-        raise SystemExit(f"could not inspect status report config path {config_file}: {exc}") from exc
-    if config_stat.st_uid != os.getuid():
-        raise SystemExit(
-            f"status report config path {config_file} is owned by uid {config_stat.st_uid}, expected {os.getuid()}"
-        )
-    config_mode = config_stat.st_mode & 0o777
-    if config_mode & 0o022:
-        raise SystemExit(
-            f"status report config path {config_file} has permissions {config_mode:04o}, "
-            "expected no group/other write bits"
-        )
+    config_text, config_stat = read_trusted_text_file(
+        config_file,
+        "status report config path",
+        os.getuid(),
+    )
 if expected_launcher_env_path:
     launcher_settings = report.get("launcher_settings")
     if not isinstance(launcher_settings, dict):
@@ -840,8 +831,10 @@ if status_linger != "yes":
     raise SystemExit(f"status report user linger={status_linger or '<missing>'}, expected yes")
 if expected_config_path:
     parser = ConfigParser()
-    if not parser.read(Path(expected_config_path).expanduser()):
-        raise SystemExit(f"could not read expected config: {expected_config_path}")
+    try:
+        parser.read_string(config_text, source=expected_config_path)
+    except Exception as exc:
+        raise SystemExit(f"could not parse expected config {expected_config_path}: {exc}") from exc
     chart_output = Path(parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()).expanduser()
     expected_manifest_path = str(chart_output / "noaa-navionics-manifest.json")
     expected_config = {
