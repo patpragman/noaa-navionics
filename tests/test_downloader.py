@@ -4754,6 +4754,8 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn("ProtectSystem", report_module.USER_UNIT_PROPERTIES[unit])
                 self.assertIn("LockPersonality", report_module.USER_UNIT_PROPERTIES[unit])
                 self.assertIn("RestrictSUIDSGID", report_module.USER_UNIT_PROPERTIES[unit])
+                self.assertIn("MemoryDenyWriteExecute", report_module.USER_UNIT_PROPERTIES[unit])
+                self.assertIn("RestrictRealtime", report_module.USER_UNIT_PROPERTIES[unit])
 
     def test_service_summary_rejects_user_owned_systemctl_on_pi(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -6637,6 +6639,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },
@@ -6667,6 +6671,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },
@@ -6694,6 +6700,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7539,6 +7547,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7902,6 +7912,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7922,6 +7934,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },
@@ -7948,6 +7962,8 @@ class StatusReportTests(unittest.TestCase):
                     "ProtectSystem": "full",
                     "LockPersonality": "yes",
                     "RestrictSUIDSGID": "yes",
+                    "MemoryDenyWriteExecute": "yes",
+                    "RestrictRealtime": "yes",
                     "UMask": "0077",
                 },
             },

@@ -16,6 +16,8 @@ PrivateTmp=true
 ProtectSystem=full
 LockPersonality=true
 RestrictSUIDSGID=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
 UMask=0077
 
 [Install]

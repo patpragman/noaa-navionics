@@ -2521,6 +2521,12 @@ grep -q 'LockPersonality=true' systemd/noaa-navionics-preflight.service
 grep -q 'RestrictSUIDSGID=true' systemd/noaa-navionics.service
 grep -q 'RestrictSUIDSGID=true' systemd/noaa-navionics-track.service
 grep -q 'RestrictSUIDSGID=true' systemd/noaa-navionics-preflight.service
+grep -q 'MemoryDenyWriteExecute=true' systemd/noaa-navionics.service
+grep -q 'MemoryDenyWriteExecute=true' systemd/noaa-navionics-track.service
+grep -q 'MemoryDenyWriteExecute=true' systemd/noaa-navionics-preflight.service
+grep -q 'RestrictRealtime=true' systemd/noaa-navionics.service
+grep -q 'RestrictRealtime=true' systemd/noaa-navionics-track.service
+grep -q 'RestrictRealtime=true' systemd/noaa-navionics-preflight.service
 grep -q 'UMask=0077' systemd/noaa-navionics.service
 grep -q 'UMask=0077' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
@@ -2528,15 +2534,26 @@ grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
 grep -q 'ProtectSystem.*full' src/noaa_navionics/report.py
 grep -q 'LockPersonality.*yes' src/noaa_navionics/report.py
 grep -q 'RestrictSUIDSGID.*yes' src/noaa_navionics/report.py
+grep -q 'MemoryDenyWriteExecute.*yes' src/noaa_navionics/report.py
+grep -q 'RestrictRealtime.*yes' src/noaa_navionics/report.py
 grep -q 'LockPersonality' tests/test_downloader.py
 grep -q 'RestrictSUIDSGID' tests/test_downloader.py
+grep -q 'MemoryDenyWriteExecute' tests/test_downloader.py
+grep -q 'RestrictRealtime' tests/test_downloader.py
 grep -q 'chart service lock personality' scripts/verify_pi.sh
 grep -q 'track service restrict suid sgid' scripts/verify_pi.sh
 grep -q 'preflight service loaded lock personality' scripts/verify_pi.sh
+grep -q 'chart service deny writable executable memory' scripts/verify_pi.sh
+grep -q 'track service loaded restrict realtime' scripts/verify_pi.sh
+grep -q 'preflight service loaded deny writable executable memory' scripts/verify_pi.sh
 grep -q 'LockPersonality' README.md
 grep -q 'RestrictSUIDSGID' README.md
+grep -q 'MemoryDenyWriteExecute' README.md
+grep -q 'RestrictRealtime' README.md
 grep -q 'LockPersonality' docs/sailboat-pi.md
 grep -q 'RestrictSUIDSGID' docs/sailboat-pi.md
+grep -q 'MemoryDenyWriteExecute' docs/sailboat-pi.md
+grep -q 'RestrictRealtime' docs/sailboat-pi.md
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
 python3 - <<'PY'
 import sys
@@ -2552,8 +2569,9 @@ for unit in (
     properties = report.USER_UNIT_PROPERTIES[unit]
     if "UMask" not in properties:
         raise SystemExit(f"status report must query loaded {unit} UMask")
-    if "ProtectSystem" not in properties:
-        raise SystemExit(f"status report must query loaded {unit} ProtectSystem")
+    for property_name in ("ProtectSystem", "LockPersonality", "RestrictSUIDSGID", "MemoryDenyWriteExecute", "RestrictRealtime"):
+        if property_name not in properties:
+            raise SystemExit(f"status report must query loaded {unit} {property_name}")
 PY
 grep -q 'FragmentPath' src/noaa_navionics/report.py
 grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
@@ -2654,6 +2672,9 @@ grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'The unattended startup services were installed but not enabled' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_enabled noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_enabled noaa-navionics-track.service "track logger service"' scripts/provision_sailboat_pi.sh
@@ -4128,6 +4149,9 @@ grep -q 'systemctl --user daemon-reload' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes' "$provision_output"
 grep -q 'require_user_unit_enabled noaa-navionics.timer' "$provision_output"
 grep -q 'require_user_unit_enabled noaa-navionics-track.service' "$provision_output"
 grep -q 'require_user_unit_enabled noaa-navionics-preflight.service' "$provision_output"
