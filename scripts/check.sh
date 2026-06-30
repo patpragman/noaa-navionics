@@ -1286,13 +1286,31 @@ grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
 grep -q 'install_root_file_atomic "$tmp" "$gpsd_conf" 0644' scripts/configure_gpsd.sh
-grep -q 'systemctl daemon-reload' scripts/configure_gpsd.sh
-grep -q 'systemctl enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
-grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
+grep -q 'require_trusted_system_command()' scripts/configure_gpsd.sh
+grep -q 'path_in_trusted_system_dir()' scripts/configure_gpsd.sh
+grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_gpsd.sh
+grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_gpsd.sh
+grep -q 'sudo "$systemctl_cmd" daemon-reload' scripts/configure_gpsd.sh
+grep -q 'sudo "$systemctl_cmd" enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
+grep -q 'sudo "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/configure_gpsd.sh
+! grep -q 'sudo systemctl' scripts/configure_gpsd.sh
 grep -q 'backup_root_file_private "$gpsd_conf" "$backup"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
 ! grep -q 'sudo cp -a /etc/default/gpsd' scripts/configure_gpsd.sh
+grep -q 'GPSD setup resolves systemctl through trusted root-owned command checks' README.md
+grep -q 'GPSD setup resolves systemctl through trusted root-owned command checks' docs/sailboat-pi.md
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/configure_gpsd.sh").read_text(encoding="utf-8")
+resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
+backup = text.index('backup_root_file_private "$gpsd_conf" "$backup"')
+install = text.index('install_root_file_atomic "$tmp" "$gpsd_conf" 0644')
+reload = text.index('sudo "$systemctl_cmd" daemon-reload')
+if not resolve < backup < install < reload:
+    raise SystemExit("GPSD setup must validate systemctl before backup, install, and daemon reload")
+PY
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' README.md
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
