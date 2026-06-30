@@ -2926,6 +2926,10 @@ grep -q 'service-created track files also use a private `0077` umask' docs/sailb
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_WARNING_SECONDS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS=%s' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_READINESS_RETRY_DELAY=%s' scripts/provision_sailboat_pi.sh
+grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=%s' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=%s' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${launcher_env_dir}/.launcher.env.XXXXXX"' scripts/provision_sailboat_pi.sh
@@ -2933,7 +2937,7 @@ grep -q 'chmod 0600 "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_install_path "$launcher_env" "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh)" -ge 2
 grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
-grep -q 'verify_launcher_env "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"' scripts/provision_sailboat_pi.sh
+grep -q 'verify_launcher_env "$launcher_env" "$gps_seconds" "$warning_seconds" "$readiness_attempts" "$readiness_retry_delay" "$start_on_failed_readiness" "$opencpn_restarts" "$opencpn_restart_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh
 grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailboat_pi.sh
 grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
@@ -4689,6 +4693,10 @@ scripts/provision_sailboat_pi.sh \
   --sync-retries 7 \
   --sync-retry-delay 15 >"$provision_output"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
+grep -q 'NOAA_NAVIONICS_WARNING_SECONDS=8' "$provision_output"
+grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS=3' "$provision_output"
+grep -q 'NOAA_NAVIONICS_READINESS_RETRY_DELAY=10' "$provision_output"
+grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=no' "$provision_output"
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=4' "$provision_output"
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=2' "$provision_output"
 ! grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes' "$provision_output"

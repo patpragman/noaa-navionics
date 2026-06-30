@@ -17,6 +17,10 @@ skip_services=0
 skip_autologin=0
 skip_gps_time=0
 gps_seconds=60
+warning_seconds=8
+readiness_attempts=3
+readiness_retry_delay=10
+start_on_failed_readiness=no
 opencpn_restarts=3
 opencpn_restart_delay=5
 sync_retries=5
@@ -1238,14 +1242,14 @@ write_launcher_env() {
   local launcher_env_tmp
   validate_user_install_path "$launcher_env" "chartplotter launcher environment"
   if [[ "$dry_run" -eq 1 ]]; then
-    printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q NOAA_NAVIONICS_OPENCPN_RESTARTS=%q NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%q\n' \
-      "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"
+    printf '+ write %q with NOAA_NAVIONICS_GPS_SECONDS=%q NOAA_NAVIONICS_WARNING_SECONDS=%q NOAA_NAVIONICS_READINESS_ATTEMPTS=%q NOAA_NAVIONICS_READINESS_RETRY_DELAY=%q NOAA_NAVIONICS_START_ON_FAILED_READINESS=%q NOAA_NAVIONICS_OPENCPN_RESTARTS=%q NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%q\n' \
+      "$launcher_env" "$gps_seconds" "$warning_seconds" "$readiness_attempts" "$readiness_retry_delay" "$start_on_failed_readiness" "$opencpn_restarts" "$opencpn_restart_delay"
   else
     launcher_env_dir="$(dirname "$launcher_env")"
     ensure_private_directory "$launcher_env_dir" "chartplotter launcher environment directory"
     launcher_env_tmp="$(mktemp "${launcher_env_dir}/.launcher.env.XXXXXX")"
-    if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\nNOAA_NAVIONICS_OPENCPN_RESTARTS=%s\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s\n' \
-      "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay" >"$launcher_env_tmp"; then
+    if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\nNOAA_NAVIONICS_WARNING_SECONDS=%s\nNOAA_NAVIONICS_READINESS_ATTEMPTS=%s\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=%s\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=%s\nNOAA_NAVIONICS_OPENCPN_RESTARTS=%s\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s\n' \
+      "$gps_seconds" "$warning_seconds" "$readiness_attempts" "$readiness_retry_delay" "$start_on_failed_readiness" "$opencpn_restarts" "$opencpn_restart_delay" >"$launcher_env_tmp"; then
       rm -f "$launcher_env_tmp"
       return 1
     fi
@@ -1266,16 +1270,20 @@ write_launcher_env() {
       return 1
     fi
     sync_paths "$launcher_env"
-    verify_launcher_env "$launcher_env" "$gps_seconds" "$opencpn_restarts" "$opencpn_restart_delay"
+    verify_launcher_env "$launcher_env" "$gps_seconds" "$warning_seconds" "$readiness_attempts" "$readiness_retry_delay" "$start_on_failed_readiness" "$opencpn_restarts" "$opencpn_restart_delay"
   fi
 }
 
 verify_launcher_env() {
   local path="$1"
   local expected_gps_seconds="$2"
-  local expected_opencpn_restarts="$3"
-  local expected_opencpn_restart_delay="$4"
-  "$python3_cmd" - "$path" "$expected_gps_seconds" "$expected_opencpn_restarts" "$expected_opencpn_restart_delay" <<'PY'
+  local expected_warning_seconds="$3"
+  local expected_readiness_attempts="$4"
+  local expected_readiness_retry_delay="$5"
+  local expected_start_on_failed_readiness="$6"
+  local expected_opencpn_restarts="$7"
+  local expected_opencpn_restart_delay="$8"
+  "$python3_cmd" - "$path" "$expected_gps_seconds" "$expected_warning_seconds" "$expected_readiness_attempts" "$expected_readiness_retry_delay" "$expected_start_on_failed_readiness" "$expected_opencpn_restarts" "$expected_opencpn_restart_delay" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -1284,8 +1292,12 @@ import sys
 path = Path(sys.argv[1]).expanduser()
 expected = {
     "NOAA_NAVIONICS_GPS_SECONDS": sys.argv[2],
-    "NOAA_NAVIONICS_OPENCPN_RESTARTS": sys.argv[3],
-    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": sys.argv[4],
+    "NOAA_NAVIONICS_WARNING_SECONDS": sys.argv[3],
+    "NOAA_NAVIONICS_READINESS_ATTEMPTS": sys.argv[4],
+    "NOAA_NAVIONICS_READINESS_RETRY_DELAY": sys.argv[5],
+    "NOAA_NAVIONICS_START_ON_FAILED_READINESS": sys.argv[6],
+    "NOAA_NAVIONICS_OPENCPN_RESTARTS": sys.argv[7],
+    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": sys.argv[8],
 }
 flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
