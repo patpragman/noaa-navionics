@@ -498,6 +498,34 @@ def _app_summary() -> dict[str, object]:
             f"source revision directory is a symlink: {source_revision_symlink_component}"
         )
         return summary
+    if source_revision_path.parent.exists():
+        if not source_revision_path.parent.is_dir():
+            summary["source_revision_error"] = (
+                f"source revision parent is not a directory: {source_revision_path.parent}"
+            )
+            return summary
+        try:
+            source_revision_directory_stat = source_revision_path.parent.stat()
+        except OSError as exc:
+            summary["source_revision_error"] = (
+                f"could not inspect source revision directory {source_revision_path.parent}: {exc}"
+            )
+            return summary
+        source_revision_directory_mode = source_revision_directory_stat.st_mode & 0o777
+        summary["source_revision_directory_uid"] = source_revision_directory_stat.st_uid
+        summary["source_revision_directory_mode"] = f"{source_revision_directory_mode:04o}"
+        if source_revision_directory_stat.st_uid != os.getuid():
+            summary["source_revision_error"] = (
+                f"source revision directory {source_revision_path.parent} is owned by uid "
+                f"{source_revision_directory_stat.st_uid}, expected {os.getuid()}"
+            )
+            return summary
+        if source_revision_directory_mode & 0o022:
+            summary["source_revision_error"] = (
+                f"source revision directory {source_revision_path.parent} has permissions "
+                f"{source_revision_directory_mode:04o}, expected no group/other write bits"
+            )
+            return summary
     if source_revision_path.exists():
         if not source_revision_path.is_file():
             summary["source_revision_error"] = f"source revision path is not a regular file: {source_revision_path}"

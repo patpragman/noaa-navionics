@@ -148,6 +148,36 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
             False,
             f"deployed source revision directory is a symlink: {symlink_component}",
         )
+    if revision_path.parent.exists():
+        if not revision_path.parent.is_dir():
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"deployed source revision parent is not a directory: {revision_path.parent}",
+            )
+        try:
+            directory_stat = revision_path.parent.stat()
+        except OSError as exc:
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"could not inspect deployed source revision directory: {exc}",
+            )
+        if directory_stat.st_uid != os.getuid():
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"deployed source revision directory is owned by uid {directory_stat.st_uid}, "
+                f"expected {os.getuid()}: {revision_path.parent}",
+            )
+        directory_mode = directory_stat.st_mode & 0o777
+        if directory_mode & 0o022:
+            return CheckResult(
+                "Source Revision",
+                False,
+                f"deployed source revision directory has permissions {directory_mode:04o}, "
+                f"expected no group/other write bits: {revision_path.parent}",
+            )
     revision_stat: Optional[os.stat_result] = None
     if revision_path.exists():
         if not revision_path.is_file():

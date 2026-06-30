@@ -2343,7 +2343,11 @@ grep -q '"is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_directory_is_symlink"' src/noaa_navionics/report.py
 grep -q '"source_revision_symlink_component"' src/noaa_navionics/report.py
+grep -q '"source_revision_directory_uid"' src/noaa_navionics/report.py
+grep -q '"source_revision_directory_mode"' src/noaa_navionics/report.py
 grep -q '"source_revision_mode"' src/noaa_navionics/report.py
+grep -q 'source revision directory .* has permissions' src/noaa_navionics/report.py
+grep -q 'deployed source revision directory has permissions' src/noaa_navionics/health.py
 grep -q 'source revision path is not a regular file' src/noaa_navionics/report.py
 grep -q 'source revision path .* has permissions' src/noaa_navionics/report.py
 grep -q 'def _read_source_revision_text' src/noaa_navionics/report.py
@@ -2360,17 +2364,21 @@ grep -q 'status report source revision path contains a symlink' scripts/verify_p
 grep -q 'test_app_summary_rejects_symlinked_source_revision_directory' tests/test_downloader.py
 grep -q 'test_source_revision_reader_rejects_replaced_file_before_parsing' tests/test_downloader.py
 grep -q 'test_health_source_revision_reader_rejects_replaced_revision' tests/test_downloader.py
-grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the opened file is still the inspected file' README.md
-grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the opened file is still the inspected file' docs/sailboat-pi.md
+grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the source revision directory is user-owned and not group/world-writable' README.md
+grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the source revision directory is user-owned and not group/world-writable' docs/sailboat-pi.md
 grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_nonregular_source_revision' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_writable_source_revision' tests/test_downloader.py
+grep -q 'test_app_summary_rejects_writable_source_revision_directory' tests/test_downloader.py
 grep -q 'test_source_revision_reader_rejects_writable_file' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_directory_on_pi' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_ancestor_on_pi' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_nonregular_revision_on_pi' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_writable_revision_on_pi' tests/test_downloader.py
+grep -q 'test_check_source_revision_rejects_writable_revision_directory_on_pi' tests/test_downloader.py
 grep -q 'test_health_source_revision_reader_rejects_writable_revision' tests/test_downloader.py
+grep -q 'source revision directory is misowned or group/world-writable' README.md
+grep -q 'source revision directory is misowned or group/world-writable' docs/sailboat-pi.md
 grep -q 'recorded through a symlinked path component' README.md
 grep -q 'recorded through a symlinked path component' docs/sailboat-pi.md
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor' README.md
