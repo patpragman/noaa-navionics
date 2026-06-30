@@ -219,7 +219,7 @@ Collect post-trip artifacts after returning to the dock:
 scripts/post_trip_collect_pi.sh pi@raspberrypi.local
 ```
 
-The post-trip helper tightens the local export directory and trip folder to user-owned private `0700`, saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle, and can optionally dry-run or request a clean shutdown with `--shutdown-dry-run` or `--shutdown-confirm`. It continues exporting tracks/support even when the status snapshot reports unhealthy state, then exits non-zero after collection so the saved artifacts can be inspected.
+The post-trip helper tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle, and can optionally dry-run or request a clean shutdown with `--shutdown-dry-run` or `--shutdown-confirm`. It continues exporting tracks/support even when the status snapshot reports unhealthy state, then exits non-zero after collection so the saved artifacts can be inspected.
 
 Export OpenCPN user navigation data before SD-card swaps or maintenance:
 

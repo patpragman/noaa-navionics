@@ -6,7 +6,7 @@ usage() {
 Usage: scripts/post_trip_collect_pi.sh user@raspberrypi.local [output-dir] [options]
 
 Collects post-trip evidence from an already commissioned Raspberry Pi:
-  1. Save a local JSON status snapshot.
+  1. Save a local private JSON status snapshot.
   2. Export GPX track logs.
   3. Collect a diagnostic support bundle.
   4. Optionally dry-run or request a clean Pi shutdown.
@@ -14,7 +14,7 @@ Collects post-trip evidence from an already commissioned Raspberry Pi:
 Options:
   --track-days N       Export GPX tracks modified in the last N days; 0 exports all (default: 30)
   --gps-seconds N      Seconds to wait for a GPS fix in the status snapshot (default: 10)
-  --skip-status        Skip the local JSON status snapshot
+  --skip-status        Skip the local private JSON status snapshot
   --skip-tracks        Skip GPX track export
   --skip-support       Skip diagnostic support bundle collection
   --shutdown-dry-run   Validate the remote shutdown path without powering off
@@ -118,6 +118,63 @@ prepare_private_output_dir() {
   fi
   if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "700" ]]; then
     echo "$label has permissions ${mode}, expected private 0700: $path" >&2
+    exit 2
+  fi
+}
+
+prepare_private_output_file() {
+  local label="$1"
+  local path="$2"
+  local current_uid
+  local mode
+  local owner_uid
+  local stat_output
+
+  current_uid="$(id -u)"
+  if [[ -L "$path" ]]; then
+    echo "$label must not be a symlink: $path" >&2
+    exit 2
+  fi
+  if [[ -e "$path" ]]; then
+    echo "$label already exists: $path" >&2
+    exit 2
+  fi
+  if ! ( set -o noclobber; : > "$path" ); then
+    echo "Could not create private $label: $path" >&2
+    exit 2
+  fi
+  if ! chmod 0600 -- "$path"; then
+    echo "Could not tighten $label permissions to 0600: $path" >&2
+    exit 2
+  fi
+  verify_private_output_file "$label" "$path"
+}
+
+verify_private_output_file() {
+  local label="$1"
+  local path="$2"
+  local current_uid
+  local mode
+  local owner_uid
+  local stat_output
+
+  current_uid="$(id -u)"
+  if [[ -L "$path" || ! -f "$path" ]]; then
+    echo "$label must be a regular non-symlink file: $path" >&2
+    exit 2
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect $label owner and permissions: $path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "$label is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
+    exit 2
+  fi
+  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "600" ]]; then
+    echo "$label has permissions ${mode}, expected private 0600: $path" >&2
     exit 2
   fi
 }
@@ -280,11 +337,13 @@ prepare_private_output_dir "Post-trip output directory" "$trip_dir"
 status_code=0
 if [[ "$skip_status" -eq 0 ]]; then
   status_path="${trip_dir}/status.json"
+  prepare_private_output_file "status snapshot" "$status_path"
   printf '==> Saving Pi status snapshot\n'
   set +e
   "$status_helper" "$target" --gps-seconds "$gps_seconds" --json >"$status_path"
   status_code=$?
   set -e
+  verify_private_output_file "status snapshot" "$status_path"
   if [[ "$status_code" -eq 0 ]]; then
     printf 'Saved Pi status snapshot: %s\n' "$status_path"
   else

@@ -482,8 +482,8 @@ grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/seria
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
-grep -q 'tightens the local export directory and trip folder to user-owned private `0700`' README.md
-grep -q 'tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot' README.md
+grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
@@ -534,8 +534,8 @@ grep -q '`--radius-meters N` for a one-off radius override' README.md
 grep -q '`--radius-meters N` for a one-off radius override' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
-grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local private `0600` JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
@@ -1001,6 +1001,8 @@ grep -q 'At least one post-trip collection or shutdown step must run' scripts/po
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'expected current user ${current_uid}' scripts/post_trip_collect_pi.sh
+grep -q 'prepare_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
+grep -q 'verify_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -4951,8 +4953,10 @@ post_trip_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_out
 test -d "$post_trip_dir"
 test "$(stat -c '%a' "$post_trip_output_dir")" = 700
 test "$(stat -c '%a' "$post_trip_dir")" = 700
+test "$(stat -c '%a' "$post_trip_dir/status.json")" = 600
 test "$(stat -c '%u' "$post_trip_output_dir")" = "$(id -u)"
 test "$(stat -c '%u' "$post_trip_dir")" = "$(id -u)"
+test "$(stat -c '%u' "$post_trip_dir/status.json")" = "$(id -u)"
 grep -q '"ok": true' "$post_trip_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
@@ -4978,6 +4982,8 @@ fi
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' "$verify_output"
 post_trip_failure_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
 test -d "$post_trip_failure_dir"
+test "$(stat -c '%a' "$post_trip_failure_dir/status.json")" = 600
+test "$(stat -c '%u' "$post_trip_failure_dir/status.json")" = "$(id -u)"
 grep -q '"ok": true' "$post_trip_failure_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 12 --json$' "$post_trip_failure_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 3$' "$post_trip_failure_log"
