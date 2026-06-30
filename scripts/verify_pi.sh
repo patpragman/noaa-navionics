@@ -472,7 +472,7 @@ def count_enc_cells(path):
     root = Path(path).expanduser()
     if not root.exists():
         return 0
-    return sum(1 for _ in root.rglob("*.000"))
+    return sum(1 for candidate in root.rglob("*.000") if candidate.is_file() and not candidate.is_symlink())
 
 def normalize_path(value):
     return str(Path(value).expanduser().resolve(strict=False))

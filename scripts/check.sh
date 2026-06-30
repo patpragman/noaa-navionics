@@ -777,6 +777,36 @@ grep -q 'status report manifest extract path is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path is not a directory' scripts/verify_pi.sh
 grep -q 'def count_enc_cells' scripts/verify_pi.sh
+grep -q 'candidate.is_file() and not candidate.is_symlink()' scripts/verify_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+import tempfile
+
+text = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
+start = text.index("def count_enc_cells(path):")
+end = text.index("\ndef normalize_path", start)
+namespace = {"Path": Path}
+exec(text[start:end], namespace)
+
+with tempfile.TemporaryDirectory() as tmpdir:
+    root = Path(tmpdir)
+    charts = root / "charts"
+    real_cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+    real_cell.parent.mkdir(parents=True)
+    real_cell.write_text("trusted chart cell", encoding="ascii")
+    outside = root / "outside.000"
+    outside.write_text("outside chart root", encoding="ascii")
+    symlink_cell = charts / "AK_ENCs" / "US5AK4CM" / "US5AK4CM.000"
+    symlink_cell.parent.mkdir(parents=True)
+    try:
+        symlink_cell.symlink_to(outside)
+    except OSError as exc:
+        raise SystemExit(f"could not create symlinked ENC test cell: {exc}") from exc
+
+    count = namespace["count_enc_cells"](charts)
+    if count != 1:
+        raise SystemExit(f"verify_pi count_enc_cells counted symlinked ENC cells: {count}")
+PY
 grep -q 'expected exactly {manifest_file_enc_cell_count}' scripts/verify_pi.sh
 grep -q 'exact live regular non-symlink ENC cell count' README.md
 grep -q 'exact live regular non-symlink ENC cell count' docs/sailboat-pi.md
