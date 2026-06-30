@@ -1246,8 +1246,25 @@ grep -q '/usr/share/xsessions' scripts/configure_desktop_autologin.sh
 grep -q 'No LightDM X11 sessions are installed' scripts/configure_desktop_autologin.sh
 grep -q 'Refusing to configure graphical autologin for root' scripts/configure_desktop_autologin.sh
 grep -q 'Do not configure desktop autologin as root' scripts/configure_desktop_autologin.sh
-grep -q 'systemctl set-default graphical.target' scripts/configure_desktop_autologin.sh
-grep -q 'systemctl enable lightdm.service' scripts/configure_desktop_autologin.sh
+grep -q 'require_trusted_system_command()' scripts/configure_desktop_autologin.sh
+grep -q 'path_in_trusted_system_dir()' scripts/configure_desktop_autologin.sh
+grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_desktop_autologin.sh
+grep -q 'systemctl_cmd="$(systemctl_command)" || exit 2' scripts/configure_desktop_autologin.sh
+grep -q 'run sudo "$systemctl_cmd" set-default graphical.target' scripts/configure_desktop_autologin.sh
+grep -q 'run sudo "$systemctl_cmd" enable lightdm.service' scripts/configure_desktop_autologin.sh
+! grep -q 'run sudo systemctl' scripts/configure_desktop_autologin.sh
+grep -q 'Desktop autologin setup resolves systemctl through trusted root-owned command checks' README.md
+grep -q 'Desktop autologin setup resolves systemctl through trusted root-owned command checks' docs/sailboat-pi.md
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/configure_desktop_autologin.sh").read_text(encoding="utf-8")
+resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2')
+install = text.index('install_root_file_atomic "$tmp" "$autologin_conf" 0644')
+target = text.index('run sudo "$systemctl_cmd" set-default graphical.target')
+if not resolve < install < target:
+    raise SystemExit("desktop autologin setup must validate systemctl before file install and graphical target changes")
+PY
 grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
 test "$(grep -c 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh)" -ge 5

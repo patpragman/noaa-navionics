@@ -8,6 +8,7 @@ autologin_user="${USER}"
 autologin_session=""
 allow_non_pi=0
 dry_run=0
+systemctl_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -24,6 +25,105 @@ Configures Raspberry Pi OS Desktop/LightDM to boot into a graphical session
 and log in the selected user so the NOAA Navionics chartplotter autostart
 entry can launch OpenCPN after power-up.
 EOF
+}
+
+path_in_trusted_system_dir() {
+  case "$1" in
+    /usr/local/sbin/*|/usr/local/bin/*|/usr/sbin/*|/usr/bin/*|/sbin/*|/bin/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+require_trusted_system_command() {
+  local command_name="$1"
+  local label="$2"
+  local command_path
+  local resolved_path
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_owner_uid
+  local parent_mode_text
+  local parent_mode
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "${label} was not found on PATH" >&2
+    return 1
+  fi
+  case "$command_path" in
+    /*)
+      ;;
+    *)
+      echo "${label} path is not absolute: $command_path" >&2
+      return 1
+      ;;
+  esac
+  if ! path_in_trusted_system_dir "$command_path"; then
+    echo "${label} is not in a trusted system directory: $command_path" >&2
+    return 1
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve ${label}: $command_path" >&2
+    return 1
+  fi
+  if ! path_in_trusted_system_dir "$resolved_path"; then
+    echo "${label} resolves outside trusted system directories: $command_path -> $resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -f "$resolved_path" ]]; then
+    echo "${label} is not a regular file after resolution: $command_path -> $resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "${label} is not executable: $resolved_path" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$resolved_path" 2>/dev/null)" || {
+    echo "Could not inspect ${label}: $resolved_path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "${label} is owned by uid ${owner_uid}, expected root: $resolved_path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "${label} has permissions ${mode_text}, expected no group/other write bits: $resolved_path" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$resolved_path")"
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect ${label} directory: $parent_dir" >&2
+    return 1
+  }
+  parent_owner_uid="${parent_stat%% *}"
+  parent_mode_text="${parent_stat#* }"
+  if [[ "$parent_owner_uid" != "0" ]]; then
+    echo "${label} directory is owned by uid ${parent_owner_uid}, expected root: $parent_dir" >&2
+    return 1
+  fi
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "${label} directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  printf '%s\n' "$resolved_path"
+}
+
+systemctl_command() {
+  if [[ -z "$systemctl_cmd" ]]; then
+    systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")" || return 1
+  fi
+  printf '%s\n' "$systemctl_cmd"
 }
 
 sync_path() {
@@ -400,10 +500,13 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo "Would write $autologin_conf:"
   cat "$tmp"
   echo
+  systemctl_cmd="systemctl"
+else
+  systemctl_cmd="$(systemctl_command)" || exit 2
 fi
 
 install_root_file_atomic "$tmp" "$autologin_conf" 0644
-run sudo systemctl set-default graphical.target
-run sudo systemctl enable lightdm.service
+run sudo "$systemctl_cmd" set-default graphical.target
+run sudo "$systemctl_cmd" enable lightdm.service
 
 echo "Configured graphical autologin for $autologin_user using X11 session $autologin_session"
