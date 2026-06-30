@@ -397,6 +397,9 @@ grep -q 'ensure_private_directory "$config_dir" "NOAA Navionics config directory
 grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/install_raspberry_pi.sh
 grep -q 'chmod 0700 "$target"' scripts/install_raspberry_pi.sh
 grep -q 'if path.is_dir():' scripts/install_raspberry_pi.sh
+test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/install_raspberry_pi.sh)" -ge 2
+grep -q 'Installer sync helpers use no-follow directory opens' README.md
+grep -q 'Installer sync helpers use no-follow directory opens' docs/sailboat-pi.md
 grep -q 'validate_user_directory_path' scripts/provision_sailboat_pi.sh
 grep -q 'ensure_private_directory "$(dirname "$config")" "NOAA Navionics config directory"' scripts/provision_sailboat_pi.sh
 grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/provision_sailboat_pi.sh

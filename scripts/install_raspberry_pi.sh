@@ -51,7 +51,8 @@ for arg in sys.argv[1:]:
     synced_dirs.add(path.parent)
 for directory in synced_dirs:
     try:
-        fd = os.open(directory, os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(directory, flags)
     except OSError:
         continue
     try:
@@ -73,7 +74,8 @@ if not root.exists():
 
 def fsync_dir(path: Path) -> None:
     try:
-        fd = os.open(path, os.O_RDONLY)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(path, flags)
     except OSError:
         return
     try:
