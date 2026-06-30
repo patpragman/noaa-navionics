@@ -63,6 +63,54 @@ if fd is not None:
 PY
 }
 
+verify_promoted_root_file() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  sudo python3 - "$source" "$target" "$mode" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+expected_mode = int(sys.argv[3], 8)
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+def read_regular(path: Path, label: str, *, expected_uid=None, expected_mode=None) -> bytes:
+    try:
+        fd = os.open(path, os.O_RDONLY | nofollow)
+    except OSError as exc:
+        if path.is_symlink():
+            raise SystemExit(f"{label} is a symlink: {path}") from exc
+        raise SystemExit(f"could not open {label}: {path}: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"{label} is not a regular file: {path}")
+        mode = opened.st_mode & 0o777
+        if expected_uid is not None and opened.st_uid != expected_uid:
+            raise SystemExit(f"{label} is owned by uid {opened.st_uid}, expected {expected_uid}: {path}")
+        if expected_mode is not None and mode != expected_mode:
+            raise SystemExit(f"{label} has permissions {mode:04o}, expected {expected_mode:04o}: {path}")
+        chunks = []
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(fd)
+
+source_bytes = read_regular(source, "root config source")
+target_bytes = read_regular(target, "promoted root config", expected_uid=0, expected_mode=expected_mode)
+if target_bytes != source_bytes:
+    raise SystemExit(f"promoted root config does not match source: {target}")
+PY
+}
+
 backup_root_file_private() {
   local source="$1"
   local backup="$2"
@@ -180,6 +228,7 @@ install_root_file_atomic() {
     sudo rm -f "$target_tmp"
     return 1
   fi
+  verify_promoted_root_file "$source" "$target" "$mode"
   sync_path "$target"
 }
 
