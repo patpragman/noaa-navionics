@@ -44,7 +44,14 @@ from .gps import (
 )
 from .health import check_chart_package, check_disk_space, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
-from .report import build_status_report, format_status_text, write_status_report
+from .report import (
+    DEFAULT_LAUNCHER_ENV_PATH,
+    LAUNCHER_ENV_KEYS,
+    _read_launcher_settings_lines,
+    build_status_report,
+    format_status_text,
+    write_status_report,
+)
 
 
 def _positive_int(value: str) -> int:
@@ -164,6 +171,12 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     status.add_argument("--gps-sample", help="NMEA sample file for testing")
     status.add_argument("--gps-seconds", type=_non_negative_float, default=5.0, help="seconds to wait for a GPS fix")
+    status.add_argument(
+        "--gps-seconds-from-launcher-env",
+        nargs="?",
+        const=str(DEFAULT_LAUNCHER_ENV_PATH),
+        help="read GPS wait seconds from the trusted chartplotter launcher environment",
+    )
     status.add_argument("--output", help="write JSON report to this file")
     status.add_argument("--json", action="store_true", help="print JSON instead of text")
 
@@ -393,10 +406,13 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 0 if all(result.ok for result in results) else 1
 
         if args.command == "status-report":
+            gps_seconds = args.gps_seconds
+            if args.gps_seconds_from_launcher_env:
+                gps_seconds = _gps_seconds_from_launcher_env(Path(args.gps_seconds_from_launcher_env))
             report = build_status_report(
                 config_path=Path(args.config),
                 gps_sample=Path(args.gps_sample) if args.gps_sample else None,
-                gps_seconds=args.gps_seconds,
+                gps_seconds=gps_seconds,
             )
             if args.output:
                 write_status_report(report, Path(args.output))
@@ -508,6 +524,31 @@ def _add_selector_args(parser: argparse.ArgumentParser) -> None:
     selectors.add_argument("--chart", help="individual ENC cell name, e.g. US5AK3CM")
     selectors.add_argument("--all", action="store_true", help="download all NOAA ENCs")
     selectors.add_argument("--catalog", action="store_true", help="download NOAA XML product catalog")
+
+
+def _gps_seconds_from_launcher_env(path: Path) -> float:
+    launcher_env = path.expanduser()
+    symlink_component = first_symlink_ancestor(launcher_env.parent)
+    if launcher_env.is_symlink():
+        raise RuntimeError(f"launcher environment path is a symlink: {launcher_env}")
+    if symlink_component is not None:
+        raise RuntimeError(f"launcher environment directory is a symlink: {symlink_component}")
+    values: dict[str, str] = {}
+    for line_number, raw_line in enumerate(_read_launcher_settings_lines(launcher_env), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            raise ValueError(f"malformed launcher environment line {line_number}: {line}")
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in LAUNCHER_ENV_KEYS:
+            raise ValueError(f"unknown launcher environment key: {key}")
+        values[key] = value.strip()
+    raw_seconds = values.get("NOAA_NAVIONICS_GPS_SECONDS", "")
+    if not raw_seconds.isdigit() or int(raw_seconds) <= 0:
+        raise ValueError(f"NOAA_NAVIONICS_GPS_SECONDS={raw_seconds or '<missing>'} expected positive integer")
+    return float(int(raw_seconds))
 
 
 def _read_fixes(

@@ -44,6 +44,7 @@ from noaa_navionics.downloader import (
 from noaa_navionics.config import AppConfig, default_config_text, package_kwargs, read_config, write_default_config
 from noaa_navionics.cli import (
     _TrackLoggerStop,
+    _gps_seconds_from_launcher_env,
     _log_rotating_tracks,
     _log_single_track,
     _raise_track_logger_stop,
@@ -2079,6 +2080,79 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])
         self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
+
+    def test_status_report_reads_gps_wait_from_trusted_launcher_environment(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            launcher_env = root / "launcher.env"
+            launcher_env.write_text(
+                "NOAA_NAVIONICS_GPS_SECONDS=37\n"
+                "NOAA_NAVIONICS_OPENCPN_RESTARTS=3\n",
+                encoding="ascii",
+            )
+            launcher_env.chmod(0o600)
+
+            self.assertEqual(_gps_seconds_from_launcher_env(launcher_env), 37.0)
+
+    def test_status_report_cli_uses_trusted_launcher_environment_gps_wait(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            launcher_env = root / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=37\n", encoding="ascii")
+            launcher_env.chmod(0o600)
+            calls = []
+            original_build = cli_module.build_status_report
+
+            def fake_build_status_report(**kwargs):
+                calls.append(kwargs)
+                return {"ok": True}
+
+            try:
+                cli_module.build_status_report = fake_build_status_report
+                with redirect_stdout(StringIO()):
+                    code = cli_module.main(
+                        [
+                            "status-report",
+                            "--config",
+                            str(root / "config.ini"),
+                            "--gps-seconds-from-launcher-env",
+                            str(launcher_env),
+                            "--json",
+                        ]
+                    )
+            finally:
+                cli_module.build_status_report = original_build
+
+            self.assertEqual(code, 0)
+            self.assertEqual(calls[0]["gps_seconds"], 37.0)
+
+    def test_status_report_rejects_symlinked_launcher_environment_for_gps_wait(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = root / "target.env"
+            target.write_text("NOAA_NAVIONICS_GPS_SECONDS=37\n", encoding="ascii")
+            target.chmod(0o600)
+            launcher_env = root / "launcher.env"
+            try:
+                launcher_env.symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "launcher environment path is a symlink"):
+                _gps_seconds_from_launcher_env(launcher_env)
+
+    def test_status_report_rejects_unknown_launcher_environment_key_for_gps_wait(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            launcher_env = Path(tmpdir) / "launcher.env"
+            launcher_env.write_text(
+                "NOAA_NAVIONICS_GPS_SECONDS=37\n"
+                "NOAA_NAVIONICS_EXTRA=1\n",
+                encoding="ascii",
+            )
+            launcher_env.chmod(0o600)
+
+            with self.assertRaisesRegex(ValueError, "unknown launcher environment key"):
+                _gps_seconds_from_launcher_env(launcher_env)
 
     def test_track_logger_rejects_non_positive_duration(self):
         self.assert_parse_error(["log-track", "--seconds", "0"])
@@ -5911,10 +5985,10 @@ class StatusReportTests(unittest.TestCase):
                     "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
                     "Wants": "noaa-navionics-track.service",
                     "After": "noaa-navionics-track.service basic.target",
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 60 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
-                    "Environment": "NOAA_NAVIONICS_GPS_SECONDS=60",
-                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Environment": "",
+                    "EnvironmentFiles": "",
                     "Result": "success",
                     "ExecMainStatus": "0",
                     "ExecMainStartTimestampMonotonic": "123456789",
@@ -6759,9 +6833,10 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 60 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
-                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Environment": "",
+                    "EnvironmentFiles": "",
                     "Result": "success",
                     "ExecMainStatus": "0",
                     "ExecMainStartTimestampMonotonic": "123456789",
@@ -6858,7 +6933,7 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("TimeoutStartUSec=90s", boot_settings.detail)
         self.assertIn("Restart=no", boot_settings.detail)
 
-    def test_service_readiness_checks_fail_stale_boot_readiness_gps_wait_default(self):
+    def test_service_readiness_checks_fail_stale_boot_readiness_systemd_environment_file(self):
         services = {
             "available": True,
             "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
@@ -6868,7 +6943,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 60 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "Environment": "NOAA_NAVIONICS_GPS_SECONDS=2",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
@@ -6898,7 +6973,7 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertFalse(boot_settings.ok)
         self.assertIn("Environment=NOAA_NAVIONICS_GPS_SECONDS=2", boot_settings.detail)
-        self.assertIn("missing NOAA_NAVIONICS_GPS_SECONDS=60", boot_settings.detail)
+        self.assertIn("EnvironmentFiles=/home/pi/.config/noaa-navionics/launcher.env expected", boot_settings.detail)
 
     def test_service_readiness_checks_fail_missing_boot_readiness_track_ordering(self):
         services = {
@@ -6910,10 +6985,10 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 60 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
-                    "Environment": "NOAA_NAVIONICS_GPS_SECONDS=60",
-                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Environment": "",
+                    "EnvironmentFiles": "",
                     "Result": "success",
                     "ExecMainStatus": "0",
                     "ExecMainStartTimestampMonotonic": "123456789",
@@ -7137,12 +7212,12 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds 60 --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Wants": "noaa-navionics-track.service",
                     "After": "noaa-navionics-track.service",
                     "Type": "oneshot",
-                    "Environment": "NOAA_NAVIONICS_GPS_SECONDS=60",
-                    "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
+                    "Environment": "",
+                    "EnvironmentFiles": "",
                     "Result": "success",
                     "ExecMainStatus": "0",
                     "ExecMainStartTimestampMonotonic": "123456789",

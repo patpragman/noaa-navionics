@@ -3842,11 +3842,10 @@ check "preflight service loaded wants track logger" sh -c 'systemctl --user show
 check "preflight service loaded after track logger" sh -c 'systemctl --user show noaa-navionics-preflight.service -p After 2>/dev/null | grep -Fq noaa-navionics-track.service'
 check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Type 2>/dev/null | grep -Fxq Type=oneshot'
-check "preflight service GPS wait default" grep -Fxq 'Environment=NOAA_NAVIONICS_GPS_SECONDS=60' "$preflight_service"
-check "preflight service loaded GPS wait default" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Environment 2>/dev/null | grep -Fq "NOAA_NAVIONICS_GPS_SECONDS=60"'
-check "preflight service GPS wait config" grep -Fxq 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' "$preflight_service"
-check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS} --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
-check "preflight service loaded status report" sh -c 'loaded="$(systemctl --user show noaa-navionics-preflight.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq ".local/bin/noaa-navionics" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics status-report" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--gps-seconds" && printf "%s\n" "$loaded" | grep -Fq -- "--output" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/status.json"'
+check "preflight service no systemd GPS environment" sh -c '! grep -Eq "^(Environment|EnvironmentFile)=" "$1"' sh "$preflight_service"
+check "preflight service loaded no systemd GPS environment" sh -c 'systemctl --user show noaa-navionics-preflight.service -p Environment -p EnvironmentFiles 2>/dev/null | grep -Fxq Environment= && systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fxq EnvironmentFiles='
+check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
+check "preflight service loaded status report" sh -c 'loaded="$(systemctl --user show noaa-navionics-preflight.service -p ExecStart 2>/dev/null)" && printf "%s\n" "$loaded" | grep -Fq ".local/bin/noaa-navionics" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics status-report" && printf "%s\n" "$loaded" | grep -Fq -- "--config" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/config.ini" && printf "%s\n" "$loaded" | grep -Fq -- "--gps-seconds-from-launcher-env" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/launcher.env" && printf "%s\n" "$loaded" | grep -Fq -- "--output" && printf "%s\n" "$loaded" | grep -Fq "noaa-navionics/status.json"'
 check "preflight service timeout" grep -Fxq 'TimeoutStartSec=0' "$preflight_service"
 check "preflight service loaded timeout" sh -c 'systemctl --user show noaa-navionics-preflight.service -p TimeoutStartUSec 2>/dev/null | grep -Fxq TimeoutStartUSec=infinity'
 check "preflight service restart" grep -Fxq 'Restart=on-failure' "$preflight_service"
@@ -3860,7 +3859,6 @@ check "preflight service protected system" grep -Fxq 'ProtectSystem=full' "$pref
 check "preflight service loaded protected system" sh -c 'systemctl --user show noaa-navionics-preflight.service -p ProtectSystem 2>/dev/null | grep -Fxq ProtectSystem=full'
 check "preflight service private files" grep -Fxq 'UMask=0077' "$preflight_service"
 check "preflight service loaded private files" sh -c 'systemctl --user show noaa-navionics-preflight.service -p UMask 2>/dev/null | grep -Fxq UMask=0077'
-check "preflight service loaded GPS wait config" sh -c 'systemctl --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fq "noaa-navionics/launcher.env"'
 check "preflight service loaded restart delay" sh -c 'systemctl --user show noaa-navionics-preflight.service -p RestartUSec 2>/dev/null | grep -Fxq RestartUSec=30s'
 check "preflight service start limit interval" grep -Fxq 'StartLimitIntervalSec=30min' "$preflight_service"
 check "preflight service loaded start limit interval" sh -c 'systemctl --user show noaa-navionics-preflight.service -p StartLimitIntervalUSec 2>/dev/null | grep -Fxq StartLimitIntervalUSec=30min'

@@ -61,9 +61,12 @@ grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'def _process_state_from_stat_text' src/noaa_navionics/opencpn.py
 grep -q '_process_state_from_stat_text' tests/test_downloader.py
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
-grep -q 'EnvironmentFile=-%h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
-grep -q 'Environment=NOAA_NAVIONICS_GPS_SECONDS=60' systemd/noaa-navionics-preflight.service
-grep -q -- '--gps-seconds ${NOAA_NAVIONICS_GPS_SECONDS}' systemd/noaa-navionics-preflight.service
+grep -q -- '--gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
+! grep -q '^Environment=' systemd/noaa-navionics-preflight.service
+! grep -q '^EnvironmentFile=' systemd/noaa-navionics-preflight.service
+grep -q 'def _gps_seconds_from_launcher_env' src/noaa_navionics/cli.py
+grep -q 'test_status_report_rejects_symlinked_launcher_environment_for_gps_wait' tests/test_downloader.py
+grep -q 'test_status_report_rejects_unknown_launcher_environment_key_for_gps_wait' tests/test_downloader.py
 grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
@@ -1062,11 +1065,11 @@ grep -q 'track service loaded start limit burst' scripts/verify_pi.sh
 grep -q 'track service install target' scripts/verify_pi.sh
 grep -q 'track service active' scripts/verify_pi.sh
 grep -q 'preflight service status report' scripts/verify_pi.sh
-grep -q 'preflight service GPS wait config' scripts/verify_pi.sh
+grep -q 'preflight service no systemd GPS environment' scripts/verify_pi.sh
 grep -q 'preflight service loaded fragment path' scripts/verify_pi.sh
-grep -q 'preflight service loaded GPS wait default' scripts/verify_pi.sh
+grep -q 'preflight service loaded no systemd GPS environment' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart' scripts/verify_pi.sh
-grep -q 'preflight service loaded GPS wait config' scripts/verify_pi.sh
+grep -q -- '--gps-seconds-from-launcher-env' scripts/verify_pi.sh
 grep -q 'preflight service loaded status report' scripts/verify_pi.sh
 grep -q 'preflight service loaded timeout' scripts/verify_pi.sh
 grep -q 'preflight service loaded restart delay' scripts/verify_pi.sh

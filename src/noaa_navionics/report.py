@@ -1487,6 +1487,8 @@ def _service_readiness_checks(
                     exact=_with_loaded_fragment_path(
                         {
                             "Type": "oneshot",
+                            "Environment": "",
+                            "EnvironmentFiles": "",
                             "TimeoutStartUSec": "infinity",
                             "Restart": "on-failure",
                             "RestartUSec": "30s",
@@ -1508,12 +1510,11 @@ def _service_readiness_checks(
                             "noaa-navionics status-report",
                             "--config",
                             "noaa-navionics/config.ini",
-                            "--gps-seconds",
+                            "--gps-seconds-from-launcher-env",
+                            "noaa-navionics/launcher.env",
                             "--output",
                             "noaa-navionics/status.json",
                         ],
-                        "Environment": "NOAA_NAVIONICS_GPS_SECONDS=60",
-                        "EnvironmentFiles": "noaa-navionics/launcher.env",
                     },
                 ),
                 _preflight_execution_check(
