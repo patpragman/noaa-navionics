@@ -595,6 +595,9 @@ grep -q 'status report manifest download path is not a regular file' scripts/ver
 grep -q 'verify_status_file_owner_and_mode' scripts/verify_pi.sh
 grep -q '"download_path_uid"' scripts/verify_pi.sh
 grep -q '"download_path_mode"' scripts/verify_pi.sh
+grep -q 'def sha256_file' scripts/verify_pi.sh
+grep -q 'bytes, expected' scripts/verify_pi.sh
+grep -q 'status report manifest download path SHA-256' scripts/verify_pi.sh
 grep -q 'def parse_manifest_int' scripts/verify_pi.sh
 grep -q 'status report manifest {field} is invalid in {source}' scripts/verify_pi.sh
 grep -q '"download_bytes"' scripts/verify_pi.sh

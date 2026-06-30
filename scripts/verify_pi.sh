@@ -387,6 +387,7 @@ from pathlib import Path
 from configparser import ConfigParser
 from datetime import datetime, timezone
 from urllib.parse import urlparse
+import hashlib
 import json
 import os
 import re
@@ -437,6 +438,13 @@ def parse_manifest_int(value, field, source):
         return int(value)
     except (TypeError, ValueError) as exc:
         raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}") from exc
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).expanduser().open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 def normalize_path(value):
     return str(Path(value).expanduser().resolve(strict=False))
@@ -1193,6 +1201,7 @@ if expected_config_path:
         "download bytes",
         expected_manifest_path,
     )
+    manifest_file_sha256 = str(download_section.get("sha256", "")).strip().lower()
     manifest_file_enc_cell_count = parse_manifest_int(
         extract_section.get("enc_cell_count", 0),
         "ENC cell count",
@@ -1294,6 +1303,17 @@ if expected_config_path:
             "manifest download path",
             os.getuid(),
         )
+        if download_path_stat.st_size != manifest_file_download_bytes:
+            raise SystemExit(
+                f"status report manifest download path {download_path} has "
+                f"{download_path_stat.st_size} bytes, expected {manifest_file_download_bytes}"
+            )
+        actual_download_sha256 = sha256_file(download_path).lower()
+        if actual_download_sha256 != manifest_file_sha256:
+            raise SystemExit(
+                f"status report manifest download path SHA-256 {actual_download_sha256} "
+                f"does not match manifest file {manifest_file_sha256}: {download_path}"
+            )
     if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
     extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
