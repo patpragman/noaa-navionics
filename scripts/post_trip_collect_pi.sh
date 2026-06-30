@@ -122,34 +122,6 @@ prepare_private_output_dir() {
   fi
 }
 
-prepare_private_output_file() {
-  local label="$1"
-  local path="$2"
-  local current_uid
-  local mode
-  local owner_uid
-  local stat_output
-
-  current_uid="$(id -u)"
-  if [[ -L "$path" ]]; then
-    echo "$label must not be a symlink: $path" >&2
-    exit 2
-  fi
-  if [[ -e "$path" ]]; then
-    echo "$label already exists: $path" >&2
-    exit 2
-  fi
-  if ! ( set -o noclobber; : > "$path" ); then
-    echo "Could not create private $label: $path" >&2
-    exit 2
-  fi
-  if ! chmod 0600 -- "$path"; then
-    echo "Could not tighten $label permissions to 0600: $path" >&2
-    exit 2
-  fi
-  verify_private_output_file "$label" "$path"
-}
-
 verify_private_output_file() {
   local label="$1"
   local path="$2"
@@ -177,6 +149,58 @@ verify_private_output_file() {
     echo "$label has permissions ${mode}, expected private 0600: $path" >&2
     exit 2
   fi
+}
+
+write_private_status_snapshot() {
+  local path="$1"
+  shift
+  python3 - "$path" "$@" <<'PY'
+from __future__ import annotations
+
+import os
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+command = sys.argv[2:]
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    fd = os.open(path, flags, 0o600)
+except OSError as exc:
+    print(f"Could not create private status snapshot {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"status snapshot must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"status snapshot is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"status snapshot has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "wb") as output:
+        fd = -1
+        result = subprocess.run(command, stdout=output)
+    raise SystemExit(result.returncode)
+finally:
+    if fd >= 0:
+        os.close(fd)
+PY
+  local status=$?
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
 }
 
 validate_ssh_target() {
@@ -337,10 +361,9 @@ prepare_private_output_dir "Post-trip output directory" "$trip_dir"
 status_code=0
 if [[ "$skip_status" -eq 0 ]]; then
   status_path="${trip_dir}/status.json"
-  prepare_private_output_file "status snapshot" "$status_path"
   printf '==> Saving Pi status snapshot\n'
   set +e
-  "$status_helper" "$target" --gps-seconds "$gps_seconds" --json >"$status_path"
+  write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json
   status_code=$?
   set -e
   verify_private_output_file "status snapshot" "$status_path"
