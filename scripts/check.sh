@@ -13,6 +13,7 @@ bash -n \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
   scripts/pre_trip_prepare_pi.sh \
+  scripts/post_trip_collect_pi.sh \
   scripts/pre_departure_check_pi.sh \
   scripts/check_pi_status.sh \
   scripts/refresh_pi_charts.sh \
@@ -497,6 +498,12 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
+grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' docs/sailboat-pi.md
+grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local JSON status snapshot, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
+grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
@@ -883,6 +890,13 @@ grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
 grep -q -- '--status --gps-seconds "$gps_seconds"' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
+grep -q 'check_pi_status.sh' scripts/post_trip_collect_pi.sh
+grep -q 'export_pi_tracks.sh' scripts/post_trip_collect_pi.sh
+grep -q 'collect_pi_support_bundle.sh' scripts/post_trip_collect_pi.sh
+grep -q 'shutdown_pi_safely.sh' scripts/post_trip_collect_pi.sh
+grep -q 'Post-trip Pi artifacts written to:' scripts/post_trip_collect_pi.sh
+grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
+grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -4598,6 +4612,120 @@ grep -Fxq "refresh|pi@example.invalid --retries 6 --retry-delay 9 --status --gps
 grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$pre_trip_log"
 grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test" "$pre_trip_log"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
+
+set +e
+scripts/post_trip_collect_pi.sh root@example.invalid >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject root SSH target with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not collect post-trip artifacts as root@' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid --track-days nope >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject invalid --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be a non-negative integer' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid --shutdown-dry-run --shutdown-confirm >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject conflicting shutdown modes with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--shutdown-dry-run and --shutdown-confirm cannot be used together' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid --skip-status --skip-tracks --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject running no post-trip steps with exit 2" >&2
+  exit 1
+fi
+grep -q 'At least one post-trip collection or shutdown step must run' "$verify_output"
+
+post_trip_repo="$tmpdir/post-trip-repo"
+post_trip_log="$tmpdir/post-trip-helper-calls"
+post_trip_output_dir="$tmpdir/post-trip-output"
+mkdir -p "$post_trip_repo/scripts"
+cp scripts/post_trip_collect_pi.sh "$post_trip_repo/scripts/post_trip_collect_pi.sh"
+cat >"$post_trip_repo/scripts/check_pi_status.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
+printf '{"ok": true}\n'
+exit "${NOAA_NAVIONICS_FAKE_POST_TRIP_STATUS_EXIT:-0}"
+EOF
+cat >"$post_trip_repo/scripts/export_pi_tracks.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'tracks|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
+mkdir -p "$2"
+touch "$2/noaa-navionics-pi-tracks-fixture.tgz"
+printf 'Exported Pi GPX tracks: %s/noaa-navionics-pi-tracks-fixture.tgz\n' "$2"
+EOF
+cat >"$post_trip_repo/scripts/collect_pi_support_bundle.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'support|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
+mkdir -p "$2"
+touch "$2/noaa-navionics-pi-support-fixture.tgz"
+printf 'Collected Pi support bundle: %s/noaa-navionics-pi-support-fixture.tgz\n' "$2"
+EOF
+cat >"$post_trip_repo/scripts/shutdown_pi_safely.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'shutdown|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
+printf 'fake shutdown\n'
+EOF
+chmod +x "$post_trip_repo/scripts/"*.sh
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_output_dir" \
+  --track-days 9 \
+  --gps-seconds 15 \
+  --shutdown-dry-run >"$verify_output" 2>&1
+grep -q 'Post-trip Pi collection completed for pi@example.invalid' "$verify_output"
+post_trip_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
+test -d "$post_trip_dir"
+grep -q '"ok": true' "$post_trip_dir/status.json"
+grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
+grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
+grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_log"
+grep -Eq '^shutdown\|pi@example.invalid --dry-run$' "$post_trip_log"
+
+post_trip_failure_log="$tmpdir/post-trip-failure-helper-calls"
+post_trip_failure_output_dir="$tmpdir/post-trip-failure-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_failure_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_STATUS_EXIT=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_failure_output_dir" \
+  --track-days 3 \
+  --gps-seconds 12 >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to exit 1 after a failed status snapshot" >&2
+  exit 1
+fi
+grep -q 'Post-trip collection completed, but the status snapshot reported a failure' "$verify_output"
+post_trip_failure_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
+test -d "$post_trip_failure_dir"
+grep -q '"ok": true' "$post_trip_failure_dir/status.json"
+grep -Eq '^status\|pi@example.invalid --gps-seconds 12 --json$' "$post_trip_failure_log"
+grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 3$' "$post_trip_failure_log"
+grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_failure_log"
 
 pre_departure_repo="$tmpdir/pre-departure-repo"
 pre_departure_args="$tmpdir/pre-departure-args"
