@@ -12,6 +12,7 @@ bash -n \
   scripts/install_raspberry_pi.sh \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
+  scripts/pre_departure_check_pi.sh \
   scripts/start_chartplotter.sh \
   scripts/configure_desktop_autologin.sh \
   scripts/configure_gpsd.sh \
@@ -459,11 +460,18 @@ grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--allow-dirty' scripts/verify_pi.sh
+grep -q -- '--allow-dirty' scripts/pre_departure_check_pi.sh
 grep -q 'Refusing to verify a dirty local worktree as production evidence' scripts/verify_pi.sh
 grep -q 'verify_args+=("$1")' scripts/dock_test_pi.sh
+grep -q 'verify_args+=("$1")' scripts/pre_departure_check_pi.sh
 grep -q 'trusted executable local deployment commands' README.md
 grep -q 'trusted executable local deployment commands' docs/sailboat-pi.md
+grep -q 'no-deploy, no-reboot pre-departure check' README.md
+grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
+grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
+grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
+grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restarts' scripts/deploy_to_pi.sh
@@ -472,6 +480,8 @@ grep -q -- '--opencpn-restarts' scripts/verify_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/verify_pi.sh
 grep -q -- '--opencpn-restarts' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/dock_test_pi.sh
+grep -q -- '--opencpn-restarts' scripts/pre_departure_check_pi.sh
+grep -q -- '--opencpn-restart-delay' scripts/pre_departure_check_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted}' scripts/verify_pi.sh
 grep -q 'verify_args+=("$1" "${2:-}")' scripts/dock_test_pi.sh
@@ -485,9 +495,11 @@ grep -q 'validate_ssh_target' scripts/verify_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/verify_pi.sh
+grep -q 'validate_gps_device_path_arg' scripts/pre_departure_check_pi.sh
 grep -q 'GPS device path is volatile' scripts/deploy_to_pi.sh
 grep -q 'GPS device path is volatile' scripts/dock_test_pi.sh
 grep -q 'GPS device path is volatile' scripts/verify_pi.sh
+grep -q 'GPS device path is volatile' scripts/pre_departure_check_pi.sh
 grep -q 'SSH target must not begin with' scripts/deploy_to_pi.sh
 grep -q 'SSH target must be user@host' scripts/verify_pi.sh
 grep -q 'SSH target user contains unsafe characters' scripts/deploy_to_pi.sh
@@ -726,12 +738,14 @@ grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
 grep -q 'allow_dirty=0' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
+grep -q -- '--require-chartplotter-started' scripts/pre_departure_check_pi.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
 grep -Fq '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
 grep -q -- '--expected-gps-device' scripts/verify_pi.sh
+grep -Fq -- '--expected-gps-device "$device"' scripts/pre_departure_check_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
 grep -q 'check_expected_gps_device_matches' scripts/verify_pi.sh
 grep -q 'GPSD device matches expected' scripts/verify_pi.sh
@@ -3503,6 +3517,17 @@ fi
 grep -q 'Usage: scripts/dock_test_pi.sh' "$dock_output"
 
 set +e
+scripts/pre_departure_check_pi.sh --help >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 0 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh --help to exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/pre_departure_check_pi.sh' "$verify_output"
+
+set +e
 scripts/install_raspberry_pi.sh --help >"$install_output" 2>&1
 install_code=$?
 set -e
@@ -4270,6 +4295,59 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is volatile' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to require --device with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required for the pre-departure check' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject volatile GPS device paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPS device path is volatile' "$verify_output"
+
+pre_departure_repo="$tmpdir/pre-departure-repo"
+pre_departure_args="$tmpdir/pre-departure-args"
+mkdir -p "$pre_departure_repo/scripts"
+cp scripts/pre_departure_check_pi.sh "$pre_departure_repo/scripts/pre_departure_check_pi.sh"
+cat >"$pre_departure_repo/scripts/verify_pi.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$NOAA_NAVIONICS_FAKE_VERIFY_ARGS"
+exit 0
+EOF
+chmod +x "$pre_departure_repo/scripts/pre_departure_check_pi.sh" "$pre_departure_repo/scripts/verify_pi.sh"
+NOAA_NAVIONICS_FAKE_VERIFY_ARGS="$pre_departure_args" \
+  "$pre_departure_repo/scripts/pre_departure_check_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --gps-seconds 17 \
+  --opencpn-restarts 2 \
+  --opencpn-restart-delay 3 \
+  --allow-dirty >"$verify_output" 2>&1
+grep -Fxq -- '--require-chartplotter-started' "$pre_departure_args"
+grep -Fxq -- '--expected-gps-device' "$pre_departure_args"
+grep -Fxq -- '/dev/serial/by-id/mock-gps' "$pre_departure_args"
+grep -Fxq -- '--gps-seconds' "$pre_departure_args"
+grep -Fxq -- '17' "$pre_departure_args"
+grep -Fxq -- '--opencpn-restarts' "$pre_departure_args"
+grep -Fxq -- '2' "$pre_departure_args"
+grep -Fxq -- '--opencpn-restart-delay' "$pre_departure_args"
+grep -Fxq -- '3' "$pre_departure_args"
+grep -Fxq -- '--allow-dirty' "$pre_departure_args"
+grep -Fxq -- 'pi@example.invalid' "$pre_departure_args"
+grep -q 'Pre-departure check passed' "$verify_output"
 
 set +e
 scripts/verify_pi.sh --expected-boot-id >"$verify_output" 2>&1
