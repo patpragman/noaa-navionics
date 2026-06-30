@@ -191,9 +191,12 @@ grep -q 'Refusing source revision write under symlinked deployment path' scripts
 grep -q 'Deployment directory is not ready for source revision write' scripts/deploy_to_pi.sh
 grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/deploy_to_pi.sh
-grep -q 'validate_trusted_local_ssh' scripts/deploy_to_pi.sh
+grep -q 'require_local_command git' scripts/deploy_to_pi.sh
+grep -q 'validate_trusted_local_command' scripts/deploy_to_pi.sh
+grep -q 'validate_trusted_local_command "$command_name" "$command_path"' scripts/deploy_to_pi.sh
+grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/deploy_to_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/deploy_to_pi.sh
-grep -q 'Local ssh command is not in a trusted system directory' scripts/deploy_to_pi.sh
+grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
@@ -256,8 +259,11 @@ grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'require_local_command ssh' scripts/dock_test_pi.sh
 grep -q 'require_local_command ssh' scripts/verify_pi.sh
-grep -q 'validate_trusted_local_ssh' scripts/dock_test_pi.sh
-grep -q 'validate_trusted_local_ssh' scripts/verify_pi.sh
+grep -q 'require_local_command git' scripts/verify_pi.sh
+grep -q 'validate_trusted_local_command' scripts/dock_test_pi.sh
+grep -q 'validate_trusted_local_command' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/dock_test_pi.sh
+grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
@@ -272,8 +278,8 @@ grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--allow-dirty' scripts/verify_pi.sh
 grep -q 'Refusing to verify a dirty local worktree as production evidence' scripts/verify_pi.sh
 grep -q 'verify_args+=("$1")' scripts/dock_test_pi.sh
-grep -q 'trusted local SSH command' README.md
-grep -q 'trusted local SSH command' docs/sailboat-pi.md
+grep -q 'trusted local deployment commands' README.md
+grep -q 'trusted local deployment commands' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
@@ -2374,6 +2380,22 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Local ssh command is not in a trusted system directory' "$verify_output"
+
+untrusted_local_git_bin="$tmpdir/untrusted-local-git-bin"
+mkdir -p "$untrusted_local_git_bin"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$untrusted_local_git_bin/git"
+chmod +x "$untrusted_local_git_bin/git"
+set +e
+PATH="$untrusted_local_git_bin:$PATH" \
+  scripts/verify_pi.sh --allow-dirty pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject an untrusted local git command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local git command is not in a trusted system directory' "$verify_output"
 
 verify_revision_repo="$tmpdir/verify-revision-repo"
 mkdir -p "$verify_revision_repo/scripts" "$verify_revision_repo/bin"

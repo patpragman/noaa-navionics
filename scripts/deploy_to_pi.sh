@@ -133,9 +133,7 @@ require_local_command() {
     echo "Missing required local command: $command_name" >&2
     exit 2
   fi
-  if [[ "$command_name" == "ssh" ]]; then
-    validate_trusted_local_ssh "$command_path"
-  fi
+  validate_trusted_local_command "$command_name" "$command_path"
 }
 
 local_path_in_trusted_system_dir() {
@@ -156,7 +154,7 @@ check_local_owner_and_mode() {
   local mode_tail
 
   if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
-    echo "Could not inspect local ssh ${item_kind}: $item_path" >&2
+    echo "Could not inspect local command ${item_kind}: $item_path" >&2
     exit 2
   fi
   owner_uid="${stat_output%% *}"
@@ -164,12 +162,12 @@ check_local_owner_and_mode() {
   mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
 
   if [[ "$owner_uid" != "0" ]]; then
-    echo "Local ssh ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    echo "Local command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
     exit 2
   fi
   case "$mode_tail" in
     ?[2367]?|??[2367])
-      echo "Local ssh ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      echo "Local command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
       exit 2
       ;;
   esac
@@ -185,27 +183,28 @@ check_local_directory_chain() {
   done
 }
 
-validate_trusted_local_ssh() {
-  local command_path="$1"
+validate_trusted_local_command() {
+  local command_name="$1"
+  local command_path="$2"
   local resolved_path
 
-  if [[ "${NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH:-0}" == "1" ]]; then
+  if [[ "${NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS:-0}" == "1" || ( "$command_name" == "ssh" && "${NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH:-0}" == "1" ) ]]; then
     return 0
   fi
   if ! local_path_in_trusted_system_dir "$command_path"; then
-    echo "Local ssh command is not in a trusted system directory: $command_path" >&2
+    echo "Local ${command_name} command is not in a trusted system directory: $command_path" >&2
     exit 2
   fi
   if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
-    echo "Could not resolve local ssh command path: $command_path" >&2
+    echo "Could not resolve local ${command_name} command path: $command_path" >&2
     exit 2
   fi
   if ! local_path_in_trusted_system_dir "$resolved_path"; then
-    echo "Local ssh command resolves outside trusted system directories: $command_path -> $resolved_path" >&2
+    echo "Local ${command_name} command resolves outside trusted system directories: $command_path -> $resolved_path" >&2
     exit 2
   fi
   if [[ ! -f "$resolved_path" ]]; then
-    echo "Local ssh command is not a regular file after resolution: $command_path -> $resolved_path" >&2
+    echo "Local ${command_name} command is not a regular file after resolution: $command_path -> $resolved_path" >&2
     exit 2
   fi
   check_local_directory_chain "$command_path"
@@ -215,7 +214,11 @@ validate_trusted_local_ssh() {
 
 local_command_exists() {
   local command_name="$1"
-  command -v "$command_name" >/dev/null 2>&1
+  local command_path
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    return 1
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
 }
 
 remote_command_exists() {
@@ -405,6 +408,7 @@ remote_dir_trimmed="${remote_dir%/}"
 remote_staging_dir="${remote_dir_trimmed}.deploying"
 remote_previous_dir="${remote_dir_trimmed}.previous"
 remote_staging_dir_quoted="$(quote_remote_dir_for_shell "$remote_staging_dir")"
+require_local_command git
 source_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
 if [[ "$source_revision" != "unknown" && -n "$worktree_status" ]]; then
