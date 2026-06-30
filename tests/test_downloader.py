@@ -7922,6 +7922,33 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.satellites, 2)
         self.assertEqual(fix.hdop, 2.1)
 
+    def test_parse_nmea_gsa_quality(self):
+        fix = parse_nmea_sentence("$GPGSA,A,3,04,05,09,12,,,,,,,,,1.8,0.9,1.5")
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertEqual(fix.fix_quality, 3)
+        self.assertEqual(fix.satellites, 4)
+        self.assertEqual(fix.hdop, 0.9)
+
+    def test_iter_fixes_merges_gsa_quality_into_rmc_position(self):
+        fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+        fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
+        fixes = list(
+            iter_fixes(
+                [
+                    f"$GPRMC,{fix_time},A,4807.038,N,01131.000,E,022.4,084.4,{fix_date},,,A",
+                    "$GPGSA,A,3,04,05,09,12,,,,,,,,,1.8,0.9,1.5",
+                ]
+            )
+        )
+
+        self.assertEqual(len(fixes), 2)
+        self.assertIsNone(fixes[0].satellites)
+        self.assertEqual(fixes[1].satellites, 4)
+        self.assertEqual(fixes[1].hdop, 0.9)
+        self.assertAlmostEqual(fixes[1].latitude, 48.1173, places=4)
+
     def test_iter_gpsd_fixes_merges_sky_quality_into_tpv(self):
         original = gps_module.socket.create_connection
 
@@ -8115,6 +8142,21 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("missing satellite or HDOP quality fields", result.detail)
 
+    def test_check_gps_sample_accepts_rmc_with_gsa_quality(self):
+        fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+        fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
+        sentences = (
+            f"$GPRMC,{fix_time},A,4807.038,N,01131.000,E,022.4,084.4,{fix_date},,,A\n"
+            "$GPGSA,A,3,04,05,09,12,,,,,,,,,1.8,0.9,1.5\n"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.nmea"
+            path.write_text(sentences, encoding="ascii")
+            result = check_gps_sample(path)
+            self.assertTrue(result.ok)
+            self.assertIn("4 satellites", result.detail)
+            self.assertIn("HDOP 0.9", result.detail)
+
     def test_check_gps_sample_rejects_null_island_fix(self):
         sentence = "$GPGGA,123519,0000.000,N,00000.000,E,1,08,0.9,545.4,M,46.9,M,,\n"
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -8223,6 +8265,30 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("missing satellite or HDOP quality fields", result.detail)
+
+    def test_check_gps_device_accepts_rmc_with_gsa_quality(self):
+        original = health_module.open_nmea_stream
+
+        def fake_open_nmea_stream(device, baud=4800):
+            fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+            fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
+            return BytesIO(
+                (
+                    f"$GPRMC,{fix_time},A,4807.038,N,01131.000,E,022.4,084.4,{fix_date},,,A\n"
+                    "$GPGSA,A,3,04,05,09,12,,,,,,,,,1.8,0.9,1.5\n"
+                ).encode("ascii")
+            )
+
+        try:
+            health_module.open_nmea_stream = fake_open_nmea_stream
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertTrue(result.ok)
+        self.assertIn("4 satellites", result.detail)
+        self.assertIn("HDOP 0.9", result.detail)
 
     def test_check_gps_device_rejects_null_island_fix(self):
         original = health_module.open_nmea_stream

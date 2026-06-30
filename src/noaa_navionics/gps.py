@@ -70,6 +70,8 @@ def parse_nmea_sentence(sentence: str) -> Optional[GPSFix]:
         return _parse_rmc(fields, raw)
     if sentence_type == "GGA":
         return _parse_gga(fields, raw)
+    if sentence_type == "GSA":
+        return _parse_gsa(fields, raw)
     return None
 
 
@@ -490,6 +492,28 @@ def _parse_gga(fields: list[str], raw: str) -> Optional[GPSFix]:
     )
 
 
+def _parse_gsa(fields: list[str], raw: str) -> Optional[GPSFix]:
+    if len(fields) < 3:
+        return None
+    fix_type = _int_or_none(fields[2])
+    if fix_type is None:
+        return None
+    if fix_type == 1:
+        fix_quality = 0
+    elif fix_type in {2, 3}:
+        fix_quality = fix_type
+    else:
+        return None
+    satellite_fields = fields[3:15]
+    satellites = sum(1 for value in satellite_fields if _positive_int_or_none(value) is not None)
+    return GPSFix(
+        fix_quality=fix_quality,
+        satellites=satellites if satellites > 0 else None,
+        hdop=_non_negative_float_or_none(fields[16]) if len(fields) > 16 else None,
+        source_sentence=raw,
+    )
+
+
 def _parse_lat_lon(value: str, hemisphere: str, *, latitude: bool) -> Optional[float]:
     if not value or not hemisphere:
         return None
@@ -621,6 +645,13 @@ def _int_or_none(value: str) -> Optional[int]:
     if value == "":
         return None
     return _non_negative_int_or_none(value)
+
+
+def _positive_int_or_none(value: str) -> Optional[int]:
+    parsed = _int_or_none(value)
+    if parsed is None or parsed <= 0:
+        return None
+    return parsed
 
 
 _HALF_DAY = timedelta(hours=12)
