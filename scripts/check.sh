@@ -1176,6 +1176,10 @@ grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'GPSD fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py
 grep -q 'NMEA fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py
+grep -q 'def _rmc_mode_has_fix' src/noaa_navionics/gps.py
+grep -q 'test_parse_rmc_rejects_non_navigation_mode_fix' tests/test_downloader.py
+grep -q 'explicit RMC simulator/manual/estimated/no-fix mode flags' README.md
+grep -q 'explicit RMC simulator/manual/estimated/no-fix mode flags' docs/sailboat-pi.md
 grep -q 'sentence_type == "GSA"' src/noaa_navionics/gps.py
 grep -q 'def _parse_gsa' src/noaa_navionics/gps.py
 grep -q 'test_parse_nmea_gsa_quality' tests/test_downloader.py

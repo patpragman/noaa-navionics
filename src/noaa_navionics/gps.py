@@ -456,6 +456,8 @@ def daily_track_path(base_dir: Path, timestamp: Optional[datetime] = None) -> Pa
 def _parse_rmc(fields: list[str], raw: str) -> Optional[GPSFix]:
     if len(fields) < 10 or fields[2] != "A":
         return None
+    if not _rmc_mode_has_fix(fields):
+        return None
     lat = _parse_lat_lon(fields[3], fields[4], latitude=True)
     lon = _parse_lat_lon(fields[5], fields[6], latitude=False)
     if lat is None or lon is None:
@@ -470,6 +472,12 @@ def _parse_rmc(fields: list[str], raw: str) -> Optional[GPSFix]:
         fix_quality=1,
         source_sentence=raw,
     )
+
+
+def _rmc_mode_has_fix(fields: list[str]) -> bool:
+    if len(fields) <= 12 or fields[12] == "":
+        return True
+    return fields[12] in {"A", "D", "F", "P", "R"}
 
 
 def _parse_gga(fields: list[str], raw: str) -> Optional[GPSFix]:

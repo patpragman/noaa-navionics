@@ -7101,6 +7101,24 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.speed_knots, 22.4)
         self.assertEqual(fix.course_degrees, 84.4)
 
+    def test_parse_rmc_accepts_navigation_mode_fix(self):
+        for mode in ("A", "D", "F", "P", "R"):
+            with self.subTest(mode=mode):
+                sentence = f"$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,290626,,,{mode}"
+                fix = parse_nmea_sentence(sentence)
+
+                self.assertIsNotNone(fix)
+                assert fix is not None
+                self.assertTrue(fix.valid)
+
+    def test_parse_rmc_rejects_non_navigation_mode_fix(self):
+        for mode in ("E", "M", "N", "S", "X"):
+            with self.subTest(mode=mode):
+                sentence = f"$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,290626,,,{mode}"
+
+                self.assertIsNone(parse_nmea_sentence(sentence))
+                self.assertEqual(list(iter_fixes([sentence])), [])
+
     def test_parse_rmc_fractional_time_rounds_across_date(self):
         sentence = "$GPRMC,235959.9999999,A,4807.038,N,01131.000,E,0.0,0.0,290626,003.1,W"
         fix = parse_nmea_sentence(sentence)
