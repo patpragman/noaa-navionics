@@ -1883,6 +1883,32 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(archive_link.is_symlink())
             self.assertFalse((output / "AK_ENCs").exists())
 
+    def test_existing_zip_nonregular_path_fails_before_reading_cache(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            existing = output / "AK_ENCs.zip"
+            existing.mkdir()
+            package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart download path is not a regular file"):
+                download_package(package, output, extract=True)
+
+            self.assertFalse((output / "AK_ENCs").exists())
+
+    def test_existing_zip_writable_file_fails_before_reading_cache(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            existing = output / "AK_ENCs.zip"
+            with zipfile.ZipFile(existing, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            existing.chmod(0o622)
+            package = Package("State AK", "https://example.invalid/AK_ENCs.zip", "AK_ENCs.zip")
+
+            with self.assertRaisesRegex(RuntimeError, "chart download path .* has permissions 0622"):
+                download_package(package, output, extract=True)
+
+            self.assertFalse((output / "AK_ENCs").exists())
+
     def test_download_rejects_symlinked_output_ancestor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

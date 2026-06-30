@@ -263,8 +263,9 @@ def _download_package_unlocked(
         raise RuntimeError(f"chart archive path is a symlink: {destination}")
 
     if destination.exists() and not force:
+        destination_stat = _validate_existing_download_path(destination)
         digest = sha256_file(destination)
-        bytes_written = destination.stat().st_size
+        bytes_written = destination_stat.st_size
         result = DownloadResult(destination, package.url, bytes_written, skipped=True, sha256=digest)
         if extract and destination.suffix.lower() == ".zip":
             if _matching_previous_manifest(output_path, package, result, digest) is None:
@@ -341,6 +342,23 @@ def _download_package_unlocked(
     result = DownloadResult(destination, download_url, written, False, extracted_to, digest)
     write_manifest(output_path, package, result)
     return result
+
+
+def _validate_existing_download_path(path: Path) -> os.stat_result:
+    if not path.is_file():
+        raise RuntimeError(f"chart download path is not a regular file: {path}")
+    try:
+        stat_result = path.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect chart download path {path}: {exc}") from exc
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(f"chart download path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}")
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        raise RuntimeError(
+            f"chart download path {path} has permissions {mode:04o}, expected no group/other write bits"
+        )
+    return stat_result
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:

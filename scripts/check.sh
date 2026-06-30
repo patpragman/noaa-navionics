@@ -1026,6 +1026,13 @@ grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloade
 grep -q 'test_forced_download_rejects_bad_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_unsafe_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive' tests/test_downloader.py
+grep -q 'chart download path is not a regular file' src/noaa_navionics/downloader.py
+grep -q 'chart download path .* is owned by uid' src/noaa_navionics/downloader.py
+grep -q 'chart download path .* has permissions' src/noaa_navionics/downloader.py
+grep -q 'test_existing_zip_nonregular_path_fails_before_reading_cache' tests/test_downloader.py
+grep -q 'test_existing_zip_writable_file_fails_before_reading_cache' tests/test_downloader.py
+grep -q 'unsafe ownership or permissions' README.md
+grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
