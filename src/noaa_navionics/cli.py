@@ -565,6 +565,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     gpsd_host=app_config.gpsd_host,
                     gpsd_port=app_config.gpsd_port,
                     deadline=deadline,
+                    gpsd_connect_retry=use_gpsd and not args.sample,
                 )
             )
             for fix in fixes:
@@ -591,6 +592,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     gpsd_host=app_config.gpsd_host,
                     gpsd_port=app_config.gpsd_port,
                     deadline=deadline,
+                    gpsd_connect_retry=use_gpsd and not args.sample,
                 )
             )
             if fix is None:
@@ -629,7 +631,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     gpsd_host=app_config.gpsd_host,
                     gpsd_port=app_config.gpsd_port,
                     deadline=deadline,
-                    gpsd_connect_retry=use_gpsd and live_stream,
+                    gpsd_connect_retry=use_gpsd and not args.sample,
                     gpsd_idle_timeout=_live_idle_timeout(300.0, live=use_gpsd and live_stream),
                     serial_idle_timeout=_live_idle_timeout(300.0, live=not use_gpsd and live_stream),
                 )
@@ -661,7 +663,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 gpsd_host=app_config.gpsd_host,
                 gpsd_port=app_config.gpsd_port,
                 deadline=deadline,
-                gpsd_connect_retry=use_gpsd and live_stream,
+                gpsd_connect_retry=use_gpsd and not args.sample,
                 gpsd_idle_timeout=_live_idle_timeout(args.gpsd_idle_timeout, live=use_gpsd and live_stream),
                 serial_idle_timeout=_live_idle_timeout(args.serial_idle_timeout, live=not use_gpsd and live_stream),
             )
@@ -786,13 +788,16 @@ def _read_fixes(
     serial_idle_timeout: Optional[float] = None,
 ):
     if gpsd:
-        timeout = 10.0
-        max_duration = None
-        if deadline is not None:
-            timeout = max(0.1, deadline - time.monotonic())
-            max_duration = timeout
         yielded_fix = False
         while True:
+            timeout = 10.0
+            max_duration = None
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return
+                timeout = max(0.1, remaining)
+                max_duration = max(0.001, remaining)
             try:
                 gpsd_kwargs = {
                     "host": gpsd_host,
@@ -817,14 +822,20 @@ def _read_fixes(
                     continue
                 return
             except OSError as exc:
-                if not gpsd_connect_retry or deadline is not None or yielded_fix:
+                if not gpsd_connect_retry or yielded_fix:
                     raise
+                retry_delay = max(0.1, gpsd_retry_delay)
+                if deadline is not None:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return
+                    retry_delay = min(retry_delay, remaining)
                 print(
                     f"GPSD unavailable at {gpsd_host}:{gpsd_port}: {exc}; "
-                    f"retrying in {gpsd_retry_delay:g}s",
+                    f"retrying in {retry_delay:g}s",
                     file=sys.stderr,
                 )
-                time.sleep(max(0.1, gpsd_retry_delay))
+                time.sleep(retry_delay)
         return
     if sample:
         with open_trusted_gps_sample(Path(sample)) as handle:

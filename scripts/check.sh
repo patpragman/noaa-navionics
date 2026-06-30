@@ -2548,8 +2548,8 @@ grep -q -- '--serial-idle-timeout' src/noaa_navionics/cli.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
 grep -q 'gps.add_argument("--seconds", type=_positive_float' src/noaa_navionics/cli.py
 grep -q 'deadline = time.monotonic() + args.seconds if args.seconds else None' src/noaa_navionics/cli.py
-grep -q 'instead of waiting forever when GPSD is connected but no fix arrives' README.md
-grep -q 'instead of waiting forever when GPSD is connected but no fix arrives' docs/sailboat-pi.md
+grep -q 'instead of waiting forever when GPSD is starting slowly, refusing connections, or connected but not producing a fix' README.md
+grep -q 'instead of waiting forever when GPSD is starting slowly, refusing connections, or connected but no fix arrives' docs/sailboat-pi.md
 grep -q 'def _non_negative_int' src/noaa_navionics/cli.py
 grep -q 'def _non_negative_float' src/noaa_navionics/cli.py
 grep -q 'chart_dir = Path(args.charts).expanduser() if args.charts else app_config.chart_output' src/noaa_navionics/cli.py
@@ -2603,7 +2603,13 @@ grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'live_stream = deadline is None and not args.sample' src/noaa_navionics/cli.py
-grep -q 'gpsd_connect_retry=use_gpsd and live_stream' src/noaa_navionics/cli.py
+grep -q 'gpsd_connect_retry=use_gpsd and not args.sample' src/noaa_navionics/cli.py
+grep -q 'test_read_fixes_retries_initial_gpsd_connection_for_bounded_wait' tests/test_downloader.py
+grep -q 'retry_delay = min(retry_delay, remaining)' src/noaa_navionics/cli.py
+grep -q 'Bounded live GPSD commands retry initial GPSD connection failures inside their wait window' README.md
+grep -q 'Bounded live GPSD commands retry initial GPSD connection failures inside their wait window' docs/sailboat-pi.md
+grep -q 'log-track --seconds 30` retries initial GPSD connection refusals inside the timeout' README.md
+grep -q 'log-track --seconds 30` retries initial GPSD connection refusals inside the timeout' docs/sailboat-pi.md
 grep -q 'open_trusted_gps_sample(Path(sample))' src/noaa_navionics/cli.py
 grep -q 'GPS sample path changed before it could be read' src/noaa_navionics/health.py
 grep -q 'test_check_gps_sample_rejects_replaced_sample_before_parsing' tests/test_downloader.py
