@@ -665,6 +665,20 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
     mount_detail = _missing_removable_mount(path, existing)
     if mount_detail:
         return CheckResult(name, False, mount_detail)
+    stat_result = existing.stat()
+    if stat_result.st_uid != os.getuid():
+        return CheckResult(
+            name,
+            False,
+            f"{existing} is owned by uid {stat_result.st_uid}, expected {os.getuid()}",
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o022:
+        return CheckResult(
+            name,
+            False,
+            f"{existing} has permissions {mode:04o}, expected no group/other write bits",
+        )
     usage = shutil.disk_usage(existing)
     free_gb = usage.free / (1024 ** 3)
     writable = _directory_writable(existing)

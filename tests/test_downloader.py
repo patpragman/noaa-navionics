@@ -1644,6 +1644,21 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
             self.assertTrue(check_chart_manifest(output).ok)
 
+    def test_download_tightens_chart_output_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            output.mkdir()
+            os.chmod(output, 0o777)
+            package = Package("Test package", source_zip.as_uri(), "AK_ENCs.zip")
+
+            download_package(package, output, extract=True)
+
+            self.assertEqual(output.stat().st_mode & 0o777, 0o700)
+
     def test_forced_download_rejects_bad_zip_before_replacing_archive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -6932,6 +6947,20 @@ class GpsTests(unittest.TestCase):
             self.assertIn("not writable", result.detail)
         finally:
             health_module._directory_writable = original
+
+    def test_disk_check_rejects_public_storage_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            charts = root / "charts"
+            charts.mkdir()
+            os.chmod(charts, 0o777)
+            try:
+                result = check_disk_space(charts)
+            finally:
+                os.chmod(charts, 0o700)
+
+            self.assertFalse(result.ok)
+            self.assertIn("expected no group/other write bits", result.detail)
 
     def test_disk_check_uses_configured_free_space_floor(self):
         with tempfile.TemporaryDirectory() as tmpdir:

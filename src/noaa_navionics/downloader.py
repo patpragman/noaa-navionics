@@ -672,6 +672,25 @@ def _prepare_output_dir(output_path: Path) -> None:
         raise RuntimeError(f"chart output path contains a symlink: {symlink_component}")
     if not output_path.is_dir():
         raise RuntimeError(f"chart output path is not a directory: {output_path}")
+    try:
+        stat_result = output_path.stat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect chart output directory {output_path}: {exc}") from exc
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"chart output directory {output_path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+        )
+    try:
+        os.chmod(output_path, 0o700)
+    except OSError as exc:
+        raise RuntimeError(f"could not make chart output directory private: {output_path}: {exc}") from exc
+    mode = output_path.stat().st_mode & 0o777
+    if mode & 0o077:
+        raise RuntimeError(
+            f"chart output directory {output_path} has permissions {mode:04o}, expected private 0700"
+        )
+    _fsync_directory(output_path)
+    _fsync_directory(output_path.parent)
 
 
 def _first_symlink_ancestor(path: Path) -> Optional[Path]:

@@ -1308,6 +1308,11 @@ grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
 grep -q 'def _prepare_output_dir' src/noaa_navionics/downloader.py
 grep -q 'chart output path contains a symlink' src/noaa_navionics/downloader.py
+grep -q 'chart output directory .* expected private 0700' src/noaa_navionics/downloader.py
+grep -q 'os.chmod(output_path, 0o700)' src/noaa_navionics/downloader.py
+grep -q 'expected no group/other write bits' src/noaa_navionics/health.py
+grep -q 'test_download_tightens_chart_output_directory' tests/test_downloader.py
+grep -q 'test_disk_check_rejects_public_storage_directory' tests/test_downloader.py
 grep -q 'test_download_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q 'test_write_manifest_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q '"min_free_gb": app_config.min_free_gb' src/noaa_navionics/report.py
