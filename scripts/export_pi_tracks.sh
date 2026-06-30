@@ -212,6 +212,103 @@ require_local_command() {
   printf '%s\n' "$command_path"
 }
 
+remote_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+validate_remote_python_command_trust() {
+  local command_path="$1"
+  local command_path_quoted
+
+  if [[ "$command_path" != /* || "$command_path" =~ [[:space:]\"\'] ]]; then
+    echo "Remote python3 command path is unsafe: $command_path" >&2
+    return 1
+  fi
+  if ! remote_path_in_trusted_system_dir "$command_path"; then
+    echo "Remote python3 command is not in a trusted system directory: $command_path" >&2
+    return 1
+  fi
+
+  command_path_quoted="$(printf '%q' "$command_path")"
+  "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && sh -s -- ${command_path_quoted}" <<'REMOTE_PYTHON_COMMAND_TRUST'
+set -eu
+
+command_path="$1"
+
+check_trusted_system_path() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  echo "Remote python3 command resolves outside trusted system directories: $1" >&2
+  return 1
+}
+
+check_owner_and_mode() {
+  item_kind="$1"
+  item_path="$2"
+  stat_output="$(stat -Lc '%u %a' -- "$item_path")"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [ "$owner_uid" != "0" ]; then
+    echo "Remote python3 command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    return 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Remote python3 command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      return 1
+      ;;
+  esac
+}
+
+check_directory_chain() {
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_owner_and_mode directory "$directory"
+    [ "$directory" = "/" ] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+check_trusted_system_path "$command_path"
+resolved_cmd="$(readlink -f -- "$command_path")"
+check_trusted_system_path "$resolved_cmd"
+if [ ! -f "$resolved_cmd" ]; then
+  echo "Remote python3 command is not a regular file after resolution: ${command_path} -> ${resolved_cmd}" >&2
+  exit 1
+fi
+if [ ! -x "$resolved_cmd" ]; then
+  echo "Remote python3 command is not executable after resolution: ${command_path} -> ${resolved_cmd}" >&2
+  exit 1
+fi
+check_directory_chain "$command_path"
+check_directory_chain "$resolved_cmd"
+check_owner_and_mode file "$resolved_cmd"
+REMOTE_PYTHON_COMMAND_TRUST
+}
+
+remote_python_command() {
+  local python_cmd
+
+  if ! python_cmd="$("$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && command -v python3" 2>/dev/null)" || [[ -z "$python_cmd" ]]; then
+    echo "Could not find the remote python3 command on $target." >&2
+    return 1
+  fi
+  if ! validate_remote_python_command_trust "$python_cmd"; then
+    return 1
+  fi
+  printf '%s\n' "$python_cmd"
+}
+
 validate_output_dir_arg() {
   local value="$1"
   if [[ -z "$value" ]]; then
@@ -348,6 +445,8 @@ finalize_private_archive() {
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 ssh_cmd="$(require_local_command ssh)"
+remote_python_cmd="$(remote_python_command)"
+remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
 
 prepare_private_output_dir "Output directory" "$output_dir"
 
@@ -364,7 +463,7 @@ cleanup_partial() {
 }
 trap cleanup_partial EXIT
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPORT_DAYS=${days} python3 -s" >"$partial_path" <<'PY'
+"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPORT_DAYS=${days} ${remote_python_cmd_quoted} -s" >"$partial_path" <<'PY'
 from configparser import ConfigParser
 from datetime import datetime, timezone
 from pathlib import Path

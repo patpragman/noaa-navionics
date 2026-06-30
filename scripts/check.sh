@@ -512,8 +512,8 @@ grep -q 'Pi-side temporary collection directory only under a private user-owned 
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' README.md
-grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -542,22 +542,26 @@ grep -q 'continues exporting tracks/support even when the status snapshot report
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'OpenCPN export helper rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'OpenCPN export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'settings export helper rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'settings export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' README.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
 grep -q 'recovery export helper rejects broad/system local output directories or symlinked local output path components' README.md
 grep -q 'recovery export helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
-grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'track export helper validates the SSH target, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' README.md
 grep -q 'pre-trip wrapper refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' README.md
@@ -984,6 +988,17 @@ for export_wrapper in \
   grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$export_wrapper"
   grep -q 'path contains a symlink' "$export_wrapper"
   grep -q 'reject_symlinked_path_components "$label" "$path"' "$export_wrapper"
+done
+for remote_python_export_wrapper in \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh; do
+  grep -q 'remote_python_command()' "$remote_python_export_wrapper"
+  grep -q 'validate_remote_python_command_trust' "$remote_python_export_wrapper"
+  grep -q 'Remote python3 command is not in a trusted system directory' "$remote_python_export_wrapper"
+  grep -q 'remote_python_cmd="$(remote_python_command)"' "$remote_python_export_wrapper"
+  grep -q 'remote_python_cmd_quoted="$(printf '\''%q'\'' "$remote_python_cmd")"' "$remote_python_export_wrapper"
+  ! grep -q '${remote_system_path} && export PATH && python3 -s' "$remote_python_export_wrapper"
 done
 grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
@@ -5487,6 +5502,15 @@ track_export_output_dir="$tmpdir/track-exports"
 mkdir -p "$track_export_fake_ssh_bin"
 cat >"$track_export_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
+args="$*"
+if [[ "$args" == *"command -v python3"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- /usr/bin/python3"* ]]; then
+  cat >/dev/null
+  exit 0
+fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-track-export\n'
@@ -5494,6 +5518,21 @@ EOF
 chmod +x "$track_export_fake_ssh_bin/ssh"
 mkdir -p "$track_export_output_dir"
 chmod 0777 "$track_export_output_dir"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_PYTHON_PATH=/home/pi/bin/python3 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
+  PATH="$track_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_output_dir" --days 7 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject an untrusted remote python3 command with exit 1" >&2
+  exit 1
+fi
+grep -q 'Remote python3 command is not in a trusted system directory: /home/pi/bin/python3' "$verify_output"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
@@ -5507,7 +5546,7 @@ test "$(stat -c '%a' "$track_export_path")" = 600
 test "$(stat -c '%u' "$track_export_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$track_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$track_export_fake_ssh_args"
-grep -q 'NOAA_NAVIONICS_EXPORT_DAYS=7 python3 -s' "$track_export_fake_ssh_args"
+grep -q 'NOAA_NAVIONICS_EXPORT_DAYS=7 /usr/bin/python3 -s' "$track_export_fake_ssh_args"
 grep -q 'tarfile.open' "$track_export_fake_ssh_stdin"
 grep -q 'configured GPX track directory' "$track_export_fake_ssh_stdin"
 grep -q 'refusing to export symlinked GPX track' "$track_export_fake_ssh_stdin"
@@ -5545,6 +5584,15 @@ opencpn_export_output_dir="$tmpdir/opencpn-exports"
 mkdir -p "$opencpn_export_fake_ssh_bin"
 cat >"$opencpn_export_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
+args="$*"
+if [[ "$args" == *"command -v python3"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- /usr/bin/python3"* ]]; then
+  cat >/dev/null
+  exit 0
+fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-opencpn-export\n'
@@ -5565,7 +5613,7 @@ test "$(stat -c '%a' "$opencpn_export_path")" = 600
 test "$(stat -c '%u' "$opencpn_export_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$opencpn_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$opencpn_export_fake_ssh_args"
-grep -q 'python3 -s' "$opencpn_export_fake_ssh_args"
+grep -q '/usr/bin/python3 -s' "$opencpn_export_fake_ssh_args"
 grep -q 'tarfile.open' "$opencpn_export_fake_ssh_stdin"
 grep -q 'navobj.xml' "$opencpn_export_fake_ssh_stdin"
 grep -q 'refusing to export symlinked OpenCPN file' "$opencpn_export_fake_ssh_stdin"
@@ -5603,6 +5651,15 @@ settings_export_output_dir="$tmpdir/settings-exports"
 mkdir -p "$settings_export_fake_ssh_bin"
 cat >"$settings_export_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
+args="$*"
+if [[ "$args" == *"command -v python3"* ]]; then
+  printf '%s\n' "${NOAA_NAVIONICS_FAKE_PYTHON_PATH:-/usr/bin/python3}"
+  exit 0
+fi
+if [[ "$args" == *"sh -s -- /usr/bin/python3"* ]]; then
+  cat >/dev/null
+  exit 0
+fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 printf 'fake-settings-export\n'
@@ -5623,7 +5680,7 @@ test "$(stat -c '%a' "$settings_export_path")" = 600
 test "$(stat -c '%u' "$settings_export_output_dir")" = "$(id -u)"
 grep -q -- '-o BatchMode=yes' "$settings_export_fake_ssh_args"
 grep -q 'pi@example.invalid' "$settings_export_fake_ssh_args"
-grep -q 'python3 -s' "$settings_export_fake_ssh_args"
+grep -q '/usr/bin/python3 -s' "$settings_export_fake_ssh_args"
 grep -q 'tarfile.open' "$settings_export_fake_ssh_stdin"
 grep -q 'launcher.env' "$settings_export_fake_ssh_stdin"
 grep -q 'source-revision' "$settings_export_fake_ssh_stdin"
