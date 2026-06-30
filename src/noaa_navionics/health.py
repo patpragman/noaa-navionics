@@ -710,6 +710,28 @@ def check_chart_manifest(
     manifest_path = path / MANIFEST_NAME
     if manifest_path.is_symlink():
         return CheckResult("Manifest", False, f"manifest path is a symlink: {manifest_path}")
+    if manifest_path.parent.exists():
+        if not manifest_path.parent.is_dir():
+            return CheckResult("Manifest", False, f"manifest parent is not a directory: {manifest_path.parent}")
+        try:
+            directory_stat = manifest_path.parent.stat()
+        except OSError as exc:
+            return CheckResult("Manifest", False, f"could not inspect manifest directory {manifest_path.parent}: {exc}")
+        if directory_stat.st_uid != os.getuid():
+            return CheckResult(
+                "Manifest",
+                False,
+                f"manifest directory {manifest_path.parent} is owned by uid "
+                f"{directory_stat.st_uid}, expected {os.getuid()}",
+            )
+        directory_mode = directory_stat.st_mode & 0o777
+        if directory_mode & 0o022:
+            return CheckResult(
+                "Manifest",
+                False,
+                f"manifest directory {manifest_path.parent} has permissions {directory_mode:04o}, "
+                "expected no group/other write bits",
+            )
     if not manifest_path.exists():
         return CheckResult("Manifest", False, f"missing {manifest_path}")
     if not manifest_path.is_file():

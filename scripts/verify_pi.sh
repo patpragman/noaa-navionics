@@ -1369,6 +1369,29 @@ if expected_config_path:
         "manifest",
         os.getuid(),
     )
+    manifest_dir_stat = manifest_file_path.parent.stat()
+    status_manifest_dir_uid = manifest.get("directory_uid")
+    if status_manifest_dir_uid != manifest_dir_stat.st_uid:
+        raise SystemExit(
+            f"status report manifest directory_uid {status_manifest_dir_uid!r} "
+            f"does not match directory owner uid {manifest_dir_stat.st_uid}"
+        )
+    if manifest_dir_stat.st_uid != os.getuid():
+        raise SystemExit(
+            f"status report manifest directory is owned by uid {manifest_dir_stat.st_uid}, expected {os.getuid()}"
+        )
+    manifest_dir_mode = manifest_dir_stat.st_mode & 0o777
+    status_manifest_dir_mode = str(manifest.get("directory_mode", "")).strip()
+    if status_manifest_dir_mode != f"{manifest_dir_mode:04o}":
+        raise SystemExit(
+            f"status report manifest directory_mode {status_manifest_dir_mode or '<missing>'} "
+            f"does not match directory permissions {manifest_dir_mode:04o}"
+        )
+    if manifest_dir_mode & 0o022:
+        raise SystemExit(
+            f"status report manifest directory has permissions {manifest_dir_mode:04o}, "
+            "expected no group/other write bits"
+        )
     try:
         manifest_file = json.loads(manifest_text)
     except json.JSONDecodeError as exc:

@@ -1687,6 +1687,8 @@ grep -q 'Manifest fallback ZIP hashes use the same trusted no-follow archive has
 grep -q 'Manifest fallback ZIP hashes use the same trusted no-follow archive hash path' docs/sailboat-pi.md
 grep -q 'Manifest reads reject symlinked manifest files or parent path components' README.md
 grep -q 'Manifest reads reject symlinked manifest files or parent path components' docs/sailboat-pi.md
+grep -q 'unsafe manifest directory ownership or permissions' README.md
+grep -q 'unsafe manifest directory ownership or permissions' docs/sailboat-pi.md
 grep -q 'trusted previous manifest' README.md
 grep -q 'trusted previous manifest' docs/sailboat-pi.md
 grep -q 'HTTP or change filenames fail before archive replacement' README.md
@@ -2385,6 +2387,8 @@ grep -q 'Status reports and Pi readiness read that revision through a no-follow 
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor' docs/sailboat-pi.md
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
 grep -q '"manifest_symlink_component"' src/noaa_navionics/report.py
+grep -q '"directory_uid"' src/noaa_navionics/report.py
+grep -q '"directory_mode"' src/noaa_navionics/report.py
 grep -q '"download_path_exists"' src/noaa_navionics/report.py
 grep -q '"download_path_symlink_component"' src/noaa_navionics/report.py
 grep -q '"download_path_uid"' src/noaa_navionics/report.py
@@ -2396,9 +2400,14 @@ grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'status report launcher settings path contains a symlink' scripts/verify_pi.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
+grep -q 'manifest directory .* has permissions' src/noaa_navionics/report.py
+grep -q 'manifest directory .* has permissions' src/noaa_navionics/health.py
 grep -q 'manifest path is not a regular file' src/noaa_navionics/report.py
 grep -q 'test_manifest_summary_rejects_nonregular_manifest' tests/test_downloader.py
 grep -q 'test_manifest_summary_records_owner_and_mode' tests/test_downloader.py
+grep -q 'test_manifest_summary_rejects_writable_manifest_directory' tests/test_downloader.py
+grep -q 'test_manifest_writable_directory_fails' tests/test_downloader.py
+grep -q 'status report manifest directory has permissions' scripts/verify_pi.sh
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest download path contains a symlink' scripts/verify_pi.sh

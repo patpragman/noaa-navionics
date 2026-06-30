@@ -959,6 +959,30 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
     if manifest_symlink_component is not None:
         summary["error"] = f"manifest directory is a symlink: {manifest_symlink_component}"
         return summary
+    if manifest_path.parent.exists():
+        if not manifest_path.parent.is_dir():
+            summary["error"] = f"manifest parent is not a directory: {manifest_path.parent}"
+            return summary
+        try:
+            directory_stat = manifest_path.parent.stat()
+        except OSError as exc:
+            summary["error"] = f"could not inspect manifest directory {manifest_path.parent}: {exc}"
+            return summary
+        directory_mode = directory_stat.st_mode & 0o777
+        summary["directory_uid"] = directory_stat.st_uid
+        summary["directory_mode"] = f"{directory_mode:04o}"
+        if directory_stat.st_uid != os.getuid():
+            summary["error"] = (
+                f"manifest directory {manifest_path.parent} is owned by uid "
+                f"{directory_stat.st_uid}, expected {os.getuid()}"
+            )
+            return summary
+        if directory_mode & 0o022:
+            summary["error"] = (
+                f"manifest directory {manifest_path.parent} has permissions "
+                f"{directory_mode:04o}, expected no group/other write bits"
+            )
+            return summary
     if not manifest_path.exists():
         return summary
     if not manifest_path.is_file():

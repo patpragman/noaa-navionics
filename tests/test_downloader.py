@@ -3465,6 +3465,33 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("manifest path", result.detail)
             self.assertIn("has permissions 0666", result.detail)
 
+    def test_manifest_writable_directory_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            manifest = root / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"Test"},'
+                '"download":{"path":"","url":"file:///test.zip","bytes":1,"sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            manifest.chmod(0o600)
+            root.chmod(0o777)
+            try:
+                result = check_chart_manifest(root, max_age_days=1)
+            finally:
+                root.chmod(0o700)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest directory", result.detail)
+            self.assertIn("has permissions 0777", result.detail)
+
     def test_read_manifest_rejects_symlinked_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -4874,6 +4901,8 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["manifest"]["is_symlink"], False)
             self.assertEqual(report["manifest"]["directory_is_symlink"], False)
             self.assertEqual(report["manifest"]["manifest_symlink_component"], "")
+            self.assertEqual(report["manifest"]["directory_uid"], os.getuid())
+            self.assertEqual(report["manifest"]["directory_mode"], f"{manifest.parent.stat().st_mode & 0o777:04o}")
             self.assertEqual(report["manifest"]["uid"], os.getuid())
             self.assertEqual(report["manifest"]["mode"], "0644")
             self.assertEqual(report["manifest"]["created_at"], now)
@@ -5722,7 +5751,38 @@ class StatusReportTests(unittest.TestCase):
 
             self.assertEqual(summary["uid"], os.getuid())
             self.assertEqual(summary["mode"], "0640")
+            self.assertEqual(summary["directory_uid"], os.getuid())
+            self.assertEqual(summary["directory_mode"], f"{charts.stat().st_mode & 0o777:04o}")
             self.assertEqual(summary["package_filename"], "AK_ENCs.zip")
+
+    def test_manifest_summary_rejects_writable_manifest_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            charts = Path(tmpdir) / "charts"
+            charts.mkdir()
+            extract = charts / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            manifest = charts / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"2000-01-01T00:00:00Z",'
+                '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
+                '"download":{"path":"","url":"file:///test.zip","bytes":1,"sha256":"abc","skipped":false},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            manifest.chmod(0o600)
+            charts.chmod(0o777)
+            try:
+                summary = report_module._manifest_summary(charts)
+            finally:
+                charts.chmod(0o700)
+
+            self.assertEqual(summary["directory_uid"], os.getuid())
+            self.assertEqual(summary["directory_mode"], "0777")
+            self.assertIn("manifest directory", summary["error"])
+            self.assertIn("has permissions 0777", summary["error"])
+            self.assertNotIn("created_at", summary)
 
     def test_manifest_summary_marks_symlinked_recorded_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:
