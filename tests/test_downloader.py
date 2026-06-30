@@ -3863,6 +3863,20 @@ class ManifestTests(unittest.TestCase):
 
 
 class StatusReportTests(unittest.TestCase):
+    def test_boot_id_rejects_malformed_values(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            boot_id = Path(tmpdir) / "boot_id"
+            original_boot_id_path = report_module.BOOT_ID_PATH
+            report_module.BOOT_ID_PATH = boot_id
+            try:
+                boot_id.write_text("not-a-boot-id\n", encoding="ascii")
+                self.assertEqual(report_module._boot_id(), "unknown")
+
+                boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
+                self.assertEqual(report_module._boot_id(), "12345678-1234-4234-8234-123456789abc")
+            finally:
+                report_module.BOOT_ID_PATH = original_boot_id_path
+
     def test_parse_proc_uptime_seconds_requires_finite_non_negative_value(self):
         self.assertEqual(_parse_proc_uptime_seconds("123.45 678.90\n"), 123.45)
         for value in ("nan 0\n", "inf 0\n", "-1 0\n", "not-a-number 0\n", "\n"):
@@ -3929,7 +3943,7 @@ class StatusReportTests(unittest.TestCase):
             revision = root / "source-revision"
             revision.write_text("abc123\n", encoding="utf-8")
             boot_id = root / "boot_id"
-            boot_id.write_text("boot-abc\n", encoding="ascii")
+            boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
             launcher_env = root / "launcher.env"
             launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=10\n", encoding="ascii")
             launcher_env.chmod(0o600)
@@ -4009,7 +4023,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["config"]["keep_zip"], True)
             self.assertEqual(report["config"]["force"], True)
             self.assertEqual(report["config"]["min_free_gb"], 3.5)
-            self.assertEqual(report["host"]["boot_id"], "boot-abc")
+            self.assertEqual(report["host"]["boot_id"], "12345678-1234-4234-8234-123456789abc")
             self.assertEqual(report["launcher_settings"]["path"], str(launcher_env))
             self.assertEqual(report["launcher_settings"]["is_symlink"], False)
             self.assertEqual(report["launcher_settings"]["directory_is_symlink"], False)
@@ -4074,7 +4088,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(report["ok"])
             text = format_status_text(report)
             self.assertIn("Ready: no", text)
-            self.assertIn("Boot ID: boot-abc", text)
+            self.assertIn("Boot ID: 12345678-1234-4234-8234-123456789abc", text)
             self.assertIn("revision abc123", text)
             self.assertIn("source_revision_path_is_symlink=False", text)
             self.assertIn("source_revision_directory_is_symlink=False", text)

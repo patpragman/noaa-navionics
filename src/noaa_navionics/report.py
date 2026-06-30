@@ -29,6 +29,7 @@ DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
 DEFAULT_AUTOSTART_PATH = Path("~/.config/autostart/noaa-navionics-chartplotter.desktop")
 DEFAULT_LIGHTDM_AUTOLOGIN_PATH = Path("/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
+BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
         "FragmentPath",
@@ -576,7 +577,9 @@ def _boot_id() -> str:
         value = BOOT_ID_PATH.read_text(encoding="ascii").strip()
     except OSError:
         return "unknown"
-    return value or "unknown"
+    if BOOT_ID_RE.fullmatch(value):
+        return value
+    return "unknown"
 
 
 def _current_boot_epoch() -> Optional[float]:

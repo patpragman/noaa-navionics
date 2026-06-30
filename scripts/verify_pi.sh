@@ -443,6 +443,9 @@ def download_url_matches_package(download_url, package_url):
     package_filename = Path(parsed_package.path).name
     return bool(download_filename and package_filename and download_filename == package_filename)
 
+def valid_boot_id(value):
+    return bool(re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value))
+
 def parse_manifest_int(value, field, source):
     try:
         return int(value)
@@ -1772,10 +1775,14 @@ if require_current_boot:
     report_boot_id = str(host.get("boot_id", "")).strip()
     if not report_boot_id or report_boot_id == "unknown":
         raise SystemExit("status report has no current boot ID")
+    if not valid_boot_id(report_boot_id):
+        raise SystemExit(f"status report boot ID is not a Linux boot_id value: {report_boot_id}")
     try:
         current_boot_id = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
     except OSError as exc:
         raise SystemExit(f"could not read current boot ID: {exc}") from exc
+    if not valid_boot_id(current_boot_id):
+        raise SystemExit(f"current boot ID is not a Linux boot_id value: {current_boot_id}")
     expected_boot_id = os.environ.get("NOAA_NAVIONICS_EXPECTED_BOOT_ID", "").strip()
     if expected_boot_id and current_boot_id != expected_boot_id:
         raise SystemExit(
