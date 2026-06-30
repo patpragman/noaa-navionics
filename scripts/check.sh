@@ -1030,6 +1030,11 @@ grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is a symlink when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'could not open existing GPS config when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS config is not a regular file when opened' scripts/provision_sailboat_pi.sh
+grep -q 'with os.fdopen(fd, encoding="utf-8") as handle' scripts/provision_sailboat_pi.sh
+grep -q 'parser.read_string(read_existing_gps_config(config_path), source=str(config_path))' scripts/provision_sailboat_pi.sh
+! grep -q 'parser.read(config_path)' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config .* is owned by uid' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config .* has permissions' scripts/provision_sailboat_pi.sh
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
@@ -1109,6 +1114,8 @@ grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_d
 grep -q 'test_read_trusted_config_lines_rejects_writable_config_before_parsing' tests/test_downloader.py
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' README.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'Production provisioning reads the existing onboard GPS config only after a no-follow descriptor' README.md
+grep -q 'provisioning reads the existing onboard GPS config only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Readiness also rejects unsafe chrony config paths' README.md
 grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
