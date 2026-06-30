@@ -79,8 +79,14 @@ grep -q 'NOAA Navionics cache parent directory is owned by uid' scripts/start_ch
 grep -q 'Tightening NOAA Navionics cache parent directory permissions' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics cache directory is owned by uid' scripts/start_chartplotter.sh
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
-grep -q 'chmod 0600 "$log_file"' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log is not a regular file' scripts/start_chartplotter.sh
+grep -q 'os.O_WRONLY | os.O_APPEND | os.O_CREAT | nofollow' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher log is owned by uid' scripts/start_chartplotter.sh
+grep -q 'os.fchmod(fd, 0o600)' scripts/start_chartplotter.sh
+grep -q 'opened = os.fstat(fd)' scripts/start_chartplotter.sh
+grep -q 'stat.S_ISREG(opened.st_mode)' scripts/start_chartplotter.sh
+grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/start_chartplotter.sh
+! grep -q 'with path.open("rb") as handle' scripts/start_chartplotter.sh
 grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
@@ -119,6 +125,8 @@ grep -q 'shutil.rmtree is not symlink-attack resistant' scripts/start_chartplott
 grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place' scripts/start_chartplotter.sh
 grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris' README.md
 grep -q 'refuses symlinked, misowned, or group/world-writable stale lock debris' docs/sailboat-pi.md
+grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` only after opening it through a no-follow descriptor' README.md
+grep -q 'through a no-follow descriptor, rotates and syncs that log after 1 MB' docs/sailboat-pi.md
 ! grep -q 'rm -rf "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh

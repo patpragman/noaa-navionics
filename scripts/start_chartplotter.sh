@@ -70,21 +70,52 @@ sync_paths() {
   python3 - "$@" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 
 synced_dirs = set()
 for arg in sys.argv[1:]:
     path = Path(arg).expanduser()
-    if path.is_dir():
+    try:
+        initial = path.lstat()
+    except OSError:
+        synced_dirs.add(path.parent)
+        continue
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    if stat.S_ISLNK(initial.st_mode):
+        synced_dirs.add(path.parent)
+        continue
+    if stat.S_ISDIR(initial.st_mode):
+        try:
+            flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow
+            fd = os.open(path, flags)
+        except OSError:
+            synced_dirs.add(path.parent)
+            continue
+        try:
+            opened = os.fstat(fd)
+            if stat.S_ISDIR(opened.st_mode):
+                os.fsync(fd)
+        except OSError:
+            pass
+        finally:
+            os.close(fd)
         synced_dirs.add(path)
         synced_dirs.add(path.parent)
         continue
     try:
-        with path.open("rb") as handle:
-            os.fsync(handle.fileno())
+        fd = os.open(path, os.O_RDONLY | nofollow)
     except OSError:
         synced_dirs.add(path.parent)
         continue
+    try:
+        opened = os.fstat(fd)
+        if stat.S_ISREG(opened.st_mode):
+            os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
     synced_dirs.add(path.parent)
 for directory in synced_dirs:
     try:
@@ -154,17 +185,46 @@ prepare_private_cache_dir() {
 }
 
 prepare_private_log_file() {
-  if [[ -L "$log_file" ]]; then
-    echo "NOAA Navionics launcher log is a symlink: $log_file" >&2
-    exit 1
-  fi
-  if [[ -e "$log_file" && ! -f "$log_file" ]]; then
-    echo "NOAA Navionics launcher log is not a regular file: $log_file" >&2
-    exit 1
-  fi
-  : >>"$log_file"
-  chmod 0600 "$log_file"
-  sync_paths "$log_file" || true
+  python3 - "$log_file" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | nofollow
+try:
+    fd = os.open(path, flags, 0o600)
+except OSError as exc:
+    if path.is_symlink():
+        raise SystemExit(f"NOAA Navionics launcher log is a symlink: {path}") from exc
+    raise SystemExit(f"Could not open NOAA Navionics launcher log: {path}: {exc}") from exc
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"NOAA Navionics launcher log is not a regular file: {path}")
+    if opened.st_uid != os.getuid():
+        raise SystemExit(
+            f"NOAA Navionics launcher log is owned by uid {opened.st_uid}, expected {os.getuid()}: {path}"
+        )
+    mode = opened.st_mode & 0o777
+    if mode != 0o600:
+        os.fchmod(fd, 0o600)
+    os.fsync(fd)
+finally:
+    os.close(fd)
+try:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow
+    fd = os.open(path.parent, flags)
+except OSError:
+    fd = None
+if fd is not None:
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+PY
 }
 
 read_trusted_launcher_env() {
