@@ -446,6 +446,12 @@ def sha256_file(path):
             digest.update(chunk)
     return digest.hexdigest()
 
+def count_enc_cells(path):
+    root = Path(path).expanduser()
+    if not root.exists():
+        return 0
+    return sum(1 for _ in root.rglob("*.000"))
+
 def normalize_path(value):
     return str(Path(value).expanduser().resolve(strict=False))
 
@@ -1337,8 +1343,16 @@ if expected_config_path:
         )
     if not extract_path.exists():
         raise SystemExit(f"status report manifest extract path does not exist: {extract_path}")
+    if not extract_path.is_dir():
+        raise SystemExit(f"status report manifest extract path is not a directory: {extract_path}")
     if status_enc_cell_count <= 0:
         raise SystemExit(f"status report manifest has no ENC cells: {expected_manifest_path}")
+    actual_enc_cell_count = count_enc_cells(extract_path)
+    if actual_enc_cell_count < manifest_file_enc_cell_count:
+        raise SystemExit(
+            f"status report manifest extract path {extract_path} has {actual_enc_cell_count} ENC cells, "
+            f"expected at least {manifest_file_enc_cell_count}"
+        )
 check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
 service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {

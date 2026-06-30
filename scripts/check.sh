@@ -606,6 +606,9 @@ grep -q 'status report manifest download byte count is not positive' scripts/ver
 grep -q 'status report manifest extract path' scripts/verify_pi.sh
 grep -q 'status report manifest extract path is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report manifest extract path is not a directory' scripts/verify_pi.sh
+grep -q 'def count_enc_cells' scripts/verify_pi.sh
+grep -q 'expected at least {manifest_file_enc_cell_count}' scripts/verify_pi.sh
 grep -q '"ENC cell count"' scripts/verify_pi.sh
 grep -q 'status report manifest has no ENC cells' scripts/verify_pi.sh
 grep -q 'def config_bool' scripts/verify_pi.sh
