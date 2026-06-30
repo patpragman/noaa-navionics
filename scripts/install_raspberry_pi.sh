@@ -405,6 +405,87 @@ link_user_atomic() {
   sync_paths "$target"
 }
 
+verify_installed_command_link() {
+  local target="$1"
+  local label="$2"
+  validate_user_install_path "$target" "$label" link
+  python3 - "$target" "$label" "$venv_dir" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+target = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+venv = Path(sys.argv[3]).expanduser()
+expected_uid = os.getuid()
+
+if not target.is_symlink():
+    raise SystemExit(f"{label} is not a symlink: {target}")
+
+try:
+    resolved_target = target.resolve(strict=True)
+    resolved_venv = venv.resolve(strict=True)
+except OSError as exc:
+    raise SystemExit(f"{label} could not be resolved: {target}: {exc}") from exc
+
+try:
+    resolved_target.relative_to(resolved_venv)
+except ValueError as exc:
+    raise SystemExit(f"{label} does not resolve inside the private venv: {target} -> {resolved_target}") from exc
+
+stat_result = resolved_target.stat()
+if stat_result.st_uid != expected_uid:
+    raise SystemExit(
+        f"{label} target {resolved_target} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
+    )
+mode = stat_result.st_mode
+if not stat.S_ISREG(mode):
+    raise SystemExit(f"{label} target is not a regular file: {resolved_target}")
+if not mode & stat.S_IXUSR:
+    raise SystemExit(f"{label} target is not executable by the installing user: {resolved_target}")
+if mode & 0o022:
+    raise SystemExit(
+        f"{label} target {resolved_target} has permissions {mode & 0o777:04o}, "
+        "expected no group/other write bits"
+    )
+PY
+}
+
+verify_installed_user_executable() {
+  local target="$1"
+  local label="$2"
+  validate_user_install_path "$target" "$label" regular
+  python3 - "$target" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+target = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+expected_uid = os.getuid()
+
+if target.is_symlink():
+    raise SystemExit(f"{label} is a symlink: {target}")
+try:
+    stat_result = target.stat()
+except OSError as exc:
+    raise SystemExit(f"{label} is not accessible: {target}: {exc}") from exc
+mode = stat_result.st_mode
+if not stat.S_ISREG(mode):
+    raise SystemExit(f"{label} is not a regular file: {target}")
+if stat_result.st_uid != expected_uid:
+    raise SystemExit(f"{label} {target} is owned by uid {stat_result.st_uid}, expected {expected_uid}")
+if not mode & stat.S_IXUSR:
+    raise SystemExit(f"{label} is not executable by the installing user: {target}")
+if mode & 0o022:
+    raise SystemExit(
+        f"{label} {target} has permissions {mode & 0o777:04o}, expected no group/other write bits"
+    )
+PY
+}
+
 apt_update() {
   sudo env DEBIAN_FRONTEND=noninteractive apt-get update
 }
@@ -566,6 +647,12 @@ install_user_file_atomic "${repo_root}/systemd/noaa-navionics.service" "${system
 install_user_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "${systemd_user_dir}/noaa-navionics.timer" 0644
 install_user_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "${systemd_user_dir}/noaa-navionics-track.service" 0644
 install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "${systemd_user_dir}/noaa-navionics-preflight.service" 0644
+
+verify_installed_command_link "${HOME}/.local/bin/noaa-navionics" "installed CLI command symlink"
+verify_installed_command_link "${HOME}/.local/bin/noaa-navionics-gui" "installed GUI command symlink"
+verify_installed_user_executable "${HOME}/.local/bin/noaa-navionics-start-chartplotter" "installed chartplotter launcher"
+verify_installed_user_executable "${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin" "installed desktop autologin helper"
+verify_installed_user_executable "${HOME}/.local/bin/noaa-navionics-configure-gps-time" "installed GPS time helper"
 
 cat <<EOF
 Installed NOAA Navionics.

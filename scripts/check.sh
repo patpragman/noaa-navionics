@@ -358,6 +358,8 @@ grep -q 'vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'python3-setuptools procps' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic' scripts/install_raspberry_pi.sh
+grep -q 'verify_installed_command_link' scripts/install_raspberry_pi.sh
+grep -q 'verify_installed_user_executable' scripts/install_raspberry_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/install_raspberry_pi.sh
 grep -q 'install -m "$mode" "$source" "$tmp"' scripts/install_raspberry_pi.sh
 grep -q 'ln -s "$source" "$tmp"' scripts/install_raspberry_pi.sh
@@ -1509,6 +1511,43 @@ test "$(stat -c '%a' "$install_smoke_home/.config")" = 700
 test "$(stat -c '%a' "$install_smoke_home/.config/noaa-navionics")" = 700
 test "$(stat -c '%a' "$install_smoke_home/.config/systemd")" = 700
 test "$(stat -c '%a' "$install_smoke_home/.config/systemd/user")" = 700
+python3 - "$install_smoke_home" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+home = Path(sys.argv[1]).resolve(strict=True)
+venv = home / ".local/share/noaa-navionics/venv"
+
+for relative in [
+    ".local/bin/noaa-navionics",
+    ".local/bin/noaa-navionics-gui",
+]:
+    path = home / relative
+    if not path.is_symlink():
+        raise SystemExit(f"expected command link: {path}")
+    resolved = path.resolve(strict=True)
+    try:
+        resolved.relative_to(venv.resolve(strict=True))
+    except ValueError as exc:
+        raise SystemExit(f"command link escaped venv: {path} -> {resolved}") from exc
+    mode = resolved.stat().st_mode
+    if not stat.S_ISREG(mode) or not mode & stat.S_IXUSR or mode & 0o022:
+        raise SystemExit(f"unexpected command target mode: {resolved} {mode & 0o777:04o}")
+
+for relative in [
+    ".local/bin/noaa-navionics-start-chartplotter",
+    ".local/bin/noaa-navionics-configure-desktop-autologin",
+    ".local/bin/noaa-navionics-configure-gps-time",
+]:
+    path = home / relative
+    if path.is_symlink():
+        raise SystemExit(f"helper should not be a symlink: {path}")
+    mode = path.stat().st_mode
+    if not stat.S_ISREG(mode) or not mode & stat.S_IXUSR or mode & 0o022:
+        raise SystemExit(f"unexpected helper mode: {path} {mode & 0o777:04o}")
+PY
 install_expected_revision="$(git rev-parse --short HEAD)"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
   install_expected_revision="${install_expected_revision}-dirty"
