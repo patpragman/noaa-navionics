@@ -488,10 +488,14 @@ grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' READM
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
+grep -q "status helper validates the Pi's installed private venv command path and runs that resolved executable" README.md
+grep -q "status helper validates the Pi's installed private venv command path and runs that resolved executable" docs/sailboat-pi.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
+grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" README.md
+grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" docs/sailboat-pi.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
 grep -q 'live fix time, signed age, position' README.md
@@ -957,6 +961,8 @@ grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scrip
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
+grep -q 'check_installed_noaa_command_tree' scripts/refresh_pi_charts.sh
+grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/refresh_pi_charts.sh
 grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' scripts/refresh_pi_charts.sh
 grep -q 'Post-refresh status report' scripts/refresh_pi_charts.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
@@ -997,6 +1003,8 @@ grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
 grep -q -- '--config "${HOME}/.config/noaa-navionics/config.ini"' scripts/check_pi_status.sh
 grep -q 'expected private venv symlink' scripts/check_pi_status.sh
+grep -q 'check_installed_command_tree' scripts/check_pi_status.sh
+grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/check_pi_status.sh
 grep -q 'Do not check NOAA Navionics status as root@' scripts/check_pi_status.sh
 ! grep -q -- '--output' scripts/check_pi_status.sh
 [[ "$(grep -c 'parser.read_string(config_text, source=str(config_path))' scripts/verify_pi.sh)" -ge 3 ]]
@@ -5047,9 +5055,13 @@ grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS=12' "$status_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_STATUS_JSON=1' "$status_fake_ssh_args"
 grep -q 'pi@example.invalid' "$status_fake_ssh_args"
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
+grep -q 'check_installed_command_tree' "$status_fake_ssh_stdin"
+grep -q 'installed noaa-navionics command target has permissions' "$status_fake_ssh_stdin"
+grep -q 'app_exec="$(check_installed_noaa_command)"' "$status_fake_ssh_stdin"
 grep -q 'status-report' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
 grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"
+grep -q '"$app_exec" "${status_args\[@\]}"' "$status_fake_ssh_stdin"
 ! grep -q -- '--output' "$status_fake_ssh_stdin"
 
 set +e
@@ -5125,6 +5137,10 @@ grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
 grep -q 'Post-refresh status report' "$refresh_fake_ssh_stdin"
 grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' "$refresh_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
+grep -q 'check_installed_noaa_command_tree' "$refresh_fake_ssh_stdin"
+grep -q 'Installed noaa-navionics command target has permissions' "$refresh_fake_ssh_stdin"
+grep -q 'app_exec="$(check_installed_noaa_command)"' "$refresh_fake_ssh_stdin"
+grep -q '"$app_exec" wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
 
 set +e
 scripts/collect_pi_support_bundle.sh root@example.invalid >"$verify_output" 2>&1

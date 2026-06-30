@@ -89,7 +89,7 @@ Run a lightweight read-only status snapshot on an already commissioned Pi:
 scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10
 ```
 
-The status helper runs the Pi's installed `noaa-navionics status-report` over batch-mode SSH and prints the text report, or JSON with `--json`. Its GPSD readiness check retries initial connection refusals inside the configured GPS wait. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
+The status helper validates the Pi's installed private venv command path and runs that resolved executable over batch-mode SSH to print the text report, or JSON with `--json`. Its GPSD readiness check retries initial connection refusals inside the configured GPS wait. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
 Status JSON includes a top-level `gps_fix` object plus matching structured `data` on the GPS/GPSD readiness row, so support bundles and verification can inspect live fix time, signed age, position, satellite/HDOP quality, speed, course, and altitude without parsing prose.
 
 Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
@@ -98,7 +98,7 @@ Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
 scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status
 ```
 
-The refresh helper validates the SSH target, waits for NOAA TCP connectivity from the Pi, then runs `sync-charts` on the Pi's installed `~/.local/bin/noaa-navionics` with the onboard config. Add `--force` only for a deliberate redownload. Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds. No chart data is downloaded on the local computer.
+The refresh helper validates the SSH target and the Pi's installed private venv command path, waits for NOAA TCP connectivity from the Pi, then runs `sync-charts` through that resolved executable with the onboard config. Add `--force` only for a deliberate redownload. Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds. No chart data is downloaded on the local computer.
 
 Collect a diagnostic support bundle from the Pi before changing anything:
 

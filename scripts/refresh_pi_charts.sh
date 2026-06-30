@@ -324,6 +324,53 @@ check_user_owned_private_file() {
   esac
 }
 
+check_user_owned_nonwritable_directory() {
+  local label="$1"
+  local path="$2"
+  local stat_output
+  local owner_uid
+  local mode
+  local mode_tail
+  local current_uid
+
+  if [[ -L "$path" ]]; then
+    echo "$label is a symlink: $path" >&2
+    exit 1
+  fi
+  if [[ ! -d "$path" ]]; then
+    echo "$label is missing or not a directory: $path" >&2
+    exit 1
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    echo "Could not inspect $label: $path" >&2
+    exit 1
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "$label is owned by uid $owner_uid, expected $current_uid: $path" >&2
+    exit 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "$label has permissions $mode, expected no group/other write: $path" >&2
+      exit 1
+      ;;
+  esac
+}
+
+check_installed_noaa_command_tree() {
+  check_user_owned_nonwritable_directory "home directory" "$HOME"
+  check_user_owned_nonwritable_directory "installed command directory" "${HOME}/.local"
+  check_user_owned_nonwritable_directory "installed command directory" "${HOME}/.local/bin"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics/venv"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics/venv/bin"
+}
+
 check_installed_noaa_command() {
   local resolved
   local stat_output
@@ -332,8 +379,9 @@ check_installed_noaa_command() {
   local mode
   local mode_tail
 
-  if [[ ! -x "$app_bin" ]]; then
-    echo "Installed noaa-navionics command is missing or not executable: $app_bin" >&2
+  check_installed_noaa_command_tree
+  if [[ ! -L "$app_bin" ]]; then
+    echo "Installed noaa-navionics command is not the expected private venv symlink: $app_bin" >&2
     exit 1
   fi
   if ! resolved="$(readlink -f -- "$app_bin" 2>/dev/null)" || [[ -z "$resolved" ]]; then
@@ -342,6 +390,14 @@ check_installed_noaa_command() {
   fi
   if [[ "$resolved" != "$expected_venv_bin" ]]; then
     echo "Installed noaa-navionics command resolves to $resolved, expected $expected_venv_bin" >&2
+    exit 1
+  fi
+  if [[ ! -f "$resolved" ]]; then
+    echo "Installed noaa-navionics command target is not a regular file: $resolved" >&2
+    exit 1
+  fi
+  if [[ ! -x "$resolved" ]]; then
+    echo "Installed noaa-navionics command is not executable after resolution: $resolved" >&2
     exit 1
   fi
   if ! stat_output="$(stat -Lc '%u %a' -- "$resolved" 2>/dev/null)"; then
@@ -362,12 +418,13 @@ check_installed_noaa_command() {
       exit 1
       ;;
   esac
+  printf '%s\n' "$resolved"
 }
 
 require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
 require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
 require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
-check_installed_noaa_command
+app_exec="$(check_installed_noaa_command)"
 check_user_owned_private_file "onboard NOAA Navionics config" "$config"
 
 sync_args=(sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay")
@@ -375,11 +432,11 @@ if [[ "$force" == "1" ]]; then
   sync_args+=(--force)
 fi
 
-"$app_bin" wait-network --host www.charts.noaa.gov --port 443 --seconds 300
-"$app_bin" "${sync_args[@]}"
+"$app_exec" wait-network --host www.charts.noaa.gov --port 443 --seconds 300
+"$app_exec" "${sync_args[@]}"
 if [[ "$status" == "1" ]]; then
   printf '\nPost-refresh status report:\n'
-  "$app_bin" status-report --config "$config" --gps-seconds "$gps_seconds"
+  "$app_exec" status-report --config "$config" --gps-seconds "$gps_seconds"
 fi
 printf 'Pi NOAA chart refresh completed using %s.\n' "$config"
 REMOTE

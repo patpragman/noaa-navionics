@@ -229,18 +229,91 @@ fail() {
   exit 1
 }
 
-if [[ ! -L "$command_path" ]]; then
-  fail "installed noaa-navionics command is not the expected private venv symlink: $command_path"
-fi
-if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
-  fail "could not resolve installed noaa-navionics command: $command_path"
-fi
-if [[ "$resolved_path" != "$expected_resolved" ]]; then
-  fail "installed noaa-navionics command resolves to $resolved_path, expected $expected_resolved"
-fi
-if [[ ! -x "$resolved_path" ]]; then
-  fail "installed noaa-navionics command is not executable after resolution: $resolved_path"
-fi
+check_user_owned_nonwritable_directory() {
+  local label="$1"
+  local path="$2"
+  local current_uid
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if [[ -L "$path" ]]; then
+    fail "$label is a symlink: $path"
+  fi
+  if [[ ! -d "$path" ]]; then
+    fail "$label is missing or not a directory: $path"
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    fail "could not inspect $label: $path"
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    fail "$label is owned by uid $owner_uid, expected $current_uid: $path"
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      fail "$label has permissions $mode, expected no group/other write: $path"
+      ;;
+  esac
+}
+
+check_installed_command_tree() {
+  check_user_owned_nonwritable_directory "home directory" "$HOME"
+  check_user_owned_nonwritable_directory "installed command directory" "${HOME}/.local"
+  check_user_owned_nonwritable_directory "installed command directory" "${HOME}/.local/bin"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics/venv"
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics/venv/bin"
+}
+
+check_installed_noaa_command() {
+  local current_uid
+  local mode
+  local mode_tail
+  local owner_uid
+  local resolved_path
+  local stat_output
+
+  check_installed_command_tree
+  if [[ ! -L "$command_path" ]]; then
+    fail "installed noaa-navionics command is not the expected private venv symlink: $command_path"
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    fail "could not resolve installed noaa-navionics command: $command_path"
+  fi
+  if [[ "$resolved_path" != "$expected_resolved" ]]; then
+    fail "installed noaa-navionics command resolves to $resolved_path, expected $expected_resolved"
+  fi
+  if [[ ! -f "$resolved_path" ]]; then
+    fail "installed noaa-navionics command target is not a regular file: $resolved_path"
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    fail "installed noaa-navionics command is not executable after resolution: $resolved_path"
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$resolved_path" 2>/dev/null)"; then
+    fail "could not inspect installed noaa-navionics command target: $resolved_path"
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    fail "installed noaa-navionics command target is owned by uid $owner_uid, expected $current_uid: $resolved_path"
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      fail "installed noaa-navionics command target has permissions $mode, expected no group/other write: $resolved_path"
+      ;;
+  esac
+  printf '%s\n' "$resolved_path"
+}
+
+app_exec="$(check_installed_noaa_command)"
 
 status_args=(
   status-report
@@ -251,5 +324,5 @@ if [[ "$NOAA_NAVIONICS_STATUS_JSON" == "1" ]]; then
   status_args+=(--json)
 fi
 
-"$command_path" "${status_args[@]}"
+"$app_exec" "${status_args[@]}"
 REMOTE
