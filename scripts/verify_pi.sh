@@ -2811,6 +2811,65 @@ finally:
 PY
 }
 
+read_proc_env_value() {
+  local pid="$1"
+  local key="$2"
+  local label="$3"
+  python3 - "$pid" "$key" "$label" <<'PY'
+import sys
+
+pid = sys.argv[1]
+target_key = sys.argv[2]
+label = sys.argv[3]
+if not pid.isdigit():
+    raise SystemExit(f"{label} pid is invalid: {pid}")
+path = f"/proc/{pid}/environ"
+try:
+    with open(path, "rb") as handle:
+        data = handle.read()
+except OSError as exc:
+    raise SystemExit(f"could not read {label} for pid {pid}: {exc}") from exc
+
+prefix = target_key.encode("utf-8") + b"="
+for entry in data.split(b"\0"):
+    if entry.startswith(prefix):
+        sys.stdout.write(entry[len(prefix):].decode("utf-8", "surrogateescape"))
+        break
+PY
+}
+
+reject_proc_env_prefix() {
+  local pid="$1"
+  local prefix="$2"
+  local label="$3"
+  local detail="${4:-}"
+  python3 - "$pid" "$prefix" "$label" "$detail" <<'PY'
+import sys
+
+pid = sys.argv[1]
+prefix = sys.argv[2]
+label = sys.argv[3]
+detail = sys.argv[4]
+if not pid.isdigit():
+    raise SystemExit(f"{label} pid is invalid: {pid}")
+path = f"/proc/{pid}/environ"
+try:
+    with open(path, "rb") as handle:
+        data = handle.read()
+except OSError as exc:
+    raise SystemExit(f"could not read {label} for pid {pid}: {exc}") from exc
+
+prefix_bytes = prefix.encode("utf-8")
+for entry in data.split(b"\0"):
+    if not entry or b"=" not in entry:
+        continue
+    key = entry.split(b"=", 1)[0].decode("utf-8", "surrogateescape")
+    if key.startswith(prefix_bytes.decode("utf-8", "surrogateescape")):
+        suffix = f"; {detail}" if detail else ""
+        raise SystemExit(f"{label} {key}{suffix}")
+PY
+}
+
 launcher_lock_pid() {
   local owner_pid=""
   if [[ ! -r "${launcher_lock}/pid" ]]; then
@@ -2882,8 +2941,6 @@ check_chartplotter_xauthority_integrity() {
 
 check_opencpn_process_display_environment() {
   local launcher_pid
-  local key
-  local value
   local launcher_display=""
   local launcher_xauthority=""
   local opencpn_display
@@ -2894,20 +2951,8 @@ check_opencpn_process_display_environment() {
     printf 'chartplotter launcher lock pid is unreadable; cannot compare OpenCPN display environment\n' >&2
     return 1
   }
-  if [[ ! -r "/proc/${launcher_pid}/environ" ]]; then
-    printf 'chartplotter launcher environment is unreadable for pid: %s\n' "$launcher_pid" >&2
-    return 1
-  fi
-  while IFS='=' read -r key value; do
-    case "$key" in
-      DISPLAY)
-        launcher_display="$value"
-        ;;
-      XAUTHORITY)
-        launcher_xauthority="$value"
-        ;;
-    esac
-  done < <(tr '\0' '\n' <"/proc/${launcher_pid}/environ" 2>/dev/null || true)
+  launcher_display="$(read_proc_env_value "$launcher_pid" DISPLAY "chartplotter launcher environment")" || return 1
+  launcher_xauthority="$(read_proc_env_value "$launcher_pid" XAUTHORITY "chartplotter launcher environment")" || return 1
   if [[ -z "$launcher_display" ]]; then
     printf 'chartplotter launcher has no DISPLAY environment; cannot verify OpenCPN display environment\n' >&2
     return 1
@@ -2917,24 +2962,10 @@ check_opencpn_process_display_environment() {
     checked=1
     opencpn_display=""
     opencpn_xauthority=""
-    if [[ ! -r "/proc/${pid}/environ" ]]; then
-      printf 'launcher-supervised OpenCPN environment is unreadable for pid: %s\n' "$pid" >&2
-      return 1
-    fi
-    while IFS='=' read -r key value; do
-      case "$key" in
-        DISPLAY)
-          opencpn_display="$value"
-          ;;
-        XAUTHORITY)
-          opencpn_xauthority="$value"
-          ;;
-        NOAA_NAVIONICS_*)
-          printf 'launcher-supervised OpenCPN inherited NOAA_NAVIONICS_* environment override %s\n' "$key" >&2
-          return 1
-          ;;
-      esac
-    done < <(tr '\0' '\n' <"/proc/${pid}/environ" 2>/dev/null || true)
+    reject_proc_env_prefix "$pid" "NOAA_NAVIONICS_" \
+      "launcher-supervised OpenCPN inherited NOAA_NAVIONICS_* environment override" || return 1
+    opencpn_display="$(read_proc_env_value "$pid" DISPLAY "launcher-supervised OpenCPN environment")" || return 1
+    opencpn_xauthority="$(read_proc_env_value "$pid" XAUTHORITY "launcher-supervised OpenCPN environment")" || return 1
     if [[ "$opencpn_display" != "$launcher_display" ]]; then
       printf 'launcher-supervised OpenCPN DISPLAY %s does not match launcher DISPLAY %s for pid %s\n' "${opencpn_display:-<empty>}" "$launcher_display" "$pid" >&2
       return 1
@@ -3126,24 +3157,13 @@ check_launcher_lock_live() {
     printf 'chartplotter launcher lock owner is not the launcher: %s\n' "${cmdline:-<empty>}" >&2
     return 1
   fi
-  if [[ ! -r "/proc/${owner_pid}/environ" ]]; then
-    printf 'chartplotter launcher environment is unreadable for pid: %s\n' "$owner_pid" >&2
-    return 1
-  fi
-  while IFS='=' read -r key value; do
-    case "$key" in
-      NOAA_NAVIONICS_*)
-        printf 'chartplotter launcher live environment overrides %s; production verification requires launcher settings from %s only\n' "$key" "$launcher_env" >&2
-        return 1
-        ;;
-    esac
-  done < <(tr '\0' '\n' <"/proc/${owner_pid}/environ" 2>/dev/null || true)
+  reject_proc_env_prefix "$owner_pid" "NOAA_NAVIONICS_" \
+    "chartplotter launcher live environment overrides" \
+    "production verification requires launcher settings from $launcher_env only" || return 1
 }
 
 check_live_display_power_disabled() {
   local owner_pid=""
-  local key
-  local value
   local display=""
   local xauthority=""
   local output=""
@@ -3157,16 +3177,8 @@ check_live_display_power_disabled() {
     printf 'chartplotter launcher environment is unreadable for pid: %s\n' "${owner_pid:-<empty>}" >&2
     return 1
   fi
-  while IFS='=' read -r key value; do
-    case "$key" in
-      DISPLAY)
-        display="$value"
-        ;;
-      XAUTHORITY)
-        xauthority="$value"
-        ;;
-    esac
-  done < <(tr '\0' '\n' <"/proc/${owner_pid}/environ" 2>/dev/null || true)
+  display="$(read_proc_env_value "$owner_pid" DISPLAY "chartplotter launcher environment")" || return 1
+  xauthority="$(read_proc_env_value "$owner_pid" XAUTHORITY "chartplotter launcher environment")" || return 1
   if [[ -z "$display" ]]; then
     printf 'chartplotter launcher has no DISPLAY environment; cannot verify live display power settings\n' >&2
     return 1

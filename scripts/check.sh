@@ -568,8 +568,18 @@ grep -q 'production verification requires launcher settings from' scripts/verify
 grep -q 'read_private_user_file()' scripts/verify_pi.sh
 grep -q 'read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid"' scripts/verify_pi.sh
 grep -q 'read_private_user_file "${launcher_lock}/boot_id" "chartplotter launcher lock boot ID"' scripts/verify_pi.sh
+grep -q 'read_proc_env_value()' scripts/verify_pi.sh
+grep -q 'reject_proc_env_prefix()' scripts/verify_pi.sh
+grep -q 'data.split(b"\\0")' scripts/verify_pi.sh
+grep -q 'entry.split(b"=", 1)' scripts/verify_pi.sh
+grep -q 'read_proc_env_value "$launcher_pid" DISPLAY "chartplotter launcher environment"' scripts/verify_pi.sh
+grep -q 'reject_proc_env_prefix "$pid" "NOAA_NAVIONICS_"' scripts/verify_pi.sh
+grep -q 'reject_proc_env_prefix "$owner_pid" "NOAA_NAVIONICS_"' scripts/verify_pi.sh
 ! grep -q 'read -r owner_pid <"${launcher_lock}/pid"' scripts/verify_pi.sh
 ! grep -q 'read -r lock_boot_id <"${launcher_lock}/boot_id"' scripts/verify_pi.sh
+! grep -Fq 'tr '\''\0'\'' '\''\n'\'' <"/proc/${launcher_pid}/environ"' scripts/verify_pi.sh
+! grep -Fq 'tr '\''\0'\'' '\''\n'\'' <"/proc/${pid}/environ"' scripts/verify_pi.sh
+! grep -Fq 'tr '\''\0'\'' '\''\n'\'' <"/proc/${owner_pid}/environ"' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
