@@ -1555,27 +1555,46 @@ def check_gpsd(
     stale_detail = ""
     quality_detail = ""
     missing_quality_detail = ""
-    try:
-        for fix in iter_gpsd_fixes(host=host, port=port, timeout=seconds, max_duration=seconds):
-            if time.monotonic() > deadline:
+    connection_detail = ""
+    saw_fix = False
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            timeout = max(0.1, remaining)
+            max_duration = max(0.001, remaining)
+            for fix in iter_gpsd_fixes(host=host, port=port, timeout=timeout, max_duration=max_duration):
+                if time.monotonic() > deadline:
+                    break
+                saw_fix = True
+                freshness_detail = _fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds)
+                if freshness_detail:
+                    stale_detail = f"; {freshness_detail}"
+                    continue
+                quality_detail = gps_fix_quality_failure(fix)
+                if quality_detail:
+                    continue
+                if not gps_fix_has_quality_fields(fix):
+                    missing_quality_detail = "; GPSD fix missing satellite or HDOP quality fields"
+                    continue
+                return CheckResult("GPSD", True, _fix_detail(fix), _fix_data(fix))
+            break
+        except OSError as exc:
+            if saw_fix:
+                return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}{missing_quality_detail}")
+            remaining = deadline - time.monotonic()
+            connection_detail = f"; last GPSD connection error: {exc}"
+            if remaining <= 0:
                 break
-            freshness_detail = _fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds)
-            if freshness_detail:
-                stale_detail = f"; {freshness_detail}"
-                continue
-            quality_detail = gps_fix_quality_failure(fix)
-            if quality_detail:
-                continue
-            if not gps_fix_has_quality_fields(fix):
-                missing_quality_detail = "; GPSD fix missing satellite or HDOP quality fields"
-                continue
-            return CheckResult("GPSD", True, _fix_detail(fix), _fix_data(fix))
-    except Exception as exc:
-        return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}{missing_quality_detail}")
+            time.sleep(min(1.0, max(0.1, remaining)))
+        except Exception as exc:
+            return CheckResult("GPSD", False, f"gpsd {host}:{port}: {exc}{missing_quality_detail}")
     fix_detail = (
         (f"; {quality_detail}" if quality_detail else "")
         or missing_quality_detail
         or stale_detail
+        or connection_detail
     )
     return CheckResult("GPSD", False, f"no fresh navigation-quality GPSD fix within {seconds:.0f}s{fix_detail}")
 

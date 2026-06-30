@@ -12215,8 +12215,75 @@ class GpsTests(unittest.TestCase):
         finally:
             health_module.iter_gpsd_fixes = original
 
-        self.assertEqual(calls, [("127.0.0.1", 2947, 7, 7)])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0:2], ("127.0.0.1", 2947))
+        self.assertGreater(calls[0][2], 0)
+        self.assertLessEqual(calls[0][2], 7)
+        self.assertGreater(calls[0][3], 0)
+        self.assertLessEqual(calls[0][3], 7)
         self.assertFalse(result.ok)
+
+    def test_check_gpsd_retries_initial_connection_until_bounded_wait(self):
+        original_iter = health_module.iter_gpsd_fixes
+        original_sleep = health_module.time.sleep
+        timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+        fix = GPSFix(
+            timestamp=timestamp,
+            latitude=61.1,
+            longitude=-149.1,
+            fix_quality=3,
+            satellites=8,
+            hdop=1.2,
+        )
+        calls = []
+        sleeps = []
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            calls.append((host, port, timeout, max_duration))
+            if len(calls) == 1:
+                raise OSError("connection refused")
+            return iter([fix])
+
+        try:
+            health_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            health_module.time.sleep = lambda seconds: sleeps.append(seconds)
+            result = check_gpsd(host="127.0.0.1", port=2947, seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original_iter
+            health_module.time.sleep = original_sleep
+
+        self.assertTrue(result.ok)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][0:2], ("127.0.0.1", 2947))
+        self.assertEqual(calls[1][0:2], ("127.0.0.1", 2947))
+        self.assertEqual(len(sleeps), 1)
+        self.assertGreater(sleeps[0], 0.0)
+        self.assertLessEqual(sleeps[0], 1.0)
+        self.assertIn("8 satellites", result.detail)
+
+    def test_check_gpsd_reports_last_connection_error_after_bounded_wait(self):
+        original_iter = health_module.iter_gpsd_fixes
+        original_monotonic = health_module.time.monotonic
+        original_sleep = health_module.time.sleep
+        times = iter([0.0, 0.0, 1.1])
+        sleeps = []
+
+        def fake_iter_gpsd_fixes(host, port, timeout, max_duration=None):
+            raise OSError("connection refused")
+
+        try:
+            health_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            health_module.time.monotonic = lambda: next(times)
+            health_module.time.sleep = lambda seconds: sleeps.append(seconds)
+            result = check_gpsd(host="127.0.0.1", port=2947, seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original_iter
+            health_module.time.monotonic = original_monotonic
+            health_module.time.sleep = original_sleep
+
+        self.assertFalse(result.ok)
+        self.assertEqual(sleeps, [])
+        self.assertIn("last GPSD connection error: connection refused", result.detail)
 
     def test_check_gps_device_path_reports_missing_device(self):
         result = check_gps_device_path("/dev/serial/by-id/no-such-gps")

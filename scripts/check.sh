@@ -2539,7 +2539,14 @@ grep -q 'after 300 quiet seconds by default' README.md
 grep -q 'after 300 quiet seconds by default' docs/sailboat-pi.md
 grep -q 'Live serial logging uses the same 300-second quiet limit' README.md
 grep -q 'Live serial logging uses the same 300-second quiet limit' docs/sailboat-pi.md
-grep -q 'max_duration=seconds' src/noaa_navionics/health.py
+grep -q 'max_duration = max(0.001, remaining)' src/noaa_navionics/health.py
+grep -q 'test_check_gpsd_retries_initial_connection_until_bounded_wait' tests/test_downloader.py
+grep -q 'test_check_gpsd_reports_last_connection_error_after_bounded_wait' tests/test_downloader.py
+grep -q 'last GPSD connection error' src/noaa_navionics/health.py
+grep -q 'GPSD readiness check retries initial connection refusals inside the configured GPS wait' README.md
+grep -q 'GPSD readiness check retries initial connection refusals inside the configured GPS wait' docs/sailboat-pi.md
+grep -q 'retries initial GPSD connection refusals inside that wait' README.md
+grep -q 'retries initial GPSD connection refusals inside that wait' docs/sailboat-pi.md
 grep -q '"max_duration": max_duration' src/noaa_navionics/cli.py
 grep -q 'gpsd_idle_timeout' src/noaa_navionics/cli.py
 grep -q 'serial_idle_timeout' src/noaa_navionics/cli.py

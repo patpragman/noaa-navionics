@@ -89,7 +89,7 @@ Run a lightweight read-only status snapshot on an already commissioned Pi:
 scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10
 ```
 
-The status helper runs the Pi's installed `noaa-navionics status-report` over batch-mode SSH and prints the text report, or JSON with `--json`. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
+The status helper runs the Pi's installed `noaa-navionics status-report` over batch-mode SSH and prints the text report, or JSON with `--json`. Its GPSD readiness check retries initial connection refusals inside the configured GPS wait. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
 Status JSON includes a top-level `gps_fix` object plus matching structured `data` on the GPS/GPSD readiness row, so support bundles and verification can inspect live fix time, signed age, position, satellite/HDOP quality, speed, course, and altitude without parsing prose.
 
 Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
@@ -470,7 +470,7 @@ systemctl --user daemon-reload
 systemctl --user enable noaa-navionics-preflight.service
 ```
 
-The service writes `~/.cache/noaa-navionics/status.json`, disables systemd's start timeout so persisted cold-start GPS waits can finish, fails readiness on disabled, missing, failed, or unqueryable NOAA Navionics units, and retries briefly if GPSD is not producing a valid fix yet.
+The service writes `~/.cache/noaa-navionics/status.json`, disables systemd's start timeout so persisted cold-start GPS waits can finish, fails readiness on disabled, missing, failed, or unqueryable NOAA Navionics units, retries initial GPSD connection refusals inside that wait, and retries briefly if GPSD is not producing a valid fix yet.
 
 ## Operational Notes
 
