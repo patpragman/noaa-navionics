@@ -313,6 +313,10 @@ current_boot_id() {
   fi
 }
 
+is_raspberry_pi() {
+  [[ -r /proc/device-tree/model ]] && grep -Fq 'Raspberry Pi' /proc/device-tree/model 2>/dev/null
+}
+
 validate_launcher_lock_path() {
   if [[ -L "$cache_dir" || -L "$launcher_lock_dir" || -L "${launcher_lock_dir}/pid" || -L "${launcher_lock_dir}/boot_id" ]]; then
     echo "chartplotter launcher lock path contains a symlink: $launcher_lock_dir" >&2
@@ -590,6 +594,10 @@ validate_opencpn_binary_candidate() {
   parent_mode=$((8#$parent_mode_text))
   if (( parent_mode & 022 )); then
     echo "OpenCPN executable directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$owner_uid" != "0" ]]; then
+    echo "OpenCPN executable is owned by uid ${owner_uid}, expected root on Raspberry Pi: $candidate" >&2
     return 1
   fi
   if [[ "$owner_uid" != "0" && "$owner_uid" != "$(id -u)" ]]; then

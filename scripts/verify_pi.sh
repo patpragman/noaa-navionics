@@ -2537,6 +2537,7 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher explicit fail-open override" grep -Fq 'NOAA_NAVIONICS_START_ON_FAILED_READINESS' "$launcher"
   check "chartplotter launcher OpenCPN resolver" grep -Fq 'resolve_opencpn_binary' "$launcher"
   check "chartplotter launcher OpenCPN binary integrity" grep -Fq 'validate_opencpn_binary_candidate' "$launcher"
+  check "chartplotter launcher Pi OpenCPN root owner" grep -Fq 'expected root on Raspberry Pi' "$launcher"
   check "chartplotter launcher ENC parse" grep -Fq '"$opencpn_bin" -parse_all_enc' "$launcher"
   check "chartplotter launcher display awake" grep -Fq 'keep_display_awake' "$launcher"
   check "chartplotter launcher display failure logging" grep -Fq 'xset command(s) failed' "$launcher"

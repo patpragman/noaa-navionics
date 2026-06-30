@@ -101,8 +101,11 @@ grep -Fq 'sync_paths "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id" "
 grep -Fq 'sync_paths "$launcher_lock_dir"' scripts/start_chartplotter.sh
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
+grep -q 'is_raspberry_pi' scripts/start_chartplotter.sh
+grep -q 'expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
 grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
+grep -q 'chartplotter launcher Pi OpenCPN root owner' scripts/verify_pi.sh
 grep -q 'OpenCPN command is a symlink' src/noaa_navionics/health.py
 grep -q 'expected root' src/noaa_navionics/health.py
 grep -q 'test_check_opencpn_requires_root_owner_on_pi' tests/test_downloader.py
@@ -1276,6 +1279,8 @@ grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
 grep -q 'status-reported user unit owner/mode' README.md
 grep -q "status artifact's user unit owner/mode fields" docs/sailboat-pi.md
+grep -q 'requires a root-owned OpenCPN executable on Raspberry Pi hardware' README.md
+grep -q 'rejects non-root OpenCPN executables on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'rejects symlinked cache parents' README.md
 grep -q 'rejects symlinked cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
