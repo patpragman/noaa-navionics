@@ -5118,6 +5118,25 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 2)
 
+    def test_write_status_report_directory_sync_uses_no_follow_open(self):
+        calls = []
+        original_open = report_module.os.open
+
+        def fake_open(path, flags):
+            calls.append((Path(path), flags))
+            raise OSError("stop before opening")
+
+        report_module.os.open = fake_open
+        try:
+            report_module._fsync_directory(Path("/tmp"))
+        finally:
+            report_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], Path("/tmp"))
+        self.assertTrue(calls[0][1] & getattr(os, "O_DIRECTORY", 0))
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+
     def test_install_wanted_by_targets_parse_only_install_section(self):
         targets = _install_wanted_by_targets(
             [

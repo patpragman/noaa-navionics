@@ -1411,6 +1411,7 @@ grep -q 'status report cache parent directory' src/noaa_navionics/report.py
 grep -q 'os.chmod(cache_parent, 0o700)' src/noaa_navionics/report.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
+grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/report.py
 grep -q 'status report cache directory' scripts/verify_pi.sh
 grep -q 'status report cache parent directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report cache parent directory .* is owned by uid' scripts/verify_pi.sh
@@ -1419,6 +1420,9 @@ grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'test_write_status_report_tightens_public_home_cache_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
+grep -q 'test_write_status_report_directory_sync_uses_no_follow_open' tests/test_downloader.py
+grep -q 'Status report directory sync uses no-follow directory opens' README.md
+grep -q 'Status report directory sync uses no-follow directory opens' docs/sailboat-pi.md
 grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
 grep -q 'launcher log cache parent directory is owned by uid' scripts/verify_pi.sh
 grep -q 'launcher log cache parent directory has permissions' scripts/verify_pi.sh
