@@ -149,6 +149,36 @@ path_in_trusted_system_dir() {
   esac
 }
 
+validate_gps_device_path_arg() {
+  local value="$1"
+  local suffix
+  if [[ -z "$value" ]]; then
+    echo "GPS device path is required" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "GPS device path must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  case "$value" in
+    /dev/serial/by-id/*)
+      suffix="${value#/dev/serial/by-id/}"
+      if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
+        return 0
+      fi
+      ;;
+    /dev/serial0|/dev/serial1|/dev/gps)
+      return 0
+      ;;
+    /dev/ttyUSB*|/dev/ttyACM*)
+      echo "GPS device path is volatile; use /dev/serial/by-id/... instead: $value" >&2
+      exit 2
+      ;;
+  esac
+  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
+  exit 2
+}
+
 require_trusted_system_command() {
   local command_name="$1"
   local label="$2"
@@ -650,6 +680,9 @@ if [[ "$skip_gpsd" -eq 0 && -z "$device" ]]; then
   echo "--device is required unless --skip-gpsd is used" >&2
   usage
   exit 2
+fi
+if [[ -n "$device" ]]; then
+  validate_gps_device_path_arg "$device"
 fi
 
 if [[ "$skip_services" -eq 1 && "$skip_autologin" -eq 0 ]]; then

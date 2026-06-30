@@ -1551,6 +1551,8 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   ! grep -q 'with path.open("rb") as handle' "$script"
 done
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
+grep -q 'validate_gps_device_path_arg' scripts/provision_sailboat_pi.sh
+grep -q 'GPS device path is volatile' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is a symlink when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
@@ -3671,6 +3673,24 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--opencpn-restarts must be a non-negative integer' "$provision_output"
+
+set +e
+scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --skip-services \
+  --skip-autologin \
+  --device /dev/ttyUSB0 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject a volatile supplied GPS device path even when GPSD setup is skipped" >&2
+  exit 1
+fi
+grep -q 'GPS device path is volatile' "$provision_output"
 
 set +e
 scripts/provision_sailboat_pi.sh \
