@@ -506,8 +506,8 @@ grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'noaa-navionics mark-position --mob' README.md
 grep -q 'noaa-navionics mark-position --mob' docs/sailboat-pi.md
-grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" README.md
-grep -q "writes a private GPX waypoint file under the configured track output's \`tracks/\` directory" docs/sailboat-pi.md
+grep -q "reads one fresh quality-checked GPSD or serial fix" README.md
+grep -q "reads one fresh quality-checked GPSD or serial fix" docs/sailboat-pi.md
 grep -q 'noaa-navionics anchor-watch' README.md
 grep -q 'noaa-navionics anchor-watch' docs/sailboat-pi.md
 grep -q -- '--anchor-samples N' README.md
@@ -2600,6 +2600,8 @@ grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
+grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
+grep -q 'position mark requires a fresh GPS fix' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
 grep -q 'def _format_anchor_fix_detail' src/noaa_navionics/status_gui.py
@@ -2624,8 +2626,8 @@ grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' README.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
-grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' README.md
-grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' docs/sailboat-pi.md
+grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
+grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded drift check with an optional averaged anchor sample count' README.md
 grep -q 'use Anchor Check for a bounded drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
 grep -q 'shows anchor/current GPS quality and rings the display bell' README.md
@@ -2664,6 +2666,7 @@ grep -q 'test_status_gui_reports_ready_when_all_rows_pass' tests/test_downloader
 grep -q 'test_status_gui_formats_structured_gps_summary' tests/test_downloader.py
 grep -q 'test_cli_status_gui_forwards_arguments' tests/test_downloader.py
 grep -q 'test_status_gui_write_current_position_mark_uses_configured_track_output' tests/test_downloader.py
+grep -q 'test_status_gui_position_mark_rejects_stale_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_uses_configured_gps_fixes' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py

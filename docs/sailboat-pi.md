@@ -122,7 +122,7 @@ Mark the current GPS position while underway:
 noaa-navionics mark-position --mob
 ```
 
-The position-mark command reads one quality-checked GPSD or serial fix from the onboard config and writes a private GPX waypoint file under the configured track output's `tracks/` directory, so track exports include the mark. Use `--name` and `--description` for routine marks, or `--mob` for a MOB-named waypoint.
+The position-mark command reads one fresh quality-checked GPSD or serial fix from the onboard config and writes a private GPX waypoint file under the configured track output's `tracks/` directory, so track exports include the mark. Use `--name` and `--description` for routine marks, or `--mob` for a MOB-named waypoint.
 
 Watch anchor drift from the current position or an explicit anchor point:
 
@@ -323,7 +323,7 @@ Helm-readiness panel:
 noaa-navionics-status-gui
 ```
 
-The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline, a dedicated live GPS fix summary, plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display. Use its Mark or MOB buttons to write a private GPX waypoint from the current quality-checked GPS fix into the configured track export area, and use Anchor Check for a bounded drift check with an optional averaged anchor sample count; the panel shows anchor/current GPS quality and rings the display bell when that check exceeds the radius.
+The status GUI refreshes the same readiness report used by boot checks, writes `~/.cache/noaa-navionics/status.json` by default, and shows a large READY/NOT READY headline, a dedicated live GPS fix summary, plus individual chart, GPS, service, and track-log check rows for quick inspection at the Pi display. Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix into the configured track export area, and use Anchor Check for a bounded drift check with an optional averaged anchor sample count; the panel shows anchor/current GPS quality and rings the display bell when that check exceeds the radius.
 
 ## Charts
 

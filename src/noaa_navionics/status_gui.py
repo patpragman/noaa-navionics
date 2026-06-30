@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Thread
@@ -117,15 +118,43 @@ def write_current_position_mark(
     *,
     gps_seconds: float = 10.0,
     mob: bool = False,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 30.0,
 ) -> tuple[Path, GPSFix]:
     app_config = read_config(config_path)
     fix = read_configured_gps_fix(app_config, gps_seconds=gps_seconds)
+    freshness_failure = _position_mark_freshness_failure(
+        fix,
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_failure:
+        raise ValueError(f"position mark requires a fresh GPS fix: {freshness_failure}")
     path = available_position_mark_path(
         gpx_position_mark_path(app_config.track_output, fix.timestamp, prefix="mob" if mob else "mark")
     )
     name = "MOB" if mob else "Position mark"
     description = "Man overboard position mark" if mob else ""
     return write_gpx_position_mark(path, fix, name=name, description=description), fix
+
+
+def _position_mark_freshness_failure(
+    fix: GPSFix,
+    *,
+    max_fix_age_seconds: float,
+    future_tolerance_seconds: float,
+) -> str:
+    if fix.timestamp is None:
+        return "fix has no timestamp"
+    timestamp = fix.timestamp
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    age_seconds = (datetime.now(timezone.utc) - timestamp.astimezone(timezone.utc)).total_seconds()
+    if age_seconds > max_fix_age_seconds:
+        return f"fix timestamp is stale ({age_seconds:.0f}s old)"
+    if age_seconds < -future_tolerance_seconds:
+        return f"fix timestamp is in the future by {-age_seconds:.0f}s"
+    return ""
 
 
 def check_anchor_drift(

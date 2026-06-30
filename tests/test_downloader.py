@@ -2597,7 +2597,7 @@ class GuiTests(unittest.TestCase):
                 encoding="utf-8",
             )
             fix = GPSFix(
-                timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+                timestamp=datetime.now(timezone.utc),
                 latitude=61.2181,
                 longitude=-149.9003,
                 satellites=9,
@@ -2612,10 +2612,42 @@ class GuiTests(unittest.TestCase):
                 status_gui_module.read_configured_gps_fix = original
 
             self.assertIs(returned_fix, fix)
-            self.assertEqual(path, track_output / "tracks" / "mob-20260630T123456Z.gpx")
+            self.assertEqual(path, track_output / "tracks" / f"mob-{fix.timestamp.strftime('%Y%m%dT%H%M%SZ')}.gpx")
             text = path.read_text(encoding="utf-8")
             self.assertIn("<name>MOB</name>", text)
             self.assertIn("<desc>Man overboard position mark</desc>", text)
+
+    def test_status_gui_position_mark_rejects_stale_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_output = root / "tracks-root"
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc) - timedelta(seconds=600),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fix
+
+            try:
+                status_gui_module.read_configured_gps_fix = lambda app_config, **kwargs: fix
+                with self.assertRaisesRegex(ValueError, "fresh GPS fix"):
+                    status_gui_module.write_current_position_mark(config_path, mob=True)
+            finally:
+                status_gui_module.read_configured_gps_fix = original
+
+            self.assertFalse((track_output / "tracks").exists())
 
     def test_status_gui_anchor_check_uses_configured_gps_fixes(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
