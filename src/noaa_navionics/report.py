@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import json
+import math
 import os
 import platform
 import re
@@ -687,6 +688,8 @@ def _gpx_trackpoint_position(trackpoint: str) -> tuple[Optional[tuple[float, flo
         longitude = float(lon_match.group(1))
     except ValueError:
         return None, f"GPX trackpoint has non-numeric coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+    if not math.isfinite(latitude) or not math.isfinite(longitude):
+        return None, f"GPX trackpoint has non-finite coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
     if not (-90.0 <= latitude <= 90.0):
         return None, f"GPX trackpoint latitude is outside -90..90: {latitude}"
     if not (-180.0 <= longitude <= 180.0):
