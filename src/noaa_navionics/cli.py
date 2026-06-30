@@ -889,8 +889,9 @@ def _validate_prunable_track_log(path: Path, *, tracks_fd: int) -> None:
             raise RuntimeError(f"{path} is not a regular GPX track file, refusing to prune")
         if path_stat.st_uid != os.getuid():
             raise RuntimeError(f"{path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}")
-        if stat.S_IMODE(path_stat.st_mode) & 0o022:
-            raise RuntimeError(f"{path} has permissions {stat.S_IMODE(path_stat.st_mode):03o}, expected no group/other write bits")
+        mode = stat.S_IMODE(path_stat.st_mode)
+        if mode != 0o600:
+            raise RuntimeError(f"{path} has permissions {mode:03o}, expected private 0600")
     finally:
         os.close(fd)
 

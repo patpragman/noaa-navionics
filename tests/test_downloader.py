@@ -8675,6 +8675,7 @@ class GpsTests(unittest.TestCase):
             keep = tracks / "track-20260620.gpx"
             unrelated = tracks / "notes.gpx"
             old.write_text("old", encoding="utf-8")
+            old.chmod(0o600)
             keep.write_text("keep", encoding="utf-8")
             unrelated.write_text("notes", encoding="utf-8")
 
@@ -8697,6 +8698,7 @@ class GpsTests(unittest.TestCase):
                 tracks.chmod(0o700)
                 old = tracks / "track-20260401.gpx"
                 old.write_text("old", encoding="utf-8")
+                old.chmod(0o600)
 
                 removed = cli_module._prune_old_track_logs(
                     Path(tmpdir),
@@ -8768,6 +8770,25 @@ class GpsTests(unittest.TestCase):
 
             self.assertTrue(old_dir.is_dir())
 
+    def test_prune_old_track_logs_rejects_public_old_track(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracks = Path(tmpdir) / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            old = tracks / "track-20260401.gpx"
+            old.write_text("old", encoding="utf-8")
+            old.chmod(0o644)
+
+            with self.assertRaisesRegex(RuntimeError, "expected private 0600"):
+                cli_module._prune_old_track_logs(
+                    Path(tmpdir),
+                    retention_days=30,
+                    now=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc),
+                )
+
+            self.assertTrue(old.exists())
+            self.assertEqual(old.read_text(encoding="utf-8"), "old")
+
     def test_prune_old_track_logs_uses_no_follow_descriptor_before_unlink(self):
         open_calls = []
         unlink_calls = []
@@ -8793,6 +8814,7 @@ class GpsTests(unittest.TestCase):
                 tracks.chmod(0o700)
                 old = tracks / "track-20260401.gpx"
                 old.write_text("old", encoding="utf-8")
+                old.chmod(0o600)
 
                 removed = cli_module._prune_old_track_logs(
                     Path(tmpdir),
