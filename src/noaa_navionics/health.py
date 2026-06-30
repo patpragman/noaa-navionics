@@ -1243,6 +1243,9 @@ def check_gps_device(
     seconds: float = 5.0,
     max_fix_age_seconds: float = 300.0,
 ) -> CheckResult:
+    gps_device_check = check_gps_device_path(device)
+    if not gps_device_check.ok:
+        return CheckResult("GPS", False, f"not checked because {gps_device_check.detail}")
     deadline = time.monotonic() + seconds
     stale_detail = ""
     quality_detail = ""

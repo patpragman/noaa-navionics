@@ -6984,6 +6984,16 @@ class StatusReportTests(unittest.TestCase):
 
 
 class GpsTests(unittest.TestCase):
+    def _trusted_gps_device_patch(self):
+        return patch(
+            "noaa_navionics.health.check_gps_device_path",
+            return_value=health_module.CheckResult(
+                "GPS Device",
+                True,
+                "/dev/serial/by-id/mock-gps -> /dev/ttyACM0",
+            ),
+        )
+
     def test_parse_gga_sentence(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
         fix = parse_nmea_sentence(sentence)
@@ -8128,12 +8138,32 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
         finally:
             health_module.open_nmea_stream = original
 
         self.assertTrue(result.ok)
-        self.assertEqual(captured, {"device": "/dev/ttyACM0", "baud": 9600})
+        self.assertEqual(captured, {"device": "/dev/serial/by-id/mock-gps", "baud": 9600})
+
+    def test_check_gps_device_rejects_volatile_path_before_opening(self):
+        original = health_module.open_nmea_stream
+
+        def unexpected_open_nmea_stream(device, baud=4800):
+            raise AssertionError("check_gps_device should reject volatile GPS device path before opening it")
+
+        try:
+            health_module.open_nmea_stream = unexpected_open_nmea_stream
+            with tempfile.TemporaryDirectory() as tmpdir:
+                device = Path(tmpdir) / "ttyACM0"
+                device.write_text("", encoding="ascii")
+                result = check_gps_device(str(device), baud=9600, seconds=1)
+        finally:
+            health_module.open_nmea_stream = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("not checked because", result.detail)
+        self.assertIn("not stable", result.detail)
 
     def test_check_gps_device_rejects_low_satellite_count(self):
         original = health_module.open_nmea_stream
@@ -8146,7 +8176,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
         finally:
             health_module.open_nmea_stream = original
 
@@ -8165,7 +8196,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
         finally:
             health_module.open_nmea_stream = original
 
@@ -8184,7 +8216,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
         finally:
             health_module.open_nmea_stream = original
 
@@ -8202,7 +8235,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
         finally:
             health_module.open_nmea_stream = original
 
@@ -8220,7 +8254,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1)
         finally:
             health_module.open_nmea_stream = original
 
@@ -8235,7 +8270,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1, max_fix_age_seconds=300)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.open_nmea_stream = original
 
@@ -8250,7 +8286,8 @@ class GpsTests(unittest.TestCase):
 
         try:
             health_module.open_nmea_stream = fake_open_nmea_stream
-            result = check_gps_device("/dev/ttyACM0", baud=9600, seconds=1, max_fix_age_seconds=300)
+            with self._trusted_gps_device_patch():
+                result = check_gps_device("/dev/serial/by-id/mock-gps", baud=9600, seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.open_nmea_stream = original
 
