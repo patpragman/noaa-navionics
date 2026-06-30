@@ -34,20 +34,50 @@ sync_paths() {
   python3 - "$@" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 
 synced_dirs: set[Path] = set()
 for arg in sys.argv[1:]:
     path = Path(arg).expanduser()
-    if path.is_dir():
+    try:
+        initial = path.lstat()
+    except OSError:
+        continue
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    if stat.S_ISLNK(initial.st_mode):
+        synced_dirs.add(path.parent)
+        continue
+    if stat.S_ISDIR(initial.st_mode):
+        try:
+            flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow
+            fd = os.open(path, flags)
+        except OSError:
+            synced_dirs.add(path.parent)
+            continue
+        try:
+            opened = os.fstat(fd)
+            if stat.S_ISDIR(opened.st_mode):
+                os.fsync(fd)
+        except OSError:
+            pass
+        finally:
+            os.close(fd)
         synced_dirs.add(path)
         synced_dirs.add(path.parent)
         continue
     try:
-        with path.open("rb") as handle:
-            os.fsync(handle.fileno())
+        fd = os.open(path, os.O_RDONLY | nofollow)
     except OSError:
         continue
+    try:
+        opened = os.fstat(fd)
+        if stat.S_ISREG(opened.st_mode):
+            os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
     synced_dirs.add(path.parent)
 for directory in synced_dirs:
     try:
@@ -66,11 +96,14 @@ sync_tree() {
   python3 - "$1" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 
 root = Path(sys.argv[1]).expanduser()
 if not root.exists():
     raise SystemExit(f"cannot sync missing tree: {root}")
+if root.is_symlink():
+    raise SystemExit(f"cannot sync symlinked tree: {root}")
 
 def fsync_dir(path: Path) -> None:
     try:
@@ -87,13 +120,24 @@ for current_root, dirnames, filenames in os.walk(root):
     current = Path(current_root)
     for filename in filenames:
         file_path = current / filename
-        if file_path.is_symlink():
-            continue
         try:
-            with file_path.open("rb") as handle:
-                os.fsync(handle.fileno())
+            initial = file_path.lstat()
         except OSError:
             continue
+        if not stat.S_ISREG(initial.st_mode):
+            continue
+        try:
+            fd = os.open(file_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        except OSError:
+            continue
+        try:
+            opened = os.fstat(fd)
+            if stat.S_ISREG(opened.st_mode):
+                os.fsync(fd)
+        except OSError:
+            pass
+        finally:
+            os.close(fd)
     for dirname in dirnames:
         directory_path = current / dirname
         if directory_path.is_symlink():

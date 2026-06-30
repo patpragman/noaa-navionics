@@ -414,7 +414,13 @@ done
 grep -q 'reset_private_venv' scripts/install_raspberry_pi.sh
 grep -q 'sync_tree "$venv_dir"' scripts/install_raspberry_pi.sh
 grep -q 'cannot sync missing tree' scripts/install_raspberry_pi.sh
-grep -q 'file_path.is_symlink()' scripts/install_raspberry_pi.sh
+grep -q 'cannot sync symlinked tree' scripts/install_raspberry_pi.sh
+grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/install_raspberry_pi.sh
+grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/install_raspberry_pi.sh
+grep -q 'os.open(file_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/install_raspberry_pi.sh
+grep -q 'stat.S_ISREG(opened.st_mode)' scripts/install_raspberry_pi.sh
+! grep -q 'with path.open("rb") as handle' scripts/install_raspberry_pi.sh
+! grep -q 'with file_path.open("rb") as handle' scripts/install_raspberry_pi.sh
 grep -q 'directory_path.is_symlink()' scripts/install_raspberry_pi.sh
 grep -q 'venv tree sync skips symlinked directories' README.md
 grep -q 'venv tree sync skips symlinked directories' docs/sailboat-pi.md
@@ -429,20 +435,22 @@ grep -q 'ensure_private_directory "$data_dir" "NOAA Navionics data directory"' s
 grep -q 'ensure_private_directory "$config_dir" "NOAA Navionics config directory"' scripts/install_raspberry_pi.sh
 grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/install_raspberry_pi.sh
 grep -q 'chmod 0700 "$target"' scripts/install_raspberry_pi.sh
-grep -q 'if path.is_dir():' scripts/install_raspberry_pi.sh
 test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/install_raspberry_pi.sh)" -ge 4
-grep -q 'Installer sync helpers use no-follow directory opens' README.md
-grep -q 'Installer sync helpers use no-follow directory opens' docs/sailboat-pi.md
+grep -q 'Installer sync helpers use no-follow opens for directories and regular files' README.md
+grep -q 'Installer sync helpers use no-follow opens for directories and regular files' docs/sailboat-pi.md
 grep -q 'validate_user_directory_path' scripts/provision_sailboat_pi.sh
 grep -q 'ensure_private_directory "$(dirname "$config")" "NOAA Navionics config directory"' scripts/provision_sailboat_pi.sh
 grep -q 'ensure_private_directory "$systemd_user_dir" "user systemd directory"' scripts/provision_sailboat_pi.sh
 grep -q 'ensure_private_directory "$autostart_dir" "desktop autostart directory"' scripts/provision_sailboat_pi.sh
-grep -q 'if path.is_dir():' scripts/provision_sailboat_pi.sh
+grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/provision_sailboat_pi.sh
+grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/provision_sailboat_pi.sh
+grep -q 'stat.S_ISREG(opened.st_mode)' scripts/provision_sailboat_pi.sh
+! grep -q 'with path.open("rb") as handle' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh)" -ge 1
 test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/deploy_to_pi.sh)" -ge 5
 test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/start_chartplotter.sh)" -ge 2
-grep -q 'Deployment, provisioning, and startup sync helpers use no-follow directory opens' README.md
-grep -q 'Deployment, provisioning, and startup sync helpers use no-follow directory opens' docs/sailboat-pi.md
+grep -q 'Deployment sync helpers use no-follow directory opens; provisioning and startup sync helpers use no-follow opens for directories and regular files' README.md
+grep -q 'Deployment sync helpers use no-follow directory opens; provisioning and startup sync helpers use no-follow opens for directories and regular files' docs/sailboat-pi.md
 grep -q 'refusing to remove unexpected venv path' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove venv outside data directory' scripts/install_raspberry_pi.sh
 grep -q 'refusing to remove non-directory private venv path' scripts/install_raspberry_pi.sh
