@@ -411,6 +411,7 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         raise RuntimeError(f"chart extraction destination is a symlink: {destination}")
     if destination.exists() and not destination.is_dir():
         raise RuntimeError(f"chart extraction destination is not a directory: {destination}")
+    _validate_zip_members_and_crc(zip_path, label="chart ZIP")
     staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", suffix=".extracting", dir=parent))
     previous = parent / f".{destination.name}.previous"
     try:
@@ -475,23 +476,28 @@ def _zip_member_path_is_unsafe(filename: str) -> bool:
 
 
 def _validate_downloaded_zip(zip_path: Path) -> None:
+    enc_cell_count = _validate_zip_members_and_crc(zip_path, label="downloaded ZIP")
+    if enc_cell_count <= 0:
+        raise RuntimeError(f"downloaded ZIP contains no ENC .000 cells: {zip_path}")
+
+
+def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
     try:
         with zipfile.ZipFile(zip_path) as archive:
             for member in archive.infolist():
                 if _zip_member_path_is_unsafe(member.filename):
-                    raise RuntimeError(f"downloaded ZIP has unsafe member path: {member.filename}")
+                    raise RuntimeError(f"{label} has unsafe member path: {member.filename}")
             bad_member = archive.testzip()
             if bad_member is not None:
-                raise RuntimeError(f"downloaded ZIP has a failed CRC member: {bad_member}")
+                raise RuntimeError(f"{label} has a failed CRC member: {bad_member}")
             enc_cell_count = sum(
                 1
                 for member in archive.infolist()
                 if not member.is_dir() and member.filename.lower().endswith(".000")
             )
     except zipfile.BadZipFile as exc:
-        raise RuntimeError(f"downloaded ZIP is not a valid archive: {zip_path}") from exc
-    if enc_cell_count <= 0:
-        raise RuntimeError(f"downloaded ZIP contains no ENC .000 cells: {zip_path}")
+        raise RuntimeError(f"{label} is not a valid archive: {zip_path}") from exc
+    return enc_cell_count
 
 
 def sha256_file(path: Path) -> str:

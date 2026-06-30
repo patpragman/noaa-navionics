@@ -1283,10 +1283,15 @@ grep -q 'boot_id' src/noaa_navionics/report.py
 grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'def _validate_downloaded_zip' src/noaa_navionics/downloader.py
+grep -q 'def _validate_zip_members_and_crc' src/noaa_navionics/downloader.py
 grep -q 'def _zip_member_path_is_unsafe' src/noaa_navionics/downloader.py
-grep -q 'downloaded ZIP has unsafe member path' src/noaa_navionics/downloader.py
-grep -q 'downloaded ZIP is not a valid archive' src/noaa_navionics/downloader.py
+grep -q '{label} has unsafe member path' src/noaa_navionics/downloader.py
+grep -q 'chart ZIP has a failed CRC member' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_crc_failure_before_staging' tests/test_downloader.py
+grep -q '{label} is not a valid archive' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
+grep -q 'pass CRC checks' README.md
+grep -q 'pass CRC checks' docs/sailboat-pi.md
 grep -q 'or uses a non-HTTPS redirect' src/noaa_navionics/downloader.py
 grep -q 'def _download_url_matches_package' src/noaa_navionics/downloader.py
 grep -q 'test_download_rejects_http_redirect_before_writing_archive' tests/test_downloader.py

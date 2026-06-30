@@ -3594,6 +3594,23 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
             self.assertFalse((root / ".AK_ENCs.previous").exists())
 
+    def test_extract_zip_rejects_crc_failure_before_staging(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            archive_bytes = archive.read_bytes()
+            self.assertIn(b"cell", archive_bytes)
+            archive.write_bytes(archive_bytes.replace(b"cell", b"bell", 1))
+            destination = root / "AK_ENCs"
+
+            with self.assertRaisesRegex(RuntimeError, "chart ZIP has a failed CRC member"):
+                extract_zip(archive, destination)
+
+            self.assertFalse(destination.exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
     def test_extract_zip_rejects_symlinked_destination(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
