@@ -1891,8 +1891,12 @@ grep -q 'test_read_manifest_rejects_writable_manifest' tests/test_downloader.py
 grep -q 'test_read_manifest_rejects_replaced_manifest_before_parsing' tests/test_downloader.py
 grep -q 'test_existing_zip_symlinked_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'test_existing_zip_writable_previous_manifest_fails_before_extracting' tests/test_downloader.py
+grep -q 'test_existing_zip_mismatched_previous_manifest_download_url_fails_before_extracting' tests/test_downloader.py
+grep -q '_download_url_matches_package(previous_url, package.url)' src/noaa_navionics/downloader.py
 grep -q 'unsafe ownership or permissions' README.md
 grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
+grep -q 'mismatched source metadata' README.md
+grep -q 'mismatched source metadata' docs/sailboat-pi.md
 grep -q 'cache-reuse hashes are computed from the same no-follow descriptor' README.md
 grep -q 'cache-reuse hashes are computed from the same no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Manifest fallback ZIP hashes use the same trusted no-follow archive hash path' README.md

@@ -1036,6 +1036,9 @@ def _matching_previous_manifest(
     previous_digest = str(download.get("sha256", "")).strip().lower()
     if previous_bytes != result.bytes_written or previous_digest != digest.lower():
         return None
+    previous_url = str(download.get("url", "")).strip()
+    if previous_url and not _download_url_matches_package(previous_url, package.url):
+        return None
     return manifest
 
 

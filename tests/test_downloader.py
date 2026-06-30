@@ -2898,6 +2898,37 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse((output / "AK_ENCs" / "US5AK4CM").exists())
 
+    def test_existing_zip_mismatched_previous_manifest_download_url_fails_before_extracting(self):
+        original = downloader_module.urlopen
+
+        def zip_payload():
+            buffer = BytesIO()
+            with zipfile.ZipFile(buffer, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            return buffer.getvalue()
+
+        payload = zip_payload()
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(payload, content_length=str(len(payload)), url=request.full_url)
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("State AK", "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", "AK_ENCs.zip")
+                download_package(package, output, extract=False, keep_zip=True, force=True)
+                manifest = read_manifest(output)
+                manifest["download"]["url"] = "https://downloads.charts.noaa.gov/cache/CA_ENCs.zip"
+                (output / MANIFEST_NAME).write_text(json.dumps(manifest), encoding="utf-8")
+
+                with self.assertRaisesRegex(RuntimeError, "prior verified manifest"):
+                    download_package(package, output, extract=True)
+
+                self.assertFalse((output / "AK_ENCs" / "US5AK3CM").exists())
+        finally:
+            downloader_module.urlopen = original
+
     def test_existing_zip_unverified_previous_manifest_fails_before_extracting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
