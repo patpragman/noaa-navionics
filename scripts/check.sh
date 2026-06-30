@@ -108,9 +108,13 @@ grep -q 'OpenCPN executable directory is owned by uid' scripts/start_chartplotte
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
-grep -Fq 'arg_name="${arg##*/}"' scripts/start_chartplotter.sh
-grep -q 'noaa-navionics-start-chartplotter" || "$arg_name" == "start_chartplotter.sh"' scripts/start_chartplotter.sh
+grep -q 'Path(f"/proc/{pid}/cmdline").read_bytes()' scripts/start_chartplotter.sh
+grep -Fq 'data.split(b"\0")' scripts/start_chartplotter.sh
+grep -q 'surrogateescape' scripts/start_chartplotter.sh
+grep -q 'parses live `/proc` state and NUL-delimited process arguments' README.md
+grep -q 'parses live `/proc` state and NUL-delimited process arguments' docs/sailboat-pi.md
 ! grep -Fq 'cmdline="$(tr '\''\0'\'' '\'' '\'' <"/proc/${pid}/cmdline"' scripts/start_chartplotter.sh
+! grep -q 'done <"/proc/${pid}/cmdline"' scripts/start_chartplotter.sh
 grep -q 'current_boot_id' scripts/start_chartplotter.sh
 grep -q 'validate_launcher_lock_path' scripts/start_chartplotter.sh
 grep -q 'launcher_lock_path_safe_for_cleanup' scripts/start_chartplotter.sh
@@ -181,8 +185,9 @@ grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
 grep -q 'opencpn_process_active' scripts/start_chartplotter.sh
 grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
-grep -Fq 'state="${stat_line##*) }"' scripts/start_chartplotter.sh
-grep -Fq '[[ -n "$state" && "$state" != "Z" ]]' scripts/start_chartplotter.sh
+grep -q 'stat_text.rsplit(") ", 1)' scripts/start_chartplotter.sh
+grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/start_chartplotter.sh
+! grep -q 'cat "/proc/${pid}/stat"' scripts/start_chartplotter.sh
 grep -q 'OpenCPN is already running' scripts/start_chartplotter.sh
 grep -q 'OpenCPN exited with status' scripts/start_chartplotter.sh
 grep -q 'show_preflight_warning' scripts/start_chartplotter.sh

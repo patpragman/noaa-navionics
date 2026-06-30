@@ -440,31 +440,48 @@ opencpn_running() {
 
 opencpn_process_active() {
   local pid="$1"
-  local stat_line
-  local state
-  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/stat" ]]; then
-    return 1
-  fi
-  stat_line="$(cat "/proc/${pid}/stat" 2>/dev/null || true)"
-  state="${stat_line##*) }"
-  state="${state%% *}"
-  [[ -n "$state" && "$state" != "Z" ]]
+  python3 - "$pid" <<'PY'
+import sys
+
+pid = sys.argv[1]
+if not pid.isdigit():
+    raise SystemExit(1)
+try:
+    stat_text = open(f"/proc/{pid}/stat", encoding="ascii", errors="ignore").read()
+except OSError:
+    raise SystemExit(1)
+try:
+    tail = stat_text.rsplit(") ", 1)[1]
+except IndexError:
+    raise SystemExit(1)
+fields = tail.split()
+if not fields:
+    raise SystemExit(1)
+raise SystemExit(0 if fields[0] != "Z" else 1)
+PY
 }
 
 process_looks_like_launcher() {
   local pid="$1"
-  local arg
-  local arg_name
-  if [[ ! "$pid" =~ ^[0-9]+$ || ! -r "/proc/${pid}/cmdline" ]]; then
-    return 1
-  fi
-  while IFS= read -r -d '' arg; do
-    arg_name="${arg##*/}"
-    if [[ "$arg_name" == "noaa-navionics-start-chartplotter" || "$arg_name" == "start_chartplotter.sh" ]]; then
-      return 0
-    fi
-  done <"/proc/${pid}/cmdline"
-  return 1
+  python3 - "$pid" <<'PY'
+from pathlib import Path
+import sys
+
+pid = sys.argv[1]
+if not pid.isdigit():
+    raise SystemExit(1)
+try:
+    data = Path(f"/proc/{pid}/cmdline").read_bytes()
+except OSError:
+    raise SystemExit(1)
+for raw_arg in data.split(b"\0"):
+    if not raw_arg:
+        continue
+    arg_name = Path(raw_arg.decode("utf-8", "surrogateescape")).name
+    if arg_name in {"noaa-navionics-start-chartplotter", "start_chartplotter.sh"}:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
 }
 
 current_boot_id() {
