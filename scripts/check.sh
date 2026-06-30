@@ -2589,6 +2589,7 @@ grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
+grep -q 'def anchor_alarm_active' src/noaa_navionics/status_gui.py
 grep -q 'def _configured_anchor_radius' src/noaa_navionics/status_gui.py
 grep -q 'def available_position_mark_path' src/noaa_navionics/status_gui.py
 grep -q 'READY' src/noaa_navionics/status_gui.py
@@ -2610,6 +2611,8 @@ grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded two-fix drift check' README.md
 grep -q 'use Anchor Check for a bounded two-fix drift check' docs/sailboat-pi.md
+grep -q 'rings the display bell when that check exceeds the radius' README.md
+grep -q 'rings the display bell when that check exceeds the radius' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 

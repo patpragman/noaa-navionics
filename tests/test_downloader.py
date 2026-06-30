@@ -2477,6 +2477,8 @@ class GuiTests(unittest.TestCase):
             self.assertGreater(distance, 500.0)
             self.assertIn("ANCHOR ALARM", status_gui_module.format_anchor_check(distance, radius))
             self.assertIn("Anchor OK", status_gui_module.format_anchor_check(1.0, radius))
+            self.assertTrue(status_gui_module.anchor_alarm_active(distance, radius))
+            self.assertFalse(status_gui_module.anchor_alarm_active(radius, radius))
 
     def test_status_gui_reads_configured_anchor_radius(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

@@ -145,6 +145,10 @@ def format_anchor_check(distance: float, radius_meters: float) -> str:
     return f"Anchor OK: {distance:.1f} m from anchor; radius {radius_meters:g} m"
 
 
+def anchor_alarm_active(distance: float, radius_meters: float) -> bool:
+    return distance > radius_meters
+
+
 def _positive_float(value: str) -> float:
     try:
         parsed = float(value)
@@ -345,10 +349,13 @@ class StatusApp(tk.Tk):
     def _show_anchor(self, distance: float, radius_meters: float, anchor_fix: GPSFix, current_fix: GPSFix) -> None:
         self._set_busy(False)
         summary = format_anchor_check(distance, radius_meters)
-        self.headline.set("NOT READY" if distance > radius_meters else "READY")
+        alarm = anchor_alarm_active(distance, radius_meters)
+        self.headline.set("NOT READY" if alarm else "READY")
         self.summary.set(summary)
         self.gps_summary.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
         self.last_report.set(f"Anchor {_fix_coordinates(anchor_fix)} | Current {_fix_coordinates(current_fix)}")
+        if alarm:
+            self.bell()
         self._schedule_refresh()
 
     def _show_error(self, message: str) -> None:
