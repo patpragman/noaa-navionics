@@ -457,6 +457,7 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
                 except ValueError as exc:
                     raise RuntimeError(f"unsafe ZIP member path: {member.filename}") from exc
             archive.extractall(staging)
+        _harden_extracted_chart_tree(staging)
         if count_enc_cells(staging) <= 0:
             raise RuntimeError(f"extracted ZIP contains no ENC .000 cells: {zip_path}")
         _fsync_tree(staging)
@@ -532,6 +533,53 @@ def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
     except zipfile.BadZipFile as exc:
         raise RuntimeError(f"{label} is not a valid archive: {zip_path}") from exc
     return enc_cell_count
+
+
+def _harden_extracted_chart_tree(root: Path) -> None:
+    root = Path(root)
+    for current_root, dirnames, filenames in os.walk(root):
+        current = Path(current_root)
+        _harden_extracted_chart_path(current, directory=True)
+        for dirname in list(dirnames):
+            _harden_extracted_chart_path(current / dirname, directory=True)
+        for filename in filenames:
+            _harden_extracted_chart_path(current / filename, directory=False)
+
+
+def _harden_extracted_chart_path(path: Path, *, directory: bool) -> None:
+    try:
+        stat_result = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect extracted chart path before install {path}: {exc}") from exc
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"extracted chart path {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+        )
+    if directory:
+        if not stat.S_ISDIR(stat_result.st_mode):
+            raise RuntimeError(f"extracted chart path is not a directory before install: {path}")
+        mode = 0o700
+    else:
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise RuntimeError(f"extracted chart path is not a regular file before install: {path}")
+        mode = 0o600
+    try:
+        os.chmod(path, mode)
+    except OSError as exc:
+        raise RuntimeError(f"could not make extracted chart path private before install {path}: {exc}") from exc
+    try:
+        current_stat = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not reinspect extracted chart path before install {path}: {exc}") from exc
+    if directory and not stat.S_ISDIR(current_stat.st_mode):
+        raise RuntimeError(f"extracted chart path changed before install: {path}")
+    if not directory and not stat.S_ISREG(current_stat.st_mode):
+        raise RuntimeError(f"extracted chart path changed before install: {path}")
+    current_mode = current_stat.st_mode & 0o777
+    if current_mode != mode:
+        raise RuntimeError(
+            f"extracted chart path {path} has permissions {current_mode:04o}, expected {mode:04o}"
+        )
 
 
 def sha256_file(path: Path) -> str:

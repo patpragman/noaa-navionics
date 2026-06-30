@@ -2132,6 +2132,9 @@ grep -q 'finite non-negative `/proc/uptime`' docs/sailboat-pi.md
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'def _validate_downloaded_zip' src/noaa_navionics/downloader.py
 grep -q 'def _validate_zip_members_and_crc' src/noaa_navionics/downloader.py
+grep -q 'def _harden_extracted_chart_tree' src/noaa_navionics/downloader.py
+grep -q 'os.chmod(path, mode)' src/noaa_navionics/downloader.py
+grep -q 'test_download_tightens_extracted_chart_tree' tests/test_downloader.py
 grep -q 'def _zip_member_path_is_unsafe' src/noaa_navionics/downloader.py
 grep -q '{label} has unsafe member path' src/noaa_navionics/downloader.py
 grep -q 'chart ZIP has a failed CRC member' tests/test_downloader.py
@@ -2154,6 +2157,8 @@ grep -q 'chart extraction destination is a symlink before promotion' src/noaa_na
 grep -q 'test_write_manifest_revalidates_manifest_target_before_promotion' tests/test_downloader.py
 grep -q 'Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement' README.md
 grep -q 'Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement' docs/sailboat-pi.md
+grep -q 'extracted ENC directories/files are tightened to private `0700`/`0600` before promotion' README.md
+grep -q 'extracted ENC directories/files are tightened to private `0700`/`0600` before promotion' docs/sailboat-pi.md
 grep -q 'chart download path is not a regular file' src/noaa_navionics/downloader.py
 grep -q 'chart download path .* is owned by uid' src/noaa_navionics/downloader.py
 grep -q 'chart download path .* has permissions' src/noaa_navionics/downloader.py

@@ -3889,6 +3889,29 @@ class ManifestTests(unittest.TestCase):
 
             self.assertEqual(output.stat().st_mode & 0o777, 0o700)
 
+    def test_download_tightens_extracted_chart_tree(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            directory_info = zipfile.ZipInfo("US5AK3CM/")
+            directory_info.external_attr = 0o777 << 16
+            file_info = zipfile.ZipInfo("US5AK3CM/US5AK3CM.000")
+            file_info.external_attr = 0o666 << 16
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr(directory_info, "")
+                archive.writestr(file_info, "cell")
+            output = root / "charts"
+            package = Package("Test package", source_zip.as_uri(), "AK_ENCs.zip")
+
+            download_package(package, output, extract=True)
+
+            extracted = output / "AK_ENCs"
+            cell_dir = extracted / "US5AK3CM"
+            cell = cell_dir / "US5AK3CM.000"
+            self.assertEqual(extracted.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(cell_dir.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(cell.stat().st_mode & 0o777, 0o600)
+
     def test_download_rejects_chart_output_directory_when_tightening_fails(self):
         original_chmod = downloader_module.os.chmod
 
