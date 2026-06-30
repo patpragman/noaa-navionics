@@ -2107,8 +2107,8 @@ grep -q 'verify_launcher_env "$launcher_env" "$gps_seconds" "$opencpn_restarts" 
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh
 grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailboat_pi.sh
 grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
-grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment through a no-follow descriptor' README.md
-grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment and promoted user service/autostart files through no-follow descriptors' README.md
+grep -q 'Provisioning revalidates launcher environment and user-file targets immediately before promotion, then verifies the promoted launcher environment and promoted user service/autostart files through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh
 grep -q 'Do not run sailboat Pi provisioning as root' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin' scripts/provision_sailboat_pi.sh
@@ -2125,6 +2125,21 @@ grep -q 'sync_paths "$tmp"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_install_path "$target" "provisioned user file"' scripts/provision_sailboat_pi.sh)" -ge 2
 grep -q 'mv -f "$tmp" "$target"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$target"' scripts/provision_sailboat_pi.sh
+grep -q 'verify_promoted_user_file "$source" "$target" "$mode"' scripts/provision_sailboat_pi.sh
+grep -q 'promoted provisioned user file .* expected' scripts/provision_sailboat_pi.sh
+grep -q 'does not match source' scripts/provision_sailboat_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/provision_sailboat_pi.sh").read_text(encoding="utf-8")
+install_start = text.index("install_file_atomic()")
+promote = text.index('mv -f "$tmp" "$target"', install_start)
+verify = text.index('verify_promoted_user_file "$source" "$target" "$mode"', promote)
+sync = text.index('sync_paths "$target"', verify)
+daemon = text.index('run systemctl --user daemon-reload')
+if not promote < verify < sync < daemon:
+    raise SystemExit("promoted user files must be verified before sync and daemon reload")
+PY
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.service" "$chart_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart_timer" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644' scripts/provision_sailboat_pi.sh

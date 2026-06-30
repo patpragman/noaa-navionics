@@ -739,7 +739,63 @@ install_file_atomic() {
     rm -f "$tmp"
     return 1
   fi
-  sync_paths "$target"
+  if ! verify_promoted_user_file "$source" "$target" "$mode"; then
+    return 1
+  fi
+  if ! sync_paths "$target"; then
+    return 1
+  fi
+  verify_promoted_user_file "$source" "$target" "$mode"
+}
+
+verify_promoted_user_file() {
+  local source="$1"
+  local target="$2"
+  local expected_mode="$3"
+  python3 - "$source" "$target" "$expected_mode" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+source_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2]).expanduser()
+expected_mode = int(sys.argv[3], 8)
+
+try:
+    expected_bytes = source_path.read_bytes()
+except OSError as exc:
+    raise SystemExit(f"could not read provisioned user file source {source_path}: {exc}") from exc
+
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(target_path, flags)
+except OSError as exc:
+    raise SystemExit(f"could not open promoted provisioned user file {target_path}: {exc}") from exc
+
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"promoted provisioned user file is not a regular file: {target_path}")
+    if opened.st_uid != os.getuid():
+        raise SystemExit(
+            f"promoted provisioned user file {target_path} is owned by uid {opened.st_uid}, expected {os.getuid()}"
+        )
+    actual_mode = opened.st_mode & 0o777
+    if actual_mode != expected_mode:
+        raise SystemExit(
+            f"promoted provisioned user file {target_path} has permissions {actual_mode:04o}, expected {expected_mode:04o}"
+        )
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
+        actual_bytes = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+if actual_bytes != expected_bytes:
+    raise SystemExit(f"promoted provisioned user file {target_path} does not match source {source_path}")
+PY
 }
 
 require_loaded_user_unit_property() {
