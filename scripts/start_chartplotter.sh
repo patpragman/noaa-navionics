@@ -162,6 +162,7 @@ load_launcher_settings() {
   local trimmed
   local value
   local start_on_failed_text
+  local seen_gps_seconds=0
   if [[ -r "$launcher_env" ]]; then
     while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
       trimmed="${raw_line#"${raw_line%%[![:space:]]*}"}"
@@ -182,6 +183,7 @@ load_launcher_settings() {
       case "$key" in
         NOAA_NAVIONICS_GPS_SECONDS)
           gps_seconds="$value"
+          seen_gps_seconds=1
           ;;
         NOAA_NAVIONICS_WARNING_SECONDS)
           warning_seconds="$value"
@@ -209,29 +211,33 @@ load_launcher_settings() {
     done <"$launcher_env"
   fi
   start_on_failed_text="${start_on_failed_text:-no}"
+  if [[ "$seen_gps_seconds" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_GPS_SECONDS in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; using 60 seconds." >&2
-    gps_seconds=60
+    echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; expected positive integer." >&2
+    return 1
   fi
   if [[ ! "$warning_seconds" =~ ^[0-9]+$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_WARNING_SECONDS=${warning_seconds}; using 8 seconds." >&2
-    warning_seconds=8
+    echo "Invalid NOAA_NAVIONICS_WARNING_SECONDS=${warning_seconds}; expected non-negative integer." >&2
+    return 1
   fi
   if [[ ! "$readiness_attempts" =~ ^[1-9][0-9]*$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=${readiness_attempts}; using 3 attempts." >&2
-    readiness_attempts=3
+    echo "Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=${readiness_attempts}; expected positive integer." >&2
+    return 1
   fi
   if [[ ! "$readiness_retry_delay" =~ ^[0-9]+$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_READINESS_RETRY_DELAY=${readiness_retry_delay}; using 10 seconds." >&2
-    readiness_retry_delay=10
+    echo "Invalid NOAA_NAVIONICS_READINESS_RETRY_DELAY=${readiness_retry_delay}; expected non-negative integer." >&2
+    return 1
   fi
   if [[ ! "$opencpn_restarts" =~ ^[0-9]+$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts}; using 3 restarts." >&2
-    opencpn_restarts=3
+    echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts}; expected non-negative integer." >&2
+    return 1
   fi
   if [[ ! "$opencpn_restart_delay" =~ ^[0-9]+$ ]]; then
-    echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay}; using 5 seconds." >&2
-    opencpn_restart_delay=5
+    echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay}; expected non-negative integer." >&2
+    return 1
   fi
   case "${start_on_failed_text,,}" in
     1|yes|true|on)
@@ -241,8 +247,8 @@ load_launcher_settings() {
       start_on_failed_readiness=0
       ;;
     *)
-      echo "Invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS=${start_on_failed_text}; using no." >&2
-      start_on_failed_readiness=0
+      echo "Invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS=${start_on_failed_text}; expected yes/no." >&2
+      return 1
       ;;
   esac
 }
