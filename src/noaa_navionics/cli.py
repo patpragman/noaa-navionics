@@ -1048,6 +1048,13 @@ def _run_anchor_watch(
             print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
         return 1
     if anchor_set_from_fix and anchor_established:
+        if checked == 0:
+            print(
+                "No usable current GPS fix was available after setting the anchor; "
+                "need at least one drift check.",
+                file=sys.stderr,
+            )
+            return 1
         if live_stream:
             print("Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.", file=sys.stderr)
             return 1

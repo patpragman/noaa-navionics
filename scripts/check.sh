@@ -2272,10 +2272,14 @@ grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloa
 grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_rejects_run_without_post_anchor_fix' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests/test_downloader.py
+grep -q 'need at least one drift check' src/noaa_navionics/cli.py
+grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' README.md
+grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' docs/sailboat-pi.md
 grep -q 'test_distance_meters_uses_haversine_distance' tests/test_downloader.py
 grep -q 'mark-position", "--seconds", "0"' tests/test_downloader.py
 grep -q 'anchor-watch", "--anchor-samples", "0"' tests/test_downloader.py
