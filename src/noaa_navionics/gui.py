@@ -17,6 +17,7 @@ from .report import build_status_report, format_status_text, write_status_report
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
 PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")
 PACKAGE_KINDS = set(PACKAGE_KIND_OPTIONS)
+DEFAULT_MIN_FREE_GB = 2.0
 
 
 def run_configured_preflight(
@@ -65,6 +66,34 @@ def sync_configured_charts(app_config: AppConfig, *, progress=None, retries: int
         force=app_config.force,
         retries=retries,
         retry_delay=retry_delay,
+        progress=progress,
+    )
+
+
+def download_selected_package(
+    package,
+    output: Path,
+    *,
+    extract: bool,
+    keep_zip: bool,
+    force: bool,
+    progress=None,
+    min_free_gb: float = DEFAULT_MIN_FREE_GB,
+):
+    output = Path(output).expanduser()
+    disk_check = check_disk_space(output, min_free_gb=min_free_gb)
+    if not disk_check.ok:
+        raise RuntimeError(f"download requires writable chart storage with enough free space: {disk_check.detail}")
+    output.mkdir(parents=True, exist_ok=True)
+    disk_check = check_disk_space(output, min_free_gb=min_free_gb)
+    if not disk_check.ok:
+        raise RuntimeError(f"download requires writable chart storage with enough free space: {disk_check.detail}")
+    return download_package(
+        package,
+        output,
+        extract=extract,
+        keep_zip=keep_zip,
+        force=force,
         progress=progress,
     )
 
@@ -303,7 +332,7 @@ class DownloaderApp(tk.Tk):
             def progress(done: int, total: Optional[int]) -> None:
                 self.queue.put(("progress", (done, total)))
 
-            result = download_package(
+            result = download_selected_package(
                 package,
                 Path(self.output.get()),
                 extract=self.extract.get(),

@@ -2041,6 +2041,69 @@ class GuiTests(unittest.TestCase):
         self.assertNotIn("updates", gui_module.PACKAGE_KIND_OPTIONS)
         self.assertNotIn("catalog", gui_module.PACKAGE_KIND_OPTIONS)
 
+    def test_gui_download_rejects_low_disk_before_download(self):
+        package = package_for(state="AK")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "charts" / "noaa"
+            calls = []
+            original_download = gui_module.download_package
+            original_disk_check = gui_module.check_disk_space
+
+            def fake_download_package(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise AssertionError("download_package should not be called")
+
+            try:
+                gui_module.download_package = fake_download_package
+                gui_module.check_disk_space = lambda *args, **kwargs: health_module.CheckResult(
+                    "Disk",
+                    False,
+                    "0.1 GB free at /charts; minimum 2.0 GB",
+                )
+
+                with self.assertRaisesRegex(RuntimeError, "enough free space"):
+                    gui_module.download_selected_package(
+                        package,
+                        output,
+                        extract=True,
+                        keep_zip=True,
+                        force=True,
+                    )
+            finally:
+                gui_module.download_package = original_download
+                gui_module.check_disk_space = original_disk_check
+
+            self.assertEqual(calls, [])
+
+    def test_gui_download_rejects_missing_storage_before_creating_directory(self):
+        package = package_for(state="AK")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "missing-storage" / "charts"
+            calls = []
+            original_download = gui_module.download_package
+
+            def fake_download_package(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise AssertionError("download_package should not be called")
+
+            try:
+                gui_module.download_package = fake_download_package
+
+                with self.assertRaisesRegex(RuntimeError, "create or mount the configured storage path"):
+                    gui_module.download_selected_package(
+                        package,
+                        output,
+                        extract=True,
+                        keep_zip=True,
+                        force=True,
+                    )
+            finally:
+                gui_module.download_package = original_download
+
+            self.assertFalse(output.exists())
+            self.assertEqual(calls, [])
+
     def test_configured_preflight_uses_onboard_config_values(self):
         app_config = AppConfig(
             chart_package="state",

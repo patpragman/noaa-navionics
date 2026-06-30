@@ -2347,6 +2347,8 @@ grep -q 'PACKAGE_KIND_OPTIONS = ("state", "cgd", "region", "chart", "all")' src/
 grep -q 'values=PACKAGE_KIND_OPTIONS' src/noaa_navionics/gui.py
 grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
+grep -q 'def download_selected_package' src/noaa_navionics/gui.py
+grep -q 'download requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 python3 - <<'PY'
@@ -2361,6 +2363,20 @@ mkdir_index = sync_block.index("app_config.chart_output.mkdir")
 if mkdir_index < disk_index:
     raise SystemExit("GUI sync must check chart storage before creating chart output")
 PY
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("src/noaa_navionics/gui.py").read_text(encoding="utf-8")
+download_start = text.index("def download_selected_package")
+download_end = text.index("class DownloaderApp")
+download_block = text[download_start:download_end]
+disk_index = download_block.index("disk_check = check_disk_space")
+mkdir_index = download_block.index("output.mkdir")
+if mkdir_index < disk_index:
+    raise SystemExit("GUI download must check chart storage before creating chart output")
+PY
+grep -q 'test_gui_download_rejects_low_disk_before_download' tests/test_downloader.py
+grep -q 'test_gui_download_rejects_missing_storage_before_creating_directory' tests/test_downloader.py
 grep -q 'gpsd_host=app_config.gpsd_host' src/noaa_navionics/gui.py
 grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gui.py
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py
