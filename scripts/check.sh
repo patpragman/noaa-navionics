@@ -298,6 +298,7 @@ grep -q 'validate_trusted_local_command "$command_name" "$command_path"' scripts
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/deploy_to_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/deploy_to_pi.sh
 grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/deploy_to_pi.sh
+grep -q 'Local ${command_name} command is not executable after resolution' scripts/deploy_to_pi.sh
 grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
@@ -373,6 +374,8 @@ grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
+grep -q 'Local ${command_name} command is not executable after resolution' scripts/dock_test_pi.sh
+grep -q 'Local ${command_name} command is not executable after resolution' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
 grep -Fq 'ssh -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
@@ -385,8 +388,8 @@ grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
 grep -q -- '--allow-dirty' scripts/verify_pi.sh
 grep -q 'Refusing to verify a dirty local worktree as production evidence' scripts/verify_pi.sh
 grep -q 'verify_args+=("$1")' scripts/dock_test_pi.sh
-grep -q 'trusted local deployment commands' README.md
-grep -q 'trusted local deployment commands' docs/sailboat-pi.md
+grep -q 'trusted executable local deployment commands' README.md
+grep -q 'trusted executable local deployment commands' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh

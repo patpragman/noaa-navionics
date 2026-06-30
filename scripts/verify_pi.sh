@@ -127,6 +127,10 @@ validate_trusted_local_command() {
     echo "Local ${command_name} command is not a regular file after resolution: $command_path -> $resolved_path" >&2
     exit 2
   fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not executable after resolution: $command_path -> $resolved_path" >&2
+    exit 2
+  fi
   check_local_directory_chain "$command_path"
   check_local_directory_chain "$resolved_path"
   check_local_owner_and_mode file "$resolved_path"
