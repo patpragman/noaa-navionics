@@ -13,6 +13,7 @@ revision_file="${data_dir}/source-revision"
 
 skip_apt=0
 allow_non_pi=0
+apt_get_cmd=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -553,11 +554,15 @@ PY
 }
 
 apt_update() {
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get update
+  local apt_get_bin
+  apt_get_bin="$(apt_get_command)" || return 1
+  sudo env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" update
 }
 
 apt_install() {
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+  local apt_get_bin
+  apt_get_bin="$(apt_get_command)" || return 1
+  sudo env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" install -y "$@"
 }
 
 path_in_trusted_system_dir() {
@@ -571,7 +576,7 @@ path_in_trusted_system_dir() {
   esac
 }
 
-check_root_command_integrity() {
+trusted_root_command_path() {
   local command_name="$1"
   local label="$2"
   local command_path
@@ -649,6 +654,18 @@ check_root_command_integrity() {
     echo "${label} directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
     return 1
   fi
+  printf '%s\n' "$resolved_path"
+}
+
+check_root_command_integrity() {
+  trusted_root_command_path "$1" "$2" >/dev/null
+}
+
+apt_get_command() {
+  if [[ -z "$apt_get_cmd" ]]; then
+    apt_get_cmd="$(trusted_root_command_path apt-get "APT command")" || return 1
+  fi
+  printf '%s\n' "$apt_get_cmd"
 }
 
 ensure_gpsd_client_tools() {

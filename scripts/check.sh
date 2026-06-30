@@ -455,7 +455,7 @@ grep -q 'root text target directory path contains a symlink' scripts/install_ras
 grep -q 'root text target directory .* has permissions' scripts/install_raspberry_pi.sh
 grep -q 'root text target .* is owned by uid' scripts/install_raspberry_pi.sh
 ! grep -q 'sudo tee -a /etc/apt/sources.list' scripts/install_raspberry_pi.sh
-grep -q 'DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
+grep -q 'DEBIAN_FRONTEND=noninteractive "$apt_get_bin"' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
 grep -q 'umask 077' scripts/install_raspberry_pi.sh
 grep -q 'umask 077' scripts/provision_sailboat_pi.sh
@@ -522,7 +522,14 @@ grep -q 'usage()' scripts/configure_desktop_autologin.sh
 grep -q 'ensure_vcgencmd' scripts/install_raspberry_pi.sh
 grep -q 'ensure_gpsd_client_tools' scripts/install_raspberry_pi.sh
 grep -q 'path_in_trusted_system_dir()' scripts/install_raspberry_pi.sh
+grep -q 'trusted_root_command_path()' scripts/install_raspberry_pi.sh
 grep -q 'check_root_command_integrity()' scripts/install_raspberry_pi.sh
+grep -q 'apt_get_command()' scripts/install_raspberry_pi.sh
+grep -q 'apt_get_cmd="$(trusted_root_command_path apt-get "APT command")"' scripts/install_raspberry_pi.sh
+grep -q 'apt_get_bin="$(apt_get_command)"' scripts/install_raspberry_pi.sh
+grep -q 'sudo env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" update' scripts/install_raspberry_pi.sh
+grep -q 'sudo env DEBIAN_FRONTEND=noninteractive "$apt_get_bin" install -y "$@"' scripts/install_raspberry_pi.sh
+! grep -q 'sudo env DEBIAN_FRONTEND=noninteractive apt-get' scripts/install_raspberry_pi.sh
 grep -q 'is not in a trusted system directory' scripts/install_raspberry_pi.sh
 grep -q 'is owned by uid .* expected root' scripts/install_raspberry_pi.sh
 grep -q 'directory is owned by uid .* expected root' scripts/install_raspberry_pi.sh
@@ -544,8 +551,10 @@ grep -q 'trusted cgps is not available after installing GPSD client tools' scrip
 grep -q 'trusted vcgencmd is not available after installing Raspberry Pi utilities' scripts/install_raspberry_pi.sh
 grep -q 'trusted root-owned `cgps`' README.md
 grep -q 'trusted root-owned `vcgencmd`' README.md
+grep -q 'resolves apt-get through trusted root-owned command checks' README.md
 grep -q 'trusted root-owned `cgps`' docs/sailboat-pi.md
 grep -q 'trusted root-owned `vcgencmd`' docs/sailboat-pi.md
+grep -q 'resolves apt-get through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'status --porcelain --untracked-files=all' scripts/install_raspberry_pi.sh
 grep -q 'revision="${revision}-dirty"' scripts/install_raspberry_pi.sh
 grep -q 'Direct installs run on a dirty Pi worktree' README.md
