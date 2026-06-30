@@ -237,6 +237,9 @@ grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
 grep -q 'os.fsync(handle.fileno())' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/deploy_to_pi.sh
 grep -q -- '--allow-dirty' scripts/dock_test_pi.sh
+grep -q -- '--allow-dirty' scripts/verify_pi.sh
+grep -q 'Refusing to verify a dirty local worktree as production evidence' scripts/verify_pi.sh
+grep -q 'verify_args+=("$1")' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
@@ -390,6 +393,7 @@ grep -q 'Desktop autologin and chartplotter autostart are also configured by pro
 grep -q 'source-revision' scripts/verify_pi.sh
 grep -q 'source revision matches' scripts/verify_pi.sh
 grep -q 'expected_revision="${expected_revision}-dirty"' scripts/verify_pi.sh
+grep -q 'allow_dirty=0' scripts/verify_pi.sh
 grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
@@ -2174,6 +2178,45 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'boot ID must be the Linux boot_id value' "$verify_output"
+
+verify_revision_repo="$tmpdir/verify-revision-repo"
+mkdir -p "$verify_revision_repo/scripts" "$verify_revision_repo/bin"
+cp scripts/verify_pi.sh "$verify_revision_repo/scripts/verify_pi.sh"
+chmod +x "$verify_revision_repo/scripts/verify_pi.sh"
+cat >"$verify_revision_repo/bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+exit 0
+EOF
+chmod +x "$verify_revision_repo/bin/ssh"
+git -C "$verify_revision_repo" init -q
+git -C "$verify_revision_repo" config user.email check@example.invalid
+git -C "$verify_revision_repo" config user.name "NOAA Navionics Check"
+git -C "$verify_revision_repo" add scripts/verify_pi.sh bin/ssh
+git -C "$verify_revision_repo" commit -q -m initial
+verify_clean_revision="$(git -C "$verify_revision_repo" rev-parse --short HEAD)"
+verify_fake_ssh_args="$tmpdir/verify-fake-ssh-args"
+NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  PATH="$verify_revision_repo/bin:$PATH" \
+  "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
+grep -Fq "NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}" "$verify_fake_ssh_args"
+printf '# dirty change\n' >>"$verify_revision_repo/scripts/verify_pi.sh"
+set +e
+NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  PATH="$verify_revision_repo/bin:$PATH" \
+  "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject a dirty local worktree without --allow-dirty" >&2
+  exit 1
+fi
+grep -q 'Refusing to verify a dirty local worktree as production evidence' "$verify_output"
+NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  PATH="$verify_revision_repo/bin:$PATH" \
+  "$verify_revision_repo/scripts/verify_pi.sh" --allow-dirty pi@example.invalid >"$verify_output" 2>&1
+grep -Fq "NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}-dirty" "$verify_fake_ssh_args"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --gps-seconds nope >"$dock_output" 2>&1

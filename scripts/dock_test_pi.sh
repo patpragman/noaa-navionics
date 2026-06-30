@@ -236,6 +236,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --allow-dirty)
       deploy_args+=("$1")
+      verify_args+=("$1")
       shift
       ;;
     --skip-deploy)

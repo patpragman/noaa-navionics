@@ -873,7 +873,8 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             self.assertEqual(code, 1)
             self.assertEqual(calls, [("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947, True)])
-            self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
+            expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
+            self.assertTrue((track_output / "tracks" / expected_name).exists())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
@@ -927,7 +928,8 @@ class OpenCPNConfigTests(unittest.TestCase):
                 cli_module._read_fixes = original
 
             self.assertEqual(code, 0)
-            self.assertTrue((track_output / "tracks" / "track-20260629.gpx").exists())
+            expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
+            self.assertTrue((track_output / "tracks" / expected_name).exists())
 
     def test_cli_log_track_explicit_device_and_output_override_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -994,7 +996,8 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(calls, [("/dev/ttyUSB-test", 9600, None, False, False)])
             self.assertFalse(configured_output.exists())
-            self.assertTrue((explicit_output / "tracks" / "track-20260629.gpx").exists())
+            expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
+            self.assertTrue((explicit_output / "tracks" / expected_name).exists())
 
     def test_cli_gps_monitor_seconds_bounds_gpsd_wait(self):
         with tempfile.TemporaryDirectory() as tmpdir:

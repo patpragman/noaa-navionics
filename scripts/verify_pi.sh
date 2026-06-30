@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--opencpn-restarts N] [--opencpn-restart-delay N] [--expected-gps-device PATH] [--expected-boot-id ID] user@raspberrypi.local
+Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [--opencpn-restarts N] [--opencpn-restart-delay N] [--expected-gps-device PATH] [--expected-boot-id ID] [--allow-dirty] user@raspberrypi.local
 
 Runs onboard verification on the Raspberry Pi over SSH.
 With --require-chartplotter-started, also requires a post-boot launcher log
@@ -13,11 +13,13 @@ Use --opencpn-restarts and --opencpn-restart-delay to assert the persisted
 OpenCPN supervision policy.
 Use --expected-gps-device to assert GPSD and the onboard config use a specific receiver.
 Use --expected-boot-id after reboot to assert verification ran against that boot.
+Use --allow-dirty only for deliberate test deployments recorded with a -dirty suffix.
 Nothing is installed or enabled on the local computer.
 EOF
 }
 
 target=""
+allow_dirty=0
 require_chartplotter_started=0
 gps_seconds=60
 opencpn_restarts=3
@@ -140,6 +142,10 @@ while [[ $# -gt 0 ]]; do
       require_chartplotter_started=1
       shift
       ;;
+    --allow-dirty)
+      allow_dirty=1
+      shift
+      ;;
     --gps-seconds)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "$1 requires a value" >&2
@@ -213,6 +219,13 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 expected_revision="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 worktree_status="$(git -C "$repo_root" status --porcelain --untracked-files=all 2>/dev/null || true)"
 if [[ "$expected_revision" != "unknown" && -n "$worktree_status" ]]; then
+  if [[ "$allow_dirty" -eq 0 ]]; then
+    cat >&2 <<EOF
+Refusing to verify a dirty local worktree as production evidence.
+Commit or stash local changes first, or pass --allow-dirty only for a deliberate test deployment recorded as ${expected_revision}-dirty.
+EOF
+    exit 2
+  fi
   expected_revision="${expected_revision}-dirty"
 fi
 expected_revision_quoted="$(printf '%q' "$expected_revision")"
