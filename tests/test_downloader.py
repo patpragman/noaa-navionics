@@ -8915,6 +8915,33 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(track_check.ok)
         self.assertIn("does not exist", track_check.detail)
 
+    def test_preflight_rejects_volatile_direct_serial_device_before_opening(self):
+        original_open = health_module.open_nmea_stream
+
+        def unexpected_open_nmea_stream(device, baud=4800):
+            raise AssertionError("preflight should reject volatile GPS device path before opening it")
+
+        try:
+            health_module.open_nmea_stream = unexpected_open_nmea_stream
+            with tempfile.TemporaryDirectory() as tmpdir:
+                device = Path(tmpdir) / "ttyUSB0"
+                device.write_text("", encoding="ascii")
+
+                results = health_module.run_preflight(
+                    chart_dir=Path(tmpdir) / "charts",
+                    gps_device=str(device),
+                    gps_seconds=0,
+                )
+        finally:
+            health_module.open_nmea_stream = original_open
+
+        device_check = next(check for check in results if check.name == "GPS Device")
+        gps_check = next(check for check in results if check.name == "GPS")
+        self.assertFalse(device_check.ok)
+        self.assertIn("not stable", device_check.detail)
+        self.assertFalse(gps_check.ok)
+        self.assertIn("not checked because", gps_check.detail)
+
 
 class PiHealthTests(unittest.TestCase):
     def test_check_source_revision_skips_non_pi(self):

@@ -101,7 +101,12 @@ def run_preflight(
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
     elif gps_device:
-        results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
+        gps_device_check = check_gps_device_path(gps_device)
+        results.append(gps_device_check)
+        if gps_device_check.ok:
+            results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
+        else:
+            results.append(CheckResult("GPS", False, f"not checked because {gps_device_check.detail}"))
     else:
         results.append(
             CheckResult(

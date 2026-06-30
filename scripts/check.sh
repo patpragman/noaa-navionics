@@ -1514,6 +1514,9 @@ grep -q 'def _validate_live_serial_device' src/noaa_navionics/cli.py
 grep -q 'GPS serial device uses a volatile USB name' src/noaa_navionics/cli.py
 grep -q 'test_cli_log_track_rejects_volatile_explicit_serial_device' tests/test_downloader.py
 grep -q 'test_cli_gps_monitor_rejects_volatile_explicit_serial_device' tests/test_downloader.py
+grep -q 'gps_device_check = check_gps_device_path(gps_device)' src/noaa_navionics/health.py
+grep -q 'not checked because {gps_device_check.detail}' src/noaa_navionics/health.py
+grep -q 'test_preflight_rejects_volatile_direct_serial_device_before_opening' tests/test_downloader.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/config.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/health.py
 grep -q 'volatile USB name' src/noaa_navionics/config.py
