@@ -1045,6 +1045,8 @@ grep -q 'systemctl restart gpsd.socket gpsd.service' scripts/configure_gps_time.
 grep -q 'Existing chrony GPS time config is required when --skip-gps-time is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is a symlink when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config is not a regular file when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chrony GPS time config is not a regular file when opened' scripts/provision_sailboat_pi.sh
+grep -q 'could not open chrony config' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config .* is owned by uid' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chrony GPS time config .* has permissions' scripts/provision_sailboat_pi.sh
 grep -q 'chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used' scripts/provision_sailboat_pi.sh
@@ -1100,8 +1102,8 @@ grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/
 grep -q 'test_check_chrony_gps_time_config_accepts_managed_refclock' tests/test_downloader.py
 grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_downloader.py
 grep -q 'test_read_trusted_config_lines_rejects_writable_config_before_parsing' tests/test_downloader.py
-grep -q 'Readiness reads GPSD and chrony config files only after a no-follow descriptor' README.md
-grep -q 'Readiness reads GPSD and chrony config files only after a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'Readiness and production skip checks read GPSD and chrony config files only after a no-follow descriptor' README.md
+grep -q 'Readiness and production skip checks read GPSD and chrony config files only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Readiness also rejects unsafe chrony config paths' README.md
 grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py

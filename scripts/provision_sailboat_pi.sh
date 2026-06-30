@@ -199,6 +199,7 @@ validate_existing_gps_time_config() {
   if ! python3 - <<'PY'
 from pathlib import Path
 import os
+import stat as stat_module
 
 chrony_conf = Path("/etc/chrony/chrony.conf")
 expected = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
@@ -237,10 +238,31 @@ if mode_bits & 0o022:
         f"Existing chrony GPS time config {chrony_conf} has permissions {mode_bits:04o}, "
         "expected no group/other write bits"
     )
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
-    text = chrony_conf.read_text(encoding="utf-8")
+    fd = os.open(chrony_conf, flags)
 except OSError as exc:
-    raise SystemExit(f"could not read chrony config: {chrony_conf}: {exc}") from exc
+    raise SystemExit(f"could not open chrony config: {chrony_conf}: {exc}") from exc
+try:
+    opened_stat = os.fstat(fd)
+    if not stat_module.S_ISREG(opened_stat.st_mode):
+        raise SystemExit(f"Existing chrony GPS time config is not a regular file when opened: {chrony_conf}")
+    if opened_stat.st_uid != 0:
+        raise SystemExit(
+            f"Existing chrony GPS time config {chrony_conf} is owned by uid {opened_stat.st_uid}, expected 0"
+        )
+    opened_mode = opened_stat.st_mode & 0o777
+    if opened_mode & 0o022:
+        raise SystemExit(
+            f"Existing chrony GPS time config {chrony_conf} has permissions {opened_mode:04o}, "
+            "expected no group/other write bits"
+        )
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        fd = -1
+        text = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
 configured = any(line.strip() == expected for line in text.splitlines() if not line.lstrip().startswith("#"))
 if not configured:
     raise SystemExit("chrony config must already contain the NOAA Navionics GPSD SHM 0 time source when --skip-gps-time is used")
