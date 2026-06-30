@@ -235,6 +235,17 @@ def _prepare_private_status_parent(path: Path) -> None:
             f"expected {os.getuid()}"
         )
     os.chmod(path, 0o700)
+    if path.is_symlink():
+        raise RuntimeError(f"status report directory {path} became a symlink after permission tightening")
+    stat_result = path.stat()
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"status report directory {path} is owned by uid {stat_result.st_uid}, "
+            f"expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o077:
+        raise RuntimeError(f"status report directory {path} has permissions {mode:04o}, expected private 0700")
     _fsync_directory(path)
     _fsync_directory(path.parent)
 
@@ -255,6 +266,21 @@ def _prepare_home_status_cache_parent(path: Path) -> None:
     mode = stat_result.st_mode & 0o777
     if mode & 0o077:
         os.chmod(cache_parent, 0o700)
+    if cache_parent.is_symlink():
+        raise RuntimeError(
+            f"status report cache parent directory {cache_parent} became a symlink after permission tightening"
+        )
+    stat_result = cache_parent.stat()
+    if stat_result.st_uid != os.getuid():
+        raise RuntimeError(
+            f"status report cache parent directory {cache_parent} is owned by uid "
+            f"{stat_result.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat_result.st_mode & 0o777
+    if mode & 0o077:
+        raise RuntimeError(
+            f"status report cache parent directory {cache_parent} has permissions {mode:04o}, expected private 0700"
+        )
     _fsync_directory(cache_parent)
     _fsync_directory(cache_parent.parent)
 

@@ -6568,6 +6568,27 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
+    def test_write_status_report_rejects_output_directory_when_tightening_fails(self):
+        original_chmod = report_module.os.chmod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            root.chmod(0o755)
+            output = root / "status.json"
+
+            def no_op_chmod(path, mode):
+                if Path(path) == root:
+                    return None
+                return original_chmod(path, mode)
+
+            try:
+                report_module.os.chmod = no_op_chmod
+                with self.assertRaisesRegex(RuntimeError, "status report directory .* permissions 0755"):
+                    write_status_report({"ok": True}, output)
+            finally:
+                report_module.os.chmod = original_chmod
+                root.chmod(0o700)
+
     def test_write_status_report_tightens_public_home_cache_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -6590,6 +6611,38 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(cache_parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(status_dir.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(status_file.stat().st_mode), 0o600)
+
+    def test_write_status_report_rejects_home_cache_parent_when_tightening_fails(self):
+        original_chmod = report_module.os.chmod
+        old_home = os.environ.get("HOME")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            cache_parent = root / ".cache"
+            cache_parent.mkdir()
+            cache_parent.chmod(0o755)
+
+            def no_op_chmod(path, mode):
+                if Path(path) == cache_parent:
+                    return None
+                return original_chmod(path, mode)
+
+            os.environ["HOME"] = str(root)
+            try:
+                report_module.os.chmod = no_op_chmod
+                output = Path("~/.cache/noaa-navionics/status.json")
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "status report cache parent directory .* permissions 0755",
+                ):
+                    write_status_report({"ok": True}, output)
+            finally:
+                report_module.os.chmod = original_chmod
+                cache_parent.chmod(0o700)
+                if old_home is None:
+                    os.environ.pop("HOME", None)
+                else:
+                    os.environ["HOME"] = old_home
 
     def test_write_status_report_rejects_symlinked_output_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:

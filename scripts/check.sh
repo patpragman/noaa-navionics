@@ -2131,6 +2131,9 @@ grep -q 'def _prepare_home_status_cache_parent' src/noaa_navionics/report.py
 grep -q 'status report parent directory' src/noaa_navionics/report.py
 grep -q 'status report parent path contains a symlink' src/noaa_navionics/report.py
 grep -q 'status report cache parent directory' src/noaa_navionics/report.py
+grep -q 'status report directory .* expected private 0700' src/noaa_navionics/report.py
+grep -q 'status report cache parent directory .* expected private 0700' src/noaa_navionics/report.py
+grep -q 'became a symlink after permission tightening' src/noaa_navionics/report.py
 grep -q 'os.chmod(cache_parent, 0o700)' src/noaa_navionics/report.py
 grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
@@ -2141,6 +2144,8 @@ grep -q 'status report cache parent directory .* is owned by uid' scripts/verify
 grep -q 'status report cache parent directory .* has permissions' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'test_write_status_report_tightens_public_home_cache_parent' tests/test_downloader.py
+grep -q 'test_write_status_report_rejects_output_directory_when_tightening_fails' tests/test_downloader.py
+grep -q 'test_write_status_report_rejects_home_cache_parent_when_tightening_fails' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q 'test_write_status_report_directory_sync_uses_no_follow_open' tests/test_downloader.py
