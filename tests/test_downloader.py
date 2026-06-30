@@ -5855,6 +5855,30 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn("has permissions 0777", summary["error"])
             self.assertNotIn("created_at", summary)
 
+    def test_manifest_summary_marks_writable_extract_tree(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            charts = Path(tmpdir) / "charts"
+            charts.mkdir()
+            extract = charts / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            cell.chmod(0o666)
+            manifest = charts / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"2000-01-01T00:00:00Z",'
+                '"package":{"label":"Test","filename":"AK_ENCs.zip","url":"file:///test.zip"},'
+                '"download":{"path":"","url":"file:///test.zip","bytes":1,"sha256":"abc","skipped":false},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            summary = report_module._manifest_summary(charts)
+
+            self.assertEqual(summary["actual_enc_cell_count"], 0)
+            self.assertIn("manifest extract file", summary["extract_path_error"])
+            self.assertIn("has permissions 0666", summary["extract_path_error"])
+
     def test_manifest_summary_marks_symlinked_recorded_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

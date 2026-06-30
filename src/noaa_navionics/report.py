@@ -17,8 +17,8 @@ import tempfile
 import time
 
 from .config import AppConfig, read_config
-from .downloader import MANIFEST_NAME, count_enc_cells, read_manifest
-from .health import CheckResult, run_preflight, _trusted_system_command
+from .downloader import MANIFEST_NAME, read_manifest
+from .health import CheckResult, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
 from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
 from . import __version__
 
@@ -1013,6 +1013,16 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
     extract_path_symlink_component = (
         _first_symlink_ancestor(extract_path_obj) if extract_path_obj is not None else None
     )
+    actual_enc_cell_count = 0
+    extract_path_error = ""
+    if (
+        extract_path_obj is not None
+        and extract_path_obj.exists()
+        and extract_path_obj.is_dir()
+        and not extract_path_obj.is_symlink()
+        and extract_path_symlink_component is None
+    ):
+        actual_enc_cell_count, extract_path_error = _trusted_enc_cell_tree_count(extract_path_obj)
     summary.update(
         {
             "created_at": manifest.get("created_at", ""),
@@ -1036,19 +1046,11 @@ def _manifest_summary(chart_output: Path) -> dict[str, object]:
                 str(extract_path_symlink_component) if extract_path_symlink_component is not None else ""
             ),
             "enc_cell_count": extract.get("enc_cell_count", 0) if isinstance(extract, dict) else 0,
-            "actual_enc_cell_count": (
-                count_enc_cells(extract_path_obj)
-                if (
-                    extract_path_obj is not None
-                    and extract_path_obj.exists()
-                    and extract_path_obj.is_dir()
-                    and not extract_path_obj.is_symlink()
-                    and extract_path_symlink_component is None
-                )
-                else 0
-            ),
+            "actual_enc_cell_count": actual_enc_cell_count,
         }
     )
+    if extract_path_error:
+        summary["extract_path_error"] = extract_path_error
     if (
         download_path_obj is not None
         and download_path_obj.exists()

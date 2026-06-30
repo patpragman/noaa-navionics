@@ -483,11 +483,52 @@ def sha256_trusted_file(path, label, expected_uid):
             os.close(fd)
     return digest.hexdigest(), file_stat
 
-def count_enc_cells(path):
+def trusted_enc_cell_tree_count(path):
     root = Path(path).expanduser()
     if not root.exists():
         return 0
-    return sum(1 for candidate in root.rglob("*.000") if candidate.is_file() and not candidate.is_symlink())
+    expected_uid = os.getuid()
+
+    def validate_entry(candidate, *, expected_directory=False):
+        try:
+            candidate_stat = candidate.lstat()
+        except OSError as exc:
+            raise SystemExit(f"could not inspect manifest extract path {candidate}: {exc}") from exc
+        if stat.S_ISLNK(candidate_stat.st_mode):
+            raise SystemExit(f"status report manifest extract path contains a symlink: {candidate}")
+        if expected_directory:
+            if not stat.S_ISDIR(candidate_stat.st_mode):
+                raise SystemExit(f"status report manifest extract path entry is not a directory: {candidate}")
+            label = "directory"
+        else:
+            if not stat.S_ISREG(candidate_stat.st_mode):
+                raise SystemExit(f"status report manifest extract path entry is not a regular file: {candidate}")
+            label = "file"
+        if candidate_stat.st_uid != expected_uid:
+            raise SystemExit(
+                f"status report manifest extract {label} {candidate} is owned by uid "
+                f"{candidate_stat.st_uid}, expected {expected_uid}"
+            )
+        mode = candidate_stat.st_mode & 0o777
+        if mode & 0o022:
+            raise SystemExit(
+                f"status report manifest extract {label} {candidate} has permissions {mode:04o}, "
+                "expected no group/other write bits"
+            )
+
+    validate_entry(root, expected_directory=True)
+    cell_count = 0
+    for current_root, dirnames, filenames in os.walk(root):
+        current = Path(current_root)
+        validate_entry(current, expected_directory=True)
+        for dirname in dirnames:
+            validate_entry(current / dirname, expected_directory=True)
+        for filename in filenames:
+            candidate = current / filename
+            validate_entry(candidate)
+            if candidate.name.lower().endswith(".000"):
+                cell_count += 1
+    return cell_count
 
 def normalize_path(value):
     return str(Path(value).expanduser().resolve(strict=False))
@@ -1592,7 +1633,7 @@ if expected_config_path:
         raise SystemExit(f"status report manifest extract path is not a directory: {extract_path}")
     if status_enc_cell_count <= 0:
         raise SystemExit(f"status report manifest has no ENC cells: {expected_manifest_path}")
-    actual_enc_cell_count = count_enc_cells(extract_path)
+    actual_enc_cell_count = trusted_enc_cell_tree_count(extract_path)
     if status_actual_enc_cell_count != actual_enc_cell_count:
         raise SystemExit(
             f"status report manifest actual_enc_cell_count {status_actual_enc_cell_count} "

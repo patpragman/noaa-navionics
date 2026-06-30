@@ -955,16 +955,22 @@ grep -q 'status report manifest extract path' scripts/verify_pi.sh
 grep -q 'status report manifest extract path is a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path is not a directory' scripts/verify_pi.sh
-grep -q 'def count_enc_cells' scripts/verify_pi.sh
-grep -q 'candidate.is_file() and not candidate.is_symlink()' scripts/verify_pi.sh
+grep -q 'def trusted_enc_cell_tree_count' scripts/verify_pi.sh
+grep -q 'status report manifest extract {label} {candidate} has permissions' scripts/verify_pi.sh
+grep -q '"extract_path_error"' src/noaa_navionics/report.py
+grep -q 'test_manifest_summary_marks_writable_extract_tree' tests/test_downloader.py
+grep -q 'user-owned non-writable extracted chart tree' README.md
+grep -q 'user-owned non-writable extracted chart tree' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
+import os
+import stat
 import tempfile
 
 text = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
-start = text.index("def count_enc_cells(path):")
+start = text.index("def trusted_enc_cell_tree_count(path):")
 end = text.index("\ndef normalize_path", start)
-namespace = {"Path": Path}
+namespace = {"Path": Path, "os": os, "stat": stat}
 exec(text[start:end], namespace)
 
 with tempfile.TemporaryDirectory() as tmpdir:
@@ -982,9 +988,27 @@ with tempfile.TemporaryDirectory() as tmpdir:
     except OSError as exc:
         raise SystemExit(f"could not create symlinked ENC test cell: {exc}") from exc
 
-    count = namespace["count_enc_cells"](charts)
-    if count != 1:
-        raise SystemExit(f"verify_pi count_enc_cells counted symlinked ENC cells: {count}")
+    try:
+        namespace["trusted_enc_cell_tree_count"](charts)
+    except SystemExit as exc:
+        if "contains a symlink" not in str(exc):
+            raise
+    else:
+        raise SystemExit("verify_pi trusted_enc_cell_tree_count accepted a symlinked ENC cell")
+
+with tempfile.TemporaryDirectory() as tmpdir:
+    charts = Path(tmpdir) / "charts"
+    cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+    cell.parent.mkdir(parents=True)
+    cell.write_text("trusted chart cell", encoding="ascii")
+    cell.chmod(0o666)
+    try:
+        namespace["trusted_enc_cell_tree_count"](charts)
+    except SystemExit as exc:
+        if "has permissions 0666" not in str(exc):
+            raise
+    else:
+        raise SystemExit("verify_pi trusted_enc_cell_tree_count accepted a writable ENC cell")
 PY
 grep -q 'expected exactly {manifest_file_enc_cell_count}' scripts/verify_pi.sh
 grep -q 'exact live regular non-symlink ENC cell count' README.md
