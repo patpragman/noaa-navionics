@@ -581,10 +581,17 @@ def _boot_id() -> str:
 
 def _current_boot_epoch() -> Optional[float]:
     try:
-        uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
+        uptime_seconds = _parse_proc_uptime_seconds(Path("/proc/uptime").read_text(encoding="ascii"))
     except (OSError, ValueError, IndexError):
         return None
     return time.time() - uptime_seconds
+
+
+def _parse_proc_uptime_seconds(value: str) -> float:
+    uptime_seconds = float(value.split()[0])
+    if not math.isfinite(uptime_seconds) or uptime_seconds < 0:
+        raise ValueError("uptime must be finite and non-negative")
+    return uptime_seconds
 
 
 def _track_log_summary(

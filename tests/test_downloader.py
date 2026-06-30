@@ -104,6 +104,7 @@ from noaa_navionics.report import (
     _key_value_file_summary,
     _launcher_settings_summary,
     _launcher_settings_check,
+    _parse_proc_uptime_seconds,
     _read_trusted_gpx_track_file,
     _service_readiness_checks,
     _track_log_readiness_check,
@@ -3862,6 +3863,13 @@ class ManifestTests(unittest.TestCase):
 
 
 class StatusReportTests(unittest.TestCase):
+    def test_parse_proc_uptime_seconds_requires_finite_non_negative_value(self):
+        self.assertEqual(_parse_proc_uptime_seconds("123.45 678.90\n"), 123.45)
+        for value in ("nan 0\n", "inf 0\n", "-1 0\n", "not-a-number 0\n", "\n"):
+            with self.subTest(value=value):
+                with self.assertRaises((ValueError, IndexError)):
+                    _parse_proc_uptime_seconds(value)
+
     def test_status_report_queries_track_logger_umask(self):
         for unit in (
             "noaa-navionics.service",

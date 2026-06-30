@@ -1367,6 +1367,11 @@ grep -q '"keep_zip": app_config.keep_zip' src/noaa_navionics/report.py
 grep -q '"force": app_config.force' src/noaa_navionics/report.py
 grep -q 'boot_id' src/noaa_navionics/report.py
 grep -q 'BOOT_ID_PATH' src/noaa_navionics/report.py
+grep -q 'def _parse_proc_uptime_seconds' src/noaa_navionics/report.py
+grep -q 'math.isfinite(uptime_seconds)' src/noaa_navionics/report.py
+grep -q 'test_parse_proc_uptime_seconds_requires_finite_non_negative_value' tests/test_downloader.py
+grep -q 'finite non-negative `/proc/uptime`' README.md
+grep -q 'finite non-negative `/proc/uptime`' docs/sailboat-pi.md
 grep -q 'extracted ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'def _validate_downloaded_zip' src/noaa_navionics/downloader.py
 grep -q 'def _validate_zip_members_and_crc' src/noaa_navionics/downloader.py
