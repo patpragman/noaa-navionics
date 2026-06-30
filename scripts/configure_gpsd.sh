@@ -208,11 +208,12 @@ config_path = Path(sys.argv[2]).expanduser()
 device = sys.argv[3]
 
 sys.path.insert(0, str(repo_root / "src"))
-from noaa_navionics.config import read_config
+from noaa_navionics.config import _read_existing_config, _reject_unsafe_config_path, read_config
 
 parser = ConfigParser()
-if config_path.exists() and not parser.read(config_path):
-    raise SystemExit(f"could not read config: {config_path}")
+_reject_unsafe_config_path(config_path)
+if config_path.exists():
+    _read_existing_config(parser, config_path)
 if not parser.has_section("gps"):
     parser.add_section("gps")
 parser.set("gps", "mode", "gpsd")
@@ -517,12 +518,13 @@ config_path = Path(sys.argv[2]).expanduser()
 device = sys.argv[3]
 
 sys.path.insert(0, str(repo_root / "src"))
-from noaa_navionics.config import _prepare_config_parent
+from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path
 
 _prepare_config_parent(config_path)
 parser = ConfigParser()
+_reject_unsafe_config_path(config_path)
 if config_path.exists():
-    parser.read(config_path)
+    _read_existing_config(parser, config_path)
 if not parser.has_section("gps"):
     parser.add_section("gps")
 parser.set("gps", "mode", "gpsd")

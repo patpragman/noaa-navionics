@@ -1000,8 +1000,10 @@ grep -q 'GPSD config is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory .* has permissions' scripts/configure_gpsd.sh
 grep -q 'Refusing to write a non-standard GPSD config path' scripts/configure_gpsd.sh
-grep -q 'from noaa_navionics.config import read_config' scripts/configure_gpsd.sh
-grep -q 'from noaa_navionics.config import _prepare_config_parent' scripts/configure_gpsd.sh
+grep -q 'from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path' scripts/configure_gpsd.sh
+grep -q 'from noaa_navionics.config import _read_existing_config, _reject_unsafe_config_path, read_config' scripts/configure_gpsd.sh
+grep -q '_read_existing_config(parser, config_path)' scripts/configure_gpsd.sh
+! grep -q 'parser.read(config_path)' scripts/configure_gpsd.sh
 grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
@@ -1116,6 +1118,8 @@ grep -q 'GPS time setup reads existing chrony config, and readiness and producti
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Production provisioning reads the existing onboard GPS config only after a no-follow descriptor' README.md
 grep -q 'provisioning reads the existing onboard GPS config only after a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'The GPSD setup script reads any existing onboard app config through a no-follow descriptor' README.md
+grep -q 'reads any existing onboard app config through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Readiness also rejects unsafe chrony config paths' README.md
 grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
