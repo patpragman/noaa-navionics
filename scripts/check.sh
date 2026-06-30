@@ -562,6 +562,8 @@ grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
+grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' README.md
+grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'rejecting parent-directory traversal in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal in the recovered track output path' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
@@ -955,6 +957,10 @@ grep -q 'Verified Pi recovery exports' scripts/verify_pi_recovery_exports.sh
 grep -q 'NOAA_NAVIONICS_RESTORE_APPLY' scripts/restore_pi_recovery_user_data.sh
 grep -q 'Dry run only. Re-run with --apply to write files.' scripts/restore_pi_recovery_user_data.sh
 grep -q 'do not restore recovery user data as root' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user_data.sh
+grep -q 'recovery directory has permissions .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
+grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_data.sh
+grep -q 'archive has permissions .* expected private 0600' scripts/restore_pi_recovery_user_data.sh
 grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
@@ -5625,12 +5631,14 @@ def add_text(archive, name, text):
 
 
 def build_archive(directory, name, manifest, members):
-    with tarfile.open(directory / name, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    path = directory / name
+    with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         add_text(archive, "README.txt", "restore fixture\n")
         if manifest is not None:
             add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
         for member_name, text in members.items():
             add_text(archive, member_name, text)
+    path.chmod(0o600)
 
 
 def build_restore_fixture(root, config):
@@ -5691,6 +5699,7 @@ bad_config = config.replace("output = ~/tracks-store", "output = ~/../../etc/noa
 build_restore_fixture(Path(sys.argv[1]), config)
 build_restore_fixture(Path(sys.argv[2]), bad_config)
 PY
+chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir"
 
 set +e
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_parent_dir" >"$verify_output" 2>&1
@@ -5702,6 +5711,32 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'restored tracking.output must not contain parent-directory components' "$verify_output"
+
+chmod 0755 "$recovery_restore_dir"
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+chmod 0700 "$recovery_restore_dir"
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject public recovery directory with exit 1" >&2
+  exit 1
+fi
+grep -q 'recovery directory has permissions 0755, expected private 0700' "$verify_output"
+
+chmod 0644 "$recovery_restore_dir"/noaa-navionics-pi-settings-*.tgz
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+chmod 0600 "$recovery_restore_dir"/noaa-navionics-pi-settings-*.tgz
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject public recovery archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'archive has permissions 0644, expected private 0600' "$verify_output"
 
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
 grep -q 'Dry run only. Re-run with --apply to write files.' "$verify_output"

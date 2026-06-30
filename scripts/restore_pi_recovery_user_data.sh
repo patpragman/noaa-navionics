@@ -133,33 +133,52 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> di
         fail(f"could not inspect archive {archive_path}: {exc}")
     if not stat.S_ISREG(result.st_mode):
         fail(f"archive must be a regular file: {archive_path}")
+    if result.st_uid != os.getuid():
+        fail(f"archive is owned by uid {result.st_uid}, expected {os.getuid()}: {archive_path}")
     mode = stat.S_IMODE(result.st_mode)
-    if mode & 0o022:
-        fail(f"archive has permissions {mode:04o}, expected no group/other write bits: {archive_path}")
+    if mode != 0o600:
+        fail(f"archive has permissions {mode:04o}, expected private 0600: {archive_path}")
     if result.st_size <= 0:
         fail(f"archive is empty: {archive_path}")
 
     files: dict[str, bytes] = {}
+    fd = -1
     try:
-        with tarfile.open(archive_path, "r:gz") as archive:
-            for member in archive.getmembers():
-                normalized = validate_member_name(member.name, archive_path)
-                if member.issym() or member.islnk() or member.isdev():
-                    fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
-                if member.isdir():
-                    continue
-                if not member.isfile():
-                    fail(f"{archive_path.name} contains unsupported member type: {member.name}")
-                if not normalized:
-                    fail(f"{archive_path.name} contains blank file member name")
-                if normalized in files:
-                    fail(f"{archive_path.name} contains duplicate member: {normalized}")
-                extracted = archive.extractfile(member)
-                if extracted is None:
-                    fail(f"{archive_path.name} member is not readable: {member.name}")
-                files[normalized] = extracted.read()
+        fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"archive must be a regular file after opening: {archive_path}")
+        if (opened.st_dev, opened.st_ino) != (result.st_dev, result.st_ino):
+            fail(f"archive changed while being opened: {archive_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"archive is owned by uid {opened.st_uid}, expected {os.getuid()}: {archive_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"archive has permissions {opened_mode:04o}, expected private 0600: {archive_path}")
+        with os.fdopen(fd, "rb") as archive_file:
+            fd = -1
+            with tarfile.open(fileobj=archive_file, mode="r:gz") as archive:
+                for member in archive.getmembers():
+                    normalized = validate_member_name(member.name, archive_path)
+                    if member.issym() or member.islnk() or member.isdev():
+                        fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
+                    if member.isdir():
+                        continue
+                    if not member.isfile():
+                        fail(f"{archive_path.name} contains unsupported member type: {member.name}")
+                    if not normalized:
+                        fail(f"{archive_path.name} contains blank file member name")
+                    if normalized in files:
+                        fail(f"{archive_path.name} contains duplicate member: {normalized}")
+                    extracted = archive.extractfile(member)
+                    if extracted is None:
+                        fail(f"{archive_path.name} member is not readable: {member.name}")
+                    files[normalized] = extracted.read()
     except (OSError, tarfile.TarError) as exc:
-        fail(f"{archive_path.name} is not a readable gzip tar archive: {exc}")
+        fail(f"{archive_path.name} is not a readable trusted gzip tar archive: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
     if "README.txt" not in files:
         fail(f"{archive_path.name} is missing README.txt")
@@ -176,7 +195,27 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> di
     return files
 
 
+def assert_private_recovery_directory(path: Path) -> None:
+    if path.is_symlink():
+        fail(f"recovery directory is a symlink: {path}")
+    symlink = first_symlink_ancestor(path.parent)
+    if symlink is not None:
+        fail(f"recovery directory parent path contains a symlink: {symlink}")
+    try:
+        result = path.lstat()
+    except OSError as exc:
+        fail(f"could not inspect recovery directory {path}: {exc}")
+    if not stat.S_ISDIR(result.st_mode):
+        fail(f"recovery directory must be a real directory: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"recovery directory is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o700:
+        fail(f"recovery directory has permissions {mode:04o}, expected private 0700: {path}")
+
+
 def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
+    assert_private_recovery_directory(recovery_dir)
     result = {}
     for label, pattern, required_count_key in ARCHIVES:
         matches = sorted(recovery_dir.glob(pattern))
