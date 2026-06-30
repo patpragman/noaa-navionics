@@ -248,12 +248,13 @@ def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) 
 def check_time_synchronization() -> CheckResult:
     if not _is_raspberry_pi():
         return CheckResult("Time Sync", True, "not a Raspberry Pi; skipping time synchronization check")
-    timedatectl = shutil.which("timedatectl")
-    if timedatectl is None:
-        return CheckResult("Time Sync", False, "timedatectl not found; cannot verify Raspberry Pi clock sync")
+    timedatectl, error = _trusted_system_command("timedatectl", "Time sync command")
+    if error:
+        return CheckResult("Time Sync", False, f"{error}; cannot verify Raspberry Pi clock sync")
+    assert timedatectl is not None
     try:
         completed = subprocess.run(
-            [timedatectl, "show", "-p", "SystemClockSynchronized", "-p", "NTPSynchronized"],
+            [str(timedatectl), "show", "-p", "SystemClockSynchronized", "-p", "NTPSynchronized"],
             check=False,
             text=True,
             stdout=subprocess.PIPE,

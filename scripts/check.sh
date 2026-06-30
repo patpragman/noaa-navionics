@@ -1391,6 +1391,8 @@ grep -q 'NOAA_NAVIONICS_SOURCE_REVISION_PATH' src/noaa_navionics/health.py
 grep -q 'deployed source revision path is a symlink' src/noaa_navionics/health.py
 grep -q 'deployed source revision is not recorded' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
+grep -q '_trusted_system_command("timedatectl", "Time sync command")' src/noaa_navionics/health.py
+grep -q 'test_check_time_synchronization_rejects_user_owned_timedatectl_on_pi' tests/test_downloader.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
 grep -q 'def check_chrony_gps_time_config' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_config()' src/noaa_navionics/health.py

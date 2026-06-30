@@ -10500,15 +10500,15 @@ class PiHealthTests(unittest.TestCase):
             fake = bin_dir / "timedatectl"
             fake.write_text("#!/bin/sh\necho SystemClockSynchronized=yes\n", encoding="ascii")
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "timedatectl" else original_trusted_command(command, label)
                 result = check_time_synchronization()
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
@@ -10524,15 +10524,15 @@ class PiHealthTests(unittest.TestCase):
                 encoding="ascii",
             )
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "timedatectl" else original_trusted_command(command, label)
                 result = check_time_synchronization()
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
@@ -10548,15 +10548,15 @@ class PiHealthTests(unittest.TestCase):
                 encoding="ascii",
             )
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "timedatectl" else original_trusted_command(command, label)
                 result = check_time_synchronization()
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
@@ -10567,15 +10567,15 @@ class PiHealthTests(unittest.TestCase):
             fake = bin_dir / "timedatectl"
             fake.write_text("#!/bin/sh\necho SystemClockSynchronized=no\n", encoding="ascii")
             fake.chmod(0o755)
-            original_path = os.environ.get("PATH", "")
             original_is_pi = health_module._is_raspberry_pi
+            original_trusted_command = health_module._trusted_system_command
             try:
-                os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
+                health_module._trusted_system_command = lambda command, label: (fake, "") if command == "timedatectl" else original_trusted_command(command, label)
                 result = check_time_synchronization()
             finally:
-                os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
+                health_module._trusted_system_command = original_trusted_command
 
             self.assertFalse(result.ok)
             self.assertIn("not synchronized", result.detail)
@@ -10593,6 +10593,26 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("timedatectl", result.detail)
+
+    def test_check_time_synchronization_rejects_user_owned_timedatectl_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "timedatectl"
+            fake.write_text("#!/bin/sh\necho SystemClockSynchronized=yes\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_time_synchronization()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("Time sync command directory is not a trusted system directory", result.detail)
 
     def test_check_chrony_gps_time_config_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi
