@@ -748,8 +748,8 @@ grep -q 'expected private 0600' scripts/verify_pi.sh
 ! grep -q 'launcher_env_file.read_text(encoding="utf-8")' scripts/verify_pi.sh
 grep -q 'parsing that status artifact only through the no-follow descriptor it verified' README.md
 grep -q 'parses that status artifact only through the no-follow descriptor it verified' docs/sailboat-pi.md
-grep -q 'launcher settings matching a no-follow descriptor read of the live private launcher environment' README.md
-grep -q 'launcher settings matching a no-follow descriptor read of the live private launcher environment' docs/sailboat-pi.md
+grep -q 'launcher settings matching a no-follow descriptor read of the same inspected live private launcher environment' README.md
+grep -q 'launcher settings matching a no-follow descriptor read of the same inspected live private launcher environment' docs/sailboat-pi.md
 grep -q 'onboard app config through a no-follow descriptor read' README.md
 grep -q 'onboard app config through a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'GPSD device comparisons through that same trusted config read path' README.md
@@ -1966,10 +1966,12 @@ grep -q 'malformed launcher environment line' src/noaa_navionics/report.py
 grep -q 'unknown launcher environment key' src/noaa_navionics/report.py
 grep -q 'launcher environment has permissions.*expected private 0600' src/noaa_navionics/report.py
 grep -q 'def _read_launcher_settings_lines' src/noaa_navionics/report.py
+grep -q 'launcher environment changed before it could be read' src/noaa_navionics/report.py
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/report.py
 grep -q 'test_launcher_settings_summary_rejects_nonregular_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_launcher_settings_summary_rejects_public_environment_before_parsing' tests/test_downloader.py
+grep -q 'test_launcher_settings_reader_rejects_replaced_environment_before_parsing' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_misowned_environment' tests/test_downloader.py
 grep -q 'key-value file path is a symlink' src/noaa_navionics/report.py
 grep -q 'key-value file path is not a regular file' src/noaa_navionics/report.py
@@ -2155,8 +2157,8 @@ grep -q 'parser.read_file(handle, source=str(path))' src/noaa_navionics/config.p
 ! grep -q 'parser.read(cfg_path)' src/noaa_navionics/config.py
 grep -q 'Onboard config reads use a no-follow descriptor' README.md
 grep -q 'Config reads use a no-follow descriptor' docs/sailboat-pi.md
-grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' README.md
-grep -q 'Production Pi verification reads that private launcher environment through a no-follow descriptor before comparing persisted timing and restart policy, sizing strict startup waits, and rejecting fail-open startup' docs/sailboat-pi.md
+grep -q 'Status reports parse launcher settings only after a no-follow descriptor read confirms the file is still the inspected file' README.md
+grep -q 'records launcher settings in status reports only after a no-follow descriptor read confirms the file is still the inspected file' docs/sailboat-pi.md
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' README.md
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read' README.md

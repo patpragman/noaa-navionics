@@ -4928,6 +4928,21 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(check.ok)
             self.assertIn("expected private 0600", check.detail)
 
+    def test_launcher_settings_reader_rejects_replaced_environment_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            launcher_env = root / "launcher.env"
+            launcher_env.write_text("NOAA_NAVIONICS_GPS_SECONDS=60\n", encoding="ascii")
+            launcher_env.chmod(0o600)
+            expected_stat = launcher_env.stat()
+            replacement = root / "replacement-launcher.env"
+            replacement.write_text("NOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n", encoding="ascii")
+            replacement.chmod(0o600)
+            replacement.replace(launcher_env)
+
+            with self.assertRaisesRegex(RuntimeError, "launcher environment changed before it could be read"):
+                report_module._read_launcher_settings_lines(launcher_env, expected_stat=expected_stat)
+
     def test_launcher_settings_check_fails_symlinked_environment_ancestor(self):
         check = _launcher_settings_check(
             {

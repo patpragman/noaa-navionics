@@ -1182,7 +1182,7 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
         summary["error"] = str(exc)
         return summary
     try:
-        lines = _read_launcher_settings_lines(launcher_env)
+        lines = _read_launcher_settings_lines(launcher_env, expected_stat=stat_result)
     except Exception as exc:
         summary["error"] = str(exc)
         return summary
@@ -1202,7 +1202,7 @@ def _launcher_settings_summary(path: Optional[Path] = None) -> dict[str, object]
     return summary
 
 
-def _read_launcher_settings_lines(path: Path) -> list[str]:
+def _read_launcher_settings_lines(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> list[str]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
@@ -1214,6 +1214,11 @@ def _read_launcher_settings_lines(path: Path) -> list[str]:
         stat_result = os.fstat(fd)
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"launcher environment is not a regular file: {path}")
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"launcher environment changed before it could be read: {path}")
         if stat_result.st_uid != os.getuid():
             raise RuntimeError(
                 f"launcher environment is owned by uid {stat_result.st_uid}, expected {os.getuid()}: {path}"
