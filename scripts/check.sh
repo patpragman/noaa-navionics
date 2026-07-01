@@ -839,8 +839,8 @@ grep -q 'rejects broad/system local output directories, parent-directory compone
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' README.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'status snapshot JSON Source Revision row does not match deployed source_revision' scripts/post_trip_collect_pi.sh
-grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' README.md
-grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
+grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts before any optional shutdown attempt' README.md
+grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts before any optional shutdown attempt' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' README.md
@@ -1958,6 +1958,15 @@ grep -q 'status snapshot JSON missing non-empty {field} list' scripts/post_trip_
 grep -q 'validate_post_trip_archive' scripts/post_trip_collect_pi.sh
 grep -q 'write_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8")
+manifest_index = text.index('write_post_trip_checksum_manifest "$trip_dir"')
+shutdown_index = text.index('case "$shutdown_mode" in')
+if manifest_index > shutdown_index:
+    raise SystemExit("post-trip checksum manifest must be written before optional shutdown")
+PY
 grep -q 'MANIFEST_NAME = "SHA256SUMS.txt"' scripts/post_trip_collect_pi.sh
 grep -q 'def cleanup_private_temp' scripts/post_trip_collect_pi.sh
 grep -q 'post-trip checksum temp changed before cleanup; leaving it in place' scripts/post_trip_collect_pi.sh
@@ -8347,6 +8356,9 @@ cat >"$post_trip_repo/scripts/shutdown_pi_safely.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'shutdown|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
 printf 'fake shutdown\n'
+if [[ -n "${NOAA_NAVIONICS_FAKE_POST_TRIP_SHUTDOWN_EXIT:-}" ]]; then
+  exit "$NOAA_NAVIONICS_FAKE_POST_TRIP_SHUTDOWN_EXIT"
+fi
 EOF
 chmod +x "$post_trip_repo/scripts/"*.sh
 mkdir -p "$post_trip_output_dir"
@@ -8460,6 +8472,60 @@ grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_log"
 grep -Eq '^shutdown\|pi@example.invalid --dry-run$' "$post_trip_log"
+
+post_trip_shutdown_failure_log="$tmpdir/post-trip-shutdown-failure-helper-calls"
+post_trip_shutdown_failure_output_dir="$tmpdir/post-trip-shutdown-failure-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_shutdown_failure_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_SHUTDOWN_EXIT=7 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_shutdown_failure_output_dir" \
+  --skip-tracks \
+  --skip-support \
+  --shutdown-confirm >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 7 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to preserve checksummed artifacts when shutdown fails" >&2
+  exit 1
+fi
+grep -q 'Wrote post-trip checksum manifest:' "$verify_output"
+grep -q 'Verified post-trip checksum manifest:' "$verify_output"
+grep -q 'fake shutdown' "$verify_output"
+python3 - "$verify_output" <<'PY'
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+wrote = text.index("Wrote post-trip checksum manifest:")
+verified = text.index("Verified post-trip checksum manifest:")
+shutdown = text.index("fake shutdown")
+if not wrote < verified < shutdown:
+    raise SystemExit("post-trip manifest must be written and verified before shutdown runs")
+PY
+post_trip_shutdown_failure_dir="$(find "$post_trip_shutdown_failure_output_dir" -maxdepth 1 -type d -name 'noaa-navionics-pi-post-trip-*' | head -n 1)"
+test -n "$post_trip_shutdown_failure_dir"
+test "$(stat -c '%a' "$post_trip_shutdown_failure_dir/status.json")" = 600
+test "$(stat -c '%a' "$post_trip_shutdown_failure_dir/SHA256SUMS.txt")" = 600
+python3 - "$post_trip_shutdown_failure_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import sys
+
+root = Path(sys.argv[1])
+entries = {}
+for line in (root / "SHA256SUMS.txt").read_text(encoding="ascii").splitlines():
+    digest, name = line.split("  ", 1)
+    entries[name] = digest
+if set(entries) != {"status.json"}:
+    raise SystemExit(f"unexpected shutdown-failure checksum entries: {entries!r}")
+actual = hashlib.sha256((root / "status.json").read_bytes()).hexdigest()
+if actual != entries["status.json"]:
+    raise SystemExit("status checksum mismatch after shutdown failure")
+PY
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_shutdown_failure_log"
+grep -Eq '^shutdown\|pi@example.invalid --confirm$' "$post_trip_shutdown_failure_log"
 
 post_trip_mutated_helper_log="$tmpdir/post-trip-mutated-helper-calls"
 post_trip_mutated_helper_output_dir="$tmpdir/post-trip-mutated-helper-output"

@@ -2245,6 +2245,9 @@ else
   printf '==> Skipping Pi diagnostic support bundle\n'
 fi
 
+write_post_trip_checksum_manifest "$trip_dir"
+verify_post_trip_checksum_manifest "$trip_dir"
+
 case "$shutdown_mode" in
   dry-run)
     run_step "Dry-running clean Pi shutdown path" "$shutdown_helper" "$target" --dry-run
@@ -2255,9 +2258,6 @@ case "$shutdown_mode" in
   "")
     ;;
 esac
-
-write_post_trip_checksum_manifest "$trip_dir"
-verify_post_trip_checksum_manifest "$trip_dir"
 
 printf '\nPost-trip Pi artifacts written to: %s\n' "$trip_dir"
 if [[ "$status_code" -ne 0 ]]; then
