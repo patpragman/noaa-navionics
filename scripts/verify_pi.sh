@@ -1241,6 +1241,15 @@ if expected_config_path:
     latest_latitude = numeric_track_log_field("latest_latitude")
     latest_longitude = numeric_track_log_field("latest_longitude")
     age_seconds = numeric_track_log_field("age_seconds")
+    latest_time_text = str(track_log.get("latest_time", "")).strip()
+    if not latest_time_text:
+        raise SystemExit("status report track_log has no latest_time")
+    latest_time = parse_timezone_aware_timestamp(latest_time_text, "status report track_log latest_time")
+    latest_time_age_seconds = (datetime.now(timezone.utc) - latest_time).total_seconds()
+    if latest_time_age_seconds < -30.0:
+        raise SystemExit(f"status report track_log latest_time is in the future: {latest_time_text}")
+    if latest_time_age_seconds > 600.0:
+        raise SystemExit(f"status report track_log latest_time is stale: {latest_time_age_seconds:g}s old")
     if not (-90.0 <= latest_latitude <= 90.0):
         raise SystemExit(f"status report track_log latest_latitude is outside -90..90: {latest_latitude}")
     if not (-180.0 <= latest_longitude <= 180.0):
@@ -1251,6 +1260,11 @@ if expected_config_path:
         raise SystemExit(f"status report track_log age_seconds is negative: {age_seconds:g}")
     if age_seconds > 600.0:
         raise SystemExit(f"status report track_log age_seconds is stale: {age_seconds:g}")
+    if abs(age_seconds - latest_time_age_seconds) > 30.0:
+        raise SystemExit(
+            f"status report track_log age_seconds {age_seconds:g} "
+            f"is inconsistent with latest_time age {latest_time_age_seconds:g}"
+        )
     latest_satellites = track_log.get("latest_satellites")
     latest_hdop = track_log.get("latest_hdop")
     if latest_satellites is None and latest_hdop is None:
@@ -2270,6 +2284,15 @@ def numeric_track_log_field(field):
 latest_latitude = numeric_track_log_field("latest_latitude")
 latest_longitude = numeric_track_log_field("latest_longitude")
 age_seconds = numeric_track_log_field("age_seconds")
+latest_time_text = str(track_log.get("latest_time", "")).strip()
+if not latest_time_text:
+    raise SystemExit("status report track_log has no latest_time")
+latest_time = parse_timezone_aware_timestamp(latest_time_text, "status report track_log latest_time")
+latest_time_age_seconds = (datetime.now(timezone.utc) - latest_time).total_seconds()
+if latest_time_age_seconds < -30.0:
+    raise SystemExit(f"status report track_log latest_time is in the future: {latest_time_text}")
+if latest_time_age_seconds > 600.0:
+    raise SystemExit(f"status report track_log latest_time is stale: {latest_time_age_seconds:g}s old")
 if not (-90.0 <= latest_latitude <= 90.0):
     raise SystemExit(f"status report track_log latest_latitude is outside -90..90: {latest_latitude}")
 if not (-180.0 <= latest_longitude <= 180.0):
@@ -2280,6 +2303,11 @@ if age_seconds < 0.0:
     raise SystemExit(f"status report track_log age_seconds is negative: {age_seconds:g}")
 if age_seconds > 600.0:
     raise SystemExit(f"status report track_log age_seconds is stale: {age_seconds:g}")
+if abs(age_seconds - latest_time_age_seconds) > 30.0:
+    raise SystemExit(
+        f"status report track_log age_seconds {age_seconds:g} "
+        f"is inconsistent with latest_time age {latest_time_age_seconds:g}"
+    )
 latest_satellites = track_log.get("latest_satellites")
 latest_hdop = track_log.get("latest_hdop")
 if latest_satellites is None and latest_hdop is None:

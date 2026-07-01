@@ -2132,6 +2132,9 @@ test "$(grep -c 'status report track_log latest_longitude is outside -180..180' 
 test "$(grep -c 'status report track_log latest coordinates are invalid 0,0' scripts/verify_pi.sh)" -ge 2
 test "$(grep -c 'status report track_log age_seconds is negative' scripts/verify_pi.sh)" -ge 2
 test "$(grep -c 'status report track_log age_seconds is stale' scripts/verify_pi.sh)" -ge 2
+test "$(grep -c 'parse_timezone_aware_timestamp(latest_time_text, "status report track_log latest_time")' scripts/verify_pi.sh)" -ge 2
+test "$(grep -c 'abs(age_seconds - latest_time_age_seconds) > 30.0' scripts/verify_pi.sh)" -ge 2
+test "$(grep -c 'is inconsistent with latest_time age' scripts/verify_pi.sh)" -ge 2
 grep -q 'def first_symlink_ancestor' scripts/verify_pi.sh
 grep -q 'track_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'status report track_log track_output is a symlink or missing symlink status' scripts/verify_pi.sh
@@ -4061,6 +4064,9 @@ grep -q 'status report gps_fix age_seconds {reported_age_seconds:g} is inconsist
 grep -q 'status report gps_fix has no satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'status report missing track_log section' src/noaa_navionics/report.py
 grep -q 'status report track_log track_output is a symlink or missing symlink status' src/noaa_navionics/report.py
+grep -q '_track_log_validation_failures(report.get("track_log"), now=now)' src/noaa_navionics/report.py
+grep -q 'status report track_log has no valid latest_time' src/noaa_navionics/report.py
+grep -q 'status report track_log age_seconds {age_seconds:g} is inconsistent with latest_time age' src/noaa_navionics/report.py
 grep -q 'status report track_log age_seconds is stale' src/noaa_navionics/report.py
 grep -q 'status report track_log has no latest satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'status report generated_at timestamp is stale' src/noaa_navionics/report.py
@@ -4167,6 +4173,8 @@ grep -q 'test_status_report_ready_requires_fresh_generated_at' tests/test_downlo
 grep -q 'test_status_report_ready_rejects_future_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_downloader.py
 grep -q 'inconsistent with timestamp age' tests/test_downloader.py
+grep -q 'inconsistent with latest_time age' tests/test_downloader.py
+grep -q 'summary\["latest_time"\]' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_runtime_evidence' tests/test_downloader.py
 grep -q 'test_check_python_records_structured_runtime' tests/test_downloader.py
 grep -q 'test_check_tkinter_records_structured_availability' tests/test_downloader.py

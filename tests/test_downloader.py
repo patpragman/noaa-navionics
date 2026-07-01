@@ -12143,6 +12143,7 @@ class StatusReportTests(unittest.TestCase):
             "tracks_dir": "/charts/tracks",
             "ok": True,
             "latest_path": "/charts/tracks/track-20260701.gpx",
+            "latest_time": now.isoformat().replace("+00:00", "Z"),
             "latest_latitude": 61.0,
             "latest_longitude": -149.0,
             "age_seconds": 0.0,
@@ -12156,9 +12157,15 @@ class StatusReportTests(unittest.TestCase):
             ({"track_log": {key: value for key, value in valid_track_log.items() if key != "track_storage_symlink_component"}}, "missing track_storage_symlink_component"),
             ({"track_log": {**valid_track_log, "track_storage_symlink_component": "/charts"}}, "storage path contains a symlink"),
             ({"track_log": {**valid_track_log, "latest_path": ""}}, "has no latest_path"),
+            ({"track_log": {key: value for key, value in valid_track_log.items() if key != "latest_time"}}, "has no valid latest_time"),
+            ({"track_log": {**valid_track_log, "latest_time": "2026-07-01T12:00:00"}}, "has no valid latest_time"),
+            ({"track_log": {**valid_track_log, "latest_time": (now + timedelta(seconds=31)).isoformat().replace("+00:00", "Z")}}, "latest_time is in the future"),
+            ({"track_log": {**valid_track_log, "latest_time": (now - timedelta(seconds=601)).isoformat().replace("+00:00", "Z"), "age_seconds": 601.0}}, "latest_time is stale"),
             ({"track_log": {**valid_track_log, "latest_latitude": 0.0, "latest_longitude": 0.0}}, "coordinates are invalid"),
             ({"track_log": {**valid_track_log, "age_seconds": -1.0}}, "age_seconds is negative"),
             ({"track_log": {**valid_track_log, "age_seconds": 601.0}}, "age_seconds is stale"),
+            ({"track_log": {**valid_track_log, "latest_time": (now - timedelta(seconds=120)).isoformat().replace("+00:00", "Z"), "age_seconds": 1.0}}, "inconsistent with latest_time age"),
+            ({"track_log": {**valid_track_log, "latest_time": (now - timedelta(seconds=120)).isoformat().replace("+00:00", "Z"), "age_seconds": 300.0}}, "inconsistent with latest_time age"),
             ({"track_log": {key: value for key, value in valid_track_log.items() if key not in {"latest_satellites", "latest_hdop"}}}, "no latest satellite or HDOP quality fields"),
             ({"track_log": {**valid_track_log, "latest_satellites": 3}}, "latest_satellites is weak"),
             ({"track_log": {**valid_track_log, "latest_hdop": 6.0}}, "latest_hdop is weak"),
@@ -13309,6 +13316,7 @@ class StatusReportTests(unittest.TestCase):
 
             self.assertTrue(summary["ok"])
             self.assertEqual(summary["latest_path"], str(track_path))
+            self.assertEqual(summary["latest_time"], timestamp.isoformat().replace("+00:00", "Z"))
             self.assertEqual(summary["tracks_mode"], "0700")
             self.assertEqual(summary["latest_mode"], "0600")
             self.assertAlmostEqual(summary["latest_latitude"], 61.2181)

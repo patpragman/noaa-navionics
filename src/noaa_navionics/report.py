@@ -321,7 +321,7 @@ def status_report_validation_failures(
     failures.extend(_desktop_validation_failures(report))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
-    failures.extend(_track_log_validation_failures(report.get("track_log")))
+    failures.extend(_track_log_validation_failures(report.get("track_log"), now=now))
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
@@ -1976,7 +1976,7 @@ def _gps_fix_validation_failures(
     return []
 
 
-def _track_log_validation_failures(track_log: object) -> list[CheckResult]:
+def _track_log_validation_failures(track_log: object, *, now: Optional[datetime] = None) -> list[CheckResult]:
     if not isinstance(track_log, dict):
         return [CheckResult("Track Log", False, "status report missing track_log section")]
     if track_log.get("track_output_is_symlink") is not False:
@@ -1996,6 +1996,30 @@ def _track_log_validation_failures(track_log: object) -> list[CheckResult]:
         return [CheckResult("Track Log", False, "status report track_log has non-numeric latest coordinates")]
     if age_seconds is None:
         return [CheckResult("Track Log", False, "status report track_log age_seconds is not numeric")]
+    latest_time = _parse_gps_fix_timestamp(track_log.get("latest_time"))
+    if latest_time is None:
+        return [CheckResult("Track Log", False, "status report track_log has no valid latest_time")]
+    try:
+        current = _current_utc(now, label="status report track_log")
+    except ValueError as exc:
+        return [CheckResult("Track Log", False, str(exc))]
+    timestamp_age_seconds = (current - latest_time).total_seconds()
+    if timestamp_age_seconds < -STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
+        return [
+            CheckResult(
+                "Track Log",
+                False,
+                f"status report track_log latest_time is in the future by {-timestamp_age_seconds:.0f}s",
+            )
+        ]
+    if timestamp_age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
+        return [
+            CheckResult(
+                "Track Log",
+                False,
+                f"status report track_log latest_time is stale ({timestamp_age_seconds:.0f}s old)",
+            )
+        ]
     if not (-90.0 <= latitude <= 90.0):
         return [CheckResult("Track Log", False, f"status report track_log latest_latitude is outside -90..90: {latitude}")]
     if not (-180.0 <= longitude <= 180.0):
@@ -2006,6 +2030,14 @@ def _track_log_validation_failures(track_log: object) -> list[CheckResult]:
         return [CheckResult("Track Log", False, f"status report track_log age_seconds is negative: {age_seconds:g}")]
     if age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
         return [CheckResult("Track Log", False, f"status report track_log age_seconds is stale: {age_seconds:g}s")]
+    if abs(age_seconds - timestamp_age_seconds) > STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
+        return [
+            CheckResult(
+                "Track Log",
+                False,
+                f"status report track_log age_seconds {age_seconds:g} is inconsistent with latest_time age {timestamp_age_seconds:g}",
+            )
+        ]
     satellites = track_log.get("latest_satellites")
     hdop = track_log.get("latest_hdop")
     if satellites is None and hdop is None:
