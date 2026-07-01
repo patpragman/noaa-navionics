@@ -555,6 +555,7 @@ class StatusApp(tk.Tk):
         anchor_watch_fix = self.anchor_watch_fix
         try:
             if anchor_watch_fix is None:
+                self.queue.put(("worker_done", None))
                 return
             distance, radius, anchor_fix, current_fix = check_anchor_watch_drift(
                 self.config_path,
@@ -593,6 +594,8 @@ class StatusApp(tk.Tk):
                     self._show_anchor_watch_error(anchor_fix, str(message))
                 elif kind == "error":
                     self._show_error(str(payload))
+                elif kind == "worker_done":
+                    pass
         except Empty:
             pass
         if not getattr(self, "_closed", False):

@@ -4539,6 +4539,47 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.poll_after_id, "next-poll-after")
         self.assertEqual(app.after_calls, [(150, "_poll_queue")])
 
+    def test_status_gui_anchor_watch_worker_queues_completion_when_watch_stopped_before_read(self):
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = None
+                self.queue = status_gui_module.Queue()
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._anchor_watch_worker(app, radius_meters=50.0)
+
+        self.assertEqual(app.queue.get_nowait(), ("worker_done", None))
+
+    def test_status_gui_poll_queue_clears_worker_for_noop_completion(self):
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.poll_after_id = "poll-after"
+                self.queue = status_gui_module.Queue()
+                self.queue.put(("worker_done", None))
+                self.worker = FinishedWorker()
+                self.after_calls = []
+
+            def after(self, delay_ms, callback):
+                self.after_calls.append((delay_ms, callback.__name__))
+                return "next-poll-after"
+
+            def _poll_queue(self):
+                return status_gui_module.StatusApp._poll_queue(self)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._poll_queue(app)
+
+        self.assertIsNone(app.worker)
+        self.assertEqual(app.poll_after_id, "next-poll-after")
+        self.assertEqual(app.after_calls, [(150, "_poll_queue")])
+
     def test_status_gui_stop_watch_requires_second_press(self):
         class FakeVar:
             def __init__(self):
