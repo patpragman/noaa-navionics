@@ -152,7 +152,15 @@ def trusted_launcher_settings(**overrides: object) -> dict[str, object]:
         "mode": "0600",
         "directory_uid": os.getuid(),
         "directory_mode": "0700",
-        "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
+        "values": {
+            "NOAA_NAVIONICS_GPS_SECONDS": "60",
+            "NOAA_NAVIONICS_READINESS_ATTEMPTS": "3",
+            "NOAA_NAVIONICS_READINESS_RETRY_DELAY": "10",
+            "NOAA_NAVIONICS_WARNING_SECONDS": "8",
+            "NOAA_NAVIONICS_OPENCPN_RESTARTS": "3",
+            "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": "5",
+            "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "no",
+        },
     }
     state.update(overrides)
     return state
@@ -214,6 +222,7 @@ def complete_status_gui_report(
             "track_retention_days": 90,
             "anchor_radius_meters": 50.0,
         },
+        "launcher_settings": trusted_launcher_settings(),
         "manifest": {
             "path": "/charts/noaa-navionics-manifest.json",
             "exists": True,
@@ -9964,6 +9973,143 @@ class StatusReportTests(unittest.TestCase):
 
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == "Config" and expected in failure.detail for failure in failures))
+
+    def test_status_report_ready_requires_valid_launcher_settings_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_launcher_settings = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )["launcher_settings"]
+        valid_values = valid_launcher_settings["values"]
+        cases = [
+            ({}, "missing launcher_settings section"),
+            ({"launcher_settings": {**valid_launcher_settings, "path": ""}}, "path is empty"),
+            (
+                {"launcher_settings": {**valid_launcher_settings, "path": "launcher.env"}},
+                "path is not absolute",
+            ),
+            (
+                {"launcher_settings": {**valid_launcher_settings, "exists": False}},
+                "file does not exist",
+            ),
+            (
+                {"launcher_settings": {**valid_launcher_settings, "is_symlink": True}},
+                "path is a symlink",
+            ),
+            (
+                {"launcher_settings": {**valid_launcher_settings, "directory_is_symlink": True}},
+                "directory is a symlink",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        key: value
+                        for key, value in valid_launcher_settings.items()
+                        if key != "launcher_settings_symlink_component"
+                    }
+                },
+                "missing launcher_settings_symlink_component",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "launcher_settings_symlink_component": "/home/pi/.config",
+                    }
+                },
+                "path contains a symlink",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "error": "launcher environment is not a regular file",
+                    }
+                },
+                "launcher settings error",
+            ),
+            (
+                {"launcher_settings": {**valid_launcher_settings, "values": None}},
+                "values were not parsed",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_EXTRA": "1"},
+                    }
+                },
+                "unknown launcher settings key",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "malformed_lines": ["2: NOAA_NAVIONICS_GPS_SECONDS 60"],
+                    }
+                },
+                "malformed launcher settings line",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {key: value for key, value in valid_values.items() if key != "NOAA_NAVIONICS_GPS_SECONDS"},
+                    }
+                },
+                "NOAA_NAVIONICS_GPS_SECONDS=<missing>",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_READINESS_ATTEMPTS": "0"},
+                    }
+                },
+                "NOAA_NAVIONICS_READINESS_ATTEMPTS=0 expected positive integer",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_OPENCPN_RESTARTS": "-1"},
+                    }
+                },
+                "NOAA_NAVIONICS_OPENCPN_RESTARTS=-1 expected non-negative integer",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "yes"},
+                    }
+                },
+                "START_ON_FAILED_READINESS",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {key: value for key, value in valid_values.items() if key != "NOAA_NAVIONICS_START_ON_FAILED_READINESS"},
+                    }
+                },
+                "NOAA_NAVIONICS_START_ON_FAILED_READINESS=<missing>",
+            ),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "launcher_settings" not in updates:
+                    report.pop("launcher_settings", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "Launcher Settings" and expected in failure.detail for failure in failures)
+                )
 
     def test_status_report_ready_requires_valid_manifest_summary(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)

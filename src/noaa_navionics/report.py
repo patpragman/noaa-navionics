@@ -289,6 +289,7 @@ def status_report_validation_failures(
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
     failures.extend(_config_validation_failures(report))
+    failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log")))
@@ -484,6 +485,87 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
                     f"status report track_log tracks_dir {actual_tracks_dir} does not match configured {expected_tracks_dir}",
                 )
             ]
+    return []
+
+
+def _launcher_settings_validation_failures(launcher_settings: object) -> list[CheckResult]:
+    if not isinstance(launcher_settings, dict):
+        return [CheckResult("Launcher Settings", False, "status report missing launcher_settings section")]
+    path = str(launcher_settings.get("path", "")).strip()
+    if not path:
+        return [CheckResult("Launcher Settings", False, "status report launcher settings path is empty")]
+    if not _status_absolute_path(path):
+        return [CheckResult("Launcher Settings", False, f"status report launcher settings path is not absolute: {path}")]
+    if launcher_settings.get("exists") is not True:
+        return [CheckResult("Launcher Settings", False, f"status report launcher settings file does not exist: {path}")]
+    if launcher_settings.get("is_symlink") is not False:
+        return [
+            CheckResult(
+                "Launcher Settings",
+                False,
+                "status report launcher settings path is a symlink or missing symlink status",
+            )
+        ]
+    if launcher_settings.get("directory_is_symlink") is not False:
+        return [
+            CheckResult(
+                "Launcher Settings",
+                False,
+                "status report launcher settings directory is a symlink or missing symlink status",
+            )
+        ]
+    if "launcher_settings_symlink_component" not in launcher_settings:
+        return [
+            CheckResult(
+                "Launcher Settings",
+                False,
+                "status report launcher settings missing launcher_settings_symlink_component",
+            )
+        ]
+    if str(launcher_settings.get("launcher_settings_symlink_component", "")).strip():
+        return [CheckResult("Launcher Settings", False, "status report launcher settings path contains a symlink")]
+    error = str(launcher_settings.get("error", "")).strip()
+    if error:
+        return [CheckResult("Launcher Settings", False, f"status report launcher settings error: {error}")]
+    values = launcher_settings.get("values")
+    if not isinstance(values, dict):
+        return [CheckResult("Launcher Settings", False, "status report launcher settings values were not parsed")]
+
+    failures = []
+    malformed_lines = launcher_settings.get("malformed_lines", [])
+    if isinstance(malformed_lines, list):
+        failures.extend(f"malformed launcher settings line {line}" for line in malformed_lines)
+    else:
+        failures.append("malformed launcher settings lines were not parsed")
+    unknown_keys = sorted(str(key) for key in values if str(key) not in LAUNCHER_ENV_KEYS)
+    if unknown_keys:
+        failures.append("unknown launcher settings key(s): " + ", ".join(unknown_keys))
+
+    def required_positive_integer(key: str) -> None:
+        value = str(values.get(key, "")).strip()
+        if not value.isdigit() or int(value) <= 0:
+            failures.append(f"{key}={value or '<missing>'} expected positive integer")
+
+    def required_nonnegative_integer(key: str) -> None:
+        value = str(values.get(key, "")).strip()
+        if not value.isdigit() or int(value) < 0:
+            failures.append(f"{key}={value or '<missing>'} expected non-negative integer")
+
+    required_positive_integer("NOAA_NAVIONICS_GPS_SECONDS")
+    required_positive_integer("NOAA_NAVIONICS_READINESS_ATTEMPTS")
+    required_nonnegative_integer("NOAA_NAVIONICS_READINESS_RETRY_DELAY")
+    required_nonnegative_integer("NOAA_NAVIONICS_WARNING_SECONDS")
+    required_nonnegative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")
+    required_nonnegative_integer("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY")
+    fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
+    if fail_open in {"1", "yes", "true", "on"}:
+        failures.append("status report launcher settings enable NOAA_NAVIONICS_START_ON_FAILED_READINESS")
+    elif fail_open not in {"0", "no", "false", "off"}:
+        failures.append(
+            f"NOAA_NAVIONICS_START_ON_FAILED_READINESS={fail_open or '<missing>'} expected explicit no"
+        )
+    if failures:
+        return [CheckResult("Launcher Settings", False, f"status report launcher settings invalid: {'; '.join(failures)}")]
     return []
 
 
