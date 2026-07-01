@@ -781,7 +781,8 @@ grep -q 'It does not deploy, reboot, download charts, or write the Pi status art
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
 grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" README.md
-grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" docs/sailboat-pi.md
+grep -q "refresh helper validates the SSH target, bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits" docs/sailboat-pi.md
+grep -q "validates the Pi's trusted root-owned \`python3\`, and validates the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
@@ -1850,9 +1851,17 @@ grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scrip
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
+grep -q 'max_retries=20' scripts/refresh_pi_charts.sh
+grep -q 'max_retry_delay=3600' scripts/refresh_pi_charts.sh
+grep -q 'max_gps_seconds=600' scripts/refresh_pi_charts.sh
+grep -q 'The Pi chart-refresh wrapper bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits' README.md
+grep -q 'bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits' docs/sailboat-pi.md
 grep -q 'validate_refresh_controls' scripts/refresh_pi_charts.sh
 grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"' scripts/refresh_pi_charts.sh
 grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"' scripts/refresh_pi_charts.sh
+grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries" "$max_retries"' scripts/refresh_pi_charts.sh
+grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay" "$max_retry_delay"' scripts/refresh_pi_charts.sh
+grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' scripts/refresh_pi_charts.sh
 grep -q 'echo "$name must be 0 or 1" >&2' scripts/refresh_pi_charts.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' scripts/refresh_pi_charts.sh
 grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/refresh_pi_charts.sh
@@ -9396,6 +9405,28 @@ fi
 grep -q -- '--retries must be a positive integer' "$verify_output"
 
 set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --retries 21 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject oversized --retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retries must be at most 20' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --retries 999999999999999999999999999999 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject huge --retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retries must be at most 20' "$verify_output"
+
+set +e
 scripts/refresh_pi_charts.sh pi@example.invalid --retry-delay soon >"$verify_output" 2>&1
 refresh_code=$?
 set -e
@@ -9407,6 +9438,28 @@ fi
 grep -q -- '--retry-delay must be a non-negative integer' "$verify_output"
 
 set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --retry-delay 3601 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject oversized --retry-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retry-delay must be at most 3600' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --retry-delay 999999999999999999999999999999 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject huge --retry-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retry-delay must be at most 3600' "$verify_output"
+
+set +e
 scripts/refresh_pi_charts.sh pi@example.invalid --status --gps-seconds nope >"$verify_output" 2>&1
 refresh_code=$?
 set -e
@@ -9416,6 +9469,28 @@ if [[ "$refresh_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --status --gps-seconds 601 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --status --gps-seconds 999999999999999999999999999999 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
 
 refresh_fake_ssh_bin="$tmpdir/refresh-fake-ssh-bin"
 refresh_fake_ssh_args="$tmpdir/refresh-fake-ssh-args"
@@ -9444,7 +9519,11 @@ grep -q 'pi@example.invalid' "$refresh_fake_ssh_args"
 grep -q 'validate_refresh_controls()' "$refresh_fake_ssh_stdin"
 grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"' "$refresh_fake_ssh_stdin"
 grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"' "$refresh_fake_ssh_stdin"
+grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries" "$max_retries"' "$refresh_fake_ssh_stdin"
+grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay" "$max_retry_delay"' "$refresh_fake_ssh_stdin"
+grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' "$refresh_fake_ssh_stdin"
 grep -q 'echo "$name must be 0 or 1" >&2' "$refresh_fake_ssh_stdin"
+grep -q 'echo "$name must be at most ${maximum}" >&2' "$refresh_fake_ssh_stdin"
 grep -q 'validate_refresh_controls' "$refresh_fake_ssh_stdin"
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' "$refresh_fake_ssh_stdin"

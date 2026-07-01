@@ -11,10 +11,10 @@ the Raspberry Pi, not on the local computer.
 
 Options:
   --force             Force a redownload even when cached chart files exist
-  --retries N         Download attempts on the Pi before failing (default: 5)
-  --retry-delay N     Seconds between retryable failures (default: 30)
+  --retries N         Download attempts on the Pi before failing (1-20; default: 5)
+  --retry-delay N     Seconds between retryable failures (0-3600; default: 30)
   --status            Run a read-only status-report after chart sync succeeds
-  --gps-seconds N     Override the commissioned GPS fix wait during --status
+  --gps-seconds N     Override the commissioned GPS fix wait during --status (1-600)
 
 Nothing is installed, enabled, rebooted, shut down, or downloaded on the
 local computer.
@@ -38,6 +38,9 @@ retries=5
 retry_delay=30
 status=0
 gps_seconds=""
+max_retries=20
+max_retry_delay=3600
+max_gps_seconds=600
 ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -60,6 +63,28 @@ require_non_negative_integer() {
   fi
 }
 
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --force)
@@ -71,8 +96,10 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_positive_integer "$1" "${2:-}"
-      retries="${2:-}"
+      retries_value="${2:-}"
+      require_positive_integer "$1" "$retries_value"
+      require_integer_at_most "$1" "$retries_value" "$max_retries"
+      retries="$retries_value"
       shift 2
       ;;
     --retry-delay)
@@ -80,8 +107,10 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_non_negative_integer "$1" "${2:-}"
-      retry_delay="${2:-}"
+      retry_delay_value="${2:-}"
+      require_non_negative_integer "$1" "$retry_delay_value"
+      require_integer_at_most "$1" "$retry_delay_value" "$max_retry_delay"
+      retry_delay="$retry_delay_value"
       shift 2
       ;;
     --status)
@@ -93,8 +122,10 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_positive_integer "$1" "${2:-}"
-      gps_seconds="${2:-}"
+      gps_seconds_value="${2:-}"
+      require_positive_integer "$1" "$gps_seconds_value"
+      require_integer_at_most "$1" "$gps_seconds_value" "$max_gps_seconds"
+      gps_seconds="$gps_seconds_value"
       shift 2
       ;;
     -h|--help)
@@ -278,12 +309,37 @@ retry_delay="${NOAA_NAVIONICS_REFRESH_RETRY_DELAY:-30}"
 status="${NOAA_NAVIONICS_REFRESH_STATUS:-0}"
 gps_seconds="${NOAA_NAVIONICS_REFRESH_GPS_SECONDS:-}"
 python3_cmd=""
+max_retries=20
+max_retry_delay=3600
+max_gps_seconds=600
 
 require_nonnegative_integer() {
   local name="$1"
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 1
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 1
   fi
 }
@@ -314,9 +370,12 @@ validate_refresh_controls() {
   require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"
   require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"
   require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
+  require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries" "$max_retries"
   require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
+  require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay" "$max_retry_delay"
   if [[ -n "$gps_seconds" ]]; then
     require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
+    require_integer_at_most "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"
   fi
 }
 
