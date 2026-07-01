@@ -843,6 +843,8 @@ grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionic
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true`' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true`' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
@@ -1497,8 +1499,14 @@ grep -q 'Could not execute helper script through validated descriptor' scripts/e
 ! sed -n '/^require_helper()/,/^}/p' scripts/export_pi_recovery_bundle.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/verify_pi_recovery_exports.sh
+grep -q 'PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"' scripts/verify_pi_recovery_exports.sh
+grep -q 'PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_checksum_manifest' scripts/verify_pi_recovery_exports.sh
+grep -q 'def verify_optional_pre_departure_status' scripts/verify_pi_recovery_exports.sh
+grep -q 'verify_optional_pre_departure_status(recovery_dir)' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum mismatch for' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status checksum mismatch' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest is missing archive' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest lists unexpected archive' scripts/verify_pi_recovery_exports.sh
 grep -q 'hashlib.sha256' scripts/verify_pi_recovery_exports.sh
@@ -8912,6 +8920,16 @@ def write_checksums(directory):
     manifest.chmod(0o600)
 
 
+def write_pre_departure_status(directory):
+    status = directory / "pre-departure-status.json"
+    payload = json.dumps({"ok": True, "checks": [], "service_checks": []}, sort_keys=True).encode("utf-8") + b"\n"
+    status.write_bytes(payload)
+    status.chmod(0o600)
+    checksum = directory / "pre-departure-status.sha256"
+    checksum.write_text(f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n", encoding="ascii")
+    checksum.chmod(0o600)
+
+
 root = Path(sys.argv[1])
 build_archive(
     root,
@@ -8940,6 +8958,7 @@ with tarfile.open(
     add_text(archive, "./commands/date-utc.txt", "2026-01-01\n")
 (root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz").chmod(0o600)
 write_checksums(root)
+write_pre_departure_status(root)
 PY
 chmod 0700 "$recovery_verify_dir"
 
@@ -8968,6 +8987,29 @@ grep -q 'commissioning settings:' "$verify_output"
 grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
+grep -q 'pre-departure status: pre-departure-status.json (checksum verified)' "$verify_output"
+
+recovery_verify_bad_status_checksum_dir="$tmpdir/recovery-verify-bad-status-checksum"
+cp -a "$recovery_verify_dir" "$recovery_verify_bad_status_checksum_dir"
+python3 - "$recovery_verify_bad_status_checksum_dir/pre-departure-status.sha256" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+parts = path.read_text(encoding="ascii").split("  ", 1)
+path.write_text("0" * 64 + "  " + parts[1], encoding="ascii")
+path.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_bad_status_checksum_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a mismatched pre-departure status checksum with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status checksum mismatch' "$verify_output"
 
 recovery_verify_missing_checksum_dir="$tmpdir/recovery-verify-missing-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_missing_checksum_dir"

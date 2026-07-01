@@ -149,6 +149,8 @@ import tarfile
 
 
 CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
+PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"
+PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVES = [
     {
@@ -331,6 +333,11 @@ def hash_private_archive(archive_path: Path) -> str:
             fail(f"archive changed before checksum verification: {archive_path}")
         if not stat.S_ISREG(opened.st_mode):
             fail(f"archive must be regular when opened for checksum verification: {archive_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"archive is owned by uid {opened.st_uid}, expected {os.getuid()} when opened for checksum verification: {archive_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"archive has permissions {opened_mode:04o}, expected private 0600 when opened for checksum verification: {archive_path}")
         digest = hashlib.sha256()
         with os.fdopen(fd, "rb") as archive_file:
             fd = -1
@@ -401,6 +408,85 @@ def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
     return entries
 
 
+def read_private_file(file_path: Path, label: str) -> bytes:
+    if file_path.is_symlink():
+        fail(f"{label} must not be a symlink: {file_path}")
+    try:
+        before = file_path.lstat()
+    except OSError as exc:
+        fail(f"missing {label}: {file_path}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"{label} must be a regular file: {file_path}")
+    if before.st_uid != os.getuid():
+        fail(f"{label} is owned by uid {before.st_uid}, expected {os.getuid()}: {file_path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"{label} has permissions {mode:04o}, expected private 0600: {file_path}")
+    fd = -1
+    try:
+        fd = os.open(file_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"{label} changed while being opened: {file_path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"{label} must be regular when opened: {file_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"{label} is owned by uid {opened.st_uid}, expected {os.getuid()} when opened: {file_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"{label} has permissions {opened_mode:04o}, expected private 0600 when opened: {file_path}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    except OSError as exc:
+        fail(f"could not read {label} {file_path}: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
+    status_path = recovery_dir / PRE_DEPARTURE_STATUS_NAME
+    checksum_path = recovery_dir / PRE_DEPARTURE_STATUS_CHECKSUM_NAME
+    status_present = status_path.exists() or status_path.is_symlink()
+    checksum_present = checksum_path.exists() or checksum_path.is_symlink()
+    if not status_present and not checksum_present:
+        return False
+    if not status_present:
+        fail(f"missing optional pre-departure status snapshot {PRE_DEPARTURE_STATUS_NAME}")
+    if not checksum_present:
+        fail(f"missing optional pre-departure status checksum {PRE_DEPARTURE_STATUS_CHECKSUM_NAME}")
+
+    status_payload = read_private_file(status_path, "pre-departure status snapshot")
+    checksum_payload = read_private_file(checksum_path, "pre-departure status checksum")
+    try:
+        checksum_text = checksum_payload.decode("ascii")
+    except UnicodeDecodeError as exc:
+        fail(f"pre-departure status checksum is not ASCII: {exc}")
+    checksum_lines = [line for line in checksum_text.splitlines() if line.strip()]
+    if len(checksum_lines) != 1:
+        fail("pre-departure status checksum must contain exactly one checksum line")
+    if "  " not in checksum_lines[0]:
+        fail("pre-departure status checksum must use two-space sha256 filename format")
+    expected_digest, name = checksum_lines[0].split("  ", 1)
+    if not SHA256_RE.fullmatch(expected_digest):
+        fail("pre-departure status checksum has invalid SHA-256 digest")
+    if name != PRE_DEPARTURE_STATUS_NAME:
+        fail(f"pre-departure status checksum must name {PRE_DEPARTURE_STATUS_NAME}, got {name}")
+    actual_digest = hashlib.sha256(status_payload).hexdigest()
+    if actual_digest != expected_digest:
+        fail(f"pre-departure status checksum mismatch: expected {expected_digest}, got {actual_digest}")
+    try:
+        status = json.loads(status_payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        fail(f"pre-departure status snapshot is not valid JSON: {exc}")
+    if not isinstance(status, dict):
+        fail("pre-departure status snapshot JSON must be an object")
+    if status.get("ok") is not True:
+        fail("pre-departure status snapshot JSON does not report ok=true")
+    return True
+
+
 def verify_checksum_manifest(recovery_dir: Path, archive_paths: list[Path]) -> None:
     entries = read_checksum_manifest(recovery_dir)
     expected_names = {path.name for path in archive_paths}
@@ -438,10 +524,13 @@ def main() -> None:
         summaries.append((str(spec["label"]), archive_path.name, file_count))
         archive_paths.append(archive_path)
     verify_checksum_manifest(recovery_dir, archive_paths)
+    verified_pre_departure_status = verify_optional_pre_departure_status(recovery_dir)
 
     print(f"Verified Pi recovery exports: {recovery_dir}")
     for label, name, file_count in summaries:
         print(f"- {label}: {name} ({file_count} regular file(s))")
+    if verified_pre_departure_status:
+        print(f"- pre-departure status: {PRE_DEPARTURE_STATUS_NAME} (checksum verified)")
 
 
 main()
