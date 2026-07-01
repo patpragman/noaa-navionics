@@ -77,6 +77,10 @@ grep -q 'list-gps-devices' src/noaa_navionics/cli.py
 grep -q 'test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names' tests/test_downloader.py
 grep -q 'noaa-navionics list-gps-devices' README.md
 grep -q 'noaa-navionics list-gps-devices' docs/sailboat-pi.md
+grep -q 'noaa-navionics list-gps-devices' scripts/install_raspberry_pi.sh
+grep -q 'noaa-navionics list-gps-devices' scripts/deploy_to_pi.sh
+grep -q 'noaa-navionics list-gps-devices' scripts/provision_sailboat_pi.sh
+grep -q 'noaa-navionics list-gps-devices' scripts/configure_gpsd.sh
 grep -q 'def _gps_seconds_from_launcher_env' src/noaa_navionics/cli.py
 grep -q 'test_status_report_rejects_symlinked_launcher_environment_for_gps_wait' tests/test_downloader.py
 grep -q 'test_status_report_rejects_unknown_launcher_environment_key_for_gps_wait' tests/test_downloader.py
@@ -3900,6 +3904,7 @@ if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
   install_expected_revision="${install_expected_revision}-dirty"
 fi
 test "$(tr -d '[:space:]' <"$install_smoke_home/.local/share/noaa-navionics/source-revision")" = "$install_expected_revision"
+grep -q 'noaa-navionics list-gps-devices' "$install_output"
 
 unsafe_install_home="$tmpdir/unsafe-install-home"
 mkdir -p "$unsafe_install_home/.local/bin"
@@ -4234,6 +4239,18 @@ fi
 grep -q 'Usage: scripts/deploy_to_pi.sh' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh --provision to require --device before remote work with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required for deploy --provision unless --skip-gpsd is used' "$deploy_output"
+grep -q 'noaa-navionics list-gps-devices' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh root@example.invalid --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -4497,6 +4514,18 @@ if [[ "$provision_code" -ne 2 ]]; then
 fi
 
 set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to require --device with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required unless --skip-gpsd is used' "$provision_output"
+grep -q 'noaa-navionics list-gps-devices' "$provision_output"
+
+set +e
 scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --gps-seconds nope >"$provision_output" 2>&1
 provision_code=$?
 set -e
@@ -4746,6 +4775,7 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--device is required for the rebooted dock acceptance test' "$dock_output"
+grep -q 'noaa-navionics list-gps-devices' "$dock_output"
 
 dock_smoke_ssh_bin="$tmpdir/dock-smoke-ssh-bin"
 dock_smoke_ssh_log="$tmpdir/dock-smoke-ssh-log"
@@ -4979,6 +5009,7 @@ if [[ "$pre_departure_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--device is required for the pre-departure check' "$verify_output"
+grep -q 'noaa-navionics list-gps-devices' "$verify_output"
 
 set +e
 scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$verify_output" 2>&1
@@ -5001,6 +5032,7 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--device is required unless --skip-pre-departure is used' "$verify_output"
+grep -q 'noaa-navionics list-gps-devices' "$verify_output"
 
 set +e
 scripts/pre_trip_prepare_pi.sh root@example.invalid --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
@@ -6721,6 +6753,18 @@ if [[ "$gpsd_code" -ne 2 ]]; then
   echo "expected configure_gpsd.sh to reject missing --device value with exit 2" >&2
   exit 1
 fi
+
+set +e
+scripts/configure_gpsd.sh --allow-non-pi --dry-run >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to require --device with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required' "$gpsd_output"
+grep -q 'noaa-navionics list-gps-devices' "$gpsd_output"
 
 set +e
 scripts/configure_gpsd.sh --allow-non-pi --dry-run --no-device-check --device relative-gps >"$gpsd_output" 2>&1

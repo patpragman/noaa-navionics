@@ -207,6 +207,7 @@ done
 
 if [[ -z "$device" ]]; then
   echo "--device is required for the pre-departure check" >&2
+  echo "Use the commissioned path from the Pi, usually reported by: noaa-navionics list-gps-devices" >&2
   exit 2
 fi
 

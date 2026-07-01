@@ -867,7 +867,8 @@ Desktop autologin and chartplotter autostart are also configured by provisioning
 after commissioning succeeds.
 
 Next steps:
-1. Edit ${config_dir}/config.ini for your cruising area and GPS.
-2. Run: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
-3. Start OpenCPN with: noaa-navionics-start-chartplotter
+1. Plug in the GPS and run: noaa-navionics list-gps-devices
+2. Edit ${config_dir}/config.ini for your cruising area and GPS.
+3. Run: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS_DEVICE
+4. Start OpenCPN with: noaa-navionics-start-chartplotter
 EOF

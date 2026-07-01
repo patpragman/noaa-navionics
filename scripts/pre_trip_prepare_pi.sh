@@ -466,6 +466,7 @@ done
 validate_ssh_target "$target"
 if [[ -z "$device" && "$skip_pre_departure" -eq 0 ]]; then
   echo "--device is required unless --skip-pre-departure is used" >&2
+  echo "Use the commissioned path from the Pi, usually reported by: noaa-navionics list-gps-devices" >&2
   exit 2
 fi
 validate_output_dir_arg "$output_dir"

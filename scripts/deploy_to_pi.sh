@@ -32,6 +32,8 @@ provision_args=()
 install_args=()
 saw_provision_option=0
 allow_dirty=0
+device=""
+skip_gpsd=0
 skip_services=0
 skip_autologin=0
 ssh_cmd=""
@@ -93,7 +95,7 @@ validate_gps_device_path_arg() {
   local value="$1"
   local suffix
   if [[ -z "$value" ]]; then
-    echo "GPS device path is required" >&2
+    echo "GPS device path is required; after installing on the Pi, run: noaa-navionics list-gps-devices" >&2
     exit 2
   fi
   if [[ "$value" =~ [[:space:]\"\'] ]]; then
@@ -463,6 +465,7 @@ while [[ $# -gt 0 ]]; do
       fi
       if [[ "$1" == "--device" ]]; then
         validate_gps_device_path_arg "${2:-}"
+        device="${2:-}"
       fi
       provision_args+=("$1" "${2:-}")
       shift 2
@@ -501,7 +504,13 @@ while [[ $# -gt 0 ]]; do
       install_args+=("$1")
       shift
       ;;
-    --skip-gpsd|--skip-sync|--skip-gps-time|--no-device-check)
+    --skip-gpsd)
+      saw_provision_option=1
+      skip_gpsd=1
+      provision_args+=("$1")
+      shift
+      ;;
+    --skip-sync|--skip-gps-time|--no-device-check)
       saw_provision_option=1
       provision_args+=("$1")
       shift
@@ -533,6 +542,12 @@ if [[ "$skip_autologin" -eq 1 && "$skip_services" -eq 0 ]]; then
 --skip-autologin requires --skip-services.
 Readiness verifies desktop startup, so services and chartplotter autostart must be deployed together for unattended startup.
 EOF
+  exit 2
+fi
+
+if [[ "$provision" -eq 1 && "$skip_gpsd" -eq 0 && -z "$device" ]]; then
+  echo "--device is required for deploy --provision unless --skip-gpsd is used" >&2
+  echo "Install first, then run on the Pi: noaa-navionics list-gps-devices" >&2
   exit 2
 fi
 

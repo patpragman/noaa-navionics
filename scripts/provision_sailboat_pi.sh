@@ -682,6 +682,7 @@ fi
 
 if [[ "$skip_gpsd" -eq 0 && -z "$device" ]]; then
   echo "--device is required unless --skip-gpsd is used" >&2
+  echo "After installing on the Pi, run: noaa-navionics list-gps-devices" >&2
   usage
   exit 2
 fi

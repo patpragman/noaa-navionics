@@ -610,6 +610,7 @@ done
 
 if [[ -z "$device" ]]; then
   echo "--device is required" >&2
+  echo "Run on the Pi first: noaa-navionics list-gps-devices" >&2
   usage
   exit 2
 fi
