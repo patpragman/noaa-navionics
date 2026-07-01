@@ -2900,6 +2900,8 @@ grep -q 'chart_dir = Path(args.charts).expanduser() if args.charts else app_conf
 grep -q 'pass `--charts PATH` to check a different mounted chart directory explicitly' README.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
+grep -q 'def _validate_written_config' src/noaa_navionics/config.py
+grep -q '_validate_written_config(target)' src/noaa_navionics/config.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/config.py
 grep -q 'def _first_symlink_ancestor' src/noaa_navionics/config.py
 grep -q 'def _validate_manifest_replace_target' src/noaa_navionics/downloader.py
@@ -2927,6 +2929,8 @@ grep -q 'test_write_default_config_rejects_unsafe_existing_config_when_overwriti
 grep -q 'test_write_default_config_tightens_public_parent' tests/test_downloader.py
 grep -q 'test_write_default_config_rejects_parent_when_tightening_fails' tests/test_downloader.py
 grep -q 'test_write_default_config_directory_sync_uses_no_follow_open' tests/test_downloader.py
+grep -q 'test_write_default_config_validates_promoted_file_with_no_follow_open' tests/test_downloader.py
+grep -q 'test_write_default_config_rejects_corrupt_promoted_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_ancestor' tests/test_downloader.py
@@ -2940,6 +2944,8 @@ grep -q 'misowned or group/world-writable config directories' README.md
 grep -q 'misowned or group/world-writable config directories' docs/sailboat-pi.md
 grep -q 'Config directory sync uses no-follow directory opens' README.md
 grep -q 'Config directory sync uses no-follow directory opens' docs/sailboat-pi.md
+grep -q 'promoted config is reopened through a no-follow descriptor' README.md
+grep -q 'promoted config is reopened through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'test_read_config_rejects_writable_config_file' tests/test_downloader.py
 grep -q 'symlinked config path components' README.md
 grep -q 'symlinked config path components' docs/sailboat-pi.md

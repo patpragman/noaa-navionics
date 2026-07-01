@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from configparser import ConfigParser
+from configparser import ConfigParser, Error as ConfigParserError
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -292,6 +292,7 @@ def _write_text_atomic(target: Path, text: str) -> None:
             os.chmod(tmp_path, 0o600)
             os.fsync(handle.fileno())
         os.replace(tmp_path, target)
+        _validate_written_config(target)
         _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
@@ -299,6 +300,59 @@ def _write_text_atomic(target: Path, text: str) -> None:
                 tmp_path.unlink()
             except FileNotFoundError:
                 pass
+
+
+def _validate_written_config(path: Path) -> None:
+    _reject_unsafe_config_path(path)
+    try:
+        expected = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect promoted NOAA Navionics config {path}: {exc}") from exc
+    if not stat.S_ISREG(expected.st_mode):
+        raise RuntimeError(f"promoted NOAA Navionics config is not a regular file: {path}")
+    if expected.st_uid != os.getuid():
+        raise RuntimeError(
+            f"promoted NOAA Navionics config {path} is owned by uid {expected.st_uid}, expected {os.getuid()}"
+        )
+    mode = expected.st_mode & 0o777
+    if mode != 0o600:
+        raise RuntimeError(f"promoted NOAA Navionics config {path} has permissions {mode:04o}, expected 0600")
+
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        if path.is_symlink():
+            raise RuntimeError(f"promoted NOAA Navionics config is a symlink: {path}") from exc
+        raise RuntimeError(f"could not open promoted NOAA Navionics config {path}: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+            raise RuntimeError(f"promoted NOAA Navionics config changed while validating: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"promoted NOAA Navionics config is not a regular file when opened: {path}")
+        if opened.st_uid != os.getuid():
+            raise RuntimeError(
+                f"promoted NOAA Navionics config {path} is owned by uid {opened.st_uid}, expected {os.getuid()}"
+            )
+        opened_mode = opened.st_mode & 0o777
+        if opened_mode != 0o600:
+            raise RuntimeError(
+                f"promoted NOAA Navionics config {path} has permissions {opened_mode:04o}, expected 0600"
+            )
+        parser = ConfigParser()
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            try:
+                parser.read_file(handle, source=str(path))
+            except ConfigParserError as exc:
+                raise RuntimeError(f"could not parse promoted NOAA Navionics config {path}: {exc}") from exc
+        for section in ("charts", "gps", "tracking", "anchor"):
+            if not parser.has_section(section):
+                raise RuntimeError(f"promoted NOAA Navionics config {path} is missing [{section}]")
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _prepare_config_parent(target: Path) -> None:

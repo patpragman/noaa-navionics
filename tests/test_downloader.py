@@ -552,6 +552,42 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(calls[0][1] & getattr(os, "O_DIRECTORY", 0))
         self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
 
+    def test_write_default_config_validates_promoted_file_with_no_follow_open(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            calls = []
+            original_open = config_module.os.open
+
+            def fake_open(open_path, flags, mode=0o777, *args, **kwargs):
+                calls.append((Path(open_path), flags))
+                return original_open(open_path, flags, mode, *args, **kwargs)
+
+            config_module.os.open = fake_open
+            try:
+                write_default_config(path)
+            finally:
+                config_module.os.open = original_open
+
+            promoted_opens = [(opened_path, flags) for opened_path, flags in calls if opened_path == path]
+            self.assertTrue(promoted_opens)
+            self.assertTrue(promoted_opens[-1][1] & getattr(os, "O_NOFOLLOW", 0))
+
+    def test_write_default_config_rejects_corrupt_promoted_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            original_replace = config_module.os.replace
+
+            def corrupt_after_replace(source, target):
+                original_replace(source, target)
+                Path(target).write_text("not an ini file\n", encoding="utf-8")
+
+            config_module.os.replace = corrupt_after_replace
+            try:
+                with self.assertRaisesRegex(RuntimeError, "could not parse promoted NOAA Navionics config"):
+                    write_default_config(path)
+            finally:
+                config_module.os.replace = original_replace
+
     def test_custom_config_package_kwargs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "config.ini"
