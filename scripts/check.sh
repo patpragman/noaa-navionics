@@ -669,8 +669,8 @@ grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopba
 grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
-grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' README.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
@@ -686,6 +686,10 @@ grep -q 'Recovery output capture directory changed before sync' scripts/pre_trip
 grep -q 'Recovery output capture changed before cleanup; leaving it in place' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
+grep -q 'Helper script changed before descriptor execution' scripts/pre_trip_prepare_pi.sh
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' scripts/pre_trip_prepare_pi.sh
+grep -q 'Could not execute helper script through validated descriptor' scripts/pre_trip_prepare_pi.sh
+! grep -q '"$command_path" "$@"' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q '| tee "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
@@ -815,8 +819,8 @@ grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3
 grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
-grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
-grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' README.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components' README.md
@@ -1713,6 +1717,10 @@ grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {o
 grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/pre_trip_prepare_pi.sh
 grep -q 'Could not open helper script through no-follow descriptor' scripts/pre_trip_prepare_pi.sh
 grep -q 'Helper script changed before it could be validated' scripts/pre_trip_prepare_pi.sh
+grep -q 'Helper script changed before descriptor execution' scripts/pre_trip_prepare_pi.sh
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' scripts/pre_trip_prepare_pi.sh
+grep -q 'Could not execute helper script through validated descriptor' scripts/pre_trip_prepare_pi.sh
+! grep -q '"$command_path" "$@"' scripts/pre_trip_prepare_pi.sh
 ! grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
