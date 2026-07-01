@@ -5054,6 +5054,46 @@ class CLIValidationTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    VALID_CATALOG_XML = textwrap.dedent(
+        """\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <DS_Series xmlns="http://www.isotc211.org/2005/gmd"
+            xmlns:gco="http://www.isotc211.org/2005/gco">
+          <composedOf>
+            <DS_DataSet>
+              <has>
+                <MD_Metadata>
+                  <identificationInfo>
+                    <MD_DataIdentification>
+                      <citation>
+                        <CI_Citation>
+                          <title><gco:CharacterString>US5AK3CM</gco:CharacterString></title>
+                          <alternateTitle><gco:CharacterString>Cook Inlet</gco:CharacterString></alternateTitle>
+                        </CI_Citation>
+                      </citation>
+                    </MD_DataIdentification>
+                  </identificationInfo>
+                  <distributionInfo>
+                    <MD_Distribution>
+                      <transferOptions>
+                        <MD_DigitalTransferOptions>
+                          <onLine>
+                            <CI_OnlineResource>
+                              <linkage><URL>https://www.charts.noaa.gov/ENCs/US5AK3CM.zip</URL></linkage>
+                            </CI_OnlineResource>
+                          </onLine>
+                        </MD_DigitalTransferOptions>
+                      </transferOptions>
+                    </MD_Distribution>
+                  </distributionInfo>
+                </MD_Metadata>
+              </has>
+            </DS_DataSet>
+          </composedOf>
+        </DS_Series>
+        """
+    )
+
     class FakeResponse:
         def __init__(self, payload, content_length: str = "5", url: str = ""):
             self.headers = {"Content-Length": content_length}
@@ -5314,45 +5354,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_catalog_download_accepts_noaa_enc_metadata(self):
         original = downloader_module.urlopen
-        payload = textwrap.dedent(
-            """\
-            <?xml version="1.0" encoding="UTF-8"?>
-            <DS_Series xmlns="http://www.isotc211.org/2005/gmd"
-                xmlns:gco="http://www.isotc211.org/2005/gco">
-              <composedOf>
-                <DS_DataSet>
-                  <has>
-                    <MD_Metadata>
-                      <identificationInfo>
-                        <MD_DataIdentification>
-                          <citation>
-                            <CI_Citation>
-                              <title><gco:CharacterString>US5AK3CM</gco:CharacterString></title>
-                              <alternateTitle><gco:CharacterString>Cook Inlet</gco:CharacterString></alternateTitle>
-                            </CI_Citation>
-                          </citation>
-                        </MD_DataIdentification>
-                      </identificationInfo>
-                      <distributionInfo>
-                        <MD_Distribution>
-                          <transferOptions>
-                            <MD_DigitalTransferOptions>
-                              <onLine>
-                                <CI_OnlineResource>
-                                  <linkage><URL>https://www.charts.noaa.gov/ENCs/US5AK3CM.zip</URL></linkage>
-                                </CI_OnlineResource>
-                              </onLine>
-                            </MD_DigitalTransferOptions>
-                          </transferOptions>
-                        </MD_Distribution>
-                      </distributionInfo>
-                    </MD_Metadata>
-                  </has>
-                </DS_DataSet>
-              </composedOf>
-            </DS_Series>
-            """
-        ).encode("utf-8")
+        payload = self.VALID_CATALOG_XML.encode("utf-8")
 
         def fake_urlopen(request, timeout=60):
             return self.FakeResponse(payload, content_length=str(len(payload)), url=request.full_url)
@@ -5371,6 +5373,44 @@ class ManifestTests(unittest.TestCase):
                 self.assertEqual(search_catalog(output / package.filename, "cook")[0].name, "US5AK3CM")
                 manifest = read_manifest(output)
                 self.assertEqual(manifest["package"]["filename"], package.filename)
+        finally:
+            downloader_module.urlopen = original
+
+    def test_cached_catalog_reuse_rejects_xml_without_enc_metadata(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            package = package_for(catalog=True)
+            catalog = output / package.filename
+            catalog.write_text("<?xml version='1.0'?><status>maintenance</status>\n", encoding="utf-8")
+            catalog.chmod(0o600)
+
+            with self.assertRaisesRegex(RuntimeError, "no NOAA ENC chart metadata"):
+                download_package(package, output, force=False)
+
+            self.assertEqual(catalog.read_text(encoding="utf-8"), "<?xml version='1.0'?><status>maintenance</status>\n")
+            self.assertFalse((output / MANIFEST_NAME).exists())
+
+    def test_cached_catalog_reuse_accepts_noaa_enc_metadata_without_network(self):
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            raise AssertionError("urlopen should not be called for an existing valid catalog")
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = package_for(catalog=True)
+                catalog = output / package.filename
+                catalog.write_text(self.VALID_CATALOG_XML, encoding="utf-8")
+                catalog.chmod(0o600)
+
+                result = download_package(package, output, force=False)
+
+                self.assertTrue(result.skipped)
+                self.assertEqual(result.path, catalog)
+                self.assertEqual(search_catalog(catalog, "cook")[0].name, "US5AK3CM")
+                self.assertFalse((output / MANIFEST_NAME).exists())
         finally:
             downloader_module.urlopen = original
 

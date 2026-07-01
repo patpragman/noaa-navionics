@@ -268,6 +268,8 @@ def _download_package_unlocked(
         destination_stat, digest = _hash_existing_download_path(destination)
         bytes_written = destination_stat.st_size
         result = DownloadResult(destination, package.url, bytes_written, skipped=True, sha256=digest)
+        if package.filename == CATALOG_NAME:
+            _validate_downloaded_catalog(destination)
         if extract and destination.suffix.lower() == ".zip":
             if _matching_previous_manifest(output_path, package, result, digest) is None:
                 raise RuntimeError(

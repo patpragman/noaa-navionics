@@ -2361,10 +2361,12 @@ grep -q 'downloaded catalog XML contains no NOAA ENC chart metadata' src/noaa_na
 grep -q 'test_catalog_download_rejects_malformed_xml_before_promotion' tests/test_downloader.py
 grep -q 'test_catalog_download_rejects_xml_without_enc_metadata_before_promotion' tests/test_downloader.py
 grep -q 'test_catalog_download_accepts_noaa_enc_metadata' tests/test_downloader.py
+grep -q 'test_cached_catalog_reuse_rejects_xml_without_enc_metadata' tests/test_downloader.py
+grep -q 'test_cached_catalog_reuse_accepts_noaa_enc_metadata_without_network' tests/test_downloader.py
 grep -q 'pass CRC checks' README.md
 grep -q 'pass CRC checks' docs/sailboat-pi.md
-grep -q 'Catalog downloads are parsed as XML and must contain NOAA ENC chart metadata before replacing the cached product catalog' README.md
-grep -q 'Catalog downloads are parsed as XML and must contain NOAA ENC chart metadata before replacing the cached product catalog' docs/sailboat-pi.md
+grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' README.md
+grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' docs/sailboat-pi.md
 grep -q 'or uses a non-HTTPS redirect' src/noaa_navionics/downloader.py
 grep -q 'def _download_url_matches_package' src/noaa_navionics/downloader.py
 grep -q 'test_download_rejects_http_redirect_before_writing_archive' tests/test_downloader.py
