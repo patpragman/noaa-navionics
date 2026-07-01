@@ -940,7 +940,7 @@ def fail(message: str) -> None:
     raise SystemExit(124)
 
 
-def validate_successful_status_snapshot(payload: dict[str, object]) -> None:
+def validate_successful_status_snapshot(payload: dict[str, object], expected_source_revision: str) -> None:
     checks = payload.get("checks")
     service_checks = payload.get("service_checks")
     if not isinstance(checks, list) or not isinstance(service_checks, list):
@@ -1025,6 +1025,14 @@ def validate_successful_status_snapshot(payload: dict[str, object]) -> None:
             "pre-departure status snapshot JSON records non-Pi diagnostic skip(s): "
             + ", ".join(non_pi_skips)
         )
+    source_data = check_rows["Source Revision"].get("data")
+    row_revision = str(source_data.get("revision", "")).strip()
+    if not row_revision or row_revision == "unknown":
+        fail("pre-departure status snapshot JSON Source Revision row missing revision")
+    if row_revision.endswith("-dirty"):
+        fail("pre-departure status snapshot JSON Source Revision row records a dirty revision")
+    if row_revision != expected_source_revision:
+        fail("pre-departure status snapshot JSON Source Revision row does not match deployed source_revision")
 
 
 def inspect_private_directory(target: Path) -> None:
@@ -1253,7 +1261,7 @@ try:
         fail("pre-departure status snapshot JSON missing deployed source_revision")
     if source_revision_text.endswith("-dirty"):
         fail("pre-departure status snapshot JSON dirty deployed source_revision is not production-ready")
-    validate_successful_status_snapshot(parsed)
+    validate_successful_status_snapshot(parsed, source_revision_text)
     os.replace(temp_path, status_path)
     temp_path = None
 finally:

@@ -593,7 +593,7 @@ def fail(message: str) -> None:
     raise SystemExit(124)
 
 
-def validate_successful_status_snapshot(payload: dict[str, object], path: Path) -> None:
+def validate_successful_status_snapshot(payload: dict[str, object], path: Path, expected_source_revision: str) -> None:
     checks = payload.get("checks")
     service_checks = payload.get("service_checks")
     if not isinstance(checks, list) or not isinstance(service_checks, list):
@@ -672,6 +672,14 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path) 
     )
     if non_pi_skips:
         fail(f"status snapshot JSON records non-Pi diagnostic skip(s): {', '.join(non_pi_skips)}: {path}")
+    source_data = check_rows["Source Revision"].get("data")
+    row_revision = str(source_data.get("revision", "")).strip()
+    if not row_revision or row_revision == "unknown":
+        fail(f"status snapshot JSON Source Revision row missing revision: {path}")
+    if row_revision.endswith("-dirty"):
+        fail(f"status snapshot JSON Source Revision row records a dirty revision: {path}")
+    if row_revision != expected_source_revision:
+        fail(f"status snapshot JSON Source Revision row does not match deployed source_revision: {path}")
 
 try:
     before = os.stat(path, follow_symlinks=False)
@@ -781,7 +789,7 @@ for field in ("checks", "service_checks"):
             print(f"status snapshot JSON {field}[{index}] missing detail: {path}", file=sys.stderr)
             raise SystemExit(124)
 if payload.get("ok") is True:
-    validate_successful_status_snapshot(payload, path)
+    validate_successful_status_snapshot(payload, path, source_revision_text)
 else:
     print(f"status snapshot JSON does not report ok=true: {path}", file=sys.stderr)
     raise SystemExit(124)
