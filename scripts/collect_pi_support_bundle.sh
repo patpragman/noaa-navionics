@@ -1054,12 +1054,15 @@ check_installed_noaa_command() {
   printf '%s\n' "$resolved"
 }
 
-collect_noaa_gps_device_candidates() {
+collect_noaa_command_reports() {
   local app_exec
+  local config="${HOME}/.config/noaa-navionics/config.ini"
   if app_exec="$(check_installed_noaa_command)"; then
     run_command noaa-gps-device-candidates "$app_exec" list-gps-devices
+    run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json
   else
     write_note "skipped noaa-navionics list-gps-devices: ${app_exec}"
+    write_note "skipped noaa-navionics status-report: ${app_exec}"
   fi
 }
 
@@ -1169,7 +1172,7 @@ run_command uptime uptime
 run_command df df -h
 run_command mount-findmnt findmnt
 run_command serial-devices bash -lc 'ls -l /dev/serial /dev/serial/by-id 2>&1 || true'
-collect_noaa_gps_device_candidates
+collect_noaa_command_reports
 run_command noaa-cache-tree bash -lc 'find "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-config-tree bash -lc 'find "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-data-tree bash -lc 'find "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
