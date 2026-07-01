@@ -2356,8 +2356,15 @@ grep -q 'chart ZIP has a failed CRC member' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_crc_failure_before_staging' tests/test_downloader.py
 grep -q '{label} is not a valid archive' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
+grep -q 'def _validate_downloaded_catalog' src/noaa_navionics/downloader.py
+grep -q 'downloaded catalog XML contains no NOAA ENC chart metadata' src/noaa_navionics/downloader.py
+grep -q 'test_catalog_download_rejects_malformed_xml_before_promotion' tests/test_downloader.py
+grep -q 'test_catalog_download_rejects_xml_without_enc_metadata_before_promotion' tests/test_downloader.py
+grep -q 'test_catalog_download_accepts_noaa_enc_metadata' tests/test_downloader.py
 grep -q 'pass CRC checks' README.md
 grep -q 'pass CRC checks' docs/sailboat-pi.md
+grep -q 'Catalog downloads are parsed as XML and must contain NOAA ENC chart metadata before replacing the cached product catalog' README.md
+grep -q 'Catalog downloads are parsed as XML and must contain NOAA ENC chart metadata before replacing the cached product catalog' docs/sailboat-pi.md
 grep -q 'or uses a non-HTTPS redirect' src/noaa_navionics/downloader.py
 grep -q 'def _download_url_matches_package' src/noaa_navionics/downloader.py
 grep -q 'test_download_rejects_http_redirect_before_writing_archive' tests/test_downloader.py

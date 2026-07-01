@@ -5268,6 +5268,112 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").exists())
             self.assertFalse((output / "AK_ENCs.zip.part").exists())
 
+    def test_catalog_download_rejects_malformed_xml_before_promotion(self):
+        original = downloader_module.urlopen
+        payload = b"<html><body>marina login"
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(payload, content_length=str(len(payload)), url=request.full_url)
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = package_for(catalog=True)
+
+                with self.assertRaisesRegex(RuntimeError, "downloaded catalog XML is not parseable"):
+                    download_package(package, output, force=True)
+
+                self.assertFalse((output / package.filename).exists())
+                self.assertFalse((output / f"{package.filename}.part").exists())
+                self.assertFalse((output / MANIFEST_NAME).exists())
+        finally:
+            downloader_module.urlopen = original
+
+    def test_catalog_download_rejects_xml_without_enc_metadata_before_promotion(self):
+        original = downloader_module.urlopen
+        payload = b"<?xml version='1.0'?><status>maintenance</status>\n"
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(payload, content_length=str(len(payload)), url=request.full_url)
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = package_for(catalog=True)
+
+                with self.assertRaisesRegex(RuntimeError, "no NOAA ENC chart metadata"):
+                    download_package(package, output, force=True)
+
+                self.assertFalse((output / package.filename).exists())
+                self.assertFalse((output / f"{package.filename}.part").exists())
+                self.assertFalse((output / MANIFEST_NAME).exists())
+        finally:
+            downloader_module.urlopen = original
+
+    def test_catalog_download_accepts_noaa_enc_metadata(self):
+        original = downloader_module.urlopen
+        payload = textwrap.dedent(
+            """\
+            <?xml version="1.0" encoding="UTF-8"?>
+            <DS_Series xmlns="http://www.isotc211.org/2005/gmd"
+                xmlns:gco="http://www.isotc211.org/2005/gco">
+              <composedOf>
+                <DS_DataSet>
+                  <has>
+                    <MD_Metadata>
+                      <identificationInfo>
+                        <MD_DataIdentification>
+                          <citation>
+                            <CI_Citation>
+                              <title><gco:CharacterString>US5AK3CM</gco:CharacterString></title>
+                              <alternateTitle><gco:CharacterString>Cook Inlet</gco:CharacterString></alternateTitle>
+                            </CI_Citation>
+                          </citation>
+                        </MD_DataIdentification>
+                      </identificationInfo>
+                      <distributionInfo>
+                        <MD_Distribution>
+                          <transferOptions>
+                            <MD_DigitalTransferOptions>
+                              <onLine>
+                                <CI_OnlineResource>
+                                  <linkage><URL>https://www.charts.noaa.gov/ENCs/US5AK3CM.zip</URL></linkage>
+                                </CI_OnlineResource>
+                              </onLine>
+                            </MD_DigitalTransferOptions>
+                          </transferOptions>
+                        </MD_Distribution>
+                      </distributionInfo>
+                    </MD_Metadata>
+                  </has>
+                </DS_DataSet>
+              </composedOf>
+            </DS_Series>
+            """
+        ).encode("utf-8")
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(payload, content_length=str(len(payload)), url=request.full_url)
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = package_for(catalog=True)
+
+                result = download_package(package, output, force=True)
+
+                self.assertEqual(result.path, output / package.filename)
+                self.assertTrue(result.sha256)
+                self.assertTrue((output / package.filename).exists())
+                self.assertEqual(search_catalog(output / package.filename, "cook")[0].name, "US5AK3CM")
+                manifest = read_manifest(output)
+                self.assertEqual(manifest["package"]["filename"], package.filename)
+        finally:
+            downloader_module.urlopen = original
+
     def test_download_revalidates_archive_target_before_promotion(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

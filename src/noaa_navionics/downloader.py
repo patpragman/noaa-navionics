@@ -325,12 +325,14 @@ def _download_package_unlocked(
         digest = hasher.hexdigest()
         break
 
-    if extract and destination.suffix.lower() == ".zip":
-        try:
+    try:
+        if extract and destination.suffix.lower() == ".zip":
             _validate_downloaded_zip(tmp_path)
-        except Exception:
-            _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
-            raise
+        if package.filename == CATALOG_NAME:
+            _validate_downloaded_catalog(tmp_path)
+    except Exception:
+        _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
+        raise
     _prepare_output_dir(output_path)
     if destination.is_symlink():
         _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
@@ -514,6 +516,23 @@ def _validate_downloaded_zip(zip_path: Path) -> None:
     enc_cell_count = _validate_zip_members_and_crc(zip_path, label="downloaded ZIP")
     if enc_cell_count <= 0:
         raise RuntimeError(f"downloaded ZIP contains no ENC .000 cells: {zip_path}")
+
+
+def _validate_downloaded_catalog(catalog_path: Path) -> None:
+    try:
+        for entry in iter_catalog_entries(catalog_path):
+            if _catalog_entry_name_looks_like_enc(entry.name) and entry.url.lower().endswith(".zip"):
+                return
+    except ET.ParseError as exc:
+        raise RuntimeError(f"downloaded catalog XML is not parseable: {catalog_path}") from exc
+    except OSError as exc:
+        raise RuntimeError(f"could not read downloaded catalog XML {catalog_path}: {exc}") from exc
+    raise RuntimeError(f"downloaded catalog XML contains no NOAA ENC chart metadata: {catalog_path}")
+
+
+def _catalog_entry_name_looks_like_enc(name: str) -> bool:
+    value = name.strip().upper()
+    return len(value) >= 6 and value.startswith("US") and value.isalnum()
 
 
 def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
