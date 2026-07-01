@@ -302,6 +302,7 @@ Failed root temporary config cleanup is also no-follow and same-file validated b
 Failed root backup cleanup is also no-follow and same-file validated before unlinking, leaving changed or unsafe backup paths in place.
 Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking.
 Python atomic-write temp cleanup for app config, OpenCPN config, status reports, and chart manifests is no-follow and same-file validated before unlinking.
+GPSD app-config validation and promotion temp cleanup uses the same no-follow same-file validation.
 
 Readiness compares GPSD and chrony config no-follow descriptors against the inspected file before parsing startup or GPS time settings.
 

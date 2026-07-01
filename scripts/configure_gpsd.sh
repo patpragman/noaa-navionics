@@ -575,6 +575,7 @@ device = sys.argv[3]
 
 sys.path.insert(0, str(repo_root / "src"))
 from noaa_navionics.config import _read_existing_config, _reject_unsafe_config_path, read_config
+from noaa_navionics._safeio import cleanup_private_temp_file
 
 parser = ConfigParser()
 _reject_unsafe_config_path(config_path)
@@ -597,10 +598,7 @@ try:
     app_config = read_config(tmp_path)
 finally:
     if tmp_path is not None:
-        try:
-            tmp_path.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_private_temp_file(tmp_path, label="GPSD config validation temp")
 
 if app_config.gps_mode != "gpsd":
     raise SystemExit("updated config did not set gps.mode=gpsd")
@@ -938,6 +936,7 @@ device = sys.argv[3]
 
 sys.path.insert(0, str(repo_root / "src"))
 from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path
+from noaa_navionics._safeio import cleanup_private_temp_file
 
 _prepare_config_parent(config_path)
 parser = ConfigParser()
@@ -978,10 +977,7 @@ try:
             os.close(fd)
 finally:
     if tmp_path is not None:
-        try:
-            tmp_path.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_private_temp_file(tmp_path, label="GPSD app config temp")
 PY
 
 echo "Configured GPSD for $device"
