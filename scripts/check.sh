@@ -641,9 +641,17 @@ grep -q 'Local ${command_name} command is not executable after resolution' scrip
 grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=' scripts/verify_pi.sh
 grep -Fq '/bin/bash -s' scripts/verify_pi.sh
+grep -q 'validate_verifier_controls' scripts/verify_pi.sh
+grep -q 'require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"' scripts/verify_pi.sh
+grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"' scripts/verify_pi.sh
+grep -q 'require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS"' scripts/verify_pi.sh
+grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value' scripts/verify_pi.sh
+grep -q 'validate_remote_gps_device_control "$expected_gps_device"' scripts/verify_pi.sh
 ! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
+grep -q 'revalidates the SSH-transferred verifier controls on the Pi before acceptance checks use them' README.md
+grep -q 'revalidates the SSH-transferred verifier controls on the Pi before acceptance checks use them' docs/sailboat-pi.md
 grep -Fq 'run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"' scripts/deploy_to_pi.sh
 grep -Fq 'run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args[@]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
@@ -13214,6 +13222,7 @@ chmod +x "$verify_revision_repo/scripts/verify_pi.sh"
 cat >"$verify_revision_repo/bin/ssh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 exit 0
 EOF
 chmod +x "$verify_revision_repo/bin/ssh"
@@ -13224,15 +13233,24 @@ git -C "$verify_revision_repo" add scripts/verify_pi.sh bin/ssh
 git -C "$verify_revision_repo" commit -q -m initial
 verify_clean_revision="$(git -C "$verify_revision_repo" rev-parse --short HEAD)"
 verify_fake_ssh_args="$tmpdir/verify-fake-ssh-args"
+verify_fake_ssh_stdin="$tmpdir/verify-fake-ssh-stdin"
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$verify_fake_ssh_stdin" \
   NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
 grep -Fq "NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}" "$verify_fake_ssh_args"
 grep -Fq "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=${verify_clean_revision}" "$verify_fake_ssh_args"
+grep -q 'validate_verifier_controls()' "$verify_fake_ssh_stdin"
+grep -q 'require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"' "$verify_fake_ssh_stdin"
+grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"' "$verify_fake_ssh_stdin"
+grep -q 'require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS"' "$verify_fake_ssh_stdin"
+grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value' "$verify_fake_ssh_stdin"
+grep -q 'validate_remote_gps_device_control "$expected_gps_device"' "$verify_fake_ssh_stdin"
 printf '# dirty change\n' >>"$verify_revision_repo/scripts/verify_pi.sh"
 set +e
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$verify_fake_ssh_stdin" \
   NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" pi@example.invalid >"$verify_output" 2>&1
@@ -13245,6 +13263,7 @@ if [[ "$verify_code" -ne 2 ]]; then
 fi
 grep -q 'Refusing to verify a dirty local worktree as production evidence' "$verify_output"
 NOAA_NAVIONICS_FAKE_SSH_ARGS="$verify_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$verify_fake_ssh_stdin" \
   NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$verify_revision_repo/bin:$PATH" \
   "$verify_revision_repo/scripts/verify_pi.sh" --allow-dirty pi@example.invalid >"$verify_output" 2>&1

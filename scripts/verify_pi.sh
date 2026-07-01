@@ -379,6 +379,84 @@ chartplotter_start_timeout_floor=120
 chartplotter_start_interval=5
 opencpn_stability_seconds=10
 
+fatal() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+require_remote_boolean() {
+  local name="$1"
+  local value="$2"
+  case "$value" in
+    0|1)
+      ;;
+    *)
+      fatal "$name must be 0 or 1"
+      ;;
+  esac
+}
+
+require_remote_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    fatal "$name must be a positive integer"
+  fi
+}
+
+require_remote_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    fatal "$name must be a non-negative integer"
+  fi
+}
+
+validate_remote_gps_device_control() {
+  local value="$1"
+  local suffix
+
+  [[ -n "$value" ]] || return 0
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE must not contain whitespace or quotes: $value"
+  fi
+  case "$value" in
+    /dev/serial/by-id/*)
+      suffix="${value#/dev/serial/by-id/}"
+      if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
+        return 0
+      fi
+      ;;
+    /dev/serial0|/dev/serial1|/dev/gps)
+      return 0
+      ;;
+    /dev/ttyUSB*|/dev/ttyACM*)
+      fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE is volatile; use /dev/serial/by-id/... instead: $value"
+      ;;
+  esac
+  fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value"
+}
+
+validate_verifier_controls() {
+  local expected_boot_id="${NOAA_NAVIONICS_EXPECTED_BOOT_ID:-}"
+  local expected_gps_device="${NOAA_NAVIONICS_EXPECTED_GPS_DEVICE:-}"
+  local expected_revision="${NOAA_NAVIONICS_EXPECTED_REVISION:-unknown}"
+
+  require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"
+  require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"
+  require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS" "${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}"
+  require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}"
+  if [[ -z "$expected_revision" || ! "$expected_revision" =~ ^(unknown|[A-Za-z0-9._-]+)$ ]]; then
+    fatal "NOAA_NAVIONICS_EXPECTED_REVISION contains unsafe characters: ${expected_revision:-<empty>}"
+  fi
+  if [[ -n "$expected_boot_id" && ! "$expected_boot_id" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+    fatal "NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value from /proc/sys/kernel/random/boot_id: $expected_boot_id"
+  fi
+  validate_remote_gps_device_control "$expected_gps_device"
+}
+
+validate_verifier_controls
+
 check() {
   local name="$1"
   shift
