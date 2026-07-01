@@ -138,6 +138,7 @@ fi
 python3_cmd="$(require_local_command python3)"
 
 "$python3_cmd" - "$recovery_dir" <<'PY'
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 import json
 import hashlib
@@ -151,6 +152,7 @@ import tarfile
 CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
 PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"
 PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"
+BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVES = [
     {
@@ -488,6 +490,22 @@ def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
         value = status.get(field)
         if not isinstance(value, list) or not value:
             fail(f"pre-departure status snapshot JSON missing non-empty {field} list")
+    generated_at = status.get("generated_at")
+    if not isinstance(generated_at, str):
+        fail("pre-departure status snapshot JSON missing generated_at timestamp")
+    try:
+        parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        fail(f"pre-departure status snapshot JSON has invalid generated_at timestamp: {exc}")
+    if parsed_generated_at.tzinfo is None:
+        fail("pre-departure status snapshot JSON generated_at timestamp must include a timezone")
+    host = status.get("host")
+    if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
+        fail("pre-departure status snapshot JSON missing valid host boot_id")
+    app = status.get("app")
+    source_revision = app.get("source_revision") if isinstance(app, dict) else None
+    if not isinstance(source_revision, str) or not source_revision.strip() or source_revision == "unknown":
+        fail("pre-departure status snapshot JSON missing deployed source_revision")
     return True
 
 

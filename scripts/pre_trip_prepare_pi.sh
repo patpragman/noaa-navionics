@@ -857,10 +857,12 @@ save_pre_departure_status_snapshot() {
   "$python3_cmd" - "$command_path" "$directory" "$@" <<'PY'
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 import hashlib
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -872,6 +874,7 @@ args = sys.argv[3:]
 status_name = "pre-departure-status.json"
 checksum_name = "pre-departure-status.sha256"
 nofollow = getattr(os, "O_NOFOLLOW", 0)
+BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 def fail(message: str) -> None:
@@ -1048,6 +1051,22 @@ try:
         value = parsed.get(field)
         if not isinstance(value, list) or not value:
             fail(f"pre-departure status snapshot JSON missing non-empty {field} list")
+    generated_at = parsed.get("generated_at")
+    if not isinstance(generated_at, str):
+        fail("pre-departure status snapshot JSON missing generated_at timestamp")
+    try:
+        parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        fail(f"pre-departure status snapshot JSON has invalid generated_at timestamp: {exc}")
+    if parsed_generated_at.tzinfo is None:
+        fail("pre-departure status snapshot JSON generated_at timestamp must include a timezone")
+    host = parsed.get("host")
+    if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
+        fail("pre-departure status snapshot JSON missing valid host boot_id")
+    app = parsed.get("app")
+    source_revision = app.get("source_revision") if isinstance(app, dict) else None
+    if not isinstance(source_revision, str) or not source_revision.strip() or source_revision == "unknown":
+        fail("pre-departure status snapshot JSON missing deployed source_revision")
     os.replace(temp_path, status_path)
     temp_path = None
 finally:
