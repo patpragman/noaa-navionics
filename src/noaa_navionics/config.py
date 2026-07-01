@@ -537,6 +537,8 @@ def _require_absolute_path(path: Path, *, label: str) -> None:
 
 def _require_safe_storage_path(path: Path, *, label: str) -> None:
     expanded = Path(path).expanduser()
+    if ".." in expanded.parts:
+        raise ValueError(f"{label} must not contain parent-directory components")
     home = Path.home()
     unsafe_paths = {Path("/"), home}
     unsafe_paths.update(Path("/") / name for name in UNSAFE_STORAGE_NAMES if name and not name.startswith("."))

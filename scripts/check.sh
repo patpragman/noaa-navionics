@@ -3280,9 +3280,16 @@ grep -q 'UNSAFE_STORAGE_NAMES' src/noaa_navionics/config.py
 grep -q 'FORBIDDEN_STORAGE_ROOTS' src/noaa_navionics/config.py
 grep -q 'ALLOWED_STORAGE_ROOTS' src/noaa_navionics/config.py
 grep -q 'must be a dedicated storage directory' src/noaa_navionics/config.py
+grep -q 'must not contain parent-directory components' src/noaa_navionics/config.py
 grep -q 'must not be under volatile or system directory' src/noaa_navionics/config.py
 grep -q 'broad system, volatile, or home directories' README.md
 grep -q 'broad system, volatile, or home directories' docs/sailboat-pi.md
+grep -q 'cannot contain parent-directory components such as `..`' README.md
+grep -q 'cannot contain parent-directory components such as `..`' docs/sailboat-pi.md
+grep -Fq 'output = ~/charts/..' tests/test_downloader.py
+grep -Fq 'output = /mnt/../etc/noaa-navionics' tests/test_downloader.py
+grep -Fq 'output = ~/tracks/..' tests/test_downloader.py
+grep -Fq 'output = /media/../var/tmp/noaa-navionics' tests/test_downloader.py
 grep -q 'mounted storage under `/mnt`, `/media`, or `/run/media`' README.md
 grep -q 'mounted storage under `/mnt`, `/media`, or `/run/media`' docs/sailboat-pi.md
 grep -q 'charts.min_free_gb' src/noaa_navionics/config.py
