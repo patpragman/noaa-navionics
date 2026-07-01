@@ -6945,6 +6945,40 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("manifest path is a symlink", result.detail)
 
+    def test_manifest_rejects_symlinked_chart_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_charts = root / "real-charts"
+            real_charts.mkdir()
+            chart_link = root / "charts"
+            try:
+                chart_link.symlink_to(real_charts, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_chart_manifest(chart_link)
+
+            self.assertFalse(result.ok)
+            self.assertIn("chart directory is a symlink", result.detail)
+
+    def test_manifest_rejects_symlinked_chart_directory_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_storage = root / "real-storage"
+            charts = real_storage / "charts"
+            charts.mkdir(parents=True)
+            storage_link = root / "storage-link"
+            try:
+                storage_link.symlink_to(real_storage, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_chart_manifest(storage_link / "charts")
+
+            self.assertFalse(result.ok)
+            self.assertIn("chart directory path contains a symlink", result.detail)
+            self.assertIn("storage-link", result.detail)
+
     def test_manifest_nonregular_path_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -737,6 +737,11 @@ def check_chart_manifest(
     require_archive: bool = False,
 ) -> CheckResult:
     path = Path(chart_dir).expanduser()
+    symlink = _first_storage_symlink(path)
+    if symlink is not None:
+        if symlink == path:
+            return CheckResult("Manifest", False, f"chart directory is a symlink: {path}")
+        return CheckResult("Manifest", False, f"chart directory path contains a symlink: {symlink}")
     manifest_path = path / MANIFEST_NAME
     if manifest_path.is_symlink():
         return CheckResult("Manifest", False, f"manifest path is a symlink: {manifest_path}")
