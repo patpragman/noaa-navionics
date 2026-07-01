@@ -2872,6 +2872,11 @@ grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fixes' src/noaa_navionics/gui.py
+grep -q 'def _validate_serial_gps_device' src/noaa_navionics/gui.py
+grep -q 'GPS device path is a broken by-id symlink' src/noaa_navionics/gui.py
+grep -q 'GPS device path is not a udev by-id symlink' src/noaa_navionics/gui.py
+grep -q 'test_gui_gps_fix_rejects_broken_by_id_serial_before_opening' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_by_id_serial_that_is_not_symlink' tests/test_downloader.py
 grep -q 'def _gps_fix_freshness_failure' src/noaa_navionics/gui.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/gui.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/gui.py
@@ -2969,10 +2974,12 @@ grep -q 'Stop Watch requires a second press within 8 seconds before it cancels r
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' README.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' docs/sailboat-pi.md
-grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' README.md
-grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' docs/sailboat-pi.md
+grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes and broken or fake serial by-id paths' README.md
+grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes and broken or fake serial by-id paths' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
+grep -q 'serial-mode button actions reject broken or fake `/dev/serial/by-id/...` paths before opening the GPS receiver' README.md
+grep -q 'serial-mode button actions reject broken or fake `/dev/serial/by-id/...` paths before opening the GPS receiver' docs/sailboat-pi.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' README.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' docs/sailboat-pi.md
 python3 - <<'PY'

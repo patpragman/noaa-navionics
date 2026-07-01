@@ -139,10 +139,7 @@ def read_configured_gps_fixes(
         )
 
     device = gps_device or app_config.gps_device
-    if _volatile_usb_device_path(device):
-        raise ValueError(f"GPS device path is volatile; use /dev/serial/by-id/... instead: {device}")
-    if not _stable_gps_device_path(device):
-        raise ValueError("GPS device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    _validate_serial_gps_device(device)
     deadline = time.monotonic() + gps_seconds
     with open_nmea_stream(device, app_config.gps_baud) as stream:
         lines = _bounded_nmea_lines(stream, deadline, idle_timeout=gps_seconds)
@@ -153,6 +150,23 @@ def read_configured_gps_fixes(
             max_fix_age_seconds=max_fix_age_seconds,
             future_tolerance_seconds=future_tolerance_seconds,
         )
+
+
+def _validate_serial_gps_device(device: str) -> None:
+    if _volatile_usb_device_path(device):
+        raise ValueError(f"GPS device path is volatile; use /dev/serial/by-id/... instead: {device}")
+    if not _stable_gps_device_path(device):
+        raise ValueError("GPS device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    path = Path(device).expanduser()
+    path_text = str(path)
+    if path_text.startswith("/dev/serial/by-id/") and path.is_symlink() and not path.exists():
+        try:
+            target = path.resolve(strict=False)
+        except OSError:
+            target = path
+        raise ValueError(f"GPS device path is a broken by-id symlink: {path} -> {target}")
+    if path_text.startswith("/dev/serial/by-id/") and path.exists() and not path.is_symlink():
+        raise ValueError(f"GPS device path is not a udev by-id symlink: {path}")
 
 
 def format_gps_fix(fix: GPSFix) -> list[str]:
