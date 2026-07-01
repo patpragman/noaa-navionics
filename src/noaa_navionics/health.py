@@ -36,6 +36,7 @@ from .opencpn import (
     gpsd_connection_configured,
     normalize_gpsd_host,
     opencpn_config_path,
+    read_chart_directories,
 )
 
 
@@ -740,20 +741,38 @@ def check_chart_package(package: str, value: str = "") -> CheckResult:
 def check_opencpn_chart_config(chart_dir: Path, config_path: Optional[Path] = None) -> CheckResult:
     config_path = opencpn_config_path(config_path)
     chart_path = Path(chart_dir).expanduser()
+    data: dict[str, object] = {
+        "config_path": str(config_path),
+        "chart_dir": str(chart_path),
+        "config_exists": config_path.exists(),
+        "chart_dir_exists": chart_path.exists(),
+        "configured": False,
+        "chart_directories": [],
+    }
     if not config_path.exists():
         return CheckResult(
             "OpenCPN Charts",
             False,
             f"missing {config_path}; run noaa-navionics configure-opencpn after chart sync",
+            data,
         )
     if not chart_path.exists():
-        return CheckResult("OpenCPN Charts", False, f"chart directory does not exist: {chart_path}")
-    if chart_directory_configured(chart_dir, config_path):
-        return CheckResult("OpenCPN Charts", True, f"{chart_path} listed in {config_path}")
+        return CheckResult("OpenCPN Charts", False, f"chart directory does not exist: {chart_path}", data)
+    chart_directories = read_chart_directories(config_path)
+    configured = chart_directory_configured(chart_dir, config_path)
+    data.update(
+        {
+            "configured": configured,
+            "chart_directories": [str(directory) for directory in chart_directories],
+        }
+    )
+    if configured:
+        return CheckResult("OpenCPN Charts", True, f"{chart_path} listed in {config_path}", data)
     return CheckResult(
         "OpenCPN Charts",
         False,
         f"{chart_path} not listed in {config_path}; run noaa-navionics configure-opencpn",
+        data,
     )
 
 
@@ -764,19 +783,44 @@ def check_opencpn_gpsd_config(
     config_path: Optional[Path] = None,
 ) -> CheckResult:
     config_path = opencpn_config_path(config_path)
+    expected_host = normalize_gpsd_host(host)
+    data: dict[str, object] = {
+        "config_path": str(config_path),
+        "expected_host": expected_host,
+        "expected_port": port,
+        "config_exists": config_path.exists(),
+        "configured": False,
+        "enabled_gpsd_connections": [],
+        "unexpected_connections": [],
+    }
     if not config_path.exists():
         return CheckResult(
             "OpenCPN GPSD",
             False,
             f"missing {config_path}; run noaa-navionics configure-opencpn",
+            data,
         )
-    if gpsd_connection_configured(host=host, port=port, config_path=config_path):
-        expected_host = normalize_gpsd_host(host)
-        unexpected = [
-            connection
-            for connection in enabled_gpsd_connections(config_path)
-            if connection.host != expected_host or connection.port != port
-        ]
+    enabled_connections = enabled_gpsd_connections(config_path)
+    unexpected = [
+        connection
+        for connection in enabled_connections
+        if connection.host != expected_host or connection.port != port
+    ]
+    configured = gpsd_connection_configured(host=host, port=port, config_path=config_path)
+    data.update(
+        {
+            "configured": configured,
+            "enabled_gpsd_connections": [
+                {"host": connection.host, "port": connection.port, "raw": connection.raw}
+                for connection in enabled_connections
+            ],
+            "unexpected_connections": [
+                {"host": connection.host, "port": connection.port, "raw": connection.raw}
+                for connection in unexpected
+            ],
+        }
+    )
+    if configured:
         if unexpected:
             endpoints = ", ".join(
                 f"{connection.host}:{connection.port if connection.port is not None else '<invalid-port>'}"
@@ -786,12 +830,14 @@ def check_opencpn_gpsd_config(
                 "OpenCPN GPSD",
                 False,
                 f"unexpected enabled GPSD connection in {config_path}: {endpoints}; remove stale OpenCPN GPSD sources",
+                data,
             )
-        return CheckResult("OpenCPN GPSD", True, f"GPSD {host}:{port} listed in {config_path}")
+        return CheckResult("OpenCPN GPSD", True, f"GPSD {host}:{port} listed in {config_path}", data)
     return CheckResult(
         "OpenCPN GPSD",
         False,
         f"GPSD {host}:{port} not listed in {config_path}; run noaa-navionics configure-opencpn",
+        data,
     )
 
 

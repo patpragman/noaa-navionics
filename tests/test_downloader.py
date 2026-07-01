@@ -433,6 +433,33 @@ def complete_status_gui_report(
                 "debris_count": 0,
                 "clean": True,
             }
+        elif row["name"] == "OpenCPN Charts":
+            row["detail"] = "/charts listed in /home/pi/.opencpn/opencpn.conf"
+            row["data"] = {
+                "config_path": "/home/pi/.opencpn/opencpn.conf",
+                "chart_dir": "/charts",
+                "config_exists": True,
+                "chart_dir_exists": True,
+                "configured": True,
+                "chart_directories": ["/charts"],
+            }
+        elif row["name"] == "OpenCPN GPSD":
+            row["detail"] = "GPSD 127.0.0.1:2947 listed in /home/pi/.opencpn/opencpn.conf"
+            row["data"] = {
+                "config_path": "/home/pi/.opencpn/opencpn.conf",
+                "expected_host": "127.0.0.1",
+                "expected_port": 2947,
+                "config_exists": True,
+                "configured": True,
+                "enabled_gpsd_connections": [
+                    {
+                        "host": "127.0.0.1",
+                        "port": 2947,
+                        "raw": "1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;GPSd: 127.0.0.1 TCP port 2947;0;;0;0;",
+                    }
+                ],
+                "unexpected_connections": [],
+            }
         elif row["name"] == "GPS Device":
             row["detail"] = "/dev/serial/by-id/mock-gps -> /dev/ttyACM0"
             row["data"] = {
@@ -1617,6 +1644,13 @@ class OpenCPNConfigTests(unittest.TestCase):
             configure_chart_directory(charts, config_path=config)
             configured = check_opencpn_chart_config(charts, config)
             self.assertTrue(configured.ok)
+            data = configured.data or {}
+            self.assertEqual(data["config_path"], str(config))
+            self.assertEqual(data["chart_dir"], str(charts))
+            self.assertTrue(data["config_exists"])
+            self.assertTrue(data["chart_dir_exists"])
+            self.assertTrue(data["configured"])
+            self.assertEqual(data["chart_directories"], [str(charts)])
 
     def test_check_opencpn_chart_config_rejects_missing_configured_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1776,6 +1810,16 @@ class OpenCPNConfigTests(unittest.TestCase):
             configure_gpsd_connection(config_path=config)
             configured = check_opencpn_gpsd_config(config_path=config)
             self.assertTrue(configured.ok)
+            data = configured.data or {}
+            self.assertEqual(data["config_path"], str(config))
+            self.assertEqual(data["expected_host"], "127.0.0.1")
+            self.assertEqual(data["expected_port"], 2947)
+            self.assertTrue(data["config_exists"])
+            self.assertTrue(data["configured"])
+            self.assertEqual(len(data["enabled_gpsd_connections"]), 1)
+            self.assertEqual(data["enabled_gpsd_connections"][0]["host"], "127.0.0.1")
+            self.assertEqual(data["enabled_gpsd_connections"][0]["port"], 2947)
+            self.assertEqual(data["unexpected_connections"], [])
 
     def test_check_opencpn_gpsd_config_rejects_extra_enabled_gpsd_source(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -10512,6 +10556,92 @@ class StatusReportTests(unittest.TestCase):
                 self.assertTrue(
                     any(failure.name == row_name and expected in failure.detail for failure in failures)
                 )
+
+    def test_status_report_ready_requires_structured_opencpn_readiness_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def opencpn_charts_data(**overrides):
+            data = {
+                "config_path": "/home/pi/.opencpn/opencpn.conf",
+                "chart_dir": "/charts",
+                "config_exists": True,
+                "chart_dir_exists": True,
+                "configured": True,
+                "chart_directories": ["/charts"],
+            }
+            data.update(overrides)
+            return data
+
+        def opencpn_gpsd_data(**overrides):
+            data = {
+                "config_path": "/home/pi/.opencpn/opencpn.conf",
+                "expected_host": "127.0.0.1",
+                "expected_port": 2947,
+                "config_exists": True,
+                "configured": True,
+                "enabled_gpsd_connections": [
+                    {
+                        "host": "127.0.0.1",
+                        "port": 2947,
+                        "raw": "1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;GPSd: 127.0.0.1 TCP port 2947;0;;0;0;",
+                    }
+                ],
+                "unexpected_connections": [],
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            ("OpenCPN Charts", None, "OpenCPN Charts check has no structured data"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_dir="relative/charts"), "chart directory is not absolute"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_dir="/other-charts"), "chart directory does not match configured chart output"),
+            ("OpenCPN Charts", opencpn_charts_data(config_path="relative/opencpn.conf"), "config path is not absolute"),
+            ("OpenCPN Charts", opencpn_charts_data(config_exists=False), "config does not exist"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_dir_exists=False), "chart directory does not exist"),
+            ("OpenCPN Charts", opencpn_charts_data(configured=False), "did not prove configured chart directory"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_directories=[]), "has no parsed chart directories"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_directories=["/other-charts"]), "parsed directories do not include configured chart output"),
+            ("OpenCPN GPSD", None, "OpenCPN GPSD check has no structured data"),
+            ("OpenCPN GPSD", opencpn_gpsd_data(config_path="relative/opencpn.conf"), "config path is not absolute"),
+            ("OpenCPN GPSD", opencpn_gpsd_data(config_exists=False), "config does not exist"),
+            ("OpenCPN GPSD", opencpn_gpsd_data(expected_host="192.0.2.10"), "host does not match configured GPSD host"),
+            ("OpenCPN GPSD", opencpn_gpsd_data(expected_port=2948), "port does not match configured GPSD port"),
+            ("OpenCPN GPSD", opencpn_gpsd_data(configured=False), "did not prove configured endpoint"),
+            ("OpenCPN GPSD", opencpn_gpsd_data(enabled_gpsd_connections=[]), "has no parsed enabled GPSD connections"),
+            (
+                "OpenCPN GPSD",
+                opencpn_gpsd_data(enabled_gpsd_connections=[{"host": "192.0.2.10", "port": 2947, "raw": "stale"}]),
+                "parsed connections do not include configured endpoint",
+            ),
+            ("OpenCPN GPSD", opencpn_gpsd_data(unexpected_connections="not-list"), "unexpected connection list was not parsed"),
+            (
+                "OpenCPN GPSD",
+                opencpn_gpsd_data(unexpected_connections=[{"host": "192.0.2.10", "port": 2947, "raw": "stale"}]),
+                "found unexpected enabled GPSD connections",
+            ),
+        ]
+        for row_name, data, expected in cases:
+            with self.subTest(row_name=row_name, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == row_name and expected in failure.detail for failure in failures)
+                )
+
+        serial_report = complete_status_gui_report(gps_mode="serial", generated_at=generated_at)
+        serial_report["checks"].append({"name": "OpenCPN GPSD", "ok": True, "detail": "legacy row"})
+
+        self.assertTrue(status_report_is_ready(serial_report, now=now))
+        self.assertFalse(status_report_validation_failures(serial_report, now=now))
 
     def test_status_report_ready_requires_structured_serial_gps_device_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)

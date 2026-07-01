@@ -309,6 +309,7 @@ def status_report_validation_failures(
     failures.extend(_pi_health_validation_failures(report))
     failures.extend(_storage_validation_failures(report))
     failures.extend(_chart_readiness_validation_failures(report))
+    failures.extend(_opencpn_readiness_validation_failures(report))
     failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_command_evidence_validation_failures(report))
     failures.extend(_gpsd_config_validation_failures(report))
@@ -466,6 +467,83 @@ def _chart_readiness_validation_failures(report: dict[str, object]) -> list[Chec
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris debris list is not empty"))
             if data.get("clean") is not True:
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris did not prove a clean chart directory"))
+    return failures
+
+
+def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config = report.get("config")
+    checks = report.get("checks")
+    if not isinstance(config, dict) or not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    failures: list[CheckResult] = []
+
+    charts_row = check_rows.get("OpenCPN Charts")
+    if isinstance(charts_row, dict) and charts_row.get("ok"):
+        data = charts_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts check has no structured data"))
+        else:
+            chart_dir = str(data.get("chart_dir", "")).strip()
+            expected_chart_output = str(config.get("chart_output", "")).strip()
+            if not _status_absolute_path(chart_dir):
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory is not absolute"))
+            if chart_dir != expected_chart_output:
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory does not match configured chart output"))
+            config_path = str(data.get("config_path", "")).strip()
+            if not _status_absolute_path(config_path):
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts config path is not absolute"))
+            if data.get("config_exists") is not True:
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts config does not exist"))
+            if data.get("chart_dir_exists") is not True:
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory does not exist"))
+            if data.get("configured") is not True:
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts did not prove configured chart directory"))
+            chart_directories = data.get("chart_directories")
+            if not isinstance(chart_directories, list) or not chart_directories:
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts has no parsed chart directories"))
+            elif not any(str(directory).strip() == expected_chart_output for directory in chart_directories):
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts parsed directories do not include configured chart output"))
+
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode == "gpsd":
+        gpsd_row = check_rows.get("OpenCPN GPSD")
+        if isinstance(gpsd_row, dict) and gpsd_row.get("ok"):
+            data = gpsd_row.get("data")
+            if not isinstance(data, dict):
+                failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD check has no structured data"))
+            else:
+                config_path = str(data.get("config_path", "")).strip()
+                if not _status_absolute_path(config_path):
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD config path is not absolute"))
+                if data.get("config_exists") is not True:
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD config does not exist"))
+                expected_host = normalize_gpsd_host(str(config.get("gpsd_host", "")).strip())
+                expected_port = config.get("gpsd_port")
+                if str(data.get("expected_host", "")).strip() != expected_host:
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD host does not match configured GPSD host"))
+                if data.get("expected_port") != expected_port:
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD port does not match configured GPSD port"))
+                if data.get("configured") is not True:
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD did not prove configured endpoint"))
+                connections = data.get("enabled_gpsd_connections")
+                if not isinstance(connections, list) or not connections:
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD has no parsed enabled GPSD connections"))
+                else:
+                    matching = [
+                        connection
+                        for connection in connections
+                        if isinstance(connection, dict)
+                        and str(connection.get("host", "")).strip() == expected_host
+                        and connection.get("port") == expected_port
+                    ]
+                    if not matching:
+                        failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD parsed connections do not include configured endpoint"))
+                unexpected = data.get("unexpected_connections")
+                if not isinstance(unexpected, list):
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD unexpected connection list was not parsed"))
+                elif unexpected:
+                    failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD found unexpected enabled GPSD connections"))
     return failures
 
 
