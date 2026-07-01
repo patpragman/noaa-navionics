@@ -116,7 +116,7 @@ After the Pi installer is present and the GPS is plugged in, list candidate rece
 noaa-navionics list-gps-devices
 ```
 
-Use the reported `/dev/serial/by-id/...` path for provisioning. If the command only reports `/dev/ttyUSB*` or `/dev/ttyACM*`, treat that as a temporary diagnostic name and fix the receiver/udev setup before enabling unattended startup.
+Use the reported `/dev/serial/by-id/...` path for provisioning. If the command only reports `/dev/ttyUSB*` or `/dev/ttyACM*`, or reports a broken `/dev/serial/by-id/...` symlink, treat that as temporary diagnostic evidence and fix the receiver/udev setup before enabling unattended startup.
 
 Run the normal pre-trip dock workflow against an already commissioned Pi:
 

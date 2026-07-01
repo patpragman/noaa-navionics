@@ -75,6 +75,11 @@ grep -q -- '--gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.e
 ! grep -q '^EnvironmentFile=' systemd/noaa-navionics-preflight.service
 grep -q 'list-gps-devices' src/noaa_navionics/cli.py
 grep -q 'test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names' tests/test_downloader.py
+grep -q 'test_cli_list_gps_devices_reports_broken_by_id_without_success' tests/test_downloader.py
+grep -q 'broken by-id symlink' src/noaa_navionics/cli.py
+grep -q 'No usable stable GPS device paths were found' src/noaa_navionics/cli.py
+grep -q 'broken `/dev/serial/by-id/...` symlink' README.md
+grep -q 'broken `/dev/serial/by-id/...` symlinks' docs/sailboat-pi.md
 grep -q 'noaa-navionics list-gps-devices' README.md
 grep -q 'noaa-navionics list-gps-devices' docs/sailboat-pi.md
 grep -q 'noaa-navionics list-gps-devices' scripts/install_raspberry_pi.sh

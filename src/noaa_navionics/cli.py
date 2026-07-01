@@ -467,11 +467,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             if any(candidate.stable for candidate in candidates):
                 return 0
             if candidates:
-                print(
-                    "Only volatile GPS device names were found; use /dev/serial/by-id/... "
-                    "or a documented stable alias such as /dev/gps before provisioning.",
-                    file=sys.stderr,
-                )
+                if all(candidate.kind == "volatile" for candidate in candidates):
+                    print(
+                        "Only volatile GPS device names were found; use /dev/serial/by-id/... "
+                        "or a documented stable alias such as /dev/gps before provisioning.",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        "No usable stable GPS device paths were found; plug in the receiver, "
+                        "fix stale /dev/serial/by-id links, or use a documented stable alias "
+                        "such as /dev/gps before provisioning.",
+                        file=sys.stderr,
+                    )
             else:
                 print(
                     "No GPS serial device candidates found. Plug in the receiver and prefer "
@@ -788,7 +796,19 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
             continue
         if not entry.is_symlink():
             continue
-        detail = f"points to {_dev_display_path(entry.resolve(strict=False), root)}"
+        target = _dev_display_path(entry.resolve(strict=False), root)
+        if not entry.exists():
+            candidates.append(
+                GPSDeviceCandidate(
+                    display_path,
+                    "broken",
+                    f"broken by-id symlink to {target}; plug in the receiver or remove the stale link",
+                    False,
+                )
+            )
+            seen.add(display_path)
+            continue
+        detail = f"points to {target}"
         candidates.append(GPSDeviceCandidate(display_path, "stable", detail, True))
         seen.add(display_path)
 

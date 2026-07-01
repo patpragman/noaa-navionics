@@ -39,7 +39,7 @@ After installation and before provisioning, plug in the GPS and run this on the 
 noaa-navionics list-gps-devices
 ```
 
-Use a reported `/dev/serial/by-id/...` path for `--device`. The command also shows volatile `/dev/ttyUSB*` or `/dev/ttyACM*` names when present, but returns nonzero if those are the only candidates because they are not stable enough for unattended chartplotter startup.
+Use a reported `/dev/serial/by-id/...` path for `--device`. The command also shows volatile `/dev/ttyUSB*` or `/dev/ttyACM*` names and broken `/dev/serial/by-id/...` symlinks when present, but returns nonzero if those are the only candidates because they are not usable stable paths for unattended chartplotter startup.
 
 Deploy and run the full onboard provisioning sequence:
 
