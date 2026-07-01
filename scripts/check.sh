@@ -1587,7 +1587,10 @@ grep -q 'process_cmdline_has_launcher_name' scripts/verify_pi.sh
 grep -q 'process_cmdline_has_arg' scripts/verify_pi.sh
 grep -q 'stat_text.rsplit(") ", 1)' scripts/verify_pi.sh
 grep -q 'raise SystemExit(0 if fields\[1\] == launcher_pid else 1)' scripts/verify_pi.sh
-grep -q 'Path(f"/proc/{pid}/cmdline").read_bytes()' scripts/verify_pi.sh
+grep -q 'data = read_process_file_bytes(process_fd, "cmdline")' scripts/verify_pi.sh
+! grep -q 'Path(f"/proc/{pid}/cmdline").read_bytes()' scripts/verify_pi.sh
+grep -q 'os.open(proc_path, flags)' scripts/verify_pi.sh
+grep -q 'os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)' scripts/verify_pi.sh
 grep -q 'raw_arg.decode("utf-8", "surrogateescape") == expected_arg' scripts/verify_pi.sh
 grep -q 'process_cmdline_has_launcher_name "$owner_pid"' scripts/verify_pi.sh
 ! grep -Fq 'cmdline="$(tr '\''\0'\'' '\'' '\'' <"/proc/${owner_pid}/cmdline"' scripts/verify_pi.sh
@@ -1598,10 +1601,12 @@ grep -q 'supervised_opencpn_pids' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_executable_integrity' scripts/verify_pi.sh
 grep -q 'check_opencpn_process_display_environment' scripts/verify_pi.sh
 grep -q 'read_proc_exe_path()' scripts/verify_pi.sh
-grep -q 'target = os.readlink(proc_exe)' scripts/verify_pi.sh
+grep -q 'target = os.readlink("exe", dir_fd=process_fd)' scripts/verify_pi.sh
+grep -q 'process changed while its executable was read for pid' scripts/verify_pi.sh
+! grep -q 'target = os.readlink(proc_exe)' scripts/verify_pi.sh
 grep -q 'resolved = Path(target).resolve(strict=True)' scripts/verify_pi.sh
 grep -q 'read_proc_exe_path "$pid"' scripts/verify_pi.sh
-grep -q 'proc_exe = f"/proc/{pid}/exe"' scripts/verify_pi.sh
+! grep -q 'proc_exe = f"/proc/{pid}/exe"' scripts/verify_pi.sh
 ! grep -Fq 'readlink -f "/proc/${pid}/exe"' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN executable integrity' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN display environment' scripts/verify_pi.sh
@@ -1628,8 +1633,8 @@ grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' docs/sailboat-pi.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' README.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' docs/sailboat-pi.md
-grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments as explicit `/proc` data' README.md
-grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments as explicit `/proc` data' docs/sailboat-pi.md
+grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments through same-user no-follow `/proc` descriptors' README.md
+grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments through same-user no-follow `/proc` descriptors' docs/sailboat-pi.md
 grep -q 'running on that same live X display from a trusted root-owned executable' README.md
 grep -q 'running on that same live X display from a trusted root-owned executable' docs/sailboat-pi.md
 grep -q 'trusted `XAUTHORITY` file when present' README.md

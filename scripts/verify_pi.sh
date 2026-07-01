@@ -3156,16 +3156,51 @@ opencpn_running() {
 opencpn_process_active() {
   local pid="$1"
   "$python3_cmd" - "$pid" <<'PY'
+import os
+import stat
 import sys
 
 pid = sys.argv[1]
-if not pid.isdigit():
-    raise SystemExit(1)
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(1)
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError:
+        raise SystemExit(1)
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+        raise SystemExit(1)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError:
+        raise SystemExit(1)
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(1)
+    return fd
+
+def read_process_file_text(process_fd, name):
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_uid != os.getuid():
+            raise SystemExit(1)
+        with os.fdopen(fd, encoding="ascii", errors="ignore") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+process_fd = open_process_dir(pid)
 try:
-    with open(f"/proc/{pid}/stat", encoding="ascii", errors="ignore") as handle:
-        stat_text = handle.read()
-except OSError:
-    raise SystemExit(1)
+    stat_text = read_process_file_text(process_fd, "stat")
+finally:
+    os.close(process_fd)
 try:
     tail = stat_text.rsplit(") ", 1)[1]
 except IndexError:
@@ -3181,17 +3216,54 @@ opencpn_process_supervised_by_launcher() {
   local pid="$1"
   local launcher_pid="$2"
   "$python3_cmd" - "$pid" "$launcher_pid" <<'PY'
+import os
+import stat
 import sys
 
 pid = sys.argv[1]
 launcher_pid = sys.argv[2]
-if not pid.isdigit() or not launcher_pid.isdigit():
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(1)
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError:
+        raise SystemExit(1)
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+        raise SystemExit(1)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError:
+        raise SystemExit(1)
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(1)
+    return fd
+
+def read_process_file_text(process_fd, name):
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_uid != os.getuid():
+            raise SystemExit(1)
+        with os.fdopen(fd, encoding="ascii", errors="ignore") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+if not launcher_pid.isdigit():
     raise SystemExit(1)
+process_fd = open_process_dir(pid)
 try:
-    with open(f"/proc/{pid}/stat", encoding="ascii", errors="ignore") as handle:
-        stat_text = handle.read()
-except OSError:
-    raise SystemExit(1)
+    stat_text = read_process_file_text(process_fd, "stat")
+finally:
+    os.close(process_fd)
 try:
     tail = stat_text.rsplit(") ", 1)[1]
 except IndexError:
@@ -3207,15 +3279,51 @@ process_cmdline_has_launcher_name() {
   local pid="$1"
   "$python3_cmd" - "$pid" <<'PY'
 from pathlib import Path
+import os
+import stat
 import sys
 
 pid = sys.argv[1]
-if not pid.isdigit():
-    raise SystemExit(1)
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(1)
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError:
+        raise SystemExit(1)
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+        raise SystemExit(1)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError:
+        raise SystemExit(1)
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(1)
+    return fd
+
+def read_process_file_bytes(process_fd, name):
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_uid != os.getuid():
+            raise SystemExit(1)
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+process_fd = open_process_dir(pid)
 try:
-    data = Path(f"/proc/{pid}/cmdline").read_bytes()
-except OSError:
-    raise SystemExit(1)
+    data = read_process_file_bytes(process_fd, "cmdline")
+finally:
+    os.close(process_fd)
 for raw_arg in data.split(b"\0"):
     if not raw_arg:
         continue
@@ -3230,17 +3338,52 @@ process_cmdline_has_arg() {
   local pid="$1"
   local expected_arg="$2"
   "$python3_cmd" - "$pid" "$expected_arg" <<'PY'
-from pathlib import Path
+import os
+import stat
 import sys
 
 pid = sys.argv[1]
 expected_arg = sys.argv[2]
-if not pid.isdigit():
-    raise SystemExit(1)
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(1)
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError:
+        raise SystemExit(1)
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+        raise SystemExit(1)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError:
+        raise SystemExit(1)
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(1)
+    return fd
+
+def read_process_file_bytes(process_fd, name):
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_uid != os.getuid():
+            raise SystemExit(1)
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+process_fd = open_process_dir(pid)
 try:
-    data = Path(f"/proc/{pid}/cmdline").read_bytes()
-except OSError:
-    raise SystemExit(1)
+    data = read_process_file_bytes(process_fd, "cmdline")
+finally:
+    os.close(process_fd)
 for raw_arg in data.split(b"\0"):
     if raw_arg.decode("utf-8", "surrogateescape") == expected_arg:
         raise SystemExit(0)
@@ -3326,25 +3469,64 @@ read_proc_env_value() {
   local label="$3"
   "$python3_cmd" - "$pid" "$key" "$label" <<'PY'
 import os
+import stat
 import sys
 
 pid = sys.argv[1]
 target_key = sys.argv[2]
 label = sys.argv[3]
-if not pid.isdigit():
-    raise SystemExit(f"{label} pid is invalid: {pid}")
-path = f"/proc/{pid}/environ"
-fd = -1
-try:
-    fd = os.open(path, os.O_RDONLY)
-    with os.fdopen(fd, "rb") as handle:
-        fd = -1
-        data = handle.read()
-except OSError as exc:
-    raise SystemExit(f"could not read {label} for pid {pid}: {exc}") from exc
-finally:
-    if fd >= 0:
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(f"{label} pid is invalid: {value}")
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect {label} process for pid {value}: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise SystemExit(f"{label} process path is a symlink for pid {value}")
+    if not stat.S_ISDIR(before.st_mode):
+        raise SystemExit(f"{label} process path is not a directory for pid {value}")
+    if before.st_uid != os.getuid():
+        raise SystemExit(f"{label} process for pid {value} is owned by uid {before.st_uid}, expected {os.getuid()}")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError as exc:
+        raise SystemExit(f"could not open {label} process for pid {value}: {exc}") from exc
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
         os.close(fd)
+        raise SystemExit(f"{label} process changed before it could be read for pid {value}")
+    if not stat.S_ISDIR(opened.st_mode):
+        os.close(fd)
+        raise SystemExit(f"{label} process path is not a directory when opened for pid {value}")
+    if opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(f"{label} process for pid {value} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+    return fd
+
+def read_process_file_bytes(process_fd, name):
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise SystemExit(f"{label} {name} is not a regular file for pid {pid}")
+        if file_stat.st_uid != os.getuid():
+            raise SystemExit(f"{label} {name} for pid {pid} is owned by uid {file_stat.st_uid}, expected {os.getuid()}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+process_fd = open_process_dir(pid)
+try:
+    data = read_process_file_bytes(process_fd, "environ")
+finally:
+    os.close(process_fd)
 
 prefix = target_key.encode("utf-8") + b"="
 for entry in data.split(b"\0"):
@@ -3361,26 +3543,65 @@ reject_proc_env_prefix() {
   local detail="${4:-}"
   "$python3_cmd" - "$pid" "$prefix" "$label" "$detail" <<'PY'
 import os
+import stat
 import sys
 
 pid = sys.argv[1]
 prefix = sys.argv[2]
 label = sys.argv[3]
 detail = sys.argv[4]
-if not pid.isdigit():
-    raise SystemExit(f"{label} pid is invalid: {pid}")
-path = f"/proc/{pid}/environ"
-fd = -1
-try:
-    fd = os.open(path, os.O_RDONLY)
-    with os.fdopen(fd, "rb") as handle:
-        fd = -1
-        data = handle.read()
-except OSError as exc:
-    raise SystemExit(f"could not read {label} for pid {pid}: {exc}") from exc
-finally:
-    if fd >= 0:
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(f"{label} pid is invalid: {value}")
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect {label} process for pid {value}: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise SystemExit(f"{label} process path is a symlink for pid {value}")
+    if not stat.S_ISDIR(before.st_mode):
+        raise SystemExit(f"{label} process path is not a directory for pid {value}")
+    if before.st_uid != os.getuid():
+        raise SystemExit(f"{label} process for pid {value} is owned by uid {before.st_uid}, expected {os.getuid()}")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError as exc:
+        raise SystemExit(f"could not open {label} process for pid {value}: {exc}") from exc
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
         os.close(fd)
+        raise SystemExit(f"{label} process changed before it could be read for pid {value}")
+    if not stat.S_ISDIR(opened.st_mode):
+        os.close(fd)
+        raise SystemExit(f"{label} process path is not a directory when opened for pid {value}")
+    if opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(f"{label} process for pid {value} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+    return fd
+
+def read_process_file_bytes(process_fd, name):
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        file_stat = os.fstat(fd)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise SystemExit(f"{label} {name} is not a regular file for pid {pid}")
+        if file_stat.st_uid != os.getuid():
+            raise SystemExit(f"{label} {name} for pid {pid} is owned by uid {file_stat.st_uid}, expected {os.getuid()}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+process_fd = open_process_dir(pid)
+try:
+    data = read_process_file_bytes(process_fd, "environ")
+finally:
+    os.close(process_fd)
 
 prefix_bytes = prefix.encode("utf-8")
 for entry in data.split(b"\0"):
@@ -3423,16 +3644,56 @@ read_proc_exe_path() {
   "$python3_cmd" - "$pid" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 
 pid = sys.argv[1]
-if not pid.isdigit():
-    raise SystemExit(f"process pid is invalid: {pid}")
-proc_exe = f"/proc/{pid}/exe"
+
+def open_process_dir(value):
+    if not value.isdigit():
+        raise SystemExit(f"process pid is invalid: {value}")
+    proc_path = f"/proc/{value}"
+    try:
+        before = os.stat(proc_path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect process for pid {value}: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise SystemExit(f"process path is a symlink for pid {value}")
+    if not stat.S_ISDIR(before.st_mode):
+        raise SystemExit(f"process path is not a directory for pid {value}")
+    if before.st_uid != os.getuid():
+        raise SystemExit(f"process for pid {value} is owned by uid {before.st_uid}, expected {os.getuid()}")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(proc_path, flags)
+    except OSError as exc:
+        raise SystemExit(f"could not open process for pid {value}: {exc}") from exc
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        os.close(fd)
+        raise SystemExit(f"process changed before its executable could be read for pid {value}")
+    if not stat.S_ISDIR(opened.st_mode):
+        os.close(fd)
+        raise SystemExit(f"process path is not a directory when opened for pid {value}")
+    if opened.st_uid != os.getuid():
+        os.close(fd)
+        raise SystemExit(f"process for pid {value} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+    return fd, opened, proc_path
+
+process_fd, opened_process, proc_path = open_process_dir(pid)
 try:
-    target = os.readlink(proc_exe)
+    target = os.readlink("exe", dir_fd=process_fd)
 except OSError as exc:
+    os.close(process_fd)
     raise SystemExit(f"could not read process executable for pid {pid}: {exc}") from exc
+try:
+    current = os.stat(proc_path, follow_symlinks=False)
+except OSError as exc:
+    os.close(process_fd)
+    raise SystemExit(f"could not recheck process for pid {pid}: {exc}") from exc
+os.close(process_fd)
+if not os.path.samestat(opened_process, current):
+    raise SystemExit(f"process changed while its executable was read for pid {pid}")
 if not target.startswith("/"):
     raise SystemExit(f"process executable path is not absolute for pid {pid}: {target}")
 try:
