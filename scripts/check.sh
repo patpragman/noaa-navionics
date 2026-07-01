@@ -3124,8 +3124,12 @@ grep -q 'test_check_gps_sample_rejects_missing_quality_fields' tests/test_downlo
 grep -q 'test_check_gps_device_rejects_missing_quality_fields' tests/test_downloader.py
 grep -q 'GPSD and direct NMEA readiness require satellite-count or HDOP quality fields' README.md
 grep -q 'GPSD and direct NMEA readiness require satellite-count or HDOP quality fields' docs/sailboat-pi.md
-grep -q 'Direct NMEA readiness accepts GGA position/quality fixes and RMC position fixes merged with GSA satellite/HDOP quality' README.md
-grep -q 'Direct NMEA readiness accepts GGA position/quality fixes and RMC position fixes merged with GSA satellite/HDOP quality' docs/sailboat-pi.md
+grep -q 'max_quality_merge_age_seconds: float = 5.0' src/noaa_navionics/gps.py
+grep -q 'abs(latest_position_monotonic - latest_quality_monotonic) > max_quality_merge_age_seconds' src/noaa_navionics/gps.py
+grep -q 'test_iter_fixes_rejects_stale_gsa_quality_for_rmc_position' tests/test_downloader.py
+grep -q 'test_iter_fixes_accepts_fresh_gsa_after_stale_quality_gap' tests/test_downloader.py
+grep -q 'Direct NMEA readiness accepts GGA position/quality fixes and RMC position fixes merged only with recent GSA satellite/HDOP quality' README.md
+grep -q 'Direct NMEA readiness accepts GGA position/quality fixes and RMC position fixes merged only with recent GSA satellite/HDOP quality' docs/sailboat-pi.md
 grep -q 'Fresh navigation-quality GPSD or direct NMEA fix with satellite or HDOP quality fields' docs/sailboat-pi.md
 ! grep -q 'When the receiver reports satellite count or HDOP' README.md docs/sailboat-pi.md
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py

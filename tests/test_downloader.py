@@ -14635,6 +14635,50 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fixes[1].hdop, 0.9)
         self.assertAlmostEqual(fixes[1].latitude, 48.1173, places=4)
 
+    def test_iter_fixes_rejects_stale_gsa_quality_for_rmc_position(self):
+        fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+        fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
+        original_monotonic = gps_module.time.monotonic
+        times = iter([0.0, 10.0])
+        gps_module.time.monotonic = lambda: next(times)
+        try:
+            fixes = list(
+                iter_fixes(
+                    [
+                        "$GPGSA,A,3,04,05,09,12,,,,,,,,,1.8,0.9,1.5",
+                        f"$GPRMC,{fix_time},A,4807.038,N,01131.000,E,022.4,084.4,{fix_date},,,A",
+                    ]
+                )
+            )
+        finally:
+            gps_module.time.monotonic = original_monotonic
+
+        self.assertEqual(fixes, [])
+
+    def test_iter_fixes_accepts_fresh_gsa_after_stale_quality_gap(self):
+        fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
+        fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
+        original_monotonic = gps_module.time.monotonic
+        times = iter([0.0, 10.0, 10.1])
+        gps_module.time.monotonic = lambda: next(times)
+        try:
+            fixes = list(
+                iter_fixes(
+                    [
+                        "$GPGSA,A,3,04,05,09,12,,,,,,,,,1.8,0.9,1.5",
+                        f"$GPRMC,{fix_time},A,4807.038,N,01131.000,E,022.4,084.4,{fix_date},,,A",
+                        "$GPGSA,A,3,04,05,09,12,15,,,,,,,,1.8,0.8,1.5",
+                    ]
+                )
+            )
+        finally:
+            gps_module.time.monotonic = original_monotonic
+
+        self.assertEqual(len(fixes), 1)
+        self.assertEqual(fixes[0].satellites, 5)
+        self.assertEqual(fixes[0].hdop, 0.8)
+        self.assertAlmostEqual(fixes[0].latitude, 48.1173, places=4)
+
     def test_iter_gpsd_fixes_merges_sky_quality_into_tpv(self):
         original = gps_module.socket.create_connection
 

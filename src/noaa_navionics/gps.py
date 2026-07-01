@@ -92,8 +92,10 @@ def checksum_ok(sentence: str) -> bool:
     return f"{value:02X}" == supplied.upper()
 
 
-def iter_fixes(lines: Iterable[str]) -> Iterator[GPSFix]:
+def iter_fixes(lines: Iterable[str], *, max_quality_merge_age_seconds: float = 5.0) -> Iterator[GPSFix]:
     latest: Optional[GPSFix] = None
+    latest_position_monotonic: Optional[float] = None
+    latest_quality_monotonic: Optional[float] = None
     for line in lines:
         try:
             fix = parse_nmea_sentence(line)
@@ -101,8 +103,20 @@ def iter_fixes(lines: Iterable[str]) -> Iterator[GPSFix]:
             continue
         if fix is None:
             continue
+        received_monotonic = time.monotonic()
+        if fix.latitude is not None and fix.longitude is not None:
+            latest_position_monotonic = received_monotonic
+        if gps_fix_has_quality_fields(fix):
+            latest_quality_monotonic = received_monotonic
         latest = merge_fixes(latest, fix)
         if latest and latest.valid:
+            if (
+                gps_fix_has_quality_fields(latest)
+                and latest_position_monotonic is not None
+                and latest_quality_monotonic is not None
+                and abs(latest_position_monotonic - latest_quality_monotonic) > max_quality_merge_age_seconds
+            ):
+                continue
             yield latest
 
 
