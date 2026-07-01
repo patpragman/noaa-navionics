@@ -10,7 +10,7 @@ Raspberry Pi over SSH. This is a lightweight status snapshot for maintenance
 or underway checks; it does not replace verify_pi.sh or dock_test_pi.sh.
 
 Options:
-  --gps-seconds N   Override the commissioned GPS fix wait from launcher.env
+  --gps-seconds N   Override the commissioned GPS fix wait from launcher.env (1-600)
   --json            Print the raw JSON status report
 
 Nothing is installed, enabled, rebooted, shut down, downloaded, or written on
@@ -33,6 +33,7 @@ shift
 gps_seconds=""
 json=0
 ssh_cmd=""
+max_status_gps_seconds=600
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -45,6 +46,28 @@ require_positive_integer() {
   fi
 }
 
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --gps-seconds)
@@ -52,8 +75,10 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_positive_integer "$1" "${2:-}"
-      gps_seconds="${2:-}"
+      gps_seconds_value="${2:-}"
+      require_positive_integer "$1" "$gps_seconds_value"
+      require_integer_at_most "$1" "$gps_seconds_value" "$max_status_gps_seconds"
+      gps_seconds="$gps_seconds_value"
       shift 2
       ;;
     --json)
@@ -234,6 +259,7 @@ expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
 config_path="${HOME}/.config/noaa-navionics/config.ini"
 launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"
 python3_cmd=""
+max_status_gps_seconds=600
 
 fail() {
   printf 'error: %s\n' "$*" >&2
@@ -248,9 +274,31 @@ require_remote_positive_integer() {
   fi
 }
 
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_remote_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    fail "$name must be at most ${maximum}"
+  fi
+}
+
 validate_status_controls() {
   if [[ -n "${NOAA_NAVIONICS_STATUS_GPS_SECONDS:-}" ]]; then
     require_remote_positive_integer "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"
+    require_remote_integer_at_most "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$max_status_gps_seconds"
   fi
   case "${NOAA_NAVIONICS_STATUS_JSON:-}" in
     0|1)

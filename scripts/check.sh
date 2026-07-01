@@ -2082,6 +2082,10 @@ grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'validate_status_controls' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' scripts/check_pi_status.sh
+grep -q 'max_status_gps_seconds=600' scripts/check_pi_status.sh
+grep -q 'bounds one-off GPS wait overrides to 1-600 seconds' README.md
+grep -q 'bounds one-off GPS wait overrides to 1-600 seconds' docs/sailboat-pi.md
+grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$max_status_gps_seconds"' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON must be 0 or 1' scripts/check_pi_status.sh
 grep -q 'launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"' scripts/check_pi_status.sh
 grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"' scripts/check_pi_status.sh
@@ -9321,6 +9325,28 @@ if [[ "$status_snapshot_code" -ne 2 ]]; then
 fi
 grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
 
+set +e
+scripts/check_pi_status.sh pi@example.invalid --gps-seconds 601 >"$verify_output" 2>&1
+status_snapshot_code=$?
+set -e
+if [[ "$status_snapshot_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+
+set +e
+scripts/check_pi_status.sh pi@example.invalid --gps-seconds 999999999999999999999999999999 >"$verify_output" 2>&1
+status_snapshot_code=$?
+set -e
+if [[ "$status_snapshot_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+
 status_fake_ssh_bin="$tmpdir/status-fake-ssh-bin"
 status_fake_ssh_args="$tmpdir/status-fake-ssh-args"
 status_fake_ssh_stdin="$tmpdir/status-fake-ssh-stdin"
@@ -9346,6 +9372,8 @@ grep -q 'pi@example.invalid' "$status_fake_ssh_args"
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
 grep -q 'validate_status_controls()' "$status_fake_ssh_stdin"
 grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
+grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$max_status_gps_seconds"' "$status_fake_ssh_stdin"
+grep -q 'fail "$name must be at most ${maximum}"' "$status_fake_ssh_stdin"
 grep -q 'NOAA_NAVIONICS_STATUS_JSON must be 0 or 1' "$status_fake_ssh_stdin"
 grep -q 'validate_status_controls' "$status_fake_ssh_stdin"
 grep -q 'reject_symlinked_path_components' "$status_fake_ssh_stdin"
