@@ -13,9 +13,9 @@ a .tgz archive into output-dir, or ./pi-track-exports by default.
 Options:
   --days N           Export tracks modified in the last N days; 0 exports all
 
-Nothing is installed, enabled, rebooted, shut down, downloaded, or changed
-on the local computer. NOAA chart archives and extracted ENC cells are not
-copied.
+Only output-dir is changed locally. Nothing is installed, enabled, rebooted,
+shut down, or downloaded, and no persistent Pi state is changed. NOAA chart
+archives and extracted ENC cells are not copied.
 EOF
 }
 

@@ -12,8 +12,8 @@ NOAA chart archives and extracted ENC cells are not copied.
 
 The script writes a .tgz archive into output-dir, or ./pi-opencpn-exports
 by default.
-Nothing is installed, enabled, rebooted, shut down, downloaded, or changed
-on the local computer.
+Only output-dir is changed locally. Nothing is installed, enabled, rebooted,
+shut down, or downloaded, and no persistent Pi state is changed.
 EOF
 }
 

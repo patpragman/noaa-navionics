@@ -12,9 +12,9 @@ support bundle.
 Options:
   --track-days N     Export GPX tracks modified in the last N days; 0 exports all
 
-Nothing is installed, enabled, rebooted, shut down, downloaded, or changed
-on the local computer. NOAA chart archives and extracted ENC cells are not
-copied by these helpers.
+Only output-dir is changed locally. Nothing is installed, enabled, rebooted,
+shut down, or downloaded, and no persistent Pi state is changed. NOAA chart
+archives and extracted ENC cells are not copied by these helpers.
 EOF
 }
 

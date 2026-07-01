@@ -13,9 +13,9 @@ service state, device listings, disk space, and Pi health command output.
 
 The script writes a .tgz bundle into output-dir, or ./pi-support-bundles
 by default.
-Nothing is installed, enabled, rebooted, downloaded, or changed on the
-local computer. The Pi-side temporary collection directory is removed before
-the SSH session exits.
+Only output-dir is changed locally. Nothing is installed, enabled, rebooted,
+or downloaded, and no persistent Pi state is changed. The Pi-side temporary
+collection directory is removed before the SSH session exits.
 EOF
 }
 

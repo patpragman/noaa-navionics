@@ -1091,6 +1091,8 @@ grep -q 'validates the installed `noaa-navionics` private venv command before ru
 grep -q 'validates the final local support bundle through a no-follow descriptor before reporting success' README.md
 grep -q 'validates the final local support bundle through a no-follow descriptor before reporting success' docs/sailboat-pi.md
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
+grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/collect_pi_support_bundle.sh
+grep -q 'or downloaded, and no persistent Pi state is changed' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
 grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/collect_pi_support_bundle.sh
@@ -1200,6 +1202,8 @@ grep -q 'info.size = current_stat.st_size' scripts/export_pi_settings.sh
 grep -q 'opened setting has permissions' scripts/export_pi_settings.sh
 ! grep -q 'archive.gettarinfo(str(path)' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
+grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/export_pi_settings.sh
+grep -q 'shut down, or downloaded, and no persistent Pi state is changed' scripts/export_pi_settings.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_settings.sh
 grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_settings.sh
@@ -1210,11 +1214,15 @@ grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/export_pi_recovery_bundle.sh
+grep -q 'shut down, or downloaded, and no persistent Pi state is changed' scripts/export_pi_recovery_bundle.sh
 for artifact_script in \
   scripts/collect_pi_support_bundle.sh \
   scripts/export_pi_opencpn_data.sh \
   scripts/export_pi_settings.sh \
   scripts/export_pi_tracks.sh; do
+  grep -q 'Only output-dir is changed locally' "$artifact_script"
+  ! grep -q 'changed on the local computer' "$artifact_script"
   ! grep -q 'rm -f -- "$partial_path"' "$artifact_script"
   ! grep -q 'mv -- "$partial_path"' "$artifact_script"
 done
@@ -1371,6 +1379,8 @@ grep -q 'export_pi_tracks.sh' scripts/post_trip_collect_pi.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/post_trip_collect_pi.sh
 grep -q 'shutdown_pi_safely.sh' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip Pi artifacts written to:' scripts/post_trip_collect_pi.sh
+grep -q 'This wrapper writes local artifacts into output-dir' scripts/post_trip_collect_pi.sh
+grep -q 'change persistent Pi state' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh

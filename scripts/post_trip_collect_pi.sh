@@ -20,8 +20,9 @@ Options:
   --shutdown-dry-run   Validate the remote shutdown path without powering off
   --shutdown-confirm   Request a clean Pi poweroff after collection
 
-This wrapper does not install, enable, reboot, download charts, or change
-anything on the local computer. Shutdown is opt-in only.
+This wrapper writes local artifacts into output-dir. It does not install,
+enable, reboot, download charts, or change persistent Pi state. Shutdown is
+opt-in only.
 EOF
 }
 
