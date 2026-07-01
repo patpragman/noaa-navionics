@@ -830,9 +830,12 @@ def _parse_time_today(value: str, *, now: Optional[datetime] = None) -> Optional
 def _parse_iso_time(value: str) -> Optional[datetime]:
     try:
         normalized = value.replace("Z", "+00:00")
-        return datetime.fromisoformat(normalized).astimezone(timezone.utc)
+        parsed = datetime.fromisoformat(normalized)
     except ValueError:
         return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed.astimezone(timezone.utc)
 
 
 def _time_parts(value: str) -> Optional[tuple[int, int, int, int, int]]:

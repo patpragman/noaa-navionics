@@ -3585,8 +3585,10 @@ grep -q 'NMEA readers and GPSD streams reject overlong messages' README.md
 grep -q 'NMEA readers and GPSD streams reject overlong messages' docs/sailboat-pi.md
 grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow descriptor checks' README.md
 grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow descriptor checks' docs/sailboat-pi.md
-grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' README.md
-grep -q 'Malformed or non-finite NMEA timestamps and malformed GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
+grep -q 'Malformed or non-finite NMEA timestamps and malformed or timezone-less GPSD timestamps are treated as missing timestamps' README.md
+grep -q 'Malformed or non-finite NMEA timestamps and malformed or timezone-less GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
+grep -q 'test_parse_gpsd_tpv_ignores_malformed_or_timezone_less_time' tests/test_downloader.py
+grep -q 'parsed.tzinfo is None or parsed.utcoffset() is None' src/noaa_navionics/gps.py
 grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak {skip_subject} fix' src/noaa_navionics/cli.py

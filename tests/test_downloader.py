@@ -17035,8 +17035,8 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(parse_gpsd_tpv("{" + base + ',"mode":2.5}'))
         self.assertIsNone(parse_gpsd_tpv("{" + base + ',"mode":"bad"}'))
 
-    def test_parse_gpsd_tpv_ignores_malformed_time(self):
-        for time_value in ('"bad-time"', "12345", "true"):
+    def test_parse_gpsd_tpv_ignores_malformed_or_timezone_less_time(self):
+        for time_value in ('"bad-time"', '"2026-06-28T12:34:56.000"', "12345", "true"):
             with self.subTest(time_value=time_value):
                 payload = (
                     '{"class":"TPV","mode":3,"time":'
