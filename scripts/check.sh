@@ -3911,11 +3911,19 @@ grep -q 'CORE_READINESS_CHECKS' src/noaa_navionics/status_gui.py
 grep -q 'def status_report_is_ready' src/noaa_navionics/report.py
 grep -q 'def status_report_validation_failures' src/noaa_navionics/report.py
 grep -q 'def missing_required_readiness_checks' src/noaa_navionics/report.py
+grep -q 'STATUS_REPORT_MAX_AGE_SECONDS = 600.0' src/noaa_navionics/report.py
+grep -q 'STATUS_REPORT_FUTURE_TOLERANCE_SECONDS = 30.0' src/noaa_navionics/report.py
+grep -q 'def _generated_at_validation_failures' src/noaa_navionics/report.py
+grep -q 'status report generated_at timestamp is stale' src/noaa_navionics/report.py
+grep -q 'status report generated_at timestamp is in the future' src/noaa_navionics/report.py
 grep -q 'status report is missing this readiness check' src/noaa_navionics/report.py
 grep -q 'status report has malformed' src/noaa_navionics/report.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/status_gui.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/cli.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/gui.py
+grep -q 'test_status_report_ready_requires_fresh_generated_at' tests/test_downloader.py
+grep -q 'test_status_report_ready_rejects_future_generated_at' tests/test_downloader.py
+grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_downloader.py
 grep -q 'test_status_gui_rejects_incomplete_ready_report' tests/test_downloader.py
 grep -q 'test_status_text_rejects_incomplete_ready_report' tests/test_downloader.py
 grep -q 'test_status_text_rejects_malformed_ready_report' tests/test_downloader.py
@@ -4008,8 +4016,10 @@ grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' README.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
-grep -q 'The status GUI marks incomplete status JSON as NOT READY' README.md
-grep -q 'The status GUI marks incomplete status JSON as NOT READY' docs/sailboat-pi.md
+grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
+grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps before a report can read as ready' README.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps before a report can read as ready' docs/sailboat-pi.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' README.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md

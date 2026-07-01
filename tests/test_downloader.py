@@ -158,7 +158,16 @@ def trusted_launcher_settings(**overrides: object) -> dict[str, object]:
     return state
 
 
-def complete_status_gui_report(*, ok: bool = True, gps_mode: str = "gpsd") -> dict[str, object]:
+def fresh_status_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def complete_status_gui_report(
+    *,
+    ok: bool = True,
+    gps_mode: str = "gpsd",
+    generated_at=None,
+) -> dict[str, object]:
     checks = set(status_gui_module.CORE_READINESS_CHECKS)
     service_checks = set(status_gui_module.CORE_SERVICE_CHECKS)
     if gps_mode == "serial":
@@ -168,7 +177,7 @@ def complete_status_gui_report(*, ok: bool = True, gps_mode: str = "gpsd") -> di
         service_checks.update(status_gui_module.GPSD_SERVICE_CHECKS)
     return {
         "ok": ok,
-        "generated_at": "2026-06-30T12:00:00Z",
+        "generated_at": generated_at or fresh_status_timestamp(),
         "config": {
             "gps_mode": gps_mode,
             "chart_output": "/charts",
@@ -2965,13 +2974,14 @@ class GuiTests(unittest.TestCase):
         self.assertNotIn("catalog", gui_module.PACKAGE_KIND_OPTIONS)
 
     def test_status_gui_summarizes_readiness_rows(self):
-        report = complete_status_gui_report(ok=False, gps_mode="serial")
+        generated_at = fresh_status_timestamp()
+        report = complete_status_gui_report(ok=False, gps_mode="serial", generated_at=generated_at)
         report["checks"].append({"name": "Extra GPS", "ok": False, "detail": "no fix"})
 
         rows = status_gui_module.status_rows(report)
 
         self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
-        self.assertEqual(rows[0], status_gui_module.StatusRow("Overall", False, "generated 2026-06-30T12:00:00Z"))
+        self.assertEqual(rows[0], status_gui_module.StatusRow("Overall", False, f"generated {generated_at}"))
         self.assertIn(status_gui_module.StatusRow("Extra GPS", False, "no fix"), rows)
         self.assertEqual(status_gui_module.count_failures(rows), 2)
         self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
@@ -9701,6 +9711,55 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(status_report_is_ready(report))
         self.assertIn("Ready: no", text)
         self.assertIn("status report has malformed checks row", text)
+
+    def test_status_report_ready_requires_fresh_generated_at(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        report = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )
+
+        self.assertTrue(status_report_is_ready(report, now=now))
+        self.assertFalse(status_report_validation_failures(report, now=now))
+
+        report["generated_at"] = (now - timedelta(seconds=601)).isoformat().replace("+00:00", "Z")
+        failures = status_report_validation_failures(report, now=now)
+        self.assertFalse(status_report_is_ready(report, now=now))
+        self.assertEqual(failures[0].name, "Status Report")
+        self.assertIn("stale", failures[0].detail)
+
+    def test_status_report_ready_rejects_future_generated_at(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        report = complete_status_gui_report(
+            generated_at=(now + timedelta(seconds=31)).isoformat().replace("+00:00", "Z"),
+        )
+
+        failures = status_report_validation_failures(report, now=now)
+
+        self.assertFalse(status_report_is_ready(report, now=now))
+        self.assertEqual(failures[0].name, "Status Report")
+        self.assertIn("future", failures[0].detail)
+
+    def test_status_report_ready_rejects_malformed_generated_at(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        cases = [
+            ({}, "missing generated_at"),
+            ({"generated_at": "2026-07-01T12:00:00"}, "must include a timezone"),
+            ({"generated_at": "not a timestamp"}, "invalid generated_at"),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "generated_at" not in updates:
+                    report.pop("generated_at", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertEqual(failures[0].name, "Status Report")
+                self.assertIn(expected, failures[0].detail)
 
     def test_verify_pi_required_status_checks_match_shared_gpsd_readiness(self):
         source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")

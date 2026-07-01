@@ -30,6 +30,8 @@ DEFAULT_LIGHTDM_AUTOLOGIN_PATH = Path("/etc/lightdm/lightdm.conf.d/50-noaa-navio
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 PROC_UPTIME_PATH = Path("/proc/uptime")
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+STATUS_REPORT_MAX_AGE_SECONDS = 600.0
+STATUS_REPORT_FUTURE_TOLERANCE_SECONDS = 30.0
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
         "FragmentPath",
@@ -263,12 +265,20 @@ def _check_result_dict(check: CheckResult) -> dict[str, object]:
     return row
 
 
-def status_report_is_ready(report: dict[str, object]) -> bool:
-    return bool(report.get("ok")) and not status_report_validation_failures(report) and _report_check_sections_all_ok(report)
+def status_report_is_ready(report: dict[str, object], *, now: Optional[datetime] = None) -> bool:
+    return (
+        bool(report.get("ok"))
+        and not status_report_validation_failures(report, now=now)
+        and _report_check_sections_all_ok(report)
+    )
 
 
-def status_report_validation_failures(report: dict[str, object]) -> list[CheckResult]:
-    failures = []
+def status_report_validation_failures(
+    report: dict[str, object],
+    *,
+    now: Optional[datetime] = None,
+) -> list[CheckResult]:
+    failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
@@ -284,6 +294,40 @@ def status_report_validation_failures(report: dict[str, object]) -> list[CheckRe
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
     return failures
+
+
+def _generated_at_validation_failures(
+    generated_at: object,
+    *,
+    now: Optional[datetime] = None,
+) -> list[CheckResult]:
+    if not isinstance(generated_at, str) or not generated_at.strip():
+        return [CheckResult("Status Report", False, "status report missing generated_at timestamp")]
+    try:
+        parsed = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError:
+        return [CheckResult("Status Report", False, f"status report has invalid generated_at timestamp: {generated_at}")]
+    if parsed.tzinfo is None:
+        return [CheckResult("Status Report", False, "status report generated_at timestamp must include a timezone")]
+    current = now or datetime.now(timezone.utc)
+    age_seconds = (current.astimezone(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()
+    if age_seconds < -STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                f"status report generated_at timestamp is in the future by {-age_seconds:.0f}s",
+            )
+        ]
+    if age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                f"status report generated_at timestamp is stale ({age_seconds:.0f}s old)",
+            )
+        ]
+    return []
 
 
 def missing_required_readiness_checks(report: dict[str, object]) -> tuple[list[str], list[str]]:
