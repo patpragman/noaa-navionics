@@ -14347,7 +14347,9 @@ class GpsTests(unittest.TestCase):
     def test_prune_old_track_logs_uses_no_follow_descriptor_before_unlink(self):
         open_calls = []
         unlink_calls = []
+        stat_calls = []
         original_open = cli_module.os.open
+        original_stat = cli_module.os.stat
         original_unlink = cli_module.os.unlink
 
         def recording_open(path, flags, mode=0o777, *, dir_fd=None):
@@ -14356,11 +14358,18 @@ class GpsTests(unittest.TestCase):
                 return original_open(path, flags, mode)
             return original_open(path, flags, mode, dir_fd=dir_fd)
 
+        def recording_stat(path, *args, dir_fd=None, follow_symlinks=True, **kwargs):
+            stat_calls.append((path, dir_fd, follow_symlinks))
+            if dir_fd is None:
+                return original_stat(path, *args, follow_symlinks=follow_symlinks, **kwargs)
+            return original_stat(path, *args, dir_fd=dir_fd, follow_symlinks=follow_symlinks, **kwargs)
+
         def recording_unlink(path, *, dir_fd=None):
             unlink_calls.append((path, dir_fd))
             return original_unlink(path, dir_fd=dir_fd)
 
         cli_module.os.open = recording_open
+        cli_module.os.stat = recording_stat
         cli_module.os.unlink = recording_unlink
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -14378,6 +14387,7 @@ class GpsTests(unittest.TestCase):
                 )
         finally:
             cli_module.os.open = original_open
+            cli_module.os.stat = original_stat
             cli_module.os.unlink = original_unlink
 
         self.assertEqual([path.name for path in removed], ["track-20260401.gpx"])
@@ -14385,8 +14395,41 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(len(track_open), 1)
         self.assertTrue(track_open[0][1] & getattr(os, "O_NOFOLLOW", 0))
         self.assertIsNotNone(track_open[0][2])
+        track_stat = [call for call in stat_calls if call[0] == "track-20260401.gpx"]
+        self.assertEqual(track_stat, [("track-20260401.gpx", track_open[0][2], False)])
         track_unlink = [call for call in unlink_calls if call[0] == "track-20260401.gpx"]
         self.assertEqual(track_unlink, [("track-20260401.gpx", track_open[0][2])])
+
+    def test_prune_old_track_logs_rejects_replaced_track_before_unlink(self):
+        original_validate = cli_module._validate_prunable_track_log
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tracks = Path(tmpdir) / "tracks"
+                tracks.mkdir()
+                tracks.chmod(0o700)
+                old = tracks / "track-20260401.gpx"
+                old.write_text("old", encoding="utf-8")
+                old.chmod(0o600)
+                replacement = tracks / "replacement.gpx"
+                replacement.write_text("replacement", encoding="utf-8")
+                replacement.chmod(0o600)
+
+                def replacing_validate(path, *, tracks_fd):
+                    result = original_validate(path, tracks_fd=tracks_fd)
+                    os.replace(replacement, path)
+                    return result
+
+                cli_module._validate_prunable_track_log = replacing_validate
+                with self.assertRaisesRegex(RuntimeError, "changed before GPX pruning"):
+                    cli_module._prune_old_track_logs(
+                        Path(tmpdir),
+                        retention_days=30,
+                        now=datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc),
+                    )
+                self.assertTrue(old.exists())
+                self.assertEqual(old.read_text(encoding="utf-8"), "replacement")
+        finally:
+            cli_module._validate_prunable_track_log = original_validate
 
     def test_parse_gpsd_tpv(self):
         payload = (

@@ -1384,7 +1384,16 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
             track_date = _track_date_from_name(path)
             if track_date is None or track_date >= cutoff:
                 continue
-            _validate_prunable_track_log(path, tracks_fd=tracks_fd)
+            validated_stat = _validate_prunable_track_log(path, tracks_fd=tracks_fd)
+            try:
+                current_stat = os.stat(path.name, dir_fd=tracks_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            except OSError as exc:
+                raise RuntimeError(f"{path} could not be revalidated before GPX pruning: {exc}") from exc
+            if not os.path.samestat(validated_stat, current_stat):
+                raise RuntimeError(f"{path} changed before GPX pruning, refusing to remove it")
+            _inspect_prunable_track_stat(path, current_stat)
             try:
                 os.unlink(path.name, dir_fd=tracks_fd)
             except OSError:
@@ -1397,7 +1406,7 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
     return removed
 
 
-def _validate_prunable_track_log(path: Path, *, tracks_fd: int) -> None:
+def _validate_prunable_track_log(path: Path, *, tracks_fd: int) -> os.stat_result:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path.name, flags, dir_fd=tracks_fd)
@@ -1407,15 +1416,20 @@ def _validate_prunable_track_log(path: Path, *, tracks_fd: int) -> None:
         raise RuntimeError(f"{path} could not be opened safely for GPX pruning: {exc}") from exc
     try:
         path_stat = os.fstat(fd)
-        if not stat.S_ISREG(path_stat.st_mode):
-            raise RuntimeError(f"{path} is not a regular GPX track file, refusing to prune")
-        if path_stat.st_uid != os.getuid():
-            raise RuntimeError(f"{path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}")
-        mode = stat.S_IMODE(path_stat.st_mode)
-        if mode != 0o600:
-            raise RuntimeError(f"{path} has permissions {mode:03o}, expected private 0600")
+        _inspect_prunable_track_stat(path, path_stat)
+        return path_stat
     finally:
         os.close(fd)
+
+
+def _inspect_prunable_track_stat(path: Path, path_stat: os.stat_result) -> None:
+    if not stat.S_ISREG(path_stat.st_mode):
+        raise RuntimeError(f"{path} is not a regular GPX track file, refusing to prune")
+    if path_stat.st_uid != os.getuid():
+        raise RuntimeError(f"{path} is owned by uid {path_stat.st_uid}, expected {os.getuid()}")
+    mode = stat.S_IMODE(path_stat.st_mode)
+    if mode != 0o600:
+        raise RuntimeError(f"{path} has permissions {mode:03o}, expected private 0600")
 
 
 def _fsync_directory(path: Path) -> None:

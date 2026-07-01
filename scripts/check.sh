@@ -3596,13 +3596,17 @@ grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py
 grep -q 'refusing to prune GPX track logs' src/noaa_navionics/cli.py
 grep -q 'not a regular GPX track file' src/noaa_navionics/cli.py
 grep -q 'os.open(path.name, flags, dir_fd=tracks_fd)' src/noaa_navionics/cli.py
+grep -q 'current_stat = os.stat(path.name, dir_fd=tracks_fd, follow_symlinks=False)' src/noaa_navionics/cli.py
+grep -q 'os.path.samestat(validated_stat, current_stat)' src/noaa_navionics/cli.py
+grep -q 'changed before GPX pruning, refusing to remove it' src/noaa_navionics/cli.py
 grep -q 'os.unlink(path.name, dir_fd=tracks_fd)' src/noaa_navionics/cli.py
 grep -q 'test_prune_old_track_logs_rejects_symlinked_old_track' tests/test_downloader.py
 grep -q 'test_prune_old_track_logs_rejects_nonregular_old_track' tests/test_downloader.py
 grep -q 'test_prune_old_track_logs_rejects_public_old_track' tests/test_downloader.py
 grep -q 'test_prune_old_track_logs_uses_no_follow_descriptor_before_unlink' tests/test_downloader.py
-grep -q 'Retention pruning validates old GPX entries through no-follow descriptors' README.md
-grep -q 'Retention pruning validates old GPX entries through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'test_prune_old_track_logs_rejects_replaced_track_before_unlink' tests/test_downloader.py
+grep -q 'Retention pruning validates old GPX entries through no-follow descriptors, revalidates the directory entry as the same file immediately before unlinking' README.md
+grep -q 'Retention pruning validates old GPX entries through no-follow descriptors, revalidates the directory entry as the same file immediately before unlinking' docs/sailboat-pi.md
 grep -q 'expected private 0600' src/noaa_navionics/cli.py
 grep -q 'non-private old GPX entries' README.md
 grep -q 'non-private old GPX entries' docs/sailboat-pi.md
