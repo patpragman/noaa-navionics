@@ -775,8 +775,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
@@ -1648,7 +1648,12 @@ grep -q 'Local ${command_name} command is not in a trusted system directory' scr
 grep -q '"$python3_cmd" - "$path" "$@"' scripts/post_trip_collect_pi.sh
 ! grep -q '^  python3 -' scripts/post_trip_collect_pi.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/post_trip_collect_pi.sh
-grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
+grep -q 'def descriptor_helper_command(command: list\[str\])' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot helper path contains a symlink' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot helper changed before execution' scripts/post_trip_collect_pi.sh
+grep -q 'return \[f"/proc/self/fd/{helper_fd}", \*command\[1:\]\], helper_fd' scripts/post_trip_collect_pi.sh
+grep -q 'subprocess.run(helper_command, stdout=output, pass_fds=(helper_fd,))' scripts/post_trip_collect_pi.sh
+! grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
 grep -q 'def sync_private_parent_directory' scripts/post_trip_collect_pi.sh
 grep -q 'os.fsync(output.fileno())' scripts/post_trip_collect_pi.sh
 grep -q 'sync_private_parent_directory(path)' scripts/post_trip_collect_pi.sh

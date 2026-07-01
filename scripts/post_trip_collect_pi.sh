@@ -345,6 +345,86 @@ command = sys.argv[2:]
 flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
 
 
+def descriptor_helper_command(command: list[str]) -> tuple[list[str], int]:
+    if not command:
+        print("status snapshot helper command is missing", file=sys.stderr)
+        raise SystemExit(124)
+    helper = Path(command[0])
+    if not helper.is_absolute():
+        print(f"status snapshot helper command must be absolute: {helper}", file=sys.stderr)
+        raise SystemExit(124)
+
+    current = Path("/")
+    for part in helper.parts[1:]:
+        if part in {"", "."}:
+            continue
+        current = current / part
+        try:
+            component = os.lstat(current)
+        except OSError as exc:
+            print(f"Could not inspect status snapshot helper path component {current}: {exc}", file=sys.stderr)
+            raise SystemExit(124) from exc
+        if stat.S_ISLNK(component.st_mode):
+            print(f"status snapshot helper path contains a symlink: {current}", file=sys.stderr)
+            raise SystemExit(124)
+
+    try:
+        before = os.stat(helper, follow_symlinks=False)
+    except OSError as exc:
+        print(f"Could not inspect status snapshot helper before execution {helper}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    if not stat.S_ISREG(before.st_mode):
+        print(f"status snapshot helper must be a regular file: {helper}", file=sys.stderr)
+        raise SystemExit(124)
+    if before.st_uid != os.getuid():
+        print(
+            f"status snapshot helper is owned by uid {before.st_uid}, expected current user {os.getuid()}: {helper}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(before.st_mode)
+    if mode & 0o022:
+        print(f"status snapshot helper has permissions {mode:03o}, expected no group/other write bits: {helper}", file=sys.stderr)
+        raise SystemExit(124)
+    if not mode & 0o111:
+        print(f"status snapshot helper is not executable: {helper}", file=sys.stderr)
+        raise SystemExit(124)
+
+    try:
+        helper_fd = os.open(helper, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        print(f"Could not open status snapshot helper through no-follow descriptor {helper}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    try:
+        opened = os.fstat(helper_fd)
+        if not os.path.samestat(before, opened):
+            print(f"status snapshot helper changed before execution: {helper}", file=sys.stderr)
+            raise SystemExit(124)
+        if not stat.S_ISREG(opened.st_mode):
+            print(f"status snapshot helper must be regular when opened: {helper}", file=sys.stderr)
+            raise SystemExit(124)
+        if opened.st_uid != os.getuid():
+            print(
+                f"status snapshot helper is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {helper}",
+                file=sys.stderr,
+            )
+            raise SystemExit(124)
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode & 0o022:
+            print(
+                f"status snapshot helper has permissions {opened_mode:03o}, expected no group/other write bits: {helper}",
+                file=sys.stderr,
+            )
+            raise SystemExit(124)
+        if not opened_mode & 0o111:
+            print(f"status snapshot helper is not executable when opened: {helper}", file=sys.stderr)
+            raise SystemExit(124)
+        return [f"/proc/self/fd/{helper_fd}", *command[1:]], helper_fd
+    except BaseException:
+        os.close(helper_fd)
+        raise
+
+
 def sync_private_parent_directory(target: Path) -> None:
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     try:
@@ -406,7 +486,11 @@ try:
         raise SystemExit(124)
     with os.fdopen(fd, "wb") as output:
         fd = -1
-        result = subprocess.run(command, stdout=output)
+        helper_command, helper_fd = descriptor_helper_command(command)
+        try:
+            result = subprocess.run(helper_command, stdout=output, pass_fds=(helper_fd,))
+        finally:
+            os.close(helper_fd)
         try:
             output.flush()
             os.fsync(output.fileno())
