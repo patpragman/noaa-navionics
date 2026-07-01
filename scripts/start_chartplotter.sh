@@ -17,6 +17,7 @@ readiness_retry_delay=10
 start_on_failed_readiness=0
 opencpn_restarts=3
 opencpn_restart_delay=5
+opencpn_shutdown_grace_seconds=10
 lock_acquired=0
 opencpn_bin=""
 opencpn_child_pid=""
@@ -1119,9 +1120,18 @@ release_launcher_lock() {
 
 terminate_opencpn_child() {
   local child_pid="$opencpn_child_pid"
+  local waited=0
   if [[ -n "$child_pid" && "$child_pid" =~ ^[0-9]+$ ]] && kill -0 "$child_pid" 2>/dev/null; then
     echo "Forwarding launcher shutdown to OpenCPN child process ${child_pid}."
     kill -TERM "$child_pid" 2>/dev/null || true
+    while opencpn_process_active "$child_pid" && [[ "$waited" -lt "$opencpn_shutdown_grace_seconds" ]]; do
+      sleep 1
+      waited=$((waited + 1))
+    done
+    if opencpn_process_active "$child_pid"; then
+      echo "OpenCPN child process ${child_pid} did not exit after ${opencpn_shutdown_grace_seconds}s; sending KILL." >&2
+      kill -KILL "$child_pid" 2>/dev/null || true
+    fi
     wait "$child_pid" 2>/dev/null || true
   fi
   opencpn_child_pid=""

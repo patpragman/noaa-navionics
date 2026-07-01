@@ -282,12 +282,17 @@ grep -q 'Restarting OpenCPN after nonzero exit status' scripts/start_chartplotte
 grep -q 'OpenCPN exited cleanly; not restarting' scripts/start_chartplotter.sh
 grep -q 'terminate_opencpn_child' scripts/start_chartplotter.sh
 grep -q 'Forwarding launcher shutdown to OpenCPN child process' scripts/start_chartplotter.sh
+grep -q 'opencpn_shutdown_grace_seconds=10' scripts/start_chartplotter.sh
+grep -q 'did not exit after ${opencpn_shutdown_grace_seconds}s; sending KILL' scripts/start_chartplotter.sh
+grep -q 'kill -KILL "$child_pid"' scripts/start_chartplotter.sh
 grep -q 'trap shutdown_launcher INT TERM' scripts/start_chartplotter.sh
 grep -q 'opencpn_child_pid="$opencpn_pid"' scripts/start_chartplotter.sh
 grep -q 'while opencpn_process_active "$opencpn_pid"' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher OpenCPN shutdown forwarding' scripts/verify_pi.sh
 grep -q 'does not leave an unsupervised chartplotter process behind' README.md
 grep -q 'does not leave an unsupervised chartplotter process behind' docs/sailboat-pi.md
+grep -q 'bounded shutdown wait' README.md
+grep -q 'bounded shutdown wait' docs/sailboat-pi.md
 grep -q 'import tkinter as tk' scripts/start_chartplotter.sh
 grep -q 'import json' scripts/start_chartplotter.sh
 grep -q 'def open_trusted_status_report' scripts/start_chartplotter.sh
@@ -7675,6 +7680,66 @@ test "$(cat "$launcher_opencpn_restart_home/.cache/noaa-navionics/opencpn-count"
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 2/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited cleanly; not restarting.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_term_home="$tmpdir/launcher-term-home"
+launcher_term_bin="$tmpdir/launcher-term-bin"
+mkdir -p "$launcher_term_home/.local/bin" "$launcher_term_home/.cache/noaa-navionics" "$launcher_term_bin"
+write_test_launcher_env "$launcher_term_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_term_home/.local/bin/noaa-navionics"
+cat >"$launcher_term_bin/opencpn" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$$" >"$HOME/.cache/noaa-navionics/opencpn-term-child-pid"
+trap ':' TERM
+while :; do
+  /bin/sleep 1
+done
+EOF
+printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_term_bin/pgrep"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_term_bin/sleep"
+chmod +x "$launcher_term_home/.local/bin/noaa-navionics" "$launcher_term_bin/opencpn" "$launcher_term_bin/pgrep" "$launcher_term_bin/sleep"
+HOME="$launcher_term_home" PATH="$launcher_term_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null &
+launcher_term_pid=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if [[ -s "$launcher_term_home/.cache/noaa-navionics/opencpn-term-child-pid" ]]; then
+    break
+  fi
+  /bin/sleep 0.1
+done
+if [[ ! -s "$launcher_term_home/.cache/noaa-navionics/opencpn-term-child-pid" ]]; then
+  kill "$launcher_term_pid" 2>/dev/null || true
+  wait "$launcher_term_pid" 2>/dev/null || true
+  cat "$launcher_term_home/.cache/noaa-navionics/chartplotter.log" >&2 || true
+  echo "expected chartplotter launcher to start fake OpenCPN before shutdown test" >&2
+  exit 1
+fi
+launcher_term_child_pid="$(cat "$launcher_term_home/.cache/noaa-navionics/opencpn-term-child-pid")"
+kill -TERM "$launcher_term_pid"
+set +e
+wait "$launcher_term_pid"
+launcher_term_code=$?
+set -e
+if [[ "$launcher_term_code" -ne 143 ]]; then
+  kill "$launcher_term_child_pid" 2>/dev/null || true
+  wait "$launcher_term_child_pid" 2>/dev/null || true
+  cat "$launcher_term_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to exit 143 after TERM" >&2
+  exit 1
+fi
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if ! kill -0 "$launcher_term_child_pid" 2>/dev/null; then
+    break
+  fi
+  /bin/sleep 0.1
+done
+if kill -0 "$launcher_term_child_pid" 2>/dev/null; then
+  kill -KILL "$launcher_term_child_pid" 2>/dev/null || true
+  cat "$launcher_term_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to KILL a fake OpenCPN child that ignored TERM" >&2
+  exit 1
+fi
+test ! -e "$launcher_term_home/.cache/noaa-navionics/chartplotter.launch.lock"
+grep -q 'Forwarding launcher shutdown to OpenCPN child process' "$launcher_term_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'did not exit after 10s; sending KILL' "$launcher_term_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_fail_home="$tmpdir/launcher-fail-home"
 mkdir -p "$launcher_fail_home/.local/bin" "$launcher_fail_home/.cache/noaa-navionics"
