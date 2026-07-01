@@ -15140,6 +15140,61 @@ class GpsTests(unittest.TestCase):
 
 
 class PiHealthTests(unittest.TestCase):
+    def test_raspberry_pi_model_reader_accepts_model_text(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            model = Path(tmpdir) / "model"
+            model.write_bytes(b"Raspberry Pi 4 Model B Rev 1.5\x00")
+
+            self.assertEqual(
+                health_module._read_raspberry_pi_model_text(model),
+                "Raspberry Pi 4 Model B Rev 1.5",
+            )
+
+    def test_raspberry_pi_model_reader_rejects_empty_model(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            model = Path(tmpdir) / "model"
+            model.write_bytes(b"\x00")
+
+            with self.assertRaisesRegex(RuntimeError, "Raspberry Pi model path is empty"):
+                health_module._read_raspberry_pi_model_text(model)
+
+    def test_raspberry_pi_model_reader_rejects_symlinked_model(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            real_model = root / "real-model"
+            real_model.write_text("Raspberry Pi 4\n", encoding="ascii")
+            model = root / "model"
+            try:
+                model.symlink_to(real_model)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "Raspberry Pi model path is a symlink"):
+                health_module._read_raspberry_pi_model_text(model)
+
+    def test_raspberry_pi_model_reader_rejects_replaced_model_before_reading(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            model = root / "model"
+            model.write_text("Raspberry Pi 4\n", encoding="ascii")
+            replacement = root / "replacement-model"
+            replacement.write_text("Raspberry Pi 5\n", encoding="ascii")
+            original_open = health_module.os.open
+
+            def replacing_open(path, flags, mode=0o777, *, dir_fd=None):
+                if Path(path) == model:
+                    os.replace(replacement, model)
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                health_module.os.open = replacing_open
+                with self.assertRaisesRegex(RuntimeError, "Raspberry Pi model path changed before it could be read"):
+                    health_module._read_raspberry_pi_model_text(model)
+            finally:
+                health_module.os.open = original_open
+
     def test_check_source_revision_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi
         try:

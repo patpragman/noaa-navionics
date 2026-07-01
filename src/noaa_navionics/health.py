@@ -40,6 +40,7 @@ from .opencpn import (
 
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
+RASPBERRY_PI_MODEL_PATH = Path("/proc/device-tree/model")
 GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 REMOVABLE_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
 CHRONY_GPSD_REFCLOCK = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
@@ -1314,11 +1315,35 @@ def check_pi_throttling() -> CheckResult:
 
 
 def _is_raspberry_pi() -> bool:
-    model_path = Path("/proc/device-tree/model")
     try:
-        return "Raspberry Pi" in model_path.read_text(encoding="ascii", errors="ignore")
-    except OSError:
+        return "Raspberry Pi" in _read_raspberry_pi_model_text(RASPBERRY_PI_MODEL_PATH)
+    except (OSError, RuntimeError):
         return False
+
+
+def _read_raspberry_pi_model_text(path: Path) -> str:
+    target = Path(path)
+    try:
+        before = os.stat(target, follow_symlinks=False)
+    except OSError:
+        raise
+    if stat.S_ISLNK(before.st_mode):
+        raise RuntimeError(f"Raspberry Pi model path is a symlink: {target}")
+    if not stat.S_ISREG(before.st_mode):
+        raise RuntimeError(f"Raspberry Pi model path is not a regular file: {target}")
+    fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            raise RuntimeError(f"Raspberry Pi model path changed before it could be read: {target}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"Raspberry Pi model path is not a regular file when opened: {target}")
+        text = os.read(fd, 4096).decode("ascii", errors="ignore").strip("\x00\r\n ")
+    finally:
+        os.close(fd)
+    if not text:
+        raise RuntimeError(f"Raspberry Pi model path is empty: {target}")
+    return text
 
 
 def check_pi_temperature(*, warn_c: float = 70.0, fail_c: float = 80.0) -> CheckResult:

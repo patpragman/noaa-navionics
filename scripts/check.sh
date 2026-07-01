@@ -2736,6 +2736,13 @@ grep -q 'suffix.lower() == ".zip"' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
 grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py
+grep -q 'RASPBERRY_PI_MODEL_PATH = Path("/proc/device-tree/model")' src/noaa_navionics/health.py
+grep -q 'def _read_raspberry_pi_model_text' src/noaa_navionics/health.py
+grep -q 'Raspberry Pi model path changed before it could be read' src/noaa_navionics/health.py
+grep -q 'test_raspberry_pi_model_reader_rejects_symlinked_model' tests/test_downloader.py
+grep -q 'test_raspberry_pi_model_reader_rejects_replaced_model_before_reading' tests/test_downloader.py
+grep -q 'Raspberry Pi hardware detection reads `/proc/device-tree/model` only through a no-follow same-file descriptor' README.md
+grep -q 'Raspberry Pi hardware detection reads `/proc/device-tree/model` only through a no-follow same-file descriptor' docs/sailboat-pi.md
 grep -q 'def _volatile_usb_device_path' src/noaa_navionics/health.py
 grep -q 'is a directory, not a GPS device' src/noaa_navionics/health.py
 grep -q 'is not a character device' src/noaa_navionics/health.py

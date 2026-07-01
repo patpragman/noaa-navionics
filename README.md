@@ -368,7 +368,7 @@ For onboard `gpsd` mode, `gpsd_host` must be local (`127.0.0.1`, `localhost`, or
 Chart output directory permission tightening is revalidated before creating locks, archives, extracted trees, or manifests.
 Manifest writes refuse existing symlinked or non-regular manifest targets before replacing metadata. Manifest reads reject symlinked manifest files or parent path components, unsafe manifest directory ownership or permissions, and unsafe manifest file ownership or permissions before trusting cached or readiness metadata.
 NOAA download redirects that downgrade to HTTP, leave NOAA hosts, or change filenames fail before archive replacement.
-Preflight also checks for a sane system clock because chart freshness and GPX timestamps depend on UTC time. On a Raspberry Pi, preflight requires trusted `timedatectl` output with `SystemClockSynchronized=yes` before relying on chart age and GPX timestamps; `NTPSynchronized=yes` alone is not enough.
+Preflight also checks for a sane system clock because chart freshness and GPX timestamps depend on UTC time. Raspberry Pi hardware detection reads `/proc/device-tree/model` only through a no-follow same-file descriptor before deciding whether Pi-only clock, power, thermal, and command-owner checks apply. On a Raspberry Pi, preflight requires trusted `timedatectl` output with `SystemClockSynchronized=yes` before relying on chart age and GPX timestamps; `NTPSynchronized=yes` alone is not enough.
 
 Preflight check. By default this uses `[charts].output`; pass `--charts PATH` to check a different mounted chart directory explicitly:
 
