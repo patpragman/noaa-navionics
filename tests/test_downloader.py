@@ -4,6 +4,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from http.client import IncompleteRead
 from io import BytesIO, StringIO
 from urllib.error import URLError
+import copy
 import json
 import math
 import re
@@ -141,6 +142,113 @@ def trusted_unit_file(path: str, wanted_by: list[str], **overrides: object) -> d
     return state
 
 
+def trusted_user_services_summary(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "available": True,
+        "noaa-navionics.service": {
+            "enabled": "static",
+            "active": "inactive",
+            "properties": {
+                "Type": "oneshot",
+                "TimeoutStartUSec": "2h",
+                "Restart": "on-failure",
+                "RestartUSec": "30min",
+                "StartLimitIntervalUSec": "6h",
+                "StartLimitBurst": "3",
+                "NoNewPrivileges": "yes",
+                "PrivateTmp": "yes",
+                "ProtectSystem": "full",
+                "LockPersonality": "yes",
+                "RestrictSUIDSGID": "yes",
+                "MemoryDenyWriteExecute": "yes",
+                "RestrictRealtime": "yes",
+                "SystemCallArchitectures": "native",
+                "UMask": "0077",
+                "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.service",
+                "ExecStartPre": "/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+                "ExecStart": "/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+            },
+        },
+        "noaa-navionics.timer": {
+            "enabled": "enabled",
+            "active": "active",
+            "properties": {
+                "Persistent": "yes",
+                "RandomizedDelayUSec": "30min",
+                "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                "TimersCalendar": "OnCalendar=weekly",
+            },
+        },
+        "noaa-navionics-track.service": {
+            "enabled": "enabled",
+            "active": "active",
+            "properties": {
+                "Type": "simple",
+                "StandardOutput": "null",
+                "Restart": "on-failure",
+                "RestartUSec": "10s",
+                "TimeoutStopUSec": "30s",
+                "StartLimitIntervalUSec": "10min",
+                "StartLimitBurst": "60",
+                "NoNewPrivileges": "yes",
+                "PrivateTmp": "yes",
+                "ProtectSystem": "full",
+                "LockPersonality": "yes",
+                "RestrictSUIDSGID": "yes",
+                "MemoryDenyWriteExecute": "yes",
+                "RestrictRealtime": "yes",
+                "SystemCallArchitectures": "native",
+                "UMask": "0077",
+                "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                "ExecStart": "/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily",
+            },
+        },
+        "noaa-navionics-preflight.service": {
+            "enabled": "enabled",
+            "active": "inactive",
+            "properties": {
+                "Type": "oneshot",
+                "Environment": "",
+                "EnvironmentFiles": "",
+                "TimeoutStartUSec": "infinity",
+                "Restart": "on-failure",
+                "RestartUSec": "30s",
+                "StartLimitIntervalUSec": "30min",
+                "StartLimitBurst": "60",
+                "NoNewPrivileges": "yes",
+                "PrivateTmp": "yes",
+                "ProtectSystem": "full",
+                "LockPersonality": "yes",
+                "RestrictSUIDSGID": "yes",
+                "MemoryDenyWriteExecute": "yes",
+                "RestrictRealtime": "yes",
+                "SystemCallArchitectures": "native",
+                "UMask": "0077",
+                "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                "Wants": "noaa-navionics-track.service",
+                "After": "noaa-navionics-track.service",
+                "ExecStart": "/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json",
+                "Result": "success",
+                "ExecMainStatus": "0",
+                "ExecMainStartTimestampMonotonic": "123456",
+            },
+        },
+    }
+    state.update(overrides)
+    return state
+
+
+def trusted_system_services_summary(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "available": True,
+        "gpsd.socket": {"enabled": "enabled", "active": "active"},
+        "gpsd.service": {"enabled": "enabled", "active": "active"},
+        "chrony.service": {"enabled": "enabled", "active": "active"},
+    }
+    state.update(overrides)
+    return state
+
+
 def trusted_launcher_settings(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "path": "/home/pi/.config/noaa-navionics/launcher.env",
@@ -268,6 +376,8 @@ def complete_status_gui_report(
                 ["default.target"],
             ),
         },
+        "services": trusted_user_services_summary(),
+        "system_services": trusted_system_services_summary(),
         "config_path": "/home/pi/.config/noaa-navionics/config.ini",
         "config": {
             "chart_package": "state",
@@ -10161,6 +10271,74 @@ class StatusReportTests(unittest.TestCase):
                 self.assertTrue(
                     any(failure.name == failure_name and expected in failure.detail for failure in failures)
                 )
+
+    def test_status_report_ready_requires_valid_service_summaries(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_report = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )
+        valid_services = valid_report["services"]
+        valid_system_services = valid_report["system_services"]
+        services_without_properties = {
+            unit: {key: value for key, value in state.items() if key != "properties"}
+            if isinstance(state, dict)
+            else state
+            for unit, state in valid_services.items()
+        }
+        inactive_track_logger = copy.deepcopy(valid_services)
+        inactive_track_logger["noaa-navionics-track.service"]["active"] = "inactive"
+        weak_track_logger_settings = copy.deepcopy(valid_services)
+        weak_track_logger_settings["noaa-navionics-track.service"]["properties"]["ProtectSystem"] = "no"
+        inactive_gpsd_socket = copy.deepcopy(valid_system_services)
+        inactive_gpsd_socket["gpsd.socket"]["active"] = "inactive"
+        cases = [
+            ({}, "missing services section", "Status Report"),
+            ({"system_services": None}, "missing system_services section", "Status Report"),
+            (
+                {"services": services_without_properties},
+                "systemd user service properties were not loaded",
+                "Status Report",
+            ),
+            (
+                {"services": inactive_track_logger},
+                "noaa-navionics-track.service enabled=enabled active=inactive",
+                "Track Logger",
+            ),
+            (
+                {"services": weak_track_logger_settings},
+                "ProtectSystem=no expected full",
+                "Track Logger Settings",
+            ),
+            (
+                {"system_services": inactive_gpsd_socket},
+                "gpsd.socket enabled=enabled active=inactive",
+                "GPSD Socket",
+            ),
+        ]
+        for updates, expected, failure_name in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "services" not in updates and "system_services" not in updates:
+                    report.pop("services", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == failure_name and expected in failure.detail for failure in failures)
+                )
+
+        serial_report = complete_status_gui_report(
+            gps_mode="serial",
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )
+        serial_report["system_services"] = inactive_gpsd_socket
+
+        self.assertTrue(status_report_is_ready(serial_report, now=now))
+        self.assertFalse(status_report_validation_failures(serial_report, now=now))
 
     def test_status_report_ready_requires_valid_launcher_settings_summary(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)

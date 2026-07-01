@@ -297,6 +297,7 @@ def status_report_validation_failures(
     failures.extend(_config_validation_failures(report))
     failures.extend(_user_validation_failures(report.get("user")))
     failures.extend(_unit_files_validation_failures(report.get("unit_files")))
+    failures.extend(_service_summary_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -316,6 +317,45 @@ def status_report_validation_failures(
     )
     failures.extend(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
+    )
+    return failures
+
+
+def _service_summary_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    failures: list[CheckResult] = []
+    services = report.get("services")
+    system_services = report.get("system_services")
+    if not isinstance(services, dict):
+        failures.append(CheckResult("Status Report", False, "status report missing services section"))
+    if not isinstance(system_services, dict):
+        failures.append(CheckResult("Status Report", False, "status report missing system_services section"))
+    if failures:
+        return failures
+    if not _summary_has_loaded_properties(services):
+        failures.append(
+            CheckResult(
+                "Status Report",
+                False,
+                "status report systemd user service properties were not loaded",
+            )
+        )
+    config = report.get("config")
+    gps_mode = "gpsd"
+    if isinstance(config, dict):
+        configured_mode = str(config.get("gps_mode", "")).strip()
+        if configured_mode in {"gpsd", "serial"}:
+            gps_mode = configured_mode
+    unit_files = report.get("unit_files")
+    derived_checks = _service_readiness_checks(
+        services,
+        system_services,
+        unit_files=unit_files if isinstance(unit_files, dict) else None,
+        gps_mode=gps_mode,
+    )
+    failures.extend(
+        CheckResult(check.name, False, f"status report service summary invalid: {check.detail}")
+        for check in derived_checks
+        if not check.ok
     )
     return failures
 

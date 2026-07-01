@@ -3919,6 +3919,7 @@ grep -q 'def _app_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _user_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _unit_files_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _service_summary_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _launcher_settings_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _opencpn_config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _desktop_validation_failures' src/noaa_navionics/report.py
@@ -3946,6 +3947,10 @@ grep -q 'status report user summary invalid' src/noaa_navionics/report.py
 grep -q 'status report missing unit_files section' src/noaa_navionics/report.py
 grep -q 'status report unit file summary invalid' src/noaa_navionics/report.py
 grep -q 'noaa-navionics-preflight.service' src/noaa_navionics/report.py
+grep -q 'status report missing services section' src/noaa_navionics/report.py
+grep -q 'status report missing system_services section' src/noaa_navionics/report.py
+grep -q 'status report systemd user service properties were not loaded' src/noaa_navionics/report.py
+grep -q 'status report service summary invalid' src/noaa_navionics/report.py
 grep -q 'status report missing launcher_settings section' src/noaa_navionics/report.py
 grep -q 'status report launcher settings path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' src/noaa_navionics/report.py
@@ -3998,6 +4003,7 @@ grep -q 'test_status_report_ready_rejects_missing_or_malformed_host_boot_id' tes
 grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_valid_service_summaries' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_launcher_settings_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_opencpn_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_desktop_summary' tests/test_downloader.py
@@ -4507,8 +4513,8 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' docs/s
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
-grep -q 'status-reported user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' README.md
-grep -q "status artifact's user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode fields" docs/sailboat-pi.md
+grep -q 'status-reported user and system service summaries, user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' README.md
+grep -q 'status-reported user and system service summaries, user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' docs/sailboat-pi.md
 grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' README.md
 grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware, revalidates the resolved OpenCPN executable through no-follow same-file descriptors immediately before each launch or restart' README.md
