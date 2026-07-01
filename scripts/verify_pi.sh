@@ -521,6 +521,36 @@ def download_url_matches_package(download_url, package_url):
 def valid_boot_id(value):
     return bool(re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value))
 
+def read_current_boot_id():
+    path = Path("/proc/sys/kernel/random/boot_id")
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect current boot ID: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise SystemExit(f"current boot ID path is a symlink: {path}")
+    if not stat.S_ISREG(before.st_mode):
+        raise SystemExit(f"current boot ID path is not a regular file: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        raise SystemExit(f"could not open current boot ID: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise SystemExit(f"current boot ID path changed before it could be read: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"current boot ID path is not a regular file when opened: {path}")
+        lines = os.read(fd, 4096).decode("ascii", "ignore").splitlines()
+    finally:
+        os.close(fd)
+    if not lines:
+        raise SystemExit("current boot ID is not a Linux boot_id value: <empty>")
+    value = lines[0].strip()
+    if not valid_boot_id(value):
+        raise SystemExit(f"current boot ID is not a Linux boot_id value: {value or '<empty>'}")
+    return value
+
 def parse_manifest_int(value, field, source):
     try:
         return int(value)
@@ -1929,12 +1959,7 @@ if require_current_boot:
         raise SystemExit("status report has no current boot ID")
     if not valid_boot_id(report_boot_id):
         raise SystemExit(f"status report boot ID is not a Linux boot_id value: {report_boot_id}")
-    try:
-        current_boot_id = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
-    except OSError as exc:
-        raise SystemExit(f"could not read current boot ID: {exc}") from exc
-    if not valid_boot_id(current_boot_id):
-        raise SystemExit(f"current boot ID is not a Linux boot_id value: {current_boot_id}")
+    current_boot_id = read_current_boot_id()
     expected_boot_id = os.environ.get("NOAA_NAVIONICS_EXPECTED_BOOT_ID", "").strip()
     if expected_boot_id and current_boot_id != expected_boot_id:
         raise SystemExit(
@@ -3229,12 +3254,35 @@ PY
 current_boot_id() {
   "$python3_cmd" - <<'PY'
 from pathlib import Path
+import os
 import re
+import stat
 
+path = Path("/proc/sys/kernel/random/boot_id")
 try:
-    value = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+    before = os.stat(path, follow_symlinks=False)
 except OSError as exc:
-    raise SystemExit(f"could not read current boot ID: {exc}") from exc
+    raise SystemExit(f"could not inspect current boot ID: {exc}") from exc
+if stat.S_ISLNK(before.st_mode):
+    raise SystemExit(f"current boot ID path is a symlink: {path}")
+if not stat.S_ISREG(before.st_mode):
+    raise SystemExit(f"current boot ID path is not a regular file: {path}")
+try:
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError as exc:
+    raise SystemExit(f"could not open current boot ID: {exc}") from exc
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        raise SystemExit(f"current boot ID path changed before it could be read: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"current boot ID path is not a regular file when opened: {path}")
+    lines = os.read(fd, 4096).decode("ascii", "ignore").splitlines()
+finally:
+    os.close(fd)
+if not lines:
+    raise SystemExit("current boot ID is not a Linux boot_id value: <empty>")
+value = lines[0].strip()
 if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value):
     raise SystemExit(f"current boot ID is not a Linux boot_id value: {value or '<empty>'}")
 print(value)

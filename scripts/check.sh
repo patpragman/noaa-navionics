@@ -1541,6 +1541,10 @@ grep -q 'read_private_user_file()' scripts/verify_pi.sh
 grep -q 'read_private_user_file "${launcher_lock}/pid" "chartplotter launcher lock pid"' scripts/verify_pi.sh
 grep -q 'read_private_user_file "${launcher_lock}/boot_id" "chartplotter launcher lock boot ID"' scripts/verify_pi.sh
 grep -q 'current_boot_id()' scripts/verify_pi.sh
+grep -q 'def read_current_boot_id()' scripts/verify_pi.sh
+grep -q 'current boot ID path changed before it could be read' scripts/verify_pi.sh
+grep -q 'current boot ID path is a symlink' scripts/verify_pi.sh
+! grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/verify_pi.sh
 grep -q 'current boot ID is not a Linux boot_id value' scripts/verify_pi.sh
 grep -q 'current_boot_id="$(current_boot_id 2>/dev/null || true)"' scripts/verify_pi.sh
 grep -q 'read_proc_env_value()' scripts/verify_pi.sh
@@ -1737,6 +1741,7 @@ grep -q 'recent GPX trackpoint verification uses that same trusted config read p
 grep -q 'recent GPX trackpoint verification uses that same trusted config read path' docs/sailboat-pi.md
 grep -q 'status report boot ID' scripts/verify_pi.sh
 grep -q 'valid_boot_id(report_boot_id)' scripts/verify_pi.sh
+grep -q 'current_boot_id = read_current_boot_id()' scripts/verify_pi.sh
 grep -q 'current boot ID is not a Linux boot_id value' scripts/verify_pi.sh
 grep -q 'BOOT_ID_RE.fullmatch' src/noaa_navionics/report.py
 grep -q 'def _read_boot_id_text' src/noaa_navionics/report.py
@@ -1756,6 +1761,8 @@ grep -q 'boot_id` UUID shape' README.md
 grep -q 'boot_id` UUID shape' docs/sailboat-pi.md
 grep -q 'Status reports read the Linux `boot_id` and `/proc/uptime` through no-follow descriptors' README.md
 grep -q 'Status reports read the Linux `boot_id` and `/proc/uptime` through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'reads the current boot ID through a no-follow descriptor before comparing status-report or launcher-lock boot evidence' README.md
+grep -q 'reads the current boot ID through a no-follow descriptor before comparing status-report or launcher-lock boot evidence' docs/sailboat-pi.md
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
 grep -q 'status report source revision directory is a symlink' scripts/verify_pi.sh
