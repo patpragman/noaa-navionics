@@ -529,8 +529,8 @@ class StatusApp(tk.Tk):
             self.queue.put(("error", str(exc)))
 
     def _anchor_watch_worker(self, *, radius_meters: float) -> None:
+        anchor_watch_fix = self.anchor_watch_fix
         try:
-            anchor_watch_fix = self.anchor_watch_fix
             if anchor_watch_fix is None:
                 return
             distance, radius, anchor_fix, current_fix = check_anchor_watch_drift(
@@ -541,7 +541,7 @@ class StatusApp(tk.Tk):
             )
             self.queue.put(("anchor_watch", (distance, radius, anchor_fix, current_fix)))
         except Exception as exc:  # pragma: no cover - UI path
-            self.queue.put(("error", str(exc)))
+            self.queue.put(("anchor_watch_error", (anchor_watch_fix, str(exc))))
 
     def _poll_queue(self) -> None:
         try:
@@ -561,6 +561,9 @@ class StatusApp(tk.Tk):
                 elif kind == "anchor_watch":
                     distance, radius, anchor_fix, current_fix = payload
                     self._show_anchor_watch(distance, radius, anchor_fix, current_fix)
+                elif kind == "anchor_watch_error":
+                    anchor_fix, message = payload
+                    self._show_anchor_watch_error(anchor_fix, str(message))
                 elif kind == "error":
                     self._show_error(str(payload))
         except Empty:
@@ -658,6 +661,14 @@ class StatusApp(tk.Tk):
             self.bell()
         self._schedule_anchor_watch()
         self._schedule_refresh()
+
+    def _show_anchor_watch_error(self, anchor_fix: Optional[GPSFix], message: str) -> None:
+        if anchor_fix is not None and self.anchor_watch_fix is not anchor_fix:
+            self._set_busy(False)
+            self.last_report.set("Ignored stale anchor watch error; watch was stopped or reset.")
+            self._schedule_refresh()
+            return
+        self._show_error(message)
 
     def _show_error(self, message: str) -> None:
         self._set_busy(False)
