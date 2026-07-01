@@ -852,9 +852,40 @@ if label == "track export archive":
             file=sys.stderr,
         )
         raise SystemExit(124)
-elif label == "support bundle archive" and data_file_count <= 0:
-    print(f"{label} contains no diagnostic files", file=sys.stderr)
-    raise SystemExit(124)
+elif label == "support bundle archive":
+    if data_file_count <= 0:
+        print(f"{label} contains no diagnostic files", file=sys.stderr)
+        raise SystemExit(124)
+    required_members = [
+        "commands/system-command-integrity.txt",
+        "commands/date-utc.txt",
+        "commands/uname.txt",
+        "commands/hostname.txt",
+        "commands/uptime.txt",
+        "commands/package-versions.txt",
+        "commands/df.txt",
+        "commands/mount-findmnt.txt",
+        "commands/serial-devices.txt",
+        "commands/user-units.txt",
+        "commands/user-unit-properties.txt",
+        "commands/system-services.txt",
+        "commands/system-service-properties.txt",
+        "commands/chrony-sources.txt",
+        "commands/timedatectl.txt",
+        "commands/pi-throttling.txt",
+        "commands/recent-user-journal.txt",
+        "commands/recent-system-journal.txt",
+    ]
+    missing_members = [
+        name for name in required_members
+        if name not in members_by_name or not members_by_name[name].isfile()
+    ]
+    if missing_members:
+        print(
+            f"{label} is missing required diagnostic file(s): {', '.join(missing_members)}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
 PY
   status=$?
   set -e

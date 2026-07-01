@@ -799,8 +799,8 @@ grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
-grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain at least one diagnostic file' README.md
-grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain at least one diagnostic file' docs/sailboat-pi.md
+grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' README.md
+grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' docs/sailboat-pi.md
 grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' README.md
 grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -1816,6 +1816,9 @@ grep -q 'hashlib.sha256' scripts/post_trip_collect_pi.sh
 grep -q 'run_artifact_step' scripts/post_trip_collect_pi.sh
 grep -q 'track export archive' scripts/post_trip_collect_pi.sh
 grep -q 'support bundle archive' scripts/post_trip_collect_pi.sh
+grep -q 'is missing required diagnostic file' scripts/post_trip_collect_pi.sh
+grep -q 'commands/system-command-integrity.txt' scripts/post_trip_collect_pi.sh
+grep -q 'commands/recent-system-journal.txt' scripts/post_trip_collect_pi.sh
 grep -q 'must be an immediate child of the post-trip output directory' scripts/post_trip_collect_pi.sh
 grep -q 'is not a readable gzip tar archive' scripts/post_trip_collect_pi.sh
 grep -q 'contains unsafe member name' scripts/post_trip_collect_pi.sh
@@ -7138,6 +7141,27 @@ import sys
 import tarfile
 import time
 
+CORE_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
 path = sys.argv[1]
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
@@ -7148,12 +7172,17 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
     info.mtime = int(time.time())
     archive.addfile(info, io.BytesIO(data))
     if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_README_ONLY") != "1":
-        diagnostic = b"date output\n"
-        info = tarfile.TarInfo("commands/date-utc.txt")
-        info.size = len(diagnostic)
-        info.mode = 0o600
-        info.mtime = int(time.time())
-        archive.addfile(info, io.BytesIO(diagnostic))
+        if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_THIN") == "1":
+            names = ["commands/date-utc.txt"]
+        else:
+            names = CORE_COMMAND_FILES
+        for name in names:
+            diagnostic = f"{name}\n".encode("utf-8")
+            info = tarfile.TarInfo(name)
+            info.size = len(diagnostic)
+            info.mode = 0o600
+            info.mtime = int(time.time())
+            archive.addfile(info, io.BytesIO(diagnostic))
 os.chmod(path, 0o600)
 PY
 printf 'Collected Pi support bundle: %s\n' "$archive"
@@ -7220,16 +7249,33 @@ import sys
 import tarfile
 
 root = Path(sys.argv[1])
+core_command_files = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
 expected_members = {
     "noaa-navionics-pi-tracks-fixture.tgz": [
         "README.txt",
         "manifest.json",
         "tracks/underway.gpx",
     ],
-    "noaa-navionics-pi-support-fixture.tgz": [
-        "README.txt",
-        "commands/date-utc.txt",
-    ],
+    "noaa-navionics-pi-support-fixture.tgz": ["README.txt", *core_command_files],
 }
 for path_text in sys.argv[2:]:
     path = Path(path_text)
@@ -7430,6 +7476,25 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'support bundle archive contains no diagnostic files' "$verify_output"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_readme_only_support_log"
+
+post_trip_thin_support_log="$tmpdir/post-trip-thin-support-helper-calls"
+post_trip_thin_support_output_dir="$tmpdir/post-trip-thin-support-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_thin_support_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_THIN=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_thin_support_output_dir" \
+  --skip-status \
+  --skip-tracks >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a support archive missing required diagnostics with exit 2" >&2
+  exit 1
+fi
+grep -q 'support bundle archive is missing required diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
+grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_thin_support_log"
 
 post_trip_invalid_json_log="$tmpdir/post-trip-invalid-json-helper-calls"
 post_trip_invalid_json_output_dir="$tmpdir/post-trip-invalid-json-output"
