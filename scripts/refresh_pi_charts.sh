@@ -297,6 +297,29 @@ require_positive_integer() {
   fi
 }
 
+require_boolean_control() {
+  local name="$1"
+  local value="$2"
+  case "$value" in
+    0|1)
+      ;;
+    *)
+      echo "$name must be 0 or 1" >&2
+      exit 1
+      ;;
+  esac
+}
+
+validate_refresh_controls() {
+  require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"
+  require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"
+  require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
+  require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
+  if [[ -n "$gps_seconds" ]]; then
+    require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
+  fi
+}
+
 fail() {
   echo "$*" >&2
   exit 1
@@ -622,11 +645,7 @@ raise SystemExit(result.returncode)
 PY
 }
 
-require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
-require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
-if [[ -n "$gps_seconds" ]]; then
-  require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
-fi
+validate_refresh_controls
 python3_cmd="$(require_remote_command python3)"
 check_user_owned_private_file "onboard NOAA Navionics config" "$config"
 

@@ -1823,6 +1823,10 @@ grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scrip
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
+grep -q 'validate_refresh_controls' scripts/refresh_pi_charts.sh
+grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"' scripts/refresh_pi_charts.sh
+grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"' scripts/refresh_pi_charts.sh
+grep -q 'echo "$name must be 0 or 1" >&2' scripts/refresh_pi_charts.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' scripts/refresh_pi_charts.sh
 grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/refresh_pi_charts.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/refresh_pi_charts.sh
@@ -9309,6 +9313,11 @@ grep -q 'NOAA_NAVIONICS_REFRESH_STATUS=1' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS=13' "$refresh_fake_ssh_args"
 grep -q '/bin/bash -s' "$refresh_fake_ssh_args"
 grep -q 'pi@example.invalid' "$refresh_fake_ssh_args"
+grep -q 'validate_refresh_controls()' "$refresh_fake_ssh_stdin"
+grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"' "$refresh_fake_ssh_stdin"
+grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"' "$refresh_fake_ssh_stdin"
+grep -q 'echo "$name must be 0 or 1" >&2' "$refresh_fake_ssh_stdin"
+grep -q 'validate_refresh_controls' "$refresh_fake_ssh_stdin"
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' "$refresh_fake_ssh_stdin"
 grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
