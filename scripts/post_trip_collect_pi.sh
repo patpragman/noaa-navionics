@@ -767,6 +767,13 @@ for member in members:
         print(f"{label} contains unsupported member type: {name}", file=sys.stderr)
         raise SystemExit(124)
     if member.isfile() and normalized_name not in {"README.txt", "manifest.json"}:
+        if label == "track export archive" and not (
+            normalized_name.startswith("tracks/")
+            and normalized_name.endswith(".gpx")
+            and normalized_name != "tracks/.gpx"
+        ):
+            print(f"{label} contains non-GPX track data member: {name}", file=sys.stderr)
+            raise SystemExit(124)
         data_file_count += 1
 readme = members_by_name.get("README.txt")
 if readme is None:
