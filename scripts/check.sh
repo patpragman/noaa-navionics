@@ -677,6 +677,12 @@ grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_
 grep -q 'capture_recovery_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'cleanup_private_recovery_output_capture "${recovery_output:-}" || true' scripts/pre_trip_prepare_pi.sh
+grep -q 'save_pre_departure_status_snapshot "$recovery_dir" "$status_helper"' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure-status.json' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure-status.sha256' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/pre_trip_prepare_pi.sh
+grep -q 'Saved pre-departure status snapshot:' scripts/pre_trip_prepare_pi.sh
+grep -q 'Saved pre-departure status checksum:' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.path.samestat(before, opened)' scripts/pre_trip_prepare_pi.sh
 grep -q 'require_helper "$command_path"' scripts/pre_trip_prepare_pi.sh
@@ -695,6 +701,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -1661,8 +1669,11 @@ grep -q 'export_pi_recovery_bundle.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'verify_pi_recovery_exports.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_pi_charts.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
+grep -q 'check_pi_status.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_pi.sh
+grep -q 'status_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_pi.sh
+grep -q 'status_args+=(--json)' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$output_dir"' scripts/pre_trip_prepare_pi.sh
@@ -6565,6 +6576,11 @@ cat >"$pre_trip_repo/scripts/pre_departure_check_pi.sh" <<'EOF'
 printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 printf 'fake pre-departure\n'
 EOF
+cat >"$pre_trip_repo/scripts/check_pi_status.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf '{"ok": true, "checks": [], "service_checks": []}\n'
+EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
 
 pre_trip_early_real_parent="$tmpdir/pre-trip-early-real-parent"
@@ -6636,8 +6652,33 @@ grep -Fxq "refresh|pi@example.invalid --retries 6 --retry-delay 9 --status --gps
 grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$pre_trip_log"
 grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test" "$pre_trip_log"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
+grep -Fxq "status|pi@example.invalid --gps-seconds 17 --json" "$pre_trip_log"
+grep -q 'Saved pre-departure status snapshot:' "$verify_output"
+grep -q 'Saved pre-departure status checksum:' "$verify_output"
 test "$(stat -c '%a' "$pre_trip_output_dir")" = 700
 test "$(stat -c '%u' "$pre_trip_output_dir")" = "$(id -u)"
+pre_trip_recovery_dir="$pre_trip_output_dir/noaa-navionics-pi-recovery-test"
+test "$(stat -c '%a' "$pre_trip_recovery_dir/pre-departure-status.json")" = 600
+test "$(stat -c '%a' "$pre_trip_recovery_dir/pre-departure-status.sha256")" = 600
+test "$(stat -c '%u' "$pre_trip_recovery_dir/pre-departure-status.json")" = "$(id -u)"
+test "$(stat -c '%u' "$pre_trip_recovery_dir/pre-departure-status.sha256")" = "$(id -u)"
+python3 - "$pre_trip_recovery_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+status_path = root / "pre-departure-status.json"
+checksum_path = root / "pre-departure-status.sha256"
+payload = status_path.read_bytes()
+status = json.loads(payload.decode("utf-8"))
+if status.get("ok") is not True:
+    raise SystemExit("pre-trip status snapshot did not report ok=true")
+expected = f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n"
+if checksum_path.read_text(encoding="ascii") != expected:
+    raise SystemExit("pre-trip status checksum did not match status snapshot")
+PY
 
 pre_trip_mutated_repo="$tmpdir/pre-trip-mutated-repo"
 pre_trip_mutated_log="$tmpdir/pre-trip-mutated-helper-calls"
@@ -6659,6 +6700,10 @@ EOF
 cat >"$pre_trip_mutated_repo/scripts/pre_departure_check_pi.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'pre-departure should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+cat >"$pre_trip_mutated_repo/scripts/check_pi_status.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'status should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 EOF
 chmod +x "$pre_trip_mutated_repo/scripts/"*.sh
 set +e
@@ -6704,6 +6749,11 @@ EOF
 cat >"$pre_trip_misdirected_repo/scripts/pre_departure_check_pi.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+cat >"$pre_trip_misdirected_repo/scripts/check_pi_status.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf '{"ok": true, "checks": [], "service_checks": []}\n'
 EOF
 chmod +x "$pre_trip_misdirected_repo/scripts/"*.sh
 set +e
@@ -7244,7 +7294,7 @@ pre_trip_parent_real="$tmpdir/pre-trip-helper-parent-real"
 pre_trip_parent_link="$tmpdir/pre-trip-helper-parent-link"
 mkdir -p "$pre_trip_parent_real/scripts"
 cp scripts/pre_trip_prepare_pi.sh "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"
-for helper in refresh_pi_charts.sh export_pi_recovery_bundle.sh verify_pi_recovery_exports.sh pre_departure_check_pi.sh; do
+for helper in refresh_pi_charts.sh export_pi_recovery_bundle.sh verify_pi_recovery_exports.sh pre_departure_check_pi.sh check_pi_status.sh; do
   write_noop_helper "$pre_trip_parent_real/scripts/$helper"
 done
 chmod +x "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"

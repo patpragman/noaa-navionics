@@ -846,6 +846,238 @@ PY
   return "$status"
 }
 
+save_pre_departure_status_snapshot() {
+  local directory="$1"
+  local command_path="$2"
+  local status
+  shift 2
+  require_helper "$command_path"
+  printf '==> Saving local pre-departure status snapshot\n'
+  set +e
+  "$python3_cmd" - "$command_path" "$directory" "$@" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import hashlib
+import json
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+
+path = Path(sys.argv[1])
+directory = Path(sys.argv[2])
+args = sys.argv[3:]
+status_name = "pre-departure-status.json"
+checksum_name = "pre-departure-status.sha256"
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(124)
+
+
+def inspect_private_directory(target: Path) -> None:
+    try:
+        result = target.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect pre-departure status directory: {target}: {exc}")
+    if not stat.S_ISDIR(result.st_mode):
+        fail(f"Pre-departure status directory must be a real directory: {target}")
+    if result.st_uid != os.getuid():
+        fail(f"Pre-departure status directory is owned by uid {result.st_uid}, expected {os.getuid()}: {target}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o700:
+        fail(f"Pre-departure status directory has permissions {mode:04o}, expected private 0700: {target}")
+
+
+def validate_helper(script: Path) -> int:
+    if not script.is_absolute():
+        fail(f"Helper script path must be absolute before status snapshot execution: {script}")
+    current = Path("/")
+    for part in script.parts[1:]:
+        if part in {"", "."}:
+            continue
+        current = current / part
+        try:
+            component = os.lstat(current)
+        except OSError as exc:
+            fail(f"Could not inspect helper script path component before status snapshot execution {current}: {exc}")
+        if stat.S_ISLNK(component.st_mode):
+            fail(f"Helper script path contains a symlink before status snapshot execution: {current}")
+    try:
+        before = os.stat(script, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"Could not inspect helper script before status snapshot execution: {script}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"Helper script must be regular before status snapshot execution: {script}")
+    if before.st_uid != os.getuid():
+        fail(f"Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}: {script}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode & 0o022:
+        fail(f"Helper script has permissions {mode:03o}, expected no group/other write bits: {script}")
+    if not mode & 0o111:
+        fail(f"Helper script is not executable before status snapshot execution: {script}")
+    try:
+        fd = os.open(script, os.O_RDONLY | nofollow)
+    except OSError as exc:
+        fail(f"Could not open helper script through no-follow descriptor for status snapshot: {script}: {exc}")
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        os.close(fd)
+        fail(f"Helper script changed before status snapshot execution: {script}")
+    if not stat.S_ISREG(opened.st_mode):
+        os.close(fd)
+        fail(f"Helper script must be regular when opened for status snapshot execution: {script}")
+    if opened.st_uid != os.getuid():
+        os.close(fd)
+        fail(f"Helper script is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {script}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        os.close(fd)
+        fail(f"Helper script has permissions {opened_mode:03o}, expected no group/other write bits: {script}")
+    if not opened_mode & 0o111:
+        os.close(fd)
+        fail(f"Helper script is not executable when opened for status snapshot execution: {script}")
+    return fd
+
+
+def inspect_private_file(file_path: Path, label: str) -> os.stat_result:
+    try:
+        result = file_path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect {label}: {file_path}: {exc}")
+    if not stat.S_ISREG(result.st_mode):
+        fail(f"{label} must be a regular file: {file_path}")
+    if result.st_uid != os.getuid():
+        fail(f"{label} is owned by uid {result.st_uid}, expected {os.getuid()}: {file_path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o600:
+        fail(f"{label} has permissions {mode:04o}, expected private 0600: {file_path}")
+    return result
+
+
+def read_private_file(file_path: Path, label: str) -> bytes:
+    before = inspect_private_file(file_path, label)
+    fd = -1
+    try:
+        fd = os.open(file_path, os.O_RDONLY | nofollow)
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"{label} changed while opening it: {file_path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"{label} must be regular when opened: {file_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"{label} is owned by uid {opened.st_uid}, expected {os.getuid()} when opened: {file_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"{label} has permissions {opened_mode:04o}, expected private 0600 when opened: {file_path}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def write_private_file_atomic(file_path: Path, payload: bytes, label: str) -> None:
+    if file_path.exists() or file_path.is_symlink():
+        fail(f"Refusing to overwrite existing {label}: {file_path}")
+    temp_fd = -1
+    temp_path = None
+    try:
+        temp_fd, temp_name = tempfile.mkstemp(prefix=f".{file_path.name}.", suffix=".tmp", dir=directory)
+        temp_path = Path(temp_name)
+        os.fchmod(temp_fd, 0o600)
+        os.write(temp_fd, payload)
+        os.fsync(temp_fd)
+        os.close(temp_fd)
+        temp_fd = -1
+        os.replace(temp_path, file_path)
+        temp_path = None
+    except OSError as exc:
+        fail(f"Could not write {label}: {exc}")
+    finally:
+        if temp_fd >= 0:
+            os.close(temp_fd)
+        if temp_path is not None:
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
+    inspect_private_file(file_path, label)
+
+
+inspect_private_directory(directory)
+status_path = directory / status_name
+checksum_path = directory / checksum_name
+if status_path.exists() or status_path.is_symlink():
+    fail(f"Refusing to overwrite existing pre-departure status snapshot: {status_path}")
+if checksum_path.exists() or checksum_path.is_symlink():
+    fail(f"Refusing to overwrite existing pre-departure status checksum: {checksum_path}")
+
+helper_fd = validate_helper(path)
+temp_fd = -1
+temp_path = None
+try:
+    temp_fd, temp_name = tempfile.mkstemp(prefix=f".{status_name}.", suffix=".tmp", dir=directory)
+    temp_path = Path(temp_name)
+    os.fchmod(temp_fd, 0o600)
+    with os.fdopen(temp_fd, "wb") as output:
+        temp_fd = -1
+        try:
+            result = subprocess.run([f"/proc/self/fd/{helper_fd}", *args], pass_fds=(helper_fd,), stdout=output)
+        except OSError as exc:
+            fail(f"Could not execute status helper through validated descriptor: {path}: {exc}")
+        output.flush()
+        os.fsync(output.fileno())
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    payload = read_private_file(temp_path, "temporary pre-departure status snapshot")
+    try:
+        parsed = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        fail(f"pre-departure status snapshot is not valid JSON: {exc}")
+    if not isinstance(parsed, dict):
+        fail("pre-departure status snapshot JSON must be an object")
+    if parsed.get("ok") is not True:
+        fail("pre-departure status snapshot JSON does not report ok=true")
+    os.replace(temp_path, status_path)
+    temp_path = None
+finally:
+    os.close(helper_fd)
+    if temp_fd >= 0:
+        os.close(temp_fd)
+    if temp_path is not None:
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+
+payload = read_private_file(status_path, "pre-departure status snapshot")
+digest = hashlib.sha256(payload).hexdigest()
+write_private_file_atomic(checksum_path, f"{digest}  {status_name}\n".encode("ascii"), "pre-departure status checksum")
+checksum_payload = read_private_file(checksum_path, "pre-departure status checksum")
+if checksum_payload != f"{digest}  {status_name}\n".encode("ascii"):
+    fail(f"pre-departure status checksum content changed after writing: {checksum_path}")
+dir_fd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+try:
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+print(f"Saved pre-departure status snapshot: {status_path}")
+print(f"Saved pre-departure status checksum: {checksum_path}")
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device)
@@ -975,11 +1207,13 @@ refresh_helper="${repo_root}/scripts/refresh_pi_charts.sh"
 recovery_helper="${repo_root}/scripts/export_pi_recovery_bundle.sh"
 verify_recovery_helper="${repo_root}/scripts/verify_pi_recovery_exports.sh"
 pre_departure_helper="${repo_root}/scripts/pre_departure_check_pi.sh"
+status_helper="${repo_root}/scripts/check_pi_status.sh"
 python3_cmd="$(require_local_command python3)"
 require_helper "$refresh_helper"
 require_helper "$recovery_helper"
 require_helper "$verify_recovery_helper"
 require_helper "$pre_departure_helper"
+require_helper "$status_helper"
 
 if [[ "$skip_refresh" -eq 0 ]]; then
   refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)
@@ -1027,6 +1261,14 @@ if [[ "$skip_pre_departure" -eq 0 ]]; then
     pre_departure_args+=(--opencpn-restart-delay "$opencpn_restart_delay")
   fi
   run_step "Running live pre-departure check" "$pre_departure_helper" "${pre_departure_args[@]}"
+  if [[ "$skip_recovery" -eq 0 ]]; then
+    status_args=("$target")
+    if [[ -n "$gps_seconds" ]]; then
+      status_args+=(--gps-seconds "$gps_seconds")
+    fi
+    status_args+=(--json)
+    save_pre_departure_status_snapshot "$recovery_dir" "$status_helper" "${status_args[@]}"
+  fi
 else
   printf '==> Skipping live pre-departure check\n'
 fi
