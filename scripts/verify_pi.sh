@@ -1478,9 +1478,13 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest directory is a symlink or missing symlink status: {expected_manifest_path.parent}"
         )
+    if "chart_storage_symlink_component" not in manifest:
+        raise SystemExit(f"status report manifest missing chart_storage_symlink_component: {expected_manifest_path}")
     chart_storage_symlink_component = str(manifest.get("chart_storage_symlink_component", "")).strip()
     if chart_storage_symlink_component:
         raise SystemExit(f"status report chart storage path contains a symlink: {chart_storage_symlink_component}")
+    if "manifest_symlink_component" not in manifest:
+        raise SystemExit(f"status report manifest missing manifest_symlink_component: {expected_manifest_path}")
     manifest_symlink_component = str(manifest.get("manifest_symlink_component", "")).strip()
     if manifest_symlink_component:
         raise SystemExit(f"status report manifest path contains a symlink: {manifest_symlink_component}")
