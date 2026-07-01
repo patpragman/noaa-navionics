@@ -601,6 +601,8 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
+grep -q 'pre-departure wrapper validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution' README.md
+grep -q 'pre-departure wrapper validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
@@ -1496,14 +1498,17 @@ grep -q 'name in {"", ".", ".."}' scripts/post_trip_collect_pi.sh
 grep -q 'member.isfile() or member.isdir()' scripts/post_trip_collect_pi.sh
 grep -q 'os.path.samestat(initial, opened)' scripts/post_trip_collect_pi.sh
 grep -q 'tarfile.open(fileobj=handle, mode="r:gz")' scripts/post_trip_collect_pi.sh
-for helper_wrapper in \
-  scripts/pre_departure_check_pi.sh; do
-  grep -q 'reject_symlinked_path_components "Helper script" "$path"' "$helper_wrapper"
-  grep -q 'path contains a symlink' "$helper_wrapper"
-  grep -q 'Helper script is owned by uid ${owner_uid}, expected current user ${current_uid}' "$helper_wrapper"
-  grep -q 'Helper script has permissions ${mode}, expected no group/other write bits' "$helper_wrapper"
-  grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' "$helper_wrapper"
-done
+grep -q 'reject_symlinked_path_components "Helper script" "$path"' scripts/pre_departure_check_pi.sh
+grep -q 'path contains a symlink' scripts/pre_departure_check_pi.sh
+grep -q 'require_local_command python3' scripts/pre_departure_check_pi.sh
+grep -q 'validate_trusted_local_command' scripts/pre_departure_check_pi.sh
+grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/pre_departure_check_pi.sh
+grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/pre_departure_check_pi.sh
+grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/pre_departure_check_pi.sh
+grep -q 'Could not open helper script through no-follow descriptor' scripts/pre_departure_check_pi.sh
+grep -q 'Helper script changed before it could be validated' scripts/pre_departure_check_pi.sh
+grep -q 'require_helper "$command_path"' scripts/pre_departure_check_pi.sh
+! sed -n '/^require_helper()/,/^}/p' scripts/pre_departure_check_pi.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'reject_symlinked_path_components "Helper script" "$path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'path contains a symlink' scripts/pre_trip_prepare_pi.sh
 grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/pre_trip_prepare_pi.sh
@@ -6273,6 +6278,28 @@ printf '%s\n' "$@" >"$NOAA_NAVIONICS_FAKE_VERIFY_ARGS"
 exit 0
 EOF
 chmod +x "$pre_departure_repo/scripts/pre_departure_check_pi.sh" "$pre_departure_repo/scripts/verify_pi.sh"
+pre_departure_fake_python_bin="$tmpdir/pre-departure-fake-python-bin"
+mkdir -p "$pre_departure_fake_python_bin"
+cat >"$pre_departure_fake_python_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "untrusted fake python should not run" >&2
+exit 99
+EOF
+chmod +x "$pre_departure_fake_python_bin/python3"
+set +e
+NOAA_NAVIONICS_FAKE_VERIFY_ARGS="$pre_departure_args" \
+  PATH="$pre_departure_fake_python_bin:$PATH" \
+  "$pre_departure_repo/scripts/pre_departure_check_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject an untrusted local python3 command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 NOAA_NAVIONICS_FAKE_VERIFY_ARGS="$pre_departure_args" \
   "$pre_departure_repo/scripts/pre_departure_check_pi.sh" \
   pi@example.invalid \
