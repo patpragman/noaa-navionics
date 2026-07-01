@@ -4012,6 +4012,8 @@ grep -q 'def status_report_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report top-level ok is not boolean' src/noaa_navionics/report.py
 grep -q 'check.get("ok") is True' src/noaa_navionics/report.py
 grep -q 'gps_fix.get("ok") is True' src/noaa_navionics/report.py
+grep -q 'row.get("ok") is not True' src/noaa_navionics/report.py
+! grep -Eq 'and [[:alnum:]_]+_row\.get\("ok"\)|or not (row|[[:alnum:]_]+_row)\.get\("ok"\)' src/noaa_navionics/report.py
 grep -q 'def missing_required_readiness_checks' src/noaa_navionics/report.py
 grep -q 'STATUS_REPORT_MAX_AGE_SECONDS = 600.0' src/noaa_navionics/report.py
 grep -q 'STATUS_REPORT_FUTURE_TOLERANCE_SECONDS = 30.0' src/noaa_navionics/report.py
@@ -4235,6 +4237,7 @@ grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' te
 grep -q 'test_status_report_ready_rejects_unnamed_or_duplicate_rows' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_boolean_ok' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_boolean_row_ok_values' tests/test_downloader.py
+grep -q 'test_status_report_validation_does_not_trust_truthy_row_ok_for_structured_evidence' tests/test_downloader.py
 grep -q 'test_status_gui_renders_truthy_non_boolean_ok_values_as_failures' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' tests/test_downloader.py
@@ -4274,8 +4277,8 @@ grep -q 'READY reports also require structured Python, Tkinter, and Source Revis
 grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' docs/sailboat-pi.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean' README.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean' docs/sailboat-pi.md
-grep -q 'Shared readiness validation also rejects unnamed, duplicate, or non-boolean readiness/service rows' README.md
-grep -q 'Shared readiness validation also rejects unnamed, duplicate, or non-boolean readiness/service rows' docs/sailboat-pi.md
+grep -q 'only rows with boolean `true` are trusted as structured readiness evidence' README.md
+grep -q 'only rows with boolean `true` are trusted as structured readiness evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' README.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' README.md

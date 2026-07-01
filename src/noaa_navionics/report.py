@@ -370,7 +370,7 @@ def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckRes
         return []
     check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
     row = check_rows.get("GPSD Config")
-    if not isinstance(row, dict) or not row.get("ok"):
+    if not isinstance(row, dict) or row.get("ok") is not True:
         return []
     data = row.get("data")
     if not isinstance(data, dict):
@@ -425,7 +425,7 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
     failures: list[CheckResult] = []
 
     python_row = check_rows.get("Python")
-    if isinstance(python_row, dict) and python_row.get("ok"):
+    if isinstance(python_row, dict) and python_row.get("ok") is True:
         data = python_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Python", False, "status report Python check has no structured data"))
@@ -447,7 +447,7 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                 failures.append(CheckResult("Python", False, "status report Python executable path is not absolute"))
 
     tkinter_row = check_rows.get("Tkinter")
-    if isinstance(tkinter_row, dict) and tkinter_row.get("ok"):
+    if isinstance(tkinter_row, dict) and tkinter_row.get("ok") is True:
         data = tkinter_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Tkinter", False, "status report Tkinter check has no structured data"))
@@ -458,7 +458,7 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                 failures.append(CheckResult("Tkinter", False, "status report Tkinter availability was not proven"))
 
     source_row = check_rows.get("Source Revision")
-    if isinstance(source_row, dict) and source_row.get("ok"):
+    if isinstance(source_row, dict) and source_row.get("ok") is True:
         data = source_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Source Revision", False, "status report Source Revision check has no structured data"))
@@ -517,7 +517,7 @@ def _chart_readiness_validation_failures(
     failures: list[CheckResult] = []
 
     package_row = check_rows.get("Chart Package")
-    if isinstance(package_row, dict) and package_row.get("ok"):
+    if isinstance(package_row, dict) and package_row.get("ok") is True:
         data = package_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Chart Package", False, "status report Chart Package check has no structured data"))
@@ -537,7 +537,7 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Chart Package", False, "status report Chart Package URL does not match NOAA package"))
 
     charts_row = check_rows.get("Charts")
-    if isinstance(charts_row, dict) and charts_row.get("ok"):
+    if isinstance(charts_row, dict) and charts_row.get("ok") is True:
         data = charts_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Charts", False, "status report Charts check has no structured data"))
@@ -561,7 +561,7 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is not absolute"))
 
     debris_row = check_rows.get("Chart Update Debris")
-    if isinstance(debris_row, dict) and debris_row.get("ok"):
+    if isinstance(debris_row, dict) and debris_row.get("ok") is True:
         data = debris_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris check has no structured data"))
@@ -584,7 +584,7 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris did not prove a clean chart directory"))
 
     manifest_row = check_rows.get("Manifest")
-    if isinstance(manifest_row, dict) and manifest_row.get("ok"):
+    if isinstance(manifest_row, dict) and manifest_row.get("ok") is True:
         data = manifest_row.get("data")
         manifest = report.get("manifest")
         if not isinstance(data, dict):
@@ -695,7 +695,7 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
     failures: list[CheckResult] = []
 
     charts_row = check_rows.get("OpenCPN Charts")
-    if isinstance(charts_row, dict) and charts_row.get("ok"):
+    if isinstance(charts_row, dict) and charts_row.get("ok") is True:
         data = charts_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts check has no structured data"))
@@ -724,7 +724,7 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
     gps_mode = str(config.get("gps_mode", "")).strip().lower()
     if gps_mode == "gpsd":
         gpsd_row = check_rows.get("OpenCPN GPSD")
-        if isinstance(gpsd_row, dict) and gpsd_row.get("ok"):
+        if isinstance(gpsd_row, dict) and gpsd_row.get("ok") is True:
             data = gpsd_row.get("data")
             if not isinstance(data, dict):
                 failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD check has no structured data"))
@@ -773,7 +773,7 @@ def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckR
     expected_name = "GPS" if gps_mode == "serial" else "GPSD"
     check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
     row = check_rows.get(expected_name)
-    if not isinstance(row, dict) or not row.get("ok"):
+    if not isinstance(row, dict) or row.get("ok") is not True:
         return []
     data = row.get("data")
     if not isinstance(data, dict):
@@ -831,7 +831,7 @@ def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[Chec
     failures: list[CheckResult] = []
 
     config_row = check_rows.get("Chrony Config")
-    if isinstance(config_row, dict) and config_row.get("ok"):
+    if isinstance(config_row, dict) and config_row.get("ok") is True:
         data = config_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("Chrony Config", False, "status report Chrony Config check has no structured data"))
@@ -869,7 +869,7 @@ def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[Chec
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config refclock line is not the managed GPSD SHM source"))
 
     source_row = check_rows.get("GPS Time Source")
-    if isinstance(source_row, dict) and source_row.get("ok"):
+    if isinstance(source_row, dict) and source_row.get("ok") is True:
         data = source_row.get("data")
         if not isinstance(data, dict):
             failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source check has no structured data"))
@@ -903,7 +903,7 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
     failures: list[CheckResult] = []
     for name, expected_command in expected_commands.items():
         row = check_rows.get(name)
-        if not isinstance(row, dict) or not row.get("ok"):
+        if not isinstance(row, dict) or row.get("ok") is not True:
             continue
         data = row.get("data")
         if not isinstance(data, dict):
@@ -959,7 +959,7 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
         return []
     check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
     row = check_rows.get("GPS Device")
-    if not isinstance(row, dict) or not row.get("ok"):
+    if not isinstance(row, dict) or row.get("ok") is not True:
         return []
     data = row.get("data")
     if not isinstance(data, dict):
@@ -1015,7 +1015,7 @@ def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]
     check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
     for name in ("Disk", "Track Disk"):
         row = check_rows.get(name)
-        if not isinstance(row, dict) or not row.get("ok"):
+        if not isinstance(row, dict) or row.get("ok") is not True:
             continue
         data = row.get("data")
         if not isinstance(data, dict):

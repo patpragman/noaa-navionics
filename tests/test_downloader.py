@@ -10581,6 +10581,39 @@ class StatusReportTests(unittest.TestCase):
                 self.assertTrue(any(expected in failure.detail for failure in failures))
                 self.assertIn(f"FAIL {name}", text)
 
+    def test_status_report_validation_does_not_trust_truthy_row_ok_for_structured_evidence(self):
+        cases = [
+            (
+                "Python",
+                "status report Python ok is not boolean",
+                "status report Python check has no structured data",
+            ),
+            (
+                "GPSD",
+                "status report GPSD ok is not boolean",
+                "status report GPSD check has no structured fix data",
+            ),
+            (
+                "GPSD Config",
+                "status report GPSD Config ok is not boolean",
+                "status report GPSD Config check has no structured data",
+            ),
+        ]
+        for name, expected, unexpected in cases:
+            with self.subTest(name=name):
+                report = complete_status_gui_report()
+                for row in report["checks"]:
+                    if row["name"] == name:
+                        row["ok"] = "yes"
+                        row.pop("data", None)
+                        break
+
+                failures = status_report_validation_failures(report)
+                details = [failure.detail for failure in failures]
+
+                self.assertIn(expected, details)
+                self.assertNotIn(unexpected, details)
+
     def test_status_report_ready_requires_fresh_generated_at(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         report = complete_status_gui_report(
