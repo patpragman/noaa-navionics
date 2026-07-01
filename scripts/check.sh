@@ -851,12 +851,16 @@ grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionic
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
+grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
+grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped `generated_at`, a valid Linux boot ID, and a deployed source revision' README.md
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped `generated_at`, a valid Linux boot ID, and a deployed source revision' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' docs/sailboat-pi.md
+grep -q 'support bundle core command-evidence files' README.md
+grep -q 'support bundle core command-evidence files' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
 grep -q 'regular README files' docs/sailboat-pi.md
 grep -q 'safe and unique normalized member paths' README.md
@@ -1542,6 +1546,10 @@ grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/verify_pi_recovery_exports.sh
 grep -q 'PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"' scripts/verify_pi_recovery_exports.sh
 grep -q 'PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"' scripts/verify_pi_recovery_exports.sh
+grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
+grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'is missing required support diagnostic file' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_checksum_manifest' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_optional_pre_departure_status' scripts/verify_pi_recovery_exports.sh
 grep -q 'verify_optional_pre_departure_status(recovery_dir)' scripts/verify_pi_recovery_exports.sh
@@ -8126,6 +8134,27 @@ import sys
 import tarfile
 import time
 
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
 
 def add_text(archive, name, text):
     data = text.encode("utf-8")
@@ -9754,6 +9783,27 @@ import sys
 import tarfile
 import time
 
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
 
 def add_text(archive, name, text):
     data = text.encode("utf-8")
@@ -9833,7 +9883,8 @@ with tarfile.open(
     format=tarfile.PAX_FORMAT,
 ) as archive:
     add_text(archive, "./README.txt", "support fixture\n")
-    add_text(archive, "./commands/date-utc.txt", "2026-01-01\n")
+    for name in CORE_SUPPORT_COMMAND_FILES:
+        add_text(archive, f"./{name}", f"{name}\n")
 (root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz").chmod(0o600)
 write_checksums(root)
 write_pre_departure_status(root)
@@ -9866,6 +9917,50 @@ grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
 grep -q 'pre-departure status: pre-departure-status.json (checksum verified)' "$verify_output"
+
+recovery_verify_thin_support_dir="$tmpdir/recovery-verify-thin-support"
+cp -a "$recovery_verify_dir" "$recovery_verify_thin_support_dir"
+python3 - "$recovery_verify_thin_support_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+support = next(root.glob("noaa-navionics-pi-support-*.tgz"))
+with tarfile.open(support, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "support fixture\n")
+    add_text(archive, "commands/date-utc.txt", "2026-01-01\n")
+support.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_thin_support_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a support bundle missing required diagnostics with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required support diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
 
 recovery_verify_bad_status_checksum_dir="$tmpdir/recovery-verify-bad-status-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_bad_status_checksum_dir"

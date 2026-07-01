@@ -154,6 +154,26 @@ PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"
 PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
 ARCHIVES = [
     {
         "label": "commissioning settings",
@@ -174,6 +194,7 @@ ARCHIVES = [
         "label": "diagnostic support bundle",
         "pattern": "noaa-navionics-pi-support-*.tgz",
         "manifest_key": None,
+        "required_members": CORE_SUPPORT_COMMAND_FILES,
     },
 ]
 
@@ -299,6 +320,17 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                     fail(f"{archive_path.name} is missing README.txt")
                 if not members_by_name["README.txt"].isfile():
                     fail(f"{archive_path.name} README.txt is not a regular file")
+
+                required_members = list(spec.get("required_members", []))
+                missing_members = [
+                    name for name in required_members
+                    if name not in members_by_name or not members_by_name[name].isfile()
+                ]
+                if missing_members:
+                    fail(
+                        f"{archive_path.name} is missing required support diagnostic file(s): "
+                        f"{', '.join(missing_members)}"
+                    )
 
                 manifest_key = spec["manifest_key"]
                 if manifest_key is not None:
