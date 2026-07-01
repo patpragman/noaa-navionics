@@ -691,6 +691,10 @@ grep -q 'Saved pre-departure status snapshot:' scripts/pre_trip_prepare_pi.sh
 grep -q 'Saved pre-departure status checksum:' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.path.samestat(before, opened)' scripts/pre_trip_prepare_pi.sh
+grep -q 'def cleanup_private_temp' scripts/pre_trip_prepare_pi.sh
+grep -q '{label} changed before cleanup; leaving it in place' scripts/pre_trip_prepare_pi.sh
+grep -q 'cleanup_private_temp(temp_path, temp_stat, "temporary pre-departure status snapshot")' scripts/pre_trip_prepare_pi.sh
+! grep -q 'temp_path.unlink()' scripts/pre_trip_prepare_pi.sh
 grep -q 'require_helper "$command_path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'def sync_private_capture_directory' scripts/pre_trip_prepare_pi.sh
 grep -q 'sync_private_capture_directory(directory)' scripts/pre_trip_prepare_pi.sh
@@ -1522,6 +1526,10 @@ done
 grep -q 'verify_pi_recovery_exports.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'write_checksum_manifest "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'SHA256SUMS.txt' scripts/export_pi_recovery_bundle.sh
+grep -q 'def cleanup_private_temp' scripts/export_pi_recovery_bundle.sh
+grep -q 'recovery checksum temp changed before cleanup; leaving it in place' scripts/export_pi_recovery_bundle.sh
+grep -q 'cleanup_private_temp(temp_path, temp_stat)' scripts/export_pi_recovery_bundle.sh
+! grep -q 'temp_path.unlink()' scripts/export_pi_recovery_bundle.sh
 grep -q 'Wrote recovery checksum manifest:' scripts/export_pi_recovery_bundle.sh
 grep -q 'Verifying recovery export archives" "$verify_helper" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh

@@ -987,15 +987,40 @@ def read_private_file(file_path: Path, label: str) -> bytes:
             os.close(fd)
 
 
+def cleanup_private_temp(file_path: Path, expected: os.stat_result | None, label: str) -> None:
+    if expected is None:
+        print(f"{label} was not inspected before cleanup; leaving it in place: {file_path}", file=sys.stderr)
+        return
+    try:
+        current = file_path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"could not inspect {label} before cleanup; leaving it in place: {file_path}: {exc}", file=sys.stderr)
+        return
+    if not os.path.samestat(expected, current):
+        print(f"{label} changed before cleanup; leaving it in place: {file_path}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(current.st_mode):
+        print(f"{label} is not regular before cleanup; leaving it in place: {file_path}", file=sys.stderr)
+        return
+    try:
+        file_path.unlink()
+    except OSError as exc:
+        print(f"could not remove {label} after validation: {file_path}: {exc}", file=sys.stderr)
+
+
 def write_private_file_atomic(file_path: Path, payload: bytes, label: str) -> None:
     if file_path.exists() or file_path.is_symlink():
         fail(f"Refusing to overwrite existing {label}: {file_path}")
     temp_fd = -1
     temp_path = None
+    temp_stat = None
     try:
         temp_fd, temp_name = tempfile.mkstemp(prefix=f".{file_path.name}.", suffix=".tmp", dir=directory)
         temp_path = Path(temp_name)
         os.fchmod(temp_fd, 0o600)
+        temp_stat = os.fstat(temp_fd)
         os.write(temp_fd, payload)
         os.fsync(temp_fd)
         os.close(temp_fd)
@@ -1008,10 +1033,7 @@ def write_private_file_atomic(file_path: Path, payload: bytes, label: str) -> No
         if temp_fd >= 0:
             os.close(temp_fd)
         if temp_path is not None:
-            try:
-                temp_path.unlink()
-            except OSError:
-                pass
+            cleanup_private_temp(temp_path, temp_stat, f"temporary {label}")
     inspect_private_file(file_path, label)
 
 
@@ -1026,10 +1048,12 @@ if checksum_path.exists() or checksum_path.is_symlink():
 helper_fd = validate_helper(path)
 temp_fd = -1
 temp_path = None
+temp_stat = None
 try:
     temp_fd, temp_name = tempfile.mkstemp(prefix=f".{status_name}.", suffix=".tmp", dir=directory)
     temp_path = Path(temp_name)
     os.fchmod(temp_fd, 0o600)
+    temp_stat = os.fstat(temp_fd)
     with os.fdopen(temp_fd, "wb") as output:
         temp_fd = -1
         try:
@@ -1088,10 +1112,7 @@ finally:
     if temp_fd >= 0:
         os.close(temp_fd)
     if temp_path is not None:
-        try:
-            temp_path.unlink()
-        except OSError:
-            pass
+        cleanup_private_temp(temp_path, temp_stat, "temporary pre-departure status snapshot")
 
 payload = read_private_file(status_path, "pre-departure status snapshot")
 digest = hashlib.sha256(payload).hexdigest()
