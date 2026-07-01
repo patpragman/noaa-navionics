@@ -2886,6 +2886,8 @@ grep -q 'if self.anchor_watch_fix is not anchor_fix' src/noaa_navionics/status_g
 grep -q 'Ignored stale anchor watch result; watch was stopped or reset.' src/noaa_navionics/status_gui.py
 grep -q 'anchor_watch_error' src/noaa_navionics/status_gui.py
 grep -q 'Ignored stale anchor watch error; watch was stopped or reset.' src/noaa_navionics/status_gui.py
+grep -q 'Anchor watch is already active; stop it before starting a new watch.' src/noaa_navionics/status_gui.py
+grep -q 'def _show_anchor_watch_already_active' src/noaa_navionics/status_gui.py
 grep -q 'settings_state = tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'radius_meters = self.anchor_watch_radius_meters' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.py
@@ -2919,8 +2921,8 @@ grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fres
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
-grep -q -- 'Start Watch captures a fresh anchor fix, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' README.md
-grep -q -- 'Start Watch captures a fresh anchor fix, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' docs/sailboat-pi.md
+grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' README.md
+grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' docs/sailboat-pi.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' README.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' README.md
@@ -2987,6 +2989,7 @@ grep -q 'test_status_gui_anchor_check_does_not_hide_active_anchor_watch_alarm' t
 grep -q 'test_status_gui_error_does_not_hide_active_anchor_watch_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_stale_anchor_watch_result_does_not_restart_stopped_watch' tests/test_downloader.py
 grep -q 'test_status_gui_stale_anchor_watch_error_does_not_replace_stopped_watch_status' tests/test_downloader.py
+grep -q 'test_status_gui_start_watch_does_not_reset_active_watch' tests/test_downloader.py
 grep -q 'test_status_gui_disables_start_watch_while_anchor_watch_is_active' tests/test_downloader.py
 grep -q 'test_status_gui_stop_watch_requires_second_press' tests/test_downloader.py
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py

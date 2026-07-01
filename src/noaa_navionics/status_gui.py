@@ -447,6 +447,9 @@ class StatusApp(tk.Tk):
     def start_anchor_watch(self) -> None:
         if self.worker is not None and self.worker.is_alive():
             return
+        if self.anchor_watch_fix is not None:
+            self._show_anchor_watch_already_active()
+            return
         try:
             radius_meters = _positive_float(self.anchor_radius.get())
         except argparse.ArgumentTypeError as exc:
@@ -669,6 +672,16 @@ class StatusApp(tk.Tk):
             self._schedule_refresh()
             return
         self._show_error(message)
+
+    def _show_anchor_watch_already_active(self) -> None:
+        self._set_busy(False)
+        self.last_report.set("Anchor watch is already active; stop it before starting a new watch.")
+        if self._show_anchor_watch_alarm_if_active():
+            return
+        if self.anchor_watch_status_summary is not None:
+            self.summary.set(self.anchor_watch_status_summary)
+            if self.anchor_watch_status_detail is not None:
+                self.gps_summary.set(self.anchor_watch_status_detail)
 
     def _show_error(self, message: str) -> None:
         self._set_busy(False)

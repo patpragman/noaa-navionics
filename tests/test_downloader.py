@@ -3558,6 +3558,62 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.watch_scheduled, 0)
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_start_watch_does_not_reset_active_watch(self):
+        class FakeVar:
+            def __init__(self, value=None):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.anchor_watch_status_summary = "Anchor watch: Anchor OK: 3.0 m from anchor; radius 50 m"
+                self.anchor_watch_status_detail = "Anchor 61.000000, -149.000000 | Current 61.000010, -149.000010"
+                self.anchor_radius = FakeVar("bad radius")
+                self.anchor_samples = FakeVar("bad samples")
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.worker = None
+                self.busy_calls = []
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def _show_anchor_watch_already_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_already_active(self)
+
+            def _show_error(self, message):
+                raise AssertionError(f"active watch should not parse new settings: {message}")
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp.start_anchor_watch(app)
+
+        self.assertIsNotNone(app.anchor_watch_fix)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.summary.value, app.anchor_watch_status_summary)
+        self.assertEqual(app.gps_summary.value, app.anchor_watch_status_detail)
+        self.assertEqual(app.last_report.value, "Anchor watch is already active; stop it before starting a new watch.")
+        self.assertIsNone(app.worker)
+
     def test_status_gui_disables_start_watch_while_anchor_watch_is_active(self):
         class FakeButton:
             def __init__(self):
@@ -7374,8 +7430,9 @@ class StatusReportTests(unittest.TestCase):
                 encoding="utf-8",
             )
             sample = root / "sample.nmea"
+            gps_sample_time = (datetime.now(timezone.utc) - timedelta(seconds=5)).strftime("%H%M%S")
             sample.write_text(
-                "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
+                f"$GPGGA,{gps_sample_time},4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,\n",
                 encoding="ascii",
             )
             track_time = datetime.now(timezone.utc)
@@ -7668,8 +7725,9 @@ class StatusReportTests(unittest.TestCase):
                 encoding="utf-8",
             )
             sample = root / "sample.nmea"
+            gps_sample_time = (datetime.now(timezone.utc) - timedelta(seconds=5)).strftime("%H%M%S")
             sample.write_text(
-                "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\n",
+                f"$GPGGA,{gps_sample_time},4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,\n",
                 encoding="ascii",
             )
             with GPXTrackLogger(charts / "tracks" / "track-20260629.gpx") as logger:
