@@ -825,8 +825,8 @@ grep -q 'support bundle helper rejects broad/system local output directories, pa
 grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' README.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' README.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
@@ -843,10 +843,12 @@ grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' docs/sailboat-pi.md
-grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' README.md
+grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' README.md
 grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' README.md
 grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' docs/sailboat-pi.md
-grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'Recovery directory must not contain parent-directory components' scripts/verify_pi_recovery_exports.sh
+grep -q 'Recovery directory must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' README.md
@@ -8985,6 +8987,18 @@ if [[ "$recovery_verify_code" -ne 2 ]]; then
 fi
 grep -q 'Recovery directory must not be a symlink' "$verify_output"
 
+set +e
+scripts/verify_pi_recovery_exports.sh "$tmpdir/recovery-verify-parent/../recovery-verify" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject parent-directory recovery paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery directory must not contain parent-directory components' "$verify_output"
+! grep -q 'Verified Pi recovery exports:' "$verify_output"
+
 recovery_restore_dir="$tmpdir/recovery-restore"
 recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
 recovery_restore_broad_dir="$tmpdir/recovery-restore-broad-dir"
@@ -9120,6 +9134,18 @@ if [[ "$recovery_restore_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$tmpdir/recovery-restore-parent-path/../recovery-restore" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject parent-directory recovery paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery directory must not contain parent-directory components' "$verify_output"
+! grep -q 'would restore' "$verify_output"
 
 set +e
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_parent_dir" >"$verify_output" 2>&1

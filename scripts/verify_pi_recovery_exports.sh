@@ -121,6 +121,12 @@ if [[ "$recovery_dir" =~ [\"\'] ]]; then
   echo "Recovery directory must not contain quotes: $recovery_dir" >&2
   exit 2
 fi
+case "$recovery_dir" in
+  */../*|*/..|../*|..)
+    echo "Recovery directory must not contain parent-directory components: $recovery_dir" >&2
+    exit 2
+    ;;
+esac
 if [[ -L "$recovery_dir" ]]; then
   echo "Recovery directory must not be a symlink: $recovery_dir" >&2
   exit 2
