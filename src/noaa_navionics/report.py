@@ -2098,14 +2098,14 @@ def _gps_fix_summary(checks: list[CheckResult], *, now: Optional[datetime] = Non
 
 
 def _parse_gps_fix_timestamp(value: object) -> Optional[datetime]:
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         return None
     try:
-        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        timestamp = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     except ValueError:
         return None
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        return None
     return timestamp.astimezone(timezone.utc)
 
 
