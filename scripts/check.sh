@@ -547,6 +547,8 @@ grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' README.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'validates the final local archive through a no-follow descriptor before reporting success' README.md
+grep -q 'validates the final local archive through a no-follow descriptor before reporting success' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -989,6 +991,10 @@ grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/e
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_tracks.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_tracks.sh
+grep -q 'validate_private_archive "$archive_path" "track_count"' scripts/export_pi_tracks.sh
+grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_tracks.sh
+grep -q 'Export archive contains duplicate member' scripts/export_pi_tracks.sh
+grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_tracks.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_tracks.sh
 grep -q 'mark-position' src/noaa_navionics/cli.py
 grep -q 'anchor-watch' src/noaa_navionics/cli.py
@@ -1014,12 +1020,18 @@ grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/e
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_opencpn_data.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_opencpn_data.sh
+grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_opencpn_data.sh
+grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_opencpn_data.sh
+grep -q 'Export archive contains duplicate member' scripts/export_pi_opencpn_data.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
 grep -q 'source-revision' scripts/export_pi_settings.sh
 grep -q '50-noaa-navionics-autologin.conf' scripts/export_pi_settings.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_settings.sh
+grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_settings.sh
+grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_settings.sh
+grep -q 'Export archive contains duplicate member' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_settings.sh
 grep -q 'info.size = current_stat.st_size' scripts/export_pi_settings.sh
@@ -5982,7 +5994,32 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
-printf 'fake-track-export\n'
+if [[ "${NOAA_NAVIONICS_FAKE_BAD_TRACK_ARCHIVE:-0}" == "1" ]]; then
+  printf 'not a gzip tar\n'
+  exit 0
+fi
+python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake track export\n")
+    add_text(archive, "manifest.json", json.dumps({"track_count": 1}) + "\n")
+    add_text(archive, "tracks/track-20260630.gpx", "<gpx></gpx>\n")
+PY
 EOF
 chmod +x "$track_export_fake_ssh_bin/ssh"
 mkdir -p "$track_export_output_dir"
@@ -6026,6 +6063,25 @@ grep -q 'opened GPX track has permissions' "$track_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$track_export_fake_ssh_stdin"
 
 set +e
+track_export_bad_output_dir="$tmpdir/track-exports-bad-archive"
+mkdir -p "$track_export_bad_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_BAD_TRACK_ARCHIVE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
+  PATH="$track_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_bad_output_dir" --days 7 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject an unreadable successful archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive is not a readable gzip tar with JSON manifest' "$verify_output"
+! grep -q 'Exported Pi GPX tracks:' "$verify_output"
+
+set +e
 scripts/export_pi_opencpn_data.sh root@example.invalid >"$verify_output" 2>&1
 opencpn_export_code=$?
 set -e
@@ -6067,7 +6123,28 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
-printf 'fake-opencpn-export\n'
+python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake opencpn export\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+    add_text(archive, "opencpn/navobj.xml", "<navobj></navobj>\n")
+PY
 EOF
 chmod +x "$opencpn_export_fake_ssh_bin/ssh"
 mkdir -p "$opencpn_export_output_dir"
@@ -6137,7 +6214,28 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
-printf 'fake-settings-export\n'
+python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake settings export\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
+PY
 EOF
 chmod +x "$settings_export_fake_ssh_bin/ssh"
 mkdir -p "$settings_export_output_dir"

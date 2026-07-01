@@ -39,6 +39,7 @@ if [[ $# -gt 0 && "$1" != --* ]]; then
 fi
 
 ssh_cmd=""
+python3_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -450,10 +451,99 @@ finalize_private_archive() {
   fi
 }
 
+validate_private_archive() {
+  local path="$1"
+  local count_field="$2"
+  "$python3_cmd" - "$path" "$count_field" <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import posixpath
+import stat
+import sys
+import tarfile
+from pathlib import PurePosixPath
+
+archive_path = sys.argv[1]
+count_field = sys.argv[2]
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def normalized_member_name(name: str) -> str:
+    if "\\" in name:
+        fail(f"Export archive contains unsafe backslash member: {name}")
+    path = PurePosixPath(name)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        fail(f"Export archive contains unsafe member path: {name}")
+    normalized = posixpath.normpath(name)
+    if normalized in {"", "."} or normalized.startswith("../") or "/../" in normalized:
+        fail(f"Export archive contains unsafe member path: {name}")
+    return normalized
+
+
+try:
+    before = os.stat(archive_path, follow_symlinks=False)
+    fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError as exc:
+    fail(f"Could not open export archive for validation: {archive_path}: {exc}")
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        fail(f"Export archive changed while being opened: {archive_path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"Export archive must be a regular file: {archive_path}")
+    if opened.st_uid != os.getuid():
+        fail(f"Export archive is owned by uid {opened.st_uid}, expected {os.getuid()}: {archive_path}")
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        fail(f"Export archive has permissions {mode:04o}, expected private 0600: {archive_path}")
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
+        try:
+            with tarfile.open(fileobj=handle, mode="r:gz") as archive:
+                members = archive.getmembers()
+                by_name = {}
+                for member in members:
+                    normalized = normalized_member_name(member.name)
+                    if normalized in by_name:
+                        fail(f"Export archive contains duplicate member: {normalized}")
+                    by_name[normalized] = member
+                    if not member.isreg():
+                        fail(f"Export archive contains unsupported non-regular member: {member.name}")
+                if "README.txt" not in by_name:
+                    fail("Export archive is missing README.txt")
+                manifest_member = by_name.get("manifest.json")
+                if manifest_member is None:
+                    fail("Export archive is missing manifest.json")
+                manifest_handle = archive.extractfile(manifest_member)
+                if manifest_handle is None:
+                    fail("Export archive manifest is not readable")
+                manifest = json.load(manifest_handle)
+        except (tarfile.TarError, json.JSONDecodeError, OSError) as exc:
+            fail(f"Export archive is not a readable gzip tar with JSON manifest: {archive_path}: {exc}")
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+if not isinstance(manifest, dict):
+    fail("Export archive manifest must be a JSON object")
+count = manifest.get(count_field)
+if not isinstance(count, int) or count <= 0:
+    fail(f"Export archive manifest has invalid {count_field}: {count!r}")
+PY
+}
+
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 output_dir="$(strip_trailing_slashes "$output_dir")"
 ssh_cmd="$(require_local_command ssh)"
+python3_cmd="$(require_local_command python3)"
 remote_python_cmd="$(remote_python_command)"
 remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
 
@@ -657,5 +747,6 @@ if [[ ! -s "$partial_path" ]]; then
 fi
 mv -- "$partial_path" "$archive_path"
 finalize_private_archive "$archive_path"
+validate_private_archive "$archive_path" "track_count"
 trap - EXIT
 printf 'Exported Pi GPX tracks: %s\n' "$archive_path"
