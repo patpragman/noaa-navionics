@@ -640,6 +640,8 @@ grep -q 'requiring the copied recovery directory to be user-owned private `0700`
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
+grep -q 'promoted restored file is reopened through a no-follow descriptor' README.md
+grep -q 'promoted restored file is reopened through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
 grep -q 'dry-run by default and requires `--apply` before writing' docs/sailboat-pi.md
 grep -q 'does not restore root-owned GPSD, chrony, LightDM' README.md
@@ -1146,6 +1148,10 @@ grep -q 'restored tracking.output must not contain parent-directory components' 
 grep -q 'restored tracking.output is too broad' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def validate_promoted_restore_file' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_promoted_restore_file(path, data)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'promoted restored file .* expected 0600' scripts/restore_pi_recovery_user_data.sh
+grep -q 'promoted restored file .* does not match recovery data' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
@@ -6872,6 +6878,16 @@ for path in (
     mode = stat.S_IMODE(path.stat().st_mode)
     if mode != 0o700:
         raise SystemExit(f"{path} has mode {mode:04o}, expected 0700")
+for path in (
+    home / ".config" / "noaa-navionics" / "config.ini",
+    home / ".config" / "noaa-navionics" / "launcher.env",
+    home / ".opencpn" / "navobj.xml",
+    home / ".opencpn" / "layers" / "route.gpx",
+    home / "tracks-store" / "tracks" / "underway.gpx",
+):
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if mode != 0o600:
+        raise SystemExit(f"{path} has mode {mode:04o}, expected 0600")
 PY
 
 set +e

@@ -413,6 +413,49 @@ def backup_existing(path: Path, backup_root: Path) -> None:
     fsync_parent(backup_path)
 
 
+def validate_promoted_restore_file(path: Path, expected_data: bytes) -> None:
+    reject_unsafe_target(path, "promoted restore")
+    try:
+        expected_stat = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"could not inspect promoted restored file {path}: {exc}")
+    if not stat.S_ISREG(expected_stat.st_mode):
+        fail(f"promoted restored file is not regular: {path}")
+    if expected_stat.st_uid != os.getuid():
+        fail(f"promoted restored file {path} is owned by uid {expected_stat.st_uid}, expected {os.getuid()}")
+    mode = stat.S_IMODE(expected_stat.st_mode)
+    if mode != 0o600:
+        fail(f"promoted restored file {path} has permissions {mode:04o}, expected 0600")
+
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        fail(f"could not open promoted restored file {path}: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if (opened.st_dev, opened.st_ino) != (expected_stat.st_dev, expected_stat.st_ino):
+            fail(f"promoted restored file changed while validating: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"promoted restored file is not regular when opened: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"promoted restored file {path} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"promoted restored file {path} has permissions {opened_mode:04o}, expected 0600")
+        chunks = []
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        restored_data = b"".join(chunks)
+        if restored_data != expected_data:
+            fail(f"promoted restored file {path} does not match recovery data")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
 def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, overwrite: bool, apply: bool) -> str:
     reject_unsafe_target(path, "restore")
     if path.exists() and not overwrite:
@@ -431,6 +474,7 @@ def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, o
             os.fsync(handle.fileno())
         os.chmod(tmp_path, 0o600)
         os.replace(tmp_path, path)
+        validate_promoted_restore_file(path, data)
         fsync_parent(path)
     finally:
         try:
