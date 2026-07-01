@@ -18,6 +18,7 @@ LockPersonality=true
 RestrictSUIDSGID=true
 MemoryDenyWriteExecute=true
 RestrictRealtime=true
+SystemCallArchitectures=native
 UMask=0077
 
 [Install]

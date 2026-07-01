@@ -8105,6 +8105,7 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn("RestrictSUIDSGID", report_module.USER_UNIT_PROPERTIES[unit])
                 self.assertIn("MemoryDenyWriteExecute", report_module.USER_UNIT_PROPERTIES[unit])
                 self.assertIn("RestrictRealtime", report_module.USER_UNIT_PROPERTIES[unit])
+                self.assertIn("SystemCallArchitectures", report_module.USER_UNIT_PROPERTIES[unit])
 
     def test_service_summary_rejects_user_owned_systemctl_on_pi(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -10220,6 +10221,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },
@@ -10252,6 +10254,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },
@@ -10281,6 +10284,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },
@@ -11173,6 +11177,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },
@@ -11538,6 +11543,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },
@@ -11560,6 +11566,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },
@@ -11588,6 +11595,7 @@ class StatusReportTests(unittest.TestCase):
                     "RestrictSUIDSGID": "yes",
                     "MemoryDenyWriteExecute": "yes",
                     "RestrictRealtime": "yes",
+                    "SystemCallArchitectures": "native",
                     "UMask": "0077",
                 },
             },

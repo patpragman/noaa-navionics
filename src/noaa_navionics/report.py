@@ -47,6 +47,7 @@ USER_UNIT_PROPERTIES = {
         "RestrictSUIDSGID",
         "MemoryDenyWriteExecute",
         "RestrictRealtime",
+        "SystemCallArchitectures",
         "UMask",
     ],
     "noaa-navionics.timer": [
@@ -71,6 +72,7 @@ USER_UNIT_PROPERTIES = {
         "RestrictSUIDSGID",
         "MemoryDenyWriteExecute",
         "RestrictRealtime",
+        "SystemCallArchitectures",
         "UMask",
     ],
     "noaa-navionics-preflight.service": [
@@ -96,6 +98,7 @@ USER_UNIT_PROPERTIES = {
         "RestrictSUIDSGID",
         "MemoryDenyWriteExecute",
         "RestrictRealtime",
+        "SystemCallArchitectures",
         "UMask",
     ],
 }
@@ -1700,6 +1703,7 @@ def _service_readiness_checks(
                             "RestrictSUIDSGID": "yes",
                             "MemoryDenyWriteExecute": "yes",
                             "RestrictRealtime": "yes",
+                            "SystemCallArchitectures": "native",
                             "UMask": "0077",
                         },
                         unit_files,
@@ -1754,6 +1758,7 @@ def _service_readiness_checks(
                             "RestrictSUIDSGID": "yes",
                             "MemoryDenyWriteExecute": "yes",
                             "RestrictRealtime": "yes",
+                            "SystemCallArchitectures": "native",
                             "UMask": "0077",
                         },
                         unit_files,
@@ -1790,6 +1795,7 @@ def _service_readiness_checks(
                             "RestrictSUIDSGID": "yes",
                             "MemoryDenyWriteExecute": "yes",
                             "RestrictRealtime": "yes",
+                            "SystemCallArchitectures": "native",
                             "UMask": "0077",
                         },
                         unit_files,

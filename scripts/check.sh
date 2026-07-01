@@ -3893,6 +3893,9 @@ grep -q 'MemoryDenyWriteExecute=true' systemd/noaa-navionics-preflight.service
 grep -q 'RestrictRealtime=true' systemd/noaa-navionics.service
 grep -q 'RestrictRealtime=true' systemd/noaa-navionics-track.service
 grep -q 'RestrictRealtime=true' systemd/noaa-navionics-preflight.service
+grep -q 'SystemCallArchitectures=native' systemd/noaa-navionics.service
+grep -q 'SystemCallArchitectures=native' systemd/noaa-navionics-track.service
+grep -q 'SystemCallArchitectures=native' systemd/noaa-navionics-preflight.service
 grep -q 'UMask=0077' systemd/noaa-navionics.service
 grep -q 'UMask=0077' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
@@ -3902,24 +3905,31 @@ grep -q 'LockPersonality.*yes' src/noaa_navionics/report.py
 grep -q 'RestrictSUIDSGID.*yes' src/noaa_navionics/report.py
 grep -q 'MemoryDenyWriteExecute.*yes' src/noaa_navionics/report.py
 grep -q 'RestrictRealtime.*yes' src/noaa_navionics/report.py
+grep -q 'SystemCallArchitectures.*native' src/noaa_navionics/report.py
 grep -q 'LockPersonality' tests/test_downloader.py
 grep -q 'RestrictSUIDSGID' tests/test_downloader.py
 grep -q 'MemoryDenyWriteExecute' tests/test_downloader.py
 grep -q 'RestrictRealtime' tests/test_downloader.py
+grep -q 'SystemCallArchitectures' tests/test_downloader.py
 grep -q 'chart service lock personality' scripts/verify_pi.sh
 grep -q 'track service restrict suid sgid' scripts/verify_pi.sh
 grep -q 'preflight service loaded lock personality' scripts/verify_pi.sh
 grep -q 'chart service deny writable executable memory' scripts/verify_pi.sh
 grep -q 'track service loaded restrict realtime' scripts/verify_pi.sh
 grep -q 'preflight service loaded deny writable executable memory' scripts/verify_pi.sh
+grep -q 'chart service loaded native syscall architecture' scripts/verify_pi.sh
+grep -q 'track service loaded native syscall architecture' scripts/verify_pi.sh
+grep -q 'preflight service loaded native syscall architecture' scripts/verify_pi.sh
 grep -q 'LockPersonality' README.md
 grep -q 'RestrictSUIDSGID' README.md
 grep -q 'MemoryDenyWriteExecute' README.md
 grep -q 'RestrictRealtime' README.md
+grep -q 'SystemCallArchitectures' README.md
 grep -q 'LockPersonality' docs/sailboat-pi.md
 grep -q 'RestrictSUIDSGID' docs/sailboat-pi.md
 grep -q 'MemoryDenyWriteExecute' docs/sailboat-pi.md
 grep -q 'RestrictRealtime' docs/sailboat-pi.md
+grep -q 'SystemCallArchitectures' docs/sailboat-pi.md
 grep -q 'UMask.*0077' src/noaa_navionics/report.py
 python3 - <<'PY'
 from pathlib import Path
@@ -3936,6 +3946,7 @@ expected_unit_properties = {
     "RestrictSUIDSGID": "true",
     "MemoryDenyWriteExecute": "true",
     "RestrictRealtime": "true",
+    "SystemCallArchitectures": "native",
     "UMask": "0077",
 }
 
@@ -4082,6 +4093,9 @@ grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service Prot
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics.service SystemCallArchitectures native "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service SystemCallArchitectures native "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service SystemCallArchitectures native "boot readiness service"' scripts/provision_sailboat_pi.sh
 python3 - <<'PY'
 from pathlib import Path
 
@@ -4099,6 +4113,7 @@ expected_properties = {
     "RestrictSUIDSGID": "yes",
     "MemoryDenyWriteExecute": "yes",
     "RestrictRealtime": "yes",
+    "SystemCallArchitectures": "native",
     "UMask": "0077",
 }
 for unit, label in units.items():
@@ -8076,10 +8091,13 @@ grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWrit
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes' "$provision_output"
 for unit in noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service; do
-  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime UMask; do
+  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime SystemCallArchitectures UMask; do
     case "$loaded_property" in
       ProtectSystem)
         expected_value=full
+        ;;
+      SystemCallArchitectures)
+        expected_value=native
         ;;
       UMask)
         expected_value=0077

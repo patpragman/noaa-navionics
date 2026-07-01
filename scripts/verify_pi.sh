@@ -4277,6 +4277,8 @@ check "chart service deny writable executable memory" grep -Fxq 'MemoryDenyWrite
 check "chart service loaded deny writable executable memory" loaded_unit_property_equals noaa-navionics.service MemoryDenyWriteExecute yes
 check "chart service restrict realtime" grep -Fxq 'RestrictRealtime=true' "$chart_service"
 check "chart service loaded restrict realtime" loaded_unit_property_equals noaa-navionics.service RestrictRealtime yes
+check "chart service native syscall architecture" grep -Fxq 'SystemCallArchitectures=native' "$chart_service"
+check "chart service loaded native syscall architecture" loaded_unit_property_equals noaa-navionics.service SystemCallArchitectures native
 check "chart service private files" grep -Fxq 'UMask=0077' "$chart_service"
 check "chart service loaded private files" loaded_unit_property_equals noaa-navionics.service UMask 0077
 check "chart service start limit interval" grep -Fxq 'StartLimitIntervalSec=6h' "$chart_service"
@@ -4323,6 +4325,8 @@ check "track service deny writable executable memory" grep -Fxq 'MemoryDenyWrite
 check "track service loaded deny writable executable memory" loaded_unit_property_equals noaa-navionics-track.service MemoryDenyWriteExecute yes
 check "track service restrict realtime" grep -Fxq 'RestrictRealtime=true' "$track_service"
 check "track service loaded restrict realtime" loaded_unit_property_equals noaa-navionics-track.service RestrictRealtime yes
+check "track service native syscall architecture" grep -Fxq 'SystemCallArchitectures=native' "$track_service"
+check "track service loaded native syscall architecture" loaded_unit_property_equals noaa-navionics-track.service SystemCallArchitectures native
 check "track service private track files" grep -Fxq 'UMask=0077' "$track_service"
 check "track service loaded private track files" loaded_unit_property_equals noaa-navionics-track.service UMask 0077
 check "track service start limit interval" grep -Fxq 'StartLimitIntervalSec=10min' "$track_service"
@@ -4364,6 +4368,8 @@ check "preflight service deny writable executable memory" grep -Fxq 'MemoryDenyW
 check "preflight service loaded deny writable executable memory" loaded_unit_property_equals noaa-navionics-preflight.service MemoryDenyWriteExecute yes
 check "preflight service restrict realtime" grep -Fxq 'RestrictRealtime=true' "$preflight_service"
 check "preflight service loaded restrict realtime" loaded_unit_property_equals noaa-navionics-preflight.service RestrictRealtime yes
+check "preflight service native syscall architecture" grep -Fxq 'SystemCallArchitectures=native' "$preflight_service"
+check "preflight service loaded native syscall architecture" loaded_unit_property_equals noaa-navionics-preflight.service SystemCallArchitectures native
 check "preflight service private files" grep -Fxq 'UMask=0077' "$preflight_service"
 check "preflight service loaded private files" loaded_unit_property_equals noaa-navionics-preflight.service UMask 0077
 check "preflight service loaded restart delay" loaded_unit_property_equals noaa-navionics-preflight.service RestartUSec 30s
