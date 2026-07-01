@@ -678,8 +678,10 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' README.md
-grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' docs/sailboat-pi.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds' README.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds' docs/sailboat-pi.md
+grep -q 'validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' README.md
+grep -q 'validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' README.md
@@ -993,6 +995,7 @@ grep -q 'Use `--dry-run` to prove that path without powering off' README.md
 grep -q 'Use `--dry-run` to prove that path without powering off' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
+grep -q 'max_gps_seconds=600' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restarts' scripts/deploy_to_pi.sh
@@ -2062,6 +2065,7 @@ grep -q 'path contains a symlink' scripts/pre_departure_check_pi.sh
 grep -q 'require_local_command python3' scripts/pre_departure_check_pi.sh
 grep -q 'validate_trusted_local_command' scripts/pre_departure_check_pi.sh
 grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/pre_departure_check_pi.sh
+grep -q 'require_integer_at_most "$1" "$gps_seconds_value" "$max_gps_seconds"' scripts/pre_departure_check_pi.sh
 grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/pre_departure_check_pi.sh
 grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/pre_departure_check_pi.sh
 grep -q 'Could not open helper script through no-follow descriptor' scripts/pre_departure_check_pi.sh
@@ -7228,6 +7232,39 @@ if [[ "$pre_departure_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds nope >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject invalid --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 601 >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 999999999999999999999999999999 >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
 
 set +e
 scripts/pre_trip_prepare_pi.sh pi@example.invalid >"$verify_output" 2>&1

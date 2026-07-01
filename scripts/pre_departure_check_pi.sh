@@ -8,7 +8,7 @@ Usage: scripts/pre_departure_check_pi.sh user@raspberrypi.local --device /dev/se
 Options:
   --device PATH       Stable GPS device path expected on the Pi
   --allow-dirty       Allow verifying a deliberate dirty test deployment
-  --gps-seconds N     Seconds to wait for a GPS fix during verification
+  --gps-seconds N     Seconds to wait for a GPS fix during verification (1-600)
   --opencpn-restarts N
                      Expected OpenCPN nonzero-exit restart attempts after boot
   --opencpn-restart-delay N
@@ -38,6 +38,7 @@ shift
 device=""
 verify_args=()
 python3_cmd=""
+max_gps_seconds=600
 
 require_positive_integer() {
   local name="$1"
@@ -53,6 +54,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -445,8 +468,10 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_positive_integer "$1" "${2:-}"
-      verify_args+=("$1" "${2:-}")
+      gps_seconds_value="${2:-}"
+      require_positive_integer "$1" "$gps_seconds_value"
+      require_integer_at_most "$1" "$gps_seconds_value" "$max_gps_seconds"
+      verify_args+=("$1" "$gps_seconds_value")
       shift 2
       ;;
     --opencpn-restarts|--opencpn-restart-delay)
