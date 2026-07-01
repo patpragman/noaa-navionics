@@ -37,6 +37,7 @@ skip_services=0
 skip_autologin=0
 skip_gps_time=0
 gps_seconds=60
+max_gps_seconds=600
 warning_seconds=8
 readiness_attempts=3
 readiness_retry_delay=10
@@ -121,6 +122,7 @@ Usage: scripts/provision_sailboat_pi.sh --device /dev/serial/by-id/YOUR_GPS [opt
 Options:
   --config PATH       NOAA Navionics config path
   --gps-seconds N     Seconds to wait for a GPS fix during final status report
+                      (1-600)
   --opencpn-restarts N
                      OpenCPN nonzero-exit restart attempts after boot
   --opencpn-restart-delay N
@@ -158,6 +160,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -706,6 +730,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_positive_integer "--gps-seconds" "$gps_seconds"
+require_integer_at_most "--gps-seconds" "$gps_seconds" "$max_gps_seconds"
 require_positive_integer "--sync-retries" "$sync_retries"
 require_non_negative_integer "--opencpn-restarts" "$opencpn_restarts"
 require_non_negative_integer "--opencpn-restart-delay" "$opencpn_restart_delay"

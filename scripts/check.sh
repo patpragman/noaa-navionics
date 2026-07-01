@@ -5451,6 +5451,10 @@ grep -q 'run "$systemctl_cmd" --user restart noaa-navionics-track.service' scrip
 grep -q 'run "$systemctl_cmd" --user enable noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'run "$systemctl_cmd" --user restart noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
+grep -q 'max_gps_seconds=600' scripts/provision_sailboat_pi.sh
+grep -q 'require_integer_at_most "--gps-seconds" "$gps_seconds" "$max_gps_seconds"' scripts/provision_sailboat_pi.sh
+grep -q 'use `--gps-seconds N`, up to 600 seconds' README.md
+grep -q 'add `--gps-seconds N`, up to 600 seconds' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -6386,6 +6390,29 @@ if [[ "$provision_code" -ne 2 ]]; then
   echo "expected provision_sailboat_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+grep -q -- '--gps-seconds must be a positive integer' "$provision_output"
+
+set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --gps-seconds 601 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$provision_output"
+
+set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --gps-seconds 999999999999999999999999999999 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$provision_output"
 
 set +e
 scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --opencpn-restarts nope >"$provision_output" 2>&1
