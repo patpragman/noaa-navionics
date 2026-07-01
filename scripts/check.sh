@@ -2885,6 +2885,7 @@ grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.p
 grep -q 'def _show_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'def _cancel_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'self._show_anchor_watch_alarm_if_active()' src/noaa_navionics/status_gui.py
+grep -q 'self.last_report.set(f"Error: {message}")' src/noaa_navionics/status_gui.py
 grep -q 'state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
@@ -2919,8 +2920,8 @@ grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' REA
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
-grep -q 'shows anchor/current GPS quality and rings the display bell' README.md
-grep -q 'shows anchor/current GPS quality and rings the display bell' docs/sailboat-pi.md
+grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' README.md
+grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -2974,6 +2975,7 @@ grep -q 'test_status_gui_status_refresh_preserves_active_anchor_watch_ok_status'
 grep -q 'test_status_gui_status_refresh_does_not_hide_readiness_failure_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_status_gui_mark_does_not_hide_active_anchor_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_does_not_hide_active_anchor_watch_alarm' tests/test_downloader.py
+grep -q 'test_status_gui_error_does_not_hide_active_anchor_watch_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_disables_start_watch_while_anchor_watch_is_active' tests/test_downloader.py
 grep -q 'test_status_gui_stop_watch_requires_second_press' tests/test_downloader.py
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py

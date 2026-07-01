@@ -652,6 +652,12 @@ class StatusApp(tk.Tk):
 
     def _show_error(self, message: str) -> None:
         self._set_busy(False)
+        self.last_report.set(f"Error: {message}")
+        alarm_visible = self._show_anchor_watch_alarm_if_active()
+        if alarm_visible:
+            self._schedule_anchor_watch()
+            self._schedule_refresh()
+            return
         self.headline.set("NOT READY")
         self.summary.set(message)
         self.gps_summary.set("GPS: unavailable")

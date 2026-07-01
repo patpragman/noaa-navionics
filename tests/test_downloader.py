@@ -3400,6 +3400,51 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_error_does_not_hide_active_anchor_watch_alarm(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_alarm_active = True
+                self.anchor_watch_alarm_summary = "Anchor watch: ANCHOR ALARM: 75.0 m from anchor; radius 50 m"
+                self.anchor_watch_alarm_detail = "Anchor 61.000000, -149.000000 | Current 61.000000, -148.990000"
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._show_error(app, "temporary GPS read failed")
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
+        self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
+        self.assertEqual(app.last_report.value, "Error: temporary GPS read failed")
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.watch_scheduled, 1)
+        self.assertEqual(app.refresh_scheduled, 1)
+
     def test_status_gui_disables_start_watch_while_anchor_watch_is_active(self):
         class FakeButton:
             def __init__(self):
