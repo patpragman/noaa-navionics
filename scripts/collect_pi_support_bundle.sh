@@ -1183,9 +1183,11 @@ run_command noaa-cache-tree bash -lc 'find "$HOME/.cache/noaa-navionics" -maxdep
 run_command noaa-config-tree bash -lc 'find "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-data-tree bash -lc 'find "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command user-units systemctl --user --no-pager status noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
+run_command user-unit-properties systemctl --user --no-pager show noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
 run_command user-timers systemctl --user --no-pager list-timers noaa-navionics.timer
 run_command user-unit-files systemctl --user --no-pager list-unit-files 'noaa-navionics*'
 run_command system-services systemctl --no-pager status gpsd.socket gpsd.service chrony.service lightdm.service
+run_command system-service-properties systemctl --no-pager show gpsd.socket gpsd.service chrony.service lightdm.service
 run_command chrony-sources chronyc sources -v
 run_command timedatectl timedatectl
 run_command pi-throttling bash -lc 'if command -v vcgencmd >/dev/null 2>&1; then vcgencmd get_throttled && vcgencmd measure_temp; else echo "vcgencmd missing"; fi'
