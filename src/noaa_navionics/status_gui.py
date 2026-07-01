@@ -643,7 +643,9 @@ class StatusApp(tk.Tk):
         self.mark_button.configure(state=state)
         self.mob_button.configure(state=state)
         self.anchor_button.configure(state=state)
-        self.anchor_watch_button.configure(state=state)
+        self.anchor_watch_button.configure(
+            state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL
+        )
         self.stop_anchor_watch_button.configure(
             state=tk.DISABLED if busy or self.anchor_watch_fix is None else tk.NORMAL
         )

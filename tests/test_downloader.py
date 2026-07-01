@@ -3150,6 +3150,99 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_disables_start_watch_while_anchor_watch_is_active(self):
+        class FakeButton:
+            def __init__(self):
+                self.state = None
+
+            def configure(self, *, state):
+                self.state = state
+
+        class FakeApp:
+            def __init__(self):
+                self.refresh_button = FakeButton()
+                self.mark_button = FakeButton()
+                self.mob_button = FakeButton()
+                self.anchor_button = FakeButton()
+                self.anchor_watch_button = FakeButton()
+                self.stop_anchor_watch_button = FakeButton()
+                self.anchor_radius_entry = FakeButton()
+                self.anchor_samples_entry = FakeButton()
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._set_busy(app, False)
+
+        self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.NORMAL)
+
+    def test_status_gui_enables_start_watch_after_anchor_watch_stops(self):
+        class FakeButton:
+            def __init__(self):
+                self.state = None
+
+            def configure(self, *, state):
+                self.state = state
+
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.refresh_button = FakeButton()
+                self.mark_button = FakeButton()
+                self.mob_button = FakeButton()
+                self.anchor_button = FakeButton()
+                self.anchor_watch_button = FakeButton()
+                self.stop_anchor_watch_button = FakeButton()
+                self.anchor_radius_entry = FakeButton()
+                self.anchor_samples_entry = FakeButton()
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_alarm_active = True
+                self.anchor_watch_alarm_summary = "alarm"
+                self.anchor_watch_alarm_detail = "detail"
+                self.anchor_watch_after_id = "after-id"
+                self.summary = FakeVar()
+                self.cancelled = []
+                self.refresh_scheduled = 0
+
+            def after_cancel(self, after_id):
+                self.cancelled.append(after_id)
+
+            def _set_busy(self, busy):
+                status_gui_module.StatusApp._set_busy(self, busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp.stop_anchor_watch(app)
+
+        self.assertIsNone(app.anchor_watch_fix)
+        self.assertFalse(app.anchor_watch_alarm_active)
+        self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.NORMAL)
+        self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.cancelled, ["after-id"])
+        self.assertEqual(app.refresh_scheduled, 1)
+
     def test_status_gui_anchor_check_rejects_stale_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
