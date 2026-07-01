@@ -277,10 +277,12 @@ settings_helper="${repo_root}/scripts/export_pi_settings.sh"
 opencpn_helper="${repo_root}/scripts/export_pi_opencpn_data.sh"
 tracks_helper="${repo_root}/scripts/export_pi_tracks.sh"
 support_helper="${repo_root}/scripts/collect_pi_support_bundle.sh"
+verify_helper="${repo_root}/scripts/verify_pi_recovery_exports.sh"
 require_helper "$settings_helper"
 require_helper "$opencpn_helper"
 require_helper "$tracks_helper"
 require_helper "$support_helper"
+require_helper "$verify_helper"
 
 prepare_private_output_dir "Output directory" "$output_dir"
 
@@ -297,5 +299,6 @@ run_step "Exporting commissioning settings" "$settings_helper" "$target" "$recov
 run_step "Exporting OpenCPN user data" "$opencpn_helper" "$target" "$recovery_dir"
 run_step "Exporting GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"
 run_step "Collecting diagnostic support bundle" "$support_helper" "$target" "$recovery_dir"
+run_step "Verifying recovery export archives" "$verify_helper" "$recovery_dir"
 
 printf '\nPi recovery exports written to: %s\n' "$recovery_dir"

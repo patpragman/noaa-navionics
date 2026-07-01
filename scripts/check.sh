@@ -600,6 +600,8 @@ grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
 grep -q 'recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'and verifies the completed local recovery set before reporting success' README.md
+grep -q 'and verifies the completed local recovery set before reporting success' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
@@ -1056,6 +1058,8 @@ grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'verify_pi_recovery_exports.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'Verifying recovery export archives" "$verify_helper" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_recovery_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_recovery_bundle.sh
@@ -5696,7 +5700,7 @@ recovery_parent_real="$tmpdir/recovery-helper-parent-real"
 recovery_parent_link="$tmpdir/recovery-helper-parent-link"
 mkdir -p "$recovery_parent_real/scripts"
 cp scripts/export_pi_recovery_bundle.sh "$recovery_parent_real/scripts/export_pi_recovery_bundle.sh"
-for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh; do
+for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh verify_pi_recovery_exports.sh; do
   write_noop_helper "$recovery_parent_real/scripts/$helper"
 done
 chmod +x "$recovery_parent_real/scripts/export_pi_recovery_bundle.sh"
@@ -6407,7 +6411,7 @@ recovery_log="$tmpdir/recovery-helper-calls"
 recovery_output_dir="$tmpdir/recovery-output"
 mkdir -p "$recovery_repo/scripts"
 cp scripts/export_pi_recovery_bundle.sh "$recovery_repo/scripts/export_pi_recovery_bundle.sh"
-for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh; do
+for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh verify_pi_recovery_exports.sh; do
   cat >"$recovery_repo/scripts/$helper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$(basename "$0")|$*" >>"$NOAA_NAVIONICS_FAKE_RECOVERY_LOG"
@@ -6425,6 +6429,7 @@ grep -q 'Exporting commissioning settings' "$verify_output"
 grep -q 'Exporting OpenCPN user data' "$verify_output"
 grep -q 'Exporting GPX tracks' "$verify_output"
 grep -q 'Collecting diagnostic support bundle' "$verify_output"
+grep -q 'Verifying recovery export archives' "$verify_output"
 recovery_export_dir="$(sed -n 's/^Pi recovery exports written to: //p' "$verify_output")"
 test -d "$recovery_export_dir"
 test "$(stat -c '%a' "$recovery_output_dir")" = 700
@@ -6436,6 +6441,7 @@ grep -Eq '^export_pi_settings.sh\|pi@example.invalid .*/noaa-navionics-pi-recove
 grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^export_pi_tracks.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 14$' "$recovery_log"
 grep -Eq '^collect_pi_support_bundle.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
+grep -Eq '^verify_pi_recovery_exports.sh\|.*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 
 recovery_verify_dir="$tmpdir/recovery-verify"
 mkdir -p "$recovery_verify_dir"
