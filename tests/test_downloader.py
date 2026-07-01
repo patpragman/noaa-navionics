@@ -4473,6 +4473,72 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(len(app.started_threads), 1)
         self.assertTrue(app.started_threads[0].started)
 
+    def test_status_gui_refresh_waits_for_unprocessed_worker_result(self):
+        class FakeVar:
+            def __init__(self, value):
+                self.value = value
+
+            def set(self, value):
+                self.value = value
+
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.after_id = None
+                self.worker = FinishedWorker()
+                self.summary = FakeVar("old summary")
+
+            def _set_busy(self, busy):
+                raise AssertionError("refresh should wait until queued worker result is processed")
+
+            def _refresh_worker(self):
+                raise AssertionError("refresh should not start a new worker")
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp.refresh_now(app)
+
+        self.assertIsInstance(app.worker, FinishedWorker)
+        self.assertEqual(app.summary.value, "old summary")
+
+    def test_status_gui_poll_queue_clears_worker_before_dispatching_result(self):
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.poll_after_id = "poll-after"
+                self.queue = status_gui_module.Queue()
+                self.queue.put(("error", "GPSD timed out"))
+                self.worker = FinishedWorker()
+                self.errors = []
+                self.after_calls = []
+
+            def _show_error(self, message):
+                self.errors.append((message, self.worker))
+
+            def after(self, delay_ms, callback):
+                self.after_calls.append((delay_ms, callback.__name__))
+                return "next-poll-after"
+
+            def _poll_queue(self):
+                return status_gui_module.StatusApp._poll_queue(self)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._poll_queue(app)
+
+        self.assertIsNone(app.worker)
+        self.assertEqual(app.errors, [("GPSD timed out", None)])
+        self.assertEqual(app.poll_after_id, "next-poll-after")
+        self.assertEqual(app.after_calls, [(150, "_poll_queue")])
+
     def test_status_gui_stop_watch_requires_second_press(self):
         class FakeVar:
             def __init__(self):

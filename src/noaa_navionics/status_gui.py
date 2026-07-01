@@ -419,7 +419,7 @@ class StatusApp(tk.Tk):
         StatusApp._cancel_after_callback(self, "after_id")
         if getattr(self, "_closed", False):
             return
-        if self.worker is not None and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.summary.set("Refreshing status...")
@@ -429,7 +429,7 @@ class StatusApp(tk.Tk):
     def mark_position(self, *, mob: bool = False) -> None:
         if getattr(self, "_closed", False):
             return
-        if self.worker is not None and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.summary.set("Recording current GPS position...")
@@ -439,7 +439,7 @@ class StatusApp(tk.Tk):
     def anchor_check(self) -> None:
         if getattr(self, "_closed", False):
             return
-        if self.worker is not None and self.worker.is_alive():
+        if self.worker is not None:
             return
         try:
             radius_meters = _positive_float(self.anchor_radius.get())
@@ -463,7 +463,7 @@ class StatusApp(tk.Tk):
     def start_anchor_watch(self) -> None:
         if getattr(self, "_closed", False):
             return
-        if self.worker is not None and self.worker.is_alive():
+        if self.worker is not None:
             return
         if self.anchor_watch_fix is not None:
             self._show_anchor_watch_already_active()
@@ -573,6 +573,7 @@ class StatusApp(tk.Tk):
         try:
             while True:
                 kind, payload = self.queue.get_nowait()
+                self.worker = None
                 if kind == "report":
                     self._show_report(payload)
                 elif kind == "mark":
@@ -819,7 +820,7 @@ class StatusApp(tk.Tk):
             return
         if self.anchor_watch_fix is None:
             return
-        if self.worker is not None and self.worker.is_alive():
+        if self.worker is not None:
             self._schedule_anchor_watch()
             return
         radius_meters = self.anchor_watch_radius_meters
