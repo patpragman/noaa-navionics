@@ -684,9 +684,24 @@ def validate_pre_departure_status_checks(status: dict[str, object]) -> None:
         service_rows[name] = row
 
     config = status.get("config")
-    gps_mode = ""
-    if isinstance(config, dict):
-        gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if not isinstance(config, dict):
+        fail("pre-departure status snapshot JSON missing config section")
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode not in {"gpsd", "serial"}:
+        fail(
+            "pre-departure status snapshot JSON has invalid gps_mode: "
+            + (gps_mode or "<missing>")
+        )
+    chart_output = str(config.get("chart_output", "")).strip()
+    if not chart_output:
+        fail("pre-departure status snapshot JSON missing config chart_output")
+    track_log = status.get("track_log")
+    if not isinstance(track_log, dict):
+        fail("pre-departure status snapshot JSON missing track_log section")
+    track_output = str(track_log.get("track_output", "")).strip()
+    if not track_output:
+        fail("pre-departure status snapshot JSON missing track_log track_output")
+
     required_checks = set(CORE_READINESS_CHECKS)
     required_service_checks = set(CORE_SERVICE_CHECKS)
     if gps_mode == "serial":
@@ -694,12 +709,8 @@ def validate_pre_departure_status_checks(status: dict[str, object]) -> None:
     else:
         required_checks.update(GPSD_READINESS_CHECKS)
         required_service_checks.update(GPSD_SERVICE_CHECKS)
-    track_log = status.get("track_log")
-    if isinstance(track_log, dict) and isinstance(config, dict):
-        track_output = str(track_log.get("track_output", "")).strip()
-        chart_output = str(config.get("chart_output", "")).strip()
-        if track_output and chart_output and track_output != chart_output:
-            required_checks.add("Track Disk")
+    if track_output != chart_output:
+        required_checks.add("Track Disk")
 
     missing_checks = sorted(required_checks - set(check_rows))
     missing_service_checks = sorted(required_service_checks - set(service_rows))
