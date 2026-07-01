@@ -108,7 +108,7 @@ Before leaving the dock on an already commissioned Pi, run the no-deploy, no-reb
 scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-It reuses strict live verification for the current boot and requires the chartplotter startup path, exact GPS receiver, chart readiness, GPSD, chrony GPS time, and GPX track logging to pass. The pre-departure wrapper validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, and validates the trusted root-owned local `python3` command path before helper validation. It is quicker operational evidence for the running Pi, not a replacement for rebooted dock acceptance after commissioning or system changes.
+It reuses strict live verification for the current boot and requires the chartplotter startup path, exact GPS receiver, chart readiness, GPSD, chrony GPS time, and GPX track logging to pass. The pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, and validates the trusted root-owned local `python3` command path before helper validation. It is quicker operational evidence for the running Pi, not a replacement for rebooted dock acceptance after commissioning or system changes.
 
 Run a lightweight read-only status snapshot on an already commissioned Pi:
 

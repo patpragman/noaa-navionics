@@ -658,8 +658,8 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'pre-departure wrapper validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution' README.md
-grep -q 'pre-departure wrapper validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution' docs/sailboat-pi.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution' README.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
@@ -902,6 +902,8 @@ grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/verify_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/pre_departure_check_pi.sh
+grep -q 'validate_ssh_target "$target"' scripts/pre_departure_check_pi.sh
+grep -q 'Do not run the pre-departure check as root@' scripts/pre_departure_check_pi.sh
 grep -q 'GPS device path is volatile' scripts/deploy_to_pi.sh
 grep -q 'GPS device path is volatile' scripts/dock_test_pi.sh
 grep -q 'GPS device path is volatile' scripts/verify_pi.sh
@@ -933,6 +935,7 @@ for pi_ssh_script in \
   scripts/export_pi_opencpn_data.sh \
   scripts/export_pi_recovery_bundle.sh \
   scripts/enroll_pi_host_key.sh \
+  scripts/pre_departure_check_pi.sh \
   scripts/pre_trip_prepare_pi.sh \
   scripts/post_trip_collect_pi.sh
 do
@@ -6238,6 +6241,28 @@ if [[ "$pre_departure_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is volatile' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh root@example.invalid --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject root SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not run the pre-departure check as root@' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@localhost --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 set +e
 scripts/pre_trip_prepare_pi.sh pi@example.invalid >"$verify_output" 2>&1

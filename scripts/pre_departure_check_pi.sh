@@ -57,6 +57,62 @@ require_non_negative_integer() {
   fi
 }
 
+validate_ssh_target() {
+  local value="$1"
+  local user_part
+  local host_part
+  local host_lower
+
+  if [[ -z "$value" ]]; then
+    echo "SSH target is required" >&2
+    exit 2
+  fi
+  if [[ "$value" == -* ]]; then
+    echo "SSH target must not begin with '-': $value" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "SSH target must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  if [[ "$value" != *@* ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  user_part="${value%@*}"
+  host_part="${value#*@}"
+  if [[ -z "$user_part" || -z "$host_part" ]]; then
+    echo "SSH target must be user@host: $value" >&2
+    exit 2
+  fi
+  if [[ ! "$user_part" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]]; then
+    echo "SSH target user contains unsafe characters: $user_part" >&2
+    exit 2
+  fi
+  if [[ "$host_part" == *:* || "$host_part" == */* ]]; then
+    echo "SSH target must be plain user@host without paths or ports: $value" >&2
+    exit 2
+  fi
+  if [[ ! "$host_part" =~ ^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)*[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]]; then
+    echo "SSH target host contains unsafe characters: $host_part" >&2
+    exit 2
+  fi
+  host_lower="${host_part,,}"
+  case "$host_lower" in
+    localhost|localhost.localdomain|*.localhost|127.*|0.0.0.0)
+      echo "SSH target must not point at this computer or loopback: $host_part" >&2
+      exit 2
+      ;;
+  esac
+  if [[ "$user_part" == "root" ]]; then
+    cat >&2 <<'EOF'
+Do not run the pre-departure check as root@.
+Use the Pi desktop user so chartplotter startup, user services, charts, and tracks are checked for the real helm account.
+EOF
+    exit 2
+  fi
+}
+
 local_path_in_trusted_system_dir() {
   case "$1" in
     /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
@@ -335,6 +391,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+validate_ssh_target "$target"
 
 if [[ -z "$device" ]]; then
   echo "--device is required for the pre-departure check" >&2
