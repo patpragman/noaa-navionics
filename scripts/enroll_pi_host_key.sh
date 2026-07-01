@@ -440,6 +440,121 @@ PY
   return "$status"
 }
 
+private_temp_identity() {
+  local path="$1"
+  local label="$2"
+  "$python3_cmd" - "$path" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+label = sys.argv[2]
+try:
+    st = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect {label}: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+if stat.S_ISLNK(st.st_mode):
+    print(f"{label} is a symlink: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not stat.S_ISREG(st.st_mode):
+    print(f"{label} is not a regular file: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if st.st_uid != os.getuid():
+    print(f"{label} is owned by uid {st.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+    raise SystemExit(1)
+mode = stat.S_IMODE(st.st_mode)
+if mode != 0o600:
+    print(f"{label} has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+    raise SystemExit(1)
+print(f"{st.st_dev}:{st.st_ino}")
+PY
+}
+
+cleanup_private_host_key_temp() {
+  local path="$1"
+  local identity="$2"
+  local label="$3"
+  [[ -n "$path" && -n "$identity" ]] || return 0
+  "$python3_cmd" - "$path" "$identity" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+identity = sys.argv[2]
+label = sys.argv[3]
+try:
+    expected_dev_text, expected_ino_text = identity.split(":", 1)
+    expected_dev = int(expected_dev_text)
+    expected_ino = int(expected_ino_text)
+except ValueError:
+    print(f"{label} cleanup identity is invalid; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
+
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+directory = getattr(os, "O_DIRECTORY", 0)
+opath = getattr(os, "O_PATH", os.O_RDONLY)
+
+try:
+    parent_fd = os.open(path.parent, os.O_RDONLY | directory | nofollow)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"Could not open {label} directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    try:
+        before = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    except OSError as exc:
+        print(f"Could not inspect {label} before cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        raise SystemExit(0)
+    if (before.st_dev, before.st_ino) != (expected_dev, expected_ino):
+        print(f"{label} changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    if stat.S_ISLNK(before.st_mode):
+        print(f"{label} became a symlink before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    if not stat.S_ISREG(before.st_mode):
+        print(f"{label} is not a regular file before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    if before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) != 0o600:
+        print(f"{label} is no longer a trusted private temp file; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    try:
+        fd = os.open(path.name, opath | nofollow, dir_fd=parent_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    except OSError as exc:
+        print(f"Could not open {label} for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"{label} changed while opening for cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    try:
+        current = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    if not os.path.samestat(before, current):
+        print(f"{label} changed before unlink cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=parent_fd)
+    os.fsync(parent_fd)
+finally:
+    os.close(parent_fd)
+PY
+}
+
 host_marker() {
   if [[ "$port" == "22" ]]; then
     printf '%s\n' "$host_part"
@@ -506,8 +621,13 @@ python3_cmd="$(require_local_command python3)"
 scan_path="$(mktemp)"
 match_path="$(mktemp)"
 one_key_path="$(mktemp)"
+scan_identity="$(private_temp_identity "$scan_path" "SSH host-key scan temp")"
+match_identity="$(private_temp_identity "$match_path" "SSH host-key match temp")"
+one_key_identity="$(private_temp_identity "$one_key_path" "SSH host-key one-key temp")"
 cleanup() {
-  rm -f -- "$scan_path" "$match_path" "$one_key_path"
+  cleanup_private_host_key_temp "$scan_path" "$scan_identity" "SSH host-key scan temp" || true
+  cleanup_private_host_key_temp "$match_path" "$match_identity" "SSH host-key match temp" || true
+  cleanup_private_host_key_temp "$one_key_path" "$one_key_identity" "SSH host-key one-key temp" || true
 }
 trap cleanup EXIT
 

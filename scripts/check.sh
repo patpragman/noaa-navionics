@@ -552,8 +552,14 @@ grep -q 'python3_cmd="$(require_local_command python3)"' scripts/enroll_pi_host_
 grep -q 'os.open(path.name, flags, 0o600, dir_fd=parent_fd)' scripts/enroll_pi_host_key.sh
 grep -q 'append_verified_known_hosts "$known_hosts" "$match_path"' scripts/enroll_pi_host_key.sh
 grep -q 'known_hosts changed before append' scripts/enroll_pi_host_key.sh
+grep -q 'private_temp_identity' scripts/enroll_pi_host_key.sh
+grep -q 'cleanup_private_host_key_temp' scripts/enroll_pi_host_key.sh
+grep -q 'changed before cleanup; leaving it in place' scripts/enroll_pi_host_key.sh
+grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' README.md
+grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 ! grep -q ': >"$path"' scripts/enroll_pi_host_key.sh
 ! grep -q 'cat "$match_path" >>"$known_hosts"' scripts/enroll_pi_host_key.sh
+! grep -q 'rm -f -- "$scan_path" "$match_path" "$one_key_path"' scripts/enroll_pi_host_key.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/dock_test_pi.sh
 grep -q 'local_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
@@ -5727,6 +5733,12 @@ while [[ $# -gt 0 ]]; do
 done
 if grep -q 'MATCHINGKEY' "$file"; then
   printf '256 SHA256:abcdefghijklmnopqrstuv raspberrypi.local (ED25519)\n'
+  if [[ "${NOAA_NAVIONICS_REPLACE_ONE_KEY_TEMP:-0}" == "1" ]] && [[ "$(wc -l <"$file")" -eq 1 ]]; then
+    printf 'replaced host-key temp\n' >"${file}.replacement"
+    chmod 0600 "${file}.replacement"
+    mv -f "${file}.replacement" "$file"
+    printf 'replaced-temp|%s\n' "$file" >>"$NOAA_NAVIONICS_FAKE_HOST_KEY_LOG"
+  fi
 fi
 if grep -q 'OTHERKEY' "$file"; then
   printf '3072 SHA256:zzzzzzzzzzzzzzzzzzzzzz raspberrypi.local (RSA)\n'
@@ -5761,6 +5773,31 @@ PATH="$host_key_fake_bin:$PATH" \
   --dry-run >"$verify_output"
 grep -q 'Dry run only; known_hosts was not changed' "$verify_output"
 test ! -e "$host_key_dry_known_hosts"
+
+host_key_replace_log="$tmpdir/host-key-replace-log"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_replace_log" \
+NOAA_NAVIONICS_REPLACE_ONE_KEY_TEMP=1 \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$tmpdir/host-key-replaced-temp/known_hosts" \
+  --expected-sha256 SHA256:abcdefghijklmnopqrstuv \
+  --dry-run >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 0 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh dry run to survive replaced host-key temp cleanup" >&2
+  exit 1
+fi
+grep -q 'SSH host-key one-key temp changed before cleanup; leaving it in place' "$verify_output"
+host_key_replaced_temp="$(awk -F'|' '$1 == "replaced-temp" {print $2; exit}' "$host_key_replace_log")"
+test -n "$host_key_replaced_temp"
+test -e "$host_key_replaced_temp"
+grep -q 'OTHERKEY' "$host_key_replaced_temp"
+rm -f -- "$host_key_replaced_temp"
 
 set +e
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \

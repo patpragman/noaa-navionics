@@ -142,6 +142,7 @@ scripts/enroll_pi_host_key.sh pi@raspberrypi.local --expected-sha256 SHA256:YOUR
 ```
 
 Get the expected SHA256 host-key fingerprint from the Pi console or another trusted channel, not from the same network scan you are trying to verify.
+Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking, leaving changed or unsafe scan/match/key temp paths in place.
 Remote deployment cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree` before removing stale staging or previous deployment directories.
 
 Deploy and run the onboard provisioning sequence:
