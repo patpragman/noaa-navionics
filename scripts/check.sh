@@ -644,8 +644,8 @@ grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' README.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'validates the final local archive through a no-follow descriptor before reporting success' README.md
-grep -q 'validates the final local archive through a no-follow descriptor before reporting success' docs/sailboat-pi.md
+grep -q 'validates the final local archive through a no-follow descriptor, requiring README/manifest entries and rejecting duplicate or unsupported archive members before reporting success' README.md
+grep -q 'validates the final local archive through a no-follow descriptor, requiring README/manifest entries and rejecting duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
 grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' README.md
 grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
@@ -1157,6 +1157,7 @@ grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_tracks.sh
 grep -q 'validate_private_archive "$archive_path" "track_count"' scripts/export_pi_tracks.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_tracks.sh
 grep -q 'Export archive contains duplicate member' scripts/export_pi_tracks.sh
+grep -q 'Export archive contains unsupported non-regular member' scripts/export_pi_tracks.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/export_pi_tracks.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/export_pi_tracks.sh
 grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_tracks.sh
@@ -1192,6 +1193,7 @@ grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_opencpn_dat
 grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_opencpn_data.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_opencpn_data.sh
 grep -q 'Export archive contains duplicate member' scripts/export_pi_opencpn_data.sh
+grep -q 'Export archive contains unsupported non-regular member' scripts/export_pi_opencpn_data.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/export_pi_opencpn_data.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/export_pi_opencpn_data.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
@@ -1203,6 +1205,7 @@ grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_settings.sh
 grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_settings.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_settings.sh
 grep -q 'Export archive contains duplicate member' scripts/export_pi_settings.sh
+grep -q 'Export archive contains unsupported non-regular member' scripts/export_pi_settings.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/export_pi_settings.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
@@ -6630,6 +6633,35 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_README_DIR_TRACK_ARCHIVE:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    readme = tarfile.TarInfo("README.txt")
+    readme.type = tarfile.DIRTYPE
+    readme.mode = 0o700
+    readme.mtime = int(time.time())
+    archive.addfile(readme)
+    add_text(archive, "manifest.json", json.dumps({"track_count": 1}) + "\n")
+    add_text(archive, "tracks/track-20260630.gpx", "<gpx></gpx>\n")
+PY
+  exit 0
+fi
 python3 - <<'PY'
 import io
 import json
@@ -6733,6 +6765,25 @@ grep -q 'Export archive contains unsafe member path: tracks/./track-20260630.gpx
 ! grep -q 'Exported Pi GPX tracks:' "$verify_output"
 
 set +e
+track_export_readme_dir_output_dir="$tmpdir/track-exports-readme-dir-member"
+mkdir -p "$track_export_readme_dir_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_README_DIR_TRACK_ARCHIVE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
+  PATH="$track_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_readme_dir_output_dir" --days 7 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject an archive with non-regular README.txt with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive contains unsupported non-regular member: README.txt' "$verify_output"
+! grep -q 'Exported Pi GPX tracks:' "$verify_output"
+
+set +e
 scripts/export_pi_opencpn_data.sh root@example.invalid >"$verify_output" 2>&1
 opencpn_export_code=$?
 set -e
@@ -6796,6 +6847,35 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
     add_text(archive, "README.txt", "fake opencpn export\n")
     add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
     add_text(archive, "opencpn/./navobj.xml", "<navobj></navobj>\n")
+PY
+  exit 0
+fi
+if [[ "${NOAA_NAVIONICS_FAKE_README_DIR_OPENCPN_ARCHIVE:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    readme = tarfile.TarInfo("README.txt")
+    readme.type = tarfile.DIRTYPE
+    readme.mode = 0o700
+    readme.mtime = int(time.time())
+    archive.addfile(readme)
+    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+    add_text(archive, "opencpn/navobj.xml", "<navobj></navobj>\n")
 PY
   exit 0
 fi
@@ -6868,6 +6948,25 @@ grep -q 'Export archive contains unsafe member path: opencpn/./navobj.xml' "$ver
 ! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
 
 set +e
+opencpn_export_readme_dir_output_dir="$tmpdir/opencpn-exports-readme-dir-member"
+mkdir -p "$opencpn_export_readme_dir_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_README_DIR_OPENCPN_ARCHIVE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
+  PATH="$opencpn_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_readme_dir_output_dir" >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject an archive with non-regular README.txt with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive contains unsupported non-regular member: README.txt' "$verify_output"
+! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
+
+set +e
 scripts/export_pi_settings.sh root@example.invalid >"$verify_output" 2>&1
 settings_export_code=$?
 set -e
@@ -6931,6 +7030,35 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
     add_text(archive, "README.txt", "fake settings export\n")
     add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
     add_text(archive, "noaa-navionics/./config.ini", "[charts]\n")
+PY
+  exit 0
+fi
+if [[ "${NOAA_NAVIONICS_FAKE_README_DIR_SETTINGS_ARCHIVE:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    readme = tarfile.TarInfo("README.txt")
+    readme.type = tarfile.DIRTYPE
+    readme.mode = 0o700
+    readme.mtime = int(time.time())
+    archive.addfile(readme)
+    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
 PY
   exit 0
 fi
@@ -7001,6 +7129,25 @@ if [[ "$settings_export_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Export archive contains unsafe member path: noaa-navionics/./config.ini' "$verify_output"
+! grep -q 'Exported Pi commissioning settings:' "$verify_output"
+
+set +e
+settings_export_readme_dir_output_dir="$tmpdir/settings-exports-readme-dir-member"
+mkdir -p "$settings_export_readme_dir_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_README_DIR_SETTINGS_ARCHIVE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
+  PATH="$settings_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_readme_dir_output_dir" >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject an archive with non-regular README.txt with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive contains unsupported non-regular member: README.txt' "$verify_output"
 ! grep -q 'Exported Pi commissioning settings:' "$verify_output"
 
 set +e
