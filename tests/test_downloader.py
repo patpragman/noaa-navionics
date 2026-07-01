@@ -3051,6 +3051,7 @@ class GuiTests(unittest.TestCase):
         class FakeApp:
             def __init__(self):
                 self.anchor_watch_fix = None
+                self.anchor_watch_radius_meters = None
                 self.anchor_watch_alarm_active = True
                 self.anchor_watch_alarm_summary = "old alarm"
                 self.anchor_watch_alarm_detail = "old detail"
@@ -3089,6 +3090,7 @@ class GuiTests(unittest.TestCase):
         status_gui_module.StatusApp._show_anchor_watch_set(app, anchor_fix, 50.0)
 
         self.assertEqual(app.anchor_watch_fix, anchor_fix)
+        self.assertEqual(app.anchor_watch_radius_meters, 50.0)
         self.assertEqual(app.busy_calls, [(False, anchor_fix)])
         self.assertFalse(app.anchor_watch_alarm_active)
         self.assertIsNone(app.anchor_watch_alarm_summary)
@@ -3530,6 +3532,7 @@ class GuiTests(unittest.TestCase):
                     satellites=9,
                     hdop=0.9,
                 )
+                self.anchor_watch_radius_meters = 50.0
 
         app = FakeApp()
 
@@ -3537,6 +3540,8 @@ class GuiTests(unittest.TestCase):
 
         self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.NORMAL)
+        self.assertEqual(app.anchor_radius_entry.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.anchor_samples_entry.state, status_gui_module.tk.DISABLED)
 
     def test_status_gui_stop_watch_requires_second_press(self):
         class FakeVar:
@@ -3641,6 +3646,7 @@ class GuiTests(unittest.TestCase):
                 self.anchor_watch_status_detail = "detail"
                 self.anchor_watch_after_id = "after-id"
                 self.anchor_watch_stop_confirm_after_id = "confirm-id"
+                self.anchor_watch_radius_meters = 50.0
                 self.summary = FakeVar()
                 self.cancelled = []
                 self.refresh_scheduled = 0
@@ -3662,6 +3668,7 @@ class GuiTests(unittest.TestCase):
         status_gui_module.StatusApp.stop_anchor_watch(app)
 
         self.assertIsNone(app.anchor_watch_fix)
+        self.assertIsNone(app.anchor_watch_radius_meters)
         self.assertFalse(app.anchor_watch_alarm_active)
         self.assertIsNone(app.anchor_watch_status_summary)
         self.assertIsNone(app.anchor_watch_status_detail)
@@ -3670,6 +3677,70 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(app.anchor_watch_stop_confirm_after_id)
         self.assertEqual(app.cancelled, ["confirm-id", "after-id"])
         self.assertEqual(app.refresh_scheduled, 1)
+
+    def test_status_gui_anchor_watch_uses_stored_radius_after_field_edit(self):
+        class FakeVar:
+            def __init__(self, value):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+            def set(self, value):
+                self.value = value
+
+        class FakeThread:
+            def __init__(self, *, target, kwargs, daemon):
+                self.target = target
+                self.kwargs = kwargs
+                self.daemon = daemon
+
+            def start(self):
+                return None
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_radius_meters = 75.0
+                self.anchor_watch_after_id = "after-id"
+                self.anchor_radius = FakeVar("5")
+                self.summary = FakeVar("")
+                self.worker = None
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.started_threads = []
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _anchor_watch_worker(self, *, radius_meters):
+                return None
+
+        app = FakeApp()
+        original_thread = status_gui_module.Thread
+
+        def fake_thread(*, target, kwargs, daemon):
+            thread = FakeThread(target=target, kwargs=kwargs, daemon=daemon)
+            app.started_threads.append(thread)
+            return thread
+
+        try:
+            status_gui_module.Thread = fake_thread
+            status_gui_module.StatusApp._run_anchor_watch(app)
+        finally:
+            status_gui_module.Thread = original_thread
+
+        self.assertIsNone(app.anchor_watch_after_id)
+        self.assertEqual(app.busy_calls, [True])
+        self.assertEqual(app.summary.value, "Checking anchor watch...")
+        self.assertEqual(len(app.started_threads), 1)
+        self.assertEqual(app.started_threads[0].kwargs, {"radius_meters": 75.0})
 
     def test_status_gui_anchor_check_rejects_stale_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

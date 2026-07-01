@@ -2875,6 +2875,7 @@ grep -q 'action-gps-seconds' src/noaa_navionics/status_gui.py
 grep -q 'action_gps_seconds=args.action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'anchor_watch_seconds=args.anchor_watch_seconds' src/noaa_navionics/status_gui.py
 grep -q 'self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds' src/noaa_navionics/status_gui.py
+grep -q 'self.anchor_watch_radius_meters: Optional\[float\] = None' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_active = False' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_stop_confirm_after_id: Optional\[str\] = None' src/noaa_navionics/status_gui.py
@@ -2883,6 +2884,8 @@ grep -q 'if not self.anchor_watch_alarm_active or self.anchor_watch_alarm_summar
 grep -q 'if not alarm_visible and bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None' src/noaa_navionics/status_gui.py
 grep -q 'if self.anchor_watch_fix is not anchor_fix' src/noaa_navionics/status_gui.py
 grep -q 'Ignored stale anchor watch result; watch was stopped or reset.' src/noaa_navionics/status_gui.py
+grep -q 'settings_state = tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
+grep -q 'radius_meters = self.anchor_watch_radius_meters' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'def _cancel_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
@@ -2914,8 +2917,8 @@ grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fres
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
-grep -q -- 'Start Watch captures a fresh anchor fix, rechecks drift at `--anchor-watch-seconds N`' README.md
-grep -q -- 'Start Watch captures a fresh anchor fix, rechecks drift at `--anchor-watch-seconds N`' docs/sailboat-pi.md
+grep -q -- 'Start Watch captures a fresh anchor fix, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' README.md
+grep -q -- 'Start Watch captures a fresh anchor fix, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' docs/sailboat-pi.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' README.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'ignores stale anchor-watch results after the watch is stopped or reset' README.md
@@ -2984,6 +2987,7 @@ grep -q 'test_status_gui_stale_anchor_watch_result_does_not_restart_stopped_watc
 grep -q 'test_status_gui_disables_start_watch_while_anchor_watch_is_active' tests/test_downloader.py
 grep -q 'test_status_gui_stop_watch_requires_second_press' tests/test_downloader.py
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_watch_uses_stored_radius_after_field_edit' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py
 grep -q 'test_status_gui_reads_configured_anchor_radius' tests/test_downloader.py

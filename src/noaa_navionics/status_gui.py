@@ -333,6 +333,7 @@ class StatusApp(tk.Tk):
         self.refresh_seconds = refresh_seconds
         self.anchor_watch_seconds = anchor_watch_seconds
         self.anchor_watch_fix: Optional[GPSFix] = None
+        self.anchor_watch_radius_meters: Optional[float] = None
         self.anchor_watch_after_id: Optional[str] = None
         self.anchor_watch_stop_confirm_after_id: Optional[str] = None
         self.anchor_watch_alarm_active = False
@@ -475,6 +476,7 @@ class StatusApp(tk.Tk):
             return
         self._cancel_anchor_watch_stop_confirmation()
         self.anchor_watch_fix = None
+        self.anchor_watch_radius_meters = None
         self.anchor_watch_alarm_active = False
         self.anchor_watch_alarm_summary = None
         self.anchor_watch_alarm_detail = None
@@ -615,6 +617,7 @@ class StatusApp(tk.Tk):
 
     def _show_anchor_watch_set(self, anchor_fix: GPSFix, radius_meters: float) -> None:
         self.anchor_watch_fix = anchor_fix
+        self.anchor_watch_radius_meters = radius_meters
         self.anchor_watch_alarm_active = False
         self.anchor_watch_alarm_summary = None
         self.anchor_watch_alarm_detail = None
@@ -720,8 +723,9 @@ class StatusApp(tk.Tk):
         self.stop_anchor_watch_button.configure(
             state=tk.DISABLED if busy or self.anchor_watch_fix is None else tk.NORMAL
         )
-        self.anchor_radius_entry.configure(state=state)
-        self.anchor_samples_entry.configure(state=state)
+        settings_state = tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL
+        self.anchor_radius_entry.configure(state=settings_state)
+        self.anchor_samples_entry.configure(state=settings_state)
 
     def _schedule_refresh(self) -> None:
         if self.after_id is not None:
@@ -745,11 +749,13 @@ class StatusApp(tk.Tk):
         if self.worker is not None and self.worker.is_alive():
             self._schedule_anchor_watch()
             return
-        try:
-            radius_meters = _positive_float(self.anchor_radius.get())
-        except argparse.ArgumentTypeError as exc:
-            self._show_error(f"Anchor radius {exc}")
-            return
+        radius_meters = self.anchor_watch_radius_meters
+        if radius_meters is None:
+            try:
+                radius_meters = _positive_float(self.anchor_radius.get())
+            except argparse.ArgumentTypeError as exc:
+                self._show_error(f"Anchor radius {exc}")
+                return
         self._set_busy(True)
         self.summary.set("Checking anchor watch...")
         self.worker = Thread(target=self._anchor_watch_worker, kwargs={"radius_meters": radius_meters}, daemon=True)
