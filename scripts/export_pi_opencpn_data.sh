@@ -295,6 +295,12 @@ validate_output_dir_arg() {
     exit 2
   fi
   case "$value" in
+    ..|../*|*/..|*/../*)
+      echo "Output directory must not contain parent-directory components: $value" >&2
+      exit 2
+      ;;
+  esac
+  case "$value" in
     .|..|/|/home|/tmp|/var|/etc|/usr|/bin|/sbin|/opt|"$HOME"|"$HOME"/)
       echo "Output directory must be a dedicated export directory, not a broad or system path: $value" >&2
       exit 2
