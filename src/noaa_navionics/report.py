@@ -279,6 +279,7 @@ def status_report_validation_failures(
     now: Optional[datetime] = None,
 ) -> list[CheckResult]:
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
+    failures.extend(_host_validation_failures(report.get("host")))
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
@@ -327,6 +328,17 @@ def _generated_at_validation_failures(
                 f"status report generated_at timestamp is stale ({age_seconds:.0f}s old)",
             )
         ]
+    return []
+
+
+def _host_validation_failures(host: object) -> list[CheckResult]:
+    if not isinstance(host, dict):
+        return [CheckResult("Status Report", False, "status report missing host section")]
+    boot_id = str(host.get("boot_id", "")).strip()
+    if not boot_id or boot_id == "unknown":
+        return [CheckResult("Status Report", False, "status report missing valid host boot_id")]
+    if not BOOT_ID_RE.fullmatch(boot_id):
+        return [CheckResult("Status Report", False, f"status report host boot_id is not a Linux boot_id value: {boot_id}")]
     return []
 
 

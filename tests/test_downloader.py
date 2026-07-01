@@ -178,6 +178,7 @@ def complete_status_gui_report(
     return {
         "ok": ok,
         "generated_at": generated_at or fresh_status_timestamp(),
+        "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
         "config": {
             "gps_mode": gps_mode,
             "chart_output": "/charts",
@@ -9685,7 +9686,8 @@ class StatusReportTests(unittest.TestCase):
     def test_status_text_rejects_incomplete_ready_report(self):
         report = {
             "ok": True,
-            "generated_at": "2026-06-30T12:00:00Z",
+            "generated_at": fresh_status_timestamp(),
+            "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
             "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
             "service_checks": [{"name": "Track Log", "ok": True, "detail": "recent point"}],
         }
@@ -9701,7 +9703,8 @@ class StatusReportTests(unittest.TestCase):
     def test_status_text_rejects_malformed_ready_report(self):
         report = {
             "ok": True,
-            "generated_at": "2026-06-30T12:00:00Z",
+            "generated_at": fresh_status_timestamp(),
+            "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
             "checks": [{"name": "GPSD", "ok": True, "detail": "fix"}, "bad-row"],
             "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(report_module.CORE_SERVICE_CHECKS | report_module.GPSD_SERVICE_CHECKS)],
         }
@@ -9754,6 +9757,29 @@ class StatusReportTests(unittest.TestCase):
                 report.update(updates)
                 if "generated_at" not in updates:
                     report.pop("generated_at", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertEqual(failures[0].name, "Status Report")
+                self.assertIn(expected, failures[0].detail)
+
+    def test_status_report_ready_rejects_missing_or_malformed_host_boot_id(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        cases = [
+            ({}, "missing host section"),
+            ({"host": {}}, "missing valid host boot_id"),
+            ({"host": {"boot_id": "unknown"}}, "missing valid host boot_id"),
+            ({"host": {"boot_id": "not-a-boot-id"}}, "not a Linux boot_id value"),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "host" not in updates:
+                    report.pop("host", None)
 
                 failures = status_report_validation_failures(report, now=now)
 
