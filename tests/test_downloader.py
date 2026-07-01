@@ -339,6 +339,18 @@ def complete_status_gui_report(
         checks.update(status_gui_module.GPSD_READINESS_CHECKS)
         service_checks.update(status_gui_module.GPSD_SERVICE_CHECKS)
         gps_source = "GPSD"
+    check_rows = [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)]
+    for row in check_rows:
+        if row["name"] == "Clock":
+            row["detail"] = generated_at
+            row["data"] = {"timestamp": generated_at, "min_year": 2024}
+        elif row["name"] == "Time Sync":
+            row["detail"] = "system clock is synchronized (NTPSynchronized=yes)"
+            row["data"] = {
+                "is_raspberry_pi": True,
+                "system_clock_synchronized": "yes",
+                "ntp_synchronized": "yes",
+            }
     return {
         "ok": ok,
         "generated_at": generated_at,
@@ -470,7 +482,7 @@ def complete_status_gui_report(
             "satellites": 8,
             "hdop": 0.9,
         },
-        "checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)],
+        "checks": check_rows,
         "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(service_checks)],
     }
 
@@ -10037,6 +10049,59 @@ class StatusReportTests(unittest.TestCase):
                 self.assertEqual(failures[0].name, "Status Report")
                 self.assertIn(expected, failures[0].detail)
 
+    def test_status_report_ready_requires_structured_clock_and_time_sync_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+        cases = [
+            ("Clock", None, "Clock check has no structured data", "Clock"),
+            (
+                "Clock",
+                {"timestamp": "1970-01-01T00:00:00Z", "min_year": 2024},
+                "timestamp year 1970 is before 2024",
+                "Clock",
+            ),
+            (
+                "Clock",
+                {"timestamp": (now - timedelta(seconds=301)).isoformat().replace("+00:00", "Z"), "min_year": 2024},
+                "differs from generated_at by 301s",
+                "Clock",
+            ),
+            ("Time Sync", None, "Time Sync check has no structured data", "Time Sync"),
+            (
+                "Time Sync",
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "no",
+                    "ntp_synchronized": "yes",
+                },
+                "SystemClockSynchronized=yes",
+                "Time Sync",
+            ),
+        ]
+        for row_name, data, expected, failure_name in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == failure_name and expected in failure.detail for failure in failures)
+                )
+
+        non_pi_report = complete_status_gui_report(generated_at=generated_at)
+        time_sync = next(check for check in non_pi_report["checks"] if check["name"] == "Time Sync")
+        time_sync["detail"] = "not a Raspberry Pi; skipping time synchronization check"
+        time_sync["data"] = {"is_raspberry_pi": False, "skipped": True}
+
+        self.assertTrue(status_report_is_ready(non_pi_report, now=now))
+        self.assertFalse(status_report_validation_failures(non_pi_report, now=now))
+
     def test_status_report_ready_rejects_missing_or_malformed_host_boot_id(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         cases = [
@@ -17677,10 +17742,12 @@ class PiHealthTests(unittest.TestCase):
         result = check_system_clock(datetime(1970, 1, 1, tzinfo=timezone.utc))
         self.assertFalse(result.ok)
         self.assertIn("system clock", result.detail)
+        self.assertEqual(result.data, {"timestamp": "1970-01-01T00:00:00+00:00", "min_year": 2024})
 
     def test_check_system_clock_accepts_modern_time(self):
         result = check_system_clock(datetime(2026, 6, 29, tzinfo=timezone.utc))
         self.assertTrue(result.ok)
+        self.assertEqual(result.data, {"timestamp": "2026-06-29T00:00:00+00:00", "min_year": 2024})
 
     def test_check_time_synchronization_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi
@@ -17692,6 +17759,7 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("skipping", result.detail)
+        self.assertEqual(result.data, {"is_raspberry_pi": False, "skipped": True})
 
     def test_check_time_synchronization_accepts_synced_pi_clock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17711,6 +17779,14 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
+            self.assertEqual(
+                result.data,
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "yes",
+                    "ntp_synchronized": "",
+                },
+            )
 
     def test_check_time_synchronization_rejects_ntp_yes_without_system_clock_sync(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17736,6 +17812,14 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("SystemClockSynchronized=no", result.detail)
             self.assertIn("NTPSynchronized=yes", result.detail)
+            self.assertEqual(
+                result.data,
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "no",
+                    "ntp_synchronized": "yes",
+                },
+            )
 
     def test_check_time_synchronization_accepts_system_clock_yes_over_ntp_no(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17760,6 +17844,14 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
+            self.assertEqual(
+                result.data,
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "yes",
+                    "ntp_synchronized": "no",
+                },
+            )
 
     def test_check_time_synchronization_rejects_unsynced_pi_clock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17779,6 +17871,14 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("not synchronized", result.detail)
+            self.assertEqual(
+                result.data,
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "no",
+                    "ntp_synchronized": "",
+                },
+            )
 
     def test_check_time_synchronization_reports_missing_timedatectl_on_pi(self):
         original_path = os.environ.get("PATH", "")

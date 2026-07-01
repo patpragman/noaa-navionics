@@ -298,6 +298,7 @@ def status_report_validation_failures(
     failures.extend(_user_validation_failures(report.get("user")))
     failures.extend(_unit_files_validation_failures(report.get("unit_files")))
     failures.extend(_service_summary_validation_failures(report))
+    failures.extend(_clock_time_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -318,6 +319,81 @@ def status_report_validation_failures(
     failures.extend(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
+    return failures
+
+
+def _clock_time_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    failures: list[CheckResult] = []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    clock = check_rows.get("Clock")
+    if isinstance(clock, dict):
+        data = clock.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Clock", False, "status report Clock check has no structured data"))
+        else:
+            timestamp = data.get("timestamp")
+            try:
+                parsed_clock = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+            except ValueError:
+                failures.append(CheckResult("Clock", False, f"status report Clock timestamp is invalid: {timestamp}"))
+            else:
+                if parsed_clock.tzinfo is None:
+                    failures.append(CheckResult("Clock", False, "status report Clock timestamp must include a timezone"))
+                else:
+                    min_year = data.get("min_year", 2024)
+                    try:
+                        parsed_min_year = int(min_year)
+                    except (TypeError, ValueError):
+                        parsed_min_year = 2024
+                    parsed_clock_utc = parsed_clock.astimezone(timezone.utc)
+                    if parsed_clock_utc.year < parsed_min_year:
+                        failures.append(
+                            CheckResult(
+                                "Clock",
+                                False,
+                                f"status report Clock timestamp year {parsed_clock_utc.year} is before {parsed_min_year}",
+                            )
+                        )
+                    generated_at = report.get("generated_at")
+                    if isinstance(generated_at, str):
+                        try:
+                            generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+                        except ValueError:
+                            generated = None
+                        if generated is not None and generated.tzinfo is not None:
+                            drift = abs(
+                                (
+                                    generated.astimezone(timezone.utc) - parsed_clock_utc
+                                ).total_seconds()
+                            )
+                            if drift > 300.0:
+                                failures.append(
+                                    CheckResult(
+                                        "Clock",
+                                        False,
+                                        f"status report Clock timestamp differs from generated_at by {drift:.0f}s",
+                                    )
+                                )
+    time_sync = check_rows.get("Time Sync")
+    if isinstance(time_sync, dict):
+        data = time_sync.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Time Sync", False, "status report Time Sync check has no structured data"))
+        elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
+            pass
+        elif data.get("is_raspberry_pi") is not True:
+            failures.append(CheckResult("Time Sync", False, "status report Time Sync missing Raspberry Pi evidence"))
+        elif str(data.get("system_clock_synchronized", "")).strip().lower() != "yes":
+            failures.append(
+                CheckResult(
+                    "Time Sync",
+                    False,
+                    "status report Time Sync did not report SystemClockSynchronized=yes",
+                )
+            )
     return failures
 
 

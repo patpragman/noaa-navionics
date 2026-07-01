@@ -277,21 +277,33 @@ def _first_symlink_ancestor(path: Path) -> Optional[Path]:
 
 def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) -> CheckResult:
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    data = {"timestamp": current.isoformat(), "min_year": min_year}
     if current.year < min_year:
         return CheckResult(
             "Clock",
             False,
             f"system clock is {current.isoformat()}; set time or enable time sync before relying on chart age checks",
+            data,
         )
-    return CheckResult("Clock", True, current.isoformat())
+    return CheckResult("Clock", True, current.isoformat(), data)
 
 
 def check_time_synchronization() -> CheckResult:
     if not _is_raspberry_pi():
-        return CheckResult("Time Sync", True, "not a Raspberry Pi; skipping time synchronization check")
+        return CheckResult(
+            "Time Sync",
+            True,
+            "not a Raspberry Pi; skipping time synchronization check",
+            {"is_raspberry_pi": False, "skipped": True},
+        )
     timedatectl, error = _trusted_system_command("timedatectl", "Time sync command")
     if error:
-        return CheckResult("Time Sync", False, f"{error}; cannot verify Raspberry Pi clock sync")
+        return CheckResult(
+            "Time Sync",
+            False,
+            f"{error}; cannot verify Raspberry Pi clock sync",
+            {"is_raspberry_pi": True, "timedatectl_available": False},
+        )
     assert timedatectl is not None
     try:
         completed = subprocess.run(
@@ -306,7 +318,12 @@ def check_time_synchronization() -> CheckResult:
         return CheckResult("Time Sync", False, f"timedatectl failed: {exc}")
     output = completed.stdout.strip() or completed.stderr.strip()
     if completed.returncode != 0:
-        return CheckResult("Time Sync", False, f"timedatectl failed: {output}")
+        return CheckResult(
+            "Time Sync",
+            False,
+            f"timedatectl failed: {output}",
+            {"is_raspberry_pi": True, "timedatectl_returncode": completed.returncode},
+        )
     values = {}
     for line in completed.stdout.splitlines():
         if "=" in line:
@@ -314,11 +331,16 @@ def check_time_synchronization() -> CheckResult:
             values[key.strip()] = value.strip().lower()
     system_clock_sync = values.get("SystemClockSynchronized")
     ntp_sync = values.get("NTPSynchronized")
+    data = {
+        "is_raspberry_pi": True,
+        "system_clock_synchronized": system_clock_sync or "",
+        "ntp_synchronized": ntp_sync or "",
+    }
     if system_clock_sync == "yes":
         detail = "system clock is synchronized"
         if ntp_sync in {"yes", "no"}:
             detail += f" (NTPSynchronized={ntp_sync})"
-        return CheckResult("Time Sync", True, detail)
+        return CheckResult("Time Sync", True, detail, data)
     if system_clock_sync == "no":
         detail = (
             "system clock is not synchronized; connect network time or configure GPS time before relying on chart age and GPX timestamps"
@@ -329,6 +351,7 @@ def check_time_synchronization() -> CheckResult:
             "Time Sync",
             False,
             detail,
+            data,
         )
     if ntp_sync in {"yes", "no"}:
         return CheckResult(
@@ -336,8 +359,14 @@ def check_time_synchronization() -> CheckResult:
             False,
             f"timedatectl did not report SystemClockSynchronized=yes (NTPSynchronized={ntp_sync}); "
             "connect network time or configure GPS time before relying on chart age and GPX timestamps",
+            data,
         )
-    return CheckResult("Time Sync", False, f"could not determine clock synchronization from timedatectl: {output}")
+    return CheckResult(
+        "Time Sync",
+        False,
+        f"could not determine clock synchronization from timedatectl: {output}",
+        data,
+    )
 
 
 def check_tkinter() -> CheckResult:
