@@ -166,6 +166,51 @@ def trusted_launcher_settings(**overrides: object) -> dict[str, object]:
     return state
 
 
+def trusted_desktop_summary(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "autostart": {
+            "path": "/home/pi/.config/autostart/noaa-navionics-chartplotter.desktop",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "path_symlink_component": "",
+            "uid": os.getuid(),
+            "mode": "0644",
+            "directory_uid": os.getuid(),
+            "directory_mode": "0700",
+            "values": {
+                "Type": "Application",
+                "Name": "NOAA Navionics Chartplotter",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                "Terminal": "false",
+                "X-GNOME-Autostart-enabled": "true",
+            },
+        },
+        "lightdm_autologin": {
+            "path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "path_symlink_component": "",
+            "uid": 0,
+            "mode": "0644",
+            "directory_uid": 0,
+            "directory_mode": "0755",
+            "sections": ["Seat:*"],
+            "values": {
+                "autologin-user": "pi",
+                "autologin-user-timeout": "0",
+                "autologin-session": "LXDE-pi",
+            },
+        },
+        "graphical_target": "graphical.target",
+        "lightdm_enabled": "enabled",
+        "lightdm_active": "active",
+    }
+    state.update(overrides)
+    return state
+
+
 def fresh_status_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -258,6 +303,7 @@ def complete_status_gui_report(
                 "1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;GPSd: 127.0.0.1 TCP port 2947;0;;0;0;"
             ],
         },
+        "desktop": trusted_desktop_summary(),
         "manifest": {
             "path": "/charts/noaa-navionics-manifest.json",
             "exists": True,
@@ -10337,6 +10383,158 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(
                     any(failure.name == "OpenCPN Config" and expected in failure.detail for failure in failures)
+                )
+
+    def test_status_report_ready_requires_valid_desktop_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_desktop = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )["desktop"]
+        valid_autostart = valid_desktop["autostart"]
+        valid_lightdm = valid_desktop["lightdm_autologin"]
+        cases = [
+            ({}, "missing desktop section"),
+            ({"desktop": {key: value for key, value in valid_desktop.items() if key != "autostart"}}, "missing desktop autostart section"),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path": ""}}},
+                "desktop autostart path is empty",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "exists": False}}},
+                "desktop autostart does not exist",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "is_symlink": True}}},
+                "desktop autostart path is a symlink",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "directory_is_symlink": True}}},
+                "desktop autostart directory is a symlink",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "autostart": {
+                            key: value for key, value in valid_autostart.items() if key != "path_symlink_component"
+                        },
+                    }
+                },
+                "desktop autostart missing path_symlink_component",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path_symlink_component": "/home/pi"}}},
+                "desktop autostart path contains a symlink",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "mode": "0666"}}},
+                "desktop autostart has permissions 0666",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "autostart": {
+                            **valid_autostart,
+                            "values": {**valid_autostart["values"], "Hidden": "true"},
+                        },
+                    }
+                },
+                "desktop autostart Hidden=true",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "autostart": {
+                            **valid_autostart,
+                            "values": {**valid_autostart["values"], "Exec": "/tmp/start-chartplotter"},
+                        },
+                    }
+                },
+                "desktop autostart Exec=/tmp/start-chartplotter",
+            ),
+            (
+                {"desktop": {**valid_desktop, "graphical_target": "multi-user.target"}},
+                "graphical target is multi-user.target",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_enabled": "disabled"}},
+                "LightDM enabled state is disabled",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {key: value for key, value in valid_lightdm.items() if key != "sections"},
+                    }
+                },
+                "LightDM autologin sections were not parsed",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_autologin": {**valid_lightdm, "sections": []}}},
+                "LightDM autologin config missing [Seat:*] section",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {**valid_lightdm, "values": None},
+                    }
+                },
+                "LightDM autologin values were not parsed",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "values": {**valid_lightdm["values"], "autologin-user": "other"},
+                        },
+                    }
+                },
+                "LightDM autologin-user=other expected pi",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "values": {**valid_lightdm["values"], "autologin-user-timeout": "5"},
+                        },
+                    }
+                },
+                "LightDM autologin-user-timeout=5 expected 0",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "values": {**valid_lightdm["values"], "autologin-session": "../bad"},
+                        },
+                    }
+                },
+                "LightDM autologin-session is unsafe",
+            ),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "desktop" not in updates:
+                    report.pop("desktop", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "Desktop Startup" and expected in failure.detail for failure in failures)
                 )
 
     def test_status_report_ready_requires_valid_manifest_summary(self):

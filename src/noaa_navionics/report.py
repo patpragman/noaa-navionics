@@ -299,6 +299,7 @@ def status_report_validation_failures(
     failures.extend(_unit_files_validation_failures(report.get("unit_files")))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
+    failures.extend(_desktop_validation_failures(report))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log")))
@@ -772,6 +773,127 @@ def _opencpn_config_validation_failures(report: dict[str, object]) -> list[Check
                     f"status report OpenCPN config contains unexpected enabled GPSD connections: {endpoints}",
                 )
             ]
+    return []
+
+
+def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    desktop = report.get("desktop")
+    if not isinstance(desktop, dict):
+        return [CheckResult("Desktop Startup", False, "status report missing desktop section")]
+    failures = []
+    autostart = desktop.get("autostart")
+    if not isinstance(autostart, dict):
+        failures.append("status report missing desktop autostart section")
+    else:
+        path = str(autostart.get("path", "")).strip()
+        if not path:
+            failures.append("status report desktop autostart path is empty")
+        elif not _status_absolute_path(path):
+            failures.append(f"status report desktop autostart path is not absolute: {path}")
+        if autostart.get("exists") is not True:
+            failures.append(f"status report desktop autostart does not exist: {path or '<missing>'}")
+        if autostart.get("is_symlink") is not False:
+            failures.append("status report desktop autostart path is a symlink or missing symlink status")
+        if autostart.get("directory_is_symlink") is not False:
+            failures.append("status report desktop autostart directory is a symlink or missing symlink status")
+        if "path_symlink_component" not in autostart:
+            failures.append("status report desktop autostart missing path_symlink_component")
+        elif str(autostart.get("path_symlink_component", "")).strip():
+            failures.append("status report desktop autostart path contains a symlink")
+        error = str(autostart.get("error", "")).strip()
+        if error:
+            failures.append(f"status report desktop autostart error: {error}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                autostart,
+                label="desktop autostart",
+                expected_uid=os.getuid(),
+            )
+        )
+        values = autostart.get("values")
+        if not isinstance(values, dict):
+            failures.append("status report desktop autostart values were not parsed")
+        else:
+            expected_values = {
+                "Type": "Application",
+                "Name": "NOAA Navionics Chartplotter",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                "Terminal": "false",
+                "X-GNOME-Autostart-enabled": "true",
+            }
+            for key, expected in expected_values.items():
+                actual = str(values.get(key, "")).strip()
+                if actual != expected:
+                    failures.append(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
+            if str(values.get("Hidden", "")).strip().lower() == "true":
+                failures.append("desktop autostart Hidden=true disables chartplotter startup")
+
+    graphical_target = str(desktop.get("graphical_target", "")).strip()
+    if graphical_target != "graphical.target":
+        failures.append(f"status report graphical target is {graphical_target or '<missing>'}")
+    lightdm_enabled = str(desktop.get("lightdm_enabled", "")).strip()
+    if lightdm_enabled != "enabled":
+        failures.append(f"status report LightDM enabled state is {lightdm_enabled or '<missing>'}")
+
+    lightdm = desktop.get("lightdm_autologin")
+    if not isinstance(lightdm, dict):
+        failures.append("status report missing LightDM autologin section")
+    else:
+        path = str(lightdm.get("path", "")).strip()
+        if not path:
+            failures.append("status report LightDM autologin config path is empty")
+        elif not _status_absolute_path(path):
+            failures.append(f"status report LightDM autologin config path is not absolute: {path}")
+        if lightdm.get("exists") is not True:
+            failures.append(f"status report LightDM autologin config does not exist: {path or '<missing>'}")
+        if lightdm.get("is_symlink") is not False:
+            failures.append("status report LightDM autologin config path is a symlink or missing symlink status")
+        if lightdm.get("directory_is_symlink") is not False:
+            failures.append("status report LightDM autologin config directory is a symlink or missing symlink status")
+        if "path_symlink_component" not in lightdm:
+            failures.append("status report LightDM autologin config missing path_symlink_component")
+        elif str(lightdm.get("path_symlink_component", "")).strip():
+            failures.append("status report LightDM autologin config path contains a symlink")
+        error = str(lightdm.get("error", "")).strip()
+        if error:
+            failures.append(f"status report LightDM autologin config error: {error}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                lightdm,
+                label="LightDM autologin config",
+                expected_uid=0,
+            )
+        )
+        sections = lightdm.get("sections")
+        if not isinstance(sections, list):
+            failures.append("status report LightDM autologin sections were not parsed")
+        elif "Seat:*" not in {str(section) for section in sections}:
+            failures.append("LightDM autologin config missing [Seat:*] section")
+        values = lightdm.get("values")
+        if not isinstance(values, dict):
+            failures.append("status report LightDM autologin values were not parsed")
+        else:
+            user = report.get("user")
+            expected_user = str(user.get("name", "")).strip() if isinstance(user, dict) else ""
+            actual_user = str(values.get("autologin-user", "")).strip()
+            if expected_user and actual_user != expected_user:
+                failures.append(f"LightDM autologin-user={actual_user or '<missing>'} expected {expected_user}")
+            timeout = str(values.get("autologin-user-timeout", "")).strip()
+            if timeout != "0":
+                failures.append(f"LightDM autologin-user-timeout={timeout or '<missing>'} expected 0")
+            session = str(values.get("autologin-session", "")).strip()
+            if not session:
+                failures.append("LightDM autologin-session is missing")
+            elif not _safe_xsession_name(session):
+                failures.append(f"LightDM autologin-session is unsafe: {session}")
+    if failures:
+        return [
+            CheckResult(
+                "Desktop Startup",
+                False,
+                "status report desktop summary invalid: " + "; ".join(failures),
+            )
+        ]
     return []
 
 

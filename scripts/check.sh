@@ -3921,6 +3921,7 @@ grep -q 'def _user_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _unit_files_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _launcher_settings_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _opencpn_config_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _desktop_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _manifest_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gps_fix_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _track_log_validation_failures' src/noaa_navionics/report.py
@@ -3957,6 +3958,14 @@ grep -q 'status report OpenCPN config missing config_symlink_component' src/noaa
 grep -q 'status report OpenCPN chart directories were not parsed' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config does not contain enabled GPSD connection' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config contains unexpected enabled GPSD connections' src/noaa_navionics/report.py
+grep -q 'status report missing desktop section' src/noaa_navionics/report.py
+grep -q 'status report desktop autostart path is a symlink or missing symlink status' src/noaa_navionics/report.py
+grep -q 'status report desktop autostart missing path_symlink_component' src/noaa_navionics/report.py
+grep -q 'desktop autostart Hidden=true disables chartplotter startup' src/noaa_navionics/report.py
+grep -q 'status report missing LightDM autologin section' src/noaa_navionics/report.py
+grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' src/noaa_navionics/report.py
+grep -q 'status report LightDM autologin config missing path_symlink_component' src/noaa_navionics/report.py
+grep -q 'LightDM autologin-user=.* expected' src/noaa_navionics/report.py
 grep -q 'status report missing manifest section' src/noaa_navionics/report.py
 grep -q 'status report manifest path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report manifest missing chart_storage_symlink_component' src/noaa_navionics/report.py
@@ -3991,6 +4000,7 @@ grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_down
 grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_launcher_settings_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_opencpn_config_summary' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_valid_desktop_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_manifest_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_gps_fix_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_track_log_summary' tests/test_downloader.py
@@ -4006,6 +4016,8 @@ grep -q 'test_status_gui_anchor_watch_ok_preserves_not_ready_readiness_headline'
 grep -q 'complete_status_gui_report' tests/test_downloader.py
 grep -q 'disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence' README.md
 grep -q 'disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence' docs/sailboat-pi.md
+grep -q 'disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence' README.md
+grep -q 'disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence' docs/sailboat-pi.md
 grep -q 'fail-open, or timing-invalid launcher policy evidence' README.md
 grep -q 'fail-open, or timing-invalid launcher policy evidence' docs/sailboat-pi.md
 grep -q 'chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence' README.md
@@ -4094,8 +4106,8 @@ grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' READM
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
-grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
-grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' README.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
