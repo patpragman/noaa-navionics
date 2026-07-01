@@ -1113,7 +1113,34 @@ def check_chart_manifest(
     download_url_check = _check_manifest_download_url(manifest)
     if download_url_check is not None:
         return download_url_check
-    return CheckResult("Manifest", True, f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago")
+    download = manifest.get("download", {})
+    data = {
+        "configured_path": str(path),
+        "path": str(manifest_path),
+        "created_at": manifest.get("created_at", ""),
+        "created_at_source": manifest.get("created_at_source", ""),
+        "max_age_days": max_age_days,
+        "age_days": age_days,
+        "package": label,
+        "package_filename": package.get("filename", "") if isinstance(package, dict) else "",
+        "package_url": package.get("url", "") if isinstance(package, dict) else "",
+        "expected_filename": expected_filename,
+        "expected_url": expected_url,
+        "download_path": download.get("path", "") if isinstance(download, dict) else "",
+        "download_url": download.get("url", "") if isinstance(download, dict) else "",
+        "download_bytes": download.get("bytes", 0) if isinstance(download, dict) else 0,
+        "sha256": download.get("sha256", "") if isinstance(download, dict) else "",
+        "extract_path": str(extract_path),
+        "enc_cell_count": manifest_cell_count,
+        "actual_enc_cell_count": actual_cell_count,
+        "require_archive": require_archive,
+    }
+    return CheckResult(
+        "Manifest",
+        True,
+        f"{label}; {actual_cell_count} ENC cells; updated {age_days:.1f} days ago",
+        data,
+    )
 
 
 def _trusted_enc_cell_tree_count(root: Path) -> tuple[int, str]:

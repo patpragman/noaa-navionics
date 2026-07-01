@@ -4020,6 +4020,9 @@ grep -q 'status report {name} free space' src/noaa_navionics/report.py
 grep -q 'status report Chart Package check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Charts found no extracted ENC cells' src/noaa_navionics/report.py
 grep -q 'status report Chart Update Debris found stale update debris' src/noaa_navionics/report.py
+grep -q 'status report Manifest check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report Manifest path does not match manifest summary' src/noaa_navionics/report.py
+grep -q 'status report Manifest is {age_days:.1f} days old' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN Charts check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN Charts did not prove configured chart directory' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN GPSD check has no structured data' src/noaa_navionics/report.py
@@ -4051,6 +4054,9 @@ grep -q '"storage_symlink_component"' src/noaa_navionics/health.py
 grep -q '"complete_chart_set"' src/noaa_navionics/health.py
 grep -q '"has_extracted_enc_cells"' src/noaa_navionics/health.py
 grep -q '"debris_count"' src/noaa_navionics/health.py
+grep -q '"actual_enc_cell_count"' src/noaa_navionics/health.py
+grep -q '"package_filename"' src/noaa_navionics/health.py
+grep -q '"download_bytes"' src/noaa_navionics/health.py
 grep -q '"chart_directories"' src/noaa_navionics/health.py
 grep -q '"enabled_gpsd_connections"' src/noaa_navionics/health.py
 grep -q '"unexpected_connections"' src/noaa_navionics/health.py
@@ -4084,6 +4090,8 @@ grep -q 'test_status_report_ready_requires_structured_clock_and_time_sync_eviden
 grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_chart_readiness_evidence' tests/test_downloader.py
+grep -q 'Manifest check has no structured data' tests/test_downloader.py
+grep -q 'Manifest actual ENC cell count does not match recorded count' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_opencpn_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gps_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_serial_gps_device_evidence' tests/test_downloader.py
@@ -4128,8 +4136,8 @@ grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence'
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Disk and Track Disk storage evidence' README.md
 grep -q 'READY reports also require structured Disk and Track Disk storage evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured Chart Package, Charts, and Chart Update Debris evidence' README.md
-grep -q 'READY reports also require structured Chart Package, Charts, and Chart Update Debris evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' README.md
+grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' README.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured GPS or GPSD row evidence' README.md

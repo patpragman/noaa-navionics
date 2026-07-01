@@ -464,6 +464,29 @@ def complete_status_gui_report(
                 "debris_count": 0,
                 "clean": True,
             }
+        elif row["name"] == "Manifest":
+            row["detail"] = "Alaska; 1 ENC cells; updated 0.0 days ago"
+            row["data"] = {
+                "configured_path": "/charts",
+                "path": "/charts/noaa-navionics-manifest.json",
+                "created_at": generated_at,
+                "created_at_source": "download",
+                "max_age_days": 30,
+                "age_days": 0.0,
+                "package": "Alaska",
+                "package_filename": "AK_ENCs.zip",
+                "package_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+                "expected_filename": "AK_ENCs.zip",
+                "expected_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+                "download_path": "/charts/AK_ENCs.zip",
+                "download_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+                "download_bytes": 123,
+                "sha256": "abc123",
+                "extract_path": "/charts/AK_ENCs",
+                "enc_cell_count": 1,
+                "actual_enc_cell_count": 1,
+                "require_archive": True,
+            }
         elif row["name"] == "OpenCPN Charts":
             row["detail"] = "/charts listed in /home/pi/.opencpn/opencpn.conf"
             row["data"] = {
@@ -671,12 +694,12 @@ def complete_status_gui_report(
             "created_at_source": "download",
             "package": "Alaska",
             "package_filename": "AK_ENCs.zip",
-            "url": "https://charts.noaa.gov/ENCs/AK_ENCs.zip",
+            "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
             "download_path": "/charts/AK_ENCs.zip",
             "download_path_exists": False,
             "download_path_is_symlink": False,
             "download_path_symlink_component": "",
-            "download_url": "https://charts.noaa.gov/ENCs/AK_ENCs.zip",
+            "download_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
             "download_skipped": False,
             "download_bytes": 123,
             "sha256": "abc123",
@@ -6750,7 +6773,20 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(manifest["download"]["url"], source_zip.as_uri())
             self.assertEqual(manifest["download"]["sha256"], result.sha256)
             self.assertEqual(manifest["extract"]["enc_cell_count"], 1)
-            self.assertTrue(check_chart_manifest(output).ok)
+            check = check_chart_manifest(output)
+            self.assertTrue(check.ok)
+            data = check.data or {}
+            self.assertEqual(data["configured_path"], str(output))
+            self.assertEqual(data["path"], str(output / MANIFEST_NAME))
+            self.assertEqual(data["created_at_source"], "download")
+            self.assertEqual(data["package_filename"], "AK_ENCs.zip")
+            self.assertEqual(data["package_url"], source_zip.as_uri())
+            self.assertEqual(data["download_path"], str(output / "AK_ENCs.zip"))
+            self.assertEqual(data["download_url"], source_zip.as_uri())
+            self.assertEqual(data["download_bytes"], result.bytes_written)
+            self.assertEqual(data["sha256"], result.sha256)
+            self.assertEqual(data["enc_cell_count"], 1)
+            self.assertEqual(data["actual_enc_cell_count"], 1)
 
     def test_download_tightens_chart_output_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -10629,6 +10665,31 @@ class StatusReportTests(unittest.TestCase):
             data.update(overrides)
             return data
 
+        def manifest_data(**overrides):
+            data = {
+                "configured_path": "/charts",
+                "path": "/charts/noaa-navionics-manifest.json",
+                "created_at": generated_at,
+                "created_at_source": "download",
+                "max_age_days": 30,
+                "age_days": 0.0,
+                "package": "Alaska",
+                "package_filename": "AK_ENCs.zip",
+                "package_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+                "expected_filename": "AK_ENCs.zip",
+                "expected_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+                "download_path": "/charts/AK_ENCs.zip",
+                "download_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+                "download_bytes": 123,
+                "sha256": "abc123",
+                "extract_path": "/charts/AK_ENCs",
+                "enc_cell_count": 1,
+                "actual_enc_cell_count": 1,
+                "require_archive": True,
+            }
+            data.update(overrides)
+            return data
+
         cases = [
             ("Chart Package", None, "Chart Package check has no structured data"),
             ("Chart Package", chart_package_data(package="all"), "does not match configured package"),
@@ -10651,6 +10712,24 @@ class StatusReportTests(unittest.TestCase):
             ("Chart Update Debris", debris_data(debris_count=1), "found stale update debris"),
             ("Chart Update Debris", debris_data(debris=["/charts/update.part"]), "debris list is not empty"),
             ("Chart Update Debris", debris_data(clean=False), "did not prove a clean chart directory"),
+            ("Manifest", None, "Manifest check has no structured data"),
+            ("Manifest", manifest_data(configured_path="relative/charts"), "Manifest configured path is not absolute"),
+            ("Manifest", manifest_data(configured_path="/other-charts"), "Manifest configured path does not match chart output"),
+            ("Manifest", manifest_data(path="noaa-navionics-manifest.json"), "Manifest path is not absolute"),
+            ("Manifest", manifest_data(path="/other/noaa-navionics-manifest.json"), "Manifest path does not match manifest summary"),
+            ("Manifest", manifest_data(created_at_source="unverified-cache"), "Manifest created_at_source is not verified"),
+            ("Manifest", manifest_data(expected_filename="WA_ENCs.zip"), "Manifest expected filename does not match NOAA package"),
+            ("Manifest", manifest_data(expected_url="https://example.invalid/AK_ENCs.zip"), "Manifest expected URL does not match NOAA package"),
+            ("Manifest", manifest_data(package_filename="WA_ENCs.zip"), "Manifest package filename does not match manifest summary"),
+            ("Manifest", manifest_data(package_url="https://example.invalid/AK_ENCs.zip"), "Manifest package URL does not match manifest summary"),
+            ("Manifest", manifest_data(max_age_days=0), "Manifest max_age_days is not positive"),
+            ("Manifest", manifest_data(max_age_days=7), "Manifest max_age_days does not match config"),
+            ("Manifest", manifest_data(age_days=-1.0), "Manifest age_days is invalid"),
+            ("Manifest", manifest_data(download_path="AK_ENCs.zip"), "Manifest download path is not absolute"),
+            ("Manifest", manifest_data(download_bytes=0), "Manifest download byte count is not positive"),
+            ("Manifest", manifest_data(extract_path="AK_ENCs"), "Manifest extract path is not absolute"),
+            ("Manifest", manifest_data(enc_cell_count=0), "Manifest has no ENC cells"),
+            ("Manifest", manifest_data(actual_enc_cell_count=2), "Manifest actual ENC cell count does not match recorded count"),
         ]
         for row_name, data, expected in cases:
             with self.subTest(row_name=row_name, expected=expected):
@@ -10667,6 +10746,17 @@ class StatusReportTests(unittest.TestCase):
                 self.assertTrue(
                     any(failure.name == row_name and expected in failure.detail for failure in failures)
                 )
+
+        stale_created_at = (now - timedelta(days=31)).isoformat().replace("+00:00", "Z")
+        stale_report = complete_status_gui_report(generated_at=generated_at)
+        stale_report["manifest"]["created_at"] = stale_created_at
+        manifest_row = next(check for check in stale_report["checks"] if check["name"] == "Manifest")
+        manifest_row["data"] = manifest_data(created_at=stale_created_at, age_days=31.0)
+
+        failures = status_report_validation_failures(stale_report, now=now)
+
+        self.assertFalse(status_report_is_ready(stale_report, now=now))
+        self.assertTrue(any(failure.name == "Manifest" and "Manifest is 31.0 days old" in failure.detail for failure in failures))
 
     def test_status_report_ready_requires_structured_opencpn_readiness_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)

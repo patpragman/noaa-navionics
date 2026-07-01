@@ -309,7 +309,7 @@ def status_report_validation_failures(
     failures.extend(_clock_time_validation_failures(report))
     failures.extend(_pi_health_validation_failures(report))
     failures.extend(_storage_validation_failures(report))
-    failures.extend(_chart_readiness_validation_failures(report))
+    failures.extend(_chart_readiness_validation_failures(report, now=now))
     failures.extend(_opencpn_readiness_validation_failures(report))
     failures.extend(_gps_readiness_validation_failures(report))
     failures.extend(_serial_gps_device_validation_failures(report))
@@ -480,7 +480,11 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
     return failures
 
 
-def _chart_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+def _chart_readiness_validation_failures(
+    report: dict[str, object],
+    *,
+    now: Optional[datetime] = None,
+) -> list[CheckResult]:
     config = report.get("config")
     checks = report.get("checks")
     if not isinstance(config, dict) or not isinstance(checks, list):
@@ -554,6 +558,103 @@ def _chart_readiness_validation_failures(report: dict[str, object]) -> list[Chec
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris debris list is not empty"))
             if data.get("clean") is not True:
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris did not prove a clean chart directory"))
+
+    manifest_row = check_rows.get("Manifest")
+    if isinstance(manifest_row, dict) and manifest_row.get("ok"):
+        data = manifest_row.get("data")
+        manifest = report.get("manifest")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Manifest", False, "status report Manifest check has no structured data"))
+        elif not isinstance(manifest, dict):
+            failures.append(CheckResult("Manifest", False, "status report Manifest check has no top-level manifest summary"))
+        else:
+            expected_path = str(config.get("chart_output", "")).strip()
+            configured_path = str(data.get("configured_path", "")).strip()
+            if not _status_absolute_path(configured_path):
+                failures.append(CheckResult("Manifest", False, "status report Manifest configured path is not absolute"))
+            if configured_path != expected_path:
+                failures.append(CheckResult("Manifest", False, "status report Manifest configured path does not match chart output"))
+            manifest_path = str(data.get("path", "")).strip()
+            if not _status_absolute_path(manifest_path):
+                failures.append(CheckResult("Manifest", False, "status report Manifest path is not absolute"))
+            if manifest_path != str(manifest.get("path", "")).strip():
+                failures.append(CheckResult("Manifest", False, "status report Manifest path does not match manifest summary"))
+            for row_field, summary_field, detail in (
+                ("created_at", "created_at", "created_at does not match manifest summary"),
+                ("created_at_source", "created_at_source", "created_at_source does not match manifest summary"),
+                ("package", "package", "package label does not match manifest summary"),
+                ("package_filename", "package_filename", "package filename does not match manifest summary"),
+                ("package_url", "url", "package URL does not match manifest summary"),
+                ("download_path", "download_path", "download path does not match manifest summary"),
+                ("download_url", "download_url", "download URL does not match manifest summary"),
+                ("sha256", "sha256", "SHA-256 does not match manifest summary"),
+                ("extract_path", "extract_path", "extract path does not match manifest summary"),
+            ):
+                if str(data.get(row_field, "")).strip() != str(manifest.get(summary_field, "")).strip():
+                    failures.append(CheckResult("Manifest", False, f"status report Manifest {detail}"))
+            created_at_source = str(data.get("created_at_source", "")).strip()
+            if created_at_source not in {"download", "previous-manifest"}:
+                failures.append(CheckResult("Manifest", False, "status report Manifest created_at_source is not verified"))
+            expected_package = str(config.get("chart_package", "")).strip().lower()
+            expected_value = str(config.get("chart_value", "")).strip()
+            expected_filename, expected_url = _expected_manifest_package(expected_package, expected_value)
+            if expected_filename and str(data.get("expected_filename", "")).strip() != expected_filename:
+                failures.append(CheckResult("Manifest", False, "status report Manifest expected filename does not match NOAA package"))
+            if expected_url and str(data.get("expected_url", "")).strip() != expected_url:
+                failures.append(CheckResult("Manifest", False, "status report Manifest expected URL does not match NOAA package"))
+            if expected_filename and str(data.get("package_filename", "")).strip() != expected_filename:
+                failures.append(CheckResult("Manifest", False, "status report Manifest package filename does not match NOAA package"))
+            if expected_url and str(data.get("package_url", "")).strip() != expected_url:
+                failures.append(CheckResult("Manifest", False, "status report Manifest package URL does not match NOAA package"))
+            max_age_days = _positive_status_int(data.get("max_age_days"))
+            if max_age_days is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest max_age_days is not positive"))
+            configured_max_age_days = _positive_status_int(config.get("max_chart_age_days"))
+            if max_age_days is not None and configured_max_age_days is not None and max_age_days != configured_max_age_days:
+                failures.append(CheckResult("Manifest", False, "status report Manifest max_age_days does not match config"))
+            created_at = _parse_gps_fix_timestamp(data.get("created_at"))
+            if created_at is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest created_at timestamp is invalid"))
+            elif max_age_days is not None:
+                current = now or datetime.now(timezone.utc)
+                age_days = (current.astimezone(timezone.utc) - created_at).total_seconds() / 86400
+                if age_days < -0.01:
+                    failures.append(CheckResult("Manifest", False, "status report Manifest created_at timestamp is in the future"))
+                elif age_days > max_age_days:
+                    failures.append(CheckResult("Manifest", False, f"status report Manifest is {age_days:.1f} days old; max is {max_age_days}"))
+            reported_age_days = _finite_gps_fix_float(data.get("age_days"))
+            if reported_age_days is None or reported_age_days < 0:
+                failures.append(CheckResult("Manifest", False, "status report Manifest age_days is invalid"))
+            download_path = str(data.get("download_path", "")).strip()
+            extract_path = str(data.get("extract_path", "")).strip()
+            if not _status_absolute_path(download_path):
+                failures.append(CheckResult("Manifest", False, "status report Manifest download path is not absolute"))
+            if not _status_absolute_path(extract_path):
+                failures.append(CheckResult("Manifest", False, "status report Manifest extract path is not absolute"))
+            download_bytes = _positive_status_int(data.get("download_bytes"))
+            summary_download_bytes = _positive_status_int(manifest.get("download_bytes"))
+            if download_bytes is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest download byte count is not positive"))
+            elif summary_download_bytes is not None and download_bytes != summary_download_bytes:
+                failures.append(CheckResult("Manifest", False, "status report Manifest download byte count does not match manifest summary"))
+            enc_cell_count = _positive_status_int(data.get("enc_cell_count"))
+            actual_enc_cell_count = _positive_status_int(data.get("actual_enc_cell_count"))
+            summary_enc_cell_count = _positive_status_int(manifest.get("enc_cell_count"))
+            summary_actual_enc_cell_count = _positive_status_int(manifest.get("actual_enc_cell_count"))
+            if enc_cell_count is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest has no ENC cells"))
+            if actual_enc_cell_count is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest actual ENC cell count is not positive"))
+            if enc_cell_count is not None and actual_enc_cell_count is not None and enc_cell_count != actual_enc_cell_count:
+                failures.append(CheckResult("Manifest", False, "status report Manifest actual ENC cell count does not match recorded count"))
+            if enc_cell_count is not None and summary_enc_cell_count is not None and enc_cell_count != summary_enc_cell_count:
+                failures.append(CheckResult("Manifest", False, "status report Manifest ENC cell count does not match manifest summary"))
+            if (
+                actual_enc_cell_count is not None
+                and summary_actual_enc_cell_count is not None
+                and actual_enc_cell_count != summary_actual_enc_cell_count
+            ):
+                failures.append(CheckResult("Manifest", False, "status report Manifest actual ENC cell count does not match manifest summary"))
     return failures
 
 
