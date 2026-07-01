@@ -932,7 +932,7 @@ def _check_manifest_download_url(manifest: dict[str, object]) -> Optional[CheckR
         return CheckResult(
             "Manifest",
             False,
-            f"manifest download URL {download_url} does not match package filename from {package_url} or uses a non-HTTPS redirect",
+            f"manifest download URL {download_url} does not match package filename from {package_url} or uses a non-HTTPS redirect or non-NOAA host",
         )
     return None
 
@@ -946,7 +946,14 @@ def _download_url_matches_package(download_url: str, package_url: str) -> bool:
         return False
     download_filename = Path(parsed_download.path).name
     package_filename = Path(parsed_package.path).name
-    return bool(download_filename and package_filename and download_filename == package_filename)
+    if not download_filename or not package_filename or download_filename != package_filename:
+        return False
+    return _is_noaa_host(parsed_package.hostname) and _is_noaa_host(parsed_download.hostname)
+
+
+def _is_noaa_host(hostname: Optional[str]) -> bool:
+    host = (hostname or "").strip(".").lower()
+    return host == "noaa.gov" or host.endswith(".noaa.gov")
 
 
 def _check_manifest_archive(

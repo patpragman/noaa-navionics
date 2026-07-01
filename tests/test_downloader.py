@@ -5490,6 +5490,29 @@ class ManifestTests(unittest.TestCase):
         finally:
             downloader_module.urlopen = original
 
+    def test_download_rejects_non_noaa_redirect_before_writing_archive(self):
+        original = downloader_module.urlopen
+
+        def fake_urlopen(request, timeout=60):
+            return self.FakeResponse(
+                b"chart",
+                url="https://example.invalid/cache/AK_ENCs.zip",
+            )
+
+        try:
+            downloader_module.urlopen = fake_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir)
+                package = Package("State AK", "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip", "AK_ENCs.zip")
+
+                with self.assertRaisesRegex(RuntimeError, "non-NOAA host"):
+                    download_package(package, output)
+
+                self.assertFalse((output / "AK_ENCs.zip").exists())
+                self.assertFalse((output / MANIFEST_NAME).exists())
+        finally:
+            downloader_module.urlopen = original
+
     def test_download_rejects_redirect_to_wrong_filename_before_writing_archive(self):
         original = downloader_module.urlopen
 
@@ -6829,6 +6852,29 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_manifest(root, expected_package="state", expected_value="AK")
 
             self.assertTrue(result.ok)
+
+    def test_manifest_download_url_non_noaa_redirect_fails(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                '"download":{"url":"https://example.invalid/cache/AK_ENCs.zip","sha256":"abc"},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK")
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download URL", result.detail)
+            self.assertIn("non-NOAA host", result.detail)
 
     def test_count_enc_cells_ignores_symlinked_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:

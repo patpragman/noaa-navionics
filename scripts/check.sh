@@ -2374,9 +2374,11 @@ grep -q 'ZIP member paths, CRCs, and ENC cell presence' README.md
 grep -q 'ZIP member paths, CRCs, and ENC cell presence' docs/sailboat-pi.md
 grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' README.md
 grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' docs/sailboat-pi.md
-grep -q 'or uses a non-HTTPS redirect' src/noaa_navionics/downloader.py
+grep -q 'or uses a non-HTTPS redirect or non-NOAA host' src/noaa_navionics/downloader.py
 grep -q 'def _download_url_matches_package' src/noaa_navionics/downloader.py
+grep -q 'def _is_noaa_host' src/noaa_navionics/downloader.py
 grep -q 'test_download_rejects_http_redirect_before_writing_archive' tests/test_downloader.py
+grep -q 'test_download_rejects_non_noaa_redirect_before_writing_archive' tests/test_downloader.py
 grep -q 'test_download_rejects_redirect_to_wrong_filename_before_writing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_bad_zip_before_replacing_archive' tests/test_downloader.py
 grep -q 'test_forced_download_rejects_unsafe_zip_before_replacing_archive' tests/test_downloader.py
@@ -2425,6 +2427,7 @@ grep -q 'test_existing_zip_symlinked_previous_manifest_fails_before_extracting' 
 grep -q 'test_existing_zip_writable_previous_manifest_fails_before_extracting' tests/test_downloader.py
 grep -q 'test_existing_zip_mismatched_previous_manifest_download_url_fails_before_extracting' tests/test_downloader.py
 grep -q '_download_url_matches_package(previous_url, package.url)' src/noaa_navionics/downloader.py
+grep -q 'test_manifest_download_url_non_noaa_redirect_fails' tests/test_downloader.py
 grep -q 'unsafe ownership or permissions' README.md
 grep -q 'unsafe ownership or permissions' docs/sailboat-pi.md
 grep -q 'mismatched source metadata' README.md
@@ -2439,8 +2442,8 @@ grep -q 'unsafe manifest directory ownership or permissions' README.md
 grep -q 'unsafe manifest directory ownership or permissions' docs/sailboat-pi.md
 grep -q 'trusted previous manifest' README.md
 grep -q 'trusted previous manifest' docs/sailboat-pi.md
-grep -q 'HTTP or change filenames fail before archive replacement' README.md
-grep -q 'HTTP or change filenames fail before archive replacement' docs/sailboat-pi.md
+grep -q 'HTTP, leave NOAA hosts, or change filenames fail before archive replacement' README.md
+grep -q 'HTTP, leave NOAA hosts, or change filenames fail before archive replacement' docs/sailboat-pi.md
 grep -q 'chart update already in progress' src/noaa_navionics/downloader.py
 grep -q 'chart update lock path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'test_download_lock_rejects_symlinked_lock_path' tests/test_downloader.py
