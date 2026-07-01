@@ -503,6 +503,8 @@ class GPXTrackLogger:
             return
         if fix.timestamp is None:
             return
+        if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
+            return
         if gps_fix_quality_failure(fix):
             return
         if not gps_fix_has_quality_fields(fix):
@@ -535,6 +537,8 @@ class GPXTrackLogger:
 
 def gpx_position_mark_path(base_dir: Path, timestamp: Optional[datetime] = None, *, prefix: str = "mark") -> Path:
     current = timestamp or datetime.now(timezone.utc)
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise ValueError("position mark timestamp must include a timezone")
     stamp = current.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     safe_prefix = "".join(char if char.isalnum() or char in ("-", "_") else "-" for char in prefix).strip("-_")
     if not safe_prefix:
@@ -554,6 +558,8 @@ def write_gpx_position_mark(
         raise ValueError("position mark requires GPS coordinates")
     if fix.timestamp is None:
         raise ValueError("position mark requires a timestamped GPS fix")
+    if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
+        raise ValueError("position mark fix timestamp has no timezone")
     quality_failure = gps_fix_quality_failure(fix)
     if quality_failure:
         raise ValueError(quality_failure)

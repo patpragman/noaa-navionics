@@ -16167,6 +16167,22 @@ class GpsTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertNotIn("<trkpt", text)
 
+    def test_gpx_logger_skips_timezone_less_direct_fix(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 29, 12, 0, 0),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "track.gpx"
+            with GPXTrackLogger(path, name="Test") as logger:
+                logger.append(fix)
+
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("<trkpt", text)
+
     def test_gpx_logger_syncs_track_file_and_directory_to_disk(self):
         fix = GPSFix(
             timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc),
@@ -16366,6 +16382,22 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(path.exists())
 
+    def test_gpx_position_mark_rejects_timezone_less_fix(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56),
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=9,
+            hdop=0.9,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "tracks" / "mark.gpx"
+
+            with self.assertRaisesRegex(ValueError, "timestamp has no timezone"):
+                gps_module.write_gpx_position_mark(path, fix)
+
+            self.assertFalse(path.exists())
+
     def test_gpx_position_mark_rejects_symlinked_target_file(self):
         fix = GPSFix(
             timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
@@ -16495,6 +16527,10 @@ class GpsTests(unittest.TestCase):
             gps_module.gpx_position_mark_path(Path("/tracks"), timestamp, prefix="MOB!"),
             Path("/tracks/tracks/MOB-20260630T123456Z.gpx"),
         )
+
+    def test_gpx_position_mark_path_rejects_timezone_less_timestamp(self):
+        with self.assertRaisesRegex(ValueError, "timestamp must include a timezone"):
+            gps_module.gpx_position_mark_path(Path("/tracks"), datetime(2026, 6, 30, 12, 34, 56))
 
     def test_daily_track_path_uses_utc_date(self):
         timestamp = datetime(2026, 6, 29, 23, 30, tzinfo=timezone.utc)
