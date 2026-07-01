@@ -337,6 +337,9 @@ grep -q 'opencpn_running' scripts/start_chartplotter.sh
 grep -q 'opencpn_process_active' scripts/start_chartplotter.sh
 grep -q 'validate_process_lookup_command_candidate' scripts/start_chartplotter.sh
 grep -q 'process_lookup_command_path' scripts/start_chartplotter.sh
+grep -q 'revalidate_process_lookup_command' scripts/start_chartplotter.sh
+grep -q 'revalidate_trusted_utility_command' scripts/start_chartplotter.sh
+grep -q 'expected no group/other write bits before {phase}' scripts/start_chartplotter.sh
 grep -q 'Process lookup command pgrep was not found on PATH' scripts/start_chartplotter.sh
 grep -q 'Process lookup command path is not absolute' scripts/start_chartplotter.sh
 grep -q 'Process lookup command is a symlink' scripts/start_chartplotter.sh
@@ -344,8 +347,8 @@ grep -q 'Process lookup command directory is owned by uid .* expected root on Ra
 grep -q 'Process lookup command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -q '"$pgrep_bin" -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
 ! grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
-grep -q 'resolves `pgrep` to a trusted executable path' README.md
-grep -q 'resolves `pgrep` to a trusted executable path' docs/sailboat-pi.md
+grep -q 'resolves and revalidates `pgrep` through no-follow same-file descriptors before the duplicate check' README.md
+grep -q 'resolves and revalidates `pgrep` through no-follow same-file descriptors before duplicate OpenCPN checks' docs/sailboat-pi.md
 grep -q 'stat_fd = os.open("stat", os.O_RDONLY | nofollow, dir_fd=proc_fd)' scripts/start_chartplotter.sh
 grep -q 'stat_text.rsplit(") ", 1)' scripts/start_chartplotter.sh
 grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/start_chartplotter.sh
@@ -420,6 +423,8 @@ grep -q 'no-follow descriptor-confirmed private status file' docs/sailboat-pi.md
 grep -q 'Not starting OpenCPN automatically because readiness failed' scripts/start_chartplotter.sh
 grep -q 'validate_display_power_command_candidate' scripts/start_chartplotter.sh
 grep -q 'display_power_command_path' scripts/start_chartplotter.sh
+grep -q 'revalidate_display_power_command' scripts/start_chartplotter.sh
+grep -q 'changed before {phase}' scripts/start_chartplotter.sh
 grep -q 'Display power command xset was not found on PATH' scripts/start_chartplotter.sh
 grep -q 'Display power command path is not absolute' scripts/start_chartplotter.sh
 grep -q 'Display power command is a symlink' scripts/start_chartplotter.sh
@@ -428,8 +433,8 @@ grep -q 'Display power command is owned by uid .* expected root on Raspberry Pi'
 grep -q '"$xset_bin" s off' scripts/start_chartplotter.sh
 grep -q '"$xset_bin" s noblank' scripts/start_chartplotter.sh
 grep -q '"$xset_bin" -dpms' scripts/start_chartplotter.sh
-grep -q 'resolves `xset` to a trusted executable path' README.md
-grep -q 'resolves `xset` to a trusted executable path' docs/sailboat-pi.md
+grep -q 'resolves and revalidates `xset` through no-follow same-file descriptors before each display-power command' README.md
+grep -q 'resolves and revalidates `xset` through no-follow same-file descriptors before asking X11 desktop sessions' docs/sailboat-pi.md
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
 grep -q 'xset is unavailable or not trusted' scripts/start_chartplotter.sh
 grep -q 'launcher.env' scripts/start_chartplotter.sh
@@ -9213,6 +9218,36 @@ grep -q 'xset -dpms' "$launcher_home/.cache/noaa-navionics/xset.log"
 grep -q -- '--gps-seconds 17' "$launcher_home/.cache/noaa-navionics/noaa.log"
 grep -q "Using OpenCPN binary: $tmpdir/opencpn" "$launcher_home/.cache/noaa-navionics/chartplotter.log"
 
+launcher_mutated_xset_home="$tmpdir/launcher-mutated-xset-home"
+launcher_mutated_xset_bin="$tmpdir/launcher-mutated-xset-bin"
+mkdir -p "$launcher_mutated_xset_home/.local/bin" "$launcher_mutated_xset_home/.cache/noaa-navionics" "$launcher_mutated_xset_bin"
+write_test_launcher_env "$launcher_mutated_xset_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_mutated_xset_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_mutated_xset_bin/pgrep"
+printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$launcher_mutated_xset_bin/opencpn"
+cat >"$launcher_mutated_xset_bin/xset" <<'EOF'
+#!/usr/bin/env bash
+count_file="$HOME/.cache/noaa-navionics/xset-count"
+count=0
+if [[ -r "$count_file" ]]; then
+  read -r count <"$count_file" || count=0
+fi
+count=$((count + 1))
+printf '%s\n' "$count" >"$count_file"
+printf 'xset %s\n' "$*" >>"$HOME/.cache/noaa-navionics/xset.log"
+chmod 0775 "$0"
+exit 0
+EOF
+chmod +x "$launcher_mutated_xset_home/.local/bin/noaa-navionics" "$launcher_mutated_xset_bin/pgrep" "$launcher_mutated_xset_bin/opencpn" "$launcher_mutated_xset_bin/xset"
+HOME="$launcher_mutated_xset_home" DISPLAY=:99 PATH="$launcher_mutated_xset_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+test "$(cat "$launcher_mutated_xset_home/.cache/noaa-navionics/xset-count")" -eq 1
+grep -q '^xset s off$' "$launcher_mutated_xset_home/.cache/noaa-navionics/xset.log"
+! grep -q '^xset s noblank$' "$launcher_mutated_xset_home/.cache/noaa-navionics/xset.log"
+! grep -q '^xset -dpms$' "$launcher_mutated_xset_home/.cache/noaa-navionics/xset.log"
+grep -q 'Display power command has permissions 0775, expected no group/other write bits before use' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Display session found, but 2 xset command(s) failed' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
+
 launcher_missing_env_home="$tmpdir/launcher-missing-env-home"
 mkdir -p "$launcher_missing_env_home/.local/bin" "$launcher_missing_env_home/.cache/noaa-navionics" "$launcher_missing_env_home/.config/noaa-navionics"
 chmod 0700 "$launcher_missing_env_home/.config/noaa-navionics"
@@ -9573,6 +9608,31 @@ test "$(cat "$launcher_mutated_opencpn_home/.cache/noaa-navionics/opencpn-count"
 test ! -e "$launcher_mutated_opencpn_home/.cache/noaa-navionics/opencpn-relaunch.log"
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/1) in 0s.' "$launcher_mutated_opencpn_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN executable has permissions 0775, expected no group/other write bits before launch' "$launcher_mutated_opencpn_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_mutated_pgrep_home="$tmpdir/launcher-mutated-pgrep-home"
+launcher_mutated_pgrep_bin="$tmpdir/launcher-mutated-pgrep-bin"
+mkdir -p "$launcher_mutated_pgrep_home/.local/bin" "$launcher_mutated_pgrep_home/.cache/noaa-navionics" "$launcher_mutated_pgrep_bin"
+write_test_launcher_env "$launcher_mutated_pgrep_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_mutated_pgrep_home/.local/bin/noaa-navionics"
+printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$launcher_mutated_pgrep_bin/opencpn"
+cat >"$launcher_mutated_pgrep_bin/pgrep" <<'EOF'
+#!/usr/bin/env bash
+count_file="$HOME/.cache/noaa-navionics/pgrep-count"
+count=0
+if [[ -r "$count_file" ]]; then
+  read -r count <"$count_file" || count=0
+fi
+count=$((count + 1))
+printf '%s\n' "$count" >"$count_file"
+chmod 0775 "$0"
+exit 1
+EOF
+chmod +x "$launcher_mutated_pgrep_home/.local/bin/noaa-navionics" "$launcher_mutated_pgrep_bin/opencpn" "$launcher_mutated_pgrep_bin/pgrep"
+HOME="$launcher_mutated_pgrep_home" PATH="$launcher_mutated_pgrep_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+test "$(cat "$launcher_mutated_pgrep_home/.cache/noaa-navionics/pgrep-count")" -eq 1
+grep -q 'Process lookup command has permissions 775, expected no group/other write bits' "$launcher_mutated_pgrep_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Launching OpenCPN with ENC processing.' "$launcher_mutated_pgrep_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN exited with status 0' "$launcher_mutated_pgrep_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_term_home="$tmpdir/launcher-term-home"
 launcher_term_bin="$tmpdir/launcher-term-bin"

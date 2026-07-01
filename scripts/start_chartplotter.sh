@@ -1043,13 +1043,130 @@ process_lookup_command_path() {
   printf '%s\n' "$path_candidate"
 }
 
+revalidate_trusted_utility_command() {
+  local candidate="$1"
+  local label="$2"
+  local phase="$3"
+  local pi_flag=0
+  if is_raspberry_pi; then
+    pi_flag=1
+  fi
+  "$python3_bin" - "$candidate" "$label" "$phase" "$pi_flag" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+path = Path(sys.argv[1])
+label = sys.argv[2]
+phase = sys.argv[3]
+is_pi = sys.argv[4] == "1"
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+directory = getattr(os, "O_DIRECTORY", 0)
+
+if not path.is_absolute():
+    fail(f"{label} path is not absolute before {phase}: {path}")
+
+ancestors = [path.parent, *path.parent.parents]
+for ancestor in ancestors:
+    try:
+        ancestor_stat = os.stat(ancestor, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"Could not inspect {label} path component before {phase}: {ancestor}: {exc}")
+    if stat.S_ISLNK(ancestor_stat.st_mode):
+        fail(f"{label} path contains a symlink before {phase}: {ancestor}")
+    if not stat.S_ISDIR(ancestor_stat.st_mode):
+        fail(f"{label} path component is not a directory before {phase}: {ancestor}")
+
+parent = path.parent
+try:
+    parent_before = os.stat(parent, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect {label} directory before {phase}: {parent}: {exc}")
+if not stat.S_ISDIR(parent_before.st_mode):
+    fail(f"{label} directory is not a directory before {phase}: {parent}")
+parent_mode = stat.S_IMODE(parent_before.st_mode)
+if parent_mode & 0o022:
+    fail(
+        f"{label} directory has permissions {parent_mode:04o}, "
+        f"expected no group/other write bits before {phase}: {parent}"
+    )
+if is_pi and parent_before.st_uid != 0:
+    fail(f"{label} directory is owned by uid {parent_before.st_uid}, expected root on Raspberry Pi before {phase}: {parent}")
+if not is_pi and parent_before.st_uid not in (0, expected_uid):
+    fail(f"{label} directory is owned by uid {parent_before.st_uid}, expected root or {expected_uid} before {phase}: {parent}")
+
+parent_fd = None
+command_fd = None
+try:
+    parent_fd = os.open(parent, os.O_RDONLY | directory | nofollow)
+    parent_opened = os.fstat(parent_fd)
+    if not os.path.samestat(parent_before, parent_opened):
+        fail(f"{label} directory changed before {phase}: {parent}")
+
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"Could not inspect {label} before {phase}: {path}: {exc}")
+    if stat.S_ISLNK(before.st_mode):
+        fail(f"{label} is a symlink before {phase}: {path}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"{label} is not a regular file before {phase}: {path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if not mode & 0o111:
+        fail(f"{label} is not executable before {phase}: {path}")
+    if mode & 0o022:
+        fail(f"{label} has permissions {mode:04o}, expected no group/other write bits before {phase}: {path}")
+    if is_pi and before.st_uid != 0:
+        fail(f"{label} is owned by uid {before.st_uid}, expected root on Raspberry Pi before {phase}: {path}")
+    if not is_pi and before.st_uid not in (0, expected_uid):
+        fail(f"{label} is owned by uid {before.st_uid}, expected root or {expected_uid} before {phase}: {path}")
+
+    command_fd = os.open(path, os.O_RDONLY | nofollow)
+    opened = os.fstat(command_fd)
+    if not os.path.samestat(before, opened):
+        fail(f"{label} changed before {phase}: {path}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"{label} is not a regular file after open before {phase}: {path}")
+    if not opened_mode & 0o111:
+        fail(f"{label} is not executable after open before {phase}: {path}")
+    if opened_mode & 0o022:
+        fail(f"{label} has permissions {opened_mode:04o}, expected no group/other write bits after open before {phase}: {path}")
+    if is_pi and opened.st_uid != 0:
+        fail(f"{label} is owned by uid {opened.st_uid}, expected root on Raspberry Pi after open before {phase}: {path}")
+    if not is_pi and opened.st_uid not in (0, expected_uid):
+        fail(f"{label} is owned by uid {opened.st_uid}, expected root or {expected_uid} after open before {phase}: {path}")
+finally:
+    if command_fd is not None:
+        os.close(command_fd)
+    if parent_fd is not None:
+        os.close(parent_fd)
+PY
+}
+
+revalidate_display_power_command() {
+  revalidate_trusted_utility_command "$1" "Display power command" "use"
+}
+
+revalidate_process_lookup_command() {
+  revalidate_trusted_utility_command "$1" "Process lookup command" "use"
+}
+
 keep_display_awake() {
   local xset_bin=""
   if [[ -n "${DISPLAY:-}" ]] && xset_bin="$(display_power_command_path)"; then
     local failures=0
-    "$xset_bin" s off >/dev/null 2>&1 || failures=$((failures + 1))
-    "$xset_bin" s noblank >/dev/null 2>&1 || failures=$((failures + 1))
-    "$xset_bin" -dpms >/dev/null 2>&1 || failures=$((failures + 1))
+    revalidate_display_power_command "$xset_bin" && "$xset_bin" s off >/dev/null 2>&1 || failures=$((failures + 1))
+    revalidate_display_power_command "$xset_bin" && "$xset_bin" s noblank >/dev/null 2>&1 || failures=$((failures + 1))
+    revalidate_display_power_command "$xset_bin" && "$xset_bin" -dpms >/dev/null 2>&1 || failures=$((failures + 1))
     if [[ "$failures" -eq 0 ]]; then
       echo "Requested display sleep and blanking disabled."
     else
@@ -1064,7 +1181,7 @@ keep_display_awake() {
 opencpn_running() {
   local pid
   local pgrep_bin
-  if pgrep_bin="$(process_lookup_command_path)"; then
+  if pgrep_bin="$(process_lookup_command_path)" && revalidate_process_lookup_command "$pgrep_bin"; then
     while IFS= read -r pid; do
       if opencpn_process_active "$pid"; then
         return 0
