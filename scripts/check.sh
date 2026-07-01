@@ -4029,6 +4029,8 @@ grep -q 'status report host boot_id is not a Linux boot_id value' src/noaa_navio
 grep -q 'status report missing app section' src/noaa_navionics/report.py
 grep -q 'status report missing deployed source_revision' src/noaa_navionics/report.py
 grep -q 'status report dirty deployed source_revision is not production-ready' src/noaa_navionics/report.py
+grep -q 'status report has duplicate readiness check' src/noaa_navionics/report.py
+grep -q 'status report has duplicate service check' src/noaa_navionics/report.py
 grep -q 'status report Source Revision records a dirty revision' src/noaa_navionics/report.py
 grep -q 'status report source revision path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report source revision missing source_revision_symlink_component' src/noaa_navionics/report.py
@@ -4221,6 +4223,7 @@ grep -q 'test_status_report_ready_requires_structured_chrony_gps_time_evidence' 
 grep -q 'test_status_report_ready_requires_structured_command_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_missing_or_malformed_host_boot_id' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' tests/test_downloader.py
+grep -q 'test_status_report_ready_rejects_unnamed_or_duplicate_rows' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_service_summaries' tests/test_downloader.py
@@ -4257,6 +4260,8 @@ grep -q 'chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence'
 grep -q 'chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' README.md
 grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' docs/sailboat-pi.md
+grep -q 'Shared readiness validation also rejects unnamed or duplicate readiness/service rows' README.md
+grep -q 'Shared readiness validation also rejects unnamed or duplicate readiness/service rows' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' README.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' README.md

@@ -327,8 +327,25 @@ def status_report_validation_failures(
         if not isinstance(section, list):
             failures.append(CheckResult("Status Report", False, f"status report missing {section_name} section"))
             continue
-        if any(not isinstance(item, dict) for item in section):
-            failures.append(CheckResult("Status Report", False, f"status report has malformed {section_name} row"))
+        if section_name == "checks":
+            unnamed_detail = "status report has unnamed readiness check"
+            duplicate_prefix = "status report has duplicate readiness check"
+        else:
+            unnamed_detail = "status report has unnamed service check"
+            duplicate_prefix = "status report has duplicate service check"
+        rows: dict[str, dict[str, object]] = {}
+        for item in section:
+            if not isinstance(item, dict):
+                failures.append(CheckResult("Status Report", False, f"status report has malformed {section_name} row"))
+                continue
+            name = str(item.get("name", "")).strip()
+            if not name:
+                failures.append(CheckResult("Status Report", False, unnamed_detail))
+                continue
+            if name in rows:
+                failures.append(CheckResult("Status Report", False, f"{duplicate_prefix}: {name}"))
+                continue
+            rows[name] = item
     missing_checks, missing_service_checks = missing_required_readiness_checks(report)
     failures.extend(
         CheckResult(name, False, "status report is missing this readiness check") for name in missing_checks

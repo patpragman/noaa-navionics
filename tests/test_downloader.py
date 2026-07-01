@@ -10485,6 +10485,31 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("Ready: no", text)
         self.assertIn("status report has malformed checks row", text)
 
+    def test_status_report_ready_rejects_unnamed_or_duplicate_rows(self):
+        cases = [
+            ("checks", {"ok": True, "detail": "missing name"}, "status report has unnamed readiness check"),
+            (
+                "checks",
+                {"name": "Python", "ok": True, "detail": "duplicate"},
+                "status report has duplicate readiness check: Python",
+            ),
+            ("service_checks", {"ok": True, "detail": "missing name"}, "status report has unnamed service check"),
+            (
+                "service_checks",
+                {"name": "Track Log", "ok": True, "detail": "duplicate"},
+                "status report has duplicate service check: Track Log",
+            ),
+        ]
+        for section, row, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report()
+                report[section].append(row)
+
+                failures = status_report_validation_failures(report)
+
+                self.assertFalse(status_report_is_ready(report))
+                self.assertTrue(any(expected in failure.detail for failure in failures))
+
     def test_status_report_ready_requires_fresh_generated_at(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         report = complete_status_gui_report(
