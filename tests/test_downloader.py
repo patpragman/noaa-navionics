@@ -4416,6 +4416,63 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.after_id, "refresh-after")
         self.assertEqual(app.anchor_watch_after_id, "watch-after")
 
+    def test_status_gui_refresh_cancels_pending_refresh_callback_before_starting_worker(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeThread:
+            def __init__(self, *, target, daemon):
+                self.target = target
+                self.daemon = daemon
+                self.started = False
+
+            def start(self):
+                self.started = True
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.after_id = "refresh-after"
+                self.worker = None
+                self.summary = FakeVar()
+                self.cancelled = []
+                self.busy_calls = []
+                self.started_threads = []
+
+            def after_cancel(self, after_id):
+                self.cancelled.append(after_id)
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _refresh_worker(self):
+                return None
+
+        app = FakeApp()
+        original_thread = status_gui_module.Thread
+
+        def fake_thread(*, target, daemon):
+            thread = FakeThread(target=target, daemon=daemon)
+            app.started_threads.append(thread)
+            return thread
+
+        try:
+            status_gui_module.Thread = fake_thread
+            status_gui_module.StatusApp.refresh_now(app)
+        finally:
+            status_gui_module.Thread = original_thread
+
+        self.assertEqual(app.cancelled, ["refresh-after"])
+        self.assertIsNone(app.after_id)
+        self.assertEqual(app.busy_calls, [True])
+        self.assertEqual(app.summary.value, "Refreshing status...")
+        self.assertEqual(len(app.started_threads), 1)
+        self.assertTrue(app.started_threads[0].started)
+
     def test_status_gui_stop_watch_requires_second_press(self):
         class FakeVar:
             def __init__(self):

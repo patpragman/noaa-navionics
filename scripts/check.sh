@@ -3702,6 +3702,7 @@ grep -q 'self.poll_after_id: Optional\[str\] = None' src/noaa_navionics/status_g
 grep -q 'self.protocol("WM_DELETE_WINDOW", self.close)' src/noaa_navionics/status_gui.py
 grep -q 'def close(self) -> None' src/noaa_navionics/status_gui.py
 grep -q 'self._cancel_after_callback("poll_after_id")' src/noaa_navionics/status_gui.py
+grep -q 'StatusApp._cancel_after_callback(self, "after_id")' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_status_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'if not self.anchor_watch_alarm_active or self.anchor_watch_alarm_summary is None' src/noaa_navionics/status_gui.py
 grep -q 'and status_report_is_ready(report)' src/noaa_navionics/status_gui.py
@@ -3765,6 +3766,7 @@ grep -q 'test_status_gui_anchor_check_averages_longitude_across_date_line' tests
 grep -q 'test_status_gui_stop_watch_stays_available_while_anchor_watch_check_is_busy' tests/test_downloader.py
 grep -q 'test_status_gui_close_cancels_scheduled_callbacks' tests/test_downloader.py
 grep -q 'test_status_gui_does_not_schedule_callbacks_after_close' tests/test_downloader.py
+grep -q 'test_status_gui_refresh_cancels_pending_refresh_callback_before_starting_worker' tests/test_downloader.py
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' README.md
 grep -q 'Stop Watch stays available during long GPS/readiness actions so a watch can still be cancelled while a check is running' README.md
 grep -q 'Stop Watch stays available during long GPS/readiness actions so a watch can still be cancelled while a check is running' docs/sailboat-pi.md

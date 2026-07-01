@@ -416,7 +416,7 @@ class StatusApp(tk.Tk):
         self.destroy()
 
     def refresh_now(self) -> None:
-        self.after_id = None
+        StatusApp._cancel_after_callback(self, "after_id")
         if getattr(self, "_closed", False):
             return
         if self.worker is not None and self.worker.is_alive():
