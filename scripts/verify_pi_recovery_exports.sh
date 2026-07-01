@@ -270,6 +270,8 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
 
                 if "README.txt" not in names:
                     fail(f"{archive_path.name} is missing README.txt")
+                if not members_by_name["README.txt"].isfile():
+                    fail(f"{archive_path.name} README.txt is not a regular file")
 
                 manifest_key = spec["manifest_key"]
                 if manifest_key is not None:

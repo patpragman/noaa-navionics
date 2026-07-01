@@ -184,7 +184,7 @@ Re-run verification later before relying on a copied or archived recovery direct
 scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ
 ```
 
-The verifier checks the local `.tgz` files with the validated local Python command for the expected export set, readable tar contents, safe and unique normalized member paths, README files, and positive settings, OpenCPN, and GPX manifest counts. It does not contact the Pi.
+The verifier checks the local `.tgz` files with the validated local Python command for the expected export set, readable tar contents, safe and unique normalized member paths, regular README files, and positive settings, OpenCPN, and GPX manifest counts. It does not contact the Pi.
 After reimaging a Pi, copy the verified recovery directory onto the Pi and restore user-owned navigation data as the Pi desktop user:
 
 ```bash
