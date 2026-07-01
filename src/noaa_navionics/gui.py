@@ -289,6 +289,8 @@ class DownloaderApp(tk.Tk):
         self.minsize(640, 440)
         self.queue: Queue = Queue()
         self.worker: Optional[Thread] = None
+        self.poll_after_id: Optional[str] = None
+        self._closed = False
         self.action_buttons: list[ttk.Button] = []
 
         self.kind = tk.StringVar(value="state")
@@ -304,7 +306,8 @@ class DownloaderApp(tk.Tk):
         self.use_gpsd = tk.BooleanVar(value=True)
 
         self._build()
-        self.after(150, self._poll_queue)
+        self.protocol("WM_DELETE_WINDOW", self.close)
+        self.poll_after_id = self.after(150, self._poll_queue)
 
     def _build(self) -> None:
         root = ttk.Frame(self, padding=16)
@@ -374,7 +377,7 @@ class DownloaderApp(tk.Tk):
         self.status_report_button.pack(side=tk.LEFT, padx=(10, 0))
         self.opencpn_button = ttk.Button(action_row, text="OpenCPN", command=self._start_opencpn_config)
         self.opencpn_button.pack(side=tk.LEFT, padx=(10, 0))
-        ttk.Button(action_row, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Button(action_row, text="Quit", command=self.close).pack(side=tk.LEFT, padx=(10, 0))
         self.action_buttons.extend(
             [
                 self.load_config_button,
@@ -408,6 +411,21 @@ class DownloaderApp(tk.Tk):
         if selected:
             self.output.set(selected)
 
+    def close(self) -> None:
+        self._closed = True
+        DownloaderApp._cancel_after_callback(self, "poll_after_id")
+        self.destroy()
+
+    def _cancel_after_callback(self, attr: str) -> None:
+        after_id = getattr(self, attr, None)
+        if after_id is None:
+            return
+        try:
+            self.after_cancel(after_id)
+        except tk.TclError:
+            pass
+        setattr(self, attr, None)
+
     def _kind_changed(self, event: Optional[object] = None) -> None:
         hints = {
             "state": ("AK", "Example: AK"),
@@ -428,6 +446,8 @@ class DownloaderApp(tk.Tk):
         self.hint.configure(text=hint)
 
     def _start_download(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None:
             return
 
@@ -446,6 +466,8 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_preflight(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None:
             return
         self._set_busy(True)
@@ -455,6 +477,8 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_gps_fix(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None:
             return
         self._set_busy(True)
@@ -484,6 +508,8 @@ class DownloaderApp(tk.Tk):
         self.status.set("Config loaded")
 
     def _start_config_sync(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None:
             return
         self._set_busy(True)
@@ -494,6 +520,8 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_status_report(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None:
             return
         self._set_busy(True)
@@ -503,6 +531,8 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_opencpn_config(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None:
             return
         self._set_busy(True)
@@ -611,6 +641,9 @@ class DownloaderApp(tk.Tk):
             self.queue.put(("error", exc))
 
     def _poll_queue(self) -> None:
+        self.poll_after_id = None
+        if getattr(self, "_closed", False):
+            return
         try:
             while True:
                 kind, payload = self.queue.get_nowait()
@@ -673,7 +706,8 @@ class DownloaderApp(tk.Tk):
                     messagebox.showerror("Operation failed", str(payload))
         except Empty:
             pass
-        self.after(150, self._poll_queue)
+        if not getattr(self, "_closed", False):
+            self.poll_after_id = self.after(150, self._poll_queue)
 
     def _config_path(self) -> Path:
         return Path(self.config_path.get()).expanduser()

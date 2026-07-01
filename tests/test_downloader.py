@@ -3877,6 +3877,63 @@ class GuiTests(unittest.TestCase):
         self.assertTrue(any("Downloaded: /tmp/charts.zip" in message for message in app.logs))
         self.assertEqual(len(app.after_calls), 1)
 
+    def test_gui_close_cancels_poll_callback(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.poll_after_id = "poll-after"
+                self.cancelled = []
+                self.destroyed = False
+
+            def after_cancel(self, after_id):
+                self.cancelled.append(after_id)
+
+            def destroy(self):
+                self.destroyed = True
+
+        app = FakeApp()
+
+        gui_module.DownloaderApp.close(app)
+
+        self.assertTrue(app._closed)
+        self.assertEqual(app.cancelled, ["poll-after"])
+        self.assertIsNone(app.poll_after_id)
+        self.assertTrue(app.destroyed)
+
+    def test_gui_poll_queue_does_not_reschedule_after_close(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = True
+                self.poll_after_id = "poll-after"
+                self.queue = gui_module.Queue()
+
+            def after(self, milliseconds, callback):
+                raise AssertionError("closed GUI should not schedule queue polling")
+
+        app = FakeApp()
+
+        gui_module.DownloaderApp._poll_queue(app)
+
+        self.assertIsNone(app.poll_after_id)
+
+    def test_gui_actions_do_not_start_after_close(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = True
+                self.worker = None
+
+            def _selected_package(self):
+                raise AssertionError("closed GUI should not parse a package")
+
+            def _set_busy(self, busy):
+                raise AssertionError("closed GUI should not start work")
+
+        app = FakeApp()
+
+        gui_module.DownloaderApp._start_download(app)
+
+        self.assertIsNone(app.worker)
+
     def test_status_gui_mark_does_not_hide_active_anchor_alarm(self):
         class FakeVar:
             def __init__(self):
