@@ -1140,10 +1140,30 @@ grep -q 'system-service-properties' scripts/collect_pi_support_bundle.sh
 grep -q 'copy_regular_if_readable /etc/os-release' scripts/collect_pi_support_bundle.sh
 grep -q 'copy_regular_if_readable /etc/chrony/chrony.conf' scripts/collect_pi_support_bundle.sh
 grep -q 'package-versions' scripts/collect_pi_support_bundle.sh
-grep -q 'dpkg-query -W' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path dpkg-query' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path df' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command package-versions bash -lc' scripts/collect_pi_support_bundle.sh
+grep -Fq '"$dpkg_query" -W -f="$format"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command df "$df_cmd" -h' scripts/collect_pi_support_bundle.sh
 grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" scripts/collect_pi_support_bundle.sh
 grep -Fq -- '-f="$format"' scripts/collect_pi_support_bundle.sh
 ! grep -Fq -- '-f="${binary:Package}' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command package-versions .*dpkg-query -W' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command df df -h' scripts/collect_pi_support_bundle.sh
+grep -q 'collect_system_command_integrity' scripts/collect_pi_support_bundle.sh
+grep -q 'system-command-integrity.txt' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path systemctl' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path journalctl' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path chronyc' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command user-units "$systemctl_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command recent-user-journal "$journalctl_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command chrony-sources "$chronyc_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command mount-findmnt "$findmnt_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command timedatectl "$timedatectl_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq '"$1" get_throttled && "$1" measure_temp' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command user-units systemctl' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command recent-user-journal bash -lc' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command chrony-sources chronyc' scripts/collect_pi_support_bundle.sh
 grep -q 'list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
@@ -1158,6 +1178,8 @@ grep -q 'short diagnostic GPS wait and the commissioned launcher GPS wait' READM
 grep -q 'short diagnostic GPS wait and the commissioned launcher GPS wait' docs/sailboat-pi.md
 grep -q 'stable/volatile GPS classification' README.md
 grep -q 'stable/volatile GPS classification' docs/sailboat-pi.md
+grep -q 'system command-integrity evidence' README.md
+grep -q 'system command-integrity evidence' docs/sailboat-pi.md
 grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' README.md
 grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' docs/sailboat-pi.md
 grep -q 'fresh read-only status-report JSON captures' README.md
@@ -6935,10 +6957,30 @@ grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'copy_regular_if_readable /etc/os-release' "$support_fake_ssh_stdin"
 grep -q 'package-versions' "$support_fake_ssh_stdin"
-grep -q 'dpkg-query -W' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path dpkg-query' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path df' "$support_fake_ssh_stdin"
+grep -Fq 'run_command package-versions bash -lc' "$support_fake_ssh_stdin"
+grep -Fq '"$dpkg_query" -W -f="$format"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command df "$df_cmd" -h' "$support_fake_ssh_stdin"
 grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" "$support_fake_ssh_stdin"
 grep -Fq -- '-f="$format"' "$support_fake_ssh_stdin"
 ! grep -Fq -- '-f="${binary:Package}' "$support_fake_ssh_stdin"
+! grep -q 'run_command package-versions .*dpkg-query -W' "$support_fake_ssh_stdin"
+! grep -q 'run_command df df -h' "$support_fake_ssh_stdin"
+grep -q 'collect_system_command_integrity' "$support_fake_ssh_stdin"
+grep -q 'system-command-integrity.txt' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path systemctl' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path journalctl' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path chronyc' "$support_fake_ssh_stdin"
+grep -Fq 'run_command user-units "$systemctl_cmd"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command recent-user-journal "$journalctl_cmd"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command chrony-sources "$chronyc_cmd"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command mount-findmnt "$findmnt_cmd"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command timedatectl "$timedatectl_cmd"' "$support_fake_ssh_stdin"
+grep -Fq '"$1" get_throttled && "$1" measure_temp' "$support_fake_ssh_stdin"
+! grep -q 'run_command user-units systemctl' "$support_fake_ssh_stdin"
+! grep -q 'run_command recent-user-journal bash -lc' "$support_fake_ssh_stdin"
+! grep -q 'run_command chrony-sources chronyc' "$support_fake_ssh_stdin"
 grep -q 'user-unit-properties' "$support_fake_ssh_stdin"
 grep -q 'system-service-properties' "$support_fake_ssh_stdin"
 grep -q 'noaa-gps-device-candidates' "$support_fake_ssh_stdin"

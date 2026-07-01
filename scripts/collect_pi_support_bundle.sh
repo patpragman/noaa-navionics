@@ -953,6 +953,125 @@ run_command() {
   }
 }
 
+skip_command() {
+  local name="$1"
+  shift
+  local output="${commands_dir}/${name}.txt"
+  printf '%s\n' "$*" >"$output"
+  write_note "$*"
+}
+
+trusted_system_path() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_root_command_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    printf 'could not inspect %s: %s\n' "$item_kind" "$item_path"
+    return 1
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    printf '%s owned by uid %s, expected 0: %s\n' "$item_kind" "$owner_uid" "$item_path"
+    return 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      printf '%s has permissions %s, expected no group/other write: %s\n' "$item_kind" "$mode" "$item_path"
+      return 1
+      ;;
+  esac
+}
+
+check_root_command_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_root_command_owner_and_mode directory "$directory" || return 1
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+trusted_system_command_path() {
+  local command_name="$1"
+  local command_path
+  local resolved_path
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    printf 'missing command: %s\n' "$command_name" >&2
+    return 1
+  fi
+  if [[ "$command_path" != /* ]] || ! trusted_system_path "$command_path"; then
+    printf '%s resolves outside trusted system directories: %s\n' "$command_name" "$command_path" >&2
+    return 1
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    printf 'could not resolve command: %s\n' "$command_path" >&2
+    return 1
+  fi
+  if ! trusted_system_path "$resolved_path"; then
+    printf '%s resolves outside trusted system directories: %s\n' "$command_name" "$resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -f "$resolved_path" || ! -x "$resolved_path" ]]; then
+    printf '%s resolved command is not an executable regular file: %s\n' "$command_name" "$resolved_path" >&2
+    return 1
+  fi
+  check_root_command_directory_chain "$command_path" >/dev/null || return 1
+  check_root_command_directory_chain "$resolved_path" >/dev/null || return 1
+  check_root_command_owner_and_mode file "$resolved_path" >/dev/null || return 1
+  printf '%s\n' "$resolved_path"
+}
+
+collect_system_command_integrity() {
+  local command_name
+  local command_path
+  local resolved_path
+  local status
+  local output="${commands_dir}/system-command-integrity.txt"
+
+  : >"$output"
+  for command_name in systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df; do
+    {
+      printf '[%s]\n' "$command_name"
+      if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+        printf 'missing\n\n'
+        continue
+      fi
+      printf 'command_path=%s\n' "$command_path"
+      if resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)"; then
+        printf 'resolved_path=%s\n' "$resolved_path"
+      else
+        printf 'resolved_path=<unresolved>\n'
+        resolved_path=""
+      fi
+      if status="$(trusted_system_command_path "$command_name" 2>&1 >/dev/null)"; then
+        printf 'trusted=yes\n'
+      else
+        printf 'trusted=no\n'
+        printf 'reason=%s\n' "$status"
+      fi
+      printf '\n'
+    } >>"$output"
+  done
+}
+
 support_check_failed() {
   printf '%s\n' "$*"
   return 1
@@ -1173,29 +1292,77 @@ copy_regular_if_readable /etc/chrony/conf.d/noaa-navionics-gpsd.conf
 copy_regular_if_readable /etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf
 collect_configured_storage_metadata
 
+collect_system_command_integrity
+systemctl_cmd="$(trusted_system_command_path systemctl 2>/dev/null || true)"
+journalctl_cmd="$(trusted_system_command_path journalctl 2>/dev/null || true)"
+chronyc_cmd="$(trusted_system_command_path chronyc 2>/dev/null || true)"
+findmnt_cmd="$(trusted_system_command_path findmnt 2>/dev/null || true)"
+timedatectl_cmd="$(trusted_system_command_path timedatectl 2>/dev/null || true)"
+vcgencmd_cmd="$(trusted_system_command_path vcgencmd 2>/dev/null || true)"
+dpkg_query_cmd="$(trusted_system_command_path dpkg-query 2>/dev/null || true)"
+df_cmd="$(trusted_system_command_path df 2>/dev/null || true)"
+
 run_command date-utc date -u
 run_command uname uname -a
 run_command hostname hostname
 run_command uptime uptime
-run_command package-versions bash -lc 'format='\''${binary:Package}\t${Version}\t${db:Status-Abbrev}\n'\''; for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if dpkg-query -W -f="$format" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done'
-run_command df df -h
-run_command mount-findmnt findmnt
+if [[ -n "$dpkg_query_cmd" ]]; then
+  run_command package-versions bash -lc 'dpkg_query="$1"; format='\''${binary:Package}\t${Version}\t${db:Status-Abbrev}\n'\''; for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if "$dpkg_query" -W -f="$format" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done' _ "$dpkg_query_cmd"
+else
+  skip_command package-versions "skipped package-version capture: trusted dpkg-query command is unavailable"
+fi
+if [[ -n "$df_cmd" ]]; then
+  run_command df "$df_cmd" -h
+else
+  skip_command df "skipped disk-space capture: trusted df command is unavailable"
+fi
+if [[ -n "$findmnt_cmd" ]]; then
+  run_command mount-findmnt "$findmnt_cmd"
+else
+  skip_command mount-findmnt "skipped findmnt capture: trusted findmnt command is unavailable"
+fi
 run_command serial-devices bash -lc 'ls -l /dev/serial /dev/serial/by-id 2>&1 || true'
 collect_noaa_command_reports
 run_command noaa-cache-tree bash -lc 'find "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-config-tree bash -lc 'find "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-data-tree bash -lc 'find "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
-run_command user-units systemctl --user --no-pager status noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
-run_command user-unit-properties systemctl --user --no-pager show noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
-run_command user-timers systemctl --user --no-pager list-timers noaa-navionics.timer
-run_command user-unit-files systemctl --user --no-pager list-unit-files 'noaa-navionics*'
-run_command system-services systemctl --no-pager status gpsd.socket gpsd.service chrony.service lightdm.service
-run_command system-service-properties systemctl --no-pager show gpsd.socket gpsd.service chrony.service lightdm.service
-run_command chrony-sources chronyc sources -v
-run_command timedatectl timedatectl
-run_command pi-throttling bash -lc 'if command -v vcgencmd >/dev/null 2>&1; then vcgencmd get_throttled && vcgencmd measure_temp; else echo "vcgencmd missing"; fi'
-run_command recent-user-journal bash -lc 'journalctl --user --no-pager --since "-2 days" -u noaa-navionics.service -u noaa-navionics.timer -u noaa-navionics-track.service -u noaa-navionics-preflight.service 2>&1 || true'
-run_command recent-system-journal bash -lc 'journalctl --no-pager --since "-2 days" -u gpsd.socket -u gpsd.service -u chrony.service -u lightdm.service 2>&1 || true'
+if [[ -n "$systemctl_cmd" ]]; then
+  run_command user-units "$systemctl_cmd" --user --no-pager status noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
+  run_command user-unit-properties "$systemctl_cmd" --user --no-pager show noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
+  run_command user-timers "$systemctl_cmd" --user --no-pager list-timers noaa-navionics.timer
+  run_command user-unit-files "$systemctl_cmd" --user --no-pager list-unit-files 'noaa-navionics*'
+  run_command system-services "$systemctl_cmd" --no-pager status gpsd.socket gpsd.service chrony.service lightdm.service
+  run_command system-service-properties "$systemctl_cmd" --no-pager show gpsd.socket gpsd.service chrony.service lightdm.service
+else
+  skip_command user-units "skipped systemctl captures: trusted systemctl command is unavailable"
+  skip_command user-unit-properties "skipped systemctl captures: trusted systemctl command is unavailable"
+  skip_command user-timers "skipped systemctl captures: trusted systemctl command is unavailable"
+  skip_command user-unit-files "skipped systemctl captures: trusted systemctl command is unavailable"
+  skip_command system-services "skipped systemctl captures: trusted systemctl command is unavailable"
+  skip_command system-service-properties "skipped systemctl captures: trusted systemctl command is unavailable"
+fi
+if [[ -n "$chronyc_cmd" ]]; then
+  run_command chrony-sources "$chronyc_cmd" sources -v
+else
+  skip_command chrony-sources "skipped chrony source capture: trusted chronyc command is unavailable"
+fi
+if [[ -n "$timedatectl_cmd" ]]; then
+  run_command timedatectl "$timedatectl_cmd"
+else
+  skip_command timedatectl "skipped timedatectl capture: trusted timedatectl command is unavailable"
+fi
+if [[ -n "$vcgencmd_cmd" ]]; then
+  run_command pi-throttling bash -lc '"$1" get_throttled && "$1" measure_temp' _ "$vcgencmd_cmd"
+else
+  skip_command pi-throttling "skipped Pi throttling capture: trusted vcgencmd command is unavailable"
+fi
+if [[ -n "$journalctl_cmd" ]]; then
+  run_command recent-user-journal "$journalctl_cmd" --user --no-pager --since "-2 days" -u noaa-navionics.service -u noaa-navionics.timer -u noaa-navionics-track.service -u noaa-navionics-preflight.service
+  run_command recent-system-journal "$journalctl_cmd" --no-pager --since "-2 days" -u gpsd.socket -u gpsd.service -u chrony.service -u lightdm.service
+else
+  skip_command recent-user-journal "skipped journal capture: trusted journalctl command is unavailable"
+  skip_command recent-system-journal "skipped journal capture: trusted journalctl command is unavailable"
+fi
 
 printf 'NOAA Navionics Raspberry Pi support bundle\n' >"${bundle_root}/README.txt"
 printf 'Collected: ' >>"${bundle_root}/README.txt"
