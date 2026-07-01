@@ -683,6 +683,11 @@ def check_chart_dir(chart_dir: Path) -> CheckResult:
 
 def check_chart_update_debris(chart_dir: Path) -> CheckResult:
     path = Path(chart_dir).expanduser()
+    symlink = _first_storage_symlink(path)
+    if symlink is not None:
+        if symlink == path:
+            return CheckResult("Chart Update Debris", False, f"chart directory is a symlink: {path}")
+        return CheckResult("Chart Update Debris", False, f"chart directory path contains a symlink: {symlink}")
     if not path.exists():
         return CheckResult("Chart Update Debris", True, f"not checked; {path} does not exist")
     try:

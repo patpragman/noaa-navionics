@@ -2706,7 +2706,10 @@ grep -q 'SystemClockSynchronized=yes`; `NTPSynchronized=yes` alone is not enough
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'chart directory path contains a symlink' src/noaa_navionics/health.py
 grep -q 'test_chart_check_rejects_symlinked_chart_directory_ancestor' tests/test_downloader.py
+grep -q 'test_chart_update_debris_rejects_symlinked_chart_directory' tests/test_downloader.py
+grep -q 'test_chart_update_debris_rejects_symlinked_chart_directory_ancestor' tests/test_downloader.py
 grep -q 'readiness rejects symlinked chart and track storage paths' README.md
+grep -q 'symlinked chart-directory ancestors' README.md
 grep -q 'symlinked chart-directory ancestors' docs/sailboat-pi.md
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'GPSD fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py
