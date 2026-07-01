@@ -1305,11 +1305,17 @@ grep -q 'source_data = read_trusted_restore_file(path, "backup source")' scripts
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(backup_path, source_data, "promoted restore backup")' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(path, expected_data, "promoted restored file")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def cleanup_private_restore_temp' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restore temp changed before cleanup; leaving it in place' scripts/restore_pi_recovery_user_data.sh
+grep -q 'cleanup_private_restore_temp(tmp_path)' scripts/restore_pi_recovery_user_data.sh
+! grep -q 'tmp_path.unlink()' scripts/restore_pi_recovery_user_data.sh
 grep -q 'has permissions .* expected 0600' scripts/restore_pi_recovery_user_data.sh
 grep -q 'does not match expected data' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
+grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' README.md
+grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh

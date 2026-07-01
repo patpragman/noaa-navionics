@@ -512,6 +512,49 @@ def validate_promoted_restore_file(path: Path, expected_data: bytes) -> None:
     validate_private_file_content(path, expected_data, "promoted restored file")
 
 
+def cleanup_private_restore_temp(path: Path) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"restore temp could not be inspected for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) & 0o022:
+        print(f"restore temp is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"restore temp directory could not be opened for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    try:
+        parent_stat = os.fstat(parent_fd)
+        parent_mode = stat.S_IMODE(parent_stat.st_mode)
+        if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != os.getuid() or parent_mode != 0o700:
+            print(f"restore temp directory is not trusted for cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        try:
+            fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=parent_fd)
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            print(f"restore temp could not be opened for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+            return
+        try:
+            opened = os.fstat(fd)
+        finally:
+            os.close(fd)
+        if not os.path.samestat(before, opened):
+            print(f"restore temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        os.unlink(path.name, dir_fd=parent_fd)
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+
+
 def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, overwrite: bool, apply: bool) -> str:
     reject_unsafe_target(path, "restore")
     if path.exists() and not overwrite:
@@ -533,10 +576,7 @@ def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, o
         validate_promoted_restore_file(path, data)
         fsync_parent(path)
     finally:
-        try:
-            tmp_path.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_private_restore_temp(tmp_path)
     return "restored"
 
 
