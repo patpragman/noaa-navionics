@@ -681,6 +681,8 @@ grep -q 'pre-trip wrapper validates each local helper script through a no-follow
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
+grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
+grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
 grep -q 'capture_recovery_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
@@ -756,8 +758,8 @@ grep -q 'Could not execute helper script through validated descriptor' scripts/p
 grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q '| tee "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
 grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
 grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
@@ -842,8 +844,8 @@ grep -q 'post-trip helper validates each local helper script through a no-follow
 grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
-grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
-grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
+grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' README.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'status snapshot JSON Source Revision row does not match deployed source_revision' scripts/post_trip_collect_pi.sh
@@ -895,8 +897,8 @@ grep -q 'pre-trip wrapper validates each local helper script through a no-follow
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components' README.md
 grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
@@ -1419,6 +1421,7 @@ grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebo
 grep -q 'or downloaded, and no persistent Pi state is changed' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
+grep -q 'Output directory must not contain control characters' scripts/collect_pi_support_bundle.sh
 grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/collect_pi_support_bundle.sh
 grep -q 'promote_private_partial_archive "$partial_path" "$bundle_path" "support bundle"' scripts/collect_pi_support_bundle.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/collect_pi_support_bundle.sh
@@ -1468,6 +1471,7 @@ grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_tracks.sh
+grep -q 'Output directory must not contain control characters' scripts/export_pi_tracks.sh
 grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_tracks.sh
 grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_tracks.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_tracks.sh
@@ -1510,6 +1514,7 @@ grep -q 'opened OpenCPN file has permissions' scripts/export_pi_opencpn_data.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_opencpn_data.sh
+grep -q 'Output directory must not contain control characters' scripts/export_pi_opencpn_data.sh
 grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_opencpn_data.sh
 grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_opencpn_data.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_opencpn_data.sh
@@ -1556,6 +1561,7 @@ grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebo
 grep -q 'shut down, or downloaded, and no persistent Pi state is changed' scripts/export_pi_settings.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_settings.sh
+grep -q 'Output directory must not contain control characters' scripts/export_pi_settings.sh
 grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_settings.sh
 grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_settings.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_settings.sh
@@ -1588,6 +1594,7 @@ grep -q 'Verifying recovery export archives" "$verify_helper" "$recovery_dir"' s
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_recovery_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_recovery_bundle.sh
+grep -q 'Output directory must not contain control characters' scripts/export_pi_recovery_bundle.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_recovery_bundle.sh
 grep -q 'require_local_command python3' scripts/export_pi_recovery_bundle.sh
@@ -1874,6 +1881,7 @@ grep -q 'status_args+=(--json)' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$output_dir"' scripts/pre_trip_prepare_pi.sh
+grep -q 'Output directory must not contain control characters' scripts/pre_trip_prepare_pi.sh
 grep -q 'expected current user ${current_uid}' scripts/pre_trip_prepare_pi.sh
 grep -q 'check_pi_status.sh' scripts/post_trip_collect_pi.sh
 grep -q 'export_pi_tracks.sh' scripts/post_trip_collect_pi.sh
@@ -1930,6 +1938,7 @@ grep -q 'At least one post-trip collection or shutdown step must run' scripts/po
 grep -q 'Real post-trip shutdown requires collecting at least one artifact first' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
+grep -q 'Output directory must not contain control characters' scripts/post_trip_collect_pi.sh
 grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/post_trip_collect_pi.sh
 grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/post_trip_collect_pi.sh
 grep -q 'Could not open helper script through no-follow descriptor' scripts/post_trip_collect_pi.sh
@@ -7168,6 +7177,17 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
 fi
 grep -q 'Output directory must not contain parent-directory components' "$verify_output"
 
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --output-dir "$tmpdir/pre-trip"$'\n'"output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject control characters in output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not contain control characters' "$verify_output"
+
 pre_trip_real_parent="$tmpdir/pre-trip-real-parent"
 pre_trip_symlink_parent="$tmpdir/pre-trip-symlink-parent"
 mkdir -p "$pre_trip_real_parent"
@@ -7911,6 +7931,17 @@ if [[ "$post_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$tmpdir/post-trip"$'\n'"output" --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject control characters in output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must not contain control characters' "$verify_output"
 
 post_trip_real_parent="$tmpdir/post-trip-real-parent"
 post_trip_symlink_parent="$tmpdir/post-trip-symlink-parent"

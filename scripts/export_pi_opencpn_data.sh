@@ -294,6 +294,10 @@ validate_output_dir_arg() {
     echo "Output directory must not contain quotes: $value" >&2
     exit 2
   fi
+  if [[ "$value" =~ [[:cntrl:]] ]]; then
+    echo "Output directory must not contain control characters" >&2
+    exit 2
+  fi
   case "$value" in
     ..|../*|*/..|*/../*)
       echo "Output directory must not contain parent-directory components: $value" >&2
