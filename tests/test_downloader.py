@@ -5826,6 +5826,35 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(archive_path.is_symlink())
             self.assertEqual(target.read_text(encoding="utf-8"), "do not remove\n")
 
+    def test_existing_zip_no_keep_zip_rejects_replaced_archive_before_removal(self):
+        original_extract_zip = downloader_module.extract_zip
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            archive_path = output / "AK_ENCs.zip"
+            replacement = root / "replacement.zip"
+            replacement.write_text("do not remove\n", encoding="utf-8")
+            replacement.chmod(0o600)
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            download_package(package, output, extract=True, keep_zip=True, force=True)
+
+            def replacing_extract(zip_path, destination):
+                extracted_to = original_extract_zip(zip_path, destination)
+                os.replace(replacement, archive_path)
+                return extracted_to
+
+            try:
+                downloader_module.extract_zip = replacing_extract
+                with self.assertRaisesRegex(RuntimeError, "chart archive path changed before cleanup"):
+                    download_package(package, output, extract=True, keep_zip=False)
+            finally:
+                downloader_module.extract_zip = original_extract_zip
+
+            self.assertEqual(archive_path.read_text(encoding="utf-8"), "do not remove\n")
+
     def test_existing_zip_without_previous_manifest_fails_before_extracting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir)
@@ -6378,6 +6407,42 @@ class ManifestTests(unittest.TestCase):
 
             self.assertTrue((root / "chart.zip.part").is_symlink())
             self.assertEqual(target.read_text(encoding="ascii"), "keep\n")
+
+    def test_download_cleanup_rejects_replaced_interrupted_partial(self):
+        original = downloader_module.urlopen
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+
+            class ReplacingReadResponse:
+                headers = {"Content-Length": "5"}
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    return None
+
+                def read(self, size=-1):
+                    partial = root / "chart.zip.part"
+                    replacement = root / "replacement.part"
+                    replacement.write_text("new owner\n", encoding="ascii")
+                    replacement.chmod(0o600)
+                    os.replace(replacement, partial)
+                    raise IncompleteRead(b"cha", 5)
+
+            def fake_urlopen(request, timeout=60):
+                return ReplacingReadResponse()
+
+            try:
+                downloader_module.urlopen = fake_urlopen
+                package = Package("Retry test", "https://example.invalid/chart.zip", "chart.zip")
+                with self.assertRaisesRegex(RuntimeError, "partial download path changed before cleanup"):
+                    download_package(package, root, retries=2, retry_delay=0)
+            finally:
+                downloader_module.urlopen = original
+
+            self.assertEqual((root / "chart.zip.part").read_text(encoding="ascii"), "new owner\n")
 
     def test_download_cleanup_rejects_writable_interrupted_partial(self):
         original = downloader_module.urlopen

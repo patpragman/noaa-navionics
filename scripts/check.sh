@@ -2834,11 +2834,15 @@ grep -q 'lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFO
 grep -q 'os.fchmod(lock_fd, 0o600)' src/noaa_navionics/downloader.py
 grep -q 'partial download already exists; remove interrupted chart update debris' src/noaa_navionics/downloader.py
 grep -q 'def _remove_interrupted_download_partial' src/noaa_navionics/downloader.py
+grep -q 'expected_stat: Optional\[os.stat_result\] = None' src/noaa_navionics/downloader.py
 grep -q 'partial download path is a symlink before cleanup' src/noaa_navionics/downloader.py
+grep -q 'partial download path changed before cleanup; leaving it in place' src/noaa_navionics/downloader.py
+grep -q 'cleanup_private_temp_file(path, label="partial download cleanup", expected_stat=stat_result)' src/noaa_navionics/downloader.py
 grep -q 'test_download_cleanup_rejects_symlinked_interrupted_partial' tests/test_downloader.py
+grep -q 'test_download_cleanup_rejects_replaced_interrupted_partial' tests/test_downloader.py
 grep -q 'test_download_cleanup_rejects_writable_interrupted_partial' tests/test_downloader.py
-grep -q 'Failed download cleanup revalidates interrupted `.part` files' README.md
-grep -q 'Failed download cleanup revalidates interrupted `.part` files' docs/sailboat-pi.md
+grep -q 'Failed download cleanup revalidates interrupted `.part` files as regular, user-owned, non-group/world-writable files and same-file validates them before removing them, leaving unsafe or replaced debris in place for preflight to catch' README.md
+grep -q 'Failed download cleanup revalidates interrupted `.part` files as regular, user-owned, non-group/world-writable files and same-file validates them before removing them, leaving unsafe or replaced debris in place for preflight to catch' docs/sailboat-pi.md
 grep -q 'chart archive path is a symlink' src/noaa_navionics/downloader.py
 grep -q 'tmp_path.exists() or tmp_path.is_symlink()' src/noaa_navionics/downloader.py
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
@@ -2868,9 +2872,12 @@ grep -q 'REGION_PACKAGES' src/noaa_navionics/downloader.py
 grep -q 'if not keep_zip' src/noaa_navionics/downloader.py
 grep -q 'def _remove_download_archive' src/noaa_navionics/downloader.py
 grep -q 'chart archive path is a symlink before removal' src/noaa_navionics/downloader.py
+grep -q 'chart archive path changed before cleanup; leaving it in place' src/noaa_navionics/downloader.py
+grep -q 'cleanup_private_temp_file(path, label="chart archive cleanup", expected_stat=stat_result)' src/noaa_navionics/downloader.py
 grep -q 'test_existing_zip_no_keep_zip_rejects_symlink_swapped_before_removal' tests/test_downloader.py
-grep -q 'ZIP is revalidated as a regular trusted archive immediately before removal' README.md
-grep -q 'ZIP is revalidated as a regular trusted archive immediately before removal' docs/sailboat-pi.md
+grep -q 'test_existing_zip_no_keep_zip_rejects_replaced_archive_before_removal' tests/test_downloader.py
+grep -q 'ZIP is revalidated as a regular trusted archive and same-file validated immediately before removal' README.md
+grep -q 'ZIP is revalidated as a regular trusted archive and same-file validated immediately before removal' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/downloader.py
 grep -q 'cleanup_private_temp_file(tmp_path, label="chart manifest temp")' src/noaa_navionics/downloader.py

@@ -280,7 +280,7 @@ def _download_package_unlocked(
                 )
             extracted_to = extract_zip(destination, output_path / destination.stem)
             if not keep_zip:
-                _remove_download_archive(destination, output_path)
+                _remove_download_archive(destination, output_path, expected_stat=destination_stat)
             result = DownloadResult(destination, package.url, bytes_written, True, extracted_to, digest)
             write_manifest(output_path, package, result)
         return result
@@ -294,9 +294,11 @@ def _download_package_unlocked(
     written = 0
     digest = ""
     download_url = package.url
+    tmp_stat: Optional[os.stat_result] = None
     for attempt in range(1, retries + 1):
         hasher = hashlib.sha256()
         written = 0
+        tmp_stat = None
         try:
             with urlopen(request, timeout=timeout) as response:
                 download_url = _response_url(response, package.url)
@@ -307,6 +309,7 @@ def _download_package_unlocked(
                     )
                 total = _content_length(response)
                 with _open_exclusive_private_binary(tmp_path) as target:
+                    tmp_stat = os.fstat(target.fileno())
                     while True:
                         chunk = response.read(1024 * 256)
                         if not chunk:
@@ -321,7 +324,13 @@ def _download_package_unlocked(
                 if total is not None and written != total:
                     raise URLError(f"incomplete download: received {written} of {total} bytes")
         except (HTTPError, URLError, TimeoutError, ConnectionError, HTTPException, OSError) as exc:
-            _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
+            if tmp_stat is not None:
+                _remove_interrupted_download_partial(
+                    tmp_path,
+                    output_path,
+                    missing_ok=True,
+                    expected_stat=tmp_stat,
+                )
             if attempt < retries and _retryable_download_error(exc):
                 time.sleep(retry_delay)
                 continue
@@ -335,19 +344,30 @@ def _download_package_unlocked(
         if package.filename == CATALOG_NAME:
             _validate_downloaded_catalog(tmp_path)
     except Exception:
-        _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
+        _remove_interrupted_download_partial(
+            tmp_path,
+            output_path,
+            missing_ok=True,
+            expected_stat=tmp_stat,
+        )
         raise
     _prepare_output_dir(output_path)
     if destination.is_symlink():
-        _remove_interrupted_download_partial(tmp_path, output_path, missing_ok=True)
+        _remove_interrupted_download_partial(
+            tmp_path,
+            output_path,
+            missing_ok=True,
+            expected_stat=tmp_stat,
+        )
         raise RuntimeError(f"chart archive path is a symlink before promotion: {destination}")
     os.replace(tmp_path, destination)
     _fsync_directory(output_path)
+    destination_stat = destination.lstat()
     extracted_to = None
     if extract and destination.suffix.lower() == ".zip":
         extracted_to = extract_zip(destination, output_path / destination.stem)
         if not keep_zip:
-            _remove_download_archive(destination, output_path)
+            _remove_download_archive(destination, output_path, expected_stat=destination_stat)
 
     result = DownloadResult(destination, download_url, written, False, extracted_to, digest)
     write_manifest(output_path, package, result)
@@ -392,7 +412,12 @@ def _hash_existing_download_path(path: Path) -> tuple[os.stat_result, str]:
             os.close(fd)
 
 
-def _remove_download_archive(path: Path, output_path: Path) -> None:
+def _remove_download_archive(
+    path: Path,
+    output_path: Path,
+    *,
+    expected_stat: Optional[os.stat_result] = None,
+) -> None:
     try:
         stat_result = path.lstat()
     except OSError as exc:
@@ -410,11 +435,18 @@ def _remove_download_archive(path: Path, output_path: Path) -> None:
         raise RuntimeError(
             f"chart archive path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
-    path.unlink()
-    _fsync_directory(output_path)
+    if expected_stat is not None and not os.path.samestat(stat_result, expected_stat):
+        raise RuntimeError(f"chart archive path changed before cleanup; leaving it in place: {path}")
+    cleanup_private_temp_file(path, label="chart archive cleanup", expected_stat=stat_result)
 
 
-def _remove_interrupted_download_partial(path: Path, output_path: Path, *, missing_ok: bool = False) -> None:
+def _remove_interrupted_download_partial(
+    path: Path,
+    output_path: Path,
+    *,
+    missing_ok: bool = False,
+    expected_stat: Optional[os.stat_result] = None,
+) -> None:
     try:
         stat_result = path.lstat()
     except FileNotFoundError:
@@ -436,8 +468,9 @@ def _remove_interrupted_download_partial(path: Path, output_path: Path, *, missi
         raise RuntimeError(
             f"partial download path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
-    path.unlink()
-    _fsync_directory(output_path)
+    if expected_stat is not None and not os.path.samestat(stat_result, expected_stat):
+        raise RuntimeError(f"partial download path changed before cleanup; leaving it in place: {path}")
+    cleanup_private_temp_file(path, label="partial download cleanup", expected_stat=stat_result)
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:
