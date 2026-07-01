@@ -15,9 +15,11 @@ Options:
   --device PATH       Stable GPS device path expected on the Pi
   --output-dir DIR    Local recovery export parent directory (default: pi-recovery-exports)
   --track-days N      Export GPX tracks modified in the last N days; 0 exports all (default: 30)
-  --gps-seconds N     Override commissioned GPS wait for status/pre-departure checks
-  --retries N         Chart download attempts on the Pi (default: 5)
-  --retry-delay N     Seconds between chart download retry attempts (default: 30)
+  --gps-seconds N     Override commissioned GPS wait for status/pre-departure
+                      checks (1-600)
+  --retries N         Chart download attempts on the Pi (default: 5, max: 20)
+  --retry-delay N     Seconds between chart download retry attempts
+                      (default: 30, max: 3600)
   --force-refresh     Force a NOAA chart redownload on the Pi
   --allow-dirty       Allow verifying a deliberate dirty test deployment
   --opencpn-restarts N
@@ -50,8 +52,11 @@ device=""
 output_dir="pi-recovery-exports"
 track_days=30
 gps_seconds=""
+max_gps_seconds=600
 retries=5
+max_retries=20
 retry_delay=30
+max_retry_delay=3600
 force_refresh=0
 allow_dirty=0
 skip_refresh=0
@@ -75,6 +80,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -1790,6 +1817,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
       gps_seconds="${2:-}"
       shift 2
       ;;
@@ -1799,6 +1827,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_retries"
       retries="${2:-}"
       shift 2
       ;;
@@ -1808,6 +1837,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_retry_delay"
       retry_delay="${2:-}"
       shift 2
       ;;

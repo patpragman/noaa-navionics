@@ -5455,6 +5455,11 @@ grep -q 'max_gps_seconds=600' scripts/provision_sailboat_pi.sh
 grep -q 'require_integer_at_most "--gps-seconds" "$gps_seconds" "$max_gps_seconds"' scripts/provision_sailboat_pi.sh
 grep -q 'use `--gps-seconds N`, up to 600 seconds' README.md
 grep -q 'add `--gps-seconds N`, up to 600 seconds' docs/sailboat-pi.md
+grep -q 'max_gps_seconds=600' scripts/pre_trip_prepare_pi.sh
+grep -q 'max_retries=20' scripts/pre_trip_prepare_pi.sh
+grep -q 'max_retry_delay=3600' scripts/pre_trip_prepare_pi.sh
+grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, and refresh retry delays to 0-3600 seconds' README.md
+grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, and refresh retry delays to 0-3600 seconds' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -7337,6 +7342,67 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is volatile' "$verify_output"
+
+pre_trip_bad_output="$tmpdir/pre-trip-bad-control-output"
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 601 --output-dir "$pre_trip_bad_output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+if [[ -e "$pre_trip_bad_output" ]]; then
+  echo "expected pre_trip_prepare_pi.sh not to prepare output before rejecting oversized --gps-seconds" >&2
+  exit 1
+fi
+
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 999999999999999999999999999999 --output-dir "$pre_trip_bad_output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+if [[ -e "$pre_trip_bad_output" ]]; then
+  echo "expected pre_trip_prepare_pi.sh not to prepare output before rejecting huge --gps-seconds" >&2
+  exit 1
+fi
+
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --retries 21 --output-dir "$pre_trip_bad_output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized --retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retries must be at most 20' "$verify_output"
+if [[ -e "$pre_trip_bad_output" ]]; then
+  echo "expected pre_trip_prepare_pi.sh not to prepare output before rejecting oversized --retries" >&2
+  exit 1
+fi
+
+set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --retry-delay 3601 --output-dir "$pre_trip_bad_output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized --retry-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--retry-delay must be at most 3600' "$verify_output"
+if [[ -e "$pre_trip_bad_output" ]]; then
+  echo "expected pre_trip_prepare_pi.sh not to prepare output before rejecting oversized --retry-delay" >&2
+  exit 1
+fi
 
 set +e
 scripts/pre_trip_prepare_pi.sh pi@example.invalid --skip-refresh --skip-recovery --skip-pre-departure >"$verify_output" 2>&1
