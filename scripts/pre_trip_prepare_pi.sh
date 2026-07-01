@@ -1044,6 +1044,10 @@ try:
         fail("pre-departure status snapshot JSON must be an object")
     if parsed.get("ok") is not True:
         fail("pre-departure status snapshot JSON does not report ok=true")
+    for field in ("checks", "service_checks"):
+        value = parsed.get(field)
+        if not isinstance(value, list) or not value:
+            fail(f"pre-departure status snapshot JSON missing non-empty {field} list")
     os.replace(temp_path, status_path)
     temp_path = None
 finally:

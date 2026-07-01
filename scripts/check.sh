@@ -681,6 +681,7 @@ grep -q 'save_pre_departure_status_snapshot "$recovery_dir" "$status_helper"' sc
 grep -q 'pre-departure-status.json' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure-status.sha256' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scripts/pre_trip_prepare_pi.sh
 grep -q 'Saved pre-departure status snapshot:' scripts/pre_trip_prepare_pi.sh
 grep -q 'Saved pre-departure status checksum:' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/pre_trip_prepare_pi.sh
@@ -843,8 +844,8 @@ grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionic
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true`' README.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true`' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
@@ -1507,6 +1508,7 @@ grep -q 'verify_optional_pre_departure_status(recovery_dir)' scripts/verify_pi_r
 grep -q 'checksum mismatch for' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status checksum mismatch' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest is missing archive' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest lists unexpected archive' scripts/verify_pi_recovery_exports.sh
 grep -q 'hashlib.sha256' scripts/verify_pi_recovery_exports.sh
@@ -6587,7 +6589,7 @@ EOF
 cat >"$pre_trip_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
-printf '{"ok": true, "checks": [], "service_checks": []}\n'
+printf '{"ok": true, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n'
 EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
 
@@ -6761,7 +6763,7 @@ EOF
 cat >"$pre_trip_misdirected_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
-printf '{"ok": true, "checks": [], "service_checks": []}\n'
+printf '{"ok": true, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n'
 EOF
 chmod +x "$pre_trip_misdirected_repo/scripts/"*.sh
 set +e
@@ -8922,7 +8924,17 @@ def write_checksums(directory):
 
 def write_pre_departure_status(directory):
     status = directory / "pre-departure-status.json"
-    payload = json.dumps({"ok": True, "checks": [], "service_checks": []}, sort_keys=True).encode("utf-8") + b"\n"
+    payload = (
+        json.dumps(
+            {
+                "ok": True,
+                "checks": [{"name": "GPS", "ok": True}],
+                "service_checks": [{"name": "Track Log", "ok": True}],
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
     status.write_bytes(payload)
     status.chmod(0o600)
     checksum = directory / "pre-departure-status.sha256"
@@ -9010,6 +9022,35 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'pre-departure status checksum mismatch' "$verify_output"
+
+recovery_verify_empty_status_checks_dir="$tmpdir/recovery-verify-empty-status-checks"
+cp -a "$recovery_verify_dir" "$recovery_verify_empty_status_checks_dir"
+python3 - "$recovery_verify_empty_status_checks_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+payload = json.dumps({"ok": True, "checks": [], "service_checks": [{"name": "Track Log", "ok": True}]}, sort_keys=True).encode("utf-8") + b"\n"
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_empty_status_checks_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject empty pre-departure status checks with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON missing non-empty checks list' "$verify_output"
 
 recovery_verify_missing_checksum_dir="$tmpdir/recovery-verify-missing-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_missing_checksum_dir"

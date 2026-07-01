@@ -484,6 +484,10 @@ def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
         fail("pre-departure status snapshot JSON must be an object")
     if status.get("ok") is not True:
         fail("pre-departure status snapshot JSON does not report ok=true")
+    for field in ("checks", "service_checks"):
+        value = status.get(field)
+        if not isinstance(value, list) or not value:
+            fail(f"pre-departure status snapshot JSON missing non-empty {field} list")
     return True
 
 
