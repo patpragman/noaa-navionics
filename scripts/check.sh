@@ -1140,6 +1140,10 @@ grep -q 'system-service-properties' scripts/collect_pi_support_bundle.sh
 grep -q 'copy_regular_if_readable /etc/os-release' scripts/collect_pi_support_bundle.sh
 grep -q 'copy_regular_if_readable /etc/chrony/chrony.conf' scripts/collect_pi_support_bundle.sh
 grep -q 'package-versions' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path date' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path uname' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path hostname' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path uptime' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path dpkg-query' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path df' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path find' scripts/collect_pi_support_bundle.sh
@@ -1156,6 +1160,14 @@ grep -Fq '"$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls'
 grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" scripts/collect_pi_support_bundle.sh
 grep -Fq -- '-f="$format"' scripts/collect_pi_support_bundle.sh
 ! grep -Fq -- '-f="${binary:Package}' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command date-utc "$date_cmd" -u' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command uname "$uname_cmd" -a' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command hostname "$hostname_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command uptime "$uptime_cmd"' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command date-utc date -u' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command uname uname -a' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command hostname hostname' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command uptime uptime' scripts/collect_pi_support_bundle.sh
 ! grep -q 'run_command package-versions .*dpkg-query -W' scripts/collect_pi_support_bundle.sh
 ! grep -q 'run_command df df -h' scripts/collect_pi_support_bundle.sh
 ! grep -Fq "run_command serial-devices bash -lc 'ls -l" scripts/collect_pi_support_bundle.sh
@@ -1191,6 +1203,8 @@ grep -q 'stable/volatile GPS classification' README.md
 grep -q 'stable/volatile GPS classification' docs/sailboat-pi.md
 grep -q 'system command-integrity evidence' README.md
 grep -q 'system command-integrity evidence' docs/sailboat-pi.md
+grep -q 'host-identity' README.md
+grep -q 'host-identity' docs/sailboat-pi.md
 grep -q 'storage-listing and serial-listing commands' README.md
 grep -q 'storage-listing and serial-listing commands' docs/sailboat-pi.md
 grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' README.md
@@ -6970,6 +6984,10 @@ grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'copy_regular_if_readable /etc/os-release' "$support_fake_ssh_stdin"
 grep -q 'package-versions' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path date' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path uname' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path hostname' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path uptime' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path dpkg-query' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path df' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path find' "$support_fake_ssh_stdin"
@@ -6986,6 +7004,14 @@ grep -Fq '"$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls'
 grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" "$support_fake_ssh_stdin"
 grep -Fq -- '-f="$format"' "$support_fake_ssh_stdin"
 ! grep -Fq -- '-f="${binary:Package}' "$support_fake_ssh_stdin"
+grep -Fq 'run_command date-utc "$date_cmd" -u' "$support_fake_ssh_stdin"
+grep -Fq 'run_command uname "$uname_cmd" -a' "$support_fake_ssh_stdin"
+grep -Fq 'run_command hostname "$hostname_cmd"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command uptime "$uptime_cmd"' "$support_fake_ssh_stdin"
+! grep -q 'run_command date-utc date -u' "$support_fake_ssh_stdin"
+! grep -q 'run_command uname uname -a' "$support_fake_ssh_stdin"
+! grep -q 'run_command hostname hostname' "$support_fake_ssh_stdin"
+! grep -q 'run_command uptime uptime' "$support_fake_ssh_stdin"
 ! grep -q 'run_command package-versions .*dpkg-query -W' "$support_fake_ssh_stdin"
 ! grep -q 'run_command df df -h' "$support_fake_ssh_stdin"
 ! grep -Fq "run_command serial-devices bash -lc 'ls -l" "$support_fake_ssh_stdin"

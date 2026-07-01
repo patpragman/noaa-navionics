@@ -1047,7 +1047,7 @@ collect_system_command_integrity() {
   local output="${commands_dir}/system-command-integrity.txt"
 
   : >"$output"
-  for command_name in systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df find ls; do
+  for command_name in date uname hostname uptime systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df find ls; do
     {
       printf '[%s]\n' "$command_name"
       if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
@@ -1310,13 +1310,33 @@ dpkg_query_cmd="$(trusted_system_command_path dpkg-query 2>/dev/null || true)"
 df_cmd="$(trusted_system_command_path df 2>/dev/null || true)"
 find_cmd="$(trusted_system_command_path find 2>/dev/null || true)"
 ls_cmd="$(trusted_system_command_path ls 2>/dev/null || true)"
+date_cmd="$(trusted_system_command_path date 2>/dev/null || true)"
+uname_cmd="$(trusted_system_command_path uname 2>/dev/null || true)"
+hostname_cmd="$(trusted_system_command_path hostname 2>/dev/null || true)"
+uptime_cmd="$(trusted_system_command_path uptime 2>/dev/null || true)"
 
 collect_configured_storage_metadata
 
-run_command date-utc date -u
-run_command uname uname -a
-run_command hostname hostname
-run_command uptime uptime
+if [[ -n "$date_cmd" ]]; then
+  run_command date-utc "$date_cmd" -u
+else
+  skip_command date-utc "skipped UTC date capture: trusted date command is unavailable"
+fi
+if [[ -n "$uname_cmd" ]]; then
+  run_command uname "$uname_cmd" -a
+else
+  skip_command uname "skipped kernel identity capture: trusted uname command is unavailable"
+fi
+if [[ -n "$hostname_cmd" ]]; then
+  run_command hostname "$hostname_cmd"
+else
+  skip_command hostname "skipped hostname capture: trusted hostname command is unavailable"
+fi
+if [[ -n "$uptime_cmd" ]]; then
+  run_command uptime "$uptime_cmd"
+else
+  skip_command uptime "skipped uptime capture: trusted uptime command is unavailable"
+fi
 if [[ -n "$dpkg_query_cmd" ]]; then
   run_command package-versions bash -lc 'dpkg_query="$1"; format='\''${binary:Package}\t${Version}\t${db:Status-Abbrev}\n'\''; for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if "$dpkg_query" -W -f="$format" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done' _ "$dpkg_query_cmd"
 else
