@@ -180,6 +180,15 @@ grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/post_trip_coll
 ! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/collect_pi_support_bundle.sh
 ! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/export_pi_recovery_bundle.sh
 ! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/post_trip_collect_pi.sh
+grep -q 'utc_timestamp()' scripts/configure_gpsd.sh
+grep -q 'utc_timestamp()' scripts/configure_gps_time.sh
+grep -q 'utc_log_timestamp()' scripts/start_chartplotter.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/configure_gpsd.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/configure_gps_time.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y-%m-%dT%H:%M:%SZ)T' -1" scripts/start_chartplotter.sh
+! grep -q 'stamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/configure_gpsd.sh
+! grep -q 'stamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/configure_gps_time.sh
+! grep -q 'date -u +%Y-%m-%dT%H:%M:%SZ' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
 grep -q 'python3-tk' scripts/install_raspberry_pi.sh

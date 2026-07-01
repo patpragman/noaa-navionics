@@ -12,6 +12,12 @@ systemctl_cmd=""
 sudo_cmd=""
 python3_cmd=""
 
+utc_timestamp() {
+  local stamp
+  TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1
+  printf '%s\n' "$stamp"
+}
+
 usage() {
   cat >&2 <<'EOF'
 Usage: scripts/configure_gps_time.sh [options]
@@ -645,7 +651,7 @@ sudo_cmd="$(sudo_command)" || exit 2
 systemctl_cmd="$(systemctl_command)" || exit 2
 
 if [[ -e "$chrony_conf" ]]; then
-  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  stamp="$(utc_timestamp)"
   backup="${chrony_conf}.noaa-navionics.${stamp}.bak"
   backup_root_file_private "$chrony_conf" "$backup"
 fi

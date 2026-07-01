@@ -33,6 +33,12 @@ if [[ "$device_tree_model" == *"Raspberry Pi"* ]]; then
   export PATH
 fi
 
+utc_log_timestamp() {
+  local stamp
+  TZ=UTC0 printf -v stamp '%(%Y-%m-%dT%H:%M:%SZ)T' -1
+  printf '%s\n' "$stamp"
+}
+
 reexec_without_ambient_launcher_settings() {
   local key
   local removed=0
@@ -1767,7 +1773,7 @@ run_opencpn_supervised() {
     opencpn_status=$?
     set -e
     opencpn_child_pid=""
-    printf '[%s] OpenCPN exited with status %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$opencpn_status"
+    printf '[%s] OpenCPN exited with status %s\n' "$(utc_log_timestamp)" "$opencpn_status"
     if [[ "$opencpn_status" -eq 0 ]]; then
       echo "OpenCPN exited cleanly; not restarting."
       return 0
@@ -1796,7 +1802,7 @@ rotate_launcher_log_if_needed
 prepare_private_log_file
 start_private_log_stream
 
-printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(utc_log_timestamp)"
 acquire_launcher_lock
 trap shutdown_launcher INT TERM
 validate_launcher_env_path
