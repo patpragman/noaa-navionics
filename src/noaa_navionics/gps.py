@@ -546,6 +546,28 @@ def write_gpx_position_mark(
     return target
 
 
+def write_available_gpx_position_mark(
+    path: Path,
+    fix: GPSFix,
+    *,
+    name: str = "Position mark",
+    description: str = "",
+    attempts: int = 1000,
+) -> Path:
+    target = Path(path).expanduser()
+    stem = target.stem
+    suffix = target.suffix
+    for index in range(attempts):
+        candidate = target if index == 0 else target.with_name(f"{stem}-{index}{suffix}")
+        if candidate.exists():
+            continue
+        try:
+            return write_gpx_position_mark(candidate, fix, name=name, description=description)
+        except FileExistsError:
+            continue
+    raise RuntimeError(f"could not find available GPX position mark filename near {target}")
+
+
 def _write_gpx_position_mark(handle: TextIO, fix: GPSFix, *, name: str, description: str) -> None:
     handle.write('<?xml version="1.0" encoding="UTF-8"?>\n')
     handle.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')

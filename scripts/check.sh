@@ -562,6 +562,8 @@ grep -q 'noaa-navionics mark-position --mob' README.md
 grep -q 'noaa-navionics mark-position --mob' docs/sailboat-pi.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" README.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" docs/sailboat-pi.md
+grep -q 'default Mark/MOB filenames advance to a suffixed name if the same timestamped mark already exists or appears during creation' README.md
+grep -q 'default Mark/MOB filenames advance to a suffixed name if the same timestamped mark already exists or appears during creation' docs/sailboat-pi.md
 grep -q 'noaa-navionics anchor-watch' README.md
 grep -q 'noaa-navionics anchor-watch' docs/sailboat-pi.md
 grep -q -- '--anchor-samples N' README.md
@@ -1018,6 +1020,7 @@ grep -q 'ANCHOR ALARM' src/noaa_navionics/cli.py
 grep -q 'No usable GPS fix was available for anchor watch' src/noaa_navionics/cli.py
 grep -q 'app_config.anchor_radius_meters' src/noaa_navionics/cli.py
 grep -q 'gpx_position_mark_path' src/noaa_navionics/cli.py
+grep -q 'write_available_gpx_position_mark' src/noaa_navionics/cli.py
 grep -q 'write_gpx_position_mark' src/noaa_navionics/cli.py
 grep -q 'No usable GPS fix was available for a position mark' src/noaa_navionics/cli.py
 grep -q 'Marked position:' src/noaa_navionics/cli.py
@@ -2597,6 +2600,8 @@ grep -q 'GPX directory sync uses no-follow directory opens' README.md
 grep -q 'GPX directory sync uses no-follow directory opens' docs/sailboat-pi.md
 grep -q 'expected a new regular GPX track file' src/noaa_navionics/gps.py
 grep -q 'def write_gpx_position_mark' src/noaa_navionics/gps.py
+grep -q 'def write_available_gpx_position_mark' src/noaa_navionics/gps.py
+grep -q 'except FileExistsError' src/noaa_navionics/gps.py
 grep -q 'def gpx_position_mark_path' src/noaa_navionics/gps.py
 grep -q 'def distance_meters' src/noaa_navionics/gps.py
 grep -q 'EARTH_RADIUS_METERS' src/noaa_navionics/gps.py
@@ -2608,6 +2613,8 @@ grep -q 'position mark requires satellite or HDOP quality data' src/noaa_navioni
 grep -q 'expected a new regular GPX position mark file' src/noaa_navionics/gps.py
 grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
+grep -q 'test_gpx_position_mark_available_uses_suffix_for_existing_timestamp_mark' tests/test_downloader.py
+grep -q 'test_gpx_position_mark_available_retries_after_create_race' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_rejects_symlinked_target_file' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_does_not_overwrite_existing_file' tests/test_downloader.py
 grep -q 'will not follow symlinked targets or overwrite an existing waypoint' README.md
@@ -3004,7 +3011,7 @@ grep -q 'def format_anchor_check' src/noaa_navionics/status_gui.py
 grep -q 'def _format_anchor_fix_detail' src/noaa_navionics/status_gui.py
 grep -q 'def anchor_alarm_active' src/noaa_navionics/status_gui.py
 grep -q 'def _configured_anchor_radius' src/noaa_navionics/status_gui.py
-grep -q 'def available_position_mark_path' src/noaa_navionics/status_gui.py
+grep -q 'write_available_gpx_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'READY' src/noaa_navionics/status_gui.py
 grep -q 'NOT READY' src/noaa_navionics/status_gui.py
 grep -q 'text="MOB"' src/noaa_navionics/status_gui.py
@@ -3045,7 +3052,7 @@ grep -q 'anchor-watch-seconds' src/noaa_navionics/cli.py
 grep -q 'action-gps-seconds' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--anchor-watch-seconds", str(args.anchor_watch_seconds)])' src/noaa_navionics/cli.py
-grep -q 'write_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
+grep -q 'write_available_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_current_position_mark(self.config_path, gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py

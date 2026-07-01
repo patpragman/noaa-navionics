@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .config import DEFAULT_CONFIG_PATH, read_config
-from .gps import GPSFix, distance_meters, gpx_position_mark_path, mean_longitude_degrees, write_gpx_position_mark
+from .gps import GPSFix, distance_meters, gpx_position_mark_path, mean_longitude_degrees, write_available_gpx_position_mark
 from .gui import format_gps_fix, read_configured_gps_fix, read_configured_gps_fixes
 from .report import build_status_report, write_status_report
 
@@ -101,19 +101,6 @@ def format_gps_summary(report: dict[str, object]) -> str:
     return " | ".join(pieces)
 
 
-def available_position_mark_path(path: Path) -> Path:
-    target = Path(path).expanduser()
-    if not target.exists():
-        return target
-    stem = target.stem
-    suffix = target.suffix
-    for index in range(1, 1000):
-        candidate = target.with_name(f"{stem}-{index}{suffix}")
-        if not candidate.exists():
-            return candidate
-    raise RuntimeError(f"could not find available position mark filename near {target}")
-
-
 def write_current_position_mark(
     config_path: Path,
     *,
@@ -131,12 +118,10 @@ def write_current_position_mark(
     )
     if freshness_failure:
         raise ValueError(f"position mark requires a fresh GPS fix: {freshness_failure}")
-    path = available_position_mark_path(
-        gpx_position_mark_path(app_config.track_output, fix.timestamp, prefix="mob" if mob else "mark")
-    )
+    path = gpx_position_mark_path(app_config.track_output, fix.timestamp, prefix="mob" if mob else "mark")
     name = "MOB" if mob else "Position mark"
     description = "Man overboard position mark" if mob else ""
-    return write_gpx_position_mark(path, fix, name=name, description=description), fix
+    return write_available_gpx_position_mark(path, fix, name=name, description=description), fix
 
 
 def _position_mark_freshness_failure(

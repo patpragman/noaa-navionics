@@ -12272,6 +12272,56 @@ class GpsTests(unittest.TestCase):
 
             self.assertEqual(path.read_text(encoding="utf-8"), "existing\n")
 
+    def test_gpx_position_mark_available_uses_suffix_for_existing_timestamp_mark(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=9,
+            hdop=0.9,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            first = root / "tracks" / "mark-20260630T123456Z.gpx"
+            first.parent.mkdir()
+            first.write_text("existing\n", encoding="utf-8")
+
+            written = gps_module.write_available_gpx_position_mark(first, fix)
+
+            self.assertEqual(written, root / "tracks" / "mark-20260630T123456Z-1.gpx")
+            self.assertEqual(first.read_text(encoding="utf-8"), "existing\n")
+            self.assertTrue(written.exists())
+            self.assertEqual(stat.S_IMODE(written.stat().st_mode), 0o600)
+
+    def test_gpx_position_mark_available_retries_after_create_race(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=9,
+            hdop=0.9,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "tracks" / "mark-20260630T123456Z.gpx"
+            original = gps_module.write_gpx_position_mark
+            calls = []
+
+            def racing_write(candidate, fix_arg, *, name="Position mark", description=""):
+                calls.append(Path(candidate))
+                if len(calls) == 1:
+                    raise FileExistsError(str(candidate))
+                return original(candidate, fix_arg, name=name, description=description)
+
+            try:
+                gps_module.write_gpx_position_mark = racing_write
+                written = gps_module.write_available_gpx_position_mark(path, fix)
+            finally:
+                gps_module.write_gpx_position_mark = original
+
+            self.assertEqual(calls, [path, path.with_name("mark-20260630T123456Z-1.gpx")])
+            self.assertEqual(written, path.with_name("mark-20260630T123456Z-1.gpx"))
+            self.assertTrue(written.exists())
+
     def test_gpx_position_mark_path_uses_utc_timestamp(self):
         timestamp = datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc)
         self.assertEqual(

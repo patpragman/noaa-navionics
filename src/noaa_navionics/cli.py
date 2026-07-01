@@ -45,6 +45,7 @@ from .gps import (
     mean_longitude_degrees,
     open_nmea_stream,
     read_nmea_lines,
+    write_available_gpx_position_mark,
     write_gpx_position_mark,
 )
 from .health import check_chart_package, check_disk_space, open_trusted_gps_sample, run_preflight
@@ -662,11 +663,13 @@ def main(argv: Optional[list[str]] = None) -> int:
             output = (
                 Path(args.file).expanduser()
                 if args.file
-                else _available_track_path(
-                    gpx_position_mark_path(base_output, fix.timestamp, prefix="mob" if args.mob else "mark")
-                )
+                else gpx_position_mark_path(base_output, fix.timestamp, prefix="mob" if args.mob else "mark")
             )
-            path = write_gpx_position_mark(output, fix, name=name, description=description)
+            path = (
+                write_gpx_position_mark(output, fix, name=name, description=description)
+                if args.file
+                else write_available_gpx_position_mark(output, fix, name=name, description=description)
+            )
             print(f"Marked position: {path}")
             print(_format_fix(fix))
             return 0
