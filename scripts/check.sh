@@ -866,8 +866,8 @@ grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' READ
 grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
-grep -q 'shutdown helper validates the SSH target plus trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, verifies noninteractive sudo can run the exact `systemctl poweroff` command' README.md
-grep -q 'shutdown helper validates the SSH target plus trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, verifies noninteractive sudo can run the exact `systemctl poweroff` command' docs/sailboat-pi.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, verifies noninteractive sudo can run the exact `systemctl poweroff` command' README.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, verifies noninteractive sudo can run the exact `systemctl poweroff` command' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/shutdown_pi_safely.sh
 grep -q 'read-only diagnostic evidence' README.md
 grep -q 'read-only diagnostic evidence' docs/sailboat-pi.md
@@ -920,6 +920,25 @@ grep -q 'SSH target host contains unsafe characters' scripts/verify_pi.sh
 grep -q 'SSH target host contains unsafe characters' scripts/collect_pi_support_bundle.sh
 grep -q 'SSH target host contains unsafe characters' scripts/shutdown_pi_safely.sh
 grep -q 'SSH target host contains unsafe characters' scripts/refresh_pi_charts.sh
+for pi_ssh_script in \
+  scripts/deploy_to_pi.sh \
+  scripts/verify_pi.sh \
+  scripts/dock_test_pi.sh \
+  scripts/check_pi_status.sh \
+  scripts/refresh_pi_charts.sh \
+  scripts/shutdown_pi_safely.sh \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/export_pi_tracks.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_recovery_bundle.sh \
+  scripts/enroll_pi_host_key.sh \
+  scripts/pre_trip_prepare_pi.sh \
+  scripts/post_trip_collect_pi.sh
+do
+  grep -q 'SSH target must not point at this computer or loopback' "$pi_ssh_script"
+  grep -q 'localhost|localhost.localdomain|\*.localhost|127.\*|0.0.0.0' "$pi_ssh_script"
+done
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/verify_pi.sh
@@ -4951,6 +4970,17 @@ fi
 grep -q 'SSH target host contains unsafe characters' "$verify_output"
 
 set +e
+scripts/verify_pi.sh pi@localhost >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+set +e
 scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1
 desktop_code=$?
 set -e
@@ -5253,6 +5283,17 @@ fi
 grep -q 'SSH target host contains unsafe characters' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh pi@127.0.0.1 --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh pi@example.invalid / --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -5372,6 +5413,17 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target host contains unsafe characters' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@localhost --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid / --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
@@ -5701,6 +5753,17 @@ if [[ "$host_key_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--expected-sha256 is required' "$verify_output"
+
+set +e
+scripts/enroll_pi_host_key.sh pi@localhost --expected-sha256 SHA256:mock >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 host_key_fake_bin="$tmpdir/host-key-fake-bin"
 host_key_log="$tmpdir/host-key-log"
@@ -8868,6 +8931,17 @@ if [[ "$shutdown_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not shut down root@' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh pi@localhost --dry-run >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 set +e
 scripts/shutdown_pi_safely.sh pi@example.invalid --confirm --dry-run >"$verify_output" 2>&1

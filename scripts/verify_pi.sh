@@ -144,6 +144,7 @@ validate_ssh_target() {
   local value="$1"
   local user_part
   local host_part
+  local host_lower
 
   if [[ -z "$value" ]]; then
     usage
@@ -179,6 +180,13 @@ validate_ssh_target() {
     echo "SSH target host contains unsafe characters: $host_part" >&2
     exit 2
   fi
+  host_lower="${host_part,,}"
+  case "$host_lower" in
+    localhost|localhost.localdomain|*.localhost|127.*|0.0.0.0)
+      echo "SSH target must not point at this computer or loopback: $host_part" >&2
+      exit 2
+      ;;
+  esac
   if [[ "$user_part" == "root" ]]; then
     cat >&2 <<'EOF'
 Do not verify root@.
