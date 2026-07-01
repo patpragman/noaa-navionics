@@ -832,6 +832,52 @@ tmp_path: Path | None = None
 src_fd = -1
 dst_fd = -1
 
+
+def cleanup_copy_temp(path: Path) -> None:
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"could not inspect support bundle copy temp for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) & 0o022:
+        print(f"support bundle copy temp is not a trusted file; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"could not open support bundle copy temp directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    try:
+        parent_stat = os.fstat(parent_fd)
+        if (
+            not stat.S_ISDIR(parent_stat.st_mode)
+            or parent_stat.st_uid != os.getuid()
+            or stat.S_IMODE(parent_stat.st_mode) & 0o022
+        ):
+            print(f"support bundle copy temp directory is not trusted; leaving it in place: {path}", file=sys.stderr)
+            return
+        try:
+            fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=parent_fd)
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            print(f"could not open support bundle copy temp for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+            return
+        try:
+            opened = os.fstat(fd)
+        finally:
+            os.close(fd)
+        if not os.path.samestat(before, opened):
+            print(f"support bundle copy temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        os.unlink(path.name, dir_fd=parent_fd)
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+
+
 try:
     expected = source.lstat()
     if stat.S_ISLNK(expected.st_mode):
@@ -880,10 +926,7 @@ finally:
     if dst_fd >= 0:
         os.close(dst_fd)
     if tmp_path is not None:
-        try:
-            tmp_path.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_copy_temp(tmp_path)
 PY
   then
     cleanup_private_temp_file "$copy_error" || true

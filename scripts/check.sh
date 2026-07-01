@@ -623,8 +623,8 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
-grep -q 'cleans temporary copy-error captures through no-follow same-file validation' README.md
-grep -q 'cleans temporary copy-error captures through no-follow same-file validation' docs/sailboat-pi.md
+grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
+grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" README.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" docs/sailboat-pi.md
 grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' README.md
@@ -1110,6 +1110,12 @@ grep -q 'src_fd = os.open(source, os.O_RDONLY | nofollow)' scripts/collect_pi_su
 grep -q 'file changed before copy' scripts/collect_pi_support_bundle.sh
 grep -q 'shutil.copyfileobj(src_handle, dst_handle)' scripts/collect_pi_support_bundle.sh
 grep -q 'os.replace(tmp_path, target)' scripts/collect_pi_support_bundle.sh
+grep -q 'def cleanup_copy_temp' scripts/collect_pi_support_bundle.sh
+grep -q 'support bundle copy temp changed before cleanup; leaving it in place' scripts/collect_pi_support_bundle.sh
+grep -q 'cleanup_copy_temp(tmp_path)' scripts/collect_pi_support_bundle.sh
+! grep -q 'tmp_path.unlink()' scripts/collect_pi_support_bundle.sh
+grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
+grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' docs/sailboat-pi.md
 grep -q 'config_fd = os.open(config_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
 grep -q 'onboard config changed before storage metadata parse' scripts/collect_pi_support_bundle.sh
 grep -q 'parser.read_file(config_handle)' scripts/collect_pi_support_bundle.sh
