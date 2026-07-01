@@ -15,7 +15,14 @@ import sys
 import tempfile
 import time
 
-from .config import AppConfig, read_config
+from .config import (
+    AppConfig,
+    CHART_PACKAGES,
+    CHART_PACKAGES_REQUIRING_VALUE,
+    GPSD_LOCAL_HOSTS,
+    GPS_BAUD_RATES,
+    read_config,
+)
 from .downloader import MANIFEST_NAME, read_manifest
 from .health import CheckResult, check_opencpn_gpsd_config, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
 from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
@@ -281,6 +288,7 @@ def status_report_validation_failures(
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
+    failures.extend(_config_validation_failures(report))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log")))
@@ -389,6 +397,93 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
                 f"status report source revision error: {source_revision_error}",
             )
         ]
+    return []
+
+
+def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config_path = report.get("config_path")
+    if not isinstance(config_path, str) or not config_path.strip():
+        return [CheckResult("Config", False, "status report missing config_path")]
+    config = report.get("config")
+    if not isinstance(config, dict):
+        return [CheckResult("Config", False, "status report missing config section")]
+    chart_package = str(config.get("chart_package", "")).strip().lower()
+    if chart_package not in CHART_PACKAGES:
+        return [CheckResult("Config", False, f"status report config chart_package is invalid: {chart_package or '<missing>'}")]
+    chart_value = str(config.get("chart_value", "")).strip()
+    if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
+        return [CheckResult("Config", False, f"status report config chart_value is required for {chart_package}")]
+    chart_output = str(config.get("chart_output", "")).strip()
+    track_output = str(config.get("track_output", "")).strip()
+    if not _status_absolute_path(chart_output):
+        return [CheckResult("Config", False, f"status report config chart_output is not absolute: {chart_output or '<missing>'}")]
+    if not _status_absolute_path(track_output):
+        return [CheckResult("Config", False, f"status report config track_output is not absolute: {track_output or '<missing>'}")]
+    for field in ("extract", "keep_zip", "force"):
+        if not isinstance(config.get(field), bool):
+            return [CheckResult("Config", False, f"status report config {field} is not boolean")]
+    max_chart_age_days = _positive_status_int(config.get("max_chart_age_days"))
+    if max_chart_age_days is None:
+        return [CheckResult("Config", False, "status report config max_chart_age_days is not positive")]
+    min_free_gb = _positive_status_float(config.get("min_free_gb"))
+    if min_free_gb is None:
+        return [CheckResult("Config", False, "status report config min_free_gb is not positive")]
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode not in {"gpsd", "serial"}:
+        return [CheckResult("Config", False, f"status report config gps_mode is invalid: {gps_mode or '<missing>'}")]
+    gps_device = str(config.get("gps_device", "")).strip()
+    if not gps_device:
+        return [CheckResult("Config", False, "status report config gps_device is empty")]
+    gps_baud = config.get("gps_baud")
+    if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
+        return [CheckResult("Config", False, f"status report config gps_baud is invalid: {gps_baud!r}")]
+    gpsd_host = str(config.get("gpsd_host", "")).strip()
+    if not gpsd_host:
+        return [CheckResult("Config", False, "status report config gpsd_host is empty")]
+    if gps_mode == "gpsd" and gpsd_host.lower() not in GPSD_LOCAL_HOSTS:
+        return [CheckResult("Config", False, f"status report config gpsd_host is not local: {gpsd_host}")]
+    gpsd_port = config.get("gpsd_port")
+    if isinstance(gpsd_port, bool) or not isinstance(gpsd_port, int) or not (1 <= gpsd_port <= 65535):
+        return [CheckResult("Config", False, f"status report config gpsd_port is invalid: {gpsd_port!r}")]
+    track_retention_days = _nonnegative_status_int(config.get("track_retention_days"))
+    if track_retention_days is None:
+        return [CheckResult("Config", False, "status report config track_retention_days is negative or invalid")]
+    anchor_radius_meters = _positive_status_float(config.get("anchor_radius_meters"))
+    if anchor_radius_meters is None:
+        return [CheckResult("Config", False, "status report config anchor_radius_meters is not positive")]
+    manifest = report.get("manifest")
+    if isinstance(manifest, dict):
+        manifest_path = str(manifest.get("path", "")).strip()
+        expected_manifest_path = str(Path(chart_output) / MANIFEST_NAME)
+        if manifest_path and manifest_path != expected_manifest_path:
+            return [
+                CheckResult(
+                    "Config",
+                    False,
+                    f"status report manifest path {manifest_path} does not match configured {expected_manifest_path}",
+                )
+            ]
+    track_log = report.get("track_log")
+    if isinstance(track_log, dict):
+        actual_track_output = str(track_log.get("track_output", "")).strip()
+        expected_tracks_dir = str(Path(track_output) / "tracks")
+        actual_tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+        if actual_track_output and actual_track_output != track_output:
+            return [
+                CheckResult(
+                    "Config",
+                    False,
+                    f"status report track_log track_output {actual_track_output} does not match configured {track_output}",
+                )
+            ]
+        if actual_tracks_dir and actual_tracks_dir != expected_tracks_dir:
+            return [
+                CheckResult(
+                    "Config",
+                    False,
+                    f"status report track_log tracks_dir {actual_tracks_dir} does not match configured {expected_tracks_dir}",
+                )
+            ]
     return []
 
 
@@ -599,6 +694,25 @@ def _positive_status_int(value: object) -> Optional[int]:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         return None
     return value
+
+
+def _nonnegative_status_int(value: object) -> Optional[int]:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _positive_status_float(value: object) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    parsed = float(value)
+    if not math.isfinite(parsed) or parsed <= 0.0:
+        return None
+    return parsed
+
+
+def _status_absolute_path(value: str) -> bool:
+    return bool(value) and Path(value).expanduser().is_absolute()
 
 
 def _finite_gps_fix_float(value: object) -> Optional[float]:

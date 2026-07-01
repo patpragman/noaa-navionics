@@ -195,10 +195,24 @@ def complete_status_gui_report(
             "source_revision_directory_uid": os.getuid(),
             "source_revision_directory_mode": "0700",
         },
+        "config_path": "/home/pi/.config/noaa-navionics/config.ini",
         "config": {
-            "gps_mode": gps_mode,
+            "chart_package": "state",
+            "chart_value": "AK",
             "chart_output": "/charts",
+            "extract": True,
+            "keep_zip": True,
+            "force": True,
+            "max_chart_age_days": 30,
+            "min_free_gb": 2.0,
+            "gps_mode": gps_mode,
+            "gps_device": "/dev/serial/by-id/mock-gps",
+            "gps_baud": 4800,
+            "gpsd_host": "127.0.0.1",
+            "gpsd_port": 2947,
             "track_output": "/charts",
+            "track_retention_days": 90,
+            "anchor_radius_meters": 50.0,
         },
         "manifest": {
             "path": "/charts/noaa-navionics-manifest.json",
@@ -9893,6 +9907,63 @@ class StatusReportTests(unittest.TestCase):
                 self.assertTrue(
                     any(failure.name == "Status Report" and expected in failure.detail for failure in failures)
                 )
+
+    def test_status_report_ready_requires_valid_config_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_report = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )
+        valid_config = valid_report["config"]
+        valid_track_log = valid_report["track_log"]
+        valid_manifest = valid_report["manifest"]
+        cases = [
+            ({}, "missing config_path"),
+            ({"config": None}, "missing config section"),
+            ({"config": {**valid_config, "chart_package": "bad"}}, "chart_package is invalid"),
+            ({"config": {**valid_config, "chart_value": ""}}, "chart_value is required"),
+            ({"config": {**valid_config, "chart_output": "relative/charts"}}, "chart_output is not absolute"),
+            ({"config": {**valid_config, "track_output": "relative/tracks"}}, "track_output is not absolute"),
+            ({"config": {**valid_config, "extract": "yes"}}, "extract is not boolean"),
+            ({"config": {**valid_config, "max_chart_age_days": 0}}, "max_chart_age_days is not positive"),
+            ({"config": {**valid_config, "min_free_gb": 0.0}}, "min_free_gb is not positive"),
+            ({"config": {**valid_config, "gps_mode": "network"}}, "gps_mode is invalid"),
+            ({"config": {**valid_config, "gps_device": ""}}, "gps_device is empty"),
+            ({"config": {**valid_config, "gps_baud": 1234}}, "gps_baud is invalid"),
+            ({"config": {**valid_config, "gpsd_host": "192.0.2.10"}}, "gpsd_host is not local"),
+            ({"config": {**valid_config, "gpsd_port": 0}}, "gpsd_port is invalid"),
+            (
+                {"config": {**valid_config, "track_retention_days": -1}},
+                "track_retention_days is negative or invalid",
+            ),
+            ({"config": {**valid_config, "anchor_radius_meters": 0.0}}, "anchor_radius_meters is not positive"),
+            (
+                {
+                    "config": {**valid_config, "chart_output": "/other-charts"},
+                    "manifest": valid_manifest,
+                },
+                "manifest path /charts/noaa-navionics-manifest.json does not match configured",
+            ),
+            (
+                {
+                    "config": {**valid_config, "track_output": "/other-tracks"},
+                    "track_log": valid_track_log,
+                },
+                "track_output /charts does not match configured /other-tracks",
+            ),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "config_path" not in updates and "config" not in updates:
+                    report.pop("config_path", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "Config" and expected in failure.detail for failure in failures))
 
     def test_status_report_ready_requires_valid_manifest_summary(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)

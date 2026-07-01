@@ -3916,6 +3916,7 @@ grep -q 'STATUS_REPORT_FUTURE_TOLERANCE_SECONDS = 30.0' src/noaa_navionics/repor
 grep -q 'def _generated_at_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _host_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _app_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _manifest_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gps_fix_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _track_log_validation_failures' src/noaa_navionics/report.py
@@ -3927,6 +3928,14 @@ grep -q 'status report source revision path is a symlink or missing symlink stat
 grep -q 'status report source revision missing source_revision_symlink_component' src/noaa_navionics/report.py
 grep -q 'status report source revision path contains a symlink' src/noaa_navionics/report.py
 grep -q 'status report source revision error' src/noaa_navionics/report.py
+grep -q 'status report missing config_path' src/noaa_navionics/report.py
+grep -q 'status report missing config section' src/noaa_navionics/report.py
+grep -q 'status report config chart_package is invalid' src/noaa_navionics/report.py
+grep -q 'status report config chart_value is required' src/noaa_navionics/report.py
+grep -q 'status report config gps_mode is invalid' src/noaa_navionics/report.py
+grep -q 'status report config gpsd_host is not local' src/noaa_navionics/report.py
+grep -q 'status report manifest path .* does not match configured' src/noaa_navionics/report.py
+grep -q 'status report track_log track_output .* does not match configured' src/noaa_navionics/report.py
 grep -q 'status report missing manifest section' src/noaa_navionics/report.py
 grep -q 'status report manifest path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report manifest missing chart_storage_symlink_component' src/noaa_navionics/report.py
@@ -3957,6 +3966,7 @@ grep -q 'test_status_report_ready_rejects_future_generated_at' tests/test_downlo
 grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_missing_or_malformed_host_boot_id' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_manifest_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_gps_fix_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_track_log_summary' tests/test_downloader.py
@@ -4054,8 +4064,8 @@ grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' READM
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
-grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
-grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' README.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
