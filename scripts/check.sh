@@ -38,6 +38,9 @@ import re
 scripts = [
     Path("scripts/collect_pi_support_bundle.sh"),
     Path("scripts/deploy_to_pi.sh"),
+    Path("scripts/export_pi_opencpn_data.sh"),
+    Path("scripts/export_pi_settings.sh"),
+    Path("scripts/export_pi_tracks.sh"),
     Path("scripts/install_raspberry_pi.sh"),
     Path("scripts/verify_pi.sh"),
     Path("scripts/start_chartplotter.sh"),
@@ -584,6 +587,8 @@ grep -q 'archives the Pi-side bundle through that validated Python helper after 
 grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
+grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' README.md
+grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
@@ -592,6 +597,8 @@ grep -q 'track export helper validates the SSH target, validates the Pi'\''s tru
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'validates the final local archive through a no-follow descriptor before reporting success' README.md
 grep -q 'validates the final local archive through a no-follow descriptor before reporting success' docs/sailboat-pi.md
+grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' README.md
+grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -1024,6 +1031,9 @@ grep -q 'validates the final local support bundle through a no-follow descriptor
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
+grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/collect_pi_support_bundle.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$bundle_path" "support bundle"' scripts/collect_pi_support_bundle.sh
+grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/collect_pi_support_bundle.sh
 grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bundle.sh
 grep -q 'validate_private_support_bundle "$bundle_path"' scripts/collect_pi_support_bundle.sh
 grep -q 'Support bundle contains duplicate member' scripts/collect_pi_support_bundle.sh
@@ -1061,6 +1071,9 @@ grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_tracks.sh
+grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_tracks.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_tracks.sh
+grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_tracks.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_tracks.sh
 grep -q 'validate_private_archive "$archive_path" "track_count"' scripts/export_pi_tracks.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_tracks.sh
@@ -1093,6 +1106,9 @@ grep -q 'opened OpenCPN file has permissions' scripts/export_pi_opencpn_data.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_opencpn_data.sh
+grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_opencpn_data.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_opencpn_data.sh
+grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_opencpn_data.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_opencpn_data.sh
 grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_opencpn_data.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_opencpn_data.sh
@@ -1118,11 +1134,22 @@ grep -q 'opened setting has permissions' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_settings.sh
+grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_settings.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_settings.sh
+grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_settings.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_settings.sh
 grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
+for artifact_script in \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh; do
+  ! grep -q 'rm -f -- "$partial_path"' "$artifact_script"
+  ! grep -q 'mv -- "$partial_path"' "$artifact_script"
+done
 grep -q 'verify_pi_recovery_exports.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'Verifying recovery export archives" "$verify_helper" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh

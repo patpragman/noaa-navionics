@@ -417,6 +417,127 @@ finalize_private_archive() {
   fi
 }
 
+cleanup_private_partial_file() {
+  local path="$1"
+  "$python3_cmd" - "$path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"Could not inspect partial export archive for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) & 0o022:
+    print(f"Partial export archive is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    print(f"Could not open partial export archive directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+try:
+    try:
+        fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Partial export archive changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=dir_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
+promote_private_partial_archive() {
+  local partial="$1"
+  local final="$2"
+  local label="$3"
+  "$python3_cmd" - "$partial" "$final" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+partial = Path(sys.argv[1])
+final = Path(sys.argv[2])
+label = sys.argv[3]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+if partial.parent != final.parent:
+    fail(f"{label} partial and final paths must be in the same directory")
+
+try:
+    dir_fd = os.open(partial.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    fail(f"Could not open {label} directory for promotion: {partial.parent}: {exc}")
+
+try:
+    try:
+        partial_before = os.stat(partial.name, dir_fd=dir_fd, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"Could not inspect partial {label} before promotion: {partial}: {exc}")
+    if not stat.S_ISREG(partial_before.st_mode):
+        fail(f"Partial {label} must be a regular file: {partial}")
+    if partial_before.st_uid != os.getuid():
+        fail(f"Partial {label} is owned by uid {partial_before.st_uid}, expected {os.getuid()}: {partial}")
+    mode = stat.S_IMODE(partial_before.st_mode)
+    if mode & 0o077:
+        fail(f"Partial {label} has permissions {mode:04o}, expected private 0600: {partial}")
+    if partial_before.st_size <= 0:
+        fail(f"Partial {label} is empty: {partial}")
+
+    fd = os.open(partial.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    try:
+        partial_opened = os.fstat(fd)
+        if not os.path.samestat(partial_before, partial_opened):
+            fail(f"Partial {label} changed while being opened: {partial}")
+        os.fchmod(fd, 0o600)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+    try:
+        os.stat(final.name, dir_fd=dir_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+    else:
+        fail(f"Refusing to overwrite existing {label}: {final}")
+
+    os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)
+    final_fd = os.open(final.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    try:
+        final_opened = os.fstat(final_fd)
+        if not os.path.samestat(partial_opened, final_opened):
+            fail(f"Promoted {label} does not match partial file: {final}")
+    finally:
+        os.close(final_fd)
+    os.unlink(partial.name, dir_fd=dir_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 validate_private_archive() {
   local path="$1"
   local count_field="$2"
@@ -525,7 +646,7 @@ if [[ -e "$archive_path" ]]; then
 fi
 partial_path="$(mktemp "${output_dir}/.${timestamp}.opencpn-export.XXXXXX")"
 cleanup_partial() {
-  rm -f -- "$partial_path"
+  cleanup_private_partial_file "$partial_path" || true
 }
 trap cleanup_partial EXIT
 
@@ -694,7 +815,7 @@ if [[ ! -s "$partial_path" ]]; then
   echo "OpenCPN export archive is empty" >&2
   exit 1
 fi
-mv -- "$partial_path" "$archive_path"
+promote_private_partial_archive "$partial_path" "$archive_path" "export archive"
 finalize_private_archive "$archive_path"
 validate_private_archive "$archive_path" "file_count"
 trap - EXIT
