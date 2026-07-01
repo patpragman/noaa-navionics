@@ -214,7 +214,7 @@ def validate_member_name(name: str, archive_path: Path) -> str:
     return normalized
 
 
-def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> dict[str, bytes]:
+def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, load_contents: bool = True) -> dict[str, bytes]:
     if archive_path.is_symlink():
         fail(f"archive must not be a symlink: {archive_path}")
     try:
@@ -232,6 +232,8 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> di
         fail(f"archive is empty: {archive_path}")
 
     files: dict[str, bytes] = {}
+    names: set[str] = set()
+    regular_file_count = 0
     fd = -1
     try:
         fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -258,8 +260,12 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> di
                         fail(f"{archive_path.name} contains unsupported member type: {member.name}")
                     if not normalized:
                         fail(f"{archive_path.name} contains blank file member name")
-                    if normalized in files:
+                    if normalized in names:
                         fail(f"{archive_path.name} contains duplicate member: {normalized}")
+                    names.add(normalized)
+                    regular_file_count += 1
+                    if not load_contents:
+                        continue
                     extracted = archive.extractfile(member)
                     if extracted is None:
                         fail(f"{archive_path.name} member is not readable: {member.name}")
@@ -270,11 +276,13 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> di
         if fd >= 0:
             os.close(fd)
 
-    if "README.txt" not in files:
+    if "README.txt" not in names:
         fail(f"{archive_path.name} is missing README.txt")
     if required_count_key is not None:
-        if "manifest.json" not in files:
+        if "manifest.json" not in names:
             fail(f"{archive_path.name} is missing manifest.json")
+        if "manifest.json" not in files:
+            fail(f"{archive_path.name} manifest.json was not loaded")
         try:
             manifest = json.loads(files["manifest.json"].decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -282,6 +290,8 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str]) -> di
         count = manifest.get(required_count_key)
         if not isinstance(count, int) or count <= 0:
             fail(f"{archive_path.name} manifest {required_count_key} must be a positive integer")
+    if regular_file_count <= 0:
+        fail(f"{archive_path.name} does not contain any regular files")
     return files
 
 
@@ -313,7 +323,11 @@ def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
             fail(f"missing {label} archive matching {pattern}")
         if len(matches) > 1:
             fail(f"expected one {label} archive, found {len(matches)}")
-        result[label] = inspect_archive(matches[0], required_count_key)
+        result[label] = inspect_archive(
+            matches[0],
+            required_count_key,
+            load_contents=(label != "support"),
+        )
     return result
 
 
@@ -432,6 +446,22 @@ def safe_relative(parts: tuple[str, ...], label: str) -> Path:
     return Path(*parts)
 
 
+def opencpn_restore_relative(name: str) -> Optional[Path]:
+    if name in {"README.txt", "manifest.json"}:
+        return None
+    parts = PurePosixPath(name).parts
+    if not parts or parts[0] != "opencpn":
+        fail(f"OpenCPN archive contains unexpected restore member: {name}")
+    relative = safe_relative(parts[1:], "OpenCPN")
+    if len(parts) == 2 and parts[1] in {"opencpn.conf", "navobj.xml"}:
+        return relative
+    if len(parts) == 2 and parts[1].startswith("navobj.xml."):
+        return relative
+    if len(parts) >= 3 and parts[1] in {"layers", "Layers"} and relative.suffix.lower() in {".gpx", ".xml"}:
+        return relative
+    fail(f"OpenCPN archive contains unexpected restore member: {name}")
+
+
 def safe_track_output_from_config(config_text: str, home: Path) -> Path:
     parser = ConfigParser()
     parser.read_string(config_text)
@@ -500,12 +530,9 @@ def main() -> None:
         planned.append(("settings", home / ".config" / "noaa-navionics" / "launcher.env", launcher))
 
     for name, data in sorted(opencpn.items()):
-        if name in {"README.txt", "manifest.json"}:
+        relative = opencpn_restore_relative(name)
+        if relative is None:
             continue
-        parts = PurePosixPath(name).parts
-        if not parts or parts[0] != "opencpn":
-            continue
-        relative = safe_relative(parts[1:], "OpenCPN")
         planned.append(("opencpn", home / ".opencpn" / relative, data))
 
     for name, data in sorted(tracks.items()):

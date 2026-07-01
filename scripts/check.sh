@@ -619,8 +619,12 @@ grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-rec
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' README.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' docs/sailboat-pi.md
-grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' README.md
-grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
+grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
+grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
+grep -q 'validating the diagnostic support archive without loading its contents into memory' docs/sailboat-pi.md
+grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' README.md
+grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
@@ -1062,6 +1066,8 @@ grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive has permissions .* expected private 0600' scripts/restore_pi_recovery_user_data.sh
+grep -q 'load_contents=(label != "support")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'OpenCPN archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
 for export_wrapper in \
   scripts/export_pi_opencpn_data.sh \
   scripts/export_pi_recovery_bundle.sh \
@@ -6346,9 +6352,10 @@ grep -q 'Recovery directory must not be a symlink' "$verify_output"
 recovery_restore_dir="$tmpdir/recovery-restore"
 recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
 recovery_restore_broad_dir="$tmpdir/recovery-restore-broad-dir"
+recovery_restore_bad_opencpn_dir="$tmpdir/recovery-restore-bad-opencpn-dir"
 restore_home="$tmpdir/restore-home"
-mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$restore_home"
-python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" <<'PY'
+mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$restore_home"
+python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" <<'PY'
 from pathlib import Path
 import io
 import json
@@ -6377,7 +6384,13 @@ def build_archive(directory, name, manifest, members):
     path.chmod(0o600)
 
 
-def build_restore_fixture(root, config):
+def build_restore_fixture(root, config, opencpn_extra=None):
+    opencpn_members = {
+        "opencpn/navobj.xml": "<navobj />\n",
+        "opencpn/layers/route.gpx": "<gpx />\n",
+    }
+    if opencpn_extra:
+        opencpn_members.update(opencpn_extra)
     build_archive(
         root,
         "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
@@ -6390,11 +6403,8 @@ def build_restore_fixture(root, config):
     build_archive(
         root,
         "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000000Z.tgz",
-        {"file_count": 2},
-        {
-            "opencpn/navobj.xml": "<navobj />\n",
-            "opencpn/layers/route.gpx": "<gpx />\n",
-        },
+        {"file_count": len(opencpn_members)},
+        opencpn_members,
     )
     build_archive(
         root,
@@ -6436,8 +6446,9 @@ broad_config = config.replace("output = ~/tracks-store", "output = /mnt")
 build_restore_fixture(Path(sys.argv[1]), config)
 build_restore_fixture(Path(sys.argv[2]), bad_config)
 build_restore_fixture(Path(sys.argv[3]), broad_config)
+build_restore_fixture(Path(sys.argv[4]), config, {"opencpn/plugins/bad.txt": "bad\n"})
 PY
-chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir"
+chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir"
 
 restore_fake_python_bin="$tmpdir/restore-fake-python-bin"
 mkdir -p "$restore_fake_python_bin"
@@ -6479,6 +6490,17 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'restored tracking.output is too broad: /mnt' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_bad_opencpn_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject unexpected OpenCPN restore members with exit 1" >&2
+  exit 1
+fi
+grep -q 'OpenCPN archive contains unexpected restore member: opencpn/plugins/bad.txt' "$verify_output"
 
 chmod 0755 "$recovery_restore_dir"
 set +e
