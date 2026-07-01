@@ -436,6 +436,153 @@ PY
   return "$status"
 }
 
+validate_post_trip_archive() {
+  local label="$1"
+  local path="$2"
+  local parent="$3"
+  local status
+  set +e
+  "$python3_cmd" - "$label" "$path" "$parent" <<'PY'
+from __future__ import annotations
+
+import os
+import stat
+import sys
+import tarfile
+from pathlib import Path
+
+label = sys.argv[1]
+path = Path(sys.argv[2]).expanduser()
+parent = Path(sys.argv[3]).expanduser()
+if not path.is_absolute():
+    path = Path.cwd() / path
+if not parent.is_absolute():
+    parent = Path.cwd() / parent
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    parent_initial = parent.lstat()
+except OSError as exc:
+    print(f"Could not inspect post-trip output directory {parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+if stat.S_ISLNK(parent_initial.st_mode) or not stat.S_ISDIR(parent_initial.st_mode):
+    print(f"post-trip output directory must be a real directory: {parent}", file=sys.stderr)
+    raise SystemExit(124)
+
+try:
+    parent_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    print(f"Could not open post-trip output directory safely {parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+try:
+    parent_opened = os.fstat(parent_fd)
+    if not os.path.samestat(parent_initial, parent_opened):
+        print(f"post-trip output directory changed while opening it: {parent}", file=sys.stderr)
+        raise SystemExit(124)
+finally:
+    os.close(parent_fd)
+
+try:
+    if path.parent.resolve(strict=True) != parent.resolve(strict=True):
+        print(f"{label} must be an immediate child of the post-trip output directory: {path}", file=sys.stderr)
+        raise SystemExit(124)
+except OSError as exc:
+    print(f"Could not resolve {label} parent {path.parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+if path.suffix != ".tgz":
+    print(f"{label} must be a .tgz archive: {path}", file=sys.stderr)
+    raise SystemExit(124)
+
+try:
+    initial = path.lstat()
+except OSError as exc:
+    print(f"Could not inspect {label} {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+if stat.S_ISLNK(initial.st_mode):
+    print(f"{label} must not be a symlink: {path}", file=sys.stderr)
+    raise SystemExit(124)
+if not stat.S_ISREG(initial.st_mode):
+    print(f"{label} must be a regular file: {path}", file=sys.stderr)
+    raise SystemExit(124)
+if initial.st_uid != os.getuid():
+    print(f"{label} is owned by uid {initial.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+    raise SystemExit(124)
+mode = stat.S_IMODE(initial.st_mode)
+if mode != 0o600:
+    print(f"{label} has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+    raise SystemExit(124)
+
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    print(f"Could not open {label} safely {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(initial, opened):
+        print(f"{label} changed while opening it: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"{label} must be regular after open: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
+        try:
+            with tarfile.open(fileobj=handle, mode="r:gz") as archive:
+                names = archive.getnames()
+        except (tarfile.TarError, OSError) as exc:
+            print(f"{label} is not a readable gzip tar archive: {path}: {exc}", file=sys.stderr)
+            raise SystemExit(124) from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+if not names:
+    print(f"{label} archive is empty: {path}", file=sys.stderr)
+    raise SystemExit(124)
+for name in names:
+    normalized = Path(name)
+    if name in {"", ".", ".."} or name.startswith("/") or any(part in {"", ".", ".."} for part in normalized.parts):
+        print(f"{label} archive contains unsafe member name: {name}", file=sys.stderr)
+        raise SystemExit(124)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
+run_artifact_step() {
+  local label="$1"
+  local marker="$2"
+  local archive_label="$3"
+  local parent="$4"
+  local output
+  local status
+  local artifact_path
+  shift 4
+
+  printf '==> %s\n' "$label"
+  set +e
+  output="$("$@" 2>&1)"
+  status=$?
+  set -e
+  if [[ -n "$output" ]]; then
+    printf '%s\n' "$output"
+  fi
+  if [[ "$status" -ne 0 ]]; then
+    return "$status"
+  fi
+  artifact_path="$(printf '%s\n' "$output" | sed -n "s/^${marker}: //p" | tail -n 1)"
+  if [[ -z "$artifact_path" ]]; then
+    echo "$archive_label helper did not report an archive path" >&2
+    exit 2
+  fi
+  validate_post_trip_archive "$archive_label" "$artifact_path" "$parent"
+}
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -605,7 +752,7 @@ require_helper "$status_helper"
 require_helper "$tracks_helper"
 require_helper "$support_helper"
 require_helper "$shutdown_helper"
-if [[ "$skip_status" -eq 0 ]]; then
+if [[ "$skip_status" -eq 0 || "$skip_tracks" -eq 0 || "$skip_support" -eq 0 ]]; then
   python3_cmd="$(require_local_command python3)"
 fi
 
@@ -640,13 +787,23 @@ else
 fi
 
 if [[ "$skip_tracks" -eq 0 ]]; then
-  run_step "Exporting Pi GPX tracks" "$tracks_helper" "$target" "$trip_dir" --days "$track_days"
+  run_artifact_step \
+    "Exporting Pi GPX tracks" \
+    "Exported Pi GPX tracks" \
+    "track export archive" \
+    "$trip_dir" \
+    "$tracks_helper" "$target" "$trip_dir" --days "$track_days"
 else
   printf '==> Skipping Pi GPX track export\n'
 fi
 
 if [[ "$skip_support" -eq 0 ]]; then
-  run_step "Collecting Pi diagnostic support bundle" "$support_helper" "$target" "$trip_dir"
+  run_artifact_step \
+    "Collecting Pi diagnostic support bundle" \
+    "Collected Pi support bundle" \
+    "support bundle archive" \
+    "$trip_dir" \
+    "$support_helper" "$target" "$trip_dir"
 else
   printf '==> Skipping Pi diagnostic support bundle\n'
 fi
