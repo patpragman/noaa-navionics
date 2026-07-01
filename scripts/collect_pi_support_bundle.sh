@@ -634,6 +634,119 @@ run_command() {
   }
 }
 
+support_check_failed() {
+  printf '%s\n' "$*"
+  return 1
+}
+
+check_user_owned_nonwritable_directory() {
+  local label="$1"
+  local path="$2"
+  local current_uid
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if [[ -L "$path" ]]; then
+    support_check_failed "$label is a symlink: $path"
+    return 1
+  fi
+  if [[ ! -d "$path" ]]; then
+    support_check_failed "$label is missing or not a directory: $path"
+    return 1
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    support_check_failed "could not inspect $label: $path"
+    return 1
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    support_check_failed "$label is owned by uid $owner_uid, expected $current_uid: $path"
+    return 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      support_check_failed "$label has permissions $mode, expected no group/other write: $path"
+      return 1
+      ;;
+  esac
+}
+
+check_installed_noaa_command_tree() {
+  check_user_owned_nonwritable_directory "home directory" "$HOME" &&
+  check_user_owned_nonwritable_directory "installed command directory" "${HOME}/.local" &&
+  check_user_owned_nonwritable_directory "installed command directory" "${HOME}/.local/bin" &&
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share" &&
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics" &&
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics/venv" &&
+  check_user_owned_nonwritable_directory "installed command venv directory" "${HOME}/.local/share/noaa-navionics/venv/bin"
+}
+
+check_installed_noaa_command() {
+  local app_bin="${HOME}/.local/bin/noaa-navionics"
+  local current_uid
+  local expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
+  local mode
+  local mode_tail
+  local owner_uid
+  local resolved
+  local stat_output
+
+  check_installed_noaa_command_tree || return 1
+  if [[ ! -L "$app_bin" ]]; then
+    support_check_failed "installed noaa-navionics command is not the expected private venv symlink: $app_bin"
+    return 1
+  fi
+  if ! resolved="$(readlink -f -- "$app_bin" 2>/dev/null)" || [[ -z "$resolved" ]]; then
+    support_check_failed "could not resolve installed noaa-navionics command: $app_bin"
+    return 1
+  fi
+  if [[ "$resolved" != "$expected_venv_bin" ]]; then
+    support_check_failed "installed noaa-navionics command resolves to $resolved, expected $expected_venv_bin"
+    return 1
+  fi
+  if [[ ! -f "$resolved" ]]; then
+    support_check_failed "installed noaa-navionics command target is not a regular file: $resolved"
+    return 1
+  fi
+  if [[ ! -x "$resolved" ]]; then
+    support_check_failed "installed noaa-navionics command is not executable after resolution: $resolved"
+    return 1
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$resolved" 2>/dev/null)"; then
+    support_check_failed "could not inspect installed noaa-navionics command target: $resolved"
+    return 1
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    support_check_failed "installed noaa-navionics command target is owned by uid $owner_uid, expected $current_uid: $resolved"
+    return 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      support_check_failed "installed noaa-navionics command target has permissions $mode, expected no group/other write: $resolved"
+      return 1
+      ;;
+  esac
+  printf '%s\n' "$resolved"
+}
+
+collect_noaa_gps_device_candidates() {
+  local app_exec
+  if app_exec="$(check_installed_noaa_command)"; then
+    run_command noaa-gps-device-candidates "$app_exec" list-gps-devices
+  else
+    write_note "skipped noaa-navionics list-gps-devices: ${app_exec}"
+  fi
+}
+
 copy_glob() {
   local matched=0
   local path
@@ -740,7 +853,7 @@ run_command uptime uptime
 run_command df df -h
 run_command mount-findmnt findmnt
 run_command serial-devices bash -lc 'ls -l /dev/serial /dev/serial/by-id 2>&1 || true'
-run_command noaa-gps-device-candidates "${HOME}/.local/bin/noaa-navionics" list-gps-devices
+collect_noaa_gps_device_candidates
 run_command noaa-cache-tree bash -lc 'find "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-config-tree bash -lc 'find "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
 run_command noaa-data-tree bash -lc 'find "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
