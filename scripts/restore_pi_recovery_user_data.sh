@@ -360,6 +360,45 @@ def reject_unsafe_target(path: Path, label: str) -> None:
         fail(f"{label} target exists and is not a regular file: {path}")
 
 
+def restore_target_stat_matches(current: os.stat_result, expected: os.stat_result) -> bool:
+    return (
+        os.path.samestat(current, expected)
+        and current.st_size == expected.st_size
+        and current.st_mtime_ns == expected.st_mtime_ns
+        and current.st_ctime_ns == expected.st_ctime_ns
+    )
+
+
+def inspect_existing_restore_target(path: Path, label: str) -> Optional[os.stat_result]:
+    reject_unsafe_target(path, label)
+    try:
+        result = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        fail(f"could not inspect {label} {path}: {exc}")
+    if not stat.S_ISREG(result.st_mode):
+        fail(f"{label} is not a regular file: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"{label} {path} is owned by uid {result.st_uid}, expected {os.getuid()}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode & 0o022:
+        fail(f"{label} {path} has permissions {mode:04o}, expected no group/other write bits")
+    return result
+
+
+def validate_restore_target_state_before_promotion(path: Path, expected_stat: Optional[os.stat_result]) -> None:
+    current = inspect_existing_restore_target(path, "restore target")
+    if expected_stat is None:
+        if current is not None:
+            fail(f"restore target appeared before promotion; refusing to overwrite it: {path}")
+        return
+    if current is None:
+        fail(f"restore target disappeared after backup; refusing to promote restored file: {path}")
+    if not restore_target_stat_matches(current, expected_stat):
+        fail(f"restore target changed after backup; refusing to overwrite it: {path}")
+
+
 def ensure_private_directory(path: Path, apply: bool) -> None:
     symlink = first_symlink_ancestor(path)
     if symlink is not None:
@@ -410,19 +449,12 @@ def fsync_parent(path: Path) -> None:
         os.close(fd)
 
 
-def read_trusted_restore_file(path: Path, label: str) -> bytes:
-    reject_unsafe_target(path, label)
-    try:
-        expected_stat = os.stat(path, follow_symlinks=False)
-    except OSError as exc:
-        fail(f"could not inspect {label} {path}: {exc}")
-    if not stat.S_ISREG(expected_stat.st_mode):
-        fail(f"{label} is not a regular file: {path}")
-    if expected_stat.st_uid != os.getuid():
-        fail(f"{label} {path} is owned by uid {expected_stat.st_uid}, expected {os.getuid()}")
-    mode = stat.S_IMODE(expected_stat.st_mode)
-    if mode & 0o022:
-        fail(f"{label} {path} has permissions {mode:04o}, expected no group/other write bits")
+def read_trusted_restore_file(path: Path, label: str, expected_stat: os.stat_result) -> bytes:
+    inspected_stat = inspect_existing_restore_target(path, label)
+    if inspected_stat is None:
+        fail(f"{label} is missing before backup: {path}")
+    if not restore_target_stat_matches(inspected_stat, expected_stat):
+        fail(f"{label} changed before backup read: {path}")
 
     try:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -430,7 +462,7 @@ def read_trusted_restore_file(path: Path, label: str) -> bytes:
         fail(f"could not open {label} {path}: {exc}")
     try:
         opened = os.fstat(fd)
-        if (opened.st_dev, opened.st_ino) != (expected_stat.st_dev, expected_stat.st_ino):
+        if not restore_target_stat_matches(opened, expected_stat):
             fail(f"{label} changed while opening: {path}")
         if not stat.S_ISREG(opened.st_mode):
             fail(f"{label} is not a regular file when opened: {path}")
@@ -492,10 +524,10 @@ def validate_private_file_content(path: Path, expected_data: bytes, label: str) 
         os.close(fd)
 
 
-def backup_existing(path: Path, backup_root: Path) -> None:
-    if not path.exists():
+def backup_existing(path: Path, backup_root: Path, expected_stat: Optional[os.stat_result]) -> None:
+    if expected_stat is None:
         return
-    source_data = read_trusted_restore_file(path, "backup source")
+    source_data = read_trusted_restore_file(path, "backup source", expected_stat)
     backup_path = backup_root / path.resolve().relative_to("/")
     ensure_private_directory_tree(backup_path.parent, backup_root, apply=True)
     try:
@@ -564,14 +596,14 @@ def cleanup_private_restore_temp(path: Path) -> None:
 
 
 def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, overwrite: bool, apply: bool) -> str:
-    reject_unsafe_target(path, "restore")
-    if path.exists() and not overwrite:
+    existing_stat = inspect_existing_restore_target(path, "restore")
+    if existing_stat is not None and not overwrite:
         fail(f"restore target already exists; use --overwrite to replace it: {path}")
     if not apply:
         return "would restore"
     ensure_private_directory(path.parent, apply=True)
     if backup_root is not None:
-        backup_existing(path, backup_root)
+        backup_existing(path, backup_root, existing_stat)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     tmp_path = Path(tmp_name)
     try:
@@ -580,6 +612,7 @@ def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, o
             handle.flush()
             os.fsync(handle.fileno())
         os.chmod(tmp_path, 0o600)
+        validate_restore_target_state_before_promotion(path, existing_stat)
         os.replace(tmp_path, path)
         validate_promoted_restore_file(path, data)
         fsync_parent(path)

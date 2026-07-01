@@ -1339,11 +1339,16 @@ grep -q 'restored tracking.output must not contain parent-directory components' 
 grep -q 'restored tracking.output is too broad' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def inspect_existing_restore_target' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def validate_restore_target_state_before_promotion' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restore target changed after backup; refusing to overwrite it' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restore target appeared before promotion; refusing to overwrite it' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def read_trusted_restore_file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_private_file_content' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_promoted_restore_file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_promoted_restore_file(path, data)' scripts/restore_pi_recovery_user_data.sh
-grep -q 'source_data = read_trusted_restore_file(path, "backup source")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'source_data = read_trusted_restore_file(path, "backup source", expected_stat)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_restore_target_state_before_promotion(path, existing_stat)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(backup_path, source_data, "promoted restore backup")' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(path, expected_data, "promoted restored file")' scripts/restore_pi_recovery_user_data.sh
@@ -1356,6 +1361,8 @@ grep -q 'does not match expected data' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
+grep -q 'immediately before restore promotion verify that the target is still the backed-up file or still absent' README.md
+grep -q 'immediately before restore promotion verify that the target is still the backed-up file or still absent' docs/sailboat-pi.md
 grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
