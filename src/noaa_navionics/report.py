@@ -1124,7 +1124,7 @@ def _clock_time_validation_failures(report: dict[str, object]) -> list[CheckResu
             except ValueError:
                 failures.append(CheckResult("Clock", False, f"status report Clock timestamp is invalid: {timestamp}"))
             else:
-                if parsed_clock.tzinfo is None:
+                if parsed_clock.tzinfo is None or parsed_clock.utcoffset() is None:
                     failures.append(CheckResult("Clock", False, "status report Clock timestamp must include a timezone"))
                 else:
                     min_year = data.get("min_year", 2024)
@@ -1147,7 +1147,7 @@ def _clock_time_validation_failures(report: dict[str, object]) -> list[CheckResu
                             generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
                         except ValueError:
                             generated = None
-                        if generated is not None and generated.tzinfo is not None:
+                        if generated is not None and generated.tzinfo is not None and generated.utcoffset() is not None:
                             drift = abs(
                                 (
                                     generated.astimezone(timezone.utc) - parsed_clock_utc
@@ -1231,9 +1231,11 @@ def _generated_at_validation_failures(
         parsed = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     except ValueError:
         return [CheckResult("Status Report", False, f"status report has invalid generated_at timestamp: {generated_at}")]
-    if parsed.tzinfo is None:
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
         return [CheckResult("Status Report", False, "status report generated_at timestamp must include a timezone")]
     current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None or current.utcoffset() is None:
+        return [CheckResult("Status Report", False, "status report current time must include a timezone")]
     age_seconds = (current.astimezone(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()
     if age_seconds < -STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
         return [
@@ -2757,8 +2759,8 @@ def _track_log_summary_once(
     expected_uid: Optional[int] = None,
 ) -> dict[str, object]:
     current = now or datetime.now(timezone.utc)
-    if current.tzinfo is None:
-        current = current.replace(tzinfo=timezone.utc)
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise ValueError("track log summary current time must include a timezone")
     current = current.astimezone(timezone.utc)
     expected_owner = os.getuid() if expected_uid is None else expected_uid
     boot_time = _current_boot_epoch() if boot_epoch is None else boot_epoch

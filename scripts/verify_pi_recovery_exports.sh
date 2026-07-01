@@ -635,7 +635,7 @@ def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
         parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     except ValueError as exc:
         fail(f"pre-departure status snapshot JSON has invalid generated_at timestamp: {exc}")
-    if parsed_generated_at.tzinfo is None:
+    if parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None:
         fail("pre-departure status snapshot JSON generated_at timestamp must include a timezone")
     generated_at_utc = parsed_generated_at.astimezone(timezone.utc)
     age_seconds = (datetime.now(timezone.utc) - generated_at_utc).total_seconds()

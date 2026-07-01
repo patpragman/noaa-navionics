@@ -10517,6 +10517,16 @@ class StatusReportTests(unittest.TestCase):
                 self.assertEqual(failures[0].name, "Status Report")
                 self.assertIn(expected, failures[0].detail)
 
+    def test_status_report_ready_rejects_timezone_less_current_time(self):
+        generated_at = "2026-07-01T12:00:00Z"
+        report = complete_status_gui_report(generated_at=generated_at)
+
+        failures = status_report_validation_failures(report, now=datetime(2026, 7, 1, 12, 0, 0))
+
+        self.assertFalse(status_report_is_ready(report, now=datetime(2026, 7, 1, 12, 0, 0)))
+        self.assertEqual(failures[0].name, "Status Report")
+        self.assertIn("current time must include a timezone", failures[0].detail)
+
     def test_status_report_ready_requires_structured_runtime_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         generated_at = now.isoformat().replace("+00:00", "Z")
@@ -12258,6 +12268,19 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_status_snapshot_validators_require_usable_timezone_offsets(self):
+        for script in (
+            "scripts/pre_trip_prepare_pi.sh",
+            "scripts/verify_pi_recovery_exports.sh",
+            "scripts/post_trip_collect_pi.sh",
+        ):
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                self.assertIn(
+                    "parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None",
+                    source,
+                )
+
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -13322,6 +13345,11 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(summary["ok"])
             self.assertFalse(check.ok)
             self.assertIn("timezone-less GPX trackpoint timestamp", check.detail)
+
+    def test_track_log_summary_rejects_timezone_less_current_time(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            with self.assertRaisesRegex(ValueError, "current time must include a timezone"):
+                _track_log_summary(Path(tmpdir), now=datetime(2026, 7, 1, 12, 0, 0), boot_epoch=None)
 
     def test_track_log_summary_rejects_missing_trackpoint_quality(self):
         timestamp = datetime.now(timezone.utc)

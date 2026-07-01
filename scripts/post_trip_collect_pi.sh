@@ -711,7 +711,7 @@ try:
 except ValueError as exc:
     print(f"status snapshot JSON has invalid generated_at timestamp: {path}: {exc}", file=sys.stderr)
     raise SystemExit(124) from exc
-if parsed_generated_at.tzinfo is None:
+if parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None:
     print(f"status snapshot JSON generated_at timestamp must include a timezone: {path}", file=sys.stderr)
     raise SystemExit(124)
 generated_at_utc = parsed_generated_at.astimezone(timezone.utc)

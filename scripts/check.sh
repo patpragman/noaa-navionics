@@ -683,6 +683,7 @@ grep -q 'pre-departure-status.sha256' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing generated_at timestamp' scripts/pre_trip_prepare_pi.sh
+grep -q 'parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON generated_at timestamp is stale' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/pre_trip_prepare_pi.sh
@@ -1581,6 +1582,7 @@ grep -q 'pre-departure status snapshot JSON missing structured readiness data fo
 grep -q 'pre-departure status snapshot JSON has invalid gps_mode' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing track_log track_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing generated_at timestamp' scripts/verify_pi_recovery_exports.sh
+grep -q 'parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' scripts/verify_pi_recovery_exports.sh
@@ -1797,6 +1799,7 @@ grep -q 'This wrapper writes local artifacts into output-dir' scripts/post_trip_
 grep -q 'change persistent Pi state' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON generated_at timestamp is stale' scripts/post_trip_collect_pi.sh
+grep -q 'parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON generated_at timestamp is too far in the future' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing valid host boot_id' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing deployed source_revision' scripts/post_trip_collect_pi.sh
@@ -4045,6 +4048,14 @@ grep -q 'status report track_log age_seconds is stale' src/noaa_navionics/report
 grep -q 'status report track_log has no latest satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'status report generated_at timestamp is stale' src/noaa_navionics/report.py
 grep -q 'status report generated_at timestamp is in the future' src/noaa_navionics/report.py
+grep -q 'parsed.tzinfo is None or parsed.utcoffset() is None' src/noaa_navionics/report.py
+grep -q 'status report current time must include a timezone' src/noaa_navionics/report.py
+grep -q 'parsed_clock.tzinfo is None or parsed_clock.utcoffset() is None' src/noaa_navionics/report.py
+grep -q 'generated.tzinfo is not None and generated.utcoffset() is not None' src/noaa_navionics/report.py
+grep -q 'track log summary current time must include a timezone' src/noaa_navionics/report.py
+grep -q 'test_status_report_ready_rejects_timezone_less_current_time' tests/test_downloader.py
+grep -q 'test_track_log_summary_rejects_timezone_less_current_time' tests/test_downloader.py
+grep -q 'test_status_snapshot_validators_require_usable_timezone_offsets' tests/test_downloader.py
 grep -q 'def _clock_time_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _pi_health_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _storage_validation_failures' src/noaa_navionics/report.py
