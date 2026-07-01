@@ -642,6 +642,8 @@ grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in 
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' README.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'Overwrite backups read the existing target through a no-follow descriptor' README.md
+grep -q 'Overwrite backups read the existing target through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
 grep -q 'dry-run by default and requires `--apply` before writing' docs/sailboat-pi.md
 grep -q 'does not restore root-owned GPSD, chrony, LightDM' README.md
@@ -1148,10 +1150,16 @@ grep -q 'restored tracking.output must not contain parent-directory components' 
 grep -q 'restored tracking.output is too broad' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def read_trusted_restore_file' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def validate_private_file_content' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_promoted_restore_file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_promoted_restore_file(path, data)' scripts/restore_pi_recovery_user_data.sh
-grep -q 'promoted restored file .* expected 0600' scripts/restore_pi_recovery_user_data.sh
-grep -q 'promoted restored file .* does not match recovery data' scripts/restore_pi_recovery_user_data.sh
+grep -q 'source_data = read_trusted_restore_file(path, "backup source")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_private_file_content(backup_path, source_data, "promoted restore backup")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_private_file_content(path, expected_data, "promoted restored file")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'has permissions .* expected 0600' scripts/restore_pi_recovery_user_data.sh
+grep -q 'does not match expected data' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
@@ -6911,12 +6919,19 @@ import stat
 
 home = Path(os.environ["RESTORE_HOME"])
 backup_root = home / ".cache" / "noaa-navionics" / "recovery-restore-backups"
+backed_up_config = None
 for path in (backup_root, *backup_root.rglob("*")):
     mode = stat.S_IMODE(path.stat().st_mode)
     if path.is_dir() and mode != 0o700:
         raise SystemExit(f"{path} has mode {mode:04o}, expected 0700")
     if path.is_file() and mode != 0o600:
         raise SystemExit(f"{path} has mode {mode:04o}, expected 0600")
+    if path.is_file() and path.match("*/.config/noaa-navionics/config.ini"):
+        backed_up_config = path
+if backed_up_config is None:
+    raise SystemExit("missing backed up config.ini")
+if "device = /dev/serial/by-id/mock-gps" not in backed_up_config.read_text(encoding="utf-8"):
+    raise SystemExit("backed up config.ini does not contain original config data")
 PY
 
 set +e

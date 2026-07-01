@@ -176,7 +176,6 @@ from typing import Optional
 import io
 import json
 import os
-import shutil
 import stat
 import sys
 import tarfile
@@ -402,58 +401,114 @@ def fsync_parent(path: Path) -> None:
         os.close(fd)
 
 
-def backup_existing(path: Path, backup_root: Path) -> None:
-    if not path.exists():
-        return
-    reject_unsafe_target(path, "backup source")
-    backup_path = backup_root / path.resolve().relative_to("/")
-    ensure_private_directory_tree(backup_path.parent, backup_root, apply=True)
-    shutil.copy2(path, backup_path, follow_symlinks=False)
-    os.chmod(backup_path, 0o600)
-    fsync_parent(backup_path)
-
-
-def validate_promoted_restore_file(path: Path, expected_data: bytes) -> None:
-    reject_unsafe_target(path, "promoted restore")
+def read_trusted_restore_file(path: Path, label: str) -> bytes:
+    reject_unsafe_target(path, label)
     try:
         expected_stat = os.stat(path, follow_symlinks=False)
     except OSError as exc:
-        fail(f"could not inspect promoted restored file {path}: {exc}")
+        fail(f"could not inspect {label} {path}: {exc}")
     if not stat.S_ISREG(expected_stat.st_mode):
-        fail(f"promoted restored file is not regular: {path}")
+        fail(f"{label} is not a regular file: {path}")
     if expected_stat.st_uid != os.getuid():
-        fail(f"promoted restored file {path} is owned by uid {expected_stat.st_uid}, expected {os.getuid()}")
+        fail(f"{label} {path} is owned by uid {expected_stat.st_uid}, expected {os.getuid()}")
     mode = stat.S_IMODE(expected_stat.st_mode)
-    if mode != 0o600:
-        fail(f"promoted restored file {path} has permissions {mode:04o}, expected 0600")
+    if mode & 0o022:
+        fail(f"{label} {path} has permissions {mode:04o}, expected no group/other write bits")
 
     try:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     except OSError as exc:
-        fail(f"could not open promoted restored file {path}: {exc}")
+        fail(f"could not open {label} {path}: {exc}")
     try:
         opened = os.fstat(fd)
         if (opened.st_dev, opened.st_ino) != (expected_stat.st_dev, expected_stat.st_ino):
-            fail(f"promoted restored file changed while validating: {path}")
+            fail(f"{label} changed while opening: {path}")
         if not stat.S_ISREG(opened.st_mode):
-            fail(f"promoted restored file is not regular when opened: {path}")
+            fail(f"{label} is not a regular file when opened: {path}")
         if opened.st_uid != os.getuid():
-            fail(f"promoted restored file {path} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+            fail(f"{label} {path} is owned by uid {opened.st_uid}, expected {os.getuid()}")
         opened_mode = stat.S_IMODE(opened.st_mode)
-        if opened_mode != 0o600:
-            fail(f"promoted restored file {path} has permissions {opened_mode:04o}, expected 0600")
+        if opened_mode & 0o022:
+            fail(f"{label} {path} has permissions {opened_mode:04o}, expected no group/other write bits")
         chunks = []
         while True:
             chunk = os.read(fd, 1024 * 1024)
             if not chunk:
                 break
             chunks.append(chunk)
-        restored_data = b"".join(chunks)
-        if restored_data != expected_data:
-            fail(f"promoted restored file {path} does not match recovery data")
+        return b"".join(chunks)
     finally:
-        if fd >= 0:
-            os.close(fd)
+        os.close(fd)
+
+
+def validate_private_file_content(path: Path, expected_data: bytes, label: str) -> None:
+    reject_unsafe_target(path, label)
+    try:
+        expected_stat = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"could not inspect {label} {path}: {exc}")
+    if not stat.S_ISREG(expected_stat.st_mode):
+        fail(f"{label} is not regular: {path}")
+    if expected_stat.st_uid != os.getuid():
+        fail(f"{label} {path} is owned by uid {expected_stat.st_uid}, expected {os.getuid()}")
+    mode = stat.S_IMODE(expected_stat.st_mode)
+    if mode != 0o600:
+        fail(f"{label} {path} has permissions {mode:04o}, expected 0600")
+
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        fail(f"could not open {label} {path}: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if (opened.st_dev, opened.st_ino) != (expected_stat.st_dev, expected_stat.st_ino):
+            fail(f"{label} changed while validating: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"{label} is not regular when opened: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"{label} {path} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"{label} {path} has permissions {opened_mode:04o}, expected 0600")
+        chunks = []
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        current_data = b"".join(chunks)
+        if current_data != expected_data:
+            fail(f"{label} {path} does not match expected data")
+    finally:
+        os.close(fd)
+
+
+def backup_existing(path: Path, backup_root: Path) -> None:
+    if not path.exists():
+        return
+    source_data = read_trusted_restore_file(path, "backup source")
+    backup_path = backup_root / path.resolve().relative_to("/")
+    ensure_private_directory_tree(backup_path.parent, backup_root, apply=True)
+    try:
+        backup_fd = os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    except FileExistsError:
+        fail(f"restore backup already exists: {backup_path}")
+    except OSError as exc:
+        fail(f"could not create restore backup {backup_path}: {exc}")
+    try:
+        offset = 0
+        while offset < len(source_data):
+            offset += os.write(backup_fd, source_data[offset:])
+        os.fchmod(backup_fd, 0o600)
+        os.fsync(backup_fd)
+    finally:
+        os.close(backup_fd)
+    validate_private_file_content(backup_path, source_data, "promoted restore backup")
+    fsync_parent(backup_path)
+
+
+def validate_promoted_restore_file(path: Path, expected_data: bytes) -> None:
+    validate_private_file_content(path, expected_data, "promoted restored file")
 
 
 def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, overwrite: bool, apply: bool) -> str:
