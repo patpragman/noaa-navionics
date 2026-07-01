@@ -2263,8 +2263,8 @@ grep -q 'Verification reads `/proc/uptime` through a no-follow descriptor and re
 grep -q 'reads `/proc/uptime` through a no-follow descriptor and requires finite non-negative uptime' docs/sailboat-pi.md
 grep -q "embedded source revision check, matching Source Revision row evidence" README.md
 grep -q "expected source revision check, matching Source Revision row evidence" docs/sailboat-pi.md
-grep -q "malformed, unnamed, or duplicate readiness or service rows" README.md
-grep -q "malformed, unnamed, or duplicate readiness or service rows" docs/sailboat-pi.md
+grep -q "malformed, unnamed, duplicate, or non-boolean readiness or service rows" README.md
+grep -q "malformed, unnamed, duplicate, or non-boolean readiness or service rows" docs/sailboat-pi.md
 grep -q 'no dirty `-dirty` source revision' README.md
 grep -q 'no dirty `-dirty` source revision' docs/sailboat-pi.md
 grep -q 'no non-Pi diagnostic skips for Pi-only checks in the status artifact' README.md
@@ -2273,6 +2273,7 @@ grep -q 'does not make dirty status artifacts production-ready' docs/sailboat-pi
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report missing deployed source revision' scripts/verify_pi.sh
 grep -q 'status report dirty deployed source revision is not production-ready' scripts/verify_pi.sh
+grep -q 'status report {name} ok is not boolean' scripts/verify_pi.sh
 grep -q 'status report has duplicate readiness check' scripts/verify_pi.sh
 grep -q 'status report has duplicate service check' scripts/verify_pi.sh
 grep -q 'status report Source Revision row does not match deployed source revision' scripts/verify_pi.sh
@@ -4009,6 +4010,8 @@ grep -q 'def status_report_is_ready' src/noaa_navionics/report.py
 grep -q 'report.get("ok") is True' src/noaa_navionics/report.py
 grep -q 'def status_report_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report top-level ok is not boolean' src/noaa_navionics/report.py
+grep -q 'check.get("ok") is True' src/noaa_navionics/report.py
+grep -q 'gps_fix.get("ok") is True' src/noaa_navionics/report.py
 grep -q 'def missing_required_readiness_checks' src/noaa_navionics/report.py
 grep -q 'STATUS_REPORT_MAX_AGE_SECONDS = 600.0' src/noaa_navionics/report.py
 grep -q 'STATUS_REPORT_FUTURE_TOLERANCE_SECONDS = 30.0' src/noaa_navionics/report.py
@@ -4031,6 +4034,7 @@ grep -q 'status report host boot_id is not a Linux boot_id value' src/noaa_navio
 grep -q 'status report missing app section' src/noaa_navionics/report.py
 grep -q 'status report missing deployed source_revision' src/noaa_navionics/report.py
 grep -q 'status report dirty deployed source_revision is not production-ready' src/noaa_navionics/report.py
+grep -q 'status report {name} ok is not boolean' src/noaa_navionics/report.py
 grep -q 'status report has duplicate readiness check' src/noaa_navionics/report.py
 grep -q 'status report has duplicate service check' src/noaa_navionics/report.py
 grep -q 'status report Source Revision records a dirty revision' src/noaa_navionics/report.py
@@ -4200,6 +4204,9 @@ grep -q '"selected_or_combined"' src/noaa_navionics/health.py
 grep -q 'status report is missing this readiness check' src/noaa_navionics/report.py
 grep -q 'status report has malformed' src/noaa_navionics/report.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/status_gui.py
+grep -q 'report.get("ok") is True' src/noaa_navionics/status_gui.py
+grep -q 'item.get("ok") is True' src/noaa_navionics/status_gui.py
+grep -q 'gps_fix.get("ok") is True' src/noaa_navionics/status_gui.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/cli.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/gui.py
 grep -q 'test_status_report_ready_requires_fresh_generated_at' tests/test_downloader.py
@@ -4227,6 +4234,8 @@ grep -q 'test_status_report_ready_rejects_missing_or_malformed_host_boot_id' tes
 grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_unnamed_or_duplicate_rows' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_boolean_ok' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_boolean_row_ok_values' tests/test_downloader.py
+grep -q 'test_status_gui_renders_truthy_non_boolean_ok_values_as_failures' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_service_summaries' tests/test_downloader.py
@@ -4265,8 +4274,8 @@ grep -q 'READY reports also require structured Python, Tkinter, and Source Revis
 grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' docs/sailboat-pi.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean' README.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean' docs/sailboat-pi.md
-grep -q 'Shared readiness validation also rejects unnamed or duplicate readiness/service rows' README.md
-grep -q 'Shared readiness validation also rejects unnamed or duplicate readiness/service rows' docs/sailboat-pi.md
+grep -q 'Shared readiness validation also rejects unnamed, duplicate, or non-boolean readiness/service rows' README.md
+grep -q 'Shared readiness validation also rejects unnamed, duplicate, or non-boolean readiness/service rows' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' README.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' README.md

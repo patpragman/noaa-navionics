@@ -344,6 +344,9 @@ def status_report_validation_failures(
             if not name:
                 failures.append(CheckResult("Status Report", False, unnamed_detail))
                 continue
+            if not isinstance(item.get("ok"), bool):
+                failures.append(CheckResult("Status Report", False, f"status report {name} ok is not boolean"))
+                continue
             if name in rows:
                 failures.append(CheckResult("Status Report", False, f"{duplicate_prefix}: {name}"))
                 continue
@@ -2363,7 +2366,7 @@ def format_status_text(report: dict[str, object]) -> str:
     for check in report.get("checks", []):
         if not isinstance(check, dict):
             continue
-        mark = "OK" if check.get("ok") else "FAIL"
+        mark = "OK" if check.get("ok") is True else "FAIL"
         lines.append(f"{mark:4} {check.get('name', ''):10} {check.get('detail', '')}")
     for check in status_report_validation_failures(report):
         lines.append(f"FAIL {check.name:10} {check.detail}")
@@ -2373,7 +2376,7 @@ def format_status_text(report: dict[str, object]) -> str:
         for check in service_checks:
             if not isinstance(check, dict):
                 continue
-            mark = "OK" if check.get("ok") else "FAIL"
+            mark = "OK" if check.get("ok") is True else "FAIL"
             lines.append(f"{mark:4} {check.get('name', ''):18} {check.get('detail', '')}")
     manifest = report.get("manifest", {})
     if isinstance(manifest, dict) and manifest:
@@ -2539,7 +2542,7 @@ def format_status_text(report: dict[str, object]) -> str:
 
 def _format_gps_fix_summary(gps_fix: dict[str, object]) -> str:
     source = gps_fix.get("source", "")
-    ok = "ok" if gps_fix.get("ok") else "fail"
+    ok = "ok" if gps_fix.get("ok") is True else "fail"
     pieces = [f"{source} {ok}"]
     latitude = gps_fix.get("latitude")
     longitude = gps_fix.get("longitude")

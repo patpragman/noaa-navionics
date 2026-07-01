@@ -46,7 +46,7 @@ def status_rows(report: dict[str, object]) -> list[StatusRow]:
     rows = [
         StatusRow(
             "Overall",
-            bool(report.get("ok")),
+            report.get("ok") is True,
             f"generated {report.get('generated_at', 'unknown time')}",
         )
     ]
@@ -59,7 +59,7 @@ def status_rows(report: dict[str, object]) -> list[StatusRow]:
                 continue
             name = str(item.get("name", "Check"))
             detail = str(item.get("detail", ""))
-            rows.append(StatusRow(name, bool(item.get("ok")), detail))
+            rows.append(StatusRow(name, item.get("ok") is True, detail))
     for failure in status_report_validation_failures(report):
         rows.append(StatusRow(failure.name, False, failure.detail))
     return rows
@@ -82,7 +82,7 @@ def format_gps_summary(report: dict[str, object]) -> str:
     if not isinstance(gps_fix, dict) or not gps_fix.get("source"):
         return "GPS: not reported"
     source = str(gps_fix.get("source", "GPS"))
-    state = "OK" if gps_fix.get("ok") else "FAIL"
+    state = "OK" if gps_fix.get("ok") is True else "FAIL"
     pieces = [f"{source} {state}"]
     latitude = gps_fix.get("latitude")
     longitude = gps_fix.get("longitude")

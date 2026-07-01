@@ -955,6 +955,8 @@ for row in checks:
     name = str(row.get("name", "")).strip()
     if not name:
         raise SystemExit("status report has unnamed readiness check")
+    if not isinstance(row.get("ok"), bool):
+        raise SystemExit(f"status report {name} ok is not boolean")
     if name in check_rows:
         raise SystemExit(f"status report has duplicate readiness check: {name}")
     check_rows[name] = row
@@ -965,6 +967,8 @@ for row in service_checks:
     name = str(row.get("name", "")).strip()
     if not name:
         raise SystemExit("status report has unnamed service check")
+    if not isinstance(row.get("ok"), bool):
+        raise SystemExit(f"status report {name} ok is not boolean")
     if name in service_rows:
         raise SystemExit(f"status report has duplicate service check: {name}")
     service_rows[name] = row

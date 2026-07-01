@@ -3638,6 +3638,28 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(status_gui_module.count_failures(rows), 2)
         self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
 
+    def test_status_gui_renders_truthy_non_boolean_ok_values_as_failures(self):
+        report = complete_status_gui_report()
+        report["ok"] = "yes"
+        for row in report["checks"]:
+            if row["name"] == "Python":
+                row["ok"] = "yes"
+                break
+        report["gps_fix"]["ok"] = "yes"
+
+        rows = status_gui_module.status_rows(report)
+
+        self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
+        self.assertIn(status_gui_module.StatusRow("Overall", False, f"generated {report['generated_at']}"), rows)
+        self.assertIn(status_gui_module.StatusRow("Python", False, "running Python 3.11.2"), rows)
+        self.assertTrue(
+            any(row.name == "Status Report" and row.detail == "status report top-level ok is not boolean" for row in rows)
+        )
+        self.assertTrue(
+            any(row.name == "Status Report" and row.detail == "status report Python ok is not boolean" for row in rows)
+        )
+        self.assertTrue(status_gui_module.format_gps_summary(report).startswith("GPSD FAIL"))
+
     def test_status_gui_reports_ready_when_all_rows_pass(self):
         report = complete_status_gui_report()
 
@@ -10539,6 +10561,26 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(status_report_is_ready(report))
         self.assertFalse(any("status report top-level ok is not boolean" in failure.detail for failure in failures))
 
+    def test_status_report_ready_requires_boolean_row_ok_values(self):
+        cases = [
+            ("checks", "Python", "status report Python ok is not boolean"),
+            ("service_checks", "Track Log", "status report Track Log ok is not boolean"),
+        ]
+        for section, name, expected in cases:
+            with self.subTest(section=section, name=name):
+                report = complete_status_gui_report()
+                for row in report[section]:
+                    if row["name"] == name:
+                        row["ok"] = "yes"
+                        break
+
+                failures = status_report_validation_failures(report)
+                text = format_status_text(report)
+
+                self.assertFalse(status_report_is_ready(report))
+                self.assertTrue(any(expected in failure.detail for failure in failures))
+                self.assertIn(f"FAIL {name}", text)
+
     def test_status_report_ready_requires_fresh_generated_at(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         report = complete_status_gui_report(
@@ -12434,6 +12476,7 @@ class StatusReportTests(unittest.TestCase):
         for expected in (
             "status report has malformed checks row",
             "status report has unnamed readiness check",
+            "status report {name} ok is not boolean",
             "status report has duplicate readiness check",
             "status report has malformed service_checks row",
             "status report has unnamed service check",
