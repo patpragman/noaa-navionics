@@ -537,7 +537,12 @@ def _trusted_system_command(command: str, label: str) -> tuple[Optional[Path], s
 
 def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.conf")) -> CheckResult:
     if not _is_raspberry_pi():
-        return CheckResult("Chrony Config", True, "not a Raspberry Pi; skipping chrony config check")
+        return CheckResult(
+            "Chrony Config",
+            True,
+            "not a Raspberry Pi; skipping chrony config check",
+            {"is_raspberry_pi": False, "skipped": True},
+        )
     path = Path(config_path).expanduser()
     if path.is_symlink():
         return CheckResult("Chrony Config", False, f"Chrony config is a symlink: {path}")
@@ -584,21 +589,51 @@ def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.co
         for line in lines
         if not line.lstrip().startswith("#")
     )
+    mode = stat_result.st_mode & 0o777 if stat_result is not None else 0
+    data: dict[str, object] = {
+        "is_raspberry_pi": True,
+        "path": str(path),
+        "exists": path.exists(),
+        "is_symlink": False,
+        "directory_symlink_component": "",
+        "is_regular": path.is_file(),
+        "uid": stat_result.st_uid if stat_result is not None else None,
+        "expected_uid": expected_uid,
+        "mode": f"{mode:04o}",
+        "managed_refclock_present": configured,
+        "refclock_line": CHRONY_GPSD_REFCLOCK,
+    }
     if not configured:
         return CheckResult(
             "Chrony Config",
             False,
             f"{path} does not contain an uncommented NOAA Navionics GPSD SHM 0 time source",
+            data,
         )
-    return CheckResult("Chrony Config", True, f"{path} contains the NOAA Navionics GPSD SHM 0 time source")
+    return CheckResult(
+        "Chrony Config",
+        True,
+        f"{path} contains the NOAA Navionics GPSD SHM 0 time source",
+        data,
+    )
 
 
 def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float = 1.0) -> CheckResult:
     if not _is_raspberry_pi():
-        return CheckResult("GPS Time Source", True, "not a Raspberry Pi; skipping chrony GPS source check")
+        return CheckResult(
+            "GPS Time Source",
+            True,
+            "not a Raspberry Pi; skipping chrony GPS source check",
+            {"is_raspberry_pi": False, "skipped": True},
+        )
     chronyc, error = _trusted_system_command("chronyc", "Chrony command")
     if error:
-        return CheckResult("GPS Time Source", False, f"{error}; install chrony")
+        return CheckResult(
+            "GPS Time Source",
+            False,
+            f"{error}; install chrony",
+            {"is_raspberry_pi": True, "chronyc_available": False, "command_error": error},
+        )
     assert chronyc is not None
     deadline = time.monotonic() + max(0.0, seconds)
     result = _check_chrony_gps_time_source_once(chronyc)
@@ -607,11 +642,16 @@ def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float =
         time.sleep(min(max(0.01, poll_interval), remaining))
         result = _check_chrony_gps_time_source_once(chronyc)
     if not result.ok and seconds > 0:
-        return CheckResult(result.name, False, f"{result.detail} within {seconds:.0f}s")
+        return CheckResult(result.name, False, f"{result.detail} within {seconds:.0f}s", result.data)
     return result
 
 
 def _check_chrony_gps_time_source_once(chronyc: Path) -> CheckResult:
+    base_data: dict[str, object] = {
+        "is_raspberry_pi": True,
+        "chronyc_path": str(chronyc),
+        "chronyc_available": True,
+    }
     try:
         completed = subprocess.run(
             [str(chronyc), "sources", "-n"],
@@ -622,21 +662,32 @@ def _check_chrony_gps_time_source_once(chronyc: Path) -> CheckResult:
             timeout=5,
         )
     except Exception as exc:
-        return CheckResult("GPS Time Source", False, f"chronyc sources failed: {exc}")
+        data = dict(base_data)
+        data.update({"returncode": None, "gps_lines": [], "usable_lines": [], "selected_or_combined": False})
+        return CheckResult("GPS Time Source", False, f"chronyc sources failed: {exc}", data)
     output = completed.stdout.strip() or completed.stderr.strip()
-    if completed.returncode != 0:
-        return CheckResult("GPS Time Source", False, f"chronyc sources failed: {output}")
     gps_lines = [
         line.strip()
         for line in completed.stdout.splitlines()
         if line.startswith("#") and "GPS" in line.upper()
     ]
     usable = [line for line in gps_lines if len(line) > 1 and line[1] in "*+"]
+    data = dict(base_data)
+    data.update(
+        {
+            "returncode": completed.returncode,
+            "gps_lines": gps_lines,
+            "usable_lines": usable,
+            "selected_or_combined": bool(usable),
+        }
+    )
+    if completed.returncode != 0:
+        return CheckResult("GPS Time Source", False, f"chronyc sources failed: {output}", data)
     if usable:
-        return CheckResult("GPS Time Source", True, "chrony GPS source: " + usable[0])
+        return CheckResult("GPS Time Source", True, "chrony GPS source: " + usable[0], data)
     if gps_lines:
-        return CheckResult("GPS Time Source", False, "chrony GPS source is not usable yet: " + gps_lines[0])
-    return CheckResult("GPS Time Source", False, "chrony does not report a GPS refclock source")
+        return CheckResult("GPS Time Source", False, "chrony GPS source is not usable yet: " + gps_lines[0], data)
+    return CheckResult("GPS Time Source", False, "chrony does not report a GPS refclock source", data)
 
 
 def check_chart_package(package: str, value: str = "") -> CheckResult:

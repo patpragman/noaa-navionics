@@ -304,6 +304,7 @@ def status_report_validation_failures(
     failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_command_evidence_validation_failures(report))
     failures.extend(_gpsd_config_validation_failures(report))
+    failures.extend(_chrony_gps_time_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -380,6 +381,77 @@ def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckRes
     options = data.get("gpsd_options")
     if not isinstance(options, list) or "-n" not in options or data.get("immediate_polling") is not True:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config does not enable immediate polling"))
+    return failures
+
+
+def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config = report.get("config")
+    if not isinstance(config, dict) or str(config.get("gps_mode", "")).strip().lower() != "gpsd":
+        return []
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    failures: list[CheckResult] = []
+
+    config_row = check_rows.get("Chrony Config")
+    if isinstance(config_row, dict) and config_row.get("ok"):
+        data = config_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Chrony Config", False, "status report Chrony Config check has no structured data"))
+        elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
+            pass
+        else:
+            path = str(data.get("path", "")).strip()
+            if path != "/etc/chrony/chrony.conf":
+                failures.append(CheckResult("Chrony Config", False, f"status report Chrony Config path {path or '<missing>'} is not /etc/chrony/chrony.conf"))
+            if data.get("exists") is not True:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config path does not exist"))
+            if data.get("is_symlink") is not False:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config path is a symlink"))
+            if str(data.get("directory_symlink_component", "")).strip():
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config directory contains a symlink"))
+            if data.get("is_regular") is not True:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config path is not a regular file"))
+            uid = data.get("uid")
+            expected_uid = data.get("expected_uid")
+            if isinstance(uid, bool) or not isinstance(uid, int) or uid != 0:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config owner is not root"))
+            if isinstance(expected_uid, bool) or not isinstance(expected_uid, int) or expected_uid != 0:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config expected owner is not root"))
+            mode = str(data.get("mode", "")).strip()
+            try:
+                parsed_mode = int(mode, 8)
+            except ValueError:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config mode is invalid"))
+            else:
+                if parsed_mode & 0o022:
+                    failures.append(CheckResult("Chrony Config", False, "status report Chrony Config is group/world writable"))
+            if data.get("managed_refclock_present") is not True:
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config is missing managed GPSD SHM refclock"))
+            if str(data.get("refclock_line", "")).strip() != "refclock SHM 0 offset 0.5 delay 0.1 refid GPS":
+                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config refclock line is not the managed GPSD SHM source"))
+
+    source_row = check_rows.get("GPS Time Source")
+    if isinstance(source_row, dict) and source_row.get("ok"):
+        data = source_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source check has no structured data"))
+        elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
+            pass
+        else:
+            if data.get("is_raspberry_pi") is not True:
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source did not identify a Raspberry Pi check"))
+            if data.get("chronyc_available") is not True:
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source did not validate chronyc availability"))
+            gps_lines = data.get("gps_lines")
+            if not isinstance(gps_lines, list) or not gps_lines:
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source has no GPS refclock lines"))
+            usable_lines = data.get("usable_lines")
+            if not isinstance(usable_lines, list) or not usable_lines:
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source has no selected or combined GPS refclock"))
+            if data.get("selected_or_combined") is not True:
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source did not prove selected or combined GPS time"))
     return failures
 
 

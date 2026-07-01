@@ -440,6 +440,32 @@ def complete_status_gui_report(
                 "usbauto": "false",
                 "immediate_polling": True,
             }
+        elif row["name"] == "Chrony Config":
+            row["detail"] = "/etc/chrony/chrony.conf contains the NOAA Navionics GPSD SHM 0 time source"
+            row["data"] = {
+                "is_raspberry_pi": True,
+                "path": "/etc/chrony/chrony.conf",
+                "exists": True,
+                "is_symlink": False,
+                "directory_symlink_component": "",
+                "is_regular": True,
+                "uid": 0,
+                "expected_uid": 0,
+                "mode": "0644",
+                "managed_refclock_present": True,
+                "refclock_line": "refclock SHM 0 offset 0.5 delay 0.1 refid GPS",
+            }
+        elif row["name"] == "GPS Time Source":
+            row["detail"] = "chrony GPS source: #+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"
+            row["data"] = {
+                "is_raspberry_pi": True,
+                "chronyc_path": "/usr/bin/chronyc",
+                "chronyc_available": True,
+                "returncode": 0,
+                "gps_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+                "usable_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+                "selected_or_combined": True,
+            }
         elif row["name"] == "Pi Power":
             row["detail"] = "no under-voltage or throttling reported"
             row["data"] = {
@@ -10479,6 +10505,86 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(serial_report, now=now))
         self.assertFalse(status_report_validation_failures(serial_report, now=now))
 
+    def test_status_report_ready_requires_structured_chrony_gps_time_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def chrony_config_data(**overrides):
+            data = {
+                "is_raspberry_pi": True,
+                "path": "/etc/chrony/chrony.conf",
+                "exists": True,
+                "is_symlink": False,
+                "directory_symlink_component": "",
+                "is_regular": True,
+                "uid": 0,
+                "expected_uid": 0,
+                "mode": "0644",
+                "managed_refclock_present": True,
+                "refclock_line": "refclock SHM 0 offset 0.5 delay 0.1 refid GPS",
+            }
+            data.update(overrides)
+            return data
+
+        def gps_time_source_data(**overrides):
+            data = {
+                "is_raspberry_pi": True,
+                "chronyc_path": "/usr/bin/chronyc",
+                "chronyc_available": True,
+                "returncode": 0,
+                "gps_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+                "usable_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+                "selected_or_combined": True,
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            ("Chrony Config", None, "Chrony Config check has no structured data"),
+            ("Chrony Config", chrony_config_data(path="/tmp/chrony.conf"), "path /tmp/chrony.conf is not /etc/chrony/chrony.conf"),
+            ("Chrony Config", chrony_config_data(exists=False), "path does not exist"),
+            ("Chrony Config", chrony_config_data(is_symlink=True), "path is a symlink"),
+            ("Chrony Config", chrony_config_data(directory_symlink_component="/etc-link"), "directory contains a symlink"),
+            ("Chrony Config", chrony_config_data(is_regular=False), "path is not a regular file"),
+            ("Chrony Config", chrony_config_data(uid=1000), "owner is not root"),
+            ("Chrony Config", chrony_config_data(expected_uid=1000), "expected owner is not root"),
+            ("Chrony Config", chrony_config_data(mode="0666"), "is group/world writable"),
+            ("Chrony Config", chrony_config_data(managed_refclock_present=False), "missing managed GPSD SHM refclock"),
+            ("Chrony Config", chrony_config_data(refclock_line="refclock PPS /dev/pps0 refid PPS"), "refclock line is not the managed GPSD SHM source"),
+            ("GPS Time Source", None, "GPS Time Source check has no structured data"),
+            ("GPS Time Source", gps_time_source_data(is_raspberry_pi=None), "did not identify a Raspberry Pi check"),
+            ("GPS Time Source", gps_time_source_data(chronyc_available=False), "did not validate chronyc availability"),
+            ("GPS Time Source", gps_time_source_data(gps_lines=[]), "has no GPS refclock lines"),
+            ("GPS Time Source", gps_time_source_data(usable_lines=[]), "has no selected or combined GPS refclock"),
+            ("GPS Time Source", gps_time_source_data(selected_or_combined=False), "did not prove selected or combined GPS time"),
+        ]
+        for row_name, data, expected in cases:
+            with self.subTest(row_name=row_name, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == row_name and expected in failure.detail for failure in failures)
+                )
+
+        serial_report = complete_status_gui_report(gps_mode="serial", generated_at=generated_at)
+        serial_report["checks"].extend(
+            [
+                {"name": "Chrony Config", "ok": True, "detail": "legacy row"},
+                {"name": "GPS Time Source", "ok": True, "detail": "legacy row"},
+            ]
+        )
+
+        self.assertTrue(status_report_is_ready(serial_report, now=now))
+        self.assertFalse(status_report_validation_failures(serial_report, now=now))
+
     def test_status_report_ready_requires_structured_command_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         generated_at = now.isoformat().replace("+00:00", "Z")
@@ -18428,6 +18534,11 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("GPSD SHM 0", result.detail)
+            self.assertIsNotNone(result.data)
+            data = result.data or {}
+            self.assertEqual(data["path"], str(config))
+            self.assertTrue(data["managed_refclock_present"])
+            self.assertEqual(data["refclock_line"], "refclock SHM 0 offset 0.5 delay 0.1 refid GPS")
 
     def test_check_chrony_gps_time_config_rejects_commented_refclock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -18537,6 +18648,7 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("skipping", result.detail)
+        self.assertEqual(result.data, {"is_raspberry_pi": False, "skipped": True})
 
     def test_check_chrony_gps_time_source_accepts_usable_gps_refclock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -18556,6 +18668,12 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("GPS", result.detail)
+            self.assertIsNotNone(result.data)
+            data = result.data or {}
+            self.assertTrue(data["chronyc_available"])
+            self.assertEqual(data["gps_lines"], ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"])
+            self.assertEqual(data["usable_lines"], ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"])
+            self.assertTrue(data["selected_or_combined"])
 
     def test_check_chrony_gps_time_source_rejects_unusable_gps_refclock(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -4001,6 +4001,7 @@ grep -q 'def _storage_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _chrony_gps_time_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Time Sync did not report SystemClockSynchronized=yes' src/noaa_navionics/report.py
 grep -q 'status report Pi Power check has no structured data' src/noaa_navionics/report.py
@@ -4015,6 +4016,10 @@ grep -q 'status report GPS Device is not a character device' src/noaa_navionics/
 grep -q 'status report GPSD Config check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config devices do not match configured GPS device' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config does not enable immediate polling' src/noaa_navionics/report.py
+grep -q 'status report Chrony Config check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report Chrony Config is missing managed GPSD SHM refclock' src/noaa_navionics/report.py
+grep -q 'status report GPS Time Source check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report GPS Time Source did not prove selected or combined GPS time' src/noaa_navionics/report.py
 grep -q 'status report {name} check has no structured command data' src/noaa_navionics/report.py
 grep -q 'status report {name} command is not in a trusted system directory' src/noaa_navionics/report.py
 grep -q '("uid", "command owner")' src/noaa_navionics/report.py
@@ -4036,6 +4041,8 @@ grep -q '_trusted_command_evidence' src/noaa_navionics/health.py
 grep -q '"immediate_polling"' src/noaa_navionics/health.py
 grep -q '"gpsd_options"' src/noaa_navionics/health.py
 grep -q '"start_daemon"' src/noaa_navionics/health.py
+grep -q '"managed_refclock_present"' src/noaa_navionics/health.py
+grep -q '"selected_or_combined"' src/noaa_navionics/health.py
 grep -q 'status report is missing this readiness check' src/noaa_navionics/report.py
 grep -q 'status report has malformed' src/noaa_navionics/report.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/status_gui.py
@@ -4049,6 +4056,7 @@ grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/
 grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_serial_gps_device_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gpsd_config_evidence' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_structured_chrony_gps_time_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_command_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_missing_or_malformed_host_boot_id' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' tests/test_downloader.py
@@ -4090,6 +4098,8 @@ grep -q 'Serial-mode READY reports also require structured GPS Device evidence' 
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' README.md
 grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' docs/sailboat-pi.md
+grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' README.md
+grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN and Display Power command evidence' README.md
 grep -q 'READY reports also require structured OpenCPN and Display Power command evidence' docs/sailboat-pi.md
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
