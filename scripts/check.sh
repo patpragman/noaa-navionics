@@ -618,8 +618,8 @@ grep -q 'restore helper is dry-run by default and requires `--apply` before writ
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' docs/sailboat-pi.md
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' README.md
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each archive through a no-follow descriptor' docs/sailboat-pi.md
-grep -q 'rejecting parent-directory traversal in the recovered track output path' README.md
-grep -q 'rejecting parent-directory traversal in the recovered track output path' docs/sailboat-pi.md
+grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
+grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
 grep -q 'dry-run by default and requires `--apply` before writing' docs/sailboat-pi.md
 grep -q 'does not restore root-owned GPSD, chrony, LightDM' README.md
@@ -1083,11 +1083,12 @@ grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restored tracking.output must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored tracking.output is too broad' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
-grep -q 'Restore-created directories and overwrite backup directories are revalidated as user-owned private `0700` paths' README.md
-grep -q 'Restore-created directories and overwrite backup directories are revalidated as user-owned private `0700` paths' docs/sailboat-pi.md
+grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
+grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
@@ -6316,9 +6317,10 @@ grep -q 'Recovery directory must not be a symlink' "$verify_output"
 
 recovery_restore_dir="$tmpdir/recovery-restore"
 recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
+recovery_restore_broad_dir="$tmpdir/recovery-restore-broad-dir"
 restore_home="$tmpdir/restore-home"
-mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$restore_home"
-python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" <<'PY'
+mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$restore_home"
+python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" <<'PY'
 from pathlib import Path
 import io
 import json
@@ -6402,10 +6404,12 @@ output = ~/tracks-store
 retention_days = 90
 """
 bad_config = config.replace("output = ~/tracks-store", "output = ~/../../etc/noaa-navionics-restore")
+broad_config = config.replace("output = ~/tracks-store", "output = /mnt")
 build_restore_fixture(Path(sys.argv[1]), config)
 build_restore_fixture(Path(sys.argv[2]), bad_config)
+build_restore_fixture(Path(sys.argv[3]), broad_config)
 PY
-chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir"
+chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir"
 
 restore_fake_python_bin="$tmpdir/restore-fake-python-bin"
 mkdir -p "$restore_fake_python_bin"
@@ -6436,6 +6440,17 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'restored tracking.output must not contain parent-directory components' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_broad_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject broad restored tracking output with exit 1" >&2
+  exit 1
+fi
+grep -q 'restored tracking.output is too broad: /mnt' "$verify_output"
 
 chmod 0755 "$recovery_restore_dir"
 set +e

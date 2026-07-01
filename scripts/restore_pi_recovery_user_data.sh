@@ -455,8 +455,11 @@ def safe_track_output_from_config(config_text: str, home: Path) -> Path:
     if expanded in forbidden_roots or any(root in expanded.parents for root in forbidden_roots if root != Path("/")):
         fail(f"restored tracking.output is not safe storage: {expanded}")
     allowed_roots = (Path("/media"), Path("/mnt"), Path("/run/media"))
-    if any(expanded == root or root in expanded.parents for root in allowed_roots):
-        return expanded
+    for root in allowed_roots:
+        if expanded == root:
+            fail(f"restored tracking.output is too broad: {expanded}")
+        if root in expanded.parents:
+            return expanded
     fail(f"restored tracking.output must be under the Pi home, /media, /mnt, or /run/media: {expanded}")
 
 
