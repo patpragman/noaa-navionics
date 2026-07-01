@@ -538,6 +538,70 @@ finish_private_log_stream() {
   exit "$status"
 }
 
+cleanup_private_log_pipe() {
+  local path="$1"
+  [[ -n "$path" ]] || return 0
+  "$python3_bin" - "$path" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+opath = getattr(os, "O_PATH", None)
+if opath is None:
+    print(f"Python runtime cannot safely inspect launcher log pipe for cleanup; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"Could not open launcher log pipe directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    parent_stat = os.fstat(parent_fd)
+    parent_mode = stat.S_IMODE(parent_stat.st_mode)
+    if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != os.getuid() or parent_mode & 0o077:
+        print(f"Launcher log pipe directory is not trusted for cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    try:
+        before = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    if not stat.S_ISFIFO(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) != 0o600:
+        print(f"Launcher log pipe is not a trusted private FIFO; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    try:
+        fd = os.open(path.name, opath | nofollow, dir_fd=parent_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Launcher log pipe changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    try:
+        current = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    if not os.path.samestat(before, current):
+        print(f"Launcher log pipe changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=parent_fd)
+    os.fsync(parent_fd)
+finally:
+    os.close(parent_fd)
+PY
+}
+
 start_private_log_stream() {
   local log_pipe="${cache_dir}/.chartplotter-log-${$}.pipe"
   if [[ -e "$log_pipe" || -L "$log_pipe" ]]; then
@@ -548,7 +612,7 @@ start_private_log_stream() {
   append_private_log_stream <"$log_pipe" &
   launcher_log_stream_pid=$!
   exec >"$log_pipe" 2>&1
-  rm -f "$log_pipe"
+  cleanup_private_log_pipe "$log_pipe" || true
   trap finish_private_log_stream EXIT
 }
 

@@ -120,6 +120,10 @@ grep -q 'append_private_log_stream' scripts/start_chartplotter.sh
 grep -q 'start_private_log_stream' scripts/start_chartplotter.sh
 grep -q 'finish_private_log_stream' scripts/start_chartplotter.sh
 grep -q 'mkfifo -m 0600 "$log_pipe"' scripts/start_chartplotter.sh
+grep -q 'cleanup_private_log_pipe()' scripts/start_chartplotter.sh
+grep -q 'cleanup_private_log_pipe "$log_pipe" || true' scripts/start_chartplotter.sh
+grep -q 'Launcher log pipe changed before cleanup; leaving it in place' scripts/start_chartplotter.sh
+! grep -q 'rm -f "$log_pipe"' scripts/start_chartplotter.sh
 grep -q 'wait "$launcher_log_stream_pid" || true' scripts/start_chartplotter.sh
 grep -q 'trap finish_private_log_stream EXIT' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log changed while being rotated' scripts/start_chartplotter.sh
@@ -233,6 +237,8 @@ grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place
 grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' README.md
 grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' docs/sailboat-pi.md
 grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` through a no-follow descriptor-backed log stream' README.md
+grep -q 'Launcher log pipe cleanup is no-follow and same-file validated before unlinking' README.md
+grep -q 'Launcher log pipe cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'verifies the rotated inode before syncing it' README.md
 grep -q 'log rotation verifies the rotated inode before syncing it' docs/sailboat-pi.md
 grep -q 'through a no-follow descriptor, rotates and syncs that log after 1 MB' docs/sailboat-pi.md
