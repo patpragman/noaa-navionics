@@ -12068,6 +12068,33 @@ class StatusReportTests(unittest.TestCase):
             set(report_module.GPSD_SERVICE_CHECKS),
         )
 
+    def test_pre_trip_required_status_checks_match_shared_readiness(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/pre_trip_prepare_pi.sh").read_text(encoding="utf-8"),
+            "save_pre_departure_status_snapshot",
+        )
+
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_READINESS_CHECKS"),
+            set(report_module.CORE_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_READINESS_CHECKS"),
+            set(report_module.GPSD_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "SERIAL_READINESS_CHECKS"),
+            set(report_module.SERIAL_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
+            set(report_module.CORE_SERVICE_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_SERVICE_CHECKS"),
+            set(report_module.GPSD_SERVICE_CHECKS),
+        )
+
     def test_verify_pi_validates_status_report_service_summaries(self):
         source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
 

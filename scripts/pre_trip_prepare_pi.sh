@@ -877,11 +877,135 @@ nofollow = getattr(os, "O_NOFOLLOW", 0)
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 STATUS_MAX_AGE_SECONDS = 15 * 60
 STATUS_FUTURE_TOLERANCE_SECONDS = 5 * 60
+CORE_READINESS_CHECKS = {
+    "Python",
+    "Source Revision",
+    "Clock",
+    "Time Sync",
+    "Tkinter",
+    "OpenCPN",
+    "Display Power",
+    "Chart Package",
+    "Charts",
+    "Chart Update Debris",
+    "Manifest",
+    "OpenCPN Charts",
+    "Disk",
+    "Pi Power",
+    "Pi Thermal",
+}
+GPSD_READINESS_CHECKS = {
+    "OpenCPN GPSD",
+    "GPSD Config",
+    "Chrony Config",
+    "GPSD",
+    "GPS Time Source",
+}
+SERIAL_READINESS_CHECKS = {"GPS Device", "GPS"}
+CORE_SERVICE_CHECKS = {
+    "Chart Sync",
+    "Chart Sync Settings",
+    "Chart Sync Unit File",
+    "Chart Timer",
+    "Chart Timer Install",
+    "Chart Timer Settings",
+    "Chart Timer Unit File",
+    "Track Log",
+    "Track Logger",
+    "Track Logger Install",
+    "Track Logger Settings",
+    "Track Logger Unit File",
+    "Boot Readiness",
+    "Boot Readiness Install",
+    "Boot Readiness Settings",
+    "Boot Readiness Unit File",
+    "Boot Readiness Run",
+    "Desktop Startup",
+    "Launcher Settings",
+    "User Linger",
+}
+GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
 
 
 def fail(message: str) -> None:
     print(message, file=sys.stderr)
     raise SystemExit(124)
+
+
+def validate_successful_status_snapshot(payload: dict[str, object]) -> None:
+    checks = payload.get("checks")
+    service_checks = payload.get("service_checks")
+    if not isinstance(checks, list) or not isinstance(service_checks, list):
+        fail("pre-departure status snapshot JSON missing readiness check sections")
+
+    check_rows = {}
+    for row in checks:
+        if not isinstance(row, dict):
+            fail("pre-departure status snapshot JSON has malformed checks row")
+        name = str(row.get("name", "")).strip()
+        if not name:
+            fail("pre-departure status snapshot JSON has unnamed readiness check")
+        if name in check_rows:
+            fail(f"pre-departure status snapshot JSON has duplicate readiness check: {name}")
+        check_rows[name] = row
+
+    service_rows = {}
+    for row in service_checks:
+        if not isinstance(row, dict):
+            fail("pre-departure status snapshot JSON has malformed service_checks row")
+        name = str(row.get("name", "")).strip()
+        if not name:
+            fail("pre-departure status snapshot JSON has unnamed service check")
+        if name in service_rows:
+            fail(f"pre-departure status snapshot JSON has duplicate service check: {name}")
+        service_rows[name] = row
+
+    config = payload.get("config")
+    if not isinstance(config, dict):
+        fail("pre-departure status snapshot JSON missing config section")
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode not in {"gpsd", "serial"}:
+        fail(f"pre-departure status snapshot JSON has invalid gps_mode: {gps_mode or '<missing>'}")
+    chart_output = str(config.get("chart_output", "")).strip()
+    if not chart_output:
+        fail("pre-departure status snapshot JSON missing config chart_output")
+    track_log = payload.get("track_log")
+    if not isinstance(track_log, dict):
+        fail("pre-departure status snapshot JSON missing track_log section")
+    track_output = str(track_log.get("track_output", "")).strip()
+    if not track_output:
+        fail("pre-departure status snapshot JSON missing track_log track_output")
+
+    required_checks = set(CORE_READINESS_CHECKS)
+    required_service_checks = set(CORE_SERVICE_CHECKS)
+    if gps_mode == "serial":
+        required_checks.update(SERIAL_READINESS_CHECKS)
+    else:
+        required_checks.update(GPSD_READINESS_CHECKS)
+        required_service_checks.update(GPSD_SERVICE_CHECKS)
+    if track_output != chart_output:
+        required_checks.add("Track Disk")
+
+    missing_checks = sorted(required_checks - set(check_rows))
+    missing_service_checks = sorted(required_service_checks - set(service_rows))
+    if missing_checks:
+        fail("pre-departure status snapshot JSON missing required readiness check(s): " + ", ".join(missing_checks))
+    if missing_service_checks:
+        fail("pre-departure status snapshot JSON missing required service check(s): " + ", ".join(missing_service_checks))
+    failed_checks = sorted(name for name, row in check_rows.items() if row.get("ok") is not True)
+    failed_service_checks = sorted(name for name, row in service_rows.items() if row.get("ok") is not True)
+    if failed_checks:
+        fail("pre-departure status snapshot JSON has failed readiness check(s): " + ", ".join(failed_checks))
+    if failed_service_checks:
+        fail("pre-departure status snapshot JSON has failed service check(s): " + ", ".join(failed_service_checks))
+    missing_structured_data = sorted(
+        name for name in required_checks if not isinstance(check_rows[name].get("data"), dict)
+    )
+    if missing_structured_data:
+        fail(
+            "pre-departure status snapshot JSON missing structured readiness data for: "
+            + ", ".join(missing_structured_data)
+        )
 
 
 def inspect_private_directory(target: Path) -> None:
@@ -1105,6 +1229,7 @@ try:
     source_revision = app.get("source_revision") if isinstance(app, dict) else None
     if not isinstance(source_revision, str) or not source_revision.strip() or source_revision == "unknown":
         fail("pre-departure status snapshot JSON missing deployed source_revision")
+    validate_successful_status_snapshot(parsed)
     os.replace(temp_path, status_path)
     temp_path = None
 finally:
