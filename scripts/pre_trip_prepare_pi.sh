@@ -407,6 +407,72 @@ PY
   return "$status"
 }
 
+capture_recovery_output() {
+  local path="$1"
+  local status
+  set +e
+  "$python3_cmd" -c '
+from __future__ import annotations
+
+import os
+import stat
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+flags = os.O_WRONLY | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+    fd = os.open(path, flags)
+except OSError as exc:
+    print(f"Could not open recovery output capture for writing {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        print(f"Recovery output capture changed while opening it: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Recovery output capture must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"Recovery output capture is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"Recovery output capture has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "wb") as capture:
+        fd = -1
+        while True:
+            chunk = sys.stdin.buffer.read(65536)
+            if not chunk:
+                break
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
+            capture.write(chunk)
+        capture.flush()
+        os.fsync(capture.fileno())
+except OSError as exc:
+    print(f"Could not write recovery output capture {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
+' "$path"
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
 extract_recovery_dir_from_output() {
   local path="$1"
   local status
@@ -711,7 +777,7 @@ if [[ "$skip_recovery" -eq 0 ]]; then
     rm -f -- "${recovery_output:-}"
   }
   trap cleanup_recovery_output EXIT
-  run_step "Exporting Pi recovery bundle" "$recovery_helper" "$target" "$output_dir" --track-days "$track_days" | tee "$recovery_output"
+  run_step "Exporting Pi recovery bundle" "$recovery_helper" "$target" "$output_dir" --track-days "$track_days" | capture_recovery_output "$recovery_output"
   recovery_dir="$(extract_recovery_dir_from_output "$recovery_output")"
   if [[ -z "$recovery_dir" ]]; then
     echo "Could not determine recovery export directory from export output" >&2

@@ -529,11 +529,14 @@ grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/seria
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating and parsing the private recovery-output capture' README.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating and parsing the private recovery-output capture' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating, writing, and parsing the private recovery-output capture' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating, writing, and parsing the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
+grep -q 'capture_recovery_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
+grep -q 'os.O_WRONLY | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
+! grep -q '| tee "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
