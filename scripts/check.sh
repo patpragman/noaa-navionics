@@ -805,8 +805,8 @@ grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics 
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
-grep -q 'recovery export helper validates each local export helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
-grep -q 'recovery export helper validates each local export helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
+grep -q 'recovery export helper validates each local export helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each export helper through the validated no-follow descriptor' README.md
+grep -q 'recovery export helper validates each local export helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each export helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation' docs/sailboat-pi.md
 grep -q 'and verifies the completed local recovery set before reporting success' README.md
@@ -1459,6 +1459,10 @@ grep -q 'Helper script has permissions {mode:03o}, expected no group/other write
 grep -q 'Could not open helper script through no-follow descriptor' scripts/export_pi_recovery_bundle.sh
 grep -q 'Helper script changed before it could be validated' scripts/export_pi_recovery_bundle.sh
 grep -q 'require_helper "$command_path"' scripts/export_pi_recovery_bundle.sh
+grep -q 'Helper script changed before descriptor execution' scripts/export_pi_recovery_bundle.sh
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' scripts/export_pi_recovery_bundle.sh
+grep -q 'Could not execute helper script through validated descriptor' scripts/export_pi_recovery_bundle.sh
+! grep -q '"$command_path" "$@"' scripts/export_pi_recovery_bundle.sh
 ! sed -n '/^require_helper()/,/^}/p' scripts/export_pi_recovery_bundle.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'if mode != 0o600' scripts/verify_pi_recovery_exports.sh
@@ -8583,13 +8587,14 @@ recovery_output_dir="$tmpdir/recovery-output"
 mkdir -p "$recovery_repo/scripts"
 cp scripts/export_pi_recovery_bundle.sh "$recovery_repo/scripts/export_pi_recovery_bundle.sh"
 for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.sh collect_pi_support_bundle.sh verify_pi_recovery_exports.sh; do
-  cat >"$recovery_repo/scripts/$helper" <<'EOF'
+  cat >"$recovery_repo/scripts/$helper" <<EOF
 #!/usr/bin/env bash
-printf '%s\n' "$(basename "$0")|$*" >>"$NOAA_NAVIONICS_FAKE_RECOVERY_LOG"
-if [[ "$(basename "$0")" == "export_pi_settings.sh" && -n "${NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER:-}" ]]; then
-  chmod 0775 "$NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER"
+helper_name="$helper"
+printf '%s\n' "\${helper_name}|\$*" >>"\$NOAA_NAVIONICS_FAKE_RECOVERY_LOG"
+if [[ "\$helper_name" == "export_pi_settings.sh" && -n "\${NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER:-}" ]]; then
+  chmod 0775 "\$NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER"
 fi
-printf 'fake %s\n' "$(basename "$0")"
+printf 'fake %s\n' "\$helper_name"
 EOF
   chmod +x "$recovery_repo/scripts/$helper"
 done
