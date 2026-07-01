@@ -227,7 +227,7 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
     if result.st_uid != os.getuid():
         fail(f"archive is owned by uid {result.st_uid}, expected {os.getuid()}: {archive_path}")
     mode = stat.S_IMODE(result.st_mode)
-    if mode & 0o077:
+    if mode != 0o600:
         fail(f"archive has permissions {mode:04o}, expected private 0600: {archive_path}")
     if result.st_size <= 0:
         fail(f"archive is empty: {archive_path}")
@@ -245,7 +245,7 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
         if opened.st_uid != os.getuid():
             fail(f"archive is owned by uid {opened.st_uid}, expected {os.getuid()}: {archive_path}")
         opened_mode = stat.S_IMODE(opened.st_mode)
-        if opened_mode & 0o077:
+        if opened_mode != 0o600:
             fail(f"archive has permissions {opened_mode:04o}, expected private 0600: {archive_path}")
         with os.fdopen(fd, "rb") as archive_file:
             fd = -1

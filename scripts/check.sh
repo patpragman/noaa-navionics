@@ -1239,6 +1239,8 @@ grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/ex
 grep -q 'prepare_private_output_dir "Recovery output directory" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_recovery_bundle.sh
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
+grep -q 'if mode != 0o600' scripts/verify_pi_recovery_exports.sh
+grep -q 'if opened_mode != 0o600' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-settings-\*.tgz' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-opencpn-\*.tgz' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-tracks-\*.tgz' scripts/verify_pi_recovery_exports.sh
@@ -7237,6 +7239,19 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'recovery directory has permissions 0755, expected private 0700' "$verify_output"
+
+chmod 0700 "$recovery_verify_dir"/noaa-navionics-pi-settings-*.tgz
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+chmod 0600 "$recovery_verify_dir"/noaa-navionics-pi-settings-*.tgz
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject owner-executable recovery archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'archive has permissions 0700, expected private 0600' "$verify_output"
 
 rm -f "$recovery_verify_dir"/noaa-navionics-pi-support-*.tgz
 set +e
