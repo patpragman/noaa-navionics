@@ -3855,9 +3855,11 @@ grep -q 'test_service_readiness_checks_fail_unsafe_desktop_startup_files' tests/
 grep -q 'desktop autostart path is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart directory is a symlink' src/noaa_navionics/report.py
 grep -q 'desktop autostart path contains a symlink' src/noaa_navionics/report.py
+grep -q 'desktop autostart missing path_symlink_component' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config path is a symlink' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config directory is a symlink' src/noaa_navionics/report.py
 grep -q 'LightDM autologin config path contains a symlink' src/noaa_navionics/report.py
+grep -q 'LightDM autologin config missing path_symlink_component' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS is enabled' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' src/noaa_navionics/report.py
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS' src/noaa_navionics/report.py
@@ -3874,11 +3876,13 @@ grep -q 'test_launcher_settings_summary_rejects_symlinked_environment' tests/tes
 grep -q 'test_launcher_settings_summary_rejects_symlinked_environment_directory' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment' tests/test_downloader.py
 grep -q 'test_launcher_settings_check_fails_symlinked_environment_directory' tests/test_downloader.py
+grep -q 'test_launcher_settings_check_fails_missing_symlink_status' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_file' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_directory' tests/test_downloader.py
 grep -q 'test_key_value_file_summary_rejects_symlinked_startup_ancestor' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_directories' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_ancestors' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_missing_desktop_symlink_status' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_rejects_symlinked_config_directory' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_desktop_startup_files' tests/test_downloader.py
@@ -3888,6 +3892,7 @@ grep -q 'def _install_wanted_by_targets' src/noaa_navionics/report.py
 grep -q 'user unit file path is a symlink' src/noaa_navionics/report.py
 grep -q 'user unit file directory is a symlink' src/noaa_navionics/report.py
 grep -q 'unit file path contains a symlink' src/noaa_navionics/report.py
+grep -q 'unit file missing path_symlink_component' src/noaa_navionics/report.py
 grep -q 'def _read_user_unit_file_lines' src/noaa_navionics/report.py
 grep -q 'user unit file path changed before it could be read' src/noaa_navionics/report.py
 grep -q 'user unit file path .* has permissions' src/noaa_navionics/report.py
@@ -3910,6 +3915,7 @@ grep -q 'test_service_readiness_checks_fail_misowned_unit_file' tests/test_downl
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_install_target' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_directory' tests/test_downloader.py
 grep -q 'test_service_readiness_checks_fail_symlinked_unit_file_ancestor' tests/test_downloader.py
+grep -q 'test_service_readiness_checks_fail_missing_unit_file_symlink_status' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_symlinked_source_revision' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_symlinked_revision_on_pi' tests/test_downloader.py
 grep -q 'sync-charts requires a complete onboard chart package' src/noaa_navionics/cli.py
@@ -3987,6 +3993,8 @@ grep -q 'requires source-revision and launcher-settings symlink-status fields' R
 grep -q 'requires source-revision and launcher-settings symlink-status fields' docs/sailboat-pi.md
 grep -q 'requires GUI and service startup path symlink-status fields' README.md
 grep -q 'requires GUI and service startup path symlink-status fields' docs/sailboat-pi.md
+grep -q 'Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing' README.md
+grep -q 'Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing' docs/sailboat-pi.md
 grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_nonregular_source_revision' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_writable_source_revision' tests/test_downloader.py
@@ -4017,6 +4025,8 @@ grep -q '"download_path_error"' src/noaa_navionics/report.py
 grep -q '"extract_path_symlink_component"' src/noaa_navionics/report.py
 grep -q '"launcher_settings_symlink_component"' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.py
+grep -q 'launcher environment path is a symlink or missing symlink status' src/noaa_navionics/report.py
+grep -q 'launcher environment missing launcher_settings_symlink_component' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'status report launcher settings path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh

@@ -138,6 +138,23 @@ def trusted_unit_file(path: str, wanted_by: list[str], **overrides: object) -> d
     return state
 
 
+def trusted_launcher_settings(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "path": "/home/pi/.config/noaa-navionics/launcher.env",
+        "exists": True,
+        "is_symlink": False,
+        "directory_is_symlink": False,
+        "launcher_settings_symlink_component": "",
+        "uid": os.getuid(),
+        "mode": "0600",
+        "directory_uid": os.getuid(),
+        "directory_mode": "0700",
+        "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
+    }
+    state.update(overrides)
+    return state
+
+
 def trusted_unit_file_lines(unit_name: str) -> list[str]:
     lines_by_unit = {
         "noaa-navionics.service": [
@@ -9296,63 +9313,32 @@ class StatusReportTests(unittest.TestCase):
                 report_module._read_launcher_settings_lines(launcher_env, expected_stat=expected_stat)
 
     def test_launcher_settings_check_fails_symlinked_environment_ancestor(self):
-        check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "directory_is_symlink": False,
-                "launcher_settings_symlink_component": "/home/pi",
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
-            }
-        )
+        check = _launcher_settings_check(trusted_launcher_settings(launcher_settings_symlink_component="/home/pi"))
 
         self.assertFalse(check.ok)
         self.assertIn("launcher environment directory is a symlink: /home/pi", check.detail)
 
     def test_launcher_settings_check_fails_misowned_environment(self):
-        check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "uid": os.getuid() + 1,
-                "mode": "0600",
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
-            }
-        )
+        check = _launcher_settings_check(trusted_launcher_settings(uid=os.getuid() + 1))
 
         self.assertFalse(check.ok)
         self.assertIn("owned by uid", check.detail)
 
     def test_launcher_settings_check_fails_unknown_environment_keys(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "mode": "0600",
-                "values": {
+            trusted_launcher_settings(
+                values={
                     "NOAA_NAVIONICS_GPS_SECONDS": "60",
                     "NOAA_NAVIONICS_UNEXPECTED": "1",
                 },
-            }
+            )
         )
 
         self.assertFalse(check.ok)
         self.assertIn("unknown launcher environment key(s): NOAA_NAVIONICS_UNEXPECTED", check.detail)
 
     def test_launcher_settings_check_fails_malformed_environment_lines(self):
-        check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "mode": "0600",
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "60"},
-                "malformed_lines": ["2: not-a-setting"],
-            }
-        )
+        check = _launcher_settings_check(trusted_launcher_settings(malformed_lines=["2: not-a-setting"]))
 
         self.assertFalse(check.ok)
         self.assertIn("malformed launcher environment line 2: not-a-setting", check.detail)
@@ -11051,14 +11037,44 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(timer_install.ok)
         self.assertIn("unit file path contains a symlink: /home/pi", timer_install.detail)
 
+    def test_service_readiness_checks_fail_missing_unit_file_symlink_status(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+        unit_state = trusted_unit_file("/home/pi/.config/systemd/user/noaa-navionics.timer", ["timers.target"])
+        unit_state.pop("path_symlink_component")
+        unit_files = {
+            "noaa-navionics.timer": unit_state,
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
+        }
+
+        checks = _service_readiness_checks(services, system_services, unit_files=unit_files, gps_mode="gpsd")
+        timer_install = next(check for check in checks if check.name == "Chart Timer Install")
+
+        self.assertFalse(timer_install.ok)
+        self.assertIn("missing path_symlink_component", timer_install.detail)
+
     def test_launcher_settings_check_accepts_fail_closed_settings(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "mode": "0600",
-                "values": {
+            trusted_launcher_settings(
+                values={
                     "NOAA_NAVIONICS_GPS_SECONDS": "30",
                     "NOAA_NAVIONICS_READINESS_ATTEMPTS": "3",
                     "NOAA_NAVIONICS_READINESS_RETRY_DELAY": "10",
@@ -11067,7 +11083,7 @@ class StatusReportTests(unittest.TestCase):
                     "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": "5",
                     "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "no",
                 },
-            }
+            )
         )
 
         self.assertTrue(check.ok)
@@ -11075,13 +11091,7 @@ class StatusReportTests(unittest.TestCase):
 
     def test_launcher_settings_check_fails_public_environment(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "mode": "0644",
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
-            }
+            trusted_launcher_settings(mode="0644", values={"NOAA_NAVIONICS_GPS_SECONDS": "30"})
         )
 
         self.assertFalse(check.ok)
@@ -11089,15 +11099,7 @@ class StatusReportTests(unittest.TestCase):
 
     def test_launcher_settings_check_fails_public_environment_directory(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "directory_mode": "0775",
-                "uid": os.getuid(),
-                "mode": "0600",
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
-            }
+            trusted_launcher_settings(directory_mode="0775", values={"NOAA_NAVIONICS_GPS_SECONDS": "30"})
         )
 
         self.assertFalse(check.ok)
@@ -11106,12 +11108,7 @@ class StatusReportTests(unittest.TestCase):
 
     def test_launcher_settings_check_fails_symlinked_environment(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": True,
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
-            }
+            trusted_launcher_settings(is_symlink=True, values={"NOAA_NAVIONICS_GPS_SECONDS": "30"})
         )
 
         self.assertFalse(check.ok)
@@ -11119,28 +11116,34 @@ class StatusReportTests(unittest.TestCase):
 
     def test_launcher_settings_check_fails_symlinked_environment_directory(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "is_symlink": False,
-                "directory_is_symlink": True,
-                "values": {"NOAA_NAVIONICS_GPS_SECONDS": "30"},
-            }
+            trusted_launcher_settings(directory_is_symlink=True, values={"NOAA_NAVIONICS_GPS_SECONDS": "30"})
         )
 
         self.assertFalse(check.ok)
         self.assertIn("launcher environment directory is a symlink", check.detail)
 
+    def test_launcher_settings_check_fails_missing_symlink_status(self):
+        missing_path_status = trusted_launcher_settings()
+        missing_path_status.pop("is_symlink")
+        path_check = _launcher_settings_check(missing_path_status)
+
+        missing_component = trusted_launcher_settings()
+        missing_component.pop("launcher_settings_symlink_component")
+        component_check = _launcher_settings_check(missing_component)
+
+        self.assertFalse(path_check.ok)
+        self.assertIn("missing symlink status", path_check.detail)
+        self.assertFalse(component_check.ok)
+        self.assertIn("missing launcher_settings_symlink_component", component_check.detail)
+
     def test_launcher_settings_check_fails_fail_open_override(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "values": {
+            trusted_launcher_settings(
+                values={
                     "NOAA_NAVIONICS_GPS_SECONDS": "30",
                     "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "yes",
                 },
-            }
+            )
         )
 
         self.assertFalse(check.ok)
@@ -11148,16 +11151,14 @@ class StatusReportTests(unittest.TestCase):
 
     def test_launcher_settings_check_fails_invalid_optional_timing_values(self):
         check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "values": {
+            trusted_launcher_settings(
+                values={
                     "NOAA_NAVIONICS_GPS_SECONDS": "30",
                     "NOAA_NAVIONICS_WARNING_SECONDS": "soon",
                     "NOAA_NAVIONICS_OPENCPN_RESTARTS": "-1",
                     "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": "soon",
                 },
-            }
+            )
         )
 
         self.assertFalse(check.ok)
@@ -11166,13 +11167,7 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=soon expected non-negative integer", check.detail)
 
     def test_launcher_settings_check_fails_missing_gps_wait(self):
-        check = _launcher_settings_check(
-            {
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "values": {},
-            }
-        )
+        check = _launcher_settings_check(trusted_launcher_settings(values={}))
 
         self.assertFalse(check.ok)
         self.assertIn("NOAA_NAVIONICS_GPS_SECONDS=<missing>", check.detail)
@@ -11195,14 +11190,12 @@ class StatusReportTests(unittest.TestCase):
         checks = _service_readiness_checks(
             services,
             system_services,
-            launcher_settings={
-                "path": "/home/pi/.config/noaa-navionics/launcher.env",
-                "exists": True,
-                "values": {
+            launcher_settings=trusted_launcher_settings(
+                values={
                     "NOAA_NAVIONICS_GPS_SECONDS": "10",
                     "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "yes",
                 },
-            },
+            ),
             gps_mode="gpsd",
         )
         launcher_check = next(check for check in checks if check.name == "Launcher Settings")
@@ -11268,6 +11261,61 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("desktop autostart missing", desktop_check.detail)
         self.assertIn("systemd default target is multi-user.target", desktop_check.detail)
         self.assertIn("lightdm.service is disabled", desktop_check.detail)
+
+    def test_service_readiness_checks_fail_missing_desktop_symlink_status(self):
+        services = {
+            "available": True,
+            "noaa-navionics.service": {"enabled": "static", "active": "inactive"},
+            "noaa-navionics.timer": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-track.service": {"enabled": "enabled", "active": "active"},
+            "noaa-navionics-preflight.service": {"enabled": "enabled", "active": "inactive"},
+        }
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(
+            services,
+            system_services,
+            desktop={
+                "autostart": {
+                    "path": "/home/pi/.config/autostart/noaa-navionics-chartplotter.desktop",
+                    "exists": True,
+                    "is_symlink": False,
+                    "directory_is_symlink": False,
+                    "values": {
+                        "Type": "Application",
+                        "Name": "NOAA Navionics Chartplotter",
+                        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                        "Terminal": "false",
+                        "X-GNOME-Autostart-enabled": "true",
+                    },
+                },
+                "lightdm_autologin": {
+                    "path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf",
+                    "exists": True,
+                    "is_symlink": False,
+                    "directory_is_symlink": False,
+                    "sections": ["Seat:*"],
+                    "values": {
+                        "autologin-user": "pi",
+                        "autologin-user-timeout": "0",
+                        "autologin-session": "LXDE-pi",
+                    },
+                },
+                "graphical_target": "graphical.target",
+                "lightdm_enabled": "enabled",
+            },
+            gps_mode="gpsd",
+        )
+        desktop_check = next(check for check in checks if check.name == "Desktop Startup")
+
+        self.assertFalse(desktop_check.ok)
+        self.assertIn("desktop autostart missing path_symlink_component", desktop_check.detail)
+        self.assertIn("LightDM autologin config missing path_symlink_component", desktop_check.detail)
 
     def test_service_readiness_checks_fail_symlinked_desktop_startup_files(self):
         services = {

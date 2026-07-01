@@ -71,6 +71,7 @@ The verify script refuses a dirty local worktree by default, then runs checks on
 Status reports read the Linux `boot_id` and `/proc/uptime` through no-follow descriptors and reject changed, symlinked, non-regular, malformed boot ID, or malformed uptime evidence before stamping the JSON or judging current-boot GPX tracks.
 Strict chartplotter verification also requires source-revision and launcher-settings symlink-status fields in the generated JSON, so older or incomplete status artifacts cannot silently satisfy startup provenance checks.
 Strict chartplotter verification requires GUI and service startup path symlink-status fields for OpenCPN config, desktop autostart, LightDM autologin, and installed user systemd units before trusting the generated JSON.
+Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing, so incomplete generated JSON cannot mark the Pi ready before verification parses it.
 Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation, leaving changed or untrusted paths in place.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 

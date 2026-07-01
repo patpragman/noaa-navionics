@@ -2021,11 +2021,25 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     path = str(summary.get("path", DEFAULT_LAUNCHER_ENV_PATH.expanduser()))
     if summary.get("exists") is not True:
         return CheckResult("Launcher Settings", False, f"launcher environment is missing: {path}")
-    if summary.get("is_symlink") is True:
-        return CheckResult("Launcher Settings", False, f"launcher environment path is a symlink: {path}")
-    if summary.get("directory_is_symlink") is True:
+    if summary.get("is_symlink") is not False:
+        return CheckResult(
+            "Launcher Settings",
+            False,
+            f"launcher environment path is a symlink or missing symlink status: {path}",
+        )
+    if summary.get("directory_is_symlink") is not False:
         directory = str(Path(path).parent)
-        return CheckResult("Launcher Settings", False, f"launcher environment directory is a symlink: {directory}")
+        return CheckResult(
+            "Launcher Settings",
+            False,
+            f"launcher environment directory is a symlink or missing symlink status: {directory}",
+        )
+    if "launcher_settings_symlink_component" not in summary:
+        return CheckResult(
+            "Launcher Settings",
+            False,
+            f"launcher environment missing launcher_settings_symlink_component: {path}",
+        )
     symlink_component = str(summary.get("launcher_settings_symlink_component", "")).strip()
     if symlink_component:
         return CheckResult(
@@ -2141,10 +2155,14 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
         path = str(autostart.get("path", DEFAULT_AUTOSTART_PATH.expanduser()))
         if autostart.get("exists") is not True:
             failures.append(f"desktop autostart missing at {path}")
-        if autostart.get("is_symlink") is True:
-            failures.append(f"desktop autostart path is a symlink: {path}")
-        if autostart.get("directory_is_symlink") is True:
-            failures.append(f"desktop autostart directory is a symlink: {Path(path).parent}")
+        if autostart.get("is_symlink") is not False:
+            failures.append(f"desktop autostart path is a symlink or missing symlink status: {path}")
+        if autostart.get("directory_is_symlink") is not False:
+            failures.append(
+                f"desktop autostart directory is a symlink or missing symlink status: {Path(path).parent}"
+            )
+        if "path_symlink_component" not in autostart:
+            failures.append(f"desktop autostart missing path_symlink_component: {path}")
         autostart_symlink_component = str(autostart.get("path_symlink_component", "")).strip()
         if autostart_symlink_component:
             failures.append(f"desktop autostart path contains a symlink: {autostart_symlink_component}")
@@ -2190,10 +2208,16 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
         path = str(lightdm.get("path", DEFAULT_LIGHTDM_AUTOLOGIN_PATH))
         if lightdm.get("exists") is not True:
             failures.append(f"LightDM autologin config missing at {path}")
-        if lightdm.get("is_symlink") is True:
-            failures.append(f"LightDM autologin config path is a symlink: {path}")
-        if lightdm.get("directory_is_symlink") is True:
-            failures.append(f"LightDM autologin config directory is a symlink: {Path(path).parent}")
+        if lightdm.get("is_symlink") is not False:
+            failures.append(
+                f"LightDM autologin config path is a symlink or missing symlink status: {path}"
+            )
+        if lightdm.get("directory_is_symlink") is not False:
+            failures.append(
+                f"LightDM autologin config directory is a symlink or missing symlink status: {Path(path).parent}"
+            )
+        if "path_symlink_component" not in lightdm:
+            failures.append(f"LightDM autologin config missing path_symlink_component: {path}")
         lightdm_symlink_component = str(lightdm.get("path_symlink_component", "")).strip()
         if lightdm_symlink_component:
             failures.append(f"LightDM autologin config path contains a symlink: {lightdm_symlink_component}")
@@ -2318,10 +2342,12 @@ def _unit_file_contains_check(
 def _unit_file_common_error(state: dict[str, object], unit: str, path: str) -> str:
     if state.get("exists") is not True:
         return f"{unit} unit file is missing at {path}"
-    if state.get("is_symlink") is True:
-        return f"{unit} unit file path is a symlink: {path}"
-    if state.get("directory_is_symlink") is True:
-        return f"{unit} unit file directory is a symlink: {Path(path).parent}"
+    if state.get("is_symlink") is not False:
+        return f"{unit} unit file path is a symlink or missing symlink status: {path}"
+    if state.get("directory_is_symlink") is not False:
+        return f"{unit} unit file directory is a symlink or missing symlink status: {Path(path).parent}"
+    if "path_symlink_component" not in state:
+        return f"{unit} unit file missing path_symlink_component: {path}"
     symlink_component = str(state.get("path_symlink_component", "")).strip()
     if symlink_component:
         return f"{unit} unit file path contains a symlink: {symlink_component}"
