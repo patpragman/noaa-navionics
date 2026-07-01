@@ -2137,7 +2137,11 @@ if live_source_revision_symlink_component is not None:
     raise SystemExit(
         f"status report source revision path contains a symlink: {live_source_revision_symlink_component}"
     )
-actual_revision = str(app.get("source_revision", "unknown"))
+actual_revision = str(app.get("source_revision", "unknown")).strip()
+if not actual_revision or actual_revision == "unknown":
+    raise SystemExit("status report missing deployed source revision")
+if actual_revision.endswith("-dirty"):
+    raise SystemExit(f"status report dirty deployed source revision is not production-ready: {actual_revision}")
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")
 if require_current_boot:
