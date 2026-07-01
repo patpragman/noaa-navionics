@@ -8,7 +8,7 @@ Usage: scripts/verify_pi.sh [--require-chartplotter-started] [--gps-seconds N] [
 Runs onboard verification on the Raspberry Pi over SSH.
 With --require-chartplotter-started, also requires a post-boot launcher log
 and a running OpenCPN process.
-Use --gps-seconds to allow a longer GPS fix wait during the status report.
+Use --gps-seconds to allow a longer GPS fix wait during the status report (1-600).
 Use --opencpn-restarts and --opencpn-restart-delay to assert the persisted
 OpenCPN supervision policy.
 Use --expected-gps-device to assert GPSD and the onboard config use a specific receiver.
@@ -22,6 +22,7 @@ target=""
 allow_dirty=0
 require_chartplotter_started=0
 gps_seconds=60
+max_gps_seconds=600
 opencpn_restarts=3
 opencpn_restart_delay=5
 expected_gps_device=""
@@ -45,6 +46,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -253,8 +276,10 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_positive_integer "$1" "${2:-}"
-      gps_seconds="${2:-}"
+      gps_seconds_value="${2:-}"
+      require_positive_integer "$1" "$gps_seconds_value"
+      require_integer_at_most "$1" "$gps_seconds_value" "$max_gps_seconds"
+      gps_seconds="$gps_seconds_value"
       shift 2
       ;;
     --opencpn-restarts)
@@ -374,6 +399,7 @@ status_attempts=3
 status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
 gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-60}"
+max_gps_seconds=600
 chartplotter_start_timeout=120
 chartplotter_start_timeout_floor=120
 chartplotter_start_interval=5
@@ -412,6 +438,27 @@ require_remote_non_negative_integer() {
   fi
 }
 
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_remote_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    fatal "$name must be at most ${maximum}"
+  fi
+}
+
 validate_remote_gps_device_control() {
   local value="$1"
   local suffix
@@ -444,6 +491,7 @@ validate_verifier_controls() {
 
   require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"
   require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"
+  require_remote_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"
   require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS" "${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}"
   require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}"
   if [[ -z "$expected_revision" || ! "$expected_revision" =~ ^(unknown|[A-Za-z0-9._-]+)$ ]]; then

@@ -645,6 +645,8 @@ grep -Fq '/bin/bash -s' scripts/verify_pi.sh
 grep -q 'validate_verifier_controls' scripts/verify_pi.sh
 grep -q 'require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"' scripts/verify_pi.sh
 grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"' scripts/verify_pi.sh
+grep -q 'max_gps_seconds=600' scripts/verify_pi.sh
+grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' scripts/verify_pi.sh
 grep -q 'require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS"' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value' scripts/verify_pi.sh
 grep -q 'validate_remote_gps_device_control "$expected_gps_device"' scripts/verify_pi.sh
@@ -653,6 +655,8 @@ grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` befor
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
 grep -q 'revalidates the SSH-transferred verifier controls on the Pi before acceptance checks use them' README.md
 grep -q 'revalidates the SSH-transferred verifier controls on the Pi before acceptance checks use them' docs/sailboat-pi.md
+grep -q 'Use `--gps-seconds N` here too if the GPS receiver needs a longer fix window, up to 600 seconds' README.md
+grep -q 'add `--gps-seconds N`, up to 600 seconds, if the receiver needs a longer fix window' docs/sailboat-pi.md
 grep -Fq 'run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"' scripts/deploy_to_pi.sh
 grep -Fq 'run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args[@]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
@@ -1881,6 +1885,7 @@ grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
 grep -q 'current boot ID .* does not match expected reboot boot ID' scripts/verify_pi.sh
 grep -Fq '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
+grep -q 'max_gps_seconds=600' scripts/verify_pi.sh
 grep -q -- '--expected-gps-device' scripts/verify_pi.sh
 grep -Fq -- '--expected-gps-device "$device"' scripts/pre_departure_check_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE' scripts/verify_pi.sh
@@ -7122,6 +7127,29 @@ if [[ "$verify_code" -ne 2 ]]; then
   echo "expected verify_pi.sh to reject invalid --gps-seconds with exit 2" >&2
   exit 1
 fi
+grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --gps-seconds 601 pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --gps-seconds 999999999999999999999999999999 pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
 
 set +e
 scripts/verify_pi.sh --opencpn-restart-delay soon pi@example.invalid >"$verify_output" 2>&1
@@ -13567,6 +13595,8 @@ grep -Fq "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && e
 grep -q 'validate_verifier_controls()' "$verify_fake_ssh_stdin"
 grep -q 'require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"' "$verify_fake_ssh_stdin"
 grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"' "$verify_fake_ssh_stdin"
+grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' "$verify_fake_ssh_stdin"
+grep -q 'fatal "$name must be at most ${maximum}"' "$verify_fake_ssh_stdin"
 grep -q 'require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS"' "$verify_fake_ssh_stdin"
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value' "$verify_fake_ssh_stdin"
 grep -q 'validate_remote_gps_device_control "$expected_gps_device"' "$verify_fake_ssh_stdin"
