@@ -850,6 +850,12 @@ grep -q 'Status reports and Pi verification include the configured anchor radius
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
 grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' README.md
 grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' docs/sailboat-pi.md
+grep -q 'bounds post-trip GPS waits to 1-600 seconds and track export lookback to 0-3650 days before preparing local output or starting SSH work' README.md
+grep -q 'bounds post-trip GPS waits to 1-600 seconds and track export lookback to 0-3650 days before preparing local output or starting SSH work' docs/sailboat-pi.md
+grep -q 'max_track_days=3650' scripts/post_trip_collect_pi.sh
+grep -q 'max_gps_seconds=600' scripts/post_trip_collect_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/post_trip_collect_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"' scripts/post_trip_collect_pi.sh
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
@@ -8147,6 +8153,82 @@ if [[ "$post_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--track-days must be a non-negative integer' "$verify_output"
+
+post_trip_bad_output="$tmpdir/post-trip-bad-control-output"
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$post_trip_bad_output" --track-days 3651 --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject oversized --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be at most 3650' "$verify_output"
+if [[ -e "$post_trip_bad_output" ]]; then
+  echo "expected post_trip_collect_pi.sh not to prepare output before rejecting oversized --track-days" >&2
+  exit 1
+fi
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$post_trip_bad_output" --track-days 999999999999999999999999999999 --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject huge --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be at most 3650' "$verify_output"
+if [[ -e "$post_trip_bad_output" ]]; then
+  echo "expected post_trip_collect_pi.sh not to prepare output before rejecting huge --track-days" >&2
+  exit 1
+fi
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$post_trip_bad_output" --gps-seconds nope --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject invalid --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
+if [[ -e "$post_trip_bad_output" ]]; then
+  echo "expected post_trip_collect_pi.sh not to prepare output before rejecting invalid --gps-seconds" >&2
+  exit 1
+fi
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$post_trip_bad_output" --gps-seconds 601 --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject oversized --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+if [[ -e "$post_trip_bad_output" ]]; then
+  echo "expected post_trip_collect_pi.sh not to prepare output before rejecting oversized --gps-seconds" >&2
+  exit 1
+fi
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid "$post_trip_bad_output" --gps-seconds 999999999999999999999999999999 --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject huge --gps-seconds with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds must be at most 600' "$verify_output"
+if [[ -e "$post_trip_bad_output" ]]; then
+  echo "expected post_trip_collect_pi.sh not to prepare output before rejecting huge --gps-seconds" >&2
+  exit 1
+fi
 
 set +e
 scripts/post_trip_collect_pi.sh pi@example.invalid --shutdown-dry-run --shutdown-confirm >"$verify_output" 2>&1

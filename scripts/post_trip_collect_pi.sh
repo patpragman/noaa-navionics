@@ -12,8 +12,10 @@ Collects post-trip evidence from an already commissioned Raspberry Pi:
   4. Optionally dry-run or request a clean Pi shutdown.
 
 Options:
-  --track-days N       Export GPX tracks modified in the last N days; 0 exports all (default: 30)
+  --track-days N       Export GPX tracks modified in the last N days; 0 exports all
+                       (default: 30, max: 3650)
   --gps-seconds N      Override the commissioned GPS fix wait in the status snapshot
+                       (1-600)
   --skip-status        Skip the local private JSON status snapshot
   --skip-tracks        Skip GPX track export
   --skip-support       Skip diagnostic support bundle collection
@@ -40,7 +42,9 @@ target="$1"
 shift
 output_dir="pi-post-trip-exports"
 track_days=30
+max_track_days=3650
 gps_seconds=""
+max_gps_seconds=600
 skip_status=0
 skip_tracks=0
 skip_support=0
@@ -66,6 +70,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -2116,6 +2142,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_track_days"
       track_days="${2:-}"
       shift 2
       ;;
@@ -2125,6 +2152,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
       gps_seconds="${2:-}"
       shift 2
       ;;
