@@ -616,12 +616,16 @@ def _chart_readiness_validation_failures(
             if created_at is None:
                 failures.append(CheckResult("Manifest", False, "status report Manifest created_at timestamp is invalid"))
             elif max_age_days is not None:
-                current = now or datetime.now(timezone.utc)
-                age_days = (current.astimezone(timezone.utc) - created_at).total_seconds() / 86400
-                if age_days < -0.01:
-                    failures.append(CheckResult("Manifest", False, "status report Manifest created_at timestamp is in the future"))
-                elif age_days > max_age_days:
-                    failures.append(CheckResult("Manifest", False, f"status report Manifest is {age_days:.1f} days old; max is {max_age_days}"))
+                try:
+                    current = _current_utc(now, label="status report Manifest")
+                except ValueError as exc:
+                    failures.append(CheckResult("Manifest", False, str(exc)))
+                else:
+                    age_days = (current - created_at).total_seconds() / 86400
+                    if age_days < -0.01:
+                        failures.append(CheckResult("Manifest", False, "status report Manifest created_at timestamp is in the future"))
+                    elif age_days > max_age_days:
+                        failures.append(CheckResult("Manifest", False, f"status report Manifest is {age_days:.1f} days old; max is {max_age_days}"))
             reported_age_days = _finite_gps_fix_float(data.get("age_days"))
             if reported_age_days is None or reported_age_days < 0:
                 failures.append(CheckResult("Manifest", False, "status report Manifest age_days is invalid"))
@@ -1233,10 +1237,11 @@ def _generated_at_validation_failures(
         return [CheckResult("Status Report", False, f"status report has invalid generated_at timestamp: {generated_at}")]
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         return [CheckResult("Status Report", False, "status report generated_at timestamp must include a timezone")]
-    current = now or datetime.now(timezone.utc)
-    if current.tzinfo is None or current.utcoffset() is None:
-        return [CheckResult("Status Report", False, "status report current time must include a timezone")]
-    age_seconds = (current.astimezone(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()
+    try:
+        current = _current_utc(now, label="status report")
+    except ValueError as exc:
+        return [CheckResult("Status Report", False, str(exc))]
+    age_seconds = (current - parsed.astimezone(timezone.utc)).total_seconds()
     if age_seconds < -STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
         return [
             CheckResult(
@@ -1935,7 +1940,10 @@ def _gps_fix_validation_failures(
     timestamp = _parse_gps_fix_timestamp(gps_fix.get("timestamp"))
     if timestamp is None:
         return [CheckResult("GPS Fix", False, "status report gps_fix has no valid timestamp")]
-    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    try:
+        current = _current_utc(now, label="status report gps_fix")
+    except ValueError as exc:
+        return [CheckResult("GPS Fix", False, str(exc))]
     age_seconds = (current - timestamp).total_seconds()
     if age_seconds < -STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
         return [CheckResult("GPS Fix", False, f"status report gps_fix timestamp is in the future by {-age_seconds:.0f}s")]
@@ -2089,7 +2097,7 @@ def _gps_fix_summary(checks: list[CheckResult], *, now: Optional[datetime] = Non
             summary.update(check.data)
             timestamp = _parse_gps_fix_timestamp(check.data.get("timestamp"))
             if timestamp is not None:
-                current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+                current = _current_utc(now, label="GPS fix summary")
                 summary["age_seconds"] = (current - timestamp).total_seconds()
         return summary
     return {
@@ -2109,6 +2117,13 @@ def _parse_gps_fix_timestamp(value: object) -> Optional[datetime]:
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         return None
     return timestamp.astimezone(timezone.utc)
+
+
+def _current_utc(now: Optional[datetime], *, label: str) -> datetime:
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise ValueError(f"{label} current time must include a timezone")
+    return current.astimezone(timezone.utc)
 
 
 def write_status_report(report: dict[str, object], output: Path) -> Path:

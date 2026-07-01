@@ -4059,11 +4059,17 @@ grep -q 'status report track_log has no latest satellite or HDOP quality fields'
 grep -q 'status report generated_at timestamp is stale' src/noaa_navionics/report.py
 grep -q 'status report generated_at timestamp is in the future' src/noaa_navionics/report.py
 grep -q 'parsed.tzinfo is None or parsed.utcoffset() is None' src/noaa_navionics/report.py
-grep -q 'status report current time must include a timezone' src/noaa_navionics/report.py
+grep -q 'def _current_utc' src/noaa_navionics/report.py
+grep -q 'f"{label} current time must include a timezone"' src/noaa_navionics/report.py
+grep -q '_current_utc(now, label="status report")' src/noaa_navionics/report.py
+grep -q '_current_utc(now, label="status report Manifest")' src/noaa_navionics/report.py
+grep -q '_current_utc(now, label="status report gps_fix")' src/noaa_navionics/report.py
+grep -q '_current_utc(now, label="GPS fix summary")' src/noaa_navionics/report.py
 grep -q 'parsed_clock.tzinfo is None or parsed_clock.utcoffset() is None' src/noaa_navionics/report.py
 grep -q 'generated.tzinfo is not None and generated.utcoffset() is not None' src/noaa_navionics/report.py
 grep -q 'track log summary current time must include a timezone' src/noaa_navionics/report.py
 grep -q 'test_status_report_ready_rejects_timezone_less_current_time' tests/test_downloader.py
+grep -q 'test_gps_fix_summary_rejects_timezone_less_current_time' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_timezone_less_current_time' tests/test_downloader.py
 grep -q 'test_status_snapshot_validators_require_usable_timezone_offsets' tests/test_downloader.py
 grep -q 'def _clock_time_validation_failures' src/noaa_navionics/report.py

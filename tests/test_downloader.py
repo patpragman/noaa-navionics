@@ -10436,6 +10436,23 @@ class StatusReportTests(unittest.TestCase):
         self.assertEqual(summary["source"], "GPSD")
         self.assertEqual(summary["age_seconds"], -45.0)
 
+    def test_gps_fix_summary_rejects_timezone_less_current_time(self):
+        check = CheckResult(
+            "GPSD",
+            True,
+            "fix",
+            {
+                "timestamp": "2026-07-01T12:00:00Z",
+                "latitude": 61.0,
+                "longitude": -149.0,
+                "satellites": 8,
+                "hdop": 1.2,
+            },
+        )
+
+        with self.assertRaisesRegex(ValueError, "current time must include a timezone"):
+            _gps_fix_summary([check], now=datetime(2026, 7, 1, 12, 0, 0))
+
     def test_status_text_rejects_incomplete_ready_report(self):
         report = {
             "ok": True,
@@ -10526,6 +10543,18 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(status_report_is_ready(report, now=datetime(2026, 7, 1, 12, 0, 0)))
         self.assertEqual(failures[0].name, "Status Report")
         self.assertIn("current time must include a timezone", failures[0].detail)
+        self.assertTrue(
+            any(
+                failure.name == "Manifest" and "current time must include a timezone" in failure.detail
+                for failure in failures
+            )
+        )
+        self.assertTrue(
+            any(
+                failure.name == "GPS Fix" and "current time must include a timezone" in failure.detail
+                for failure in failures
+            )
+        )
 
     def test_status_report_ready_requires_structured_runtime_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
