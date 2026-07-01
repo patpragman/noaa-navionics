@@ -1863,9 +1863,25 @@ def _read_pi_temperature() -> Optional[float]:
 
 def _read_sysfs_pi_temperature(path: Path) -> Optional[float]:
     try:
-        raw = path.read_text(encoding="ascii").strip()
+        before = os.stat(path, follow_symlinks=False)
     except OSError:
         return None
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+        return None
+    fd = -1
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened) or not stat.S_ISREG(opened.st_mode):
+            return None
+        with os.fdopen(fd, encoding="ascii") as handle:
+            fd = -1
+            raw = handle.read().strip()
+    except OSError:
+        return None
+    finally:
+        if fd >= 0:
+            os.close(fd)
     try:
         temperature = float(raw) / 1000
     except ValueError:

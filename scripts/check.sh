@@ -1964,8 +1964,15 @@ grep -Fq '[[ ! "$output" =~ ^throttled=(0x[[:xdigit:]]+|[0-9]+)$ ]]' scripts/ver
 grep -q 'measure_temp' src/noaa_navionics/health.py
 grep -q "re.fullmatch(r\"temp=.*'C\"" src/noaa_navionics/health.py
 grep -q 'math.isfinite(temperature)' src/noaa_navionics/health.py
+grep -q 'os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' src/noaa_navionics/health.py
+grep -q 'os.path.samestat(before, opened)' src/noaa_navionics/health.py
+! grep -q 'path.read_text(encoding="ascii").strip()' src/noaa_navionics/health.py
+grep -q 'test_read_sysfs_pi_temperature_rejects_symlinked_sensor' tests/test_downloader.py
+grep -q 'test_read_sysfs_pi_temperature_rejects_replaced_sensor_before_reading' tests/test_downloader.py
 grep -q 'vcgencmd measure_temp' README.md
 grep -q 'vcgencmd measure_temp' docs/sailboat-pi.md
+grep -q 'thermal sensor through a no-follow same-file descriptor' README.md
+grep -q 'thermal sensor through a no-follow same-file descriptor' docs/sailboat-pi.md
 grep -q 'well-formed `vcgencmd get_throttled` value' README.md
 grep -q 'well-formed `vcgencmd get_throttled` value' docs/sailboat-pi.md
 grep -q 'well-formed finite `vcgencmd measure_temp` value' README.md

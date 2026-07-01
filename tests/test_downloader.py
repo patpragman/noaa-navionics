@@ -16218,6 +16218,41 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertEqual(health_module._read_sysfs_pi_temperature(temp_file), 42.5)
 
+    def test_read_sysfs_pi_temperature_rejects_symlinked_sensor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_temp = root / "real-temp"
+            temp_link = root / "temp"
+            real_temp.write_text("42500\n", encoding="ascii")
+            temp_link.symlink_to(real_temp)
+
+            self.assertIsNone(health_module._read_sysfs_pi_temperature(temp_link))
+
+    def test_read_sysfs_pi_temperature_rejects_replaced_sensor_before_reading(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            temp_file = root / "temp"
+            replacement = root / "replacement"
+            temp_file.write_text("42500\n", encoding="ascii")
+            replacement.write_text("90000\n", encoding="ascii")
+            real_os_stat = health_module.os.stat
+            swapped = False
+
+            with patch.object(health_module.os, "stat", wraps=health_module.os.stat) as stat_mock:
+                def stat_with_replacement(path, *args, **kwargs):
+                    nonlocal swapped
+                    result = real_os_stat(path, *args, **kwargs)
+                    if Path(path) == temp_file and kwargs.get("follow_symlinks") is False and not swapped:
+                        swapped = True
+                        temp_file.replace(root / "old-temp")
+                        replacement.replace(temp_file)
+                    return result
+
+                stat_mock.side_effect = stat_with_replacement
+                self.assertIsNone(health_module._read_sysfs_pi_temperature(temp_file))
+
+            self.assertEqual(temp_file.read_text(encoding="ascii"), "90000\n")
+
     def test_read_sysfs_pi_temperature_rejects_non_finite_values(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_file = Path(tmpdir) / "temp"
