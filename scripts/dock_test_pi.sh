@@ -429,13 +429,33 @@ remote_boot_id() {
     remote_python_cmd="$(remote_python_command)"
   fi
   "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_python_cmd' -" <<'REMOTE_BOOT_ID'
-from pathlib import Path
+import os
 import re
+import stat
+from pathlib import Path
+
+path = Path("/proc/sys/kernel/random/boot_id")
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 
 try:
-    value = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+    before = os.stat(path, follow_symlinks=False)
+    fd = os.open(path, flags)
 except OSError as exc:
     raise SystemExit(f"could not read remote boot ID: {exc}") from exc
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        raise SystemExit("remote boot ID path changed while opening it")
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit("remote boot ID path is not a regular proc file")
+    with os.fdopen(fd, encoding="ascii") as handle:
+        fd = -1
+        value = handle.read().strip()
+finally:
+    if fd >= 0:
+        os.close(fd)
+
 if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value):
     raise SystemExit(f"remote boot ID is invalid; expected Linux boot_id value: {value or '<empty>'}")
 print(value)

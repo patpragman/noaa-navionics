@@ -3982,7 +3982,12 @@ grep -q 'Remote ${command_label} command is not executable after resolution' scr
 grep -q '${remote_system_path} && export PATH && true' scripts/dock_test_pi.sh
 grep -Fq '${remote_system_path} && export PATH && '"'"'$remote_python_cmd'"'"' -' scripts/dock_test_pi.sh
 ! grep -q '${remote_system_path} && export PATH && python3 -' scripts/dock_test_pi.sh
-grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/dock_test_pi.sh
+grep -q 'path = Path("/proc/sys/kernel/random/boot_id")' scripts/dock_test_pi.sh
+grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/dock_test_pi.sh
+grep -q 'fd = os.open(path, flags)' scripts/dock_test_pi.sh
+grep -q 'before.st_dev != opened.st_dev or before.st_ino != opened.st_ino' scripts/dock_test_pi.sh
+grep -q 'with os.fdopen(fd, encoding="ascii") as handle' scripts/dock_test_pi.sh
+! grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/dock_test_pi.sh
 grep -q 'remote boot ID is invalid; expected Linux boot_id value' scripts/dock_test_pi.sh
 ! grep -q '${remote_system_path} && export PATH && cat /proc/sys/kernel/random/boot_id' scripts/dock_test_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v reboot' scripts/dock_test_pi.sh
@@ -4024,8 +4029,8 @@ grep -q 'pins remote reboot probes and sudo calls to trusted system command dire
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' docs/sailboat-pi.md
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
-grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' README.md
-grep -q 'reads and validates the Pi pre- and post-reboot boot IDs as Linux `boot_id` values on the Pi before comparing them' docs/sailboat-pi.md
+grep -q 'reads and validates the Pi pre- and post-reboot boot IDs through no-follow descriptors as Linux `boot_id` values on the Pi before comparing them' README.md
+grep -q 'reads and validates the Pi pre- and post-reboot boot IDs through no-follow descriptors as Linux `boot_id` values on the Pi before comparing them' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' docs/sailboat-pi.md
 grep -q 'misowned or group/world-writable launcher environment directories' README.md
