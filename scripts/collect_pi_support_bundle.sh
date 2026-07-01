@@ -615,8 +615,11 @@ finally:
     if fd >= 0:
         os.close(fd)
 
-if "README.txt" not in by_name:
+readme = by_name.get("README.txt")
+if readme is None:
     fail("Support bundle is missing README.txt")
+if not readme.isreg():
+    fail("Support bundle README.txt must be a regular file")
 diagnostic_members = [
     name
     for name, member in by_name.items()

@@ -636,6 +636,8 @@ grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics 
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' README.md
 grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
+grep -q 'requires a regular `README.txt` and at least one diagnostic file, and rejects duplicate or unsupported archive members before reporting success' README.md
+grep -q 'requires a regular `README.txt` and at least one diagnostic file, and rejects duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
@@ -1095,8 +1097,8 @@ grep -q 'validates the installed `noaa-navionics` private venv command before ru
 grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery and a read-only live status report' docs/sailboat-pi.md
 grep -q 'fresh read-only status-report JSON capture' README.md
 grep -q 'fresh read-only status-report JSON capture' docs/sailboat-pi.md
-grep -q 'validates the final local support bundle through a no-follow descriptor before reporting success' README.md
-grep -q 'validates the final local support bundle through a no-follow descriptor before reporting success' docs/sailboat-pi.md
+grep -q 'validates the final local support bundle through a no-follow descriptor, requires a regular `README.txt` and at least one diagnostic file' README.md
+grep -q 'validates the final local support bundle through a no-follow descriptor, requires a regular `README.txt` and at least one diagnostic file' docs/sailboat-pi.md
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/collect_pi_support_bundle.sh
 grep -q 'or downloaded, and no persistent Pi state is changed' scripts/collect_pi_support_bundle.sh
@@ -6361,6 +6363,33 @@ if [[ "${NOAA_NAVIONICS_FAKE_BAD_SUPPORT_BUNDLE:-0}" == "1" ]]; then
   printf 'not a gzip tar\n'
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_README_DIR_SUPPORT_BUNDLE:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    directory = tarfile.TarInfo("README.txt")
+    directory.type = tarfile.DIRTYPE
+    directory.mode = 0o700
+    directory.mtime = int(time.time())
+    archive.addfile(directory)
+    add_text(archive, "commands/date-utc.txt", "date output\n")
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_UNSAFE_SUPPORT_BUNDLE:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -6460,6 +6489,7 @@ grep -q 'configured-storage-paths.txt' "$support_fake_ssh_stdin"
 grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
 grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'configured-track-storage-tree' "$support_fake_ssh_stdin"
+grep -q 'Support bundle README.txt must be a regular file' scripts/collect_pi_support_bundle.sh
 
 support_bad_output_dir="$tmpdir/support-bundles-bad-archive"
 mkdir -p "$support_bad_output_dir"
@@ -6497,6 +6527,25 @@ if [[ "$support_bundle_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Support bundle contains unsafe member path: commands/./date-utc.txt' "$verify_output"
+! grep -q 'Collected Pi support bundle:' "$verify_output"
+
+support_bad_readme_output_dir="$tmpdir/support-bundles-bad-readme"
+mkdir -p "$support_bad_readme_output_dir"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_README_DIR_SUPPORT_BUNDLE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_bad_readme_output_dir" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject a non-regular support bundle README with exit 1" >&2
+  exit 1
+fi
+grep -q 'Support bundle README.txt must be a regular file' "$verify_output"
 ! grep -q 'Collected Pi support bundle:' "$verify_output"
 
 set +e
