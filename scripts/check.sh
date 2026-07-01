@@ -793,8 +793,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, and populated readiness/service check lists, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, and populated readiness/service check lists, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' README.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
@@ -1710,6 +1710,11 @@ grep -q 'Post-trip Pi artifacts written to:' scripts/post_trip_collect_pi.sh
 grep -q 'This wrapper writes local artifacts into output-dir' scripts/post_trip_collect_pi.sh
 grep -q 'change persistent Pi state' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON generated_at timestamp is stale' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON generated_at timestamp is too far in the future' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing valid host boot_id' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing deployed source_revision' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing non-empty {field} list' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'Real post-trip shutdown requires collecting at least one artifact first' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
@@ -1754,7 +1759,7 @@ grep -q 'status snapshot changed while opening it' scripts/post_trip_collect_pi.
 grep -q 'json.load(handle)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing boolean ok field' scripts/post_trip_collect_pi.sh
 grep -q 'for field in ("checks", "service_checks")' scripts/post_trip_collect_pi.sh
-grep -q 'status snapshot JSON missing {field} list' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing non-empty {field} list' scripts/post_trip_collect_pi.sh
 grep -q 'validate_post_trip_archive' scripts/post_trip_collect_pi.sh
 grep -q 'write_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
@@ -6939,7 +6944,16 @@ printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
 if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_INVALID_JSON:-0}" == "1" ]]; then
   printf 'not json\n'
 else
-  printf '{"generated_at": "2026-06-30T12:00:00Z", "ok": true, "checks": [{"name": "GPS", "ok": true, "detail": "fix"}], "service_checks": [{"name": "Track Log", "ok": true, "detail": "recent point"}]}\n'
+  if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_STALE_STATUS:-0}" == "1" ]]; then
+    generated_at="2000-01-01T00:00:00Z"
+  else
+    generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  fi
+  source_revision="fixture123"
+  if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_UNKNOWN_REVISION:-0}" == "1" ]]; then
+    source_revision="unknown"
+  fi
+  printf '{"generated_at": "%s", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "%s"}, "checks": [{"name": "GPS", "ok": true, "detail": "fix"}], "service_checks": [{"name": "Track Log", "ok": true, "detail": "recent point"}]}\n' "$generated_at" "$source_revision"
 fi
 if [[ -n "${NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER:-}" ]]; then
   chmod 0775 "$NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER"
@@ -7225,6 +7239,46 @@ fi
 grep -q 'status snapshot is not valid JSON' "$verify_output"
 ! grep -q 'Saved Pi status snapshot' "$verify_output"
 grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_invalid_json_log"
+
+post_trip_stale_status_log="$tmpdir/post-trip-stale-status-helper-calls"
+post_trip_stale_status_output_dir="$tmpdir/post-trip-stale-status-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_stale_status_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_STALE_STATUS=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_stale_status_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject stale successful status JSON with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot JSON generated_at timestamp is stale' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_stale_status_log"
+
+post_trip_unknown_revision_log="$tmpdir/post-trip-unknown-revision-helper-calls"
+post_trip_unknown_revision_output_dir="$tmpdir/post-trip-unknown-revision-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_unknown_revision_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_UNKNOWN_REVISION=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_unknown_revision_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject unknown post-trip status source revision with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot JSON missing deployed source_revision' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_unknown_revision_log"
 
 post_trip_failure_log="$tmpdir/post-trip-failure-helper-calls"
 post_trip_failure_output_dir="$tmpdir/post-trip-failure-output"

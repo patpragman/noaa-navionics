@@ -519,12 +519,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 path = Path(sys.argv[1])
 flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+STATUS_MAX_AGE_SECONDS = 15 * 60
+STATUS_FUTURE_TOLERANCE_SECONDS = 5 * 60
 
 try:
     before = os.stat(path, follow_symlinks=False)
@@ -571,13 +576,47 @@ if not isinstance(payload, dict):
 if not isinstance(payload.get("ok"), bool):
     print(f"status snapshot JSON missing boolean ok field: {path}", file=sys.stderr)
     raise SystemExit(124)
-if not isinstance(payload.get("generated_at"), str) or not payload["generated_at"].strip():
+generated_at = payload.get("generated_at")
+if not isinstance(generated_at, str) or not generated_at.strip():
     print(f"status snapshot JSON missing generated_at field: {path}", file=sys.stderr)
+    raise SystemExit(124)
+try:
+    parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+except ValueError as exc:
+    print(f"status snapshot JSON has invalid generated_at timestamp: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+if parsed_generated_at.tzinfo is None:
+    print(f"status snapshot JSON generated_at timestamp must include a timezone: {path}", file=sys.stderr)
+    raise SystemExit(124)
+generated_at_utc = parsed_generated_at.astimezone(timezone.utc)
+age_seconds = (datetime.now(timezone.utc) - generated_at_utc).total_seconds()
+if age_seconds > STATUS_MAX_AGE_SECONDS:
+    print(
+        f"status snapshot JSON generated_at timestamp is stale: {path}: "
+        f"{age_seconds:.0f}s old; maximum {STATUS_MAX_AGE_SECONDS}s",
+        file=sys.stderr,
+    )
+    raise SystemExit(124)
+if age_seconds < -STATUS_FUTURE_TOLERANCE_SECONDS:
+    print(
+        f"status snapshot JSON generated_at timestamp is too far in the future: {path}: "
+        f"{-age_seconds:.0f}s ahead; maximum {STATUS_FUTURE_TOLERANCE_SECONDS}s",
+        file=sys.stderr,
+    )
+    raise SystemExit(124)
+host = payload.get("host")
+if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
+    print(f"status snapshot JSON missing valid host boot_id: {path}", file=sys.stderr)
+    raise SystemExit(124)
+app = payload.get("app")
+source_revision = app.get("source_revision") if isinstance(app, dict) else None
+if not isinstance(source_revision, str) or not source_revision.strip() or source_revision == "unknown":
+    print(f"status snapshot JSON missing deployed source_revision: {path}", file=sys.stderr)
     raise SystemExit(124)
 for field in ("checks", "service_checks"):
     rows = payload.get(field)
-    if not isinstance(rows, list):
-        print(f"status snapshot JSON missing {field} list: {path}", file=sys.stderr)
+    if not isinstance(rows, list) or not rows:
+        print(f"status snapshot JSON missing non-empty {field} list: {path}", file=sys.stderr)
         raise SystemExit(124)
     for index, row in enumerate(rows):
         if not isinstance(row, dict):
