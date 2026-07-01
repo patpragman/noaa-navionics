@@ -223,6 +223,21 @@ def complete_status_gui_report(
             "anchor_radius_meters": 50.0,
         },
         "launcher_settings": trusted_launcher_settings(),
+        "opencpn_config": {
+            "path": "/home/pi/.opencpn/opencpn.conf",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "config_symlink_component": "",
+            "directory_uid": os.getuid(),
+            "directory_mode": "0700",
+            "uid": os.getuid(),
+            "mode": "0600",
+            "chart_directories": ["/charts"],
+            "data_connections": [
+                "1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;GPSd: 127.0.0.1 TCP port 2947;0;;0;0;"
+            ],
+        },
         "manifest": {
             "path": "/charts/noaa-navionics-manifest.json",
             "exists": True,
@@ -10109,6 +10124,92 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(
                     any(failure.name == "Launcher Settings" and expected in failure.detail for failure in failures)
+                )
+
+    def test_status_report_ready_requires_valid_opencpn_config_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_opencpn_config = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )["opencpn_config"]
+        stale_connection = (
+            "1;2;192.0.2.20;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;"
+            "GPSd: 192.0.2.20 TCP port 2947;0;;0;0;"
+        )
+        cases = [
+            ({}, "missing opencpn_config section"),
+            ({"opencpn_config": {**valid_opencpn_config, "path": ""}}, "path is empty"),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "path": "opencpn.conf"}},
+                "path is not absolute",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "exists": False}},
+                "does not exist",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "is_symlink": True}},
+                "config is a symlink",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "directory_is_symlink": True}},
+                "directory is a symlink",
+            ),
+            (
+                {
+                    "opencpn_config": {
+                        key: value for key, value in valid_opencpn_config.items() if key != "config_symlink_component"
+                    }
+                },
+                "missing config_symlink_component",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "config_symlink_component": "/home/pi/.opencpn"}},
+                "path contains a symlink",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "error": "OpenCPN config path is not a regular file"}},
+                "OpenCPN config error",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "chart_directories": None}},
+                "chart directories were not parsed",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "data_connections": None}},
+                "data connections were not parsed",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "chart_directories": ["/other-charts"]}},
+                "does not list configured chart output /charts",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "data_connections": []}},
+                "does not contain enabled GPSD connection 127.0.0.1:2947",
+            ),
+            (
+                {
+                    "opencpn_config": {
+                        **valid_opencpn_config,
+                        "data_connections": [*valid_opencpn_config["data_connections"], stale_connection],
+                    }
+                },
+                "unexpected enabled GPSD connections: 192.0.2.20:2947",
+            ),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "opencpn_config" not in updates:
+                    report.pop("opencpn_config", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "OpenCPN Config" and expected in failure.detail for failure in failures)
                 )
 
     def test_status_report_ready_requires_valid_manifest_summary(self):

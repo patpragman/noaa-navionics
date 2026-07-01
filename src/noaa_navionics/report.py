@@ -25,7 +25,13 @@ from .config import (
 )
 from .downloader import MANIFEST_NAME, read_manifest
 from .health import CheckResult, check_opencpn_gpsd_config, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
-from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
+from .opencpn import (
+    enabled_gpsd_connections_from_values,
+    normalize_gpsd_host,
+    opencpn_config_path,
+    read_chart_directories,
+    read_data_connections,
+)
 from ._safeio import cleanup_private_temp_file
 from . import __version__
 
@@ -290,6 +296,7 @@ def status_report_validation_failures(
     failures.extend(_app_validation_failures(report.get("app")))
     failures.extend(_config_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
+    failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log")))
@@ -566,6 +573,102 @@ def _launcher_settings_validation_failures(launcher_settings: object) -> list[Ch
         )
     if failures:
         return [CheckResult("Launcher Settings", False, f"status report launcher settings invalid: {'; '.join(failures)}")]
+    return []
+
+
+def _opencpn_config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    opencpn_config = report.get("opencpn_config")
+    if not isinstance(opencpn_config, dict):
+        return [CheckResult("OpenCPN Config", False, "status report missing opencpn_config section")]
+    path = str(opencpn_config.get("path", "")).strip()
+    if not path:
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN config path is empty")]
+    if not _status_absolute_path(path):
+        return [CheckResult("OpenCPN Config", False, f"status report OpenCPN config path is not absolute: {path}")]
+    if opencpn_config.get("exists") is not True:
+        return [CheckResult("OpenCPN Config", False, f"status report OpenCPN config does not exist: {path}")]
+    if opencpn_config.get("is_symlink") is not False:
+        return [
+            CheckResult(
+                "OpenCPN Config",
+                False,
+                "status report OpenCPN config is a symlink or missing symlink status",
+            )
+        ]
+    if opencpn_config.get("directory_is_symlink") is not False:
+        return [
+            CheckResult(
+                "OpenCPN Config",
+                False,
+                "status report OpenCPN config directory is a symlink or missing symlink status",
+            )
+        ]
+    if "config_symlink_component" not in opencpn_config:
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN config missing config_symlink_component")]
+    if str(opencpn_config.get("config_symlink_component", "")).strip():
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN config path contains a symlink")]
+    error = str(opencpn_config.get("error", "")).strip()
+    if error:
+        return [CheckResult("OpenCPN Config", False, f"status report OpenCPN config error: {error}")]
+
+    chart_directories = opencpn_config.get("chart_directories")
+    data_connections = opencpn_config.get("data_connections")
+    if not isinstance(chart_directories, list) or any(not isinstance(value, str) for value in chart_directories):
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN chart directories were not parsed")]
+    if not isinstance(data_connections, list) or any(not isinstance(value, str) for value in data_connections):
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN data connections were not parsed")]
+
+    config = report.get("config")
+    if not isinstance(config, dict):
+        return []
+    chart_output = str(config.get("chart_output", "")).strip()
+    if chart_output:
+        normalized_chart_output = str(Path(chart_output).expanduser().resolve(strict=False))
+        normalized_chart_directories = [
+            str(Path(value).expanduser().resolve(strict=False)) for value in chart_directories
+        ]
+        if normalized_chart_output not in normalized_chart_directories:
+            return [
+                CheckResult(
+                    "OpenCPN Config",
+                    False,
+                    f"status report OpenCPN config does not list configured chart output {normalized_chart_output}",
+                )
+            ]
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode == "gpsd":
+        expected_host = normalize_gpsd_host(str(config.get("gpsd_host", "")).strip())
+        expected_port = config.get("gpsd_port")
+        enabled_gpsd = enabled_gpsd_connections_from_values(data_connections)
+        expected_connection = any(
+            connection.host == expected_host and connection.port == expected_port for connection in enabled_gpsd
+        )
+        if not expected_connection:
+            return [
+                CheckResult(
+                    "OpenCPN Config",
+                    False,
+                    f"status report OpenCPN config does not contain enabled GPSD connection "
+                    f"{expected_host}:{expected_port}",
+                )
+            ]
+        unexpected = [
+            connection
+            for connection in enabled_gpsd
+            if connection.host != expected_host or connection.port != expected_port
+        ]
+        if unexpected:
+            endpoints = ", ".join(
+                f"{connection.host}:{connection.port if connection.port is not None else '<invalid-port>'}"
+                for connection in unexpected
+            )
+            return [
+                CheckResult(
+                    "OpenCPN Config",
+                    False,
+                    f"status report OpenCPN config contains unexpected enabled GPSD connections: {endpoints}",
+                )
+            ]
     return []
 
 
