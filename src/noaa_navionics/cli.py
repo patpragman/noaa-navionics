@@ -201,6 +201,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds between automatic refreshes; 0 disables",
     )
     status_gui.add_argument(
+        "--anchor-watch-seconds",
+        type=_non_negative_float,
+        default=30.0,
+        help="seconds between automatic status GUI anchor-watch checks; 0 disables repeated checks",
+    )
+    status_gui.add_argument(
         "--anchor-radius-meters",
         type=_positive_float,
         help="anchor drift radius used by the status GUI",
@@ -459,6 +465,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             ]
             if args.action_gps_seconds is not None:
                 status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])
+            status_gui_args.extend(["--anchor-watch-seconds", str(args.anchor_watch_seconds)])
             if args.anchor_radius_meters is not None:
                 status_gui_args.extend(["--anchor-radius-meters", str(args.anchor_radius_meters)])
             status_gui_args.extend(["--anchor-samples", str(args.anchor_samples)])

@@ -200,6 +200,55 @@ def check_anchor_drift(
     return distance, radius_meters, anchor_fix, current_fix
 
 
+def capture_anchor_watch_fix(
+    config_path: Path,
+    *,
+    gps_seconds: float = 10.0,
+    anchor_samples: int = 1,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
+) -> GPSFix:
+    if anchor_samples < 1:
+        raise ValueError("anchor samples must be at least 1")
+    app_config = read_config(config_path)
+    fixes = read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)
+    for index, fix in enumerate(fixes, start=1):
+        freshness_failure = _gps_fix_freshness_failure(
+            fix,
+            max_fix_age_seconds=max_fix_age_seconds,
+            future_tolerance_seconds=future_tolerance_seconds,
+        )
+        if freshness_failure:
+            raise ValueError(f"anchor watch requires fresh GPS fix {index}: {freshness_failure}")
+    return _average_anchor_fix(fixes)
+
+
+def check_anchor_watch_drift(
+    config_path: Path,
+    anchor_fix: GPSFix,
+    *,
+    gps_seconds: float = 10.0,
+    radius_meters: float = 50.0,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
+) -> tuple[float, float, GPSFix, GPSFix]:
+    if not math.isfinite(radius_meters) or radius_meters <= 0:
+        raise ValueError("anchor radius must be greater than 0")
+    if anchor_fix.latitude is None or anchor_fix.longitude is None:
+        raise ValueError("anchor watch fix must include coordinates")
+    app_config = read_config(config_path)
+    current_fix = read_configured_gps_fix(app_config, gps_seconds=gps_seconds)
+    freshness_failure = _gps_fix_freshness_failure(
+        current_fix,
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_failure:
+        raise ValueError(f"anchor watch requires fresh current GPS fix: {freshness_failure}")
+    distance = distance_meters(anchor_fix.latitude, anchor_fix.longitude, current_fix.latitude, current_fix.longitude)
+    return distance, radius_meters, anchor_fix, current_fix
+
+
 def _average_anchor_fix(fixes: list[GPSFix]) -> GPSFix:
     if len(fixes) == 1:
         return fixes[0]
@@ -267,6 +316,7 @@ class StatusApp(tk.Tk):
         gps_seconds: float = 10.0,
         action_gps_seconds: Optional[float] = None,
         refresh_seconds: float = 60.0,
+        anchor_watch_seconds: float = 30.0,
         anchor_radius_meters: Optional[float] = None,
         anchor_samples: int = 1,
     ) -> None:
@@ -280,6 +330,9 @@ class StatusApp(tk.Tk):
         self.gps_seconds = gps_seconds
         self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds
         self.refresh_seconds = refresh_seconds
+        self.anchor_watch_seconds = anchor_watch_seconds
+        self.anchor_watch_fix: Optional[GPSFix] = None
+        self.anchor_watch_after_id: Optional[str] = None
         if anchor_radius_meters is None:
             anchor_radius_meters = _configured_anchor_radius(self.config_path)
         self.anchor_radius = tk.StringVar(value=f"{anchor_radius_meters:g}")
@@ -293,6 +346,7 @@ class StatusApp(tk.Tk):
         self.gps_summary = tk.StringVar(value="GPS: waiting for status refresh.")
         self.last_report = tk.StringVar(value="")
         self._build()
+        self._set_busy(False)
         self.after(100, self.refresh_now)
         self.after(150, self._poll_queue)
 
@@ -337,6 +391,10 @@ class StatusApp(tk.Tk):
         self.anchor_samples_entry.pack(side=tk.LEFT, padx=(6, 0))
         self.anchor_button = ttk.Button(buttons, text="Anchor Check", command=self.anchor_check)
         self.anchor_button.pack(side=tk.LEFT, padx=(10, 0))
+        self.anchor_watch_button = ttk.Button(buttons, text="Start Watch", command=self.start_anchor_watch)
+        self.anchor_watch_button.pack(side=tk.LEFT, padx=(10, 0))
+        self.stop_anchor_watch_button = ttk.Button(buttons, text="Stop Watch", command=self.stop_anchor_watch)
+        self.stop_anchor_watch_button.pack(side=tk.LEFT, padx=(10, 0))
         ttk.Button(buttons, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
         ttk.Label(root, textvariable=self.last_report).grid(row=5, column=0, sticky=tk.W, pady=(8, 0))
 
@@ -378,6 +436,37 @@ class StatusApp(tk.Tk):
         )
         self.worker.start()
 
+    def start_anchor_watch(self) -> None:
+        if self.worker is not None and self.worker.is_alive():
+            return
+        try:
+            radius_meters = _positive_float(self.anchor_radius.get())
+        except argparse.ArgumentTypeError as exc:
+            self._show_error(f"Anchor radius {exc}")
+            return
+        try:
+            anchor_samples = _positive_int(self.anchor_samples.get())
+        except argparse.ArgumentTypeError as exc:
+            self._show_error(f"Anchor samples {exc}")
+            return
+        self._set_busy(True)
+        self.summary.set("Setting anchor watch...")
+        self.worker = Thread(
+            target=self._set_anchor_watch_worker,
+            kwargs={"radius_meters": radius_meters, "anchor_samples": anchor_samples},
+            daemon=True,
+        )
+        self.worker.start()
+
+    def stop_anchor_watch(self) -> None:
+        self.anchor_watch_fix = None
+        if self.anchor_watch_after_id is not None:
+            self.after_cancel(self.anchor_watch_after_id)
+            self.anchor_watch_after_id = None
+        self.summary.set("Anchor watch stopped.")
+        self._set_busy(False)
+        self._schedule_refresh()
+
     def _refresh_worker(self) -> None:
         try:
             report = build_status_report(config_path=self.config_path, gps_seconds=self.gps_seconds)
@@ -406,6 +495,31 @@ class StatusApp(tk.Tk):
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
 
+    def _set_anchor_watch_worker(self, *, radius_meters: float, anchor_samples: int) -> None:
+        try:
+            anchor_fix = capture_anchor_watch_fix(
+                self.config_path,
+                gps_seconds=self.action_gps_seconds,
+                anchor_samples=anchor_samples,
+            )
+            self.queue.put(("anchor_watch_set", (anchor_fix, radius_meters)))
+        except Exception as exc:  # pragma: no cover - UI path
+            self.queue.put(("error", str(exc)))
+
+    def _anchor_watch_worker(self, *, radius_meters: float) -> None:
+        try:
+            if self.anchor_watch_fix is None:
+                return
+            distance, radius, anchor_fix, current_fix = check_anchor_watch_drift(
+                self.config_path,
+                self.anchor_watch_fix,
+                gps_seconds=self.action_gps_seconds,
+                radius_meters=radius_meters,
+            )
+            self.queue.put(("anchor_watch", (distance, radius, anchor_fix, current_fix)))
+        except Exception as exc:  # pragma: no cover - UI path
+            self.queue.put(("error", str(exc)))
+
     def _poll_queue(self) -> None:
         try:
             while True:
@@ -418,6 +532,12 @@ class StatusApp(tk.Tk):
                 elif kind == "anchor":
                     distance, radius, anchor_fix, current_fix = payload
                     self._show_anchor(distance, radius, anchor_fix, current_fix)
+                elif kind == "anchor_watch_set":
+                    anchor_fix, radius = payload
+                    self._show_anchor_watch_set(anchor_fix, radius)
+                elif kind == "anchor_watch":
+                    distance, radius, anchor_fix, current_fix = payload
+                    self._show_anchor_watch(distance, radius, anchor_fix, current_fix)
                 elif kind == "error":
                     self._show_error(str(payload))
         except Empty:
@@ -465,11 +585,38 @@ class StatusApp(tk.Tk):
             self.bell()
         self._schedule_refresh()
 
+    def _show_anchor_watch_set(self, anchor_fix: GPSFix, radius_meters: float) -> None:
+        self._set_busy(False)
+        self.anchor_watch_fix = anchor_fix
+        self.anchor_radius.set(f"{radius_meters:g}")
+        self.headline.set("READY")
+        details = f"Anchor watch set: {_format_anchor_fix_detail(anchor_fix)}"
+        self.summary.set(f"Anchor watch armed; radius {radius_meters:g} m")
+        self.gps_summary.set(details)
+        self.last_report.set(details)
+        self._schedule_anchor_watch()
+        self._schedule_refresh()
+
+    def _show_anchor_watch(self, distance: float, radius_meters: float, anchor_fix: GPSFix, current_fix: GPSFix) -> None:
+        self._set_busy(False)
+        summary = format_anchor_check(distance, radius_meters)
+        alarm = anchor_alarm_active(distance, radius_meters)
+        self.headline.set("NOT READY" if alarm else "READY")
+        self.summary.set(f"Anchor watch: {summary}")
+        details = f"Anchor {_format_anchor_fix_detail(anchor_fix)} | Current {_format_anchor_fix_detail(current_fix)}"
+        self.gps_summary.set(details)
+        self.last_report.set(details)
+        if alarm:
+            self.bell()
+        self._schedule_anchor_watch()
+        self._schedule_refresh()
+
     def _show_error(self, message: str) -> None:
         self._set_busy(False)
         self.headline.set("NOT READY")
         self.summary.set(message)
         self.gps_summary.set("GPS: unavailable")
+        self._schedule_anchor_watch()
         self._schedule_refresh()
 
     def _set_busy(self, busy: bool) -> None:
@@ -478,6 +625,10 @@ class StatusApp(tk.Tk):
         self.mark_button.configure(state=state)
         self.mob_button.configure(state=state)
         self.anchor_button.configure(state=state)
+        self.anchor_watch_button.configure(state=state)
+        self.stop_anchor_watch_button.configure(
+            state=tk.DISABLED if busy or self.anchor_watch_fix is None else tk.NORMAL
+        )
         self.anchor_radius_entry.configure(state=state)
         self.anchor_samples_entry.configure(state=state)
 
@@ -487,6 +638,31 @@ class StatusApp(tk.Tk):
             self.after_id = None
         if self.refresh_seconds > 0:
             self.after_id = self.after(int(self.refresh_seconds * 1000), self.refresh_now)
+
+    def _schedule_anchor_watch(self) -> None:
+        if self.anchor_watch_after_id is not None:
+            self.after_cancel(self.anchor_watch_after_id)
+            self.anchor_watch_after_id = None
+        if self.anchor_watch_fix is None or self.anchor_watch_seconds <= 0:
+            return
+        self.anchor_watch_after_id = self.after(int(self.anchor_watch_seconds * 1000), self._run_anchor_watch)
+
+    def _run_anchor_watch(self) -> None:
+        self.anchor_watch_after_id = None
+        if self.anchor_watch_fix is None:
+            return
+        if self.worker is not None and self.worker.is_alive():
+            self._schedule_anchor_watch()
+            return
+        try:
+            radius_meters = _positive_float(self.anchor_radius.get())
+        except argparse.ArgumentTypeError as exc:
+            self._show_error(f"Anchor radius {exc}")
+            return
+        self._set_busy(True)
+        self.summary.set("Checking anchor watch...")
+        self.worker = Thread(target=self._anchor_watch_worker, kwargs={"radius_meters": radius_meters}, daemon=True)
+        self.worker.start()
 
 
 def _fix_coordinates(fix: GPSFix) -> str:
@@ -533,6 +709,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds between automatic refreshes; 0 disables",
     )
     parser.add_argument(
+        "--anchor-watch-seconds",
+        type=_non_negative_float,
+        default=30.0,
+        help="seconds between automatic anchor-watch checks; 0 disables repeated checks",
+    )
+    parser.add_argument(
         "--anchor-radius-meters",
         type=_positive_float,
         help="anchor drift radius used by the Anchor Check button",
@@ -555,6 +737,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         gps_seconds=args.gps_seconds,
         action_gps_seconds=args.action_gps_seconds,
         refresh_seconds=args.refresh_seconds,
+        anchor_watch_seconds=args.anchor_watch_seconds,
         anchor_radius_meters=args.anchor_radius_meters,
         anchor_samples=args.anchor_samples,
     )
