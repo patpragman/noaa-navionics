@@ -200,6 +200,36 @@ def complete_status_gui_report(
             "chart_output": "/charts",
             "track_output": "/charts",
         },
+        "manifest": {
+            "path": "/charts/noaa-navionics-manifest.json",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "chart_storage_symlink_component": "",
+            "manifest_symlink_component": "",
+            "directory_uid": os.getuid(),
+            "directory_mode": "0700",
+            "uid": os.getuid(),
+            "mode": "0600",
+            "created_at": generated_at,
+            "created_at_source": "download",
+            "package": "Alaska",
+            "package_filename": "AK_ENCs.zip",
+            "url": "https://charts.noaa.gov/ENCs/AK_ENCs.zip",
+            "download_path": "/charts/AK_ENCs.zip",
+            "download_path_exists": False,
+            "download_path_is_symlink": False,
+            "download_path_symlink_component": "",
+            "download_url": "https://charts.noaa.gov/ENCs/AK_ENCs.zip",
+            "download_skipped": False,
+            "download_bytes": 123,
+            "sha256": "abc123",
+            "extract_path": "/charts/AK_ENCs",
+            "extract_path_is_symlink": False,
+            "extract_path_symlink_component": "",
+            "enc_cell_count": 1,
+            "actual_enc_cell_count": 1,
+        },
         "track_log": {
             "track_output": "/charts",
             "track_output_is_symlink": False,
@@ -9862,6 +9892,74 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(
                     any(failure.name == "Status Report" and expected in failure.detail for failure in failures)
+                )
+
+    def test_status_report_ready_requires_valid_manifest_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_manifest = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )["manifest"]
+        cases = [
+            ({}, "missing manifest section"),
+            ({"manifest": {**valid_manifest, "exists": False}}, "does not exist"),
+            ({"manifest": {**valid_manifest, "is_symlink": True}}, "path is a symlink"),
+            ({"manifest": {**valid_manifest, "directory_is_symlink": True}}, "directory is a symlink"),
+            (
+                {"manifest": {key: value for key, value in valid_manifest.items() if key != "chart_storage_symlink_component"}},
+                "missing chart_storage_symlink_component",
+            ),
+            (
+                {"manifest": {**valid_manifest, "chart_storage_symlink_component": "/charts"}},
+                "path contains a symlink",
+            ),
+            (
+                {"manifest": {key: value for key, value in valid_manifest.items() if key != "manifest_symlink_component"}},
+                "missing manifest_symlink_component",
+            ),
+            ({"manifest": {**valid_manifest, "error": "manifest path is not a regular file"}}, "manifest error"),
+            ({"manifest": {**valid_manifest, "created_at_source": "manual"}}, "created_at_source manual is not verified"),
+            (
+                {"manifest": {**valid_manifest, "download_path_is_symlink": True}},
+                "download path is a symlink",
+            ),
+            (
+                {"manifest": {key: value for key, value in valid_manifest.items() if key != "download_path_symlink_component"}},
+                "missing download_path_symlink_component",
+            ),
+            (
+                {"manifest": {**valid_manifest, "extract_path_is_symlink": True}},
+                "extract path is a symlink",
+            ),
+            (
+                {"manifest": {key: value for key, value in valid_manifest.items() if key != "extract_path_symlink_component"}},
+                "missing extract_path_symlink_component",
+            ),
+            (
+                {"manifest": {**valid_manifest, "download_path_error": "manifest download path is not a regular file"}},
+                "download path error",
+            ),
+            ({"manifest": {**valid_manifest, "download_bytes": 0}}, "download byte count is not positive"),
+            ({"manifest": {**valid_manifest, "enc_cell_count": 0}}, "has no ENC cells"),
+            ({"manifest": {**valid_manifest, "actual_enc_cell_count": 0}}, "actual ENC cell count is not positive"),
+            (
+                {"manifest": {**valid_manifest, "actual_enc_cell_count": 2}},
+                "actual_enc_cell_count does not match enc_cell_count",
+            ),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "manifest" not in updates:
+                    report.pop("manifest", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "Chart Manifest" and expected in failure.detail for failure in failures)
                 )
 
     def test_status_report_ready_requires_valid_gps_fix_summary(self):

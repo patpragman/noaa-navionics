@@ -281,6 +281,7 @@ def status_report_validation_failures(
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
+    failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log")))
     for section_name in ("checks", "service_checks"):
@@ -391,6 +392,113 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
     return []
 
 
+def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
+    if not isinstance(manifest, dict):
+        return [CheckResult("Chart Manifest", False, "status report missing manifest section")]
+    if not str(manifest.get("path", "")).strip():
+        return [CheckResult("Chart Manifest", False, "status report manifest path is empty")]
+    if manifest.get("exists") is not True:
+        return [CheckResult("Chart Manifest", False, "status report manifest does not exist")]
+    if manifest.get("is_symlink") is not False:
+        return [
+            CheckResult(
+                "Chart Manifest",
+                False,
+                "status report manifest path is a symlink or missing symlink status",
+            )
+        ]
+    if manifest.get("directory_is_symlink") is not False:
+        return [
+            CheckResult(
+                "Chart Manifest",
+                False,
+                "status report manifest directory is a symlink or missing symlink status",
+            )
+        ]
+    for field, detail in (
+        ("chart_storage_symlink_component", "status report manifest missing chart_storage_symlink_component"),
+        ("manifest_symlink_component", "status report manifest missing manifest_symlink_component"),
+    ):
+        if field not in manifest:
+            return [CheckResult("Chart Manifest", False, detail)]
+        if str(manifest.get(field, "")).strip():
+            return [CheckResult("Chart Manifest", False, "status report manifest path contains a symlink")]
+    manifest_error = str(manifest.get("error", "")).strip()
+    if manifest_error:
+        return [CheckResult("Chart Manifest", False, f"status report manifest error: {manifest_error}")]
+    required_text_fields = (
+        "created_at",
+        "created_at_source",
+        "package",
+        "package_filename",
+        "url",
+        "download_path",
+        "download_url",
+        "sha256",
+        "extract_path",
+    )
+    for field in required_text_fields:
+        if not str(manifest.get(field, "")).strip():
+            return [CheckResult("Chart Manifest", False, f"status report manifest missing {field}")]
+    created_at_source = str(manifest.get("created_at_source", "")).strip()
+    if created_at_source not in {"download", "previous-manifest"}:
+        return [
+            CheckResult(
+                "Chart Manifest",
+                False,
+                f"status report manifest created_at_source {created_at_source} is not verified",
+            )
+        ]
+    if manifest.get("download_path_is_symlink") is not False:
+        return [
+            CheckResult(
+                "Chart Manifest",
+                False,
+                "status report manifest download path is a symlink or missing symlink status",
+            )
+        ]
+    if "download_path_symlink_component" not in manifest:
+        return [CheckResult("Chart Manifest", False, "status report manifest missing download_path_symlink_component")]
+    if str(manifest.get("download_path_symlink_component", "")).strip():
+        return [CheckResult("Chart Manifest", False, "status report manifest download path contains a symlink")]
+    if manifest.get("extract_path_is_symlink") is not False:
+        return [
+            CheckResult(
+                "Chart Manifest",
+                False,
+                "status report manifest extract path is a symlink or missing symlink status",
+            )
+        ]
+    if "extract_path_symlink_component" not in manifest:
+        return [CheckResult("Chart Manifest", False, "status report manifest missing extract_path_symlink_component")]
+    if str(manifest.get("extract_path_symlink_component", "")).strip():
+        return [CheckResult("Chart Manifest", False, "status report manifest extract path contains a symlink")]
+    download_path_error = str(manifest.get("download_path_error", "")).strip()
+    if download_path_error:
+        return [CheckResult("Chart Manifest", False, f"status report manifest download path error: {download_path_error}")]
+    extract_path_error = str(manifest.get("extract_path_error", "")).strip()
+    if extract_path_error:
+        return [CheckResult("Chart Manifest", False, f"status report manifest extract path error: {extract_path_error}")]
+    download_bytes = _positive_status_int(manifest.get("download_bytes"))
+    enc_cell_count = _positive_status_int(manifest.get("enc_cell_count"))
+    actual_enc_cell_count = _positive_status_int(manifest.get("actual_enc_cell_count"))
+    if download_bytes is None:
+        return [CheckResult("Chart Manifest", False, "status report manifest download byte count is not positive")]
+    if enc_cell_count is None:
+        return [CheckResult("Chart Manifest", False, "status report manifest has no ENC cells")]
+    if actual_enc_cell_count is None:
+        return [CheckResult("Chart Manifest", False, "status report manifest actual ENC cell count is not positive")]
+    if actual_enc_cell_count != enc_cell_count:
+        return [
+            CheckResult(
+                "Chart Manifest",
+                False,
+                "status report manifest actual_enc_cell_count does not match enc_cell_count",
+            )
+        ]
+    return []
+
+
 def _gps_fix_validation_failures(
     report: dict[str, object],
     *,
@@ -485,6 +593,12 @@ def _track_log_validation_failures(track_log: object) -> list[CheckResult]:
     if hdop is not None and (parsed_hdop is None or parsed_hdop < 0.0 or parsed_hdop > 5.0):
         return [CheckResult("Track Log", False, f"status report track_log latest_hdop is weak or invalid: {hdop!r}")]
     return []
+
+
+def _positive_status_int(value: object) -> Optional[int]:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
 
 
 def _finite_gps_fix_float(value: object) -> Optional[float]:
