@@ -3877,6 +3877,38 @@ class GuiTests(unittest.TestCase):
 
             self.assertFalse((track_output / "tracks").exists())
 
+    def test_status_gui_position_mark_rejects_timezone_less_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            track_output = root / "tracks-root"
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime(2026, 6, 30, 12, 0, 0),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fix
+
+            try:
+                status_gui_module.read_configured_gps_fix = lambda app_config, **kwargs: fix
+                with self.assertRaisesRegex(ValueError, "fix timestamp has no timezone"):
+                    status_gui_module.write_current_position_mark(config_path, mob=True)
+            finally:
+                status_gui_module.read_configured_gps_fix = original
+
+            self.assertFalse((track_output / "tracks").exists())
+
     def test_status_gui_anchor_check_uses_configured_gps_fixes(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -5635,6 +5667,41 @@ class GuiTests(unittest.TestCase):
                     lambda app_config, **kwargs: [anchor_fix, future_current_fix]
                 )
                 with self.assertRaisesRegex(ValueError, "anchor check requires fresh GPS fix 2.*future"):
+                    status_gui_module.check_anchor_drift(config_path)
+            finally:
+                status_gui_module.read_configured_gps_fixes = original
+
+    def test_status_gui_anchor_check_rejects_timezone_less_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            timezone_less_anchor_fix = GPSFix(
+                timestamp=datetime(2026, 6, 30, 12, 0, 0),
+                latitude=61.0,
+                longitude=-149.0,
+                satellites=9,
+                hdop=0.9,
+            )
+            current_fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.0,
+                longitude=-148.99,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = status_gui_module.read_configured_gps_fixes
+
+            try:
+                status_gui_module.read_configured_gps_fixes = (
+                    lambda app_config, **kwargs: [timezone_less_anchor_fix, current_fix]
+                )
+                with self.assertRaisesRegex(ValueError, "fix timestamp has no timezone"):
                     status_gui_module.check_anchor_drift(config_path)
             finally:
                 status_gui_module.read_configured_gps_fixes = original

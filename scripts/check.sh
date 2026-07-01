@@ -3594,10 +3594,14 @@ grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping untimestamped {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping timezone-less {skip_subject} fix' src/noaa_navionics/cli.py
+grep -q 'fix timestamp has no timezone' src/noaa_navionics/gui.py
+grep -q 'fix timestamp has no timezone' src/noaa_navionics/status_gui.py
 grep -q 'Skipping low-detail {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' tests/test_downloader.py
 grep -q 'Skipping untimestamped track fix' tests/test_downloader.py
 grep -q 'Skipping timezone-less track fix' tests/test_downloader.py
+grep -q 'test_status_gui_position_mark_rejects_timezone_less_fix' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'Skipping low-detail track fix' tests/test_downloader.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/cli.py
 grep -q 'fix timestamp has no timezone; cannot write reliable GPX trackpoint' src/noaa_navionics/cli.py

@@ -158,8 +158,8 @@ def _gps_fix_freshness_failure(
     if fix.timestamp is None:
         return "fix has no timestamp"
     timestamp = fix.timestamp
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        return "fix timestamp has no timezone"
     age_seconds = (datetime.now(timezone.utc) - timestamp.astimezone(timezone.utc)).total_seconds()
     if age_seconds > max_fix_age_seconds:
         return f"fix timestamp is stale ({age_seconds:.0f}s old)"
