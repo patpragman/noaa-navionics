@@ -124,7 +124,7 @@ Run the normal pre-trip dock workflow against an already commissioned Pi:
 scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE
 ```
 
-The pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits, refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
+The pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits, validates the trusted root-owned local `python3` command path before creating and parsing the private recovery-output capture, refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle, then runs the live no-deploy pre-departure check. It does not install, enable, reboot, shut down, or download charts on the local computer.
 
 Deploy to a Raspberry Pi over SSH:
 

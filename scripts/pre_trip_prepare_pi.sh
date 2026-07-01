@@ -59,6 +59,7 @@ skip_recovery=0
 skip_pre_departure=0
 opencpn_restarts=""
 opencpn_restart_delay=""
+python3_cmd=""
 
 require_positive_integer() {
   local name="$1"
@@ -76,6 +77,94 @@ require_non_negative_integer() {
     echo "$name must be a non-negative integer" >&2
     exit 2
   fi
+}
+
+local_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_local_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    echo "Could not inspect local command ${item_kind}: $item_path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "Local command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 2
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Local command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+check_local_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_local_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+validate_trusted_local_command() {
+  local command_name="$1"
+  local command_path="$2"
+  local resolved_path
+
+  if ! local_path_in_trusted_system_dir "$command_path"; then
+    echo "Local ${command_name} command is not in a trusted system directory: $command_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$command_path" ]]; then
+    echo "Local ${command_name} command is not executable: $command_path" >&2
+    exit 2
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve local ${command_name} command: $command_path" >&2
+    exit 2
+  fi
+  if ! local_path_in_trusted_system_dir "$resolved_path"; then
+    echo "Resolved local ${command_name} command is not in a trusted system directory: $resolved_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not executable after resolution: $resolved_path" >&2
+    exit 2
+  fi
+  check_local_owner_and_mode "$command_name" "$resolved_path"
+  check_local_directory_chain "$resolved_path"
+}
+
+require_local_command() {
+  local command_name="$1"
+  local command_path
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
 }
 
 validate_gps_device_path_arg() {
@@ -263,6 +352,121 @@ require_recovery_dir_from_output() {
     echo "Recovery export directory has permissions ${mode}, expected private 0700: $recovery_dir" >&2
     exit 2
   fi
+}
+
+create_private_recovery_output_capture() {
+  local directory="$1"
+  local status
+  set +e
+  "$python3_cmd" - "$directory" <<'PY'
+from __future__ import annotations
+
+import os
+import stat
+import sys
+import tempfile
+from pathlib import Path
+
+directory = Path(sys.argv[1])
+
+try:
+    fd, path = tempfile.mkstemp(
+        prefix=".noaa-navionics-pre-trip-recovery-output-",
+        dir=directory,
+        text=True,
+    )
+except OSError as exc:
+    print(f"Could not create private recovery output capture in {directory}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Recovery output capture must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"Recovery output capture is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"Recovery output capture has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+finally:
+    os.close(fd)
+
+print(path)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
+extract_recovery_dir_from_output() {
+  local path="$1"
+  local status
+  set +e
+  "$python3_cmd" - "$path" <<'PY'
+from __future__ import annotations
+
+import os
+import stat
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+prefix = "Pi recovery exports written to: "
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+    fd = os.open(path, flags)
+except OSError as exc:
+    print(f"Could not open recovery output capture for parsing {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        print(f"Recovery output capture changed while opening it: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Recovery output capture must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"Recovery output capture is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"Recovery output capture has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "r", encoding="utf-8", errors="replace") as handle:
+        fd = -1
+        matches = [line[len(prefix):].strip() for line in handle if line.startswith(prefix)]
+except OSError as exc:
+    print(f"Could not parse recovery output capture {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+if matches:
+    print(matches[-1])
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
 }
 
 validate_ssh_target() {
@@ -486,6 +690,9 @@ require_helper "$refresh_helper"
 require_helper "$recovery_helper"
 require_helper "$verify_recovery_helper"
 require_helper "$pre_departure_helper"
+if [[ "$skip_recovery" -eq 0 ]]; then
+  python3_cmd="$(require_local_command python3)"
+fi
 
 if [[ "$skip_refresh" -eq 0 ]]; then
   refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status --gps-seconds "$gps_seconds")
@@ -499,13 +706,13 @@ fi
 
 if [[ "$skip_recovery" -eq 0 ]]; then
   prepare_private_output_dir "Recovery output directory" "$output_dir"
-  recovery_output="$(mktemp)"
+  recovery_output="$(create_private_recovery_output_capture "$output_dir")"
   cleanup_recovery_output() {
     rm -f -- "${recovery_output:-}"
   }
   trap cleanup_recovery_output EXIT
   run_step "Exporting Pi recovery bundle" "$recovery_helper" "$target" "$output_dir" --track-days "$track_days" | tee "$recovery_output"
-  recovery_dir="$(sed -n 's/^Pi recovery exports written to: //p' "$recovery_output" | tail -n 1)"
+  recovery_dir="$(extract_recovery_dir_from_output "$recovery_output")"
   if [[ -z "$recovery_dir" ]]; then
     echo "Could not determine recovery export directory from export output" >&2
     exit 1

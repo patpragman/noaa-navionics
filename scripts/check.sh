@@ -507,6 +507,11 @@ grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/seria
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating and parsing the private recovery-output capture' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating and parsing the private recovery-output capture' docs/sailboat-pi.md
+grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
+grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
@@ -5242,6 +5247,30 @@ printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 printf 'fake pre-departure\n'
 EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
+pre_trip_fake_python_bin="$tmpdir/pre-trip-fake-python-bin"
+mkdir -p "$pre_trip_fake_python_bin"
+cat >"$pre_trip_fake_python_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "untrusted fake pre-trip python should not run" >&2
+exit 99
+EOF
+chmod +x "$pre_trip_fake_python_bin/python3"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
+  PATH="$pre_trip_fake_python_bin:$PATH" \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --output-dir "$tmpdir/pre-trip-untrusted-python-output" \
+  --skip-refresh \
+  --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject an untrusted local python3 command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 mkdir -p "$pre_trip_output_dir"
 chmod 0777 "$pre_trip_output_dir"
 NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
