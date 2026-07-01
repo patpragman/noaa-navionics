@@ -586,8 +586,8 @@ grep -q 'validates remote deploy command paths, ownership, permissions, and pare
 grep -q 'validates remote deploy command paths, ownership, permissions, and parent directories' docs/sailboat-pi.md
 grep -q 'uses the validated absolute local and remote `rsync` or `tar` paths for the actual copy command' README.md
 grep -q 'uses the validated absolute local and remote `rsync` or `tar` paths for the actual copy command' docs/sailboat-pi.md
-grep -q 'uses the validated absolute remote `python3` path for deployment staging and source-revision helpers' README.md
-grep -q 'uses the validated absolute remote `python3` path for deployment staging and source-revision helpers' docs/sailboat-pi.md
+grep -q 'uses the validated absolute remote `python3` path for deployment staging, source-revision, and promoted helper-execution checks' README.md
+grep -q 'uses the validated absolute remote `python3` path for deployment staging, source-revision, and promoted helper-execution checks' docs/sailboat-pi.md
 grep -q 'Refusing to stage unexpected deployment directory' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment parent symlink' scripts/deploy_to_pi.sh
 grep -q 'Refusing deployment path under symlink' scripts/deploy_to_pi.sh
@@ -644,8 +644,8 @@ grep -Fq '/bin/bash -s' scripts/verify_pi.sh
 ! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
 grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
-grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"' scripts/deploy_to_pi.sh
-grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"' scripts/deploy_to_pi.sh
+grep -Fq 'run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"' scripts/deploy_to_pi.sh
+grep -Fq 'run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args[@]}"' scripts/deploy_to_pi.sh
 ! grep -Fq 'ssh -t "$target"' scripts/deploy_to_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/deploy_to_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/deploy_to_pi.sh
@@ -972,7 +972,7 @@ grep -q 'install_args+=("--no-services")' scripts/deploy_to_pi.sh
 grep -q 'install_args+=("$1")' scripts/deploy_to_pi.sh
 grep -q -- '--skip-services requires --skip-autologin' scripts/deploy_to_pi.sh
 grep -q -- '--skip-autologin requires --skip-services' scripts/deploy_to_pi.sh
-grep -Fq 'scripts/install_raspberry_pi.sh ${remote_install_args[*]}' scripts/deploy_to_pi.sh
+grep -Fq 'run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"' scripts/deploy_to_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'write_source_revision' scripts/install_raspberry_pi.sh
@@ -4726,6 +4726,17 @@ PY
 grep -q 'must be a non-negative integer' scripts/deploy_to_pi.sh
 grep -q 'Do not deploy to root@' scripts/deploy_to_pi.sh
 grep -q 'usage()' scripts/deploy_to_pi.sh
+grep -q 'run_remote_repo_helper()' scripts/deploy_to_pi.sh
+grep -q 'NOAA_NAVIONICS_HELPER' scripts/deploy_to_pi.sh
+grep -q 'Deployed helper script changed before descriptor execution' scripts/deploy_to_pi.sh
+grep -Fq "subprocess.run([f'/proc/self/fd/{fd}', *args], pass_fds=(fd,), cwd=repo)" scripts/deploy_to_pi.sh
+grep -q 'Could not execute deployed helper script through validated descriptor' scripts/deploy_to_pi.sh
+grep -Fq 'run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"' scripts/deploy_to_pi.sh
+grep -Fq 'run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args[@]}"' scripts/deploy_to_pi.sh
+! grep -Fq 'cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh' scripts/deploy_to_pi.sh
+! grep -Fq 'cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh' scripts/deploy_to_pi.sh
+grep -q 'remote install and provisioning helper scripts run from no-follow descriptors' README.md
+grep -q 'remote install and provisioning helper scripts run from no-follow descriptors' docs/sailboat-pi.md
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh

@@ -562,7 +562,6 @@ fi
 validate_remote_dir "$remote_dir"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-remote_dir_quoted="$(quote_remote_dir_for_shell "$remote_dir")"
 remote_dir_trimmed="${remote_dir%/}"
 remote_staging_dir="${remote_dir_trimmed}.deploying"
 remote_previous_dir="${remote_dir_trimmed}.previous"
@@ -1074,20 +1073,166 @@ EOF
   deploy_with_tar "$local_tar_cmd" "$remote_tar_cmd"
 }
 
+run_remote_repo_helper() {
+  local helper_relative="$1"
+  shift
+  local helper_env
+  local remote_dir_env
+  local remote_python_cmd_quoted
+  local remote_args=()
+  local remote_command
+
+  case "$helper_relative" in
+    scripts/install_raspberry_pi.sh|scripts/provision_sailboat_pi.sh)
+      ;;
+    *)
+      echo "Unsupported remote repo helper: $helper_relative" >&2
+      exit 2
+      ;;
+  esac
+
+  helper_env="$(printf '%q' "$helper_relative")"
+  remote_dir_env="$(printf '%q' "$remote_dir")"
+  remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
+  for arg in "$@"; do
+    remote_args+=("$(printf '%q' "$arg")")
+  done
+
+  remote_command="${remote_system_path} && export PATH && NOAA_NAVIONICS_REMOTE_DIR=${remote_dir_env} NOAA_NAVIONICS_HELPER=${helper_env} ${remote_python_cmd_quoted} -"
+  if [[ "${#remote_args[@]}" -gt 0 ]]; then
+    remote_command+=" ${remote_args[*]}"
+  fi
+  remote_command+=" <<'PY'
+from pathlib import Path
+import os
+import stat
+import subprocess
+import sys
+
+allowed_helpers = {
+    'scripts/install_raspberry_pi.sh',
+    'scripts/provision_sailboat_pi.sh',
+}
+repo = Path(os.environ['NOAA_NAVIONICS_REMOTE_DIR']).expanduser()
+helper_relative = os.environ['NOAA_NAVIONICS_HELPER']
+args = sys.argv[1:]
+expected_uid = os.getuid()
+
+if helper_relative not in allowed_helpers:
+    raise SystemExit(f'Refusing to execute unsupported deployed helper: {helper_relative}')
+
+helper = repo / helper_relative
+scripts_dir = repo / 'scripts'
+
+def first_symlink_ancestor(path: Path):
+    current = path.expanduser()
+    for component in [current, *current.parents]:
+        if component.is_symlink():
+            return component
+    return None
+
+def validate_private_directory(path: Path, label: str) -> None:
+    try:
+        result = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f'Could not inspect deployed {label}: {path}: {exc}') from exc
+    mode = stat.S_IMODE(result.st_mode)
+    if not stat.S_ISDIR(result.st_mode):
+        raise SystemExit(f'Deployed {label} is not a directory: {path}')
+    if result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Deployed {label} is owned by uid {result.st_uid}, expected {expected_uid}: {path}'
+        )
+    if mode & 0o022:
+        raise SystemExit(
+            f'Deployed {label} has permissions {mode:04o}, expected no group/other write bits: {path}'
+        )
+
+if repo.is_symlink():
+    raise SystemExit(f'Refusing to execute helper from symlink deployment directory: {repo}')
+if not repo.exists() or not repo.is_dir():
+    raise SystemExit(f'Deployment directory is not ready for helper execution: {repo}')
+if repo.parent.is_symlink():
+    raise SystemExit(f'Refusing helper execution under symlink parent: {repo.parent}')
+symlink_component = first_symlink_ancestor(repo)
+if symlink_component is not None:
+    raise SystemExit(f'Refusing helper execution under symlinked deployment path: {symlink_component}')
+
+validate_private_directory(repo.parent, 'deployment parent')
+validate_private_directory(repo, 'deployment directory')
+validate_private_directory(scripts_dir, 'scripts directory')
+
+if helper.parent != scripts_dir:
+    raise SystemExit(f'Deployed helper path is outside scripts directory: {helper}')
+
+try:
+    before = os.stat(helper, follow_symlinks=False)
+except OSError as exc:
+    raise SystemExit(f'Could not inspect deployed helper script: {helper}: {exc}') from exc
+before_mode = stat.S_IMODE(before.st_mode)
+if stat.S_ISLNK(before.st_mode):
+    raise SystemExit(f'Deployed helper script is a symlink: {helper}')
+if not stat.S_ISREG(before.st_mode):
+    raise SystemExit(f'Deployed helper script is not a regular file: {helper}')
+if before.st_uid != expected_uid:
+    raise SystemExit(
+        f'Deployed helper script is owned by uid {before.st_uid}, expected {expected_uid}: {helper}'
+    )
+if before_mode & 0o022:
+    raise SystemExit(
+        f'Deployed helper script has permissions {before_mode:04o}, expected no group/other write bits: {helper}'
+    )
+if before_mode & 0o111 == 0:
+    raise SystemExit(f'Deployed helper script is not executable: {helper}')
+
+flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
+try:
+    fd = os.open(helper, flags)
+except OSError as exc:
+    raise SystemExit(
+        f'Could not open deployed helper script through no-follow descriptor for execution: {helper}: {exc}'
+    ) from exc
+try:
+    opened = os.fstat(fd)
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if not os.path.samestat(before, opened):
+        raise SystemExit(f'Deployed helper script changed before descriptor execution: {helper}')
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f'Opened deployed helper descriptor is not a regular file: {helper}')
+    if opened.st_uid != expected_uid:
+        raise SystemExit(
+            f'Opened deployed helper descriptor is owned by uid {opened.st_uid}, expected {expected_uid}: {helper}'
+        )
+    if opened_mode & 0o022:
+        raise SystemExit(
+            f'Opened deployed helper descriptor has permissions {opened_mode:04o}, '
+            f'expected no group/other write bits: {helper}'
+        )
+    if opened_mode & 0o111 == 0:
+        raise SystemExit(f'Opened deployed helper descriptor is not executable: {helper}')
+    try:
+        result = subprocess.run([f'/proc/self/fd/{fd}', *args], pass_fds=(fd,), cwd=repo)
+    except OSError as exc:
+        raise SystemExit(
+            f'Could not execute deployed helper script through validated descriptor: {helper}: {exc}'
+        ) from exc
+    raise SystemExit(result.returncode)
+finally:
+    os.close(fd)
+PY"
+  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "$remote_command"
+}
+
 deploy_sources
 write_remote_source_revision "$remote_dir" "$source_revision"
 
-remote_install_args=()
-for arg in "${install_args[@]}"; do
-  remote_install_args+=("$(printf '%q' "$arg")")
-done
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/install_raspberry_pi.sh ${remote_install_args[*]}"
+run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"
 
 if [[ "$provision" -eq 1 ]]; then
   remote_args=()
   for arg in "${provision_args[@]}"; do
     [[ "$arg" == "--provision" ]] && continue
-    remote_args+=("$(printf '%q' "$arg")")
+    remote_args+=("$arg")
   done
-  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh ${remote_args[*]}"
+  run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args[@]}"
 fi
