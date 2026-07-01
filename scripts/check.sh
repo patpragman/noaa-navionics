@@ -3606,6 +3606,8 @@ grep -q 'fix timestamp has no timezone' src/noaa_navionics/status_gui.py
 grep -q 'fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None' src/noaa_navionics/gps.py
 grep -q 'position mark timestamp must include a timezone' src/noaa_navionics/gps.py
 grep -q 'position mark fix timestamp has no timezone' src/noaa_navionics/gps.py
+grep -q 'daily track timestamp must include a timezone' src/noaa_navionics/gps.py
+grep -q 'GPX pruning current time must include a timezone' src/noaa_navionics/cli.py
 grep -q 'Skipping low-detail {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' tests/test_downloader.py
 grep -q 'Skipping untimestamped track fix' tests/test_downloader.py
@@ -3613,6 +3615,8 @@ grep -q 'Skipping timezone-less track fix' tests/test_downloader.py
 grep -q 'test_gpx_logger_skips_timezone_less_direct_fix' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_path_rejects_timezone_less_timestamp' tests/test_downloader.py
+grep -q 'test_daily_track_path_rejects_timezone_less_timestamp' tests/test_downloader.py
+grep -q 'test_prune_old_track_logs_rejects_timezone_less_current_time' tests/test_downloader.py
 grep -q 'test_status_gui_position_mark_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'Skipping low-detail track fix' tests/test_downloader.py

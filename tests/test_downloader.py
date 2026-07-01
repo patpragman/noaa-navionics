@@ -16536,6 +16536,10 @@ class GpsTests(unittest.TestCase):
         timestamp = datetime(2026, 6, 29, 23, 30, tzinfo=timezone.utc)
         self.assertEqual(daily_track_path(Path("/tracks"), timestamp), Path("/tracks/tracks/track-20260629.gpx"))
 
+    def test_daily_track_path_rejects_timezone_less_timestamp(self):
+        with self.assertRaisesRegex(ValueError, "daily track timestamp must include a timezone"):
+            daily_track_path(Path("/tracks"), datetime(2026, 6, 29, 23, 30))
+
     def test_log_rotating_tracks_writes_one_file_per_utc_day(self):
         fixes = [
             GPSFix(timestamp=datetime(2026, 6, 29, 23, 59, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2),
@@ -16985,6 +16989,19 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual([path.name for path in removed], ["track-20260401.gpx"])
         self.assertGreaterEqual(len(calls), 1)
+
+    def test_prune_old_track_logs_rejects_timezone_less_current_time(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracks = Path(tmpdir) / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+
+            with self.assertRaisesRegex(ValueError, "current time must include a timezone"):
+                cli_module._prune_old_track_logs(
+                    Path(tmpdir),
+                    retention_days=30,
+                    now=datetime(2026, 6, 30, 12, 0),
+                )
 
     def test_gpx_track_directory_sync_uses_no_follow_open(self):
         calls = []

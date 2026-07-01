@@ -1377,7 +1377,10 @@ def _prune_old_track_logs(base_output: Path, *, retention_days: int, now: Option
         tracks_fd = os.open(tracks_dir, tracks_flags)
     except OSError as exc:
         raise RuntimeError(f"{tracks_dir} could not be opened safely for GPX pruning: {exc}") from exc
-    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).date()
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None or current_time.utcoffset() is None:
+        raise ValueError("GPX pruning current time must include a timezone")
+    current = current_time.astimezone(timezone.utc).date()
     cutoff = current - timedelta(days=retention_days)
     removed: list[Path] = []
     try:

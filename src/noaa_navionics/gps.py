@@ -684,6 +684,8 @@ def default_track_path(base_dir: Path) -> Path:
 
 def daily_track_path(base_dir: Path, timestamp: Optional[datetime] = None) -> Path:
     current = timestamp or datetime.now(timezone.utc)
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise ValueError("daily track timestamp must include a timezone")
     stamp = current.astimezone(timezone.utc).strftime("%Y%m%d")
     return Path(base_dir).expanduser() / "tracks" / f"track-{stamp}.gpx"
 
