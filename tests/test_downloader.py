@@ -4,6 +4,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from http.client import IncompleteRead
 from io import BytesIO, StringIO
 from urllib.error import URLError
+import ast
 import copy
 import json
 import math
@@ -745,6 +746,31 @@ def verify_pi_string_set_assignment(source: str, name: str) -> set[str]:
     if not match:
         raise AssertionError(f"missing verify_pi.py set assignment: {name}")
     return set(re.findall(r'"([^"]+)"', match.group("body")))
+
+
+def shell_python_heredoc(source: str) -> str:
+    match = re.search(r"<<'PY'\n(?P<body>.*?)\nPY\n", source, re.DOTALL)
+    if not match:
+        raise AssertionError("missing embedded Python heredoc")
+    return match.group("body")
+
+
+def python_string_set_assignment(source: str, name: str) -> set[str]:
+    tree = ast.parse(source)
+    for statement in tree.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == name for target in statement.targets):
+            continue
+        if not isinstance(statement.value, ast.Set):
+            raise AssertionError(f"{name} is not assigned a string set")
+        values = set()
+        for element in statement.value.elts:
+            if not isinstance(element, ast.Constant) or not isinstance(element.value, str):
+                raise AssertionError(f"{name} contains a non-string value")
+            values.add(element.value)
+        return values
+    raise AssertionError(f"missing Python set assignment: {name}")
 
 
 def trusted_unit_file_lines(unit_name: str) -> list[str]:
@@ -11978,6 +12004,30 @@ class StatusReportTests(unittest.TestCase):
         self.assertEqual(
             verify_pi_string_set_assignment(source, "required_service_checks"),
             set(report_module.CORE_SERVICE_CHECKS) | set(report_module.GPSD_SERVICE_CHECKS),
+        )
+
+    def test_recovery_verifier_required_status_checks_match_shared_readiness(self):
+        source = shell_python_heredoc(Path("scripts/verify_pi_recovery_exports.sh").read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_READINESS_CHECKS"),
+            set(report_module.CORE_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_READINESS_CHECKS"),
+            set(report_module.GPSD_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "SERIAL_READINESS_CHECKS"),
+            set(report_module.SERIAL_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
+            set(report_module.CORE_SERVICE_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_SERVICE_CHECKS"),
+            set(report_module.GPSD_SERVICE_CHECKS),
         )
 
     def test_verify_pi_validates_status_report_service_summaries(self):
