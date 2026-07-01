@@ -612,6 +612,8 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'cleans temporary copy-error captures through no-follow same-file validation' README.md
+grep -q 'cleans temporary copy-error captures through no-follow same-file validation' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" README.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" docs/sailboat-pi.md
 grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' README.md
@@ -1257,6 +1259,9 @@ grep -Fq '${remote_system_path} && export PATH && /bin/bash -s -- ${remote_pytho
 grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$src" "$dest"' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$config"' scripts/collect_pi_support_bundle.sh
+grep -q 'cleanup_private_temp_file "$copy_error" || true' scripts/collect_pi_support_bundle.sh
+grep -q 'Support bundle temporary file changed before cleanup; leaving it in place' scripts/collect_pi_support_bundle.sh
+! grep -q 'rm -f -- "$copy_error"' scripts/collect_pi_support_bundle.sh
 if awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh | grep -q 'command -v python3'; then
   echo "support bundle remote collector must use the validated python3 command path" >&2
   exit 1
