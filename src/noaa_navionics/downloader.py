@@ -29,6 +29,7 @@ MANIFEST_NAME = "noaa-navionics-manifest.json"
 DOWNLOAD_LOCK_NAME = ".noaa-navionics-download.lock"
 DOWNLOAD_LOCK_STALE_SECONDS = 6 * 60 * 60
 USER_AGENT = "noaa-navionics/0.1 (+https://www.charts.noaa.gov/ENCs/ENCs.shtml)"
+BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 UPDATE_PACKAGES = {
@@ -892,10 +893,42 @@ def _lock_field(lock_text: str, name: str) -> str:
 
 def _current_boot_id() -> str:
     try:
-        value = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
-    except OSError:
+        value = _read_current_boot_id_text(BOOT_ID_PATH)
+    except (OSError, RuntimeError):
         return ""
     return value if _valid_boot_id(value) else ""
+
+
+def _read_current_boot_id_text(path: Path) -> str:
+    target = Path(path)
+    try:
+        before = os.stat(target, follow_symlinks=False)
+    except OSError:
+        if target.is_symlink():
+            raise RuntimeError(f"current boot ID path is a symlink: {target}")
+        raise
+    if stat.S_ISLNK(before.st_mode):
+        raise RuntimeError(f"current boot ID path is a symlink: {target}")
+    if not stat.S_ISREG(before.st_mode):
+        raise RuntimeError(f"current boot ID path is not a regular file: {target}")
+    try:
+        fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        if target.is_symlink():
+            raise RuntimeError(f"current boot ID path is a symlink: {target}")
+        raise
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise RuntimeError(f"current boot ID path changed before it could be read: {target}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"current boot ID path is not a regular file when opened: {target}")
+        with os.fdopen(fd, encoding="ascii") as handle:
+            fd = -1
+            return handle.read().strip()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _valid_boot_id(value: str) -> bool:

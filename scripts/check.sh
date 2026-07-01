@@ -2850,10 +2850,20 @@ grep -q 'test_stale_download_lock_cleanup_rejects_public_lock_file' tests/test_d
 grep -q 'stale lock reads use a no-follow descriptor, stale and release lock cleanup is same-file validated before unlinking, stale lock cleanup refuses misowned or non-private lock files' README.md
 grep -q 'stale lock reads use a no-follow descriptor, stale and release lock cleanup is same-file validated before unlinking, stale lock cleanup refuses misowned or non-private lock files' docs/sailboat-pi.md
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
+grep -q 'BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")' src/noaa_navionics/downloader.py
 grep -q 'BOOT_ID_RE.fullmatch' src/noaa_navionics/downloader.py
+grep -q 'def _read_current_boot_id_text' src/noaa_navionics/downloader.py
+grep -q 'current boot ID path changed before it could be read' src/noaa_navionics/downloader.py
+grep -q 'current boot ID path is a symlink' src/noaa_navionics/downloader.py
+! grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' src/noaa_navionics/downloader.py
 grep -q '_valid_boot_id(owner_boot_id) and _valid_boot_id(current_boot_id)' src/noaa_navionics/downloader.py
 grep -q 'test_old_download_lock_with_malformed_current_boot_id_keeps_live_owner' tests/test_downloader.py
 grep -q 'test_old_download_lock_with_malformed_owner_boot_id_keeps_live_owner' tests/test_downloader.py
+grep -q 'test_download_lock_current_boot_id_reads_no_follow_descriptor' tests/test_downloader.py
+grep -q 'test_download_lock_current_boot_id_rejects_symlinked_path' tests/test_downloader.py
+grep -q 'test_download_lock_current_boot_id_rejects_replaced_path_before_reading' tests/test_downloader.py
+grep -q 'current boot ID through a no-follow descriptor' README.md
+grep -q 'current boot ID through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'valid Linux `boot_id` UUID shape' README.md
 grep -q 'valid Linux `boot_id` UUID shape' docs/sailboat-pi.md
 grep -q 'lock_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py

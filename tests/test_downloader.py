@@ -6702,6 +6702,54 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(stale)
 
+    def test_download_lock_current_boot_id_reads_no_follow_descriptor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            boot_id = Path(tmpdir) / "boot_id"
+            boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
+            original_boot_id_path = downloader_module.BOOT_ID_PATH
+            downloader_module.BOOT_ID_PATH = boot_id
+            try:
+                self.assertEqual(downloader_module._current_boot_id(), "12345678-1234-4234-8234-123456789abc")
+            finally:
+                downloader_module.BOOT_ID_PATH = original_boot_id_path
+
+    def test_download_lock_current_boot_id_rejects_symlinked_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_boot_id = root / "real_boot_id"
+            real_boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
+            boot_id = root / "boot_id"
+            try:
+                boot_id.symlink_to(real_boot_id)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "current boot ID path is a symlink"):
+                downloader_module._read_current_boot_id_text(boot_id)
+
+    def test_download_lock_current_boot_id_rejects_replaced_path_before_reading(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            boot_id = root / "boot_id"
+            boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
+            replacement = root / "replacement_boot_id"
+            replacement.write_text("abcdefab-cdef-4abc-8def-abcdefabcdef\n", encoding="ascii")
+            original_open = downloader_module.os.open
+
+            def replacing_open(path, flags, mode=0o777, *, dir_fd=None):
+                if Path(path) == boot_id:
+                    os.replace(replacement, boot_id)
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                downloader_module.os.open = replacing_open
+                with self.assertRaisesRegex(RuntimeError, "current boot ID path changed before it could be read"):
+                    downloader_module._read_current_boot_id_text(boot_id)
+            finally:
+                downloader_module.os.open = original_open
+
     def test_download_lock_cleanup_preserves_replaced_lock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
