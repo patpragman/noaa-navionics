@@ -882,6 +882,10 @@ if [[ "$skip_refresh" -eq 1 && "$skip_recovery" -eq 1 && "$skip_pre_departure" -
   exit 2
 fi
 
+if [[ "$skip_recovery" -eq 0 ]]; then
+  prepare_private_output_dir "Recovery output directory" "$output_dir"
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 refresh_helper="${repo_root}/scripts/refresh_pi_charts.sh"
 recovery_helper="${repo_root}/scripts/export_pi_recovery_bundle.sh"
@@ -907,7 +911,6 @@ else
 fi
 
 if [[ "$skip_recovery" -eq 0 ]]; then
-  prepare_private_output_dir "Recovery output directory" "$output_dir"
   recovery_output="$(create_private_recovery_output_capture "$output_dir")"
   cleanup_recovery_output() {
     cleanup_private_recovery_output_capture "${recovery_output:-}" || true

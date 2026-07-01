@@ -6399,6 +6399,32 @@ printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 printf 'fake pre-departure\n'
 EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
+
+pre_trip_early_real_parent="$tmpdir/pre-trip-early-real-parent"
+pre_trip_early_symlink_parent="$tmpdir/pre-trip-early-symlink-parent"
+pre_trip_early_log="$tmpdir/pre-trip-early-helper-calls"
+mkdir -p "$pre_trip_early_real_parent"
+ln -s "$pre_trip_early_real_parent" "$pre_trip_early_symlink_parent"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_early_log" \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --output-dir "$pre_trip_early_symlink_parent/output" \
+  --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject symlinked recovery output parents before refresh with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery output directory path contains a symlink' "$verify_output"
+if [[ -e "$pre_trip_early_log" ]] && grep -q '^refresh|' "$pre_trip_early_log"; then
+  cat "$pre_trip_early_log" >&2
+  echo "expected pre_trip_prepare_pi.sh not to refresh before rejecting a symlinked recovery output parent" >&2
+  exit 1
+fi
+
 pre_trip_fake_python_bin="$tmpdir/pre-trip-fake-python-bin"
 mkdir -p "$pre_trip_fake_python_bin"
 cat >"$pre_trip_fake_python_bin/python3" <<'EOF'
