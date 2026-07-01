@@ -1137,7 +1137,10 @@ grep -q 'noaa-status-report-json' scripts/collect_pi_support_bundle.sh
 grep -q 'noaa-status-report-commissioned-json' scripts/collect_pi_support_bundle.sh
 grep -q 'user-unit-properties' scripts/collect_pi_support_bundle.sh
 grep -q 'system-service-properties' scripts/collect_pi_support_bundle.sh
+grep -q 'copy_regular_if_readable /etc/os-release' scripts/collect_pi_support_bundle.sh
 grep -q 'copy_regular_if_readable /etc/chrony/chrony.conf' scripts/collect_pi_support_bundle.sh
+grep -q 'package-versions' scripts/collect_pi_support_bundle.sh
+grep -q 'dpkg-query -W' scripts/collect_pi_support_bundle.sh
 grep -q 'list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
@@ -1160,6 +1163,8 @@ grep -q 'validates the final local support bundle through a no-follow descriptor
 grep -q 'validates the final local support bundle through a no-follow descriptor, requires a regular `README.txt` and at least one diagnostic file' docs/sailboat-pi.md
 grep -q 'loaded user and system unit properties' README.md
 grep -q 'loaded user and system unit properties' docs/sailboat-pi.md
+grep -q 'OS release and package-version evidence' README.md
+grep -q 'OS release and package-version evidence' docs/sailboat-pi.md
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/collect_pi_support_bundle.sh
 grep -q 'or downloaded, and no persistent Pi state is changed' scripts/collect_pi_support_bundle.sh
@@ -6925,6 +6930,9 @@ grep -q '"$python3_cmd" - "$src" "$dest"' "$support_fake_ssh_stdin"
 grep -q '"$python3_cmd" - "$config"' "$support_fake_ssh_stdin"
 grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
+grep -q 'copy_regular_if_readable /etc/os-release' "$support_fake_ssh_stdin"
+grep -q 'package-versions' "$support_fake_ssh_stdin"
+grep -q 'dpkg-query -W' "$support_fake_ssh_stdin"
 grep -q 'user-unit-properties' "$support_fake_ssh_stdin"
 grep -q 'system-service-properties' "$support_fake_ssh_stdin"
 grep -q 'noaa-gps-device-candidates' "$support_fake_ssh_stdin"
