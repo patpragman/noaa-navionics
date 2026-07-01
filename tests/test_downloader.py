@@ -6,6 +6,7 @@ from io import BytesIO, StringIO
 from urllib.error import URLError
 import json
 import math
+import re
 import shutil
 import stat
 import sys
@@ -177,6 +178,13 @@ def complete_status_gui_report(*, ok: bool = True, gps_mode: str = "gpsd") -> di
         "checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)],
         "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(service_checks)],
     }
+
+
+def verify_pi_string_set_assignment(source: str, name: str) -> set[str]:
+    match = re.search(rf"^{re.escape(name)} = \{{(?P<body>.*?)^\}}", source, re.MULTILINE | re.DOTALL)
+    if not match:
+        raise AssertionError(f"missing verify_pi.py set assignment: {name}")
+    return set(re.findall(r'"([^"]+)"', match.group("body")))
 
 
 def trusted_unit_file_lines(unit_name: str) -> list[str]:
@@ -9051,6 +9059,18 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(status_report_is_ready(report))
         self.assertIn("Ready: no", text)
         self.assertIn("status report has malformed checks row", text)
+
+    def test_verify_pi_required_status_checks_match_shared_gpsd_readiness(self):
+        source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            verify_pi_string_set_assignment(source, "required_checks"),
+            set(report_module.CORE_READINESS_CHECKS) | set(report_module.GPSD_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            verify_pi_string_set_assignment(source, "required_service_checks"),
+            set(report_module.CORE_SERVICE_CHECKS) | set(report_module.GPSD_SERVICE_CHECKS),
+        )
 
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
