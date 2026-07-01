@@ -13,6 +13,7 @@ track-file corruption risk.
 Options:
   --confirm   Required for a real shutdown
   --dry-run   Validate the remote shutdown path without powering off
+  --timeout N Seconds to wait for SSH to stop responding after real shutdown (default: 90)
 
 Nothing is installed, enabled, downloaded, or changed on the local computer.
 EOF
@@ -34,6 +35,8 @@ confirm=0
 dry_run=0
 ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
+shutdown_timeout=90
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 while [[ $# -gt 0 ]]; do
@@ -45,6 +48,18 @@ while [[ $# -gt 0 ]]; do
     --dry-run)
       dry_run=1
       shift
+      ;;
+    --timeout)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "$1 requires a value" >&2
+        exit 2
+      fi
+      if [[ ! "${2:-}" =~ ^[1-9][0-9]*$ ]]; then
+        echo "--timeout must be a positive integer" >&2
+        exit 2
+      fi
+      shutdown_timeout="${2:-}"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -213,11 +228,34 @@ require_local_command() {
   printf '%s\n' "$command_path"
 }
 
+wait_for_ssh_shutdown() {
+  local deadline
+  local remaining
+
+  deadline=$((SECONDS + shutdown_timeout))
+  while (( SECONDS < deadline )); do
+    if "$ssh_cmd" -T "${ssh_probe_options[@]}" "$target" "${remote_system_path} && export PATH && true" >/dev/null 2>&1; then
+      remaining=$((deadline - SECONDS))
+      if (( remaining <= 0 )); then
+        break
+      fi
+      sleep 2
+    else
+      printf 'SSH stopped responding after shutdown request for %s.\n' "$target"
+      return 0
+    fi
+  done
+
+  printf 'Pi still accepts SSH after %ss; do not cut boat power yet: %s\n' "$shutdown_timeout" "$target" >&2
+  return 1
+}
+
 validate_ssh_target "$target"
 ssh_cmd="$(require_local_command ssh)"
 dry_run_quoted="$(printf '%q' "$dry_run")"
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=${dry_run_quoted} /bin/bash -s" <<'REMOTE'
+set +e
+ssh_output="$("$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=${dry_run_quoted} /bin/bash -s" 2>&1 <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
@@ -326,9 +364,30 @@ fi
 printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
 "$sudo_cmd" -n "$systemctl_cmd" poweroff
 REMOTE
+)"
+ssh_status=$?
+set -e
+if [[ -n "$ssh_output" ]]; then
+  printf '%s\n' "$ssh_output"
+fi
 
 if [[ "$dry_run" -eq 1 ]]; then
+  if [[ "$ssh_status" -ne 0 ]]; then
+    exit "$ssh_status"
+  fi
   printf 'Pi shutdown dry run passed for %s.\n' "$target"
-else
-  printf 'Clean Pi poweroff requested for %s.\n' "$target"
+  exit 0
 fi
+
+if [[ "$ssh_output" != *"Filesystem sync completed; requesting clean Pi poweroff."* ]]; then
+  printf 'Remote shutdown command did not reach the poweroff request for %s.\n' "$target" >&2
+  if [[ "$ssh_status" -ne 0 ]]; then
+    exit "$ssh_status"
+  fi
+  exit 1
+fi
+if [[ "$ssh_status" -ne 0 && "$ssh_status" -ne 255 ]]; then
+  exit "$ssh_status"
+fi
+wait_for_ssh_shutdown
+printf 'Clean Pi poweroff confirmed by SSH drop for %s.\n' "$target"
