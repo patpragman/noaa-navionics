@@ -697,6 +697,13 @@ grep -q 'pre-departure status snapshot JSON readiness check {name} ok is not boo
 grep -q 'pre-departure status snapshot JSON service check {name} ok is not boolean' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON gps_fix ok is not boolean' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log ok is not boolean' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON gps_fix has non-numeric coordinates' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {field} timestamp must include a timezone' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {label} has no satellite or HDOP quality fields' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s)' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON has invalid gps_mode' scripts/pre_trip_prepare_pi.sh
@@ -724,8 +731,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -871,8 +878,8 @@ grep -q 'recovery verifier validates the trusted root-owned local `python3` comm
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' README.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' docs/sailboat-pi.md
 grep -q 'pre-departure status snapshot JSON Source Revision row does not match deployed source_revision' scripts/verify_pi_recovery_exports.sh
@@ -1592,6 +1599,13 @@ grep -q 'pre-departure status snapshot JSON readiness check {name} ok is not boo
 grep -q 'pre-departure status snapshot JSON service check {name} ok is not boolean' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON gps_fix ok is not boolean' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log ok is not boolean' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON gps_fix has non-numeric coordinates' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {field} timestamp must include a timezone' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {label} has no satellite or HDOP quality fields' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON has failed readiness check(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s)' scripts/verify_pi_recovery_exports.sh
@@ -1829,6 +1843,13 @@ grep -q 'status snapshot JSON readiness check {name} ok is not boolean' scripts/
 grep -q 'status snapshot JSON service check {name} ok is not boolean' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON gps_fix ok is not boolean' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log ok is not boolean' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON gps_fix has non-numeric coordinates' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {field} timestamp must include a timezone' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {label} has no satellite or HDOP quality fields' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON track_log missing track_storage_symlink_component' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON track_log missing latest_path' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing structured readiness data for' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON records non-Pi diagnostic skip(s)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON has invalid gps_mode' scripts/post_trip_collect_pi.sh
@@ -4277,6 +4298,7 @@ grep -q 'test_pre_trip_required_status_checks_match_shared_readiness' tests/test
 grep -q 'test_status_snapshot_validators_reject_non_pi_diagnostic_skips' tests/test_downloader.py
 grep -q 'test_status_snapshot_validators_reject_non_boolean_row_ok_values' tests/test_downloader.py
 grep -q 'test_status_snapshot_validators_reject_non_boolean_summary_ok_values' tests/test_downloader.py
+grep -q 'test_status_snapshot_validators_require_structured_gps_and_track_summaries' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_gui_status_report_uses_shared_readiness_validation' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_ok_preserves_not_ready_readiness_headline' tests/test_downloader.py
@@ -7177,14 +7199,38 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_MISMATCHED_SOURCE_ROW") == "1":
     for row in checks:
         if row["name"] == "Source Revision":
             row["data"] = {"revision": "stale"}
+generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 payload = {
-    "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "generated_at": generated_at,
     "ok": True,
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
     "app": {"source_revision": source_revision},
     "config": {"gps_mode": "gpsd", "chart_output": "/charts", "track_output": "/charts"},
-    "gps_fix": {"ok": True, "detail": "ok"},
-    "track_log": {"ok": True, "detail": "ok", "track_output": "/charts"},
+    "gps_fix": {
+        "ok": True,
+        "detail": "ok",
+        "source": "GPSD",
+        "latitude": 61.0,
+        "longitude": -149.0,
+        "timestamp": generated_at,
+        "age_seconds": 0.0,
+        "satellites": 8,
+        "hdop": 0.9,
+    },
+    "track_log": {
+        "ok": True,
+        "detail": "ok",
+        "track_output": "/charts",
+        "track_output_is_symlink": False,
+        "track_storage_symlink_component": "",
+        "latest_path": "/charts/tracks/track-20260701.gpx",
+        "latest_time": generated_at,
+        "latest_latitude": 61.0,
+        "latest_longitude": -149.0,
+        "age_seconds": 0.0,
+        "latest_satellites": 8,
+        "latest_hdop": 0.9,
+    },
     "checks": checks,
     "service_checks": [
         {"name": name, "ok": True, "detail": "ok"}
@@ -7759,8 +7805,31 @@ payload = {
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
     "app": {"source_revision": source_revision},
     "config": {"gps_mode": "gpsd", "chart_output": "/charts", "track_output": "/charts"},
-    "gps_fix": {"ok": True, "detail": "ok"},
-    "track_log": {"ok": True, "detail": "ok", "track_output": "/charts"},
+    "gps_fix": {
+        "ok": True,
+        "detail": "ok",
+        "source": "GPSD",
+        "latitude": 61.0,
+        "longitude": -149.0,
+        "timestamp": generated_at,
+        "age_seconds": 0.0,
+        "satellites": 8,
+        "hdop": 0.9,
+    },
+    "track_log": {
+        "ok": True,
+        "detail": "ok",
+        "track_output": "/charts",
+        "track_output_is_symlink": False,
+        "track_storage_symlink_component": "",
+        "latest_path": "/charts/tracks/track-20260701.gpx",
+        "latest_time": generated_at,
+        "latest_latitude": 61.0,
+        "latest_longitude": -149.0,
+        "age_seconds": 0.0,
+        "latest_satellites": 8,
+        "latest_hdop": 0.9,
+    },
     "checks": checks,
     "service_checks": [
         {"name": name, "ok": True, "detail": "ok"}
@@ -10743,8 +10812,31 @@ def write_pre_departure_status(directory):
                     "chart_output": "/charts",
                     "track_output": "/charts",
                 },
-                "gps_fix": {"ok": True, "detail": "ok"},
-                "track_log": {"ok": True, "detail": "ok", "track_output": "/charts"},
+                "gps_fix": {
+                    "ok": True,
+                    "detail": "ok",
+                    "source": "GPSD",
+                    "latitude": 61.0,
+                    "longitude": -149.0,
+                    "timestamp": generated_at,
+                    "age_seconds": 0.0,
+                    "satellites": 8,
+                    "hdop": 0.9,
+                },
+                "track_log": {
+                    "ok": True,
+                    "detail": "ok",
+                    "track_output": "/charts",
+                    "track_output_is_symlink": False,
+                    "track_storage_symlink_component": "",
+                    "latest_path": "/charts/tracks/track-20260701.gpx",
+                    "latest_time": generated_at,
+                    "latest_latitude": 61.0,
+                    "latest_longitude": -149.0,
+                    "age_seconds": 0.0,
+                    "latest_satellites": 8,
+                    "latest_hdop": 0.9,
+                },
                 "checks": checks,
                 "service_checks": service_checks,
             },

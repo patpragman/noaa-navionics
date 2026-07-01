@@ -12517,6 +12517,40 @@ class StatusReportTests(unittest.TestCase):
                     with self.subTest(expected=expected):
                         self.assertIn(expected, source)
 
+    def test_status_snapshot_validators_require_structured_gps_and_track_summaries(self):
+        expectations = {
+            "scripts/pre_trip_prepare_pi.sh": (
+                "pre-departure status snapshot JSON gps_fix has non-numeric coordinates",
+                "pre-departure status snapshot JSON {field} timestamp must include a timezone",
+                "pre-departure status snapshot JSON {label} has no satellite or HDOP quality fields",
+                "pre-departure status snapshot JSON track_log missing latest_path",
+                "pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status",
+                "pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age",
+            ),
+            "scripts/verify_pi_recovery_exports.sh": (
+                "pre-departure status snapshot JSON gps_fix has non-numeric coordinates",
+                "pre-departure status snapshot JSON {field} timestamp must include a timezone",
+                "pre-departure status snapshot JSON {label} has no satellite or HDOP quality fields",
+                "pre-departure status snapshot JSON track_log missing latest_path",
+                "pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status",
+                "pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age",
+            ),
+            "scripts/post_trip_collect_pi.sh": (
+                "status snapshot JSON gps_fix has non-numeric coordinates",
+                "status snapshot JSON {field} timestamp must include a timezone",
+                "status snapshot JSON {label} has no satellite or HDOP quality fields",
+                "status snapshot JSON track_log missing latest_path",
+                "status snapshot JSON track_log track_output is a symlink or missing symlink status",
+                "status snapshot JSON {field} age_seconds is inconsistent with timestamp age",
+            ),
+        }
+        for script, expected_messages in expectations.items():
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                for expected in expected_messages:
+                    with self.subTest(expected=expected):
+                        self.assertIn(expected, source)
+
     def test_status_snapshot_validators_reject_source_revision_row_mismatches(self):
         for script in (
             "scripts/pre_trip_prepare_pi.sh",

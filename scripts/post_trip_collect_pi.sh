@@ -518,6 +518,7 @@ verify_status_snapshot_json() {
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import stat
@@ -593,7 +594,142 @@ def fail(message: str) -> None:
     raise SystemExit(124)
 
 
-def validate_successful_status_snapshot(payload: dict[str, object], path: Path, expected_source_revision: str) -> None:
+def finite_status_float(value: object):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    parsed = float(value)
+    return parsed if math.isfinite(parsed) else None
+
+
+def parse_snapshot_timestamp(value: object, field: str, path: Path) -> datetime:
+    if not isinstance(value, str) or not value.strip():
+        fail(f"status snapshot JSON {field} timestamp is missing: {path}")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        fail(f"status snapshot JSON {field} timestamp is invalid: {path}: {exc}")
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        fail(f"status snapshot JSON {field} timestamp must include a timezone: {path}")
+    return parsed.astimezone(timezone.utc)
+
+
+def validate_snapshot_age(
+    value: object,
+    *,
+    timestamp: datetime,
+    generated_at: datetime,
+    field: str,
+    path: Path,
+) -> None:
+    reported_age = finite_status_float(value)
+    if reported_age is None:
+        fail(f"status snapshot JSON {field} age_seconds is not numeric: {path}")
+    if reported_age < 0:
+        fail(f"status snapshot JSON {field} age_seconds is negative: {path}")
+    if reported_age > 600:
+        fail(f"status snapshot JSON {field} age_seconds is stale: {path}")
+    timestamp_age = (generated_at - timestamp).total_seconds()
+    if timestamp_age < -STATUS_FUTURE_TOLERANCE_SECONDS:
+        fail(f"status snapshot JSON {field} timestamp is after generated_at: {path}")
+    if abs(reported_age - timestamp_age) > STATUS_FUTURE_TOLERANCE_SECONDS:
+        fail(f"status snapshot JSON {field} age_seconds is inconsistent with timestamp age: {path}")
+
+
+def validate_snapshot_quality(
+    summary: dict[str, object],
+    *,
+    satellite_field: str,
+    hdop_field: str,
+    label: str,
+    path: Path,
+) -> None:
+    satellites = summary.get(satellite_field)
+    hdop = summary.get(hdop_field)
+    if satellites is None and hdop is None:
+        fail(f"status snapshot JSON {label} has no satellite or HDOP quality fields: {path}")
+    if satellites is not None and (
+        isinstance(satellites, bool) or not isinstance(satellites, int) or satellites < 4
+    ):
+        fail(f"status snapshot JSON {label} satellites is weak or invalid: {path}")
+    parsed_hdop = finite_status_float(hdop)
+    if hdop is not None and (parsed_hdop is None or parsed_hdop < 0.0 or parsed_hdop > 5.0):
+        fail(f"status snapshot JSON {label} HDOP is weak or invalid: {path}")
+
+
+def validate_snapshot_gps_fix(
+    gps_fix: dict[str, object],
+    *,
+    gps_mode: str,
+    generated_at: datetime,
+    path: Path,
+) -> None:
+    expected_source = "GPS" if gps_mode == "serial" else "GPSD"
+    source = str(gps_fix.get("source", "")).strip()
+    if source != expected_source:
+        fail(f"status snapshot JSON gps_fix source {source or '<missing>'} does not match {expected_source}: {path}")
+    latitude = finite_status_float(gps_fix.get("latitude"))
+    longitude = finite_status_float(gps_fix.get("longitude"))
+    if latitude is None or longitude is None:
+        fail(f"status snapshot JSON gps_fix has non-numeric coordinates: {path}")
+    if not -90.0 <= latitude <= 90.0:
+        fail(f"status snapshot JSON gps_fix latitude is outside -90..90: {path}")
+    if not -180.0 <= longitude <= 180.0:
+        fail(f"status snapshot JSON gps_fix longitude is outside -180..180: {path}")
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        fail(f"status snapshot JSON gps_fix coordinates are invalid 0,0: {path}")
+    timestamp = parse_snapshot_timestamp(gps_fix.get("timestamp"), "gps_fix", path)
+    validate_snapshot_age(
+        gps_fix.get("age_seconds"),
+        timestamp=timestamp,
+        generated_at=generated_at,
+        field="gps_fix",
+        path=path,
+    )
+    validate_snapshot_quality(gps_fix, satellite_field="satellites", hdop_field="hdop", label="gps_fix", path=path)
+
+
+def validate_snapshot_track_log(track_log: dict[str, object], *, generated_at: datetime, path: Path) -> None:
+    if track_log.get("track_output_is_symlink") is not False:
+        fail(f"status snapshot JSON track_log track_output is a symlink or missing symlink status: {path}")
+    if "track_storage_symlink_component" not in track_log:
+        fail(f"status snapshot JSON track_log missing track_storage_symlink_component: {path}")
+    if str(track_log.get("track_storage_symlink_component", "")).strip():
+        fail(f"status snapshot JSON track_log storage path contains a symlink: {path}")
+    if not str(track_log.get("latest_path", "")).strip():
+        fail(f"status snapshot JSON track_log missing latest_path: {path}")
+    latitude = finite_status_float(track_log.get("latest_latitude"))
+    longitude = finite_status_float(track_log.get("latest_longitude"))
+    if latitude is None or longitude is None:
+        fail(f"status snapshot JSON track_log has non-numeric latest coordinates: {path}")
+    if not -90.0 <= latitude <= 90.0:
+        fail(f"status snapshot JSON track_log latest_latitude is outside -90..90: {path}")
+    if not -180.0 <= longitude <= 180.0:
+        fail(f"status snapshot JSON track_log latest_longitude is outside -180..180: {path}")
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        fail(f"status snapshot JSON track_log latest coordinates are invalid 0,0: {path}")
+    latest_time = parse_snapshot_timestamp(track_log.get("latest_time"), "track_log latest_time", path)
+    validate_snapshot_age(
+        track_log.get("age_seconds"),
+        timestamp=latest_time,
+        generated_at=generated_at,
+        field="track_log",
+        path=path,
+    )
+    validate_snapshot_quality(
+        track_log,
+        satellite_field="latest_satellites",
+        hdop_field="latest_hdop",
+        label="track_log",
+        path=path,
+    )
+
+
+def validate_successful_status_snapshot(
+    payload: dict[str, object],
+    path: Path,
+    expected_source_revision: str,
+    generated_at: datetime,
+) -> None:
     checks = payload.get("checks")
     service_checks = payload.get("service_checks")
     if not isinstance(checks, list) or not isinstance(service_checks, list):
@@ -645,6 +781,7 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path, 
             + str(gps_fix.get("detail", "<missing detail>"))
             + f": {path}"
         )
+    validate_snapshot_gps_fix(gps_fix, gps_mode=gps_mode, generated_at=generated_at, path=path)
     track_log = payload.get("track_log")
     if not isinstance(track_log, dict):
         fail(f"status snapshot JSON missing track_log section: {path}")
@@ -656,6 +793,7 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path, 
             + str(track_log.get("detail", "<missing detail>"))
             + f": {path}"
         )
+    validate_snapshot_track_log(track_log, generated_at=generated_at, path=path)
     track_output = str(track_log.get("track_output", "")).strip()
     if not track_output:
         fail(f"status snapshot JSON missing track_log track_output: {path}")
@@ -812,7 +950,7 @@ for field in ("checks", "service_checks"):
             print(f"status snapshot JSON {field}[{index}] missing detail: {path}", file=sys.stderr)
             raise SystemExit(124)
 if payload.get("ok") is True:
-    validate_successful_status_snapshot(payload, path, source_revision_text)
+    validate_successful_status_snapshot(payload, path, source_revision_text, generated_at_utc)
 else:
     print(f"status snapshot JSON does not report ok=true: {path}", file=sys.stderr)
     raise SystemExit(124)
