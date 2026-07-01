@@ -264,6 +264,12 @@ strip_trailing_slashes() {
   printf '%s' "$value"
 }
 
+utc_timestamp() {
+  local stamp
+  TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1
+  printf '%s\n' "$stamp"
+}
+
 verify_private_output_file() {
   local label="$1"
   local path="$2"
@@ -758,7 +764,7 @@ fi
 
 prepare_private_output_dir "Output directory" "$output_dir"
 
-timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+timestamp="$(utc_timestamp)"
 safe_target="$(printf '%s' "$target" | tr '@.' '___')"
 trip_dir="${output_dir}/noaa-navionics-pi-post-trip-${safe_target}-${timestamp}"
 if [[ -e "$trip_dir" ]]; then

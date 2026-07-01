@@ -162,6 +162,24 @@ grep -q 'leaves the lock untouched if it is swapped for a symlink or no longer b
 ! grep -Fq 'rm -f "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -q 'read -r owner_pid <"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -q 'read -r lock_boot_id <"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
+grep -q 'utc_timestamp()' scripts/export_pi_tracks.sh
+grep -q 'utc_timestamp()' scripts/export_pi_settings.sh
+grep -q 'utc_timestamp()' scripts/export_pi_opencpn_data.sh
+grep -q 'utc_timestamp()' scripts/collect_pi_support_bundle.sh
+grep -q 'utc_timestamp()' scripts/export_pi_recovery_bundle.sh
+grep -q 'utc_timestamp()' scripts/post_trip_collect_pi.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/export_pi_tracks.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/export_pi_settings.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/export_pi_opencpn_data.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/collect_pi_support_bundle.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/export_pi_recovery_bundle.sh
+grep -q "TZ=UTC0 printf -v stamp '%(%Y%m%dT%H%M%SZ)T' -1" scripts/post_trip_collect_pi.sh
+! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/export_pi_tracks.sh
+! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/export_pi_settings.sh
+! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/export_pi_opencpn_data.sh
+! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/collect_pi_support_bundle.sh
+! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/export_pi_recovery_bundle.sh
+! grep -q 'timestamp="$(date -u +%Y%m%dT%H%M%SZ)"' scripts/post_trip_collect_pi.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
 grep -q 'Tkinter readiness warning support' scripts/verify_pi.sh
 grep -q 'python3-tk' scripts/install_raspberry_pi.sh
