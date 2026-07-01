@@ -1060,12 +1060,15 @@ check_installed_noaa_command() {
 collect_noaa_command_reports() {
   local app_exec
   local config="${HOME}/.config/noaa-navionics/config.ini"
+  local launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
   if app_exec="$(check_installed_noaa_command)"; then
     run_command noaa-gps-device-candidates "$app_exec" list-gps-devices
     run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json
+    run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json
   else
     write_note "skipped noaa-navionics list-gps-devices: ${app_exec}"
     write_note "skipped noaa-navionics status-report: ${app_exec}"
+    write_note "skipped noaa-navionics commissioned status-report: ${app_exec}"
   fi
 }
 

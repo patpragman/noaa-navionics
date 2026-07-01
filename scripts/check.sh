@@ -1132,18 +1132,25 @@ grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'noaa-gps-device-candidates' scripts/collect_pi_support_bundle.sh
 grep -q 'noaa-status-report-json' scripts/collect_pi_support_bundle.sh
+grep -q 'noaa-status-report-commissioned-json' scripts/collect_pi_support_bundle.sh
 grep -q 'list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
+grep -q 'status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
 grep -q 'check_installed_noaa_command' scripts/collect_pi_support_bundle.sh
 grep -q 'collect_noaa_command_reports' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics status-report' scripts/collect_pi_support_bundle.sh
+grep -q 'skipped noaa-navionics commissioned status-report' scripts/collect_pi_support_bundle.sh
+grep -q 'quick and commissioned read-only live status reports' README.md
+grep -q 'quick and commissioned read-only live status reports' docs/sailboat-pi.md
+grep -q 'short diagnostic GPS wait and the commissioned launcher GPS wait' README.md
+grep -q 'short diagnostic GPS wait and the commissioned launcher GPS wait' docs/sailboat-pi.md
 grep -q 'stable/volatile GPS classification' README.md
 grep -q 'stable/volatile GPS classification' docs/sailboat-pi.md
-grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery and a read-only live status report' README.md
-grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery and a read-only live status report' docs/sailboat-pi.md
-grep -q 'fresh read-only status-report JSON capture' README.md
-grep -q 'fresh read-only status-report JSON capture' docs/sailboat-pi.md
+grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' README.md
+grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' docs/sailboat-pi.md
+grep -q 'fresh read-only status-report JSON captures' README.md
+grep -q 'fresh read-only status-report JSON captures' docs/sailboat-pi.md
 grep -q 'validates the final local support bundle through a no-follow descriptor, requires a regular `README.txt` and at least one diagnostic file' README.md
 grep -q 'validates the final local support bundle through a no-follow descriptor, requires a regular `README.txt` and at least one diagnostic file' docs/sailboat-pi.md
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
@@ -6909,12 +6916,15 @@ grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'noaa-gps-device-candidates' "$support_fake_ssh_stdin"
 grep -q 'noaa-status-report-json' "$support_fake_ssh_stdin"
+grep -q 'noaa-status-report-commissioned-json' "$support_fake_ssh_stdin"
 grep -q 'check_installed_noaa_command' "$support_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$support_fake_ssh_stdin"
 grep -q 'run_command noaa-gps-device-candidates "$app_exec" list-gps-devices' "$support_fake_ssh_stdin"
 grep -q 'run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' "$support_fake_ssh_stdin"
+grep -q 'run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' "$support_fake_ssh_stdin"
 grep -q 'skipped noaa-navionics list-gps-devices' "$support_fake_ssh_stdin"
 grep -q 'skipped noaa-navionics status-report' "$support_fake_ssh_stdin"
+grep -q 'skipped noaa-navionics commissioned status-report' "$support_fake_ssh_stdin"
 grep -q 'tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT)' "$support_fake_ssh_stdin"
 grep -q 'refusing to archive symlinked support bundle entry' "$support_fake_ssh_stdin"
 grep -q 'support bundle file changed before archive' "$support_fake_ssh_stdin"
