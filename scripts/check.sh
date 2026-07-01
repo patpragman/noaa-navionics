@@ -140,6 +140,9 @@ grep -q 'read_launcher_lock_file()' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file boot_id "chartplotter launcher lock boot ID"' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file pid "chartplotter launcher lock pid"' scripts/start_chartplotter.sh
 grep -q 'fd = os.open(candidate, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
+grep -q 'release_owned_launcher_lock' scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher lock no longer belongs to this launcher; leaving it in place' scripts/start_chartplotter.sh
+grep -q 'os.path.samestat(lock_stat, current_lock_stat)' scripts/start_chartplotter.sh
 grep -q 'lock_mode = lock_stat.st_mode & 0o777' scripts/start_chartplotter.sh
 grep -q 'expected private 0700: {lock}' scripts/start_chartplotter.sh
 grep -q 'expected private 0600' scripts/start_chartplotter.sh
@@ -148,9 +151,12 @@ grep -q 'requires existing launcher lock directories to be private `0700` and PI
 grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' docs/sailboat-pi.md
 grep -q 'promotes lock PID and boot-ID files through exclusive private temporary files and atomic replacement, then reads them back through no-follow descriptors' README.md
 grep -q 'promotes lock PID and boot-ID files through exclusive private temporary files and atomic replacement, then reads them back through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'leaves a lock untouched if it is swapped for a symlink or no longer belongs to the releasing launcher before release cleanup' README.md
+grep -q 'leaves the lock untouched if it is swapped for a symlink or no longer belongs to the releasing launcher before release cleanup' docs/sailboat-pi.md
 ! grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -Fq '>"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -Fq '>"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
+! grep -Fq 'rm -f "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -q 'read -r owner_pid <"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -q 'read -r lock_boot_id <"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
 grep -q 'check_tkinter_available' scripts/verify_pi.sh
@@ -8903,6 +8909,27 @@ test -L "$launcher_replaced_lock_home/.cache/noaa-navionics/chartplotter.launch.
 test "$(cat "$launcher_replaced_lock_home/.cache/noaa-navionics/replaced-lock-target/pid")" = "keep pid"
 test "$(cat "$launcher_replaced_lock_home/.cache/noaa-navionics/replaced-lock-target/boot_id")" = "keep boot"
 grep -q 'chartplotter launcher lock path became unsafe; leaving it in place' "$launcher_replaced_lock_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_replaced_lock_dir_home="$tmpdir/launcher-replaced-lock-dir-home"
+mkdir -p "$launcher_replaced_lock_dir_home/.local/bin" "$launcher_replaced_lock_dir_home/.cache/noaa-navionics"
+write_test_launcher_env "$launcher_replaced_lock_dir_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_replaced_lock_dir_home/.local/bin/noaa-navionics"
+cat >"$tmpdir/opencpn" <<'EOF'
+#!/usr/bin/env bash
+lock="$HOME/.cache/noaa-navionics/chartplotter.launch.lock"
+rm -rf "$lock"
+mkdir -p "$lock"
+chmod 0700 "$lock"
+printf '999999\n' >"$lock/pid"
+chmod 0600 "$lock/pid"
+exit 0
+EOF
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
+chmod +x "$launcher_replaced_lock_dir_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
+HOME="$launcher_replaced_lock_dir_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+test -d "$launcher_replaced_lock_dir_home/.cache/noaa-navionics/chartplotter.launch.lock"
+test "$(cat "$launcher_replaced_lock_dir_home/.cache/noaa-navionics/chartplotter.launch.lock/pid")" = "999999"
+grep -q 'chartplotter launcher lock no longer belongs to this launcher; leaving it in place' "$launcher_replaced_lock_dir_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_duplicate_home="$tmpdir/launcher-duplicate-home"
 mkdir -p "$launcher_duplicate_home/.local/bin" "$launcher_duplicate_home/.cache/noaa-navionics"

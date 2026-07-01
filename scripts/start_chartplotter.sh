@@ -1308,14 +1308,133 @@ PY
   sync_paths "$launcher_lock_dir" || true
 }
 
+release_owned_launcher_lock() {
+  local boot_id
+  boot_id="$(current_boot_id)"
+  "$python3_bin" - "$cache_dir" "$launcher_lock_dir" "$$" "$boot_id" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+cache = Path(sys.argv[1]).expanduser()
+lock = Path(sys.argv[2]).expanduser()
+pid_text = sys.argv[3]
+boot_id_text = sys.argv[4]
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+def note(message: str) -> None:
+    print(message, file=sys.stderr)
+
+def leave(message: str) -> None:
+    note(message)
+    raise SystemExit(0)
+
+def open_private_file(dir_fd: int, name: str, label: str) -> str:
+    try:
+        fd = os.open(name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    except FileNotFoundError:
+        leave(f"{label} is missing; leaving launcher lock in place: {lock}")
+    except OSError as exc:
+        leave(f"could not open {label}; leaving launcher lock in place: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            leave(f"{label} is not a regular file; leaving launcher lock in place: {lock}")
+        if opened.st_uid != expected_uid:
+            leave(f"{label} is owned by uid {opened.st_uid}, expected {expected_uid}; leaving launcher lock in place: {lock}")
+        mode = opened.st_mode & 0o777
+        if mode != 0o600:
+            leave(f"{label} has permissions {mode:04o}, expected private 0600; leaving launcher lock in place: {lock}")
+        lines = os.read(fd, 4096).decode("ascii", "ignore").splitlines()
+        return lines[0] if lines else ""
+    finally:
+        os.close(fd)
+
+if cache.is_symlink() or lock.is_symlink():
+    leave(f"chartplotter launcher lock path became unsafe; leaving it in place: {lock}")
+if not lock.exists():
+    raise SystemExit(0)
+if not lock.is_dir():
+    leave(f"chartplotter launcher lock path is no longer a directory; leaving it in place: {lock}")
+try:
+    lock.resolve(strict=False).relative_to(cache.resolve(strict=True))
+except ValueError:
+    leave(f"chartplotter launcher lock path is outside cache directory; leaving it in place: {lock}")
+except OSError as exc:
+    leave(f"could not inspect chartplotter launcher lock path; leaving it in place: {exc}")
+
+dir_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow
+try:
+    dir_fd = os.open(lock, dir_flags)
+except OSError as exc:
+    leave(f"could not open chartplotter launcher lock directory; leaving it in place: {exc}")
+try:
+    lock_stat = os.fstat(dir_fd)
+    if not stat.S_ISDIR(lock_stat.st_mode):
+        leave(f"chartplotter launcher lock path is not a directory after opening; leaving it in place: {lock}")
+    if lock_stat.st_uid != expected_uid:
+        leave(
+            f"chartplotter launcher lock directory is owned by uid {lock_stat.st_uid}, "
+            f"expected {expected_uid}; leaving it in place: {lock}"
+        )
+    lock_mode = lock_stat.st_mode & 0o777
+    if lock_mode != 0o700:
+        leave(f"chartplotter launcher lock directory has permissions {lock_mode:04o}, expected private 0700; leaving it in place: {lock}")
+
+    lock_pid = open_private_file(dir_fd, "pid", "chartplotter launcher lock pid")
+    if lock_pid != pid_text:
+        leave("chartplotter launcher lock no longer belongs to this launcher; leaving it in place")
+    if boot_id_text:
+        lock_boot_id = open_private_file(dir_fd, "boot_id", "chartplotter launcher lock boot ID")
+        if lock_boot_id != boot_id_text:
+            leave("chartplotter launcher lock boot ID no longer matches this launcher; leaving it in place")
+    else:
+        try:
+            boot_fd = os.open("boot_id", os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        except FileNotFoundError:
+            pass
+        else:
+            os.close(boot_fd)
+            leave("chartplotter launcher lock has unexpected boot ID metadata; leaving it in place")
+
+    for name in ("pid", "boot_id"):
+        try:
+            os.unlink(name, dir_fd=dir_fd)
+        except FileNotFoundError:
+            pass
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+
+try:
+    cache_fd = os.open(cache, dir_flags)
+except OSError:
+    cache_fd = -1
+if cache_fd >= 0:
+    try:
+        try:
+            current_lock_stat = os.stat(lock.name, dir_fd=cache_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            current_lock_stat = None
+        if current_lock_stat is not None and not os.path.samestat(lock_stat, current_lock_stat):
+            leave("chartplotter launcher lock directory changed before release cleanup; leaving it in place")
+        try:
+            os.rmdir(lock.name, dir_fd=cache_fd)
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            leave(f"could not remove chartplotter launcher lock directory; leaving it in place: {exc}")
+        os.fsync(cache_fd)
+    finally:
+        os.close(cache_fd)
+PY
+}
+
 release_launcher_lock() {
   if [[ "$lock_acquired" -eq 1 ]]; then
-    if ! launcher_lock_path_safe_for_cleanup; then
-      lock_acquired=0
-      return
-    fi
-    rm -f "${launcher_lock_dir}/pid" "${launcher_lock_dir}/boot_id"
-    rmdir "$launcher_lock_dir" 2>/dev/null || true
+    release_owned_launcher_lock || true
     sync_paths "$launcher_lock_dir" || true
     lock_acquired=0
   fi
