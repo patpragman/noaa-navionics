@@ -1134,7 +1134,13 @@ def validate_successful_status_snapshot(
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail("pre-departure status snapshot JSON missing config chart_output")
-    configured_track_output = str(config.get("track_output", "")).strip() or chart_output
+    if not Path(chart_output).is_absolute():
+        fail("pre-departure status snapshot JSON config chart_output is not absolute")
+    configured_track_output = str(config.get("track_output", "")).strip()
+    if not configured_track_output:
+        fail("pre-departure status snapshot JSON missing config track_output")
+    if not Path(configured_track_output).is_absolute():
+        fail("pre-departure status snapshot JSON config track_output is not absolute")
     gps_fix = payload.get("gps_fix")
     if not isinstance(gps_fix, dict):
         fail("pre-departure status snapshot JSON missing gps_fix section")

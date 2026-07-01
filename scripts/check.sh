@@ -703,6 +703,9 @@ grep -q 'pre-departure status snapshot JSON {label} has no satellite or HDOP qua
 grep -q 'pre-departure status snapshot JSON {expected_name} latitude does not match gps_fix' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {expected_name} timestamp does not match gps_fix' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/pre_trip_prepare_pi.sh
@@ -1610,6 +1613,9 @@ grep -q 'pre-departure status snapshot JSON {label} has no satellite or HDOP qua
 grep -q 'pre-departure status snapshot JSON {expected_name} latitude does not match gps_fix' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON {expected_name} timestamp does not match gps_fix' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/verify_pi_recovery_exports.sh
@@ -1859,6 +1865,9 @@ grep -q 'status snapshot JSON {label} has no satellite or HDOP quality fields' s
 grep -q 'status snapshot JSON {expected_name} latitude does not match gps_fix' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON {expected_name} timestamp does not match gps_fix' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config chart_output is not absolute' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing config track_output' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config track_output is not absolute' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing track_storage_symlink_component' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing latest_path' scripts/post_trip_collect_pi.sh

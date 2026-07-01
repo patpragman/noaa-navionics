@@ -808,7 +808,13 @@ def validate_successful_status_snapshot(
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail(f"status snapshot JSON missing config chart_output: {path}")
-    configured_track_output = str(config.get("track_output", "")).strip() or chart_output
+    if not Path(chart_output).is_absolute():
+        fail(f"status snapshot JSON config chart_output is not absolute: {path}")
+    configured_track_output = str(config.get("track_output", "")).strip()
+    if not configured_track_output:
+        fail(f"status snapshot JSON missing config track_output: {path}")
+    if not Path(configured_track_output).is_absolute():
+        fail(f"status snapshot JSON config track_output is not absolute: {path}")
     gps_fix = payload.get("gps_fix")
     if not isinstance(gps_fix, dict):
         fail(f"status snapshot JSON missing gps_fix section: {path}")
