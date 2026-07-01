@@ -857,8 +857,8 @@ grep -q 'recovery verifier validates the trusted root-owned local `python3` comm
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped non-future `generated_at`, a valid Linux boot ID, and a deployed source revision' README.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped non-future `generated_at`, a valid Linux boot ID, and a deployed source revision' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with the full required GPSD or serial readiness/service check names, all rows passing, structured data on every required readiness row' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with the full required GPSD or serial readiness/service check names, all rows passing, structured data on every required readiness row' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
@@ -1558,14 +1558,21 @@ grep -q 'STATUS_FUTURE_TOLERANCE_SECONDS = 300' scripts/verify_pi_recovery_expor
 grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'CORE_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
+grep -q 'GPSD_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
+grep -q 'CORE_SERVICE_CHECKS = {' scripts/verify_pi_recovery_exports.sh
 grep -q 'is missing required support diagnostic file' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_checksum_manifest' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_optional_pre_departure_status' scripts/verify_pi_recovery_exports.sh
+grep -q 'def validate_pre_departure_status_checks' scripts/verify_pi_recovery_exports.sh
 grep -q 'verify_optional_pre_departure_status(recovery_dir)' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum mismatch for' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status checksum mismatch' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON missing required readiness check(s)' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON has failed readiness check(s)' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing generated_at timestamp' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/verify_pi_recovery_exports.sh
@@ -10045,6 +10052,53 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+CORE_READINESS_CHECKS = [
+    "Python",
+    "Source Revision",
+    "Clock",
+    "Time Sync",
+    "Tkinter",
+    "OpenCPN",
+    "Display Power",
+    "Chart Package",
+    "Charts",
+    "Chart Update Debris",
+    "Manifest",
+    "OpenCPN Charts",
+    "Disk",
+    "Pi Power",
+    "Pi Thermal",
+]
+GPSD_READINESS_CHECKS = [
+    "OpenCPN GPSD",
+    "GPSD Config",
+    "Chrony Config",
+    "GPSD",
+    "GPS Time Source",
+]
+CORE_SERVICE_CHECKS = [
+    "Chart Sync",
+    "Chart Sync Settings",
+    "Chart Sync Unit File",
+    "Chart Timer",
+    "Chart Timer Install",
+    "Chart Timer Settings",
+    "Chart Timer Unit File",
+    "Track Log",
+    "Track Logger",
+    "Track Logger Install",
+    "Track Logger Settings",
+    "Track Logger Unit File",
+    "Boot Readiness",
+    "Boot Readiness Install",
+    "Boot Readiness Settings",
+    "Boot Readiness Unit File",
+    "Boot Readiness Run",
+    "Desktop Startup",
+    "Launcher Settings",
+    "User Linger",
+]
+GPSD_SERVICE_CHECKS = ["GPSD Socket", "GPSD Service", "Chrony Service"]
 
 
 def add_text(archive, name, text):
@@ -10079,15 +10133,30 @@ def write_checksums(directory):
 
 def write_pre_departure_status(directory):
     status = directory / "pre-departure-status.json"
+    generated_at = "2026-06-30T12:00:00Z"
+    checks = [
+        {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
+        for name in sorted(CORE_READINESS_CHECKS + GPSD_READINESS_CHECKS)
+    ]
+    service_checks = [
+        {"name": name, "ok": True, "detail": "ok"}
+        for name in sorted(CORE_SERVICE_CHECKS + GPSD_SERVICE_CHECKS)
+    ]
     payload = (
         json.dumps(
             {
                 "ok": True,
-                "generated_at": "2026-06-30T12:00:00Z",
+                "generated_at": generated_at,
                 "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
                 "app": {"source_revision": "fixture123"},
-                "checks": [{"name": "GPS", "ok": True}],
-                "service_checks": [{"name": "Track Log", "ok": True}],
+                "config": {
+                    "gps_mode": "gpsd",
+                    "chart_output": "/charts",
+                    "track_output": "/charts",
+                },
+                "track_log": {"track_output": "/charts"},
+                "checks": checks,
+                "service_checks": service_checks,
             },
             sort_keys=True,
         ).encode("utf-8")
@@ -10159,6 +10228,70 @@ grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
 grep -q 'pre-departure status: pre-departure-status.json (checksum verified)' "$verify_output"
+
+recovery_verify_missing_required_status_dir="$tmpdir/recovery-verify-missing-required-status"
+cp -a "$recovery_verify_dir" "$recovery_verify_missing_required_status_dir"
+python3 - "$recovery_verify_missing_required_status_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+status = json.loads((root / "pre-departure-status.json").read_text(encoding="utf-8"))
+status["checks"] = [row for row in status["checks"] if row.get("name") != "Manifest"]
+payload = json.dumps(status, sort_keys=True).encode("utf-8") + b"\n"
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_missing_required_status_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a pre-departure status missing required readiness checks with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON missing required readiness check(s): Manifest' "$verify_output"
+
+recovery_verify_unstructured_status_dir="$tmpdir/recovery-verify-unstructured-status"
+cp -a "$recovery_verify_dir" "$recovery_verify_unstructured_status_dir"
+python3 - "$recovery_verify_unstructured_status_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+status = json.loads((root / "pre-departure-status.json").read_text(encoding="utf-8"))
+for row in status["checks"]:
+    if row.get("name") == "GPSD":
+        row.pop("data", None)
+payload = json.dumps(status, sort_keys=True).encode("utf-8") + b"\n"
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_unstructured_status_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a pre-departure status missing structured readiness data with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON missing structured readiness data for: GPSD' "$verify_output"
 
 recovery_verify_thin_support_dir="$tmpdir/recovery-verify-thin-support"
 cp -a "$recovery_verify_dir" "$recovery_verify_thin_support_dir"
