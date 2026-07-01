@@ -408,6 +408,14 @@ prepare_private_output_dir() {
   fi
 }
 
+strip_trailing_slashes() {
+  local value="$1"
+  while [[ "$value" != "/" && "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s' "$value"
+}
+
 finalize_private_archive() {
   local path="$1"
   local mode
@@ -444,6 +452,7 @@ finalize_private_archive() {
 
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
+output_dir="$(strip_trailing_slashes "$output_dir")"
 ssh_cmd="$(require_local_command ssh)"
 remote_python_cmd="$(remote_python_command)"
 remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"

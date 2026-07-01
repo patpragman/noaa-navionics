@@ -512,8 +512,8 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
-grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
+grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, and metadata helper snippets" README.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, and metadata helper snippets" docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
@@ -522,8 +522,8 @@ grep -q 'Pi-side temporary collection directory only under a private user-owned 
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' README.md
-grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -556,14 +556,14 @@ grep -q 'continues exporting tracks/support even when the status snapshot report
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root' README.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' README.md
-grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root' README.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
@@ -918,6 +918,7 @@ grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
+grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
 grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
 grep -q 'mktemp -d "${cache_dir}/support-bundle.XXXXXX"' scripts/collect_pi_support_bundle.sh
@@ -940,6 +941,7 @@ grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
+grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_tracks.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_tracks.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_tracks.sh
 grep -q 'mark-position' src/noaa_navionics/cli.py
@@ -960,6 +962,7 @@ grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.
 grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
+grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_opencpn_data.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_opencpn_data.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
@@ -970,6 +973,7 @@ grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
+grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_settings.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_settings.sh
 grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
@@ -5726,10 +5730,11 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
   PATH="$support_fake_ssh_bin:$PATH" \
-  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_output_dir" >"$verify_output" 2>&1
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_output_dir/" >"$verify_output" 2>&1
 grep -q 'Collected Pi support bundle:' "$verify_output"
 support_bundle_path="$(sed -n 's/^Collected Pi support bundle: //p' "$verify_output")"
 test -s "$support_bundle_path"
+[[ "$support_bundle_path" != *'//'* ]]
 test "$(stat -c '%a' "$support_output_dir")" = 700
 test "$(stat -c '%a' "$support_bundle_path")" = 600
 test "$(stat -c '%u' "$support_output_dir")" = "$(id -u)"
@@ -5825,10 +5830,11 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
   PATH="$track_export_fake_ssh_bin:$PATH" \
-  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_output_dir" --days 7 >"$verify_output" 2>&1
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_output_dir/" --days 7 >"$verify_output" 2>&1
 grep -q 'Exported Pi GPX tracks:' "$verify_output"
 track_export_path="$(sed -n 's/^Exported Pi GPX tracks: //p' "$verify_output")"
 test -s "$track_export_path"
+[[ "$track_export_path" != *'//'* ]]
 test "$(stat -c '%a' "$track_export_output_dir")" = 700
 test "$(stat -c '%a' "$track_export_path")" = 600
 test "$(stat -c '%u' "$track_export_output_dir")" = "$(id -u)"
@@ -5892,10 +5898,11 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
   PATH="$opencpn_export_fake_ssh_bin:$PATH" \
-  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_output_dir" >"$verify_output" 2>&1
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_output_dir/" >"$verify_output" 2>&1
 grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
 opencpn_export_path="$(sed -n 's/^Exported Pi OpenCPN user data: //p' "$verify_output")"
 test -s "$opencpn_export_path"
+[[ "$opencpn_export_path" != *'//'* ]]
 test "$(stat -c '%a' "$opencpn_export_output_dir")" = 700
 test "$(stat -c '%a' "$opencpn_export_path")" = 600
 test "$(stat -c '%u' "$opencpn_export_output_dir")" = "$(id -u)"
@@ -5959,10 +5966,11 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
   PATH="$settings_export_fake_ssh_bin:$PATH" \
-  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_output_dir" >"$verify_output" 2>&1
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_output_dir/" >"$verify_output" 2>&1
 grep -q 'Exported Pi commissioning settings:' "$verify_output"
 settings_export_path="$(sed -n 's/^Exported Pi commissioning settings: //p' "$verify_output")"
 test -s "$settings_export_path"
+[[ "$settings_export_path" != *'//'* ]]
 test "$(stat -c '%a' "$settings_export_output_dir")" = 700
 test "$(stat -c '%a' "$settings_export_path")" = 600
 test "$(stat -c '%u' "$settings_export_output_dir")" = "$(id -u)"
