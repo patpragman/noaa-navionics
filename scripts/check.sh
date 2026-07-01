@@ -688,6 +688,7 @@ grep -q 'pre-departure status snapshot JSON generated_at timestamp is stale' scr
 grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON dirty deployed source_revision is not production-ready' scripts/pre_trip_prepare_pi.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/pre_trip_prepare_pi.sh
 grep -q 'def validate_successful_status_snapshot' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing required readiness check(s)' scripts/pre_trip_prepare_pi.sh
@@ -803,8 +804,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' docs/sailboat-pi.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' README.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
@@ -1586,6 +1587,7 @@ grep -q 'parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() i
 grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON dirty deployed source_revision is not production-ready' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest is missing archive' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest lists unexpected archive' scripts/verify_pi_recovery_exports.sh
 grep -q 'hashlib.sha256' scripts/verify_pi_recovery_exports.sh
@@ -1803,6 +1805,7 @@ grep -q 'parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() i
 grep -q 'status snapshot JSON generated_at timestamp is too far in the future' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing valid host boot_id' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing deployed source_revision' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON dirty deployed source_revision is not production-ready' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing non-empty {field} list' scripts/post_trip_collect_pi.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/post_trip_collect_pi.sh
 grep -q 'def validate_successful_status_snapshot' scripts/post_trip_collect_pi.sh
@@ -4334,8 +4337,8 @@ grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' READM
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
-grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
-grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
+grep -q 'Shared readiness validation rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' README.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
@@ -7088,6 +7091,9 @@ checks = [
     {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
     for name in sorted(core_readiness_checks + gpsd_readiness_checks)
 ]
+source_revision = "fixture123"
+if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_DIRTY_REVISION") == "1":
+    source_revision = "fixture123-dirty"
 if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_MISSING_REQUIRED_STATUS") == "1":
     checks = [row for row in checks if row["name"] != "Manifest"]
 if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_UNSTRUCTURED_STATUS") == "1":
@@ -7098,7 +7104,7 @@ payload = {
     "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     "ok": True,
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
-    "app": {"source_revision": "fixture123"},
+    "app": {"source_revision": source_revision},
     "config": {"gps_mode": "gpsd", "chart_output": "/charts", "track_output": "/charts"},
     "track_log": {"track_output": "/charts"},
     "checks": checks,
@@ -7243,6 +7249,33 @@ grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps"
 grep -Fxq "status|pi@example.invalid --json" "$pre_trip_missing_required_log"
 test ! -e "$pre_trip_missing_required_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
 test ! -e "$pre_trip_missing_required_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
+
+pre_trip_dirty_revision_repo="$tmpdir/pre-trip-dirty-revision-repo"
+pre_trip_dirty_revision_log="$tmpdir/pre-trip-dirty-revision-helper-calls"
+pre_trip_dirty_revision_output_dir="$tmpdir/pre-trip-dirty-revision-output"
+cp -a "$pre_trip_repo" "$pre_trip_dirty_revision_repo"
+mkdir -p "$pre_trip_dirty_revision_output_dir"
+chmod 0777 "$pre_trip_dirty_revision_output_dir"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_dirty_revision_log" \
+NOAA_NAVIONICS_FAKE_PRE_TRIP_DIRTY_REVISION=1 \
+  "$pre_trip_dirty_revision_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_dirty_revision_output_dir" \
+  --skip-refresh >"$verify_output" 2>&1
+pre_trip_dirty_revision_code=$?
+set -e
+if [[ "$pre_trip_dirty_revision_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject a dirty status source revision with exit 2" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON dirty deployed source_revision is not production-ready' "$verify_output"
+grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps" "$pre_trip_dirty_revision_log"
+grep -Fxq "status|pi@example.invalid --json" "$pre_trip_dirty_revision_log"
+test ! -e "$pre_trip_dirty_revision_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
+test ! -e "$pre_trip_dirty_revision_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
 
 pre_trip_unstructured_repo="$tmpdir/pre-trip-unstructured-repo"
 pre_trip_unstructured_log="$tmpdir/pre-trip-unstructured-helper-calls"
@@ -7561,7 +7594,12 @@ gpsd_service_checks = ["GPSD Socket", "GPSD Service", "Chrony Service"]
 generated_at = "2000-01-01T00:00:00Z"
 if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_STALE_STATUS") != "1":
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-source_revision = "unknown" if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNKNOWN_REVISION") == "1" else "fixture123"
+if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNKNOWN_REVISION") == "1":
+    source_revision = "unknown"
+elif os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_DIRTY_REVISION") == "1":
+    source_revision = "fixture123-dirty"
+else:
+    source_revision = "fixture123"
 checks = [
     {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
     for name in sorted(core_readiness_checks + gpsd_readiness_checks)
@@ -8137,6 +8175,26 @@ fi
 grep -q 'status snapshot JSON missing deployed source_revision' "$verify_output"
 ! grep -q 'Saved Pi status snapshot' "$verify_output"
 grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_unknown_revision_log"
+
+post_trip_dirty_revision_log="$tmpdir/post-trip-dirty-revision-helper-calls"
+post_trip_dirty_revision_output_dir="$tmpdir/post-trip-dirty-revision-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_dirty_revision_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_DIRTY_REVISION=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_dirty_revision_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject dirty post-trip status source revision with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot JSON dirty deployed source_revision is not production-ready' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_dirty_revision_log"
 
 post_trip_missing_required_status_log="$tmpdir/post-trip-missing-required-status-helper-calls"
 post_trip_missing_required_status_output_dir="$tmpdir/post-trip-missing-required-status-output"
@@ -10835,6 +10893,48 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' "$verify_output"
+
+recovery_verify_dirty_status_revision_dir="$tmpdir/recovery-verify-dirty-status-revision"
+cp -a "$recovery_verify_dir" "$recovery_verify_dirty_status_revision_dir"
+python3 - "$recovery_verify_dirty_status_revision_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+payload = (
+    json.dumps(
+        {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
+            "app": {"source_revision": "fixture123-dirty"},
+            "checks": [{"name": "GPS", "ok": True}],
+            "service_checks": [{"name": "Track Log", "ok": True}],
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    + b"\n"
+)
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_dirty_status_revision_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject dirty pre-departure status source revision with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON dirty deployed source_revision is not production-ready' "$verify_output"
 
 recovery_verify_future_status_dir="$tmpdir/recovery-verify-future-status"
 cp -a "$recovery_verify_dir" "$recovery_verify_future_status_dir"

@@ -736,8 +736,15 @@ if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id"
     raise SystemExit(124)
 app = payload.get("app")
 source_revision = app.get("source_revision") if isinstance(app, dict) else None
-if not isinstance(source_revision, str) or not source_revision.strip() or source_revision == "unknown":
+if not isinstance(source_revision, str):
     print(f"status snapshot JSON missing deployed source_revision: {path}", file=sys.stderr)
+    raise SystemExit(124)
+source_revision_text = source_revision.strip()
+if not source_revision_text or source_revision_text == "unknown":
+    print(f"status snapshot JSON missing deployed source_revision: {path}", file=sys.stderr)
+    raise SystemExit(124)
+if source_revision_text.endswith("-dirty"):
+    print(f"status snapshot JSON dirty deployed source_revision is not production-ready: {path}", file=sys.stderr)
     raise SystemExit(124)
 for field in ("checks", "service_checks"):
     rows = payload.get(field)

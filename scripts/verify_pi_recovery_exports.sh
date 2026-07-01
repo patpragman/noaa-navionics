@@ -649,8 +649,13 @@ def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
         fail("pre-departure status snapshot JSON missing valid host boot_id")
     app = status.get("app")
     source_revision = app.get("source_revision") if isinstance(app, dict) else None
-    if not isinstance(source_revision, str) or not source_revision.strip() or source_revision == "unknown":
+    if not isinstance(source_revision, str):
         fail("pre-departure status snapshot JSON missing deployed source_revision")
+    source_revision_text = source_revision.strip()
+    if not source_revision_text or source_revision_text == "unknown":
+        fail("pre-departure status snapshot JSON missing deployed source_revision")
+    if source_revision_text.endswith("-dirty"):
+        fail("pre-departure status snapshot JSON dirty deployed source_revision is not production-ready")
     validate_pre_departure_status_checks(status)
     return True
 
