@@ -7351,6 +7351,17 @@ if [[ "$support_bundle_code" -ne 2 ]]; then
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
+set +e
+scripts/collect_pi_support_bundle.sh pi@example.invalid / >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject broad output directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
 support_symlink="$tmpdir/support-output-link"
 ln -s "$tmpdir" "$support_symlink"
 set +e
@@ -7647,6 +7658,17 @@ if [[ "$track_export_code" -ne 2 ]]; then
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
+set +e
+scripts/export_pi_tracks.sh pi@example.invalid / >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject broad output directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
 track_export_symlink="$tmpdir/track-export-output-link"
 ln -s "$tmpdir" "$track_export_symlink"
 set +e
@@ -7890,6 +7912,17 @@ if [[ "$opencpn_export_code" -ne 2 ]]; then
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
+set +e
+scripts/export_pi_opencpn_data.sh pi@example.invalid / >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject broad output directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
 opencpn_export_symlink="$tmpdir/opencpn-export-output-link"
 ln -s "$tmpdir" "$opencpn_export_symlink"
 set +e
@@ -8083,6 +8116,17 @@ if [[ "$settings_export_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+set +e
+scripts/export_pi_settings.sh pi@example.invalid / >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject broad output directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
 
 settings_export_symlink="$tmpdir/settings-export-output-link"
 ln -s "$tmpdir" "$settings_export_symlink"
