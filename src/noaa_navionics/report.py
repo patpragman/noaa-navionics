@@ -768,12 +768,42 @@ def _source_revision_path() -> Path:
 
 def _boot_id() -> str:
     try:
-        value = BOOT_ID_PATH.read_text(encoding="ascii").strip()
-    except OSError:
+        value = _read_boot_id_text(BOOT_ID_PATH)
+    except (OSError, RuntimeError):
         return "unknown"
     if BOOT_ID_RE.fullmatch(value):
         return value
     return "unknown"
+
+
+def _read_boot_id_text(path: Path) -> str:
+    target = Path(path)
+    try:
+        before = os.stat(target, follow_symlinks=False)
+    except OSError:
+        if target.is_symlink():
+            raise RuntimeError(f"boot ID path is a symlink: {target}")
+        raise
+    if not stat.S_ISREG(before.st_mode):
+        raise RuntimeError(f"boot ID path is not a regular file: {target}")
+    try:
+        fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        if target.is_symlink():
+            raise RuntimeError(f"boot ID path is a symlink: {target}")
+        raise
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise RuntimeError(f"boot ID path changed before it could be read: {target}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"boot ID path is not a regular file when opened: {target}")
+        with os.fdopen(fd, encoding="ascii") as handle:
+            fd = -1
+            return handle.read().strip()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _current_boot_epoch() -> Optional[float]:

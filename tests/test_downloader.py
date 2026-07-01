@@ -8202,6 +8202,46 @@ class StatusReportTests(unittest.TestCase):
             finally:
                 report_module.BOOT_ID_PATH = original_boot_id_path
 
+    def test_boot_id_rejects_symlinked_path(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            real_boot_id = root / "real_boot_id"
+            real_boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
+            boot_id = root / "boot_id"
+            try:
+                boot_id.symlink_to(real_boot_id)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            original_boot_id_path = report_module.BOOT_ID_PATH
+            report_module.BOOT_ID_PATH = boot_id
+            try:
+                self.assertEqual(report_module._boot_id(), "unknown")
+            finally:
+                report_module.BOOT_ID_PATH = original_boot_id_path
+
+    def test_boot_id_rejects_replaced_path_before_reading(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            boot_id = root / "boot_id"
+            boot_id.write_text("12345678-1234-4234-8234-123456789abc\n", encoding="ascii")
+            replacement = root / "replacement_boot_id"
+            replacement.write_text("abcdefab-cdef-4abc-8def-abcdefabcdef\n", encoding="ascii")
+            original_open = report_module.os.open
+
+            def replacing_open(path, flags, mode=0o777, *, dir_fd=None):
+                if Path(path) == boot_id:
+                    os.replace(replacement, boot_id)
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                report_module.os.open = replacing_open
+                with self.assertRaisesRegex(RuntimeError, "boot ID path changed before it could be read"):
+                    report_module._read_boot_id_text(boot_id)
+            finally:
+                report_module.os.open = original_open
+
     def test_parse_proc_uptime_seconds_requires_finite_non_negative_value(self):
         self.assertEqual(_parse_proc_uptime_seconds("123.45 678.90\n"), 123.45)
         for value in ("nan 0\n", "inf 0\n", "-1 0\n", "not-a-number 0\n", "\n"):
