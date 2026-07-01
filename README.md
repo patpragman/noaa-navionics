@@ -301,6 +301,7 @@ Failed installer source-revision and root text temporary cleanup is also no-foll
 Failed root temporary config cleanup is also no-follow and same-file validated before unlinking, leaving changed or unsafe temporary paths in place.
 Failed root backup cleanup is also no-follow and same-file validated before unlinking, leaving changed or unsafe backup paths in place.
 Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking.
+Python atomic-write temp cleanup for app config, OpenCPN config, status reports, and chart manifests is no-follow and same-file validated before unlinking.
 
 Readiness compares GPSD and chrony config no-follow descriptors against the inspected file before parsing startup or GPS time settings.
 

@@ -9,6 +9,8 @@ import re
 import stat
 import tempfile
 
+from ._safeio import cleanup_private_temp_file
+
 
 DEFAULT_OPENCPN_CONFIG_PATH = Path("~/.opencpn/opencpn.conf")
 FLATPAK_OPENCPN_CONFIG_PATH = Path("~/.var/app/org.opencpn.OpenCPN/config/opencpn/opencpn.conf")
@@ -256,10 +258,7 @@ def _write_text_atomic(target: Path, text: str) -> None:
         _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
-            try:
-                tmp_path.unlink()
-            except FileNotFoundError:
-                pass
+            cleanup_private_temp_file(tmp_path, label="OpenCPN config temp")
 
 
 def _validate_written_config(path: Path, expected_text: str) -> None:

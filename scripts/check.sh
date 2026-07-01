@@ -2276,6 +2276,11 @@ grep -q 'Failed root backup cleanup is also no-follow and same-file validated be
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'Python atomic-write temp cleanup for app config, OpenCPN config, status reports, and chart manifests is no-follow and same-file validated before unlinking' README.md
+grep -q 'Python atomic-write temp cleanup for app config, OpenCPN config, status reports, and chart manifests is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'def cleanup_private_temp_file' src/noaa_navionics/_safeio.py
+grep -q 'os.path.samestat(before, opened)' src/noaa_navionics/_safeio.py
+grep -q 'os.unlink(target.name, dir_fd=dir_fd)' src/noaa_navionics/_safeio.py
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'dir=str(config_path.parent)' scripts/configure_gpsd.sh
 grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
@@ -2784,6 +2789,9 @@ grep -q 'test_existing_zip_no_keep_zip_rejects_symlink_swapped_before_removal' t
 grep -q 'ZIP is revalidated as a regular trusted archive immediately before removal' README.md
 grep -q 'ZIP is revalidated as a regular trusted archive immediately before removal' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
+grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/downloader.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="chart manifest temp")' src/noaa_navionics/downloader.py
+! grep -q 'tmp_path.unlink()' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
 grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/downloader.py
@@ -3105,6 +3113,9 @@ grep -q 'chart_dir = Path(args.charts).expanduser() if args.charts else app_conf
 grep -q 'pass `--charts PATH` to check a different mounted chart directory explicitly' README.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
+grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/config.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="NOAA Navionics config temp")' src/noaa_navionics/config.py
+! grep -q 'tmp_path.unlink()' src/noaa_navionics/config.py
 grep -q 'def _validate_written_config' src/noaa_navionics/config.py
 grep -q '_validate_written_config(target)' src/noaa_navionics/config.py
 grep -q 'def _prepare_config_parent' src/noaa_navionics/config.py
@@ -3377,6 +3388,9 @@ grep -q 'max_chart_age_days=app_config.max_chart_age_days' src/noaa_navionics/gu
 grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/gui.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
+grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/opencpn.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="OpenCPN config temp")' src/noaa_navionics/opencpn.py
+! grep -q 'tmp_path.unlink()' src/noaa_navionics/opencpn.py
 grep -q 'class OpenCPNGPSDConnection' src/noaa_navionics/opencpn.py
 grep -q 'def enabled_gpsd_connections' src/noaa_navionics/opencpn.py
 grep -q 'def enabled_gpsd_connections_from_values' src/noaa_navionics/opencpn.py
@@ -3805,6 +3819,9 @@ grep -q '"anchor_radius_meters": app_config.anchor_radius_meters' src/noaa_navio
 grep -q 'Anchor radius:' src/noaa_navionics/report.py
 grep -q '"extract_path": extract_path' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
+grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/report.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="status report temp")' src/noaa_navionics/report.py
+! grep -q 'tmp_path.unlink()' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
 grep -q 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service

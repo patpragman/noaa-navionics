@@ -19,6 +19,7 @@ from .config import AppConfig, read_config
 from .downloader import MANIFEST_NAME, read_manifest
 from .health import CheckResult, check_opencpn_gpsd_config, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
 from .opencpn import opencpn_config_path, read_chart_directories, read_data_connections
+from ._safeio import cleanup_private_temp_file
 from . import __version__
 
 
@@ -261,10 +262,7 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
         _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
-            try:
-                tmp_path.unlink()
-            except FileNotFoundError:
-                pass
+            cleanup_private_temp_file(tmp_path, label="status report temp")
     return target
 
 

@@ -20,6 +20,8 @@ import time
 import xml.etree.ElementTree as ET
 import zipfile
 
+from ._safeio import cleanup_private_temp_file
+
 
 BASE_URL = "https://www.charts.noaa.gov/ENCs/"
 CATALOG_NAME = "ENCProdCat_19115.xml"
@@ -937,10 +939,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
         _fsync_directory(output_path)
     finally:
         if tmp_path is not None:
-            try:
-                tmp_path.unlink()
-            except FileNotFoundError:
-                pass
+            cleanup_private_temp_file(tmp_path, label="chart manifest temp")
     return target
 
 

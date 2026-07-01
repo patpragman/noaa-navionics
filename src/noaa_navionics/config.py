@@ -8,6 +8,8 @@ import os
 import stat
 import tempfile
 
+from ._safeio import cleanup_private_temp_file
+
 
 DEFAULT_CONFIG_PATH = Path("~/.config/noaa-navionics/config.ini")
 CHART_PACKAGES = {"state", "cgd", "region", "chart", "all"}
@@ -296,10 +298,7 @@ def _write_text_atomic(target: Path, text: str) -> None:
         _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
-            try:
-                tmp_path.unlink()
-            except FileNotFoundError:
-                pass
+            cleanup_private_temp_file(tmp_path, label="NOAA Navionics config temp")
 
 
 def _validate_written_config(path: Path) -> None:
