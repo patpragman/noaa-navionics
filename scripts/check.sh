@@ -737,6 +737,8 @@ grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root' README.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
+grep -q 'production `/etc/chrony/chrony.conf` when readable' README.md
+grep -q 'production `/etc/chrony/chrony.conf` when readable' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
@@ -1135,6 +1137,7 @@ grep -q 'noaa-status-report-json' scripts/collect_pi_support_bundle.sh
 grep -q 'noaa-status-report-commissioned-json' scripts/collect_pi_support_bundle.sh
 grep -q 'user-unit-properties' scripts/collect_pi_support_bundle.sh
 grep -q 'system-service-properties' scripts/collect_pi_support_bundle.sh
+grep -q 'copy_regular_if_readable /etc/chrony/chrony.conf' scripts/collect_pi_support_bundle.sh
 grep -q 'list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
@@ -1259,6 +1262,8 @@ grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
 grep -q 'source-revision' scripts/export_pi_settings.sh
 grep -q '50-noaa-navionics-autologin.conf' scripts/export_pi_settings.sh
+grep -q 'Path("/etc/chrony/chrony.conf"), 0, "system/chrony.conf"' scripts/export_pi_settings.sh
+grep -q 'Path("/etc/chrony/conf.d/noaa-navionics-gpsd.conf"), 0, "system/noaa-navionics-gpsd.conf"' scripts/export_pi_settings.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_settings.sh
 grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_settings.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_settings.sh
@@ -2734,6 +2739,8 @@ grep -q 'The GPSD setup script reads any existing onboard app config through a n
 grep -q 'reads any existing onboard app config through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Readiness also rejects unsafe chrony config paths' README.md
 grep -q 'Readiness requires the managed chrony GPSD SHM refclock config' docs/sailboat-pi.md
+grep -q 'copy_regular_if_readable /etc/chrony/chrony.conf' scripts/collect_pi_support_bundle.sh
+grep -q 'Path("/etc/chrony/chrony.conf"), 0, "system/chrony.conf"' scripts/export_pi_settings.sh
 grep -q 'chronyc.*sources.*-n' src/noaa_navionics/health.py
 grep -Fq 'line[1] in "*+"' src/noaa_navionics/health.py
 grep -Fq '^#[*+].*GPS' scripts/verify_pi.sh

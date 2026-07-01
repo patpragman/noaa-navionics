@@ -1167,6 +1167,7 @@ copy_regular_if_readable "${HOME}/.opencpn/opencpn.conf"
 copy_regular_if_readable "${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
 copy_glob "${HOME}"/.config/systemd/user/noaa-navionics*.service "${HOME}"/.config/systemd/user/noaa-navionics*.timer
 copy_regular_if_readable /etc/default/gpsd
+copy_regular_if_readable /etc/chrony/chrony.conf
 copy_regular_if_readable /etc/chrony/conf.d/noaa-navionics-gpsd.conf
 copy_regular_if_readable /etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf
 collect_configured_storage_metadata

@@ -740,6 +740,7 @@ candidates = [
     (home / ".local" / "share" / "noaa-navionics" / "source-revision", uid, "noaa-navionics/source-revision"),
     (home / ".config" / "autostart" / "noaa-navionics-chartplotter.desktop", uid, "desktop/noaa-navionics-chartplotter.desktop"),
     (Path("/etc/default/gpsd"), 0, "system/etc-default-gpsd"),
+    (Path("/etc/chrony/chrony.conf"), 0, "system/chrony.conf"),
     (Path("/etc/chrony/conf.d/noaa-navionics-gpsd.conf"), 0, "system/noaa-navionics-gpsd.conf"),
     (Path("/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"), 0, "system/50-noaa-navionics-autologin.conf"),
 ]
