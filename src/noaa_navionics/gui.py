@@ -167,6 +167,8 @@ def _validate_serial_gps_device(device: str) -> None:
         raise ValueError(f"GPS device path is a broken by-id symlink: {path} -> {target}")
     if path_text.startswith("/dev/serial/by-id/") and path.exists() and not path.is_symlink():
         raise ValueError(f"GPS device path is not a udev by-id symlink: {path}")
+    if path_text.startswith("/dev/serial/by-id/") and path.exists() and path.is_symlink() and not path.is_char_device():
+        raise ValueError(f"GPS device path is not a character device: {path}")
 
 
 def format_gps_fix(fix: GPSFix) -> list[str]:

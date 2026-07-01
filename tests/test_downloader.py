@@ -4482,6 +4482,42 @@ class GuiTests(unittest.TestCase):
         finally:
             gui_module.open_nmea_stream = original
 
+    def test_gui_gps_fix_rejects_by_id_serial_that_is_not_character_device(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="serial",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+            anchor_radius_meters=75.0,
+        )
+        original = gui_module.open_nmea_stream
+
+        def fake_open_nmea_stream(*args, **kwargs):
+            raise AssertionError("open_nmea_stream should not be called")
+
+        try:
+            gui_module.open_nmea_stream = fake_open_nmea_stream
+            with (
+                patch("noaa_navionics.gui.Path.exists", return_value=True),
+                patch("noaa_navionics.gui.Path.is_symlink", return_value=True),
+                patch("noaa_navionics.gui.Path.is_char_device", return_value=False),
+            ):
+                with self.assertRaisesRegex(ValueError, "character device"):
+                    gui_module.read_configured_gps_fix(app_config, gpsd_enabled=False)
+        finally:
+            gui_module.open_nmea_stream = original
+
     def test_gui_gps_fix_rejects_fix_without_quality_fields(self):
         fix = GPSFix(
             timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
@@ -4962,6 +4998,15 @@ class CLIValidationTests(unittest.TestCase):
             patch("noaa_navionics.cli.Path.resolve", return_value=Path("/dev/ttyACM0")),
         ):
             with self.assertRaisesRegex(ValueError, "broken by-id symlink"):
+                cli_module._validate_live_serial_device("/dev/serial/by-id/mock-gps")
+
+    def test_live_serial_device_validation_rejects_by_id_that_is_not_character_device(self):
+        with (
+            patch("noaa_navionics.cli.Path.exists", return_value=True),
+            patch("noaa_navionics.cli.Path.is_symlink", return_value=True),
+            patch("noaa_navionics.cli.Path.is_char_device", return_value=False),
+        ):
+            with self.assertRaisesRegex(ValueError, "character device"):
                 cli_module._validate_live_serial_device("/dev/serial/by-id/mock-gps")
 
 
