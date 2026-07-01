@@ -10864,6 +10864,22 @@ class StatusReportTests(unittest.TestCase):
             set(report_module.CORE_SERVICE_CHECKS) | set(report_module.GPSD_SERVICE_CHECKS),
         )
 
+    def test_verify_pi_validates_status_report_service_summaries(self):
+        source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
+
+        for expected in [
+            "def require_status_unit",
+            'services = report.get("services")',
+            'system_services = report.get("system_services")',
+            'status report has no {summary_name} section',
+            'status report {unit} loaded properties missing',
+            '"noaa-navionics-track.service"',
+            '"gpsd.socket"',
+            '"chrony.service"',
+        ]:
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

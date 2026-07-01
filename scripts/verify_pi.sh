@@ -742,6 +742,57 @@ def install_wanted_by_targets(lines):
         targets.extend(target for target in line.split("=", 1)[1].split() if target)
     return targets
 
+def unit_query_failed(value):
+    text = value.strip().lower()
+    return (
+        not text
+        or text.startswith("error:")
+        or text.startswith("failed")
+        or text.startswith("exit ")
+        or " not found" in text
+        or "could not " in text
+        or "unknown" == text
+    )
+
+def require_status_unit(
+    summary,
+    summary_name,
+    unit,
+    *,
+    expected_enabled,
+    expected_active=None,
+    allow_failed_active=False,
+    require_properties=False,
+):
+    if not isinstance(summary, dict):
+        raise SystemExit(f"status report has no {summary_name} section")
+    if summary.get("available") is not True:
+        detail = str(summary.get("detail", "systemctl not available")).strip()
+        raise SystemExit(f"status report {summary_name} unavailable: {detail or 'systemctl not available'}")
+    state = summary.get(unit)
+    if not isinstance(state, dict):
+        raise SystemExit(f"status report has no {summary_name} entry for {unit}")
+    enabled = str(state.get("enabled", "")).strip()
+    active = str(state.get("active", "")).strip()
+    detail = f"status report {unit} enabled={enabled or '<missing>'} active={active or '<missing>'}"
+    if unit_query_failed(enabled) or enabled not in expected_enabled:
+        raise SystemExit(detail)
+    if expected_active is not None:
+        if unit_query_failed(active) or active not in expected_active:
+            raise SystemExit(detail)
+    elif active == "failed" and not allow_failed_active:
+        raise SystemExit(detail)
+    elif active != "failed" and unit_query_failed(active):
+        raise SystemExit(detail)
+    if require_properties:
+        properties = state.get("properties")
+        if not isinstance(properties, dict) or not properties:
+            raise SystemExit(f"status report {unit} loaded properties missing")
+        error = str(properties.get("error", "")).strip()
+        if error:
+            raise SystemExit(f"status report {unit} loaded properties unavailable: {error}")
+    return state
+
 def verify_status_file_owner_and_mode(summary, path, stat_result, label, expected_uid):
     status_uid = summary.get("uid")
     if status_uid is None:
@@ -1857,6 +1908,61 @@ if missing_checks:
 missing_service_checks = sorted(required_service_checks - service_check_names)
 if missing_service_checks:
     raise SystemExit("status report missing service checks: " + ", ".join(missing_service_checks))
+services = report.get("services")
+system_services = report.get("system_services")
+require_status_unit(
+    services,
+    "services",
+    "noaa-navionics.service",
+    expected_enabled={"static", "generated"},
+    allow_failed_active=True,
+    require_properties=True,
+)
+require_status_unit(
+    services,
+    "services",
+    "noaa-navionics.timer",
+    expected_enabled={"enabled"},
+    expected_active={"active", "activating"},
+    require_properties=True,
+)
+require_status_unit(
+    services,
+    "services",
+    "noaa-navionics-track.service",
+    expected_enabled={"enabled"},
+    expected_active={"active", "activating"},
+    require_properties=True,
+)
+require_status_unit(
+    services,
+    "services",
+    "noaa-navionics-preflight.service",
+    expected_enabled={"enabled"},
+    require_properties=True,
+)
+if expected_config.get("gps_mode") == "gpsd":
+    require_status_unit(
+        system_services,
+        "system_services",
+        "gpsd.socket",
+        expected_enabled={"enabled", "static", "generated"},
+        expected_active={"active", "activating"},
+    )
+    require_status_unit(
+        system_services,
+        "system_services",
+        "gpsd.service",
+        expected_enabled={"enabled", "static", "generated"},
+        expected_active={"active", "activating"},
+    )
+    require_status_unit(
+        system_services,
+        "system_services",
+        "chrony.service",
+        expected_enabled={"enabled", "static", "generated"},
+        expected_active={"active", "activating"},
+    )
 unit_files = report.get("unit_files")
 if not isinstance(unit_files, dict):
     raise SystemExit("status report has no unit_files section")

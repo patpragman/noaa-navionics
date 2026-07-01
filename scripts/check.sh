@@ -3951,6 +3951,10 @@ grep -q 'status report missing services section' src/noaa_navionics/report.py
 grep -q 'status report missing system_services section' src/noaa_navionics/report.py
 grep -q 'status report systemd user service properties were not loaded' src/noaa_navionics/report.py
 grep -q 'status report service summary invalid' src/noaa_navionics/report.py
+grep -q 'def require_status_unit' scripts/verify_pi.sh
+grep -q 'services = report.get("services")' scripts/verify_pi.sh
+grep -q 'system_services = report.get("system_services")' scripts/verify_pi.sh
+grep -q 'status report {unit} loaded properties missing' scripts/verify_pi.sh
 grep -q 'status report missing launcher_settings section' src/noaa_navionics/report.py
 grep -q 'status report launcher settings path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' src/noaa_navionics/report.py
@@ -4004,6 +4008,7 @@ grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' te
 grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_service_summaries' tests/test_downloader.py
+grep -q 'test_verify_pi_validates_status_report_service_summaries' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_launcher_settings_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_opencpn_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_desktop_summary' tests/test_downloader.py
@@ -4555,6 +4560,8 @@ grep -q 'requires GUI and service startup path symlink-status fields' README.md
 grep -q 'requires GUI and service startup path symlink-status fields' docs/sailboat-pi.md
 grep -q 'Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing' README.md
 grep -q 'Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing' docs/sailboat-pi.md
+grep -q 'Pi verification also rejects generated status artifacts without top-level user service, loaded user-unit property, and GPSD/chrony system-service summaries' README.md
+grep -q 'Pi verification also rejects generated status artifacts without top-level user service, loaded user-unit property, and GPSD/chrony system-service summaries' docs/sailboat-pi.md
 grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_nonregular_source_revision' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_writable_source_revision' tests/test_downloader.py

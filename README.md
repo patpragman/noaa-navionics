@@ -177,6 +177,7 @@ Verification refuses a dirty local worktree by default, then runs over batch-mod
 Strict chartplotter verification also requires source-revision and launcher-settings symlink-status fields in the generated JSON, so older or incomplete status artifacts cannot silently satisfy startup provenance checks.
 Strict chartplotter verification requires GUI and service startup path symlink-status fields for OpenCPN config, desktop autostart, LightDM autologin, and installed user systemd units before trusting the generated JSON.
 Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing, so incomplete generated JSON cannot mark the Pi ready before verification parses it.
+Pi verification also rejects generated status artifacts without top-level user service, loaded user-unit property, and GPSD/chrony system-service summaries.
 Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation, leaving changed or untrusted paths in place.
 
 Run a no-deploy, no-reboot pre-departure check on an already commissioned Pi:
