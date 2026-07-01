@@ -502,7 +502,7 @@ import os
 import stat
 import sys
 import tarfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 label = sys.argv[1]
 path = Path(sys.argv[2]).expanduser()
@@ -596,7 +596,10 @@ if not members:
 seen_names = set()
 for member in members:
     name = member.name
-    normalized = Path(name)
+    normalized = PurePosixPath(name)
+    if "\\" in name:
+        print(f"{label} contains unsafe backslash member name: {name}", file=sys.stderr)
+        raise SystemExit(124)
     if name in {"", ".", ".."} or name.startswith("/") or any(part in {"", ".", ".."} for part in normalized.parts):
         print(f"{label} contains unsafe member name: {name}", file=sys.stderr)
         raise SystemExit(124)
