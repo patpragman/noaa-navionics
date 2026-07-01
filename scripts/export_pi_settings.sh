@@ -485,13 +485,27 @@ def trusted_regular_file(path: Path, *, expected_uid):
 
 
 def add_trusted_file(archive: tarfile.TarFile, path: Path, stat_result: os.stat_result, arcname: str) -> None:
-    info = archive.gettarinfo(str(path), arcname=arcname)
-    info.mode = stat.S_IMODE(stat_result.st_mode) & 0o755
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     current_stat = os.fstat(fd)
     if (current_stat.st_dev, current_stat.st_ino) != (stat_result.st_dev, stat_result.st_ino):
         os.close(fd)
         fail(f"setting changed before export: {path}")
+    if not stat.S_ISREG(current_stat.st_mode):
+        os.close(fd)
+        fail(f"opened setting is not regular: {path}")
+    if current_stat.st_uid != stat_result.st_uid:
+        os.close(fd)
+        fail(f"opened setting is owned by uid {current_stat.st_uid}, expected {stat_result.st_uid}: {path}")
+    mode = stat.S_IMODE(current_stat.st_mode)
+    if mode & 0o022:
+        os.close(fd)
+        fail(f"opened setting has permissions {mode:04o}, expected no group/other write bits: {path}")
+    info = tarfile.TarInfo(arcname)
+    info.size = current_stat.st_size
+    info.mode = mode & 0o755
+    info.mtime = int(current_stat.st_mtime)
+    info.uid = current_stat.st_uid
+    info.gid = current_stat.st_gid
     with os.fdopen(fd, "rb") as handle:
         archive.addfile(info, handle)
 

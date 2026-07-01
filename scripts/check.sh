@@ -965,6 +965,10 @@ grep -q 'parser.read_file(config_handle)' scripts/collect_pi_support_bundle.sh
 ! grep -q 'parser.read(config_path)' scripts/collect_pi_support_bundle.sh
 grep -q '"$cache_dir"/support-bundle.\*)' scripts/collect_pi_support_bundle.sh
 grep -q 'tarfile.open' scripts/export_pi_tracks.sh
+grep -q 'info = tarfile.TarInfo(f"tracks/{path.name}")' scripts/export_pi_tracks.sh
+grep -q 'info.size = current_stat.st_size' scripts/export_pi_tracks.sh
+grep -q 'opened GPX track has permissions' scripts/export_pi_tracks.sh
+! grep -q 'archive.gettarinfo(str(path)' scripts/export_pi_tracks.sh
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
@@ -989,6 +993,10 @@ grep -q 'Man overboard position mark' src/noaa_navionics/cli.py
 grep -q 'navobj.xml' scripts/export_pi_opencpn_data.sh
 grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.sh
 grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
+grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_opencpn_data.sh
+grep -q 'info.size = current_stat.st_size' scripts/export_pi_opencpn_data.sh
+grep -q 'opened OpenCPN file has permissions' scripts/export_pi_opencpn_data.sh
+! grep -q 'archive.gettarinfo(str(path)' scripts/export_pi_opencpn_data.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_opencpn_data.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_opencpn_data.sh
@@ -1000,6 +1008,10 @@ grep -q 'source-revision' scripts/export_pi_settings.sh
 grep -q '50-noaa-navionics-autologin.conf' scripts/export_pi_settings.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
+grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_settings.sh
+grep -q 'info.size = current_stat.st_size' scripts/export_pi_settings.sh
+grep -q 'opened setting has permissions' scripts/export_pi_settings.sh
+! grep -q 'archive.gettarinfo(str(path)' scripts/export_pi_settings.sh
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' scripts/export_pi_settings.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_settings.sh
@@ -5956,6 +5968,8 @@ grep -q 'tarfile.open' "$track_export_fake_ssh_stdin"
 grep -q 'configured GPX track directory' "$track_export_fake_ssh_stdin"
 grep -q 'refusing to export symlinked GPX track' "$track_export_fake_ssh_stdin"
 grep -q 'tracks/{path.name}' "$track_export_fake_ssh_stdin"
+grep -q 'info.size = current_stat.st_size' "$track_export_fake_ssh_stdin"
+grep -q 'opened GPX track has permissions' "$track_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$track_export_fake_ssh_stdin"
 
 set +e
@@ -6023,6 +6037,8 @@ grep -q '/usr/bin/python3 -s' "$opencpn_export_fake_ssh_args"
 grep -q 'tarfile.open' "$opencpn_export_fake_ssh_stdin"
 grep -q 'navobj.xml' "$opencpn_export_fake_ssh_stdin"
 grep -q 'refusing to export symlinked OpenCPN file' "$opencpn_export_fake_ssh_stdin"
+grep -q 'info.size = current_stat.st_size' "$opencpn_export_fake_ssh_stdin"
+grep -q 'opened OpenCPN file has permissions' "$opencpn_export_fake_ssh_stdin"
 grep -q 'OpenCPN user config, routes, waypoints' "$opencpn_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$opencpn_export_fake_ssh_stdin"
 
@@ -6093,6 +6109,8 @@ grep -q 'launcher.env' "$settings_export_fake_ssh_stdin"
 grep -q 'source-revision' "$settings_export_fake_ssh_stdin"
 grep -q 'noaa-navionics-preflight.service' "$settings_export_fake_ssh_stdin"
 grep -q '50-noaa-navionics-autologin.conf' "$settings_export_fake_ssh_stdin"
+grep -q 'info.size = current_stat.st_size' "$settings_export_fake_ssh_stdin"
+grep -q 'opened setting has permissions' "$settings_export_fake_ssh_stdin"
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' "$settings_export_fake_ssh_stdin"
 
 set +e

@@ -627,13 +627,26 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
         info.mtime = int(time.time())
         archive.addfile(info, io.BytesIO(data))
     for path, track_stat in tracks:
-        info = archive.gettarinfo(str(path), arcname=f"tracks/{path.name}")
-        info.mode = 0o600
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         current_stat = os.fstat(fd)
         if (current_stat.st_dev, current_stat.st_ino) != (track_stat.st_dev, track_stat.st_ino):
             os.close(fd)
             fail(f"GPX track changed before export: {path}")
+        if not stat.S_ISREG(current_stat.st_mode):
+            os.close(fd)
+            fail(f"opened GPX track is not regular: {path}")
+        if current_stat.st_uid != os.getuid():
+            os.close(fd)
+            fail(f"opened GPX track is owned by uid {current_stat.st_uid}, expected {os.getuid()}: {path}")
+        if stat.S_IMODE(current_stat.st_mode) & 0o077:
+            os.close(fd)
+            fail(f"opened GPX track has permissions {stat.S_IMODE(current_stat.st_mode):04o}, expected private 0600: {path}")
+        info = tarfile.TarInfo(f"tracks/{path.name}")
+        info.size = current_stat.st_size
+        info.mode = 0o600
+        info.mtime = int(current_stat.st_mtime)
+        info.uid = current_stat.st_uid
+        info.gid = current_stat.st_gid
         with os.fdopen(fd, "rb") as handle:
             archive.addfile(info, handle)
 PY
