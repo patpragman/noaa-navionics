@@ -12422,6 +12422,37 @@ class GpsTests(unittest.TestCase):
 
             self.assertEqual(target.read_text(encoding="utf-8"), "existing\n")
 
+    def test_gpx_position_mark_failed_cleanup_leaves_replaced_path(self):
+        fix = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=9,
+            hdop=0.9,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "tracks" / "mark.gpx"
+            original_writer = gps_module._write_gpx_position_mark
+
+            def replace_path_then_fail(handle, fix_arg, *, name, description):
+                handle.write("partial waypoint\n")
+                handle.flush()
+                path.unlink()
+                path.write_text("replacement\n", encoding="utf-8")
+                path.chmod(0o600)
+                raise RuntimeError("simulated mark write failure")
+
+            try:
+                gps_module._write_gpx_position_mark = replace_path_then_fail
+                with redirect_stderr(StringIO()) as stderr:
+                    with self.assertRaisesRegex(RuntimeError, "simulated mark write failure"):
+                        gps_module.write_gpx_position_mark(path, fix)
+            finally:
+                gps_module._write_gpx_position_mark = original_writer
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "replacement\n")
+            self.assertIn("GPX position mark cleanup changed before cleanup", stderr.getvalue())
+
     def test_gpx_position_mark_does_not_overwrite_existing_file(self):
         fix = GPSFix(
             timestamp=datetime(2026, 6, 30, 12, 34, 56, tzinfo=timezone.utc),

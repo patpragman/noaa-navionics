@@ -2351,6 +2351,8 @@ grep -q 'Python atomic-write temp cleanup for app config, OpenCPN config, status
 grep -q 'GPSD app-config validation and promotion temp cleanup uses the same no-follow same-file validation' README.md
 grep -q 'GPSD app-config validation and promotion temp cleanup uses the same no-follow same-file validation' docs/sailboat-pi.md
 grep -q 'def cleanup_private_temp_file' src/noaa_navionics/_safeio.py
+grep -q 'expected_stat: Optional\[os.stat_result\]' src/noaa_navionics/_safeio.py
+grep -q 'expected_stat is not None and not os.path.samestat(before, expected_stat)' src/noaa_navionics/_safeio.py
 grep -q 'os.path.samestat(before, opened)' src/noaa_navionics/_safeio.py
 grep -q 'os.unlink(target.name, dir_fd=dir_fd)' src/noaa_navionics/_safeio.py
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -2904,8 +2906,13 @@ grep -q 'test_gpx_position_mark_available_uses_suffix_for_existing_timestamp_mar
 grep -q 'test_gpx_position_mark_available_retries_after_create_race' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_rejects_symlinked_target_file' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_does_not_overwrite_existing_file' tests/test_downloader.py
+grep -q 'cleanup_private_temp_file(target, label="GPX position mark cleanup", expected_stat=created_stat)' src/noaa_navionics/gps.py
+grep -q 'test_gpx_position_mark_failed_cleanup_leaves_replaced_path' tests/test_downloader.py
+grep -q 'GPX position mark cleanup changed before cleanup' tests/test_downloader.py
 grep -q 'will not follow symlinked targets or overwrite an existing waypoint' README.md
 grep -q 'will not follow symlinked targets or overwrite an existing waypoint' docs/sailboat-pi.md
+grep -q 'Failed waypoint cleanup is no-follow and same-file validated before unlinking, leaving replaced paths in place' README.md
+grep -q 'Failed waypoint cleanup is no-follow and same-file validated before unlinking, leaving replaced paths in place' docs/sailboat-pi.md
 grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_run_without_post_anchor_fix' tests/test_downloader.py

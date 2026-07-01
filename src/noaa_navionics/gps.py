@@ -12,6 +12,8 @@ import termios
 import time
 from xml.sax.saxutils import escape
 
+from ._safeio import cleanup_private_temp_file
+
 
 BAUD_RATES = {
     4800: termios.B4800,
@@ -527,6 +529,7 @@ def write_gpx_position_mark(
         0o600,
     )
     created = True
+    created_stat = os.fstat(fd)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             created = False
@@ -538,10 +541,7 @@ def write_gpx_position_mark(
     except Exception:
         if created:
             os.close(fd)
-        try:
-            target.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_private_temp_file(target, label="GPX position mark cleanup", expected_stat=created_stat)
         raise
     return target
 
