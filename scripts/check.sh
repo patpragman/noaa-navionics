@@ -725,6 +725,8 @@ grep -q 'validates the returned track/support archives as private no-follow read
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
 grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' docs/sailboat-pi.md
+grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' README.md
+grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
@@ -1540,6 +1542,7 @@ grep -q 'This wrapper writes local artifacts into output-dir' scripts/post_trip_
 grep -q 'change persistent Pi state' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
+grep -q 'Real post-trip shutdown requires collecting at least one artifact first' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/post_trip_collect_pi.sh
@@ -6128,6 +6131,17 @@ if [[ "$post_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'At least one post-trip collection or shutdown step must run' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid --skip-status --skip-tracks --skip-support --shutdown-confirm >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject real shutdown without collection with exit 2" >&2
+  exit 1
+fi
+grep -q 'Real post-trip shutdown requires collecting at least one artifact first' "$verify_output"
 
 set +e
 scripts/post_trip_collect_pi.sh pi@example.invalid / --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1

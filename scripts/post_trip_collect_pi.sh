@@ -858,6 +858,10 @@ if [[ "$skip_status" -eq 1 && "$skip_tracks" -eq 1 && "$skip_support" -eq 1 && -
   echo "At least one post-trip collection or shutdown step must run" >&2
   exit 2
 fi
+if [[ "$skip_status" -eq 1 && "$skip_tracks" -eq 1 && "$skip_support" -eq 1 && "$shutdown_mode" == "confirm" ]]; then
+  echo "Real post-trip shutdown requires collecting at least one artifact first; use --shutdown-dry-run to validate shutdown only" >&2
+  exit 2
+fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 status_helper="${repo_root}/scripts/check_pi_status.sh"
