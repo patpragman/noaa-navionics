@@ -144,12 +144,23 @@ def run_preflight(
 def check_python() -> CheckResult:
     version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     ok = sys.version_info >= (3, 9)
-    return CheckResult("Python", ok, f"running Python {version}")
+    data = {
+        "version": version,
+        "version_info": [sys.version_info.major, sys.version_info.minor, sys.version_info.micro],
+        "min_version": [3, 9],
+        "executable": sys.executable,
+    }
+    return CheckResult("Python", ok, f"running Python {version}", data)
 
 
 def check_source_revision(path: Optional[Path] = None) -> CheckResult:
     if not _is_raspberry_pi():
-        return CheckResult("Source Revision", True, "not a Raspberry Pi; skipping deployed source revision check")
+        return CheckResult(
+            "Source Revision",
+            True,
+            "not a Raspberry Pi; skipping deployed source revision check",
+            {"is_raspberry_pi": False, "skipped": True},
+        )
     revision_path = path or _source_revision_path()
     if revision_path.is_symlink():
         return CheckResult("Source Revision", False, f"deployed source revision path is a symlink: {revision_path}")
@@ -226,7 +237,20 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
         return CheckResult("Source Revision", False, str(exc).replace("source revision", "deployed source revision"))
     if not revision or revision == "unknown":
         return CheckResult("Source Revision", False, f"deployed source revision is not recorded at {revision_path}")
-    return CheckResult("Source Revision", True, revision)
+    mode = revision_stat.st_mode & 0o777 if revision_stat is not None else 0
+    data = {
+        "is_raspberry_pi": True,
+        "path": str(revision_path),
+        "exists": revision_path.exists(),
+        "is_symlink": False,
+        "directory_symlink_component": "",
+        "is_regular": revision_path.is_file(),
+        "uid": revision_stat.st_uid if revision_stat is not None else None,
+        "expected_uid": os.getuid(),
+        "mode": f"{mode:04o}",
+        "revision": revision,
+    }
+    return CheckResult("Source Revision", True, revision, data)
 
 
 def _read_source_revision_text(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> str:
@@ -371,8 +395,14 @@ def check_time_synchronization() -> CheckResult:
 
 
 def check_tkinter() -> CheckResult:
-    ok = importlib.util.find_spec("tkinter") is not None
-    return CheckResult("Tkinter", ok, "available" if ok else "missing; install python3-tk")
+    spec = importlib.util.find_spec("tkinter")
+    ok = spec is not None
+    data = {
+        "module": "tkinter",
+        "available": ok,
+        "origin": str(spec.origin) if spec is not None and spec.origin is not None else "",
+    }
+    return CheckResult("Tkinter", ok, "available" if ok else "missing; install python3-tk", data)
 
 
 def check_opencpn() -> CheckResult:

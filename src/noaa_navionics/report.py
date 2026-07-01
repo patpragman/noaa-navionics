@@ -301,6 +301,7 @@ def status_report_validation_failures(
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
+    failures.extend(_runtime_readiness_validation_failures(report))
     failures.extend(_config_validation_failures(report))
     failures.extend(_user_validation_failures(report.get("user")))
     failures.extend(_unit_files_validation_failures(report.get("unit_files")))
@@ -391,6 +392,91 @@ def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckRes
     options = data.get("gpsd_options")
     if not isinstance(options, list) or "-n" not in options or data.get("immediate_polling") is not True:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config does not enable immediate polling"))
+    return failures
+
+
+def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    failures: list[CheckResult] = []
+
+    python_row = check_rows.get("Python")
+    if isinstance(python_row, dict) and python_row.get("ok"):
+        data = python_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Python", False, "status report Python check has no structured data"))
+        else:
+            version_info = data.get("version_info")
+            min_version = data.get("min_version")
+            if (
+                not isinstance(version_info, list)
+                or len(version_info) < 2
+                or any(isinstance(part, bool) or not isinstance(part, int) for part in version_info[:2])
+            ):
+                failures.append(CheckResult("Python", False, "status report Python version_info is invalid"))
+            elif version_info[:2] < [3, 9]:
+                failures.append(CheckResult("Python", False, "status report Python version is below 3.9"))
+            if not isinstance(min_version, list) or min_version[:2] != [3, 9]:
+                failures.append(CheckResult("Python", False, "status report Python minimum version is not recorded"))
+            executable = str(data.get("executable", "")).strip()
+            if not _status_absolute_path(executable):
+                failures.append(CheckResult("Python", False, "status report Python executable path is not absolute"))
+
+    tkinter_row = check_rows.get("Tkinter")
+    if isinstance(tkinter_row, dict) and tkinter_row.get("ok"):
+        data = tkinter_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Tkinter", False, "status report Tkinter check has no structured data"))
+        else:
+            if str(data.get("module", "")).strip() != "tkinter":
+                failures.append(CheckResult("Tkinter", False, "status report Tkinter module is not tkinter"))
+            if data.get("available") is not True:
+                failures.append(CheckResult("Tkinter", False, "status report Tkinter availability was not proven"))
+
+    source_row = check_rows.get("Source Revision")
+    if isinstance(source_row, dict) and source_row.get("ok"):
+        data = source_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Source Revision", False, "status report Source Revision check has no structured data"))
+        elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
+            pass
+        else:
+            revision = str(data.get("revision", "")).strip()
+            app = report.get("app")
+            expected_revision = str(app.get("source_revision", "")).strip() if isinstance(app, dict) else ""
+            if revision != expected_revision:
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision does not match app source revision"))
+            path = str(data.get("path", "")).strip()
+            if not _status_absolute_path(path):
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision path is not absolute"))
+            if data.get("exists") is not True:
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision path does not exist"))
+            if data.get("is_symlink") is not False:
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision path is a symlink"))
+            if str(data.get("directory_symlink_component", "")).strip():
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision directory contains a symlink"))
+            if data.get("is_regular") is not True:
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision path is not a regular file"))
+            uid = data.get("uid")
+            expected_uid = data.get("expected_uid")
+            if (
+                isinstance(uid, bool)
+                or isinstance(expected_uid, bool)
+                or not isinstance(uid, int)
+                or not isinstance(expected_uid, int)
+                or uid != expected_uid
+            ):
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision owner is invalid"))
+            mode = str(data.get("mode", "")).strip()
+            try:
+                parsed_mode = int(mode, 8)
+            except ValueError:
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision mode is invalid"))
+            else:
+                if parsed_mode & 0o022:
+                    failures.append(CheckResult("Source Revision", False, "status report Source Revision is group/world writable"))
     return failures
 
 

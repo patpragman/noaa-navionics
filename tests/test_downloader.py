@@ -87,8 +87,10 @@ from noaa_navionics.health import (
     check_opencpn_gpsd_config,
     check_pi_temperature,
     check_pi_throttling,
+    check_python,
     check_source_revision,
     check_system_clock,
+    check_tkinter,
     check_time_synchronization,
     _parse_vcgencmd_temperature,
     _parse_throttled_value,
@@ -341,7 +343,29 @@ def complete_status_gui_report(
         gps_source = "GPSD"
     check_rows = [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)]
     for row in check_rows:
-        if row["name"] == "Clock":
+        if row["name"] == "Python":
+            row["detail"] = "running Python 3.11.2"
+            row["data"] = {
+                "version": "3.11.2",
+                "version_info": [3, 11, 2],
+                "min_version": [3, 9],
+                "executable": "/home/pi/.local/share/noaa-navionics/venv/bin/python",
+            }
+        elif row["name"] == "Source Revision":
+            row["detail"] = "fixture123"
+            row["data"] = {
+                "is_raspberry_pi": True,
+                "path": "/home/pi/.local/share/noaa-navionics/source-revision",
+                "exists": True,
+                "is_symlink": False,
+                "directory_symlink_component": "",
+                "is_regular": True,
+                "uid": os.getuid(),
+                "expected_uid": os.getuid(),
+                "mode": "0600",
+                "revision": "fixture123",
+            }
+        elif row["name"] == "Clock":
             row["detail"] = generated_at
             row["data"] = {"timestamp": generated_at, "min_year": 2024}
         elif row["name"] == "Time Sync":
@@ -386,6 +410,13 @@ def complete_status_gui_report(
                 "expected_uids": [0],
                 "mode": "0755",
                 "directory_mode": "0755",
+            }
+        elif row["name"] == "Tkinter":
+            row["detail"] = "available"
+            row["data"] = {
+                "module": "tkinter",
+                "available": True,
+                "origin": "/usr/lib/python3.11/tkinter/__init__.py",
             }
         elif row["name"] == "Disk":
             row["detail"] = "12.5 GB free at /charts; minimum 2.0 GB"
@@ -10285,6 +10316,77 @@ class StatusReportTests(unittest.TestCase):
                 self.assertEqual(failures[0].name, "Status Report")
                 self.assertIn(expected, failures[0].detail)
 
+    def test_status_report_ready_requires_structured_runtime_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def python_data(**overrides):
+            data = {
+                "version": "3.11.2",
+                "version_info": [3, 11, 2],
+                "min_version": [3, 9],
+                "executable": "/home/pi/.local/share/noaa-navionics/venv/bin/python",
+            }
+            data.update(overrides)
+            return data
+
+        def source_revision_data(**overrides):
+            data = {
+                "is_raspberry_pi": True,
+                "path": "/home/pi/.local/share/noaa-navionics/source-revision",
+                "exists": True,
+                "is_symlink": False,
+                "directory_symlink_component": "",
+                "is_regular": True,
+                "uid": os.getuid(),
+                "expected_uid": os.getuid(),
+                "mode": "0600",
+                "revision": "fixture123",
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            ("Python", None, "Python check has no structured data"),
+            ("Python", python_data(version_info=["3", 11, 2]), "Python version_info is invalid"),
+            ("Python", python_data(version_info=[3, 8, 18]), "Python version is below 3.9"),
+            ("Python", python_data(min_version=[3, 8]), "Python minimum version is not recorded"),
+            ("Python", python_data(executable="python3"), "Python executable path is not absolute"),
+            ("Tkinter", None, "Tkinter check has no structured data"),
+            ("Tkinter", {"module": "tk", "available": True, "origin": ""}, "Tkinter module is not tkinter"),
+            ("Tkinter", {"module": "tkinter", "available": False, "origin": ""}, "Tkinter availability was not proven"),
+            ("Source Revision", None, "Source Revision check has no structured data"),
+            ("Source Revision", source_revision_data(revision="stale"), "Source Revision does not match app source revision"),
+            ("Source Revision", source_revision_data(path="source-revision"), "Source Revision path is not absolute"),
+            ("Source Revision", source_revision_data(exists=False), "Source Revision path does not exist"),
+            ("Source Revision", source_revision_data(is_symlink=True), "Source Revision path is a symlink"),
+            ("Source Revision", source_revision_data(directory_symlink_component="/home-link"), "Source Revision directory contains a symlink"),
+            ("Source Revision", source_revision_data(is_regular=False), "Source Revision path is not a regular file"),
+            ("Source Revision", source_revision_data(uid=1001), "Source Revision owner is invalid"),
+            ("Source Revision", source_revision_data(mode="0666"), "Source Revision is group/world writable"),
+        ]
+        for row_name, data, expected in cases:
+            with self.subTest(row_name=row_name, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == row_name and expected in failure.detail for failure in failures))
+
+        non_pi_report = complete_status_gui_report(generated_at=generated_at)
+        source_revision = next(check for check in non_pi_report["checks"] if check["name"] == "Source Revision")
+        source_revision["detail"] = "not a Raspberry Pi; skipping deployed source revision check"
+        source_revision["data"] = {"is_raspberry_pi": False, "skipped": True}
+
+        self.assertTrue(status_report_is_ready(non_pi_report, now=now))
+        self.assertFalse(status_report_validation_failures(non_pi_report, now=now))
+
     def test_status_report_ready_requires_structured_clock_and_time_sync_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         generated_at = now.isoformat().replace("+00:00", "Z")
@@ -18460,6 +18562,24 @@ class PiHealthTests(unittest.TestCase):
             finally:
                 health_module.os.open = original_open
 
+    def test_check_python_records_structured_runtime(self):
+        result = check_python()
+
+        self.assertTrue(result.ok)
+        data = result.data or {}
+        self.assertEqual(data["version_info"][:2], [sys.version_info.major, sys.version_info.minor])
+        self.assertEqual(data["min_version"], [3, 9])
+        self.assertTrue(Path(str(data["executable"])).is_absolute())
+
+    def test_check_tkinter_records_structured_availability(self):
+        result = check_tkinter()
+
+        data = result.data or {}
+        self.assertEqual(data["module"], "tkinter")
+        self.assertEqual(data["available"], result.ok)
+        if result.ok:
+            self.assertEqual(result.detail, "available")
+
     def test_check_source_revision_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi
         try:
@@ -18470,6 +18590,7 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("skipping", result.detail)
+        self.assertEqual(result.data, {"is_raspberry_pi": False, "skipped": True})
 
     def test_check_source_revision_accepts_recorded_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -18484,6 +18605,16 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertEqual(result.detail, "abc123-dirty")
+            data = result.data or {}
+            self.assertTrue(data["is_raspberry_pi"])
+            self.assertEqual(data["path"], str(revision))
+            self.assertTrue(data["exists"])
+            self.assertFalse(data["is_symlink"])
+            self.assertEqual(data["directory_symlink_component"], "")
+            self.assertTrue(data["is_regular"])
+            self.assertEqual(data["uid"], os.getuid())
+            self.assertEqual(data["expected_uid"], os.getuid())
+            self.assertEqual(data["revision"], "abc123-dirty")
 
     def test_check_source_revision_rejects_missing_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:

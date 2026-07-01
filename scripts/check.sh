@@ -3916,6 +3916,7 @@ grep -q 'STATUS_REPORT_FUTURE_TOLERANCE_SECONDS = 30.0' src/noaa_navionics/repor
 grep -q 'def _generated_at_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _host_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _app_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _runtime_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _user_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _unit_files_validation_failures' src/noaa_navionics/report.py
@@ -4005,6 +4006,9 @@ grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.p
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chrony_gps_time_validation_failures' src/noaa_navionics/report.py
+grep -q 'status report Python check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report Tkinter availability was not proven' src/noaa_navionics/report.py
+grep -q 'status report Source Revision does not match app source revision' src/noaa_navionics/report.py
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Time Sync did not report SystemClockSynchronized=yes' src/noaa_navionics/report.py
 grep -q 'status report Pi Power check has no structured data' src/noaa_navionics/report.py
@@ -4056,6 +4060,10 @@ grep -q '"is_character_device"' src/noaa_navionics/health.py
 grep -q '"trusted_system_directory"' src/noaa_navionics/health.py
 grep -q '"directory_mode"' src/noaa_navionics/health.py
 grep -q '_trusted_command_evidence' src/noaa_navionics/health.py
+grep -q '"version_info"' src/noaa_navionics/health.py
+grep -q '"min_version"' src/noaa_navionics/health.py
+grep -q '"available"' src/noaa_navionics/health.py
+grep -q '"revision"' src/noaa_navionics/health.py
 grep -q '"immediate_polling"' src/noaa_navionics/health.py
 grep -q '"gpsd_options"' src/noaa_navionics/health.py
 grep -q '"start_daemon"' src/noaa_navionics/health.py
@@ -4069,6 +4077,9 @@ grep -q 'status_report_is_ready(report)' src/noaa_navionics/gui.py
 grep -q 'test_status_report_ready_requires_fresh_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_future_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_structured_runtime_evidence' tests/test_downloader.py
+grep -q 'test_check_python_records_structured_runtime' tests/test_downloader.py
+grep -q 'test_check_tkinter_records_structured_availability' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_clock_and_time_sync_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
@@ -4109,6 +4120,8 @@ grep -q 'fail-open, or timing-invalid launcher policy evidence' README.md
 grep -q 'fail-open, or timing-invalid launcher policy evidence' docs/sailboat-pi.md
 grep -q 'chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence' README.md
 grep -q 'chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' README.md
+grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' README.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' README.md
