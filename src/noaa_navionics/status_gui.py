@@ -346,15 +346,18 @@ class StatusApp(tk.Tk):
         self.queue: Queue = Queue()
         self.worker: Optional[Thread] = None
         self.after_id: Optional[str] = None
+        self.poll_after_id: Optional[str] = None
+        self._closed = False
 
         self.headline = tk.StringVar(value="Checking...")
         self.summary = tk.StringVar(value="Waiting for the first status refresh.")
         self.gps_summary = tk.StringVar(value="GPS: waiting for status refresh.")
         self.last_report = tk.StringVar(value="")
         self._build()
+        self.protocol("WM_DELETE_WINDOW", self.close)
         self._set_busy(False)
-        self.after(100, self.refresh_now)
-        self.after(150, self._poll_queue)
+        self.after_id = self.after(100, self.refresh_now)
+        self.poll_after_id = self.after(150, self._poll_queue)
 
     def _build(self) -> None:
         root = ttk.Frame(self, padding=16)
@@ -401,10 +404,21 @@ class StatusApp(tk.Tk):
         self.anchor_watch_button.pack(side=tk.LEFT, padx=(10, 0))
         self.stop_anchor_watch_button = ttk.Button(buttons, text="Stop Watch", command=self.stop_anchor_watch)
         self.stop_anchor_watch_button.pack(side=tk.LEFT, padx=(10, 0))
-        ttk.Button(buttons, text="Quit", command=self.destroy).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Button(buttons, text="Quit", command=self.close).pack(side=tk.LEFT, padx=(10, 0))
         ttk.Label(root, textvariable=self.last_report).grid(row=5, column=0, sticky=tk.W, pady=(8, 0))
 
+    def close(self) -> None:
+        self._closed = True
+        self._cancel_after_callback("after_id")
+        self._cancel_after_callback("poll_after_id")
+        self._cancel_after_callback("anchor_watch_after_id")
+        self._cancel_after_callback("anchor_watch_stop_confirm_after_id")
+        self.destroy()
+
     def refresh_now(self) -> None:
+        self.after_id = None
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None and self.worker.is_alive():
             return
         self._set_busy(True)
@@ -413,6 +427,8 @@ class StatusApp(tk.Tk):
         self.worker.start()
 
     def mark_position(self, *, mob: bool = False) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None and self.worker.is_alive():
             return
         self._set_busy(True)
@@ -421,6 +437,8 @@ class StatusApp(tk.Tk):
         self.worker.start()
 
     def anchor_check(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None and self.worker.is_alive():
             return
         try:
@@ -443,6 +461,8 @@ class StatusApp(tk.Tk):
         self.worker.start()
 
     def start_anchor_watch(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.worker is not None and self.worker.is_alive():
             return
         if self.anchor_watch_fix is not None:
@@ -468,6 +488,8 @@ class StatusApp(tk.Tk):
         self.worker.start()
 
     def stop_anchor_watch(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.anchor_watch_fix is None:
             self._cancel_anchor_watch_stop_confirmation()
             self._set_busy(False)
@@ -545,6 +567,9 @@ class StatusApp(tk.Tk):
             self.queue.put(("anchor_watch_error", (anchor_watch_fix, str(exc))))
 
     def _poll_queue(self) -> None:
+        self.poll_after_id = None
+        if getattr(self, "_closed", False):
+            return
         try:
             while True:
                 kind, payload = self.queue.get_nowait()
@@ -569,7 +594,8 @@ class StatusApp(tk.Tk):
                     self._show_error(str(payload))
         except Empty:
             pass
-        self.after(150, self._poll_queue)
+        if not getattr(self, "_closed", False):
+            self.poll_after_id = self.after(150, self._poll_queue)
 
     def _show_report(self, report: dict[str, object]) -> None:
         self._set_busy(False)
@@ -740,10 +766,17 @@ class StatusApp(tk.Tk):
                 self.gps_summary.set(self.anchor_watch_status_detail)
 
     def _cancel_anchor_watch_stop_confirmation(self) -> None:
-        if self.anchor_watch_stop_confirm_after_id is None:
+        StatusApp._cancel_after_callback(self, "anchor_watch_stop_confirm_after_id")
+
+    def _cancel_after_callback(self, attr: str) -> None:
+        after_id = getattr(self, attr, None)
+        if after_id is None:
             return
-        self.after_cancel(self.anchor_watch_stop_confirm_after_id)
-        self.anchor_watch_stop_confirm_after_id = None
+        try:
+            self.after_cancel(after_id)
+        except tk.TclError:
+            pass
+        setattr(self, attr, None)
 
     def _set_busy(self, busy: bool) -> None:
         state = tk.DISABLED if busy else tk.NORMAL
@@ -762,6 +795,8 @@ class StatusApp(tk.Tk):
         self.anchor_samples_entry.configure(state=settings_state)
 
     def _schedule_refresh(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.after_id is not None:
             self.after_cancel(self.after_id)
             self.after_id = None
@@ -769,6 +804,8 @@ class StatusApp(tk.Tk):
             self.after_id = self.after(int(self.refresh_seconds * 1000), self.refresh_now)
 
     def _schedule_anchor_watch(self) -> None:
+        if getattr(self, "_closed", False):
+            return
         if self.anchor_watch_after_id is not None:
             self.after_cancel(self.anchor_watch_after_id)
             self.anchor_watch_after_id = None
@@ -778,6 +815,8 @@ class StatusApp(tk.Tk):
 
     def _run_anchor_watch(self) -> None:
         self.anchor_watch_after_id = None
+        if getattr(self, "_closed", False):
+            return
         if self.anchor_watch_fix is None:
             return
         if self.worker is not None and self.worker.is_alive():

@@ -4349,6 +4349,73 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.anchor_radius_entry.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.anchor_samples_entry.state, status_gui_module.tk.DISABLED)
 
+    def test_status_gui_close_cancels_scheduled_callbacks(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.after_id = "refresh-after"
+                self.poll_after_id = "poll-after"
+                self.anchor_watch_after_id = "watch-after"
+                self.anchor_watch_stop_confirm_after_id = "confirm-after"
+                self.cancelled = []
+                self.destroyed = False
+
+            def after_cancel(self, after_id):
+                self.cancelled.append(after_id)
+
+            def destroy(self):
+                self.destroyed = True
+
+            def _cancel_after_callback(self, attr):
+                return status_gui_module.StatusApp._cancel_after_callback(self, attr)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp.close(app)
+
+        self.assertTrue(app._closed)
+        self.assertEqual(
+            app.cancelled,
+            ["refresh-after", "poll-after", "watch-after", "confirm-after"],
+        )
+        self.assertIsNone(app.after_id)
+        self.assertIsNone(app.poll_after_id)
+        self.assertIsNone(app.anchor_watch_after_id)
+        self.assertIsNone(app.anchor_watch_stop_confirm_after_id)
+        self.assertTrue(app.destroyed)
+
+    def test_status_gui_does_not_schedule_callbacks_after_close(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = True
+                self.after_id = "refresh-after"
+                self.anchor_watch_after_id = "watch-after"
+                self.refresh_seconds = 60.0
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_seconds = 30.0
+                self.cancelled = []
+
+            def after_cancel(self, after_id):
+                self.cancelled.append(after_id)
+
+            def after(self, delay_ms, callback):
+                raise AssertionError("closed status GUI should not schedule callbacks")
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._schedule_refresh(app)
+        status_gui_module.StatusApp._schedule_anchor_watch(app)
+
+        self.assertEqual(app.cancelled, [])
+        self.assertEqual(app.after_id, "refresh-after")
+        self.assertEqual(app.anchor_watch_after_id, "watch-after")
+
     def test_status_gui_stop_watch_requires_second_press(self):
         class FakeVar:
             def __init__(self):
