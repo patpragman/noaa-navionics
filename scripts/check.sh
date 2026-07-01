@@ -265,7 +265,9 @@ grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
 grep -q 'is_raspberry_pi' scripts/start_chartplotter.sh
 grep -q 'trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/start_chartplotter.sh
-grep -q 'read -r -d .*device_tree_model </proc/device-tree/model' scripts/start_chartplotter.sh
+grep -q 'read_raspberry_pi_model_text()' scripts/start_chartplotter.sh
+grep -q 'device_tree_model_path="/proc/device-tree/model"' scripts/start_chartplotter.sh
+! grep -q 'read -r -d .*device_tree_model </proc/device-tree/model' scripts/start_chartplotter.sh
 grep -q 'PATH="$trusted_system_path"' scripts/start_chartplotter.sh
 grep -q 'export PATH' scripts/start_chartplotter.sh
 grep -q 'expected root on Raspberry Pi' scripts/start_chartplotter.sh
@@ -2089,6 +2091,12 @@ grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness retries' scripts/verify_pi.sh
 grep -q 'chartplotter launcher trusted PATH' scripts/verify_pi.sh
 grep -q 'chartplotter launcher Pi PATH pin' scripts/verify_pi.sh
+grep -q 'device_tree_model_path="/proc/device-tree/model"' scripts/start_chartplotter.sh
+grep -q 'read_raspberry_pi_model_text()' scripts/start_chartplotter.sh
+grep -q 'os.path.samestat(before, opened)' scripts/start_chartplotter.sh
+! grep -q "grep -Fq 'Raspberry Pi' /proc/device-tree/model" scripts/start_chartplotter.sh
+grep -q 'chartplotter launcher reads the Raspberry Pi model through a no-follow same-file descriptor' README.md
+grep -q 'reads the Raspberry Pi model through a no-follow same-file descriptor before applying Pi-only trusted-command rules' docs/sailboat-pi.md
 grep -q 'chartplotter launcher trusted Python resolver' scripts/verify_pi.sh
 grep -q 'chartplotter launcher Python path resolver' scripts/verify_pi.sh
 grep -q 'chartplotter launcher resolved Python trust check' scripts/verify_pi.sh

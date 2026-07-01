@@ -23,12 +23,52 @@ opencpn_bin=""
 opencpn_child_pid=""
 python3_bin=""
 trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-device_tree_model=""
+device_tree_model_path="/proc/device-tree/model"
 
-if [[ -r /proc/device-tree/model ]]; then
-  IFS= read -r -d '' device_tree_model </proc/device-tree/model || true
-fi
-if [[ "$device_tree_model" == *"Raspberry Pi"* ]]; then
+read_raspberry_pi_model_text() {
+  local python_candidate
+  for python_candidate in /usr/bin/python3 /bin/python3; do
+    [[ -x "$python_candidate" ]] || continue
+    "$python_candidate" - "$device_tree_model_path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError:
+    raise SystemExit(1)
+if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+    raise SystemExit(1)
+try:
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError:
+    raise SystemExit(1)
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(1)
+    text = os.read(fd, 4096).decode("ascii", "ignore").strip("\x00\r\n ")
+finally:
+    os.close(fd)
+if not text:
+    raise SystemExit(1)
+sys.stdout.write(text)
+PY
+    return "$?"
+  done
+  return 1
+}
+
+is_raspberry_pi() {
+  local model
+  model="$(read_raspberry_pi_model_text 2>/dev/null)" || return 1
+  [[ "$model" == *"Raspberry Pi"* ]]
+}
+
+if is_raspberry_pi; then
   PATH="$trusted_system_path"
   export PATH
 fi
@@ -1115,10 +1155,6 @@ value = lines[0].strip()
 if boot_id_re.fullmatch(value):
     sys.stdout.write(value)
 PY
-}
-
-is_raspberry_pi() {
-  [[ -r /proc/device-tree/model ]] && grep -Fq 'Raspberry Pi' /proc/device-tree/model 2>/dev/null
 }
 
 validate_launcher_lock_path() {
