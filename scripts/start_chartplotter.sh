@@ -1077,15 +1077,39 @@ opencpn_running() {
 opencpn_process_active() {
   local pid="$1"
   "$python3_bin" - "$pid" <<'PY'
+import os
+import stat
 import sys
 
 pid = sys.argv[1]
 if not pid.isdigit():
     raise SystemExit(1)
+proc_path = f"/proc/{pid}"
+nofollow = getattr(os, "O_NOFOLLOW", 0)
 try:
-    stat_text = open(f"/proc/{pid}/stat", encoding="ascii", errors="ignore").read()
+    before = os.stat(proc_path, follow_symlinks=False)
 except OSError:
     raise SystemExit(1)
+if not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+    raise SystemExit(1)
+try:
+    proc_fd = os.open(proc_path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError:
+    raise SystemExit(1)
+try:
+    opened = os.fstat(proc_fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != os.getuid():
+        raise SystemExit(1)
+    stat_fd = os.open("stat", os.O_RDONLY | nofollow, dir_fd=proc_fd)
+    try:
+        stat_file = os.fstat(stat_fd)
+        if not stat.S_ISREG(stat_file.st_mode):
+            raise SystemExit(1)
+        stat_text = os.read(stat_fd, 4096).decode("ascii", "ignore")
+    finally:
+        os.close(stat_fd)
+finally:
+    os.close(proc_fd)
 try:
     tail = stat_text.rsplit(") ", 1)[1]
 except IndexError:
@@ -1101,15 +1125,39 @@ process_looks_like_launcher() {
   local pid="$1"
   "$python3_bin" - "$pid" <<'PY'
 from pathlib import Path
+import os
+import stat
 import sys
 
 pid = sys.argv[1]
 if not pid.isdigit():
     raise SystemExit(1)
+proc_path = f"/proc/{pid}"
+nofollow = getattr(os, "O_NOFOLLOW", 0)
 try:
-    data = Path(f"/proc/{pid}/cmdline").read_bytes()
+    before = os.stat(proc_path, follow_symlinks=False)
 except OSError:
     raise SystemExit(1)
+if not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+    raise SystemExit(1)
+try:
+    proc_fd = os.open(proc_path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError:
+    raise SystemExit(1)
+try:
+    opened = os.fstat(proc_fd)
+    if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != os.getuid():
+        raise SystemExit(1)
+    cmdline_fd = os.open("cmdline", os.O_RDONLY | nofollow, dir_fd=proc_fd)
+    try:
+        cmdline_file = os.fstat(cmdline_fd)
+        if not stat.S_ISREG(cmdline_file.st_mode):
+            raise SystemExit(1)
+        data = os.read(cmdline_fd, 65536)
+    finally:
+        os.close(cmdline_fd)
+finally:
+    os.close(proc_fd)
 for raw_arg in data.split(b"\0"):
     if not raw_arg:
         continue

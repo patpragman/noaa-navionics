@@ -215,11 +215,14 @@ grep -q 'OpenCPN executable directory is owned by uid' scripts/start_chartplotte
 grep -q 'acquire_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'release_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'process_looks_like_launcher' scripts/start_chartplotter.sh
-grep -q 'Path(f"/proc/{pid}/cmdline").read_bytes()' scripts/start_chartplotter.sh
+grep -q 'proc_fd = os.open(proc_path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)' scripts/start_chartplotter.sh
+grep -q 'os.path.samestat(before, opened)' scripts/start_chartplotter.sh
+grep -q 'cmdline_fd = os.open("cmdline", os.O_RDONLY | nofollow, dir_fd=proc_fd)' scripts/start_chartplotter.sh
+! grep -q 'Path(f"/proc/{pid}/cmdline").read_bytes()' scripts/start_chartplotter.sh
 grep -Fq 'data.split(b"\0")' scripts/start_chartplotter.sh
 grep -q 'surrogateescape' scripts/start_chartplotter.sh
-grep -q 'parses live `/proc` state and NUL-delimited process arguments' README.md
-grep -q 'parses live `/proc` state and NUL-delimited process arguments' docs/sailboat-pi.md
+grep -q 'opens same-user `/proc` process directories and reads state plus NUL-delimited process arguments through no-follow descriptors' README.md
+grep -q 'opens same-user `/proc` process directories and reads state plus NUL-delimited process arguments through no-follow descriptors' docs/sailboat-pi.md
 ! grep -Fq 'cmdline="$(tr '\''\0'\'' '\'' '\'' <"/proc/${pid}/cmdline"' scripts/start_chartplotter.sh
 ! grep -q 'done <"/proc/${pid}/cmdline"' scripts/start_chartplotter.sh
 grep -q 'current_boot_id' scripts/start_chartplotter.sh
@@ -340,8 +343,10 @@ grep -q '"$pgrep_bin" -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
 ! grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
 grep -q 'resolves `pgrep` to a trusted executable path' README.md
 grep -q 'resolves `pgrep` to a trusted executable path' docs/sailboat-pi.md
+grep -q 'stat_fd = os.open("stat", os.O_RDONLY | nofollow, dir_fd=proc_fd)' scripts/start_chartplotter.sh
 grep -q 'stat_text.rsplit(") ", 1)' scripts/start_chartplotter.sh
 grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/start_chartplotter.sh
+! grep -q 'open(f"/proc/{pid}/stat"' scripts/start_chartplotter.sh
 ! grep -q 'cat "/proc/${pid}/stat"' scripts/start_chartplotter.sh
 grep -q 'OpenCPN is already running' scripts/start_chartplotter.sh
 grep -q 'OpenCPN exited with status' scripts/start_chartplotter.sh
