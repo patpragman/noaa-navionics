@@ -682,7 +682,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 _validate_live_serial_device(device)
             deadline = time.monotonic() + args.seconds if args.seconds else None
             live_stream = deadline is None and not args.sample
-            fixes = _trackable_fixes(
+            fixes = _anchor_watch_fixes(
                 _read_fixes(
                     device,
                     args.baud or app_config.gps_baud,
@@ -1060,6 +1060,21 @@ def _trackable_fixes(
         future_tolerance_seconds=future_tolerance_seconds,
         skip_subject="track",
         action="write reliable GPX trackpoint",
+    )
+
+
+def _anchor_watch_fixes(
+    fixes,
+    *,
+    max_fix_age_seconds: float = 300.0,
+    future_tolerance_seconds: float = 0.0,
+):
+    yield from _quality_checked_fixes(
+        fixes,
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+        skip_subject="anchor watch",
+        action="judge anchor drift",
     )
 
 

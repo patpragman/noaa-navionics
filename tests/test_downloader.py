@@ -1947,6 +1947,51 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(stdout.getvalue().count("Anchor distance:"), 2)
             self.assertIn("ANCHOR ALARM", stderr.getvalue())
 
+    def test_cli_anchor_watch_reports_stale_anchor_watch_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            stale = GPSFix(
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=10),
+                latitude=61.0,
+                longitude=-149.0,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = cli_module._read_fixes
+
+            try:
+                cli_module._read_fixes = lambda *args, **kwargs: iter([stale])
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "anchor-watch",
+                            "--config",
+                            str(app_config),
+                            "--radius-meters",
+                            "50",
+                            "--seconds",
+                            "12",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("Skipping stale anchor watch fix", stderr.getvalue())
+            self.assertIn("No usable GPS fix was available for anchor watch.", stderr.getvalue())
+            self.assertNotIn("track fix", stderr.getvalue())
+            self.assertNotIn("GPX trackpoint", stderr.getvalue())
+
     def test_cli_log_track_timed_run_allows_finite_stream_after_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
