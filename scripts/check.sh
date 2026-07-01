@@ -2842,6 +2842,7 @@ grep -q 'download requires writable chart storage with enough free space' src/no
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
+grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
@@ -2876,10 +2877,13 @@ grep -q 'anchor_watch_seconds=args.anchor_watch_seconds' src/noaa_navionics/stat
 grep -q 'self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_active = False' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
+grep -q 'self.anchor_watch_stop_confirm_after_id: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_status_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'if not self.anchor_watch_alarm_active or self.anchor_watch_alarm_summary is None' src/noaa_navionics/status_gui.py
 grep -q 'if not alarm_visible and bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.py
+grep -q 'def _show_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
+grep -q 'def _cancel_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'self._show_anchor_watch_alarm_if_active()' src/noaa_navionics/status_gui.py
 grep -q 'state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/status_gui.py
@@ -2909,6 +2913,8 @@ grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits sepa
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
 grep -q -- 'Start Watch captures a fresh anchor fix, rechecks drift at `--anchor-watch-seconds N`' README.md
 grep -q -- 'Start Watch captures a fresh anchor fix, rechecks drift at `--anchor-watch-seconds N`' docs/sailboat-pi.md
+grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' README.md
+grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' README.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
@@ -2969,6 +2975,7 @@ grep -q 'test_status_gui_status_refresh_does_not_hide_readiness_failure_for_anch
 grep -q 'test_status_gui_mark_does_not_hide_active_anchor_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_does_not_hide_active_anchor_watch_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_disables_start_watch_while_anchor_watch_is_active' tests/test_downloader.py
+grep -q 'test_status_gui_stop_watch_requires_second_press' tests/test_downloader.py
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py

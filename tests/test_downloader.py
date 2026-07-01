@@ -3433,6 +3433,70 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.NORMAL)
 
+    def test_status_gui_stop_watch_requires_second_press(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_after_id = "watch-after-id"
+                self.anchor_watch_stop_confirm_after_id = None
+                self.anchor_watch_alarm_active = True
+                self.anchor_watch_alarm_summary = "Anchor watch: ANCHOR ALARM: 75.0 m from anchor; radius 50 m"
+                self.anchor_watch_alarm_detail = "Anchor 61.000000, -149.000000 | Current 61.000000, -148.990000"
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.after_calls = []
+                self.cancelled = []
+
+            def after(self, delay_ms, callback):
+                self.after_calls.append((delay_ms, callback.__name__))
+                return "confirm-after-id"
+
+            def after_cancel(self, after_id):
+                self.cancelled.append(after_id)
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def _show_anchor_watch_stop_confirmation(self):
+                return status_gui_module.StatusApp._show_anchor_watch_stop_confirmation(self)
+
+            def _expire_anchor_watch_stop_confirmation(self):
+                return status_gui_module.StatusApp._expire_anchor_watch_stop_confirmation(self)
+
+            def _cancel_anchor_watch_stop_confirmation(self):
+                return status_gui_module.StatusApp._cancel_anchor_watch_stop_confirmation(self)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp.stop_anchor_watch(app)
+
+        self.assertIsNotNone(app.anchor_watch_fix)
+        self.assertEqual(app.anchor_watch_stop_confirm_after_id, "confirm-after-id")
+        self.assertEqual(
+            app.after_calls,
+            [(int(status_gui_module.ANCHOR_WATCH_STOP_CONFIRM_SECONDS * 1000), "_expire_anchor_watch_stop_confirmation")],
+        )
+        self.assertEqual(app.cancelled, [])
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
+        self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
+        self.assertIn("Press Stop Watch again", app.last_report.value)
+
     def test_status_gui_enables_start_watch_after_anchor_watch_stops(self):
         class FakeButton:
             def __init__(self):
@@ -3471,12 +3535,16 @@ class GuiTests(unittest.TestCase):
                 self.anchor_watch_status_summary = "status"
                 self.anchor_watch_status_detail = "detail"
                 self.anchor_watch_after_id = "after-id"
+                self.anchor_watch_stop_confirm_after_id = "confirm-id"
                 self.summary = FakeVar()
                 self.cancelled = []
                 self.refresh_scheduled = 0
 
             def after_cancel(self, after_id):
                 self.cancelled.append(after_id)
+
+            def _cancel_anchor_watch_stop_confirmation(self):
+                return status_gui_module.StatusApp._cancel_anchor_watch_stop_confirmation(self)
 
             def _set_busy(self, busy):
                 status_gui_module.StatusApp._set_busy(self, busy)
@@ -3494,7 +3562,8 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(app.anchor_watch_status_detail)
         self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.NORMAL)
         self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.DISABLED)
-        self.assertEqual(app.cancelled, ["after-id"])
+        self.assertIsNone(app.anchor_watch_stop_confirm_after_id)
+        self.assertEqual(app.cancelled, ["confirm-id", "after-id"])
         self.assertEqual(app.refresh_scheduled, 1)
 
     def test_status_gui_anchor_check_rejects_stale_fix(self):

@@ -18,6 +18,7 @@ from .report import build_status_report, write_status_report
 
 
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
+ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0
 
 
 @dataclass(frozen=True)
@@ -333,6 +334,7 @@ class StatusApp(tk.Tk):
         self.anchor_watch_seconds = anchor_watch_seconds
         self.anchor_watch_fix: Optional[GPSFix] = None
         self.anchor_watch_after_id: Optional[str] = None
+        self.anchor_watch_stop_confirm_after_id: Optional[str] = None
         self.anchor_watch_alarm_active = False
         self.anchor_watch_alarm_summary: Optional[str] = None
         self.anchor_watch_alarm_detail: Optional[str] = None
@@ -464,6 +466,14 @@ class StatusApp(tk.Tk):
         self.worker.start()
 
     def stop_anchor_watch(self) -> None:
+        if self.anchor_watch_fix is None:
+            self._cancel_anchor_watch_stop_confirmation()
+            self._set_busy(False)
+            return
+        if self.anchor_watch_stop_confirm_after_id is None:
+            self._show_anchor_watch_stop_confirmation()
+            return
+        self._cancel_anchor_watch_stop_confirmation()
         self.anchor_watch_fix = None
         self.anchor_watch_alarm_active = False
         self.anchor_watch_alarm_summary = None
@@ -656,6 +666,35 @@ class StatusApp(tk.Tk):
         if self.anchor_watch_alarm_detail is not None:
             self.gps_summary.set(self.anchor_watch_alarm_detail)
         return True
+
+    def _show_anchor_watch_stop_confirmation(self) -> None:
+        seconds = ANCHOR_WATCH_STOP_CONFIRM_SECONDS
+        message = f"Press Stop Watch again within {seconds:g}s to stop anchor watch."
+        self.anchor_watch_stop_confirm_after_id = self.after(
+            int(seconds * 1000),
+            self._expire_anchor_watch_stop_confirmation,
+        )
+        if not self._show_anchor_watch_alarm_if_active():
+            self.summary.set(message)
+        self.last_report.set(message)
+
+    def _expire_anchor_watch_stop_confirmation(self) -> None:
+        self.anchor_watch_stop_confirm_after_id = None
+        if self.anchor_watch_fix is None:
+            return
+        self.last_report.set("Anchor watch stop confirmation expired.")
+        if self._show_anchor_watch_alarm_if_active():
+            return
+        if self.anchor_watch_status_summary is not None:
+            self.summary.set(self.anchor_watch_status_summary)
+            if self.anchor_watch_status_detail is not None:
+                self.gps_summary.set(self.anchor_watch_status_detail)
+
+    def _cancel_anchor_watch_stop_confirmation(self) -> None:
+        if self.anchor_watch_stop_confirm_after_id is None:
+            return
+        self.after_cancel(self.anchor_watch_stop_confirm_after_id)
+        self.anchor_watch_stop_confirm_after_id = None
 
     def _set_busy(self, busy: bool) -> None:
         state = tk.DISABLED if busy else tk.NORMAL
