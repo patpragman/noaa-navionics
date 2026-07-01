@@ -2247,6 +2247,7 @@ fi
 
 write_post_trip_checksum_manifest "$trip_dir"
 verify_post_trip_checksum_manifest "$trip_dir"
+printf '\nPost-trip Pi artifacts written to: %s\n' "$trip_dir"
 
 case "$shutdown_mode" in
   dry-run)
@@ -2259,7 +2260,6 @@ case "$shutdown_mode" in
     ;;
 esac
 
-printf '\nPost-trip Pi artifacts written to: %s\n' "$trip_dir"
 if [[ "$status_code" -ne 0 ]]; then
   echo "Post-trip collection completed, but the status snapshot reported a failure." >&2
   exit 1
