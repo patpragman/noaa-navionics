@@ -299,6 +299,7 @@ def status_report_validation_failures(
     failures.extend(_unit_files_validation_failures(report.get("unit_files")))
     failures.extend(_service_summary_validation_failures(report))
     failures.extend(_clock_time_validation_failures(report))
+    failures.extend(_pi_health_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -319,6 +320,67 @@ def status_report_validation_failures(
     failures.extend(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
+    return failures
+
+
+def _pi_health_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    failures: list[CheckResult] = []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    power = check_rows.get("Pi Power")
+    if isinstance(power, dict):
+        data = power.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Pi Power", False, "status report Pi Power check has no structured data"))
+        elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
+            pass
+        elif data.get("is_raspberry_pi") is not True:
+            failures.append(CheckResult("Pi Power", False, "status report Pi Power missing Raspberry Pi evidence"))
+        else:
+            throttled_value = data.get("throttled_value")
+            if isinstance(throttled_value, bool) or not isinstance(throttled_value, int):
+                failures.append(CheckResult("Pi Power", False, "status report Pi Power missing throttled value"))
+            reported_flags = data.get("reported_flags")
+            if not isinstance(reported_flags, list) or any(not isinstance(flag, str) for flag in reported_flags):
+                failures.append(CheckResult("Pi Power", False, "status report Pi Power missing throttling flag list"))
+            elif reported_flags:
+                failures.append(
+                    CheckResult(
+                        "Pi Power",
+                        False,
+                        "status report Pi Power reported throttling flags: " + ", ".join(reported_flags),
+                    )
+                )
+
+    thermal = check_rows.get("Pi Thermal")
+    if isinstance(thermal, dict):
+        data = thermal.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal check has no structured data"))
+        elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
+            pass
+        elif data.get("is_raspberry_pi") is not True:
+            failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal missing Raspberry Pi evidence"))
+        else:
+            temperature = data.get("temperature_c")
+            if isinstance(temperature, bool) or not isinstance(temperature, (int, float)) or not math.isfinite(temperature):
+                failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal missing finite temperature"))
+            else:
+                fail_c = data.get("fail_c", 80.0)
+                try:
+                    parsed_fail_c = float(fail_c)
+                except (TypeError, ValueError):
+                    parsed_fail_c = 80.0
+                if temperature >= parsed_fail_c:
+                    failures.append(
+                        CheckResult(
+                            "Pi Thermal",
+                            False,
+                            f"status report Pi Thermal temperature {temperature:.1f} C is above {parsed_fail_c:.0f} C limit",
+                        )
+                    )
     return failures
 
 

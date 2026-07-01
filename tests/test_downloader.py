@@ -351,6 +351,24 @@ def complete_status_gui_report(
                 "system_clock_synchronized": "yes",
                 "ntp_synchronized": "yes",
             }
+        elif row["name"] == "Pi Power":
+            row["detail"] = "no under-voltage or throttling reported"
+            row["data"] = {
+                "is_raspberry_pi": True,
+                "vcgencmd_available": True,
+                "throttled_output": "throttled=0x0",
+                "throttled_value": 0,
+                "reported_flags": [],
+            }
+        elif row["name"] == "Pi Thermal":
+            row["detail"] = "42.5 C"
+            row["data"] = {
+                "is_raspberry_pi": True,
+                "temperature_available": True,
+                "temperature_c": 42.5,
+                "warn_c": 70.0,
+                "fail_c": 80.0,
+            }
     return {
         "ok": ok,
         "generated_at": generated_at,
@@ -10102,6 +10120,85 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(non_pi_report, now=now))
         self.assertFalse(status_report_validation_failures(non_pi_report, now=now))
 
+    def test_status_report_ready_requires_structured_pi_health_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+        cases = [
+            ("Pi Power", None, "Pi Power check has no structured data", "Pi Power"),
+            (
+                "Pi Power",
+                {
+                    "is_raspberry_pi": True,
+                    "vcgencmd_available": True,
+                    "throttled_output": "throttled=0x1",
+                    "throttled_value": 1,
+                    "reported_flags": ["under-voltage"],
+                },
+                "reported throttling flags: under-voltage",
+                "Pi Power",
+            ),
+            (
+                "Pi Power",
+                {
+                    "is_raspberry_pi": True,
+                    "vcgencmd_available": True,
+                    "throttled_output": "throttled=0x0",
+                    "reported_flags": [],
+                },
+                "missing throttled value",
+                "Pi Power",
+            ),
+            ("Pi Thermal", None, "Pi Thermal check has no structured data", "Pi Thermal"),
+            (
+                "Pi Thermal",
+                {
+                    "is_raspberry_pi": True,
+                    "temperature_available": True,
+                    "temperature_c": "42.5",
+                    "warn_c": 70.0,
+                    "fail_c": 80.0,
+                },
+                "missing finite temperature",
+                "Pi Thermal",
+            ),
+            (
+                "Pi Thermal",
+                {
+                    "is_raspberry_pi": True,
+                    "temperature_available": True,
+                    "temperature_c": 81.0,
+                    "warn_c": 70.0,
+                    "fail_c": 80.0,
+                },
+                "temperature 81.0 C is above 80 C limit",
+                "Pi Thermal",
+            ),
+        ]
+        for row_name, data, expected, failure_name in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == failure_name and expected in failure.detail for failure in failures)
+                )
+
+        non_pi_report = complete_status_gui_report(generated_at=generated_at)
+        for row_name in ("Pi Power", "Pi Thermal"):
+            row = next(check for check in non_pi_report["checks"] if check["name"] == row_name)
+            row["detail"] = "not a Raspberry Pi; skipping Pi health check"
+            row["data"] = {"is_raspberry_pi": False, "skipped": True}
+
+        self.assertTrue(status_report_is_ready(non_pi_report, now=now))
+        self.assertFalse(status_report_validation_failures(non_pi_report, now=now))
+
     def test_status_report_ready_rejects_missing_or_malformed_host_boot_id(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         cases = [
@@ -18397,6 +18494,9 @@ class PiHealthTests(unittest.TestCase):
                 os.environ["PATH"] = original_path
             self.assertFalse(result.ok)
             self.assertIn("under-voltage", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("throttled_value"), 1)
+            self.assertEqual(result.data.get("reported_flags"), ["under-voltage"])
 
     def test_check_pi_throttling_rejects_historical_events(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -18413,6 +18513,10 @@ class PiHealthTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("under-voltage occurred", result.detail)
             self.assertIn("throttling occurred", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("throttled_value"), 0x50000)
+            self.assertIn("under-voltage occurred", result.data.get("reported_flags", []))
+            self.assertIn("throttling occurred", result.data.get("reported_flags", []))
 
     def test_check_pi_throttling_reports_missing_command_on_pi(self):
         original_path = os.environ.get("PATH", "")
@@ -18427,6 +18531,9 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("vcgencmd", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("is_raspberry_pi"), True)
+        self.assertEqual(result.data.get("vcgencmd_available"), False)
 
     def test_check_pi_throttling_rejects_user_owned_vcgencmd_on_pi(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -18447,6 +18554,9 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("Pi power command directory is not a trusted system directory", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("is_raspberry_pi"), True)
+        self.assertEqual(result.data.get("vcgencmd_available"), False)
 
     def test_check_pi_temperature_reports_normal_temperature(self):
         original_reader = health_module._read_pi_temperature
@@ -18458,6 +18568,10 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("42.5 C", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("temperature_c"), 42.5)
+        self.assertEqual(result.data.get("warn_c"), 70.0)
+        self.assertEqual(result.data.get("fail_c"), 80.0)
 
     def test_check_pi_temperature_warns_when_warm(self):
         original_reader = health_module._read_pi_temperature
@@ -18469,6 +18583,8 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("warm", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("temperature_c"), 72.0)
 
     def test_check_pi_temperature_fails_above_limit(self):
         original_reader = health_module._read_pi_temperature
@@ -18480,6 +18596,8 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("above 80 C limit", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("temperature_c"), 81.0)
 
     def test_check_pi_temperature_rejects_non_finite_temperature(self):
         original_reader = health_module._read_pi_temperature
@@ -18491,6 +18609,8 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("non-finite", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertTrue(math.isnan(result.data.get("temperature_c")))
 
     def test_check_pi_temperature_reports_missing_sensor_on_pi(self):
         original_reader = health_module._read_pi_temperature
@@ -18505,6 +18625,9 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("temperature sensor unavailable", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("is_raspberry_pi"), True)
+        self.assertEqual(result.data.get("temperature_available"), False)
 
     def test_check_pi_temperature_skips_missing_sensor_off_pi(self):
         original_reader = health_module._read_pi_temperature
@@ -18519,6 +18642,10 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("skipping", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("is_raspberry_pi"), False)
+        self.assertEqual(result.data.get("temperature_available"), False)
+        self.assertEqual(result.data.get("skipped"), True)
 
     def test_parse_vcgencmd_temperature(self):
         self.assertEqual(_parse_vcgencmd_temperature("temp=42.5'C"), 42.5)

@@ -1320,16 +1320,27 @@ def _removable_storage_root(path: Path) -> Optional[Path]:
 
 
 def check_pi_throttling() -> CheckResult:
+    is_pi = _is_raspberry_pi()
     vcgencmd, error = _trusted_system_command("vcgencmd", "Pi power command")
     if error:
-        if _is_raspberry_pi():
+        data = {
+            "is_raspberry_pi": is_pi,
+            "vcgencmd_available": False,
+        }
+        if is_pi:
             return CheckResult(
                 "Pi Power",
                 False,
                 f"{error}; install the Raspberry Pi firmware utilities",
+                data,
             )
-        return CheckResult("Pi Power", True, f"{error}; skipping Raspberry Pi throttling check")
+        data["skipped"] = True
+        return CheckResult("Pi Power", True, f"{error}; skipping Raspberry Pi throttling check", data)
     assert vcgencmd is not None
+    data = {
+        "is_raspberry_pi": is_pi,
+        "vcgencmd_available": True,
+    }
     try:
         completed = subprocess.run(
             [str(vcgencmd), "get_throttled"],
@@ -1340,20 +1351,23 @@ def check_pi_throttling() -> CheckResult:
             timeout=5,
         )
     except Exception as exc:
-        return CheckResult("Pi Power", False, f"vcgencmd get_throttled failed: {exc}")
+        return CheckResult("Pi Power", False, f"vcgencmd get_throttled failed: {exc}", data)
     output = completed.stdout.strip() or completed.stderr.strip()
+    data["throttled_output"] = output
     if completed.returncode != 0:
-        return CheckResult("Pi Power", False, f"vcgencmd get_throttled failed: {output}")
+        return CheckResult("Pi Power", False, f"vcgencmd get_throttled failed: {output}", data)
     value = _parse_throttled_value(output)
     if value is None:
-        return CheckResult("Pi Power", False, f"unexpected throttling output: {output}")
+        return CheckResult("Pi Power", False, f"unexpected throttling output: {output}", data)
+    data["throttled_value"] = value
     reported = []
     for bit, label in _THROTTLE_BITS.items():
         if value & (1 << bit):
             reported.append(label)
+    data["reported_flags"] = reported
     if reported:
-        return CheckResult("Pi Power", False, "throttling reported since boot: " + ", ".join(reported))
-    return CheckResult("Pi Power", True, "no under-voltage or throttling reported")
+        return CheckResult("Pi Power", False, "throttling reported since boot: " + ", ".join(reported), data)
+    return CheckResult("Pi Power", True, "no under-voltage or throttling reported", data)
 
 
 def _is_raspberry_pi() -> bool:
@@ -1389,22 +1403,32 @@ def _read_raspberry_pi_model_text(path: Path) -> str:
 
 
 def check_pi_temperature(*, warn_c: float = 70.0, fail_c: float = 80.0) -> CheckResult:
+    is_pi = _is_raspberry_pi()
     temperature = _read_pi_temperature()
+    data = {
+        "is_raspberry_pi": is_pi,
+        "temperature_available": temperature is not None,
+        "warn_c": warn_c,
+        "fail_c": fail_c,
+    }
     if temperature is None:
-        if _is_raspberry_pi():
+        if is_pi:
             return CheckResult(
                 "Pi Thermal",
                 False,
                 "temperature sensor unavailable on Raspberry Pi; cannot verify enclosure thermal margin",
+                data,
             )
-        return CheckResult("Pi Thermal", True, "temperature sensor not found; skipping Raspberry Pi thermal check")
+        data["skipped"] = True
+        return CheckResult("Pi Thermal", True, "temperature sensor not found; skipping Raspberry Pi thermal check", data)
+    data["temperature_c"] = temperature
     if not math.isfinite(temperature):
-        return CheckResult("Pi Thermal", False, "temperature sensor returned a non-finite value")
+        return CheckResult("Pi Thermal", False, "temperature sensor returned a non-finite value", data)
     if temperature >= fail_c:
-        return CheckResult("Pi Thermal", False, f"{temperature:.1f} C; above {fail_c:.0f} C limit")
+        return CheckResult("Pi Thermal", False, f"{temperature:.1f} C; above {fail_c:.0f} C limit", data)
     if temperature >= warn_c:
-        return CheckResult("Pi Thermal", True, f"{temperature:.1f} C; warm, check airflow and enclosure")
-    return CheckResult("Pi Thermal", True, f"{temperature:.1f} C")
+        return CheckResult("Pi Thermal", True, f"{temperature:.1f} C; warm, check airflow and enclosure", data)
+    return CheckResult("Pi Thermal", True, f"{temperature:.1f} C", data)
 
 
 def check_gps_sample(sample: Path) -> CheckResult:
