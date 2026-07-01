@@ -73,6 +73,10 @@ grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q -- '--gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
 ! grep -q '^Environment=' systemd/noaa-navionics-preflight.service
 ! grep -q '^EnvironmentFile=' systemd/noaa-navionics-preflight.service
+grep -q 'list-gps-devices' src/noaa_navionics/cli.py
+grep -q 'test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names' tests/test_downloader.py
+grep -q 'noaa-navionics list-gps-devices' README.md
+grep -q 'noaa-navionics list-gps-devices' docs/sailboat-pi.md
 grep -q 'def _gps_seconds_from_launcher_env' src/noaa_navionics/cli.py
 grep -q 'test_status_report_rejects_symlinked_launcher_environment_for_gps_wait' tests/test_downloader.py
 grep -q 'test_status_report_rejects_unknown_launcher_environment_key_for_gps_wait' tests/test_downloader.py

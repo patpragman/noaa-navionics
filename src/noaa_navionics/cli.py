@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -55,6 +56,14 @@ from .report import (
     format_status_text,
     write_status_report,
 )
+
+
+@dataclass(frozen=True)
+class GPSDeviceCandidate:
+    path: str
+    kind: str
+    detail: str
+    stable: bool
 
 
 def _positive_int(value: str) -> int:
@@ -182,6 +191,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_packages = subparsers.add_parser("list-packages", help="print common package selectors")
     list_packages.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
+
+    list_gps = subparsers.add_parser("list-gps-devices", help="list candidate Linux GPS serial device paths")
+    list_gps.add_argument("--dev-root", default="/dev", help=argparse.SUPPRESS)
 
     gui = subparsers.add_parser("gui", help="launch the Tkinter GUI")
     status_gui = subparsers.add_parser("status-gui", help="launch the Tkinter readiness status GUI")
@@ -445,6 +457,28 @@ def main(argv: Optional[list[str]] = None) -> int:
             for selector, label, filename in rows:
                 print(f"{selector:20} {label:35} {args.base_url}{filename}")
             return 0
+
+        if args.command == "list-gps-devices":
+            candidates = _list_gps_device_candidates(Path(args.dev_root))
+            if candidates:
+                print("PATH\tTYPE\tDETAIL")
+            for candidate in candidates:
+                print(f"{candidate.path}\t{candidate.kind}\t{candidate.detail}")
+            if any(candidate.stable for candidate in candidates):
+                return 0
+            if candidates:
+                print(
+                    "Only volatile GPS device names were found; use /dev/serial/by-id/... "
+                    "or a documented stable alias such as /dev/gps before provisioning.",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    "No GPS serial device candidates found. Plug in the receiver and prefer "
+                    "/dev/serial/by-id/... for provisioning.",
+                    file=sys.stderr,
+                )
+            return 1
 
         if args.command == "gui":
             from .gui import main as gui_main
@@ -736,6 +770,69 @@ def _add_selector_args(parser: argparse.ArgumentParser) -> None:
     selectors.add_argument("--chart", help="individual ENC cell name, e.g. US5AK3CM")
     selectors.add_argument("--all", action="store_true", help="download all NOAA ENCs")
     selectors.add_argument("--catalog", action="store_true", help="download NOAA XML product catalog")
+
+
+def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDeviceCandidate]:
+    root = dev_root.expanduser()
+    candidates: list[GPSDeviceCandidate] = []
+    seen: set[str] = set()
+
+    by_id_dir = root / "serial/by-id"
+    try:
+        by_id_entries = sorted(by_id_dir.iterdir(), key=lambda path: path.name)
+    except OSError:
+        by_id_entries = []
+    for entry in by_id_entries:
+        display_path = _dev_display_path(entry, root)
+        if not _stable_gps_device_path(display_path):
+            continue
+        if not entry.is_symlink():
+            continue
+        detail = f"points to {_dev_display_path(entry.resolve(strict=False), root)}"
+        candidates.append(GPSDeviceCandidate(display_path, "stable", detail, True))
+        seen.add(display_path)
+
+    for alias in ("gps", "serial0", "serial1"):
+        path = root / alias
+        display_path = _dev_display_path(path, root)
+        if display_path in seen or not path.exists():
+            continue
+        detail = "stable alias"
+        if path.is_symlink():
+            detail = f"stable alias to {_dev_display_path(path.resolve(strict=False), root)}"
+        candidates.append(GPSDeviceCandidate(display_path, "stable-alias", detail, True))
+        seen.add(display_path)
+
+    volatile_paths = []
+    for pattern in ("ttyUSB*", "ttyACM*"):
+        try:
+            volatile_paths.extend(root.glob(pattern))
+        except OSError:
+            continue
+    for path in sorted(volatile_paths, key=lambda candidate: candidate.name):
+        display_path = _dev_display_path(path, root)
+        if display_path in seen or not _volatile_usb_device_path(display_path):
+            continue
+        candidates.append(
+            GPSDeviceCandidate(
+                display_path,
+                "volatile",
+                "not safe for unattended provisioning; prefer matching /dev/serial/by-id entry",
+                False,
+            )
+        )
+        seen.add(display_path)
+
+    return candidates
+
+
+def _dev_display_path(path: Path, dev_root: Path) -> str:
+    expanded_root = dev_root.expanduser()
+    try:
+        relative = path.relative_to(expanded_root)
+    except ValueError:
+        return str(path)
+    return str(Path("/dev") / relative)
 
 
 def _gps_seconds_from_launcher_env(path: Path) -> float:

@@ -110,6 +110,14 @@ For a production-style Raspberry Pi chartplotter setup, use this project with Op
 
 See [docs/sailboat-pi.md](docs/sailboat-pi.md).
 
+After the Pi installer is present and the GPS is plugged in, list candidate receiver paths on the Pi:
+
+```bash
+noaa-navionics list-gps-devices
+```
+
+Use the reported `/dev/serial/by-id/...` path for provisioning. If the command only reports `/dev/ttyUSB*` or `/dev/ttyACM*`, treat that as a temporary diagnostic name and fix the receiver/udev setup before enabling unattended startup.
+
 Run the normal pre-trip dock workflow against an already commissioned Pi:
 
 ```bash

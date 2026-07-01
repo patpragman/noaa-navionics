@@ -1210,6 +1210,55 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Would add GPSD: 127.0.0.1:2947", output.getvalue())
 
+    def test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            dev_root = Path(tmpdir)
+            by_id = dev_root / "serial/by-id"
+            by_id.mkdir(parents=True)
+            volatile = dev_root / "ttyACM0"
+            volatile.write_text("", encoding="ascii")
+            (by_id / "usb-GPS_Receiver-if00").symlink_to("../../ttyACM0")
+
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
+
+            self.assertEqual(code, 0)
+            self.assertEqual(stderr.getvalue(), "")
+            output = stdout.getvalue()
+            self.assertIn("PATH\tTYPE\tDETAIL", output)
+            self.assertIn("/dev/serial/by-id/usb-GPS_Receiver-if00\tstable\tpoints to /dev/ttyACM0", output)
+            self.assertIn(
+                "/dev/ttyACM0\tvolatile\tnot safe for unattended provisioning",
+                output,
+            )
+
+    def test_cli_list_gps_devices_warns_for_only_volatile_names(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            dev_root = Path(tmpdir)
+            (dev_root / "ttyUSB0").write_text("", encoding="ascii")
+
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
+
+            self.assertEqual(code, 1)
+            self.assertIn("/dev/ttyUSB0\tvolatile", stdout.getvalue())
+            self.assertIn("Only volatile GPS device names were found", stderr.getvalue())
+
+    def test_cli_list_gps_devices_warns_when_no_candidates_exist(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = cli_module.main(["list-gps-devices", "--dev-root", tmpdir])
+
+            self.assertEqual(code, 1)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("No GPS serial device candidates found", stderr.getvalue())
+
     def test_cli_log_track_uses_configured_output_and_gpsd_when_omitted(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
