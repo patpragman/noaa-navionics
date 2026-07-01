@@ -775,8 +775,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
@@ -1659,6 +1659,8 @@ grep -q 'status_args=("$target")' scripts/post_trip_collect_pi.sh
 grep -q 'status_args+=(--gps-seconds "$gps_seconds")' scripts/post_trip_collect_pi.sh
 grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "${status_args\[@\]}"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
+grep -q 'Could not open {label} through no-follow descriptor' scripts/post_trip_collect_pi.sh
+grep -q 'os.path.samestat(before, opened)' scripts/post_trip_collect_pi.sh
 grep -q 'verify_status_snapshot_json "$status_path"' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot changed while opening it' scripts/post_trip_collect_pi.sh
 grep -q 'json.load(handle)' scripts/post_trip_collect_pi.sh

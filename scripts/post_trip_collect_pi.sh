@@ -280,28 +280,50 @@ utc_timestamp() {
 verify_private_output_file() {
   local label="$1"
   local path="$2"
-  local current_uid
-  local mode
-  local owner_uid
-  local stat_output
+  if ! "$python3_cmd" - "$label" "$path" <<'PY'
+from __future__ import annotations
 
-  current_uid="$(id -u)"
-  if [[ -L "$path" || ! -f "$path" ]]; then
-    echo "$label must be a regular non-symlink file: $path" >&2
-    exit 2
-  fi
-  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect $label owner and permissions: $path" >&2
-    exit 2
-  fi
-  owner_uid="${stat_output%% *}"
-  mode="${stat_output#* }"
-  if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "$label is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
-    exit 2
-  fi
-  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "600" ]]; then
-    echo "$label has permissions ${mode}, expected private 0600: $path" >&2
+import os
+import stat
+import sys
+from pathlib import Path
+
+label = sys.argv[1]
+path = Path(sys.argv[2])
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect {label}: {path}: {exc}")
+if not stat.S_ISREG(before.st_mode):
+    fail(f"{label} must be a regular non-symlink file: {path}")
+
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    fail(f"Could not open {label} through no-follow descriptor: {path}: {exc}")
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        fail(f"{label} changed while opening it: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"{label} must be a regular file when opened: {path}")
+    if opened.st_uid != os.getuid():
+        fail(f"{label} is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}")
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        fail(f"{label} has permissions {mode:04o}, expected private 0600: {path}")
+finally:
+    os.close(fd)
+PY
+  then
     exit 2
   fi
 }
