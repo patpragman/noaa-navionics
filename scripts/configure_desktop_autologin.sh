@@ -632,6 +632,11 @@ lightdm_dir="${NOAA_NAVIONICS_LIGHTDM_DIR:-/etc/lightdm}"
 lightdm_conf_dir="${lightdm_dir}/lightdm.conf.d"
 autologin_conf="${lightdm_conf_dir}/50-noaa-navionics-autologin.conf"
 
+if [[ "$lightdm_dir" =~ [[:cntrl:]] ]]; then
+  echo "LightDM config directory must not contain control characters" >&2
+  exit 2
+fi
+
 if [[ "$dry_run" -eq 0 && ! -d "$lightdm_dir" ]]; then
   cat >&2 <<EOF
 LightDM is not installed at $lightdm_dir.

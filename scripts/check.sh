@@ -2934,7 +2934,7 @@ grep -q 'run "$sudo_cmd" "$systemctl_cmd" enable lightdm.service' scripts/config
 ! grep -Eq '(^|[[:space:]])python3[[:space:]]+-' scripts/configure_desktop_autologin.sh
 ! grep -q '"$sudo_cmd" python3' scripts/configure_desktop_autologin.sh
 grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' README.md
-grep -q 'Desktop autologin setup resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
+grep -q 'resolves sudo, systemctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'writes the generated LightDM autologin temp file through a no-follow private descriptor' README.md
 grep -q 'writes the generated LightDM autologin temp file through a no-follow private descriptor' docs/sailboat-pi.md
 python3 - <<'PY'
@@ -5800,6 +5800,22 @@ grep -q 'Configured graphical autologin for' "$install_output"
 grep -q 'strict chartplotter-started mode, verification also requires LightDM to be active' README.md
 grep -q 'requires LightDM to be active' docs/sailboat-pi.md
 grep -q 'using X11 session LXDE-pi' "$install_output"
+grep -q 'LightDM config directory must not contain control characters' scripts/configure_desktop_autologin.sh
+grep -q 'Desktop autologin setup rejects control characters in the LightDM config directory before writing or dry-run inspection' README.md
+grep -q 'Desktop autologin setup rejects control characters in the LightDM config directory' docs/sailboat-pi.md
+
+set +e
+NOAA_NAVIONICS_LIGHTDM_DIR="$tmpdir/lightdm"$'\a' \
+  scripts/configure_desktop_autologin.sh --allow-non-pi --dry-run --user "$USER" --session LXDE-pi >"$install_output" 2>&1
+desktop_code=$?
+set -e
+if [[ "$desktop_code" -ne 2 ]]; then
+  cat "$install_output" >&2
+  echo "expected configure_desktop_autologin.sh to reject control characters in LightDM config directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'LightDM config directory must not contain control characters' "$install_output"
+! grep -q 'Would write' "$install_output"
 
 unsafe_lightdm_dir="$tmpdir/unsafe-lightdm"
 mkdir -p "$unsafe_lightdm_dir/lightdm.conf.d"
