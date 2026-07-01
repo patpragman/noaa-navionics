@@ -9,6 +9,7 @@ python3 -m py_compile setup.py
 python3 -m unittest discover -s tests -v
 
 bash -n \
+  scripts/enroll_pi_host_key.sh \
   scripts/install_raspberry_pi.sh \
   scripts/deploy_to_pi.sh \
   scripts/verify_pi.sh \
@@ -529,6 +530,19 @@ grep -q 'require pretrusted SSH host keys with `StrictHostKeyChecking=yes`' READ
 grep -q 'require pretrusted SSH host keys with `StrictHostKeyChecking=yes`' docs/sailboat-pi.md
 grep -q 'unknown or changed host key is treated as a failure' README.md
 grep -q 'unknown or changed host key is treated as a failure' docs/sailboat-pi.md
+grep -q 'scripts/enroll_pi_host_key.sh pi@raspberrypi.local --expected-sha256' README.md
+grep -q 'scripts/enroll_pi_host_key.sh pi@raspberrypi.local --expected-sha256' docs/sailboat-pi.md
+grep -q 'Get the expected SHA256 host-key fingerprint from the Pi console or another trusted channel' README.md
+grep -q 'Get the expected SHA256 host-key fingerprint from the Pi console or another trusted channel' docs/sailboat-pi.md
+grep -q 'ssh-keyscan' scripts/enroll_pi_host_key.sh
+grep -q 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256' scripts/enroll_pi_host_key.sh
+grep -q -- '--expected-sha256 is required' scripts/enroll_pi_host_key.sh
+grep -q 'No scanned SSH host key matched expected fingerprint' scripts/enroll_pi_host_key.sh
+grep -q 'prepare_known_hosts_file' scripts/enroll_pi_host_key.sh
+grep -q 'known_hosts directory has permissions' scripts/enroll_pi_host_key.sh
+grep -q 'known_hosts must be a regular non-symlink file' scripts/enroll_pi_host_key.sh
+grep -q 'ssh_keyscan_cmd="$(require_local_command ssh-keyscan)"' scripts/enroll_pi_host_key.sh
+grep -q 'ssh_keygen_cmd="$(require_local_command ssh-keygen)"' scripts/enroll_pi_host_key.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/dock_test_pi.sh
 grep -q 'local_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
@@ -5615,6 +5629,100 @@ if [[ "$deploy_code" -ne 2 ]]; then
 fi
 grep -q 'Remote deploy command tar is not in a trusted system directory: /home/pi/bin/tar' "$deploy_output"
 grep -q 'Could not confirm required remote command on the Pi: tar' "$deploy_output"
+
+set +e
+scripts/enroll_pi_host_key.sh pi@example.invalid >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to require --expected-sha256 with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--expected-sha256 is required' "$verify_output"
+
+host_key_fake_bin="$tmpdir/host-key-fake-bin"
+host_key_log="$tmpdir/host-key-log"
+host_key_home="$tmpdir/host-key-home"
+host_key_known_hosts="$host_key_home/.ssh/known_hosts"
+mkdir -p "$host_key_fake_bin"
+cat >"$host_key_fake_bin/ssh-keyscan" <<'EOF'
+#!/usr/bin/env bash
+printf 'scan|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_HOST_KEY_LOG"
+printf 'raspberrypi.local ssh-ed25519 MATCHINGKEY\n'
+printf 'raspberrypi.local ssh-rsa OTHERKEY\n'
+EOF
+cat >"$host_key_fake_bin/ssh-keygen" <<'EOF'
+#!/usr/bin/env bash
+printf 'keygen|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_HOST_KEY_LOG"
+if [[ "$1" == "-R" ]]; then
+  exit 0
+fi
+file=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -lf)
+      file="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+if grep -q 'MATCHINGKEY' "$file"; then
+  printf '256 SHA256:abcdefghijklmnopqrstuv raspberrypi.local (ED25519)\n'
+fi
+if grep -q 'OTHERKEY' "$file"; then
+  printf '3072 SHA256:zzzzzzzzzzzzzzzzzzzzzz raspberrypi.local (RSA)\n'
+fi
+EOF
+chmod +x "$host_key_fake_bin/ssh-keyscan" "$host_key_fake_bin/ssh-keygen"
+
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_log" \
+HOME="$host_key_home" \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$host_key_known_hosts" \
+  --expected-sha256 SHA256:abcdefghijklmnopqrstuv >"$verify_output"
+grep -q 'Enrolled verified SSH host key for raspberrypi.local' "$verify_output"
+grep -Fxq 'raspberrypi.local ssh-ed25519 MATCHINGKEY' "$host_key_known_hosts"
+! grep -q 'OTHERKEY' "$host_key_known_hosts"
+test "$(stat -c '%a' "$host_key_home/.ssh")" = 700
+test "$(stat -c '%a' "$host_key_known_hosts")" = 600
+grep -Fxq 'scan|-T 10 -p 22 raspberrypi.local' "$host_key_log"
+grep -Fxq 'keygen|-R raspberrypi.local -f '"$host_key_known_hosts" "$host_key_log"
+
+host_key_dry_known_hosts="$tmpdir/host-key-dry-run/known_hosts"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_log" \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$host_key_dry_known_hosts" \
+  --expected-sha256 SHA256:abcdefghijklmnopqrstuv \
+  --dry-run >"$verify_output"
+grep -q 'Dry run only; known_hosts was not changed' "$verify_output"
+test ! -e "$host_key_dry_known_hosts"
+
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_log" \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$tmpdir/host-key-mismatch/known_hosts" \
+  --expected-sha256 SHA256:yyyyyyyyyyyyyyyyyyyyyy >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to reject mismatched host key fingerprints with exit 1" >&2
+  exit 1
+fi
+grep -q 'No scanned SSH host key matched expected fingerprint' "$verify_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout nope >"$dock_output" 2>&1
