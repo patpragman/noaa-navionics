@@ -1912,12 +1912,127 @@ validate_opencpn_binary_candidate() {
   return 0
 }
 
+revalidate_opencpn_binary() {
+  local pi_flag=0
+  if is_raspberry_pi; then
+    pi_flag=1
+  fi
+  "$python3_bin" - "$opencpn_bin" "$pi_flag" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+path = Path(sys.argv[1])
+is_pi = sys.argv[2] == "1"
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+directory = getattr(os, "O_DIRECTORY", 0)
+parent = path.parent
+
+try:
+    parent_before = os.stat(parent, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect OpenCPN executable directory before launch: {parent}: {exc}")
+if not stat.S_ISDIR(parent_before.st_mode):
+    fail(f"OpenCPN executable directory is not a directory before launch: {parent}")
+parent_mode = stat.S_IMODE(parent_before.st_mode)
+if parent_mode & 0o022:
+    fail(
+        f"OpenCPN executable directory has permissions {parent_mode:04o}, "
+        f"expected no group/other write bits before launch: {parent}"
+    )
+if is_pi and parent_before.st_uid != 0:
+    fail(
+        f"OpenCPN executable directory is owned by uid {parent_before.st_uid}, "
+        f"expected root on Raspberry Pi before launch: {parent}"
+    )
+if not is_pi and parent_before.st_uid not in (0, expected_uid):
+    fail(
+        f"OpenCPN executable directory is owned by uid {parent_before.st_uid}, "
+        f"expected root or {expected_uid} before launch: {parent}"
+    )
+
+parent_fd = None
+opencpn_fd = None
+try:
+    parent_fd = os.open(parent, os.O_RDONLY | directory | nofollow)
+    parent_opened = os.fstat(parent_fd)
+    if not os.path.samestat(parent_before, parent_opened):
+        fail(f"OpenCPN executable directory changed before launch: {parent}")
+
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"Could not inspect OpenCPN executable before launch: {path}: {exc}")
+    if stat.S_ISLNK(before.st_mode):
+        fail(f"OpenCPN executable is a symlink before launch: {path}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"OpenCPN executable is not a regular file before launch: {path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if not mode & 0o111:
+        fail(f"OpenCPN executable is not executable before launch: {path}")
+    if mode & 0o022:
+        fail(
+            f"OpenCPN executable has permissions {mode:04o}, "
+            f"expected no group/other write bits before launch: {path}"
+        )
+    if is_pi and before.st_uid != 0:
+        fail(
+            f"OpenCPN executable is owned by uid {before.st_uid}, "
+            f"expected root on Raspberry Pi before launch: {path}"
+        )
+    if not is_pi and before.st_uid not in (0, expected_uid):
+        fail(
+            f"OpenCPN executable is owned by uid {before.st_uid}, "
+            f"expected root or {expected_uid} before launch: {path}"
+        )
+
+    opencpn_fd = os.open(path, os.O_RDONLY | nofollow)
+    opened = os.fstat(opencpn_fd)
+    if not os.path.samestat(before, opened):
+        fail(f"OpenCPN executable changed before launch: {path}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"OpenCPN executable is not a regular file after open before launch: {path}")
+    if not opened_mode & 0o111:
+        fail(f"OpenCPN executable is not executable after open before launch: {path}")
+    if opened_mode & 0o022:
+        fail(
+            f"OpenCPN executable has permissions {opened_mode:04o}, "
+            f"expected no group/other write bits after open before launch: {path}"
+        )
+    if is_pi and opened.st_uid != 0:
+        fail(
+            f"OpenCPN executable is owned by uid {opened.st_uid}, "
+            f"expected root on Raspberry Pi after open before launch: {path}"
+        )
+    if not is_pi and opened.st_uid not in (0, expected_uid):
+        fail(
+            f"OpenCPN executable is owned by uid {opened.st_uid}, "
+            f"expected root or {expected_uid} after open before launch: {path}"
+        )
+finally:
+    if opencpn_fd is not None:
+        os.close(opencpn_fd)
+    if parent_fd is not None:
+        os.close(parent_fd)
+PY
+}
+
 resolve_opencpn_binary() {
   local path_candidate
 
   path_candidate="$(command -v opencpn 2>/dev/null || true)"
   if validate_opencpn_binary_candidate "$path_candidate"; then
     opencpn_bin="$path_candidate"
+    revalidate_opencpn_binary || return 127
     echo "Using OpenCPN binary: $opencpn_bin"
     return 0
   fi
@@ -1934,6 +2049,7 @@ run_opencpn_supervised() {
       echo "OpenCPN is already running; leaving the existing chartplotter instance in place."
       return 0
     fi
+    revalidate_opencpn_binary || return 127
     echo "Launching OpenCPN with ENC processing."
     "$opencpn_bin" -parse_all_enc &
     opencpn_pid=$!

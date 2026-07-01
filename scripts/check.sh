@@ -266,6 +266,9 @@ grep -q 'revalidates both cache directories after creation or tightening before 
 grep -Fq 'sync_paths "$launcher_lock_dir" || true' scripts/start_chartplotter.sh
 grep -q 'resolve_opencpn_binary' scripts/start_chartplotter.sh
 grep -q 'validate_opencpn_binary_candidate' scripts/start_chartplotter.sh
+grep -q 'revalidate_opencpn_binary' scripts/start_chartplotter.sh
+grep -q 'OpenCPN executable changed before launch' scripts/start_chartplotter.sh
+grep -q 'expected no group/other write bits before launch' scripts/start_chartplotter.sh
 grep -q 'is_raspberry_pi' scripts/start_chartplotter.sh
 grep -q 'trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/start_chartplotter.sh
 grep -q 'read_raspberry_pi_model_text()' scripts/start_chartplotter.sh
@@ -3907,8 +3910,8 @@ grep -q 'status-reported user unit, OpenCPN config, desktop autostart, and Light
 grep -q "status artifact's user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode fields" docs/sailboat-pi.md
 grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' README.md
 grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' docs/sailboat-pi.md
-grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware' README.md
-grep -q 'rejects non-root OpenCPN executables or executable directories on Raspberry Pi hardware' docs/sailboat-pi.md
+grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware, revalidates the resolved OpenCPN executable through no-follow same-file descriptors immediately before each launch or restart' README.md
+grep -q 'revalidates the resolved OpenCPN executable through no-follow same-file descriptors immediately before each launch or restart' docs/sailboat-pi.md
 grep -q 'rejects symlinked, misowned, or public cache parents' README.md
 grep -q 'rejects symlinked, misowned, or public cache parents' docs/sailboat-pi.md
 grep -q '"package_filename"' src/noaa_navionics/report.py
@@ -9531,6 +9534,45 @@ test "$(cat "$launcher_opencpn_restart_home/.cache/noaa-navionics/opencpn-count"
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 2/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited cleanly; not restarting.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_mutated_opencpn_home="$tmpdir/launcher-mutated-opencpn-home"
+launcher_mutated_opencpn_bin="$tmpdir/launcher-mutated-opencpn-bin"
+mkdir -p "$launcher_mutated_opencpn_home/.local/bin" "$launcher_mutated_opencpn_home/.cache/noaa-navionics" "$launcher_mutated_opencpn_bin"
+write_test_launcher_env "$launcher_mutated_opencpn_home"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_OPENCPN_RESTARTS=1\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_mutated_opencpn_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_mutated_opencpn_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_mutated_opencpn_home/.local/bin/noaa-navionics"
+cat >"$launcher_mutated_opencpn_bin/opencpn" <<'EOF'
+#!/usr/bin/env bash
+count_file="$HOME/.cache/noaa-navionics/opencpn-count"
+count=0
+if [[ -r "$count_file" ]]; then
+  read -r count <"$count_file" || count=0
+fi
+count=$((count + 1))
+printf '%s\n' "$count" >"$count_file"
+if [[ "$count" -eq 1 ]]; then
+  chmod 0775 "$0"
+  exit 7
+fi
+printf 'unsafe relaunch\n' >>"$HOME/.cache/noaa-navionics/opencpn-relaunch.log"
+exit 0
+EOF
+printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_mutated_opencpn_bin/pgrep"
+chmod +x "$launcher_mutated_opencpn_home/.local/bin/noaa-navionics" "$launcher_mutated_opencpn_bin/opencpn" "$launcher_mutated_opencpn_bin/pgrep"
+set +e
+HOME="$launcher_mutated_opencpn_home" PATH="$launcher_mutated_opencpn_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_mutated_opencpn_code=$?
+set -e
+if [[ "$launcher_mutated_opencpn_code" -ne 127 ]]; then
+  cat "$launcher_mutated_opencpn_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to stop when OpenCPN becomes unsafe before restart" >&2
+  exit 1
+fi
+test "$(cat "$launcher_mutated_opencpn_home/.cache/noaa-navionics/opencpn-count")" -eq 1
+test ! -e "$launcher_mutated_opencpn_home/.cache/noaa-navionics/opencpn-relaunch.log"
+grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/1) in 0s.' "$launcher_mutated_opencpn_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN executable has permissions 0775, expected no group/other write bits before launch' "$launcher_mutated_opencpn_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_term_home="$tmpdir/launcher-term-home"
 launcher_term_bin="$tmpdir/launcher-term-bin"
