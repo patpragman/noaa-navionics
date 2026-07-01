@@ -697,10 +697,10 @@ grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' README.md
 grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
-grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
-grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' README.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' docs/sailboat-pi.md
+grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
+grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
@@ -1438,7 +1438,12 @@ grep -q 'Post-trip collection completed, but the status snapshot reported a fail
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
-grep -q 'expected current user ${current_uid}' scripts/post_trip_collect_pi.sh
+grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/post_trip_collect_pi.sh
+grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/post_trip_collect_pi.sh
+grep -q 'Could not open helper script through no-follow descriptor' scripts/post_trip_collect_pi.sh
+grep -q 'Helper script changed before it could be validated' scripts/post_trip_collect_pi.sh
+grep -q 'require_helper "$command_path"' scripts/post_trip_collect_pi.sh
+! sed -n '/^require_helper()/,/^}/p' scripts/post_trip_collect_pi.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'require_local_command python3' scripts/post_trip_collect_pi.sh
 grep -q 'validate_trusted_local_command' scripts/post_trip_collect_pi.sh
 grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/post_trip_collect_pi.sh
@@ -1482,7 +1487,6 @@ grep -q 'os.path.samestat(initial, opened)' scripts/post_trip_collect_pi.sh
 grep -q 'tarfile.open(fileobj=handle, mode="r:gz")' scripts/post_trip_collect_pi.sh
 for helper_wrapper in \
   scripts/export_pi_recovery_bundle.sh \
-  scripts/post_trip_collect_pi.sh \
   scripts/pre_departure_check_pi.sh; do
   grep -q 'reject_symlinked_path_components "Helper script" "$path"' "$helper_wrapper"
   grep -q 'path contains a symlink' "$helper_wrapper"
@@ -5960,6 +5964,9 @@ if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_INVALID_JSON:-0}" == "1" ]]; then
 else
   printf '{"generated_at": "2026-06-30T12:00:00Z", "ok": true, "checks": [{"name": "GPS", "ok": true, "detail": "fix"}], "service_checks": [{"name": "Track Log", "ok": true, "detail": "recent point"}]}\n'
 fi
+if [[ -n "${NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER:-}" ]]; then
+  chmod 0775 "$NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER"
+fi
 exit "${NOAA_NAVIONICS_FAKE_POST_TRIP_STATUS_EXIT:-0}"
 EOF
 cat >"$post_trip_repo/scripts/export_pi_tracks.sh" <<'EOF'
@@ -6103,6 +6110,26 @@ grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_log"
 grep -Eq '^shutdown\|pi@example.invalid --dry-run$' "$post_trip_log"
+
+post_trip_mutated_helper_log="$tmpdir/post-trip-mutated-helper-calls"
+post_trip_mutated_helper_output_dir="$tmpdir/post-trip-mutated-helper-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_mutated_helper_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER="$post_trip_repo/scripts/export_pi_tracks.sh" \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_mutated_helper_output_dir" \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a helper mutated after startup validation with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --gps-seconds 10 --json$' "$post_trip_mutated_helper_log"
+! grep -q '^tracks|' "$post_trip_mutated_helper_log"
+chmod 0755 "$post_trip_repo/scripts/export_pi_tracks.sh"
 
 post_trip_bad_archive_log="$tmpdir/post-trip-bad-archive-helper-calls"
 post_trip_bad_archive_output_dir="$tmpdir/post-trip-bad-archive-output"
