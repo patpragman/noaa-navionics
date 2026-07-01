@@ -535,6 +535,8 @@ grep -q 'require pretrusted SSH host keys with `StrictHostKeyChecking=yes`' READ
 grep -q 'require pretrusted SSH host keys with `StrictHostKeyChecking=yes`' docs/sailboat-pi.md
 grep -q 'unknown or changed host key is treated as a failure' README.md
 grep -q 'unknown or changed host key is treated as a failure' docs/sailboat-pi.md
+grep -q 'using the Pi desktop user rather than `root@`' README.md
+grep -q 'using the Pi desktop user rather than `root@`' docs/sailboat-pi.md
 grep -q 'scripts/enroll_pi_host_key.sh pi@raspberrypi.local --expected-sha256' README.md
 grep -q 'scripts/enroll_pi_host_key.sh pi@raspberrypi.local --expected-sha256' docs/sailboat-pi.md
 grep -q 'Get the expected SHA256 host-key fingerprint from the Pi console or another trusted channel' README.md
@@ -555,6 +557,7 @@ grep -q 'known_hosts changed before append' scripts/enroll_pi_host_key.sh
 grep -q 'private_temp_identity' scripts/enroll_pi_host_key.sh
 grep -q 'cleanup_private_host_key_temp' scripts/enroll_pi_host_key.sh
 grep -q 'changed before cleanup; leaving it in place' scripts/enroll_pi_host_key.sh
+grep -q 'Do not enroll a host key using root@' scripts/enroll_pi_host_key.sh
 grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' README.md
 grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 ! grep -q ': >"$path"' scripts/enroll_pi_host_key.sh
@@ -5767,6 +5770,17 @@ if [[ "$host_key_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--expected-sha256 is required' "$verify_output"
+
+set +e
+scripts/enroll_pi_host_key.sh root@example.invalid --expected-sha256 SHA256:mock >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to reject root SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'Do not enroll a host key using root@' "$verify_output"
 
 set +e
 scripts/enroll_pi_host_key.sh pi@localhost --expected-sha256 SHA256:mock >"$verify_output" 2>&1

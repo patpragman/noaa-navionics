@@ -177,6 +177,13 @@ validate_ssh_target() {
       exit 2
       ;;
   esac
+  if [[ "$user_part" == "root" ]]; then
+    cat >&2 <<'EOF'
+Do not enroll a host key using root@.
+Use the Pi desktop user so the enrollment command matches the deployment and verification target.
+EOF
+    exit 2
+  fi
 }
 
 require_positive_port() {
