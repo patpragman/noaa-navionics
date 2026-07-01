@@ -303,6 +303,7 @@ def status_report_validation_failures(
     failures.extend(_storage_validation_failures(report))
     failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_command_evidence_validation_failures(report))
+    failures.extend(_gpsd_config_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -323,6 +324,62 @@ def status_report_validation_failures(
     failures.extend(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
+    return failures
+
+
+def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config = report.get("config")
+    if not isinstance(config, dict) or str(config.get("gps_mode", "")).strip().lower() != "gpsd":
+        return []
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    row = check_rows.get("GPSD Config")
+    if not isinstance(row, dict) or not row.get("ok"):
+        return []
+    data = row.get("data")
+    if not isinstance(data, dict):
+        return [CheckResult("GPSD Config", False, "status report GPSD Config check has no structured data")]
+    failures: list[CheckResult] = []
+    path = str(data.get("path", "")).strip()
+    if path != "/etc/default/gpsd":
+        failures.append(CheckResult("GPSD Config", False, f"status report GPSD Config path {path or '<missing>'} is not /etc/default/gpsd"))
+    if data.get("exists") is not True:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config path does not exist"))
+    if data.get("is_symlink") is not False:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config path is a symlink"))
+    if str(data.get("directory_symlink_component", "")).strip():
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config directory contains a symlink"))
+    if data.get("is_regular") is not True:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config path is not a regular file"))
+    uid = data.get("uid")
+    expected_uid = data.get("expected_uid")
+    if isinstance(uid, bool) or not isinstance(uid, int) or uid != 0:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config owner is not root"))
+    if isinstance(expected_uid, bool) or not isinstance(expected_uid, int) or expected_uid != 0:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config expected owner is not root"))
+    mode = str(data.get("mode", "")).strip()
+    try:
+        parsed_mode = int(mode, 8)
+    except ValueError:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config mode is invalid"))
+    else:
+        if parsed_mode & 0o022:
+            failures.append(CheckResult("GPSD Config", False, "status report GPSD Config is group/world writable"))
+    expected_device = str(config.get("gps_device", "")).strip()
+    if str(data.get("expected_device", "")).strip() != expected_device:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config expected device does not match config"))
+    devices = data.get("devices")
+    if not isinstance(devices, list) or devices != [expected_device]:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config devices do not match configured GPS device"))
+    if str(data.get("start_daemon", "")).strip() != "true":
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config START_DAEMON is not true"))
+    if str(data.get("usbauto", "")).strip() != "false":
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config USBAUTO is not false"))
+    options = data.get("gpsd_options")
+    if not isinstance(options, list) or "-n" not in options or data.get("immediate_polling") is not True:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config does not enable immediate polling"))
     return failures
 
 

@@ -1673,7 +1673,30 @@ def check_gpsd_startup_config(device: str, config_path: Path = Path("/etc/defaul
         failures.append(f"DEVICES {configured} must contain exactly {expected_device}")
     if failures:
         return CheckResult("GPSD Config", False, f"{path}: " + "; ".join(failures))
-    return CheckResult("GPSD Config", True, f"{path} uses {expected_device} with immediate polling")
+    if stat_result is None:
+        try:
+            stat_result = path.stat()
+        except OSError:
+            stat_result = None
+    mode = (stat_result.st_mode & 0o777) if stat_result is not None else 0
+    data = {
+        "path": str(path),
+        "expected_device": expected_device,
+        "exists": path.exists(),
+        "is_symlink": path.is_symlink(),
+        "directory_symlink_component": "",
+        "is_regular": path.is_file(),
+        "uid": stat_result.st_uid if stat_result is not None else None,
+        "expected_uid": 0 if path == Path("/etc/default/gpsd") else os.getuid(),
+        "mode": f"{mode:04o}",
+        "values": values,
+        "devices": devices,
+        "gpsd_options": options,
+        "start_daemon": values.get("START_DAEMON", ""),
+        "usbauto": values.get("USBAUTO", ""),
+        "immediate_polling": "-n" in options,
+    }
+    return CheckResult("GPSD Config", True, f"{path} uses {expected_device} with immediate polling", data)
 
 
 def _read_gpsd_default_config(

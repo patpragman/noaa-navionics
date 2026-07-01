@@ -416,6 +416,30 @@ def complete_status_gui_report(
                 "resolved_path": "/dev/ttyACM0",
                 "is_character_device": True,
             }
+        elif row["name"] == "GPSD Config":
+            row["detail"] = "/etc/default/gpsd uses /dev/serial/by-id/mock-gps with immediate polling"
+            row["data"] = {
+                "path": "/etc/default/gpsd",
+                "expected_device": "/dev/serial/by-id/mock-gps",
+                "exists": True,
+                "is_symlink": False,
+                "directory_symlink_component": "",
+                "is_regular": True,
+                "uid": 0,
+                "expected_uid": 0,
+                "mode": "0644",
+                "values": {
+                    "START_DAEMON": "true",
+                    "USBAUTO": "false",
+                    "GPSD_OPTIONS": "-n",
+                    "DEVICES": "/dev/serial/by-id/mock-gps",
+                },
+                "devices": ["/dev/serial/by-id/mock-gps"],
+                "gpsd_options": ["-n"],
+                "start_daemon": "true",
+                "usbauto": "false",
+                "immediate_polling": True,
+            }
         elif row["name"] == "Pi Power":
             row["detail"] = "no under-voltage or throttling reported"
             row["data"] = {
@@ -10387,6 +10411,74 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(gpsd_report, now=now))
         self.assertFalse(status_report_validation_failures(gpsd_report, now=now))
 
+    def test_status_report_ready_requires_structured_gpsd_config_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def gpsd_config_data(**overrides):
+            data = {
+                "path": "/etc/default/gpsd",
+                "expected_device": "/dev/serial/by-id/mock-gps",
+                "exists": True,
+                "is_symlink": False,
+                "directory_symlink_component": "",
+                "is_regular": True,
+                "uid": 0,
+                "expected_uid": 0,
+                "mode": "0644",
+                "values": {
+                    "START_DAEMON": "true",
+                    "USBAUTO": "false",
+                    "GPSD_OPTIONS": "-n",
+                    "DEVICES": "/dev/serial/by-id/mock-gps",
+                },
+                "devices": ["/dev/serial/by-id/mock-gps"],
+                "gpsd_options": ["-n"],
+                "start_daemon": "true",
+                "usbauto": "false",
+                "immediate_polling": True,
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            (None, "GPSD Config check has no structured data"),
+            (gpsd_config_data(path="/tmp/gpsd"), "path /tmp/gpsd is not /etc/default/gpsd"),
+            (gpsd_config_data(exists=False), "path does not exist"),
+            (gpsd_config_data(is_symlink=True), "path is a symlink"),
+            (gpsd_config_data(directory_symlink_component="/etc-link"), "directory contains a symlink"),
+            (gpsd_config_data(is_regular=False), "path is not a regular file"),
+            (gpsd_config_data(uid=1000), "owner is not root"),
+            (gpsd_config_data(expected_uid=1000), "expected owner is not root"),
+            (gpsd_config_data(mode="0666"), "is group/world writable"),
+            (gpsd_config_data(expected_device="/dev/serial/by-id/other-gps"), "expected device does not match config"),
+            (gpsd_config_data(devices=[]), "devices do not match configured GPS device"),
+            (gpsd_config_data(start_daemon="false"), "START_DAEMON is not true"),
+            (gpsd_config_data(usbauto="true"), "USBAUTO is not false"),
+            (gpsd_config_data(gpsd_options=[], immediate_polling=False), "does not enable immediate polling"),
+        ]
+        for data, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == "GPSD Config")
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "GPSD Config" and expected in failure.detail for failure in failures)
+                )
+
+        serial_report = complete_status_gui_report(gps_mode="serial", generated_at=generated_at)
+        serial_report["checks"].append({"name": "GPSD Config", "ok": True, "detail": "legacy row"})
+
+        self.assertTrue(status_report_is_ready(serial_report, now=now))
+        self.assertFalse(status_report_validation_failures(serial_report, now=now))
+
     def test_status_report_ready_requires_structured_command_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         generated_at = now.isoformat().replace("+00:00", "Z")
@@ -17376,6 +17468,14 @@ class GpsTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("immediate polling", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("path"), str(config))
+            self.assertEqual(result.data.get("expected_device"), "/dev/serial/by-id/mock-gps")
+            self.assertEqual(result.data.get("devices"), ["/dev/serial/by-id/mock-gps"])
+            self.assertEqual(result.data.get("gpsd_options"), ["-n"])
+            self.assertEqual(result.data.get("start_daemon"), "true")
+            self.assertEqual(result.data.get("usbauto"), "false")
+            self.assertEqual(result.data.get("immediate_polling"), True)
 
     def test_check_gpsd_startup_config_rejects_symlinked_config_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
