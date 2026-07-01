@@ -7362,6 +7362,33 @@ if [[ "$support_bundle_code" -ne 2 ]]; then
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
 
+support_parent_real="$tmpdir/support-parent-real"
+support_parent_link="$tmpdir/support-parent-link"
+support_parent_fake_ssh_bin="$tmpdir/support-parent-fake-ssh-bin"
+support_parent_fake_ssh_marker="$tmpdir/support-parent-fake-ssh-ran"
+mkdir -p "$support_parent_real" "$support_parent_fake_ssh_bin"
+ln -s "$support_parent_real" "$support_parent_link"
+cat >"$support_parent_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+: >"$NOAA_NAVIONICS_FAKE_SSH_MARKER"
+exit 99
+EOF
+chmod +x "$support_parent_fake_ssh_bin/ssh"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_MARKER="$support_parent_fake_ssh_marker" \
+  PATH="$support_parent_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_parent_link/output" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject symlinked output parents before SSH with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory path contains a symlink' "$verify_output"
+test ! -e "$support_parent_fake_ssh_marker"
+
 support_symlink="$tmpdir/support-output-link"
 ln -s "$tmpdir" "$support_symlink"
 set +e
@@ -7669,6 +7696,33 @@ if [[ "$track_export_code" -ne 2 ]]; then
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
 
+track_export_parent_real="$tmpdir/track-export-parent-real"
+track_export_parent_link="$tmpdir/track-export-parent-link"
+track_export_parent_fake_ssh_bin="$tmpdir/track-export-parent-fake-ssh-bin"
+track_export_parent_fake_ssh_marker="$tmpdir/track-export-parent-fake-ssh-ran"
+mkdir -p "$track_export_parent_real" "$track_export_parent_fake_ssh_bin"
+ln -s "$track_export_parent_real" "$track_export_parent_link"
+cat >"$track_export_parent_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+: >"$NOAA_NAVIONICS_FAKE_SSH_MARKER"
+exit 99
+EOF
+chmod +x "$track_export_parent_fake_ssh_bin/ssh"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_MARKER="$track_export_parent_fake_ssh_marker" \
+  PATH="$track_export_parent_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_parent_link/output" >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject symlinked output parents before SSH with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory path contains a symlink' "$verify_output"
+test ! -e "$track_export_parent_fake_ssh_marker"
+
 track_export_symlink="$tmpdir/track-export-output-link"
 ln -s "$tmpdir" "$track_export_symlink"
 set +e
@@ -7923,6 +7977,33 @@ if [[ "$opencpn_export_code" -ne 2 ]]; then
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
 
+opencpn_export_parent_real="$tmpdir/opencpn-export-parent-real"
+opencpn_export_parent_link="$tmpdir/opencpn-export-parent-link"
+opencpn_export_parent_fake_ssh_bin="$tmpdir/opencpn-export-parent-fake-ssh-bin"
+opencpn_export_parent_fake_ssh_marker="$tmpdir/opencpn-export-parent-fake-ssh-ran"
+mkdir -p "$opencpn_export_parent_real" "$opencpn_export_parent_fake_ssh_bin"
+ln -s "$opencpn_export_parent_real" "$opencpn_export_parent_link"
+cat >"$opencpn_export_parent_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+: >"$NOAA_NAVIONICS_FAKE_SSH_MARKER"
+exit 99
+EOF
+chmod +x "$opencpn_export_parent_fake_ssh_bin/ssh"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_MARKER="$opencpn_export_parent_fake_ssh_marker" \
+  PATH="$opencpn_export_parent_fake_ssh_bin:$PATH" \
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_parent_link/output" >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject symlinked output parents before SSH with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory path contains a symlink' "$verify_output"
+test ! -e "$opencpn_export_parent_fake_ssh_marker"
+
 opencpn_export_symlink="$tmpdir/opencpn-export-output-link"
 ln -s "$tmpdir" "$opencpn_export_symlink"
 set +e
@@ -8127,6 +8208,33 @@ if [[ "$settings_export_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
+settings_export_parent_real="$tmpdir/settings-export-parent-real"
+settings_export_parent_link="$tmpdir/settings-export-parent-link"
+settings_export_parent_fake_ssh_bin="$tmpdir/settings-export-parent-fake-ssh-bin"
+settings_export_parent_fake_ssh_marker="$tmpdir/settings-export-parent-fake-ssh-ran"
+mkdir -p "$settings_export_parent_real" "$settings_export_parent_fake_ssh_bin"
+ln -s "$settings_export_parent_real" "$settings_export_parent_link"
+cat >"$settings_export_parent_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+: >"$NOAA_NAVIONICS_FAKE_SSH_MARKER"
+exit 99
+EOF
+chmod +x "$settings_export_parent_fake_ssh_bin/ssh"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_MARKER="$settings_export_parent_fake_ssh_marker" \
+  PATH="$settings_export_parent_fake_ssh_bin:$PATH" \
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_parent_link/output" >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject symlinked output parents before SSH with exit 2" >&2
+  exit 1
+fi
+grep -q 'Output directory path contains a symlink' "$verify_output"
+test ! -e "$settings_export_parent_fake_ssh_marker"
 
 settings_export_symlink="$tmpdir/settings-export-output-link"
 ln -s "$tmpdir" "$settings_export_symlink"

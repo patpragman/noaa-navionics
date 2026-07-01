@@ -644,12 +644,12 @@ PY
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 output_dir="$(strip_trailing_slashes "$output_dir")"
+prepare_private_output_dir "Output directory" "$output_dir"
+
 ssh_cmd="$(require_local_command ssh)"
 python3_cmd="$(require_local_command python3)"
 remote_python_cmd="$(remote_python_command)"
 remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
-
-prepare_private_output_dir "Output directory" "$output_dir"
 
 timestamp="$(utc_timestamp)"
 safe_target="$(printf '%s' "$target" | tr '@.' '___')"
