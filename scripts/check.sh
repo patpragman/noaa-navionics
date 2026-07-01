@@ -853,6 +853,8 @@ grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped `generated_at`, a valid Linux boot ID, and a deployed source revision' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
+grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
+grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
 grep -q 'regular README files' docs/sailboat-pi.md
 grep -q 'safe and unique normalized member paths' README.md
@@ -1553,6 +1555,9 @@ grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'data_file_count += 1' scripts/verify_pi_recovery_exports.sh
 grep -q 'does not match data file count' scripts/verify_pi_recovery_exports.sh
+grep -q 'contains non-GPX track data member' scripts/verify_pi_recovery_exports.sh
+grep -q 'manifest tracks must be a list' scripts/verify_pi_recovery_exports.sh
+grep -q 'manifest track names do not match data files' scripts/verify_pi_recovery_exports.sh
 grep -q 'data_file_count += 1' scripts/restore_pi_recovery_user_data.sh
 grep -q 'does not match data file count' scripts/restore_pi_recovery_user_data.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi_recovery_exports.sh
@@ -9515,7 +9520,7 @@ build_archive(
 build_archive(
     root,
     "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000000Z.tgz",
-    {"track_count": 1},
+    {"track_count": 1, "tracks": [{"name": "track.gpx"}]},
     "tracks/track.gpx",
 )
 with tarfile.open(
@@ -9696,6 +9701,56 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'manifest file_count does not match data file count: 2 != 1' "$verify_output"
+
+recovery_verify_mismatched_track_names_dir="$tmpdir/recovery-verify-mismatched-track-names"
+cp -a "$recovery_verify_dir" "$recovery_verify_mismatched_track_names_dir"
+python3 - "$recovery_verify_mismatched_track_names_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+tracks = next(root.glob("noaa-navionics-pi-tracks-*.tgz"))
+with tarfile.open(tracks, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "recovery fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"track_count": 1, "tracks": [{"name": "stale-track.gpx"}]}) + "\n",
+    )
+    add_text(archive, "tracks/track.gpx", "<gpx></gpx>\n")
+tracks.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_mismatched_track_names_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject mismatched track manifest names with exit 1" >&2
+  exit 1
+fi
+grep -q "manifest track names do not match data files: \\['stale-track.gpx'\\] != \\['track.gpx'\\]" "$verify_output"
 
 recovery_verify_missing_checksum_dir="$tmpdir/recovery-verify-missing-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_missing_checksum_dir"
