@@ -77,6 +77,8 @@ grep -q 'list-gps-devices' src/noaa_navionics/cli.py
 grep -q 'test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names' tests/test_downloader.py
 grep -q 'test_cli_list_gps_devices_reports_broken_by_id_without_success' tests/test_downloader.py
 grep -q 'broken by-id symlink' src/noaa_navionics/cli.py
+grep -q 'broken by-id symlink' src/noaa_navionics/health.py
+grep -q 'test_check_gps_device_path_reports_broken_by_id_symlink' tests/test_downloader.py
 grep -q 'No usable stable GPS device paths were found' src/noaa_navionics/cli.py
 grep -q 'broken `/dev/serial/by-id/...` symlink' README.md
 grep -q 'broken `/dev/serial/by-id/...` symlinks' docs/sailboat-pi.md
@@ -1943,6 +1945,7 @@ grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
 grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
+grep -q 'GPS by-id device path is a broken symlink' scripts/configure_gpsd.sh
 grep -q 'GPS by-id device path is not a symlink' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
@@ -2052,10 +2055,12 @@ done
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is volatile' scripts/provision_sailboat_pi.sh
+grep -q 'GPS by-id device path is a broken symlink' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is a symlink when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS by-id device path is a broken symlink' scripts/provision_sailboat_pi.sh
 grep -q 'could not open existing GPS config when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when opened' scripts/provision_sailboat_pi.sh
 grep -q 'with os.fdopen(fd, encoding="utf-8") as handle' scripts/provision_sailboat_pi.sh

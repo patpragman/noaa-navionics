@@ -684,6 +684,15 @@ EOF
   exit 2
 fi
 
+if [[ "$check_device" -eq 1 && "$device" == /dev/serial/by-id/* && -L "$device" && ! -e "$device" ]]; then
+  target="$(readlink -- "$device" 2>/dev/null || true)"
+  cat >&2 <<EOF
+GPS by-id device path is a broken symlink: $device -> ${target:-<unknown>}
+Plug in the receiver, remove the stale link, or run: noaa-navionics list-gps-devices
+EOF
+  exit 2
+fi
+
 if [[ "$check_device" -eq 1 && ! -e "$device" ]]; then
   cat >&2 <<EOF
 GPS device does not exist: $device

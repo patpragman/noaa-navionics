@@ -1333,6 +1333,12 @@ def check_gps_device_path(device: str) -> CheckResult:
             False,
             f"{path} is not a safe /dev/serial/by-id/ GPS path",
         )
+    if path_text.startswith("/dev/serial/by-id/") and path.is_symlink() and not path.exists():
+        try:
+            target = path.resolve(strict=False)
+        except OSError:
+            target = path
+        return CheckResult("GPS Device", False, f"{path} is a broken by-id symlink to {target}")
     if not path.exists():
         return CheckResult("GPS Device", False, f"{path} does not exist")
     if path.is_dir():

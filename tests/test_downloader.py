@@ -13367,6 +13367,18 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("does not exist", result.detail)
 
+    def test_check_gps_device_path_reports_broken_by_id_symlink(self):
+        with (
+            patch("noaa_navionics.health.Path.exists", return_value=False),
+            patch("noaa_navionics.health.Path.is_symlink", return_value=True),
+            patch("noaa_navionics.health.Path.resolve", return_value=Path("/dev/ttyACM0")),
+        ):
+            result = check_gps_device_path("/dev/serial/by-id/usb-gps")
+
+            self.assertFalse(result.ok)
+            self.assertIn("broken by-id symlink", result.detail)
+            self.assertIn("/dev/ttyACM0", result.detail)
+
     def test_check_gps_device_path_accepts_stable_symlink(self):
         with (
             patch("noaa_navionics.health.Path.exists", return_value=True),
