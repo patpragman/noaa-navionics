@@ -446,7 +446,9 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
             revision = str(data.get("revision", "")).strip()
             app = report.get("app")
             expected_revision = str(app.get("source_revision", "")).strip() if isinstance(app, dict) else ""
-            if revision != expected_revision:
+            if revision.endswith("-dirty"):
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision records a dirty revision"))
+            elif revision != expected_revision:
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision does not match app source revision"))
             path = str(data.get("path", "")).strip()
             if not _status_absolute_path(path):
@@ -1276,8 +1278,19 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
     if not isinstance(app, dict):
         return [CheckResult("Status Report", False, "status report missing app section")]
     source_revision = app.get("source_revision")
-    if not isinstance(source_revision, str) or not source_revision.strip() or source_revision.strip() == "unknown":
+    if not isinstance(source_revision, str):
         return [CheckResult("Status Report", False, "status report missing deployed source_revision")]
+    source_revision_text = source_revision.strip()
+    if not source_revision_text or source_revision_text == "unknown":
+        return [CheckResult("Status Report", False, "status report missing deployed source_revision")]
+    if source_revision_text.endswith("-dirty"):
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                "status report dirty deployed source_revision is not production-ready",
+            )
+        ]
     if not str(app.get("source_revision_path", "")).strip():
         return [CheckResult("Status Report", False, "status report missing source_revision_path")]
     if app.get("source_revision_path_is_symlink") is not False:

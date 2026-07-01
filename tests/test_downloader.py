@@ -10596,6 +10596,7 @@ class StatusReportTests(unittest.TestCase):
             ("Tkinter", {"module": "tk", "available": True, "origin": ""}, "Tkinter module is not tkinter"),
             ("Tkinter", {"module": "tkinter", "available": False, "origin": ""}, "Tkinter availability was not proven"),
             ("Source Revision", None, "Source Revision check has no structured data"),
+            ("Source Revision", source_revision_data(revision="fixture123-dirty"), "Source Revision records a dirty revision"),
             ("Source Revision", source_revision_data(revision="stale"), "Source Revision does not match app source revision"),
             ("Source Revision", source_revision_data(path="source-revision"), "Source Revision path is not absolute"),
             ("Source Revision", source_revision_data(exists=False), "Source Revision path does not exist"),
@@ -11339,6 +11340,7 @@ class StatusReportTests(unittest.TestCase):
             ({}, "missing app section"),
             ({"app": {**valid_app, "source_revision": ""}}, "missing deployed source_revision"),
             ({"app": {**valid_app, "source_revision": "unknown"}}, "missing deployed source_revision"),
+            ({"app": {**valid_app, "source_revision": "fixture123-dirty"}}, "dirty deployed source_revision"),
             ({"app": {**valid_app, "source_revision_path": ""}}, "missing source_revision_path"),
             ({"app": {**valid_app, "source_revision_path_is_symlink": True}}, "path is a symlink"),
             (
@@ -19145,7 +19147,7 @@ class PiHealthTests(unittest.TestCase):
     def test_check_source_revision_accepts_recorded_revision_on_pi(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             revision = Path(tmpdir) / "source-revision"
-            revision.write_text("abc123-dirty\n", encoding="utf-8")
+            revision.write_text("abc123\n", encoding="utf-8")
             original_is_pi = health_module._is_raspberry_pi
             try:
                 health_module._is_raspberry_pi = lambda: True
@@ -19154,7 +19156,7 @@ class PiHealthTests(unittest.TestCase):
                 health_module._is_raspberry_pi = original_is_pi
 
             self.assertTrue(result.ok)
-            self.assertEqual(result.detail, "abc123-dirty")
+            self.assertEqual(result.detail, "abc123")
             data = result.data or {}
             self.assertTrue(data["is_raspberry_pi"])
             self.assertEqual(data["path"], str(revision))
@@ -19164,6 +19166,22 @@ class PiHealthTests(unittest.TestCase):
             self.assertTrue(data["is_regular"])
             self.assertEqual(data["uid"], os.getuid())
             self.assertEqual(data["expected_uid"], os.getuid())
+            self.assertEqual(data["revision"], "abc123")
+
+    def test_check_source_revision_rejects_dirty_revision_on_pi(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            revision = Path(tmpdir) / "source-revision"
+            revision.write_text("abc123-dirty\n", encoding="utf-8")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                health_module._is_raspberry_pi = lambda: True
+                result = check_source_revision(revision)
+            finally:
+                health_module._is_raspberry_pi = original_is_pi
+
+            self.assertFalse(result.ok)
+            self.assertIn("dirty deployed source revision", result.detail)
+            data = result.data or {}
             self.assertEqual(data["revision"], "abc123-dirty")
 
     def test_check_source_revision_rejects_missing_revision_on_pi(self):

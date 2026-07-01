@@ -235,8 +235,6 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
         return CheckResult("Source Revision", False, f"cannot read deployed source revision at {revision_path}: {exc}")
     except RuntimeError as exc:
         return CheckResult("Source Revision", False, str(exc).replace("source revision", "deployed source revision"))
-    if not revision or revision == "unknown":
-        return CheckResult("Source Revision", False, f"deployed source revision is not recorded at {revision_path}")
     mode = revision_stat.st_mode & 0o777 if revision_stat is not None else 0
     data = {
         "is_raspberry_pi": True,
@@ -250,6 +248,20 @@ def check_source_revision(path: Optional[Path] = None) -> CheckResult:
         "mode": f"{mode:04o}",
         "revision": revision,
     }
+    if not revision or revision == "unknown":
+        return CheckResult(
+            "Source Revision",
+            False,
+            f"deployed source revision is not recorded at {revision_path}",
+            data,
+        )
+    if revision.endswith("-dirty"):
+        return CheckResult(
+            "Source Revision",
+            False,
+            f"dirty deployed source revision is not production-ready: {revision}",
+            data,
+        )
     return CheckResult("Source Revision", True, revision, data)
 
 

@@ -3075,6 +3075,7 @@ grep -q 'Source Revision' src/noaa_navionics/health.py
 grep -q 'NOAA_NAVIONICS_SOURCE_REVISION_PATH' src/noaa_navionics/health.py
 grep -q 'deployed source revision path is a symlink' src/noaa_navionics/health.py
 grep -q 'deployed source revision is not recorded' src/noaa_navionics/health.py
+grep -q 'dirty deployed source revision is not production-ready' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
 grep -q 'system clock current time must include a timezone' src/noaa_navionics/health.py
 grep -q 'system_clock_sync == "yes"' src/noaa_navionics/health.py
@@ -4001,6 +4002,8 @@ grep -q 'status report missing valid host boot_id' src/noaa_navionics/report.py
 grep -q 'status report host boot_id is not a Linux boot_id value' src/noaa_navionics/report.py
 grep -q 'status report missing app section' src/noaa_navionics/report.py
 grep -q 'status report missing deployed source_revision' src/noaa_navionics/report.py
+grep -q 'status report dirty deployed source_revision is not production-ready' src/noaa_navionics/report.py
+grep -q 'status report Source Revision records a dirty revision' src/noaa_navionics/report.py
 grep -q 'status report source revision path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report source revision missing source_revision_symlink_component' src/noaa_navionics/report.py
 grep -q 'status report source revision path contains a symlink' src/noaa_navionics/report.py
@@ -4786,11 +4789,14 @@ grep -q 'test_check_source_revision_rejects_symlinked_revision_ancestor_on_pi' t
 grep -q 'test_check_source_revision_rejects_nonregular_revision_on_pi' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_writable_revision_on_pi' tests/test_downloader.py
 grep -q 'test_check_source_revision_rejects_writable_revision_directory_on_pi' tests/test_downloader.py
+grep -q 'test_check_source_revision_rejects_dirty_revision_on_pi' tests/test_downloader.py
 grep -q 'test_health_source_revision_reader_rejects_writable_revision' tests/test_downloader.py
 grep -q 'source revision directory is misowned or group/world-writable' README.md
 grep -q 'source revision directory is misowned or group/world-writable' docs/sailboat-pi.md
 grep -q 'recorded through a symlinked path component' README.md
 grep -q 'recorded through a symlinked path component' docs/sailboat-pi.md
+grep -q 'recorded with a dirty `-dirty` suffix' README.md
+grep -q 'recorded with a dirty `-dirty` suffix' docs/sailboat-pi.md
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor' README.md
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor' docs/sailboat-pi.md
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
