@@ -1928,6 +1928,24 @@ if missing_checks:
 missing_service_checks = sorted(required_service_checks - service_check_names)
 if missing_service_checks:
     raise SystemExit("status report missing service checks: " + ", ".join(missing_service_checks))
+for row_name in (
+    "Source Revision",
+    "Time Sync",
+    "Pi Power",
+    "Pi Thermal",
+    "Chrony Config",
+    "GPS Time Source",
+):
+    row = next((check for check in checks if isinstance(check, dict) and check.get("name") == row_name), None)
+    if not isinstance(row, dict):
+        continue
+    data = row.get("data")
+    if (
+        isinstance(data, dict)
+        and data.get("is_raspberry_pi") is False
+        and data.get("skipped") is True
+    ):
+        raise SystemExit(f"status report {row_name} recorded a non-Pi diagnostic skip during Pi verification")
 services = report.get("services")
 system_services = report.get("system_services")
 require_status_unit(
