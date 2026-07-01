@@ -188,12 +188,53 @@ write_source_revision() {
   "$python3_cmd" - "$revision_file" "$revision" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 import tempfile
 
 target = Path(sys.argv[1]).expanduser()
 revision = sys.argv[2].strip() or "unknown"
 target.parent.mkdir(parents=True, exist_ok=True)
+
+def cleanup_private_temp_file(path: Path) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"could not inspect source revision temp for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) & 0o022:
+        print(f"source revision temp is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"could not open source revision temp directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    try:
+        parent_stat = os.fstat(dir_fd)
+        parent_mode = stat.S_IMODE(parent_stat.st_mode)
+        if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != os.getuid() or parent_mode & 0o022:
+            print(f"source revision temp directory is not trusted for cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        try:
+            fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        except FileNotFoundError:
+            return
+        try:
+            opened = os.fstat(fd)
+        finally:
+            os.close(fd)
+        if not os.path.samestat(before, opened):
+            print(f"source revision temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        os.unlink(path.name, dir_fd=dir_fd)
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
 tmp_path = None
 try:
     with tempfile.NamedTemporaryFile(
@@ -218,10 +259,7 @@ try:
         os.close(fd)
 finally:
     if tmp_path is not None:
-        try:
-            tmp_path.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_private_temp_file(tmp_path)
 PY
 }
 
@@ -322,6 +360,7 @@ install_root_text_atomic() {
   "$sudo_cmd_value" "$python3_cmd" - "$target" "$mode" "$text" <<'PY'
 from pathlib import Path
 import os
+import stat
 import sys
 import tempfile
 
@@ -336,6 +375,45 @@ def first_symlink_ancestor(path: Path):
         if component.is_symlink():
             return component
     return None
+
+def cleanup_private_root_temp_file(path: Path) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"could not inspect root text temp for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(before.st_mode) or before.st_uid != 0 or stat.S_IMODE(before.st_mode) & 0o022:
+        print(f"root text temp is not a trusted root-owned private file; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"could not open root text temp directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    try:
+        parent_stat = os.fstat(dir_fd)
+        parent_mode = stat.S_IMODE(parent_stat.st_mode)
+        if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != 0 or parent_mode & 0o022:
+            print(f"root text temp directory is not trusted for cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        try:
+            fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        except FileNotFoundError:
+            return
+        try:
+            opened = os.fstat(fd)
+        finally:
+            os.close(fd)
+        if not os.path.samestat(before, opened):
+            print(f"root text temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        os.unlink(path.name, dir_fd=dir_fd)
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
 
 if target.is_symlink():
     raise SystemExit(f"root text target is a symlink: {target}")
@@ -413,10 +491,7 @@ try:
         os.close(fd)
 finally:
     if tmp_path is not None:
-        try:
-            tmp_path.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_private_root_temp_file(tmp_path)
 PY
 }
 

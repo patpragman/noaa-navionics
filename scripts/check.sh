@@ -827,6 +827,8 @@ grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'write_source_revision' scripts/install_raspberry_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/install_raspberry_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/install_raspberry_pi.sh
+grep -q 'cleanup_private_temp_file(tmp_path)' scripts/install_raspberry_pi.sh
+grep -q 'source revision temp changed before cleanup; leaving it in place' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'install_root_text_atomic' scripts/install_raspberry_pi.sh
 grep -q 'sudo_cmd="$(trusted_root_command_path sudo "Sudo command")"' scripts/install_raspberry_pi.sh
@@ -840,6 +842,9 @@ grep -q 'root text target is a symlink' scripts/install_raspberry_pi.sh
 grep -q 'root text target directory path contains a symlink' scripts/install_raspberry_pi.sh
 grep -q 'root text target directory .* has permissions' scripts/install_raspberry_pi.sh
 grep -q 'root text target .* is owned by uid' scripts/install_raspberry_pi.sh
+grep -q 'cleanup_private_root_temp_file(tmp_path)' scripts/install_raspberry_pi.sh
+grep -q 'root text temp changed before cleanup; leaving it in place' scripts/install_raspberry_pi.sh
+! grep -q 'tmp_path.unlink()' scripts/install_raspberry_pi.sh
 ! grep -q 'sudo tee -a /etc/apt/sources.list' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive "$apt_get_bin"' scripts/install_raspberry_pi.sh
 ! grep -Eq 'sudo apt( |$)' scripts/install_raspberry_pi.sh
@@ -2260,6 +2265,8 @@ grep -q 'revalidate root target paths before temporary-file creation and immedia
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' README.md
+grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md
