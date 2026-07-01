@@ -24,7 +24,14 @@ from .config import (
     read_config,
 )
 from .downloader import MANIFEST_NAME, read_manifest
-from .health import CheckResult, check_opencpn_gpsd_config, run_preflight, _trusted_enc_cell_tree_count, _trusted_system_command
+from .health import (
+    CheckResult,
+    check_opencpn_gpsd_config,
+    run_preflight,
+    _expected_manifest_package,
+    _trusted_enc_cell_tree_count,
+    _trusted_system_command,
+)
 from .opencpn import (
     enabled_gpsd_connections_from_values,
     normalize_gpsd_host,
@@ -301,6 +308,7 @@ def status_report_validation_failures(
     failures.extend(_clock_time_validation_failures(report))
     failures.extend(_pi_health_validation_failures(report))
     failures.extend(_storage_validation_failures(report))
+    failures.extend(_chart_readiness_validation_failures(report))
     failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_command_evidence_validation_failures(report))
     failures.extend(_gpsd_config_validation_failures(report))
@@ -381,6 +389,83 @@ def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckRes
     options = data.get("gpsd_options")
     if not isinstance(options, list) or "-n" not in options or data.get("immediate_polling") is not True:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config does not enable immediate polling"))
+    return failures
+
+
+def _chart_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config = report.get("config")
+    checks = report.get("checks")
+    if not isinstance(config, dict) or not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    failures: list[CheckResult] = []
+
+    package_row = check_rows.get("Chart Package")
+    if isinstance(package_row, dict) and package_row.get("ok"):
+        data = package_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Chart Package", False, "status report Chart Package check has no structured data"))
+        else:
+            expected_package = str(config.get("chart_package", "")).strip().lower()
+            expected_value = str(config.get("chart_value", "")).strip()
+            if str(data.get("package", "")).strip().lower() != expected_package:
+                failures.append(CheckResult("Chart Package", False, "status report Chart Package does not match configured package"))
+            if str(data.get("value", "")).strip() != expected_value:
+                failures.append(CheckResult("Chart Package", False, "status report Chart Package does not match configured value"))
+            if expected_package and data.get("complete_chart_set") is not True:
+                failures.append(CheckResult("Chart Package", False, "status report Chart Package is not a complete NOAA ENC package"))
+            expected_filename, expected_url = _expected_manifest_package(expected_package, expected_value)
+            if expected_filename and str(data.get("expected_filename", "")).strip() != expected_filename:
+                failures.append(CheckResult("Chart Package", False, "status report Chart Package filename does not match NOAA package"))
+            if expected_url and str(data.get("expected_url", "")).strip() != expected_url:
+                failures.append(CheckResult("Chart Package", False, "status report Chart Package URL does not match NOAA package"))
+
+    charts_row = check_rows.get("Charts")
+    if isinstance(charts_row, dict) and charts_row.get("ok"):
+        data = charts_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Charts", False, "status report Charts check has no structured data"))
+        else:
+            expected_path = str(config.get("chart_output", "")).strip()
+            configured_path = str(data.get("configured_path", "")).strip()
+            if not _status_absolute_path(configured_path):
+                failures.append(CheckResult("Charts", False, "status report Charts path is not absolute"))
+            if configured_path != expected_path:
+                failures.append(CheckResult("Charts", False, "status report Charts path does not match configured chart output"))
+            if data.get("exists") is not True:
+                failures.append(CheckResult("Charts", False, "status report Charts path does not exist"))
+            if str(data.get("storage_symlink_component", "")).strip():
+                failures.append(CheckResult("Charts", False, "status report Charts path contains a symlink"))
+            enc_cell_samples = data.get("enc_cell_samples")
+            if data.get("has_extracted_enc_cells") is not True:
+                failures.append(CheckResult("Charts", False, "status report Charts found no extracted ENC cells"))
+            if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
+                failures.append(CheckResult("Charts", False, "status report Charts has no ENC cell sample paths"))
+            elif any(not _status_absolute_path(str(sample)) for sample in enc_cell_samples):
+                failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is not absolute"))
+
+    debris_row = check_rows.get("Chart Update Debris")
+    if isinstance(debris_row, dict) and debris_row.get("ok"):
+        data = debris_row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris check has no structured data"))
+        else:
+            expected_path = str(config.get("chart_output", "")).strip()
+            configured_path = str(data.get("configured_path", "")).strip()
+            if not _status_absolute_path(configured_path):
+                failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path is not absolute"))
+            if configured_path != expected_path:
+                failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path does not match configured chart output"))
+            if str(data.get("storage_symlink_component", "")).strip():
+                failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path contains a symlink"))
+            debris_count = data.get("debris_count")
+            if isinstance(debris_count, bool) or not isinstance(debris_count, int) or debris_count != 0:
+                failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris found stale update debris"))
+            debris = data.get("debris")
+            if not isinstance(debris, list) or debris:
+                failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris debris list is not empty"))
+            if data.get("clean") is not True:
+                failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris did not prove a clean chart directory"))
     return failures
 
 

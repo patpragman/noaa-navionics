@@ -3998,6 +3998,7 @@ grep -q 'status report generated_at timestamp is in the future' src/noaa_navioni
 grep -q 'def _clock_time_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _pi_health_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _storage_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _chart_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
@@ -4010,6 +4011,9 @@ grep -q 'status report Pi Thermal missing finite temperature' src/noaa_navionics
 grep -q 'status report {name} check has no structured data' src/noaa_navionics/report.py
 grep -q 'Track Disk check has no structured data' tests/test_downloader.py
 grep -q 'status report {name} free space' src/noaa_navionics/report.py
+grep -q 'status report Chart Package check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report Charts found no extracted ENC cells' src/noaa_navionics/report.py
+grep -q 'status report Chart Update Debris found stale update debris' src/noaa_navionics/report.py
 grep -q 'status report GPS Device check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report GPS Device by-id path is not a symlink' src/noaa_navionics/report.py
 grep -q 'status report GPS Device is not a character device' src/noaa_navionics/report.py
@@ -4032,6 +4036,9 @@ grep -q '"temperature_c"' src/noaa_navionics/health.py
 grep -q '"free_gb"' src/noaa_navionics/health.py
 grep -q '"missing_removable_mount"' src/noaa_navionics/health.py
 grep -q '"storage_symlink_component"' src/noaa_navionics/health.py
+grep -q '"complete_chart_set"' src/noaa_navionics/health.py
+grep -q '"has_extracted_enc_cells"' src/noaa_navionics/health.py
+grep -q '"debris_count"' src/noaa_navionics/health.py
 grep -q '"stable_path"' src/noaa_navionics/health.py
 grep -q '"volatile_path"' src/noaa_navionics/health.py
 grep -q '"is_character_device"' src/noaa_navionics/health.py
@@ -4054,6 +4061,7 @@ grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_dow
 grep -q 'test_status_report_ready_requires_structured_clock_and_time_sync_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_structured_chart_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_serial_gps_device_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gpsd_config_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_chrony_gps_time_evidence' tests/test_downloader.py
@@ -4094,6 +4102,8 @@ grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence'
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Disk and Track Disk storage evidence' README.md
 grep -q 'READY reports also require structured Disk and Track Disk storage evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured Chart Package, Charts, and Chart Update Debris evidence' README.md
+grep -q 'READY reports also require structured Chart Package, Charts, and Chart Update Debris evidence' docs/sailboat-pi.md
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' README.md
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' README.md

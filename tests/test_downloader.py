@@ -403,6 +403,36 @@ def complete_status_gui_report(
                 "free_gb": 12.5,
                 "writable": True,
             }
+        elif row["name"] == "Chart Package":
+            row["detail"] = "state AK"
+            row["data"] = {
+                "package": "state",
+                "value": "AK",
+                "complete_chart_set": True,
+                "expected_filename": "AK_ENCs.zip",
+                "expected_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+            }
+        elif row["name"] == "Charts":
+            row["detail"] = "found extracted ENC cells under /charts"
+            row["data"] = {
+                "configured_path": "/charts",
+                "exists": True,
+                "storage_symlink_component": "",
+                "enc_cell_samples": ["/charts/ENC_ROOT/US5AK00M/US5AK00M.000"],
+                "zip_samples": [],
+                "has_extracted_enc_cells": True,
+                "has_unextracted_zips": False,
+            }
+        elif row["name"] == "Chart Update Debris":
+            row["detail"] = "no interrupted chart updates found"
+            row["data"] = {
+                "configured_path": "/charts",
+                "exists": True,
+                "storage_symlink_component": "",
+                "debris": [],
+                "debris_count": 0,
+                "clean": True,
+            }
         elif row["name"] == "GPS Device":
             row["detail"] = "/dev/serial/by-id/mock-gps -> /dev/ttyACM0"
             row["data"] = {
@@ -9185,6 +9215,16 @@ class ManifestTests(unittest.TestCase):
     def test_chart_package_accepts_state_bundle(self):
         result = check_chart_package("state", "AK")
         self.assertTrue(result.ok)
+        self.assertEqual(
+            result.data,
+            {
+                "package": "state",
+                "value": "AK",
+                "complete_chart_set": True,
+                "expected_filename": "AK_ENCs.zip",
+                "expected_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+            },
+        )
 
     def test_chart_package_rejects_unsupported_state_bundle(self):
         result = check_chart_package("state", "ZZ")
@@ -9249,6 +9289,11 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_update_debris(root)
 
             self.assertTrue(result.ok)
+            data = result.data or {}
+            self.assertEqual(data["configured_path"], str(root))
+            self.assertTrue(data["clean"])
+            self.assertEqual(data["debris_count"], 0)
+            self.assertEqual(data["debris"], [])
 
     def test_chart_update_debris_allows_retained_manifest_archive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -9272,6 +9317,11 @@ class ManifestTests(unittest.TestCase):
             result = check_chart_update_debris(root)
 
             self.assertTrue(result.ok)
+            data = result.data or {}
+            self.assertEqual(data["configured_path"], str(root))
+            self.assertTrue(data["clean"])
+            self.assertEqual(data["debris_count"], 0)
+            self.assertEqual(data["debris"], [])
 
     def test_chart_update_debris_fails_for_unexpected_top_level_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -10383,6 +10433,85 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertTrue(status_report_is_ready(track_report, now=now))
         self.assertFalse(status_report_validation_failures(track_report, now=now))
+
+    def test_status_report_ready_requires_structured_chart_readiness_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def chart_package_data(**overrides):
+            data = {
+                "package": "state",
+                "value": "AK",
+                "complete_chart_set": True,
+                "expected_filename": "AK_ENCs.zip",
+                "expected_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+            }
+            data.update(overrides)
+            return data
+
+        def charts_data(**overrides):
+            data = {
+                "configured_path": "/charts",
+                "exists": True,
+                "storage_symlink_component": "",
+                "enc_cell_samples": ["/charts/ENC_ROOT/US5AK00M/US5AK00M.000"],
+                "zip_samples": [],
+                "has_extracted_enc_cells": True,
+                "has_unextracted_zips": False,
+            }
+            data.update(overrides)
+            return data
+
+        def debris_data(**overrides):
+            data = {
+                "configured_path": "/charts",
+                "exists": True,
+                "storage_symlink_component": "",
+                "debris": [],
+                "debris_count": 0,
+                "clean": True,
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            ("Chart Package", None, "Chart Package check has no structured data"),
+            ("Chart Package", chart_package_data(package="all"), "does not match configured package"),
+            ("Chart Package", chart_package_data(value="WA"), "does not match configured value"),
+            ("Chart Package", chart_package_data(complete_chart_set=False), "is not a complete NOAA ENC package"),
+            ("Chart Package", chart_package_data(expected_filename="US5WA.zip"), "filename does not match NOAA package"),
+            ("Chart Package", chart_package_data(expected_url="https://example.invalid/AK_ENCs.zip"), "URL does not match NOAA package"),
+            ("Charts", None, "Charts check has no structured data"),
+            ("Charts", charts_data(configured_path="relative/charts"), "Charts path is not absolute"),
+            ("Charts", charts_data(configured_path="/other-charts"), "Charts path does not match configured chart output"),
+            ("Charts", charts_data(exists=False), "Charts path does not exist"),
+            ("Charts", charts_data(storage_symlink_component="/media/link"), "Charts path contains a symlink"),
+            ("Charts", charts_data(has_extracted_enc_cells=False), "found no extracted ENC cells"),
+            ("Charts", charts_data(enc_cell_samples=[]), "has no ENC cell sample paths"),
+            ("Charts", charts_data(enc_cell_samples=["relative.000"]), "ENC cell sample path is not absolute"),
+            ("Chart Update Debris", None, "Chart Update Debris check has no structured data"),
+            ("Chart Update Debris", debris_data(configured_path="relative/charts"), "Chart Update Debris path is not absolute"),
+            ("Chart Update Debris", debris_data(configured_path="/other-charts"), "Chart Update Debris path does not match configured chart output"),
+            ("Chart Update Debris", debris_data(storage_symlink_component="/media/link"), "Chart Update Debris path contains a symlink"),
+            ("Chart Update Debris", debris_data(debris_count=1), "found stale update debris"),
+            ("Chart Update Debris", debris_data(debris=["/charts/update.part"]), "debris list is not empty"),
+            ("Chart Update Debris", debris_data(clean=False), "did not prove a clean chart directory"),
+        ]
+        for row_name, data, expected in cases:
+            with self.subTest(row_name=row_name, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == row_name and expected in failure.detail for failure in failures)
+                )
 
     def test_status_report_ready_requires_structured_serial_gps_device_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
@@ -17764,6 +17893,10 @@ class GpsTests(unittest.TestCase):
             cell.write_text("", encoding="ascii")
             extracted_result = check_chart_dir(root)
             self.assertTrue(extracted_result.ok)
+            data = extracted_result.data or {}
+            self.assertEqual(data["configured_path"], str(root))
+            self.assertTrue(data["has_extracted_enc_cells"])
+            self.assertEqual(data["enc_cell_samples"], [str(cell)])
 
     def test_chart_check_ignores_symlinked_enc_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:

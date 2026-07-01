@@ -693,35 +693,47 @@ def _check_chrony_gps_time_source_once(chronyc: Path) -> CheckResult:
 def check_chart_package(package: str, value: str = "") -> CheckResult:
     package = package.strip().lower()
     value = value.strip()
+    data: dict[str, object] = {
+        "package": package,
+        "value": value,
+        "complete_chart_set": False,
+        "expected_filename": "",
+        "expected_url": "",
+    }
     if not package:
-        return CheckResult("Chart Package", True, "not checked")
+        return CheckResult("Chart Package", True, "not checked", data)
     if package == "updates":
         detail = f"updates {value}" if value else "updates"
         return CheckResult(
             "Chart Package",
             False,
             f"{detail} is not a complete chart set; use state, cgd, region, chart, or all",
+            data,
         )
     if package == "catalog":
         return CheckResult(
             "Chart Package",
             False,
             "catalog is metadata only; use state, cgd, region, chart, or all",
+            data,
         )
     if package in {"state", "cgd", "region", "chart", "all"}:
-        filename, _url = _expected_manifest_package(package, value)
+        filename, url = _expected_manifest_package(package, value)
+        data.update({"expected_filename": filename, "expected_url": url, "complete_chart_set": bool(filename)})
         if not filename:
             return CheckResult(
                 "Chart Package",
                 False,
                 f"{package} {value}".strip() + " is not a supported NOAA ENC package",
+                data,
             )
         label = f"{package} {value}".strip()
-        return CheckResult("Chart Package", True, label)
+        return CheckResult("Chart Package", True, label, data)
     return CheckResult(
         "Chart Package",
         False,
         "unknown package; use state, cgd, region, chart, or all",
+        data,
     )
 
 
@@ -786,30 +798,56 @@ def check_opencpn_gpsd_config(
 def check_chart_dir(chart_dir: Path) -> CheckResult:
     path = Path(chart_dir).expanduser()
     symlink = _first_storage_symlink(path)
+    data: dict[str, object] = {
+        "configured_path": str(path),
+        "exists": path.exists(),
+        "storage_symlink_component": str(symlink) if symlink is not None else "",
+        "enc_cell_samples": [],
+        "zip_samples": [],
+        "has_extracted_enc_cells": False,
+        "has_unextracted_zips": False,
+    }
     if symlink is not None:
         if symlink == path:
-            return CheckResult("Charts", False, f"chart directory is a symlink: {path}")
-        return CheckResult("Charts", False, f"chart directory path contains a symlink: {symlink}")
+            return CheckResult("Charts", False, f"chart directory is a symlink: {path}", data)
+        return CheckResult("Charts", False, f"chart directory path contains a symlink: {symlink}", data)
     if not path.exists():
-        return CheckResult("Charts", False, f"{path} does not exist")
+        return CheckResult("Charts", False, f"{path} does not exist", data)
     enc_cells = _limited_find(path, suffix=".000", limit=5)
     zips = _limited_find(path, suffix=".zip", limit=5)
+    data.update(
+        {
+            "enc_cell_samples": [str(cell) for cell in enc_cells],
+            "zip_samples": [str(zip_path) for zip_path in zips],
+            "has_extracted_enc_cells": bool(enc_cells),
+            "has_unextracted_zips": bool(zips),
+        }
+    )
     if enc_cells:
-        return CheckResult("Charts", True, f"found extracted ENC cells under {path}")
+        return CheckResult("Charts", True, f"found extracted ENC cells under {path}", data)
     if zips:
-        return CheckResult("Charts", False, f"found ENC ZIP files under {path}; run download with --extract")
-    return CheckResult("Charts", False, f"no ENC .000 cells or ZIPs found under {path}")
+        return CheckResult("Charts", False, f"found ENC ZIP files under {path}; run download with --extract", data)
+    return CheckResult("Charts", False, f"no ENC .000 cells or ZIPs found under {path}", data)
 
 
 def check_chart_update_debris(chart_dir: Path) -> CheckResult:
     path = Path(chart_dir).expanduser()
     symlink = _first_storage_symlink(path)
+    data: dict[str, object] = {
+        "configured_path": str(path),
+        "exists": path.exists(),
+        "storage_symlink_component": str(symlink) if symlink is not None else "",
+        "debris": [],
+        "debris_count": 0,
+        "clean": False,
+    }
     if symlink is not None:
         if symlink == path:
-            return CheckResult("Chart Update Debris", False, f"chart directory is a symlink: {path}")
-        return CheckResult("Chart Update Debris", False, f"chart directory path contains a symlink: {symlink}")
+            return CheckResult("Chart Update Debris", False, f"chart directory is a symlink: {path}", data)
+        return CheckResult("Chart Update Debris", False, f"chart directory path contains a symlink: {symlink}", data)
     if not path.exists():
-        return CheckResult("Chart Update Debris", True, f"not checked; {path} does not exist")
+        data["clean"] = True
+        return CheckResult("Chart Update Debris", True, f"not checked; {path} does not exist", data)
     try:
         retained_archive = _manifest_archive_path(path)
         debris = sorted(
@@ -825,7 +863,8 @@ def check_chart_update_debris(chart_dir: Path) -> CheckResult:
             )
         )
     except OSError as exc:
-        return CheckResult("Chart Update Debris", False, f"cannot inspect chart directory: {exc}")
+        return CheckResult("Chart Update Debris", False, f"cannot inspect chart directory: {exc}", data)
+    data.update({"debris": [str(child) for child in debris[:5]], "debris_count": len(debris), "clean": not debris})
     if debris:
         names = ", ".join(child.name for child in debris[:5])
         suffix = "" if len(debris) <= 5 else f", and {len(debris) - 5} more"
@@ -833,8 +872,9 @@ def check_chart_update_debris(chart_dir: Path) -> CheckResult:
             "Chart Update Debris",
             False,
             f"remove stale chart update debris before departure: {names}{suffix}",
+            data,
         )
-    return CheckResult("Chart Update Debris", True, "no interrupted chart updates found")
+    return CheckResult("Chart Update Debris", True, "no interrupted chart updates found", data)
 
 
 def _manifest_archive_path(chart_dir: Path) -> Path:
