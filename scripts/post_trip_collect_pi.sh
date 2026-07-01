@@ -582,7 +582,7 @@ try:
         fd = -1
         try:
             with tarfile.open(fileobj=handle, mode="r:gz") as archive:
-                names = archive.getnames()
+                members = archive.getmembers()
         except (tarfile.TarError, OSError) as exc:
             print(f"{label} is not a readable gzip tar archive: {path}: {exc}", file=sys.stderr)
             raise SystemExit(124) from exc
@@ -590,13 +590,23 @@ finally:
     if fd >= 0:
         os.close(fd)
 
-if not names:
-    print(f"{label} archive is empty: {path}", file=sys.stderr)
+if not members:
+    print(f"{label} is empty: {path}", file=sys.stderr)
     raise SystemExit(124)
-for name in names:
+seen_names = set()
+for member in members:
+    name = member.name
     normalized = Path(name)
     if name in {"", ".", ".."} or name.startswith("/") or any(part in {"", ".", ".."} for part in normalized.parts):
-        print(f"{label} archive contains unsafe member name: {name}", file=sys.stderr)
+        print(f"{label} contains unsafe member name: {name}", file=sys.stderr)
+        raise SystemExit(124)
+    normalized_name = normalized.as_posix()
+    if normalized_name in seen_names:
+        print(f"{label} contains duplicate normalized member name: {name}", file=sys.stderr)
+        raise SystemExit(124)
+    seen_names.add(normalized_name)
+    if not (member.isfile() or member.isdir()):
+        print(f"{label} contains unsupported member type: {name}", file=sys.stderr)
         raise SystemExit(124)
 PY
   status=$?

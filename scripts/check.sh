@@ -680,6 +680,8 @@ grep -q 'saves a local private `0600` JSON status snapshot through an exclusive 
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
+grep -q 'rejects duplicate normalized archive members and symlink, hardlink, device, or FIFO members' README.md
+grep -q 'rejects duplicate normalized archive members and symlink, hardlink, device, or FIFO members' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
@@ -1420,8 +1422,11 @@ grep -q 'track export archive' scripts/post_trip_collect_pi.sh
 grep -q 'support bundle archive' scripts/post_trip_collect_pi.sh
 grep -q 'must be an immediate child of the post-trip output directory' scripts/post_trip_collect_pi.sh
 grep -q 'is not a readable gzip tar archive' scripts/post_trip_collect_pi.sh
-grep -q 'archive contains unsafe member name' scripts/post_trip_collect_pi.sh
+grep -q 'contains unsafe member name' scripts/post_trip_collect_pi.sh
+grep -q 'contains duplicate normalized member name' scripts/post_trip_collect_pi.sh
+grep -q 'contains unsupported member type' scripts/post_trip_collect_pi.sh
 grep -q 'name in {"", ".", ".."}' scripts/post_trip_collect_pi.sh
+grep -q 'member.isfile() or member.isdir()' scripts/post_trip_collect_pi.sh
 grep -q 'os.path.samestat(initial, opened)' scripts/post_trip_collect_pi.sh
 grep -q 'tarfile.open(fileobj=handle, mode="r:gz")' scripts/post_trip_collect_pi.sh
 for helper_wrapper in \
@@ -5774,12 +5779,20 @@ import time
 path = sys.argv[1]
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
-    data = b"fake track export\n"
-    info = tarfile.TarInfo("README.txt")
-    info.size = len(data)
-    info.mode = 0o600
-    info.mtime = int(time.time())
-    archive.addfile(info, io.BytesIO(data))
+    if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_BAD_TRACK_MEMBER") == "1":
+        info = tarfile.TarInfo("track-link")
+        info.type = tarfile.SYMTYPE
+        info.linkname = "README.txt"
+        info.mode = 0o777
+        info.mtime = int(time.time())
+        archive.addfile(info)
+    else:
+        data = b"fake track export\n"
+        info = tarfile.TarInfo("README.txt")
+        info.size = len(data)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(data))
 os.chmod(path, 0o600)
 PY
 printf 'Exported Pi GPX tracks: %s\n' "$archive"
@@ -5896,6 +5909,25 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'track export archive must be an immediate child of the post-trip output directory' "$verify_output"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_bad_archive_log"
+
+post_trip_bad_member_log="$tmpdir/post-trip-bad-member-helper-calls"
+post_trip_bad_member_output_dir="$tmpdir/post-trip-bad-member-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_bad_member_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_BAD_TRACK_MEMBER=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_bad_member_output_dir" \
+  --skip-status \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject an unsafe track archive member type with exit 2" >&2
+  exit 1
+fi
+grep -q 'track export archive contains unsupported member type' "$verify_output"
+grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_bad_member_log"
 
 post_trip_invalid_json_log="$tmpdir/post-trip-invalid-json-helper-calls"
 post_trip_invalid_json_output_dir="$tmpdir/post-trip-invalid-json-output"
