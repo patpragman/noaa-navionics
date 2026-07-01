@@ -528,11 +528,12 @@ class StatusApp(tk.Tk):
 
     def _anchor_watch_worker(self, *, radius_meters: float) -> None:
         try:
-            if self.anchor_watch_fix is None:
+            anchor_watch_fix = self.anchor_watch_fix
+            if anchor_watch_fix is None:
                 return
             distance, radius, anchor_fix, current_fix = check_anchor_watch_drift(
                 self.config_path,
-                self.anchor_watch_fix,
+                anchor_watch_fix,
                 gps_seconds=self.action_gps_seconds,
                 radius_meters=radius_meters,
             )
@@ -631,6 +632,11 @@ class StatusApp(tk.Tk):
         self._schedule_refresh()
 
     def _show_anchor_watch(self, distance: float, radius_meters: float, anchor_fix: GPSFix, current_fix: GPSFix) -> None:
+        if self.anchor_watch_fix is not anchor_fix:
+            self._set_busy(False)
+            self.last_report.set("Ignored stale anchor watch result; watch was stopped or reset.")
+            self._schedule_refresh()
+            return
         self._set_busy(False)
         summary = format_anchor_check(distance, radius_meters)
         alarm = anchor_alarm_active(distance, radius_meters)

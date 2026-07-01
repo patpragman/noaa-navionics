@@ -3445,6 +3445,66 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.watch_scheduled, 1)
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_stale_anchor_watch_result_does_not_restart_stopped_watch(self):
+        class FakeVar:
+            def __init__(self, value=None):
+                self.value = value
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = None
+                self.headline = FakeVar("READY")
+                self.summary = FakeVar("Anchor watch stopped.")
+                self.gps_summary = FakeVar("GPS unchanged")
+                self.last_report = FakeVar("")
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+                self.bells = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def bell(self):
+                self.bells += 1
+
+        app = FakeApp()
+        stopped_anchor_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=9,
+            hdop=0.9,
+        )
+        current_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-148.99,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        status_gui_module.StatusApp._show_anchor_watch(app, 700.0, 50.0, stopped_anchor_fix, current_fix)
+
+        self.assertIsNone(app.anchor_watch_fix)
+        self.assertEqual(app.headline.value, "READY")
+        self.assertEqual(app.summary.value, "Anchor watch stopped.")
+        self.assertEqual(app.gps_summary.value, "GPS unchanged")
+        self.assertEqual(app.last_report.value, "Ignored stale anchor watch result; watch was stopped or reset.")
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.watch_scheduled, 0)
+        self.assertEqual(app.refresh_scheduled, 1)
+        self.assertEqual(app.bells, 0)
+
     def test_status_gui_disables_start_watch_while_anchor_watch_is_active(self):
         class FakeButton:
             def __init__(self):

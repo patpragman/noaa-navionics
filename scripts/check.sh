@@ -2881,6 +2881,8 @@ grep -q 'self.anchor_watch_stop_confirm_after_id: Optional\[str\] = None' src/no
 grep -q 'self.anchor_watch_status_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'if not self.anchor_watch_alarm_active or self.anchor_watch_alarm_summary is None' src/noaa_navionics/status_gui.py
 grep -q 'if not alarm_visible and bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None' src/noaa_navionics/status_gui.py
+grep -q 'if self.anchor_watch_fix is not anchor_fix' src/noaa_navionics/status_gui.py
+grep -q 'Ignored stale anchor watch result; watch was stopped or reset.' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'def _cancel_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
@@ -2916,6 +2918,8 @@ grep -q -- 'Start Watch captures a fresh anchor fix, rechecks drift at `--anchor
 grep -q -- 'Start Watch captures a fresh anchor fix, rechecks drift at `--anchor-watch-seconds N`' docs/sailboat-pi.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' README.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
+grep -q 'ignores stale anchor-watch results after the watch is stopped or reset' README.md
+grep -q 'ignores stale anchor-watch results after the watch is stopped or reset' docs/sailboat-pi.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' README.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
@@ -2976,6 +2980,7 @@ grep -q 'test_status_gui_status_refresh_does_not_hide_readiness_failure_for_anch
 grep -q 'test_status_gui_mark_does_not_hide_active_anchor_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_does_not_hide_active_anchor_watch_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_error_does_not_hide_active_anchor_watch_alarm' tests/test_downloader.py
+grep -q 'test_status_gui_stale_anchor_watch_result_does_not_restart_stopped_watch' tests/test_downloader.py
 grep -q 'test_status_gui_disables_start_watch_while_anchor_watch_is_active' tests/test_downloader.py
 grep -q 'test_status_gui_stop_watch_requires_second_press' tests/test_downloader.py
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py
