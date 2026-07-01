@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable, Iterator, Optional, TextIO
 from urllib.parse import urlparse
 import hashlib
@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zipfile
 
 from .gps import (
     GPSFix,
@@ -1003,7 +1004,69 @@ def _check_manifest_archive(
         )
     if actual_sha256.lower() != expected_sha256:
         return CheckResult("Manifest", False, f"manifest SHA-256 does not match {archive_path}")
+    retained_archive_error = _validate_retained_enc_archive(archive_path)
+    if retained_archive_error:
+        return CheckResult("Manifest", False, retained_archive_error)
     return None
+
+
+def _validate_retained_enc_archive(path: Path) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        if path.is_symlink():
+            return f"retained chart archive is a symlink: {path}"
+        return f"could not open retained chart archive {path}: {exc}"
+    try:
+        stat_result = os.fstat(fd)
+        if not stat.S_ISREG(stat_result.st_mode):
+            return f"retained chart archive is not a regular file: {path}"
+        if stat_result.st_uid != os.getuid():
+            return f"retained chart archive {path} is owned by uid {stat_result.st_uid}, expected {os.getuid()}"
+        mode = stat_result.st_mode & 0o777
+        if mode & 0o022:
+            return f"retained chart archive {path} has permissions {mode:04o}, expected no group/other write bits"
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            try:
+                with zipfile.ZipFile(handle) as archive:
+                    for member in archive.infolist():
+                        if _zip_member_path_is_unsafe(member.filename):
+                            return f"retained chart archive has unsafe member path: {member.filename}"
+                    bad_member = archive.testzip()
+                    if bad_member is not None:
+                        return f"retained chart archive has a failed CRC member: {bad_member}"
+                    enc_cell_count = sum(
+                        1
+                        for member in archive.infolist()
+                        if not member.is_dir() and member.filename.lower().endswith(".000")
+                    )
+            except zipfile.BadZipFile:
+                return f"retained chart archive is not a valid ZIP: {path}"
+        if enc_cell_count <= 0:
+            return f"retained chart archive contains no ENC .000 cells: {path}"
+        return ""
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def _zip_member_path_is_unsafe(filename: str) -> bool:
+    if not filename or "\\" in filename:
+        return True
+    member_path = PurePosixPath(filename)
+    if member_path.is_absolute():
+        return True
+    stripped = filename.rstrip("/")
+    if not stripped:
+        return True
+    parts = stripped.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        return True
+    if ":" in parts[0]:
+        return True
+    return False
 
 
 def _sha256_trusted_file(path: Path, *, label: str, expected_uid: int) -> tuple[int, str]:

@@ -2295,8 +2295,8 @@ grep -q 'def _sha256_trusted_file' src/noaa_navionics/health.py
 grep -q 'actual_bytes, actual_sha256 = _sha256_trusted_file' src/noaa_navionics/health.py
 grep -q 'os.fdopen(fd, "rb")' src/noaa_navionics/health.py
 grep -q 'test_sha256_trusted_file_rejects_writable_archive_before_hashing' tests/test_downloader.py
-grep -q 'retained ZIP hashes are computed from the same no-follow descriptor' README.md
-grep -q 'retained ZIP hashes are computed from the same no-follow descriptor' docs/sailboat-pi.md
+grep -q 'retained ZIP hashes and archive checks are computed from no-follow descriptors that readiness verified' README.md
+grep -q 'retained ZIP hashes and archive checks are computed from no-follow descriptors that readiness verified' docs/sailboat-pi.md
 grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
@@ -2356,6 +2356,11 @@ grep -q 'chart ZIP has a failed CRC member' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_crc_failure_before_staging' tests/test_downloader.py
 grep -q '{label} is not a valid archive' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
+grep -q 'def _validate_retained_enc_archive' src/noaa_navionics/health.py
+grep -q 'retained chart archive contains no ENC .000 cells' src/noaa_navionics/health.py
+grep -q 'test_manifest_archive_rejects_retained_file_that_is_not_zip' tests/test_downloader.py
+grep -q 'test_manifest_archive_rejects_retained_zip_without_enc_cells' tests/test_downloader.py
+grep -q 'test_manifest_archive_rejects_retained_zip_with_unsafe_member' tests/test_downloader.py
 grep -q 'def _validate_downloaded_catalog' src/noaa_navionics/downloader.py
 grep -q 'downloaded catalog XML contains no NOAA ENC chart metadata' src/noaa_navionics/downloader.py
 grep -q 'test_catalog_download_rejects_malformed_xml_before_promotion' tests/test_downloader.py
@@ -2365,6 +2370,8 @@ grep -q 'test_cached_catalog_reuse_rejects_xml_without_enc_metadata' tests/test_
 grep -q 'test_cached_catalog_reuse_accepts_noaa_enc_metadata_without_network' tests/test_downloader.py
 grep -q 'pass CRC checks' README.md
 grep -q 'pass CRC checks' docs/sailboat-pi.md
+grep -q 'ZIP member paths, CRCs, and ENC cell presence' README.md
+grep -q 'ZIP member paths, CRCs, and ENC cell presence' docs/sailboat-pi.md
 grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' README.md
 grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' docs/sailboat-pi.md
 grep -q 'or uses a non-HTTPS redirect' src/noaa_navionics/downloader.py

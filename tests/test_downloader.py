@@ -7265,6 +7265,84 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("manifest download path", result.detail)
             self.assertIn("has permissions 0622", result.detail)
 
+    def test_manifest_archive_rejects_retained_file_that_is_not_zip(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            archive.write_bytes(b"not a zip")
+            digest = downloader_module.sha256_file(archive)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":{archive.stat().st_size},"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("retained chart archive is not a valid ZIP", result.detail)
+
+    def test_manifest_archive_rejects_retained_zip_without_enc_cells(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            with zipfile.ZipFile(archive, "w") as zip_handle:
+                zip_handle.writestr("README.txt", "not chart data")
+            digest = downloader_module.sha256_file(archive)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":{archive.stat().st_size},"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("retained chart archive contains no ENC .000 cells", result.detail)
+
+    def test_manifest_archive_rejects_retained_zip_with_unsafe_member(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            with zipfile.ZipFile(archive, "w") as zip_handle:
+                zip_handle.writestr("../evil.000", "bad")
+                zip_handle.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            digest = downloader_module.sha256_file(archive)
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":{archive.stat().st_size},"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+            self.assertFalse(result.ok)
+            self.assertIn("retained chart archive has unsafe member path", result.detail)
+
     def test_sha256_trusted_file_rejects_writable_archive_before_hashing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             archive = Path(tmpdir) / "AK_ENCs.zip"
