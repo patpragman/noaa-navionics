@@ -1278,6 +1278,16 @@ grep -q 'status-report --config "$config" --gps-seconds 10 --json' scripts/colle
 grep -q 'status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
 grep -q 'check_installed_noaa_command' scripts/collect_pi_support_bundle.sh
 grep -q 'collect_noaa_command_reports' scripts/collect_pi_support_bundle.sh
+grep -q 'run_noaa_command_report()' scripts/collect_pi_support_bundle.sh
+grep -q 'installed noaa-navionics command changed before descriptor execution' scripts/collect_pi_support_bundle.sh
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' scripts/collect_pi_support_bundle.sh
+grep -q 'could not execute installed noaa-navionics command through validated descriptor' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_noaa_command_report noaa-gps-device-candidates "$app_exec" list-gps-devices' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_noaa_command_report noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_noaa_command_report noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command noaa-gps-device-candidates "$app_exec" list-gps-devices' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics status-report' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics commissioned status-report' scripts/collect_pi_support_bundle.sh
@@ -1293,8 +1303,8 @@ grep -q 'host-identity' README.md
 grep -q 'host-identity' docs/sailboat-pi.md
 grep -q 'storage-listing and serial-listing commands' README.md
 grep -q 'storage-listing and serial-listing commands' docs/sailboat-pi.md
-grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' README.md
-grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery plus quick and commissioned read-only live status reports' docs/sailboat-pi.md
+grep -q 'validates the installed `noaa-navionics` private venv command and executes it through a validated no-follow descriptor before running GPS discovery plus quick and commissioned read-only live status reports' README.md
+grep -q 'validates the installed `noaa-navionics` private venv command and executes it through a validated no-follow descriptor before running GPS discovery plus quick and commissioned read-only live status reports' docs/sailboat-pi.md
 grep -q 'fresh read-only status-report JSON captures' README.md
 grep -q 'fresh read-only status-report JSON captures' docs/sailboat-pi.md
 grep -q 'validates the final local support bundle through a no-follow descriptor, requires a regular `README.txt` and at least one diagnostic file' README.md
@@ -7703,9 +7713,16 @@ grep -q 'noaa-status-report-json' "$support_fake_ssh_stdin"
 grep -q 'noaa-status-report-commissioned-json' "$support_fake_ssh_stdin"
 grep -q 'check_installed_noaa_command' "$support_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$support_fake_ssh_stdin"
-grep -q 'run_command noaa-gps-device-candidates "$app_exec" list-gps-devices' "$support_fake_ssh_stdin"
-grep -q 'run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' "$support_fake_ssh_stdin"
-grep -q 'run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' "$support_fake_ssh_stdin"
+grep -q 'run_noaa_command_report()' "$support_fake_ssh_stdin"
+grep -q 'installed noaa-navionics command changed before descriptor execution' "$support_fake_ssh_stdin"
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' "$support_fake_ssh_stdin"
+grep -q 'could not execute installed noaa-navionics command through validated descriptor' "$support_fake_ssh_stdin"
+grep -Fq 'run_noaa_command_report noaa-gps-device-candidates "$app_exec" list-gps-devices' "$support_fake_ssh_stdin"
+grep -Fq 'run_noaa_command_report noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' "$support_fake_ssh_stdin"
+grep -Fq 'run_noaa_command_report noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command noaa-gps-device-candidates "$app_exec" list-gps-devices' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' "$support_fake_ssh_stdin"
 grep -q 'skipped noaa-navionics list-gps-devices' "$support_fake_ssh_stdin"
 grep -q 'skipped noaa-navionics status-report' "$support_fake_ssh_stdin"
 grep -q 'skipped noaa-navionics commissioned status-report' "$support_fake_ssh_stdin"

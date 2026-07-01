@@ -1190,14 +1190,86 @@ check_installed_noaa_command() {
   printf '%s\n' "$resolved"
 }
 
+run_noaa_command_report() {
+  local name="$1"
+  shift
+  local app_exec="$1"
+  shift
+  local output="${commands_dir}/${name}.txt"
+  {
+    printf '$'
+    printf ' %q' "$app_exec" "$@"
+    printf '\n\n'
+    "$python3_cmd" - "$app_exec" "$@" <<'PY'
+from pathlib import Path
+import os
+import stat
+import subprocess
+import sys
+
+path = Path(sys.argv[1])
+args = sys.argv[2:]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    fail(f"could not inspect installed noaa-navionics command before descriptor execution: {path}: {exc}")
+if not stat.S_ISREG(before.st_mode):
+    fail(f"installed noaa-navionics command must be regular before descriptor execution: {path}")
+if before.st_uid != os.getuid():
+    fail(f"installed noaa-navionics command is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}")
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    fail(f"installed noaa-navionics command has permissions {mode:03o}, expected no group/other write bits: {path}")
+if not mode & 0o111:
+    fail(f"installed noaa-navionics command is not executable before descriptor execution: {path}")
+
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    fail(f"could not open installed noaa-navionics command through no-follow descriptor for execution: {path}: {exc}")
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        fail(f"installed noaa-navionics command changed before descriptor execution: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"installed noaa-navionics command must be regular when opened for descriptor execution: {path}")
+    if opened.st_uid != os.getuid():
+        fail(f"installed noaa-navionics command is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        fail(f"installed noaa-navionics command has permissions {opened_mode:03o}, expected no group/other write bits: {path}")
+    if not opened_mode & 0o111:
+        fail(f"installed noaa-navionics command is not executable when opened for descriptor execution: {path}")
+    try:
+        result = subprocess.run([f"/proc/self/fd/{fd}", *args], pass_fds=(fd,))
+    except OSError as exc:
+        fail(f"could not execute installed noaa-navionics command through validated descriptor: {path}: {exc}")
+finally:
+    os.close(fd)
+raise SystemExit(result.returncode)
+PY
+  } >"$output" 2>&1 || {
+    local status=$?
+    printf '\n(command exited %s)\n' "$status" >>"$output"
+  }
+}
+
 collect_noaa_command_reports() {
   local app_exec
   local config="${HOME}/.config/noaa-navionics/config.ini"
   local launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
   if app_exec="$(check_installed_noaa_command)"; then
-    run_command noaa-gps-device-candidates "$app_exec" list-gps-devices
-    run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json
-    run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json
+    run_noaa_command_report noaa-gps-device-candidates "$app_exec" list-gps-devices
+    run_noaa_command_report noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json
+    run_noaa_command_report noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json
   else
     write_note "skipped noaa-navionics list-gps-devices: ${app_exec}"
     write_note "skipped noaa-navionics status-report: ${app_exec}"
