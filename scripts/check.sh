@@ -976,6 +976,12 @@ grep -q 'os.path.samestat(initial, opened)' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$target"' scripts/install_raspberry_pi.sh
 grep -q 'Installer revalidates user directories after creating or tightening them before placing temporary files there' README.md
 grep -q 'Installer revalidates user directories after creating or tightening them before placing temporary files there' docs/sailboat-pi.md
+grep -q 'Failed installer user-file and command-link temporary-path cleanup is no-follow and same-file validated before unlinking' README.md
+grep -q 'Failed installer user-file and command-link temporary-path cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'cleanup_user_temp_path "$tmp" "installed user file temporary path" || true' scripts/install_raspberry_pi.sh
+grep -q 'cleanup_user_temp_path "$tmp" "installed command symlink temporary path" || true' scripts/install_raspberry_pi.sh
+grep -q 'f"{label} changed before cleanup; leaving it in place' scripts/install_raspberry_pi.sh
+! grep -q 'rm -f "$tmp"' scripts/install_raspberry_pi.sh
 grep -q 'reopens promoted helper launchers and user systemd unit files through no-follow descriptors' README.md
 grep -q 'reopens promoted helper launchers and user systemd unit files through no-follow descriptors' docs/sailboat-pi.md
 python3 - <<'PY'
@@ -3914,6 +3920,13 @@ grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailb
 grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning revalidates user directories after creating or tightening them before placing temporary files there' README.md
 grep -q 'Provisioning revalidates user directories after creating or tightening them before placing temporary files there' docs/sailboat-pi.md
+grep -q 'Failed provisioning temporary paths are cleaned through no-follow same-file validation' README.md
+grep -q 'Failed provisioning temporary paths are cleaned through no-follow same-file validation' docs/sailboat-pi.md
+grep -q 'cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true' scripts/provision_sailboat_pi.sh
+grep -q 'cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true' scripts/provision_sailboat_pi.sh
+grep -q 'f"{label} changed before cleanup; leaving it in place' scripts/provision_sailboat_pi.sh
+! grep -q 'rm -f "$tmp"' scripts/provision_sailboat_pi.sh
+! grep -q 'rm -f "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning requires the installed private `~/.local/bin/noaa-navionics` symlink to resolve into `~/.local/share/noaa-navionics/venv/bin/noaa-navionics`' README.md
 grep -q 'Provisioning requires the installed private `~/.local/bin/noaa-navionics` symlink to resolve into `~/.local/share/noaa-navionics/venv/bin/noaa-navionics`' docs/sailboat-pi.md
 grep -q 'Custom --config path does not match the unattended onboard config' scripts/provision_sailboat_pi.sh

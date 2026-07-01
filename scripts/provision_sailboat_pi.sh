@@ -1022,6 +1022,77 @@ ensure_private_directory() {
   sync_paths "$target"
 }
 
+cleanup_user_temp_path() {
+  local path="$1"
+  local label="$2"
+  [[ -n "$path" ]] || return 0
+  "$python3_cmd" - "$path" "$label" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+label = sys.argv[2]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"Could not open {label} directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    parent_stat = os.fstat(parent_fd)
+    parent_mode = stat.S_IMODE(parent_stat.st_mode)
+    if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != os.getuid() or parent_mode & 0o022:
+        print(f"{label} directory is not trusted for cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+
+    try:
+        before = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    if before.st_uid != os.getuid():
+        print(f"{label} is not owned by the current user; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    if stat.S_ISREG(before.st_mode):
+        if stat.S_IMODE(before.st_mode) & 0o022:
+            print(f"{label} is group/world-writable; leaving it in place: {path}", file=sys.stderr)
+            raise SystemExit(0)
+        try:
+            fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=parent_fd)
+        except FileNotFoundError:
+            raise SystemExit(0)
+        try:
+            opened = os.fstat(fd)
+        finally:
+            os.close(fd)
+        if not os.path.samestat(before, opened):
+            print(f"{label} changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+            raise SystemExit(0)
+    elif not stat.S_ISLNK(before.st_mode):
+        print(f"{label} is not a regular file or symlink; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+
+    try:
+        current = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    if not os.path.samestat(before, current):
+        print(f"{label} changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=parent_fd)
+    os.fsync(parent_fd)
+finally:
+    os.close(parent_fd)
+PY
+}
+
 install_file_atomic() {
   local source="$1"
   local target="$2"
@@ -1040,19 +1111,19 @@ install_file_atomic() {
   validate_user_directory_path "$target_dir" "provisioned user file directory"
   tmp="$(mktemp "${target_dir}/.${target_name}.XXXXXX")"
   if ! install -m "$mode" "$source" "$tmp"; then
-    rm -f "$tmp"
+    cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true
     return 1
   fi
   if ! sync_paths "$tmp"; then
-    rm -f "$tmp"
+    cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true
     return 1
   fi
   if ! validate_user_install_path "$target" "provisioned user file"; then
-    rm -f "$tmp"
+    cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true
     return 1
   fi
   if ! mv -f "$tmp" "$target"; then
-    rm -f "$tmp"
+    cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true
     return 1
   fi
   if ! verify_promoted_user_file "$source" "$target" "$mode"; then
@@ -1266,23 +1337,23 @@ write_launcher_env() {
     launcher_env_tmp="$(mktemp "${launcher_env_dir}/.launcher.env.XXXXXX")"
     if ! printf 'NOAA_NAVIONICS_GPS_SECONDS=%s\nNOAA_NAVIONICS_WARNING_SECONDS=%s\nNOAA_NAVIONICS_READINESS_ATTEMPTS=%s\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=%s\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=%s\nNOAA_NAVIONICS_OPENCPN_RESTARTS=%s\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=%s\n' \
       "$gps_seconds" "$warning_seconds" "$readiness_attempts" "$readiness_retry_delay" "$start_on_failed_readiness" "$opencpn_restarts" "$opencpn_restart_delay" >"$launcher_env_tmp"; then
-      rm -f "$launcher_env_tmp"
+      cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
     if ! chmod 0600 "$launcher_env_tmp"; then
-      rm -f "$launcher_env_tmp"
+      cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
     if ! sync_paths "$launcher_env_tmp"; then
-      rm -f "$launcher_env_tmp"
+      cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
     if ! validate_user_install_path "$launcher_env" "chartplotter launcher environment"; then
-      rm -f "$launcher_env_tmp"
+      cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
     if ! mv -f "$launcher_env_tmp" "$launcher_env"; then
-      rm -f "$launcher_env_tmp"
+      cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
     sync_paths "$launcher_env"
