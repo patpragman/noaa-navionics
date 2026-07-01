@@ -2088,8 +2088,13 @@ for optional_field in ("speed_knots", "course_degrees", "altitude_m"):
 track_log = report.get("track_log")
 if not isinstance(track_log, dict):
     raise SystemExit("status report has no track_log section")
-if track_log.get("track_output_is_symlink") is True:
-    raise SystemExit(f"status report track_log track_output is a symlink: {track_log.get('track_output', '<missing>')}")
+if track_log.get("track_output_is_symlink") is not False:
+    raise SystemExit(
+        "status report track_log track_output is a symlink or missing symlink status: "
+        f"{track_log.get('track_output', '<missing>')}"
+    )
+if "track_storage_symlink_component" not in track_log:
+    raise SystemExit("status report track_log missing track_storage_symlink_component")
 track_symlink_component = str(track_log.get("track_storage_symlink_component", "")).strip()
 if track_symlink_component:
     raise SystemExit(f"status report track_log storage path contains a symlink: {track_symlink_component}")

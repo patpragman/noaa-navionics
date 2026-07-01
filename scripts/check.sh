@@ -1734,6 +1734,10 @@ test "$(grep -c 'status report track_log age_seconds is negative' scripts/verify
 test "$(grep -c 'status report track_log age_seconds is stale' scripts/verify_pi.sh)" -ge 2
 grep -q 'def first_symlink_ancestor' scripts/verify_pi.sh
 grep -q 'track_storage_symlink_component' scripts/verify_pi.sh
+grep -q 'status report track_log track_output is a symlink or missing symlink status' scripts/verify_pi.sh
+grep -q 'status report track_log missing track_storage_symlink_component' scripts/verify_pi.sh
+grep -q 'required track-log symlink-status fields' README.md
+grep -q 'required track-log symlink-status fields' docs/sailboat-pi.md
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh
 grep -q 'expected real GPX track storage' scripts/verify_pi.sh
 grep -q 'expected a regular GPX track file' scripts/verify_pi.sh
