@@ -39,8 +39,8 @@ skip_autologin=0
 ssh_cmd=""
 git_cmd=""
 remote_python_cmd=""
-ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
-ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
+ssh_connect_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 validate_ssh_target() {
@@ -977,7 +977,7 @@ deploy_with_rsync() {
   remote_rsync_cmd_quoted="$(printf '%q' "$remote_rsync_cmd")"
 
   prepare_remote_deploy_staging "$remote_dir" "$remote_staging_dir" "$remote_previous_dir"
-  "$local_rsync_cmd" -az --delete -e "$ssh_cmd -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4" \
+  "$local_rsync_cmd" -az --delete -e "$ssh_cmd -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4" \
     --rsync-path="${remote_system_path} && export PATH && ${remote_rsync_cmd_quoted}" \
     --exclude '.git/' \
     --exclude '__pycache__/' \

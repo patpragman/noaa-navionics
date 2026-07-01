@@ -474,8 +474,8 @@ grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/deploy_to_pi.sh
 grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/deploy_to_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/deploy_to_pi.sh
 grep -q '"$ssh_cmd" "${ssh_batch_options\[@\]}" "$target"' scripts/deploy_to_pi.sh
-grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
-grep -q 'ssh_connect_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
+grep -q 'ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
+grep -q 'ssh_connect_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/deploy_to_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/deploy_to_pi.sh
 grep -q '${remote_system_path} && export PATH && command -v ${command_name}' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path()' scripts/deploy_to_pi.sh
@@ -503,14 +503,32 @@ grep -q -- '--rsync-path="${remote_system_path} && export PATH && ${remote_rsync
 grep -q '${remote_system_path} && export PATH && ${remote_tar_cmd_quoted} -xzf - -C' scripts/deploy_to_pi.sh
 ! grep -q -- '--rsync-path="${remote_system_path} rsync"' scripts/deploy_to_pi.sh
 ! grep -q '${remote_system_path} && export PATH && tar -xzf - -C' scripts/deploy_to_pi.sh
-grep -q '"$local_rsync_cmd" -az --delete -e "$ssh_cmd -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
+grep -q '"$local_rsync_cmd" -az --delete -e "$ssh_cmd -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4"' scripts/deploy_to_pi.sh
 grep -q '"$local_tar_cmd" \\' scripts/deploy_to_pi.sh
-grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
+grep -q 'ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/verify_pi.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/verify_pi.sh
 grep -q 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' scripts/verify_pi.sh
 grep -q 'export PATH' scripts/verify_pi.sh
-grep -q 'ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
-grep -q 'ssh_probe_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
+grep -q 'ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
+grep -q 'ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)' scripts/dock_test_pi.sh
+for ssh_strict_wrapper in \
+  scripts/check_pi_status.sh \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/deploy_to_pi.sh \
+  scripts/dock_test_pi.sh \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh \
+  scripts/refresh_pi_charts.sh \
+  scripts/shutdown_pi_safely.sh \
+  scripts/verify_pi.sh
+do
+  grep -q 'StrictHostKeyChecking=yes' "$ssh_strict_wrapper"
+done
+grep -q 'require pretrusted SSH host keys with `StrictHostKeyChecking=yes`' README.md
+grep -q 'require pretrusted SSH host keys with `StrictHostKeyChecking=yes`' docs/sailboat-pi.md
+grep -q 'unknown or changed host key is treated as a failure' README.md
+grep -q 'unknown or changed host key is treated as a failure' docs/sailboat-pi.md
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/dock_test_pi.sh
 grep -q 'local_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
