@@ -333,6 +333,9 @@ class StatusApp(tk.Tk):
         self.anchor_watch_seconds = anchor_watch_seconds
         self.anchor_watch_fix: Optional[GPSFix] = None
         self.anchor_watch_after_id: Optional[str] = None
+        self.anchor_watch_alarm_active = False
+        self.anchor_watch_alarm_summary: Optional[str] = None
+        self.anchor_watch_alarm_detail: Optional[str] = None
         if anchor_radius_meters is None:
             anchor_radius_meters = _configured_anchor_radius(self.config_path)
         self.anchor_radius = tk.StringVar(value=f"{anchor_radius_meters:g}")
@@ -460,6 +463,9 @@ class StatusApp(tk.Tk):
 
     def stop_anchor_watch(self) -> None:
         self.anchor_watch_fix = None
+        self.anchor_watch_alarm_active = False
+        self.anchor_watch_alarm_summary = None
+        self.anchor_watch_alarm_detail = None
         if self.anchor_watch_after_id is not None:
             self.after_cancel(self.anchor_watch_after_id)
             self.anchor_watch_after_id = None
@@ -564,6 +570,11 @@ class StatusApp(tk.Tk):
             self.last_report.set(f"Status report: {self.output_path}")
         else:
             self.last_report.set("Status report was not written to disk.")
+        if self.anchor_watch_alarm_active and self.anchor_watch_alarm_summary is not None:
+            self.headline.set("NOT READY")
+            self.summary.set(self.anchor_watch_alarm_summary)
+            if self.anchor_watch_alarm_detail is not None:
+                self.gps_summary.set(self.anchor_watch_alarm_detail)
         self._schedule_refresh()
 
     def _show_mark(self, path: Path, lines: list[str]) -> None:
@@ -586,8 +597,11 @@ class StatusApp(tk.Tk):
         self._schedule_refresh()
 
     def _show_anchor_watch_set(self, anchor_fix: GPSFix, radius_meters: float) -> None:
-        self._set_busy(False)
         self.anchor_watch_fix = anchor_fix
+        self.anchor_watch_alarm_active = False
+        self.anchor_watch_alarm_summary = None
+        self.anchor_watch_alarm_detail = None
+        self._set_busy(False)
         self.anchor_radius.set(f"{radius_meters:g}")
         self.headline.set("READY")
         details = f"Anchor watch set: {_format_anchor_fix_detail(anchor_fix)}"
@@ -602,10 +616,14 @@ class StatusApp(tk.Tk):
         summary = format_anchor_check(distance, radius_meters)
         alarm = anchor_alarm_active(distance, radius_meters)
         self.headline.set("NOT READY" if alarm else "READY")
-        self.summary.set(f"Anchor watch: {summary}")
+        watch_summary = f"Anchor watch: {summary}"
+        self.summary.set(watch_summary)
         details = f"Anchor {_format_anchor_fix_detail(anchor_fix)} | Current {_format_anchor_fix_detail(current_fix)}"
         self.gps_summary.set(details)
         self.last_report.set(details)
+        self.anchor_watch_alarm_active = alarm
+        self.anchor_watch_alarm_summary = watch_summary if alarm else None
+        self.anchor_watch_alarm_detail = details if alarm else None
         if alarm:
             self.bell()
         self._schedule_anchor_watch()

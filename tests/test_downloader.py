@@ -3040,6 +3040,116 @@ class GuiTests(unittest.TestCase):
             self.assertIs(returned_current, current_fix)
             self.assertGreater(distance, 500.0)
 
+    def test_status_gui_anchor_watch_set_updates_button_state_after_storing_anchor(self):
+        class FakeVar:
+            def __init__(self):
+                self.values = []
+
+            def set(self, value):
+                self.values.append(value)
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = None
+                self.anchor_watch_alarm_active = True
+                self.anchor_watch_alarm_summary = "old alarm"
+                self.anchor_watch_alarm_detail = "old detail"
+                self.anchor_radius = FakeVar()
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append((busy, self.anchor_watch_fix))
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+        app = FakeApp()
+        anchor_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        status_gui_module.StatusApp._show_anchor_watch_set(app, anchor_fix, 50.0)
+
+        self.assertEqual(app.anchor_watch_fix, anchor_fix)
+        self.assertEqual(app.busy_calls, [(False, anchor_fix)])
+        self.assertFalse(app.anchor_watch_alarm_active)
+        self.assertIsNone(app.anchor_watch_alarm_summary)
+        self.assertIsNone(app.anchor_watch_alarm_detail)
+        self.assertEqual(app.watch_scheduled, 1)
+        self.assertEqual(app.refresh_scheduled, 1)
+
+    def test_status_gui_status_refresh_preserves_active_anchor_alarm(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeTree:
+            def get_children(self):
+                return []
+
+            def delete(self, item):
+                raise AssertionError("no items should be deleted")
+
+            def insert(self, *args, **kwargs):
+                return None
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_alarm_active = True
+                self.anchor_watch_alarm_summary = "Anchor watch: ANCHOR ALARM: 75.0 m from anchor; radius 50 m"
+                self.anchor_watch_alarm_detail = "Anchor 61.000000, -149.000000 | Current 61.000000, -148.990000"
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.tree = FakeTree()
+                self.output_path = Path("/tmp/status.json")
+                self.busy_calls = []
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+        app = FakeApp()
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
+            "gps_fix": {
+                "source": "GPSD",
+                "ok": True,
+                "latitude": 61.0,
+                "longitude": -149.0,
+            },
+        }
+
+        status_gui_module.StatusApp._show_report(app, report)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
+        self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.refresh_scheduled, 1)
+
     def test_status_gui_anchor_check_rejects_stale_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
