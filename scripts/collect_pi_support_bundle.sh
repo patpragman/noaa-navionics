@@ -1047,7 +1047,7 @@ collect_system_command_integrity() {
   local output="${commands_dir}/system-command-integrity.txt"
 
   : >"$output"
-  for command_name in systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df; do
+  for command_name in systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df find ls; do
     {
       printf '[%s]\n' "$command_name"
       if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
@@ -1267,10 +1267,18 @@ PY
         copy_regular_if_readable "$value"
         ;;
       chart_output)
-        run_command configured-chart-storage-tree bash -lc 'find "$1" -maxdepth 2 -mindepth 1 -ls 2>&1 || true' _ "$value"
+        if [[ -n "${find_cmd:-}" ]]; then
+          run_command configured-chart-storage-tree bash -lc 'find_cmd="$1"; target="$2"; "$find_cmd" "$target" -maxdepth 2 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd" "$value"
+        else
+          skip_command configured-chart-storage-tree "skipped configured chart storage tree: trusted find command is unavailable"
+        fi
         ;;
       track_output)
-        run_command configured-track-storage-tree bash -lc 'find "$1" -maxdepth 2 -mindepth 1 \( -type d -o -name "*.gpx" \) -ls 2>&1 || true' _ "$value"
+        if [[ -n "${find_cmd:-}" ]]; then
+          run_command configured-track-storage-tree bash -lc 'find_cmd="$1"; target="$2"; "$find_cmd" "$target" -maxdepth 2 -mindepth 1 \( -type d -o -name "*.gpx" \) -ls 2>&1 || true' _ "$find_cmd" "$value"
+        else
+          skip_command configured-track-storage-tree "skipped configured track storage tree: trusted find command is unavailable"
+        fi
         ;;
     esac
   done <"$path_report"
@@ -1290,7 +1298,6 @@ copy_regular_if_readable /etc/default/gpsd
 copy_regular_if_readable /etc/chrony/chrony.conf
 copy_regular_if_readable /etc/chrony/conf.d/noaa-navionics-gpsd.conf
 copy_regular_if_readable /etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf
-collect_configured_storage_metadata
 
 collect_system_command_integrity
 systemctl_cmd="$(trusted_system_command_path systemctl 2>/dev/null || true)"
@@ -1301,6 +1308,10 @@ timedatectl_cmd="$(trusted_system_command_path timedatectl 2>/dev/null || true)"
 vcgencmd_cmd="$(trusted_system_command_path vcgencmd 2>/dev/null || true)"
 dpkg_query_cmd="$(trusted_system_command_path dpkg-query 2>/dev/null || true)"
 df_cmd="$(trusted_system_command_path df 2>/dev/null || true)"
+find_cmd="$(trusted_system_command_path find 2>/dev/null || true)"
+ls_cmd="$(trusted_system_command_path ls 2>/dev/null || true)"
+
+collect_configured_storage_metadata
 
 run_command date-utc date -u
 run_command uname uname -a
@@ -1321,11 +1332,21 @@ if [[ -n "$findmnt_cmd" ]]; then
 else
   skip_command mount-findmnt "skipped findmnt capture: trusted findmnt command is unavailable"
 fi
-run_command serial-devices bash -lc 'ls -l /dev/serial /dev/serial/by-id 2>&1 || true'
+if [[ -n "$ls_cmd" ]]; then
+  run_command serial-devices bash -lc 'ls_cmd="$1"; "$ls_cmd" -l /dev/serial /dev/serial/by-id 2>&1 || true' _ "$ls_cmd"
+else
+  skip_command serial-devices "skipped serial device listing: trusted ls command is unavailable"
+fi
 collect_noaa_command_reports
-run_command noaa-cache-tree bash -lc 'find "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
-run_command noaa-config-tree bash -lc 'find "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
-run_command noaa-data-tree bash -lc 'find "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true'
+if [[ -n "$find_cmd" ]]; then
+  run_command noaa-cache-tree bash -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
+  run_command noaa-config-tree bash -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
+  run_command noaa-data-tree bash -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
+else
+  skip_command noaa-cache-tree "skipped NOAA cache tree: trusted find command is unavailable"
+  skip_command noaa-config-tree "skipped NOAA config tree: trusted find command is unavailable"
+  skip_command noaa-data-tree "skipped NOAA data tree: trusted find command is unavailable"
+fi
 if [[ -n "$systemctl_cmd" ]]; then
   run_command user-units "$systemctl_cmd" --user --no-pager status noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
   run_command user-unit-properties "$systemctl_cmd" --user --no-pager show noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
