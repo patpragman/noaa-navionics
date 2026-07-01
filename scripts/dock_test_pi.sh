@@ -11,7 +11,7 @@ Options:
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
   --skip-gps-time     Pass through provisioning without configuring chrony GPS time
   --no-reboot         Do not reboot; run only pre-reboot verification
-  --timeout SECONDS   Time to wait for SSH after reboot
+  --timeout SECONDS   Time to wait for SSH after reboot (1-900; default: 180)
   --gps-seconds N     Seconds to wait for a GPS fix during provisioning
   --sync-retries N    Chart download attempts during provisioning
   --sync-retry-delay N
@@ -44,6 +44,7 @@ device=""
 skip_deploy=0
 no_reboot=0
 timeout=180
+max_reboot_timeout=900
 deploy_args=()
 provision_args=()
 verify_args=()
@@ -372,8 +373,13 @@ EOF
         echo "$1 requires a value" >&2
         exit 2
       fi
-      require_positive_integer "$1" "${2:-}"
-      timeout="$2"
+      timeout_value="${2:-}"
+      require_positive_integer "$1" "$timeout_value"
+      if (( ${#timeout_value} > ${#max_reboot_timeout} )) || { (( ${#timeout_value} == ${#max_reboot_timeout} )) && [[ "$timeout_value" > "$max_reboot_timeout" ]]; }; then
+        echo "--timeout must be between 1 and ${max_reboot_timeout} seconds" >&2
+        exit 2
+      fi
+      timeout="$timeout_value"
       shift 2
       ;;
     -h|--help)

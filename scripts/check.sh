@@ -5457,6 +5457,11 @@ grep -Fq 'run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args
 grep -q 'remote install and provisioning helper scripts run from no-follow descriptors' README.md
 grep -q 'remote install and provisioning helper scripts run from no-follow descriptors' docs/sailboat-pi.md
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
+grep -q 'max_reboot_timeout=900' scripts/dock_test_pi.sh
+grep -q 'dock test bounds reboot SSH wait time to 1-900 seconds' README.md
+grep -q 'dock test bounds reboot SSH wait time to 1-900 seconds' docs/sailboat-pi.md
+grep -q 'bounds the reboot SSH wait timeout to 1-900 seconds' README.md
+grep -q 'bounds the reboot SSH wait timeout to 1-900 seconds' docs/sailboat-pi.md
 grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh
@@ -6806,6 +6811,29 @@ if [[ "$dock_code" -ne 2 ]]; then
   echo "expected dock_test_pi.sh to reject invalid --timeout with exit 2" >&2
   exit 1
 fi
+grep -q -- '--timeout must be a positive integer' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout 901 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject oversized --timeout with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--timeout must be between 1 and 900 seconds' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout 999999999999999999999999999999 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject huge --timeout with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--timeout must be between 1 and 900 seconds' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy >"$dock_output" 2>&1
@@ -7070,6 +7098,7 @@ if [[ "$dock_code" -ne 2 ]]; then
   echo "expected dock_test_pi.sh no-reboot smoke test to still reject invalid --timeout with exit 2" >&2
   exit 1
 fi
+grep -q -- '--timeout must be a positive integer' "$dock_output"
 
 set +e
 scripts/verify_pi.sh --gps-seconds nope pi@example.invalid >"$verify_output" 2>&1
