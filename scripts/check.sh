@@ -706,6 +706,10 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manifest summary' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/pre_trip_prepare_pi.sh
@@ -739,8 +743,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -1616,6 +1620,10 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manifest summary' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/verify_pi_recovery_exports.sh
@@ -1868,6 +1876,10 @@ grep -q 'status snapshot JSON {expected_name} HDOP does not match gps_fix' scrip
 grep -q 'status snapshot JSON config chart_output is not absolute' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing config track_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON config track_output is not absolute' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Manifest row has no top-level manifest summary' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Manifest path does not match manifest summary' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Manifest created_at_source is not verified' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Manifest actual ENC cell count does not match manifest summary' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing track_storage_symlink_component' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing latest_path' scripts/post_trip_collect_pi.sh
@@ -7231,15 +7243,58 @@ gps_fix_data = {
     "satellites": 8,
     "hdop": 0.9,
 }
+manifest_summary = {
+    "path": "/charts/noaa-navionics-manifest.json",
+    "created_at": generated_at,
+    "created_at_source": "download",
+    "package": "Alaska",
+    "package_filename": "AK_ENCs.zip",
+    "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+    "download_path": "/charts/AK_ENCs.zip",
+    "download_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+    "download_bytes": 123,
+    "sha256": "abc123",
+    "extract_path": "/charts/AK_ENCs",
+    "enc_cell_count": 1,
+    "actual_enc_cell_count": 1,
+}
+manifest_row_data = {
+    "configured_path": "/charts",
+    "path": manifest_summary["path"],
+    "created_at": manifest_summary["created_at"],
+    "created_at_source": manifest_summary["created_at_source"],
+    "max_age_days": 30,
+    "age_days": 0.0,
+    "package": manifest_summary["package"],
+    "package_filename": manifest_summary["package_filename"],
+    "package_url": manifest_summary["url"],
+    "expected_filename": manifest_summary["package_filename"],
+    "expected_url": manifest_summary["url"],
+    "download_path": manifest_summary["download_path"],
+    "download_url": manifest_summary["download_url"],
+    "download_bytes": manifest_summary["download_bytes"],
+    "sha256": manifest_summary["sha256"],
+    "extract_path": manifest_summary["extract_path"],
+    "enc_cell_count": manifest_summary["enc_cell_count"],
+    "actual_enc_cell_count": manifest_summary["actual_enc_cell_count"],
+}
 for row in checks:
     if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_UNSTRUCTURED_STATUS") != "1":
         row["data"] = dict(gps_fix_data)
+    if row["name"] == "Manifest":
+        row["data"] = dict(manifest_row_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
     "app": {"source_revision": source_revision},
-    "config": {"gps_mode": "gpsd", "chart_output": "/charts", "track_output": "/charts"},
+    "config": {
+        "gps_mode": "gpsd",
+        "chart_output": "/charts",
+        "track_output": "/charts",
+        "max_chart_age_days": 30,
+    },
+    "manifest": manifest_summary,
     "gps_fix": {
         "ok": True,
         "detail": "ok",
@@ -7841,15 +7896,58 @@ gps_fix_data = {
     "satellites": 8,
     "hdop": 0.9,
 }
+manifest_summary = {
+    "path": "/charts/noaa-navionics-manifest.json",
+    "created_at": generated_at,
+    "created_at_source": "download",
+    "package": "Alaska",
+    "package_filename": "AK_ENCs.zip",
+    "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+    "download_path": "/charts/AK_ENCs.zip",
+    "download_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+    "download_bytes": 123,
+    "sha256": "abc123",
+    "extract_path": "/charts/AK_ENCs",
+    "enc_cell_count": 1,
+    "actual_enc_cell_count": 1,
+}
+manifest_row_data = {
+    "configured_path": "/charts",
+    "path": manifest_summary["path"],
+    "created_at": manifest_summary["created_at"],
+    "created_at_source": manifest_summary["created_at_source"],
+    "max_age_days": 30,
+    "age_days": 0.0,
+    "package": manifest_summary["package"],
+    "package_filename": manifest_summary["package_filename"],
+    "package_url": manifest_summary["url"],
+    "expected_filename": manifest_summary["package_filename"],
+    "expected_url": manifest_summary["url"],
+    "download_path": manifest_summary["download_path"],
+    "download_url": manifest_summary["download_url"],
+    "download_bytes": manifest_summary["download_bytes"],
+    "sha256": manifest_summary["sha256"],
+    "extract_path": manifest_summary["extract_path"],
+    "enc_cell_count": manifest_summary["enc_cell_count"],
+    "actual_enc_cell_count": manifest_summary["actual_enc_cell_count"],
+}
 for row in checks:
     if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") != "1":
         row["data"] = dict(gps_fix_data)
+    if row["name"] == "Manifest":
+        row["data"] = dict(manifest_row_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
     "app": {"source_revision": source_revision},
-    "config": {"gps_mode": "gpsd", "chart_output": "/charts", "track_output": "/charts"},
+    "config": {
+        "gps_mode": "gpsd",
+        "chart_output": "/charts",
+        "track_output": "/charts",
+        "max_chart_age_days": 30,
+    },
+    "manifest": manifest_summary,
     "gps_fix": {
         "ok": True,
         "detail": "ok",
@@ -10850,6 +10948,44 @@ def write_pre_departure_status(directory):
                 "satellites": 8,
                 "hdop": 0.9,
             }
+    manifest_summary = {
+        "path": "/charts/noaa-navionics-manifest.json",
+        "created_at": generated_at,
+        "created_at_source": "download",
+        "package": "Alaska",
+        "package_filename": "AK_ENCs.zip",
+        "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+        "download_path": "/charts/AK_ENCs.zip",
+        "download_url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+        "download_bytes": 123,
+        "sha256": "abc123",
+        "extract_path": "/charts/AK_ENCs",
+        "enc_cell_count": 1,
+        "actual_enc_cell_count": 1,
+    }
+    manifest_row_data = {
+        "configured_path": "/charts",
+        "path": manifest_summary["path"],
+        "created_at": manifest_summary["created_at"],
+        "created_at_source": manifest_summary["created_at_source"],
+        "max_age_days": 30,
+        "age_days": 0.0,
+        "package": manifest_summary["package"],
+        "package_filename": manifest_summary["package_filename"],
+        "package_url": manifest_summary["url"],
+        "expected_filename": manifest_summary["package_filename"],
+        "expected_url": manifest_summary["url"],
+        "download_path": manifest_summary["download_path"],
+        "download_url": manifest_summary["download_url"],
+        "download_bytes": manifest_summary["download_bytes"],
+        "sha256": manifest_summary["sha256"],
+        "extract_path": manifest_summary["extract_path"],
+        "enc_cell_count": manifest_summary["enc_cell_count"],
+        "actual_enc_cell_count": manifest_summary["actual_enc_cell_count"],
+    }
+    for row in checks:
+        if row["name"] == "Manifest":
+            row["data"] = dict(manifest_row_data)
     service_checks = [
         {"name": name, "ok": True, "detail": "ok"}
         for name in sorted(CORE_SERVICE_CHECKS + GPSD_SERVICE_CHECKS)
@@ -10865,7 +11001,9 @@ def write_pre_departure_status(directory):
                     "gps_mode": "gpsd",
                     "chart_output": "/charts",
                     "track_output": "/charts",
+                    "max_chart_age_days": 30,
                 },
+                "manifest": manifest_summary,
                 "gps_fix": {
                     "ok": True,
                     "detail": "ok",

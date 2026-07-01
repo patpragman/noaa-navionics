@@ -601,6 +601,12 @@ def finite_status_float(value: object):
     return parsed if math.isfinite(parsed) else None
 
 
+def positive_status_int(value: object):
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
 def parse_snapshot_timestamp(value: object, field: str, path: Path) -> datetime:
     if not isinstance(value, str) or not value.strip():
         fail(f"status snapshot JSON {field} timestamp is missing: {path}")
@@ -762,6 +768,75 @@ def validate_snapshot_gps_row(
             fail(f"status snapshot JSON {expected_name} HDOP does not match gps_fix: {path}")
 
 
+def validate_snapshot_manifest_row(
+    check_rows: dict[str, dict[str, object]],
+    *,
+    config: dict[str, object],
+    manifest: object,
+    path: Path,
+) -> None:
+    row = check_rows.get("Manifest")
+    if not isinstance(row, dict):
+        fail(f"status snapshot JSON missing Manifest readiness row: {path}")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        fail(f"status snapshot JSON Manifest row has no structured data: {path}")
+    if not isinstance(manifest, dict):
+        fail(f"status snapshot JSON Manifest row has no top-level manifest summary: {path}")
+    chart_output = str(config.get("chart_output", "")).strip()
+    configured_path = str(data.get("configured_path", "")).strip()
+    if configured_path != chart_output:
+        fail(f"status snapshot JSON Manifest configured path does not match config chart_output: {path}")
+    manifest_path = str(data.get("path", "")).strip()
+    if not Path(manifest_path).is_absolute():
+        fail(f"status snapshot JSON Manifest path is not absolute: {path}")
+    if manifest_path != str(Path(chart_output) / "noaa-navionics-manifest.json"):
+        fail(f"status snapshot JSON Manifest path does not match config chart_output: {path}")
+    if manifest_path != str(manifest.get("path", "")).strip():
+        fail(f"status snapshot JSON Manifest path does not match manifest summary: {path}")
+    for row_field, summary_field in (
+        ("created_at", "created_at"),
+        ("created_at_source", "created_at_source"),
+        ("package", "package"),
+        ("package_filename", "package_filename"),
+        ("package_url", "url"),
+        ("download_path", "download_path"),
+        ("download_url", "download_url"),
+        ("sha256", "sha256"),
+        ("extract_path", "extract_path"),
+    ):
+        if str(data.get(row_field, "")).strip() != str(manifest.get(summary_field, "")).strip():
+            fail(f"status snapshot JSON Manifest {row_field} does not match manifest summary: {path}")
+    created_at_source = str(data.get("created_at_source", "")).strip()
+    if created_at_source not in {"download", "previous-manifest"}:
+        fail(f"status snapshot JSON Manifest created_at_source is not verified: {path}")
+    parse_snapshot_timestamp(data.get("created_at"), "Manifest created_at", path)
+    download_bytes = positive_status_int(data.get("download_bytes"))
+    summary_download_bytes = positive_status_int(manifest.get("download_bytes"))
+    if download_bytes is None:
+        fail(f"status snapshot JSON Manifest download byte count is not positive: {path}")
+    if summary_download_bytes is not None and download_bytes != summary_download_bytes:
+        fail(f"status snapshot JSON Manifest download byte count does not match manifest summary: {path}")
+    enc_cell_count = positive_status_int(data.get("enc_cell_count"))
+    actual_enc_cell_count = positive_status_int(data.get("actual_enc_cell_count"))
+    summary_enc_cell_count = positive_status_int(manifest.get("enc_cell_count"))
+    summary_actual_enc_cell_count = positive_status_int(manifest.get("actual_enc_cell_count"))
+    if enc_cell_count is None:
+        fail(f"status snapshot JSON Manifest has no ENC cells: {path}")
+    if actual_enc_cell_count is None:
+        fail(f"status snapshot JSON Manifest actual ENC cell count is not positive: {path}")
+    if enc_cell_count is not None and actual_enc_cell_count is not None and enc_cell_count != actual_enc_cell_count:
+        fail(f"status snapshot JSON Manifest actual ENC cell count does not match recorded count: {path}")
+    if enc_cell_count is not None and summary_enc_cell_count is not None and enc_cell_count != summary_enc_cell_count:
+        fail(f"status snapshot JSON Manifest ENC cell count does not match manifest summary: {path}")
+    if (
+        actual_enc_cell_count is not None
+        and summary_actual_enc_cell_count is not None
+        and actual_enc_cell_count != summary_actual_enc_cell_count
+    ):
+        fail(f"status snapshot JSON Manifest actual ENC cell count does not match manifest summary: {path}")
+
+
 def validate_successful_status_snapshot(
     payload: dict[str, object],
     path: Path,
@@ -876,6 +951,7 @@ def validate_successful_status_snapshot(
     )
     if missing_structured_data:
         fail(f"status snapshot JSON missing structured readiness data for: {', '.join(missing_structured_data)}: {path}")
+    validate_snapshot_manifest_row(check_rows, config=config, manifest=payload.get("manifest"), path=path)
     validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix, path=path)
     non_pi_skips = sorted(
         name
