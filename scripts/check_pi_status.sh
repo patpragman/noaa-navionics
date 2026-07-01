@@ -223,6 +223,7 @@ export PATH
 
 command_path="${HOME}/.local/bin/noaa-navionics"
 expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
+config_path="${HOME}/.config/noaa-navionics/config.ini"
 
 fail() {
   printf 'error: %s\n' "$*" >&2
@@ -243,6 +244,38 @@ check_user_owned_nonwritable_directory() {
   fi
   if [[ ! -d "$path" ]]; then
     fail "$label is missing or not a directory: $path"
+  fi
+  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
+    fail "could not inspect $label: $path"
+  fi
+  current_uid="$(id -u)"
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    fail "$label is owned by uid $owner_uid, expected $current_uid: $path"
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      fail "$label has permissions $mode, expected no group/other write: $path"
+      ;;
+  esac
+}
+
+check_user_owned_private_file() {
+  local label="$1"
+  local path="$2"
+  local current_uid
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if [[ -L "$path" ]]; then
+    fail "$label must not be a symlink: $path"
+  fi
+  if [[ ! -f "$path" ]]; then
+    fail "$label is missing or not a regular file: $path"
   fi
   if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
     fail "could not inspect $label: $path"
@@ -314,10 +347,11 @@ check_installed_noaa_command() {
 }
 
 app_exec="$(check_installed_noaa_command)"
+check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"
 
 status_args=(
   status-report
-  --config "${HOME}/.config/noaa-navionics/config.ini"
+  --config "$config_path"
   --gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"
 )
 if [[ "$NOAA_NAVIONICS_STATUS_JSON" == "1" ]]; then

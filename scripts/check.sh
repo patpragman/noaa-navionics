@@ -606,8 +606,8 @@ grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' READM
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
-grep -q "status helper validates the Pi's installed private venv command path and runs that resolved executable" README.md
-grep -q "status helper validates the Pi's installed private venv command path and runs that resolved executable" docs/sailboat-pi.md
+grep -q "status helper validates the Pi's installed private venv command path and onboard config file" README.md
+grep -q "status helper validates the Pi's installed private venv command path and onboard config file" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/check_pi_status.sh
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
@@ -1438,7 +1438,9 @@ done
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
-grep -q -- '--config "${HOME}/.config/noaa-navionics/config.ini"' scripts/check_pi_status.sh
+grep -q 'config_path="${HOME}/.config/noaa-navionics/config.ini"' scripts/check_pi_status.sh
+grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' scripts/check_pi_status.sh
+grep -q -- '--config "$config_path"' scripts/check_pi_status.sh
 grep -q 'expected private venv symlink' scripts/check_pi_status.sh
 grep -q 'check_installed_command_tree' scripts/check_pi_status.sh
 grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/check_pi_status.sh
@@ -6195,6 +6197,7 @@ grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-na
 grep -q 'check_installed_command_tree' "$status_fake_ssh_stdin"
 grep -q 'installed noaa-navionics command target has permissions' "$status_fake_ssh_stdin"
 grep -q 'app_exec="$(check_installed_noaa_command)"' "$status_fake_ssh_stdin"
+grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' "$status_fake_ssh_stdin"
 grep -q 'status-report' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
 grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"

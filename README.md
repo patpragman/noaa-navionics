@@ -180,7 +180,7 @@ Run a lightweight read-only status snapshot on an already commissioned Pi:
 scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10
 ```
 
-The status helper validates the Pi's installed private venv command path and runs that resolved executable over batch-mode SSH to print the text report, or JSON with `--json`. Its GPSD readiness check retries initial connection refusals inside the configured GPS wait. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
+The status helper validates the Pi's installed private venv command path and onboard config file, then runs that resolved executable over batch-mode SSH to print the text report, or JSON with `--json`. Its GPSD readiness check retries initial connection refusals inside the configured GPS wait. It does not deploy, reboot, download charts, or write the Pi status artifact; use it for a quick maintenance or underway health check, not as a replacement for dock acceptance.
 Status JSON includes a top-level `gps_fix` object plus matching structured `data` on the GPS/GPSD readiness row, so support bundles and verification can inspect live fix time, signed age, position, satellite/HDOP quality, speed, course, and altitude without parsing prose.
 
 Refresh the Pi's NOAA charts while you still have dock Wi-Fi:
