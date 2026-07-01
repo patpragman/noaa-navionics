@@ -449,7 +449,88 @@ install_user_file_atomic() {
     rm -f "$tmp"
     return 1
   fi
+  if ! verify_promoted_user_file "$source" "$target" "$mode" "installed user file"; then
+    return 1
+  fi
   sync_paths "$target"
+}
+
+verify_promoted_user_file() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local label="$4"
+  validate_user_install_path "$target" "$label" regular
+  "$python3_cmd" - "$source" "$target" "$mode" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+source = Path(sys.argv[1]).expanduser()
+target = Path(sys.argv[2]).expanduser()
+expected_mode = int(sys.argv[3], 8)
+label = sys.argv[4]
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+
+def read_regular_nofollow(
+    path: Path,
+    description: str,
+    *,
+    expected_uid_value=None,
+    expected_mode_value=None,
+) -> bytes:
+    try:
+        initial = path.lstat()
+    except OSError as exc:
+        raise SystemExit(f"{description} is not accessible: {path}: {exc}") from exc
+    if stat.S_ISLNK(initial.st_mode):
+        raise SystemExit(f"{description} is a symlink: {path}")
+    if not stat.S_ISREG(initial.st_mode):
+        raise SystemExit(f"{description} is not a regular file: {path}")
+    if expected_uid_value is not None and initial.st_uid != expected_uid_value:
+        raise SystemExit(
+            f"{description} {path} is owned by uid {initial.st_uid}, expected {expected_uid_value}"
+        )
+    actual_mode = initial.st_mode & 0o777
+    if expected_mode_value is not None and actual_mode != expected_mode_value:
+        raise SystemExit(
+            f"{description} {path} has permissions {actual_mode:04o}, expected {expected_mode_value:04o}"
+        )
+
+    try:
+        fd = os.open(path, os.O_RDONLY | nofollow)
+    except OSError as exc:
+        raise SystemExit(f"{description} could not be opened safely: {path}: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(initial, opened):
+            raise SystemExit(f"{description} changed while being opened: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"{description} is not a regular file after open: {path}")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(fd)
+
+
+source_bytes = read_regular_nofollow(source, f"{label} source")
+target_bytes = read_regular_nofollow(
+    target,
+    f"{label} target",
+    expected_uid_value=expected_uid,
+    expected_mode_value=expected_mode,
+)
+if target_bytes != source_bytes:
+    raise SystemExit(f"{label} target content does not match source: {target}")
+PY
 }
 
 link_user_atomic() {
