@@ -256,6 +256,14 @@ prepare_private_output_dir() {
   fi
 }
 
+strip_trailing_slashes() {
+  local value="$1"
+  while [[ "$value" != "/" && "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s' "$value"
+}
+
 verify_private_output_file() {
   local label="$1"
   local path="$2"
@@ -491,6 +499,7 @@ done
 
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
+output_dir="$(strip_trailing_slashes "$output_dir")"
 if [[ "$skip_status" -eq 1 && "$skip_tracks" -eq 1 && "$skip_support" -eq 1 && -z "$shutdown_mode" ]]; then
   echo "At least one post-trip collection or shutdown step must run" >&2
   exit 2

@@ -488,8 +488,8 @@ grep -q 'pre-trip wrapper validates each local helper script as a current-user-o
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' docs/sailboat-pi.md
-grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
-grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
+grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
+grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
@@ -548,8 +548,8 @@ grep -q 'post-trip helper validates each local helper script as a current-user-o
 grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' docs/sailboat-pi.md
-grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`' README.md
-grep -q 'rejects broad/system local output directories or symlinked local output path components, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
+grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -5274,7 +5274,7 @@ fi
 grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
   "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
-  pi@example.invalid "$post_trip_output_dir" \
+  pi@example.invalid "$post_trip_output_dir/" \
   --track-days 9 \
   --gps-seconds 15 \
   --shutdown-dry-run >"$verify_output" 2>&1
@@ -5289,6 +5289,7 @@ test "$(stat -c '%u' "$post_trip_dir")" = "$(id -u)"
 test "$(stat -c '%u' "$post_trip_dir/status.json")" = "$(id -u)"
 grep -q '"ok": true' "$post_trip_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
+! grep -q '//' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_log"
 grep -Eq '^shutdown\|pi@example.invalid --dry-run$' "$post_trip_log"
