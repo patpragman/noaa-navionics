@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .config import DEFAULT_CONFIG_PATH, read_config
-from .gps import GPSFix, distance_meters, gpx_position_mark_path, write_gpx_position_mark
+from .gps import GPSFix, distance_meters, gpx_position_mark_path, mean_longitude_degrees, write_gpx_position_mark
 from .gui import format_gps_fix, read_configured_gps_fix, read_configured_gps_fixes
 from .report import build_status_report, write_status_report
 
@@ -262,7 +262,7 @@ def _average_anchor_fix(fixes: list[GPSFix]) -> GPSFix:
     return GPSFix(
         timestamp=fixes[-1].timestamp,
         latitude=sum(latitudes) / len(latitudes),
-        longitude=sum(longitudes) / len(longitudes),
+        longitude=mean_longitude_degrees(longitudes),
         satellites=min(satellites) if satellites else None,
         hdop=max(hdops) if hdops else None,
     )

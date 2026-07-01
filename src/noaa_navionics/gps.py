@@ -380,6 +380,23 @@ def distance_meters(
     return 2.0 * EARTH_RADIUS_METERS * math.asin(min(1.0, math.sqrt(haversine)))
 
 
+def mean_longitude_degrees(longitudes: Iterable[object]) -> float:
+    values: list[float] = []
+    for longitude in longitudes:
+        parsed = _finite_float_or_none(longitude)
+        if parsed is None or not _coordinate_in_range(parsed, latitude=False):
+            raise ValueError("longitudes must be finite values in range")
+        values.append(parsed)
+    if not values:
+        raise ValueError("at least one longitude is required")
+    sin_sum = sum(math.sin(math.radians(value)) for value in values)
+    cos_sum = sum(math.cos(math.radians(value)) for value in values)
+    if abs(sin_sum) < 1e-12 and abs(cos_sum) < 1e-12:
+        return sum(values) / len(values)
+    mean = math.degrees(math.atan2(sin_sum, cos_sum))
+    return ((mean + 180.0) % 360.0) - 180.0
+
+
 def gps_fix_has_quality_fields(fix: GPSFix) -> bool:
     return fix.satellites is not None or fix.hdop is not None
 

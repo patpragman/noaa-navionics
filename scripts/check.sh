@@ -2550,12 +2550,17 @@ grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_run_without_post_anchor_fix' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_averages_anchor_samples_across_date_line' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests/test_downloader.py
 grep -q 'need at least one drift check' src/noaa_navionics/cli.py
 grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' README.md
 grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' docs/sailboat-pi.md
+grep -q 'longitude averaging is date-line-safe' README.md
+grep -q 'longitude averaging is date-line-safe' docs/sailboat-pi.md
+grep -q 'def mean_longitude_degrees' src/noaa_navionics/gps.py
+grep -q 'mean_longitude_degrees(anchor_sample_longitudes)' src/noaa_navionics/cli.py
 grep -q 'test_distance_meters_uses_haversine_distance' tests/test_downloader.py
 grep -q 'mark-position", "--seconds", "0"' tests/test_downloader.py
 grep -q 'anchor-watch", "--anchor-samples", "0"' tests/test_downloader.py
@@ -3001,8 +3006,11 @@ grep -q 'ignores stale anchor-watch results and errors after the watch is stoppe
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' docs/sailboat-pi.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes and broken, fake, or non-device stable serial paths' README.md
 grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes and broken, fake, or non-device stable serial paths' docs/sailboat-pi.md
-grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' README.md
-grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional averaged anchor sample count' docs/sailboat-pi.md
+grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' README.md
+grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' docs/sailboat-pi.md
+grep -q 'mean_longitude_degrees(longitudes)' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_anchor_watch_averages_longitude_across_date_line' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_averages_longitude_across_date_line' tests/test_downloader.py
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' README.md
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' docs/sailboat-pi.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' README.md

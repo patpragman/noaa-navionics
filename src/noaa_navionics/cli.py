@@ -42,6 +42,7 @@ from .gps import (
     gps_fix_quality_failure,
     iter_fixes,
     iter_gpsd_fixes,
+    mean_longitude_degrees,
     open_nmea_stream,
     read_nmea_lines,
     write_gpx_position_mark,
@@ -1185,7 +1186,7 @@ def _run_anchor_watch(
                 print(f"Anchor sample {len(anchor_sample_latitudes)}/{anchor_samples}: {_format_fix(fix)}")
                 continue
             anchor_latitude = sum(anchor_sample_latitudes) / anchor_samples
-            anchor_longitude = sum(anchor_sample_longitudes) / anchor_samples
+            anchor_longitude = mean_longitude_degrees(anchor_sample_longitudes)
             anchor_established = True
             if anchor_samples == 1:
                 print(f"Anchor set: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
