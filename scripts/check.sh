@@ -706,6 +706,8 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log track_output does not match config track_output' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log tracks_dir does not match config track_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s)' scripts/pre_trip_prepare_pi.sh
@@ -1611,6 +1613,8 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON track_log track_output does not match config track_output' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON track_log tracks_dir does not match config track_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON has failed readiness check(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/verify_pi_recovery_exports.sh
@@ -1858,6 +1862,8 @@ grep -q 'status snapshot JSON {expected_name} HDOP does not match gps_fix' scrip
 grep -q 'status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing track_storage_symlink_component' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing latest_path' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON track_log track_output does not match config track_output' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON track_log tracks_dir does not match config track_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing structured readiness data for' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON records non-Pi diagnostic skip(s)' scripts/post_trip_collect_pi.sh
@@ -7240,6 +7246,7 @@ payload = {
         "ok": True,
         "detail": "ok",
         "track_output": "/charts",
+        "tracks_dir": "/charts/tracks",
         "track_output_is_symlink": False,
         "track_storage_symlink_component": "",
         "latest_path": "/charts/tracks/track-20260701.gpx",
@@ -7849,6 +7856,7 @@ payload = {
         "ok": True,
         "detail": "ok",
         "track_output": "/charts",
+        "tracks_dir": "/charts/tracks",
         "track_output_is_symlink": False,
         "track_storage_symlink_component": "",
         "latest_path": "/charts/tracks/track-20260701.gpx",
@@ -10864,6 +10872,7 @@ def write_pre_departure_status(directory):
                     "ok": True,
                     "detail": "ok",
                     "track_output": "/charts",
+                    "tracks_dir": "/charts/tracks",
                     "track_output_is_symlink": False,
                     "track_storage_symlink_component": "",
                     "latest_path": "/charts/tracks/track-20260701.gpx",

@@ -808,6 +808,7 @@ def validate_successful_status_snapshot(
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail(f"status snapshot JSON missing config chart_output: {path}")
+    configured_track_output = str(config.get("track_output", "")).strip() or chart_output
     gps_fix = payload.get("gps_fix")
     if not isinstance(gps_fix, dict):
         fail(f"status snapshot JSON missing gps_fix section: {path}")
@@ -835,6 +836,12 @@ def validate_successful_status_snapshot(
     track_output = str(track_log.get("track_output", "")).strip()
     if not track_output:
         fail(f"status snapshot JSON missing track_log track_output: {path}")
+    if track_output != configured_track_output:
+        fail(f"status snapshot JSON track_log track_output does not match config track_output: {path}")
+    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    expected_tracks_dir = str(Path(configured_track_output) / "tracks")
+    if tracks_dir != expected_tracks_dir:
+        fail(f"status snapshot JSON track_log tracks_dir does not match config track_output: {path}")
 
     required_checks = set(CORE_READINESS_CHECKS)
     required_service_checks = set(CORE_SERVICE_CHECKS)

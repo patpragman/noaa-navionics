@@ -12528,6 +12528,8 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix",
                 "pre-departure status snapshot JSON track_log missing latest_path",
                 "pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status",
+                "pre-departure status snapshot JSON track_log track_output does not match config track_output",
+                "pre-departure status snapshot JSON track_log tracks_dir does not match config track_output",
                 "pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age",
             ),
             "scripts/verify_pi_recovery_exports.sh": (
@@ -12539,6 +12541,8 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix",
                 "pre-departure status snapshot JSON track_log missing latest_path",
                 "pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status",
+                "pre-departure status snapshot JSON track_log track_output does not match config track_output",
+                "pre-departure status snapshot JSON track_log tracks_dir does not match config track_output",
                 "pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age",
             ),
             "scripts/post_trip_collect_pi.sh": (
@@ -12550,6 +12554,8 @@ class StatusReportTests(unittest.TestCase):
                 "status snapshot JSON {expected_name} HDOP does not match gps_fix",
                 "status snapshot JSON track_log missing latest_path",
                 "status snapshot JSON track_log track_output is a symlink or missing symlink status",
+                "status snapshot JSON track_log track_output does not match config track_output",
+                "status snapshot JSON track_log tracks_dir does not match config track_output",
                 "status snapshot JSON {field} age_seconds is inconsistent with timestamp age",
             ),
         }

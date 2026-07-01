@@ -865,6 +865,7 @@ def validate_pre_departure_status_checks(
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail("pre-departure status snapshot JSON missing config chart_output")
+    configured_track_output = str(config.get("track_output", "")).strip() or chart_output
     gps_fix = status.get("gps_fix")
     if not isinstance(gps_fix, dict):
         fail("pre-departure status snapshot JSON missing gps_fix section")
@@ -890,6 +891,12 @@ def validate_pre_departure_status_checks(
     track_output = str(track_log.get("track_output", "")).strip()
     if not track_output:
         fail("pre-departure status snapshot JSON missing track_log track_output")
+    if track_output != configured_track_output:
+        fail("pre-departure status snapshot JSON track_log track_output does not match config track_output")
+    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    expected_tracks_dir = str(Path(configured_track_output) / "tracks")
+    if tracks_dir != expected_tracks_dir:
+        fail("pre-departure status snapshot JSON track_log tracks_dir does not match config track_output")
 
     required_checks = set(CORE_READINESS_CHECKS)
     required_service_checks = set(CORE_SERVICE_CHECKS)
