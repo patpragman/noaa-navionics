@@ -603,14 +603,17 @@ grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/se
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
-grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
 grep -q 'capture_recovery_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'cleanup_private_recovery_output_capture "${recovery_output:-}" || true' scripts/pre_trip_prepare_pi.sh
+grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/pre_trip_prepare_pi.sh
+grep -q 'os.path.samestat(before, opened)' scripts/pre_trip_prepare_pi.sh
+grep -q 'require_helper "$command_path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'def sync_private_capture_directory' scripts/pre_trip_prepare_pi.sh
 grep -q 'sync_private_capture_directory(directory)' scripts/pre_trip_prepare_pi.sh
 grep -q 'Recovery output capture directory changed before sync' scripts/pre_trip_prepare_pi.sh
@@ -734,8 +737,8 @@ grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3
 grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
-grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
-grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
+grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' README.md
@@ -1480,14 +1483,20 @@ grep -q 'tarfile.open(fileobj=handle, mode="r:gz")' scripts/post_trip_collect_pi
 for helper_wrapper in \
   scripts/export_pi_recovery_bundle.sh \
   scripts/post_trip_collect_pi.sh \
-  scripts/pre_departure_check_pi.sh \
-  scripts/pre_trip_prepare_pi.sh; do
+  scripts/pre_departure_check_pi.sh; do
   grep -q 'reject_symlinked_path_components "Helper script" "$path"' "$helper_wrapper"
   grep -q 'path contains a symlink' "$helper_wrapper"
   grep -q 'Helper script is owned by uid ${owner_uid}, expected current user ${current_uid}' "$helper_wrapper"
   grep -q 'Helper script has permissions ${mode}, expected no group/other write bits' "$helper_wrapper"
   grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' "$helper_wrapper"
 done
+grep -q 'reject_symlinked_path_components "Helper script" "$path"' scripts/pre_trip_prepare_pi.sh
+grep -q 'path contains a symlink' scripts/pre_trip_prepare_pi.sh
+grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/pre_trip_prepare_pi.sh
+grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/pre_trip_prepare_pi.sh
+grep -q 'Could not open helper script through no-follow descriptor' scripts/pre_trip_prepare_pi.sh
+grep -q 'Helper script changed before it could be validated' scripts/pre_trip_prepare_pi.sh
+! grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -5778,6 +5787,47 @@ grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
 test "$(stat -c '%a' "$pre_trip_output_dir")" = 700
 test "$(stat -c '%u' "$pre_trip_output_dir")" = "$(id -u)"
+
+pre_trip_mutated_repo="$tmpdir/pre-trip-mutated-repo"
+pre_trip_mutated_log="$tmpdir/pre-trip-mutated-helper-calls"
+mkdir -p "$pre_trip_mutated_repo/scripts"
+cp scripts/pre_trip_prepare_pi.sh "$pre_trip_mutated_repo/scripts/pre_trip_prepare_pi.sh"
+cat >"$pre_trip_mutated_repo/scripts/refresh_pi_charts.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'refresh|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+chmod 0775 "$NOAA_NAVIONICS_FAKE_PRE_TRIP_PREDEPARTURE"
+EOF
+cat >"$pre_trip_mutated_repo/scripts/export_pi_recovery_bundle.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'recovery should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+cat >"$pre_trip_mutated_repo/scripts/verify_pi_recovery_exports.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'verify recovery should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+cat >"$pre_trip_mutated_repo/scripts/pre_departure_check_pi.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'pre-departure should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+chmod +x "$pre_trip_mutated_repo/scripts/"*.sh
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_mutated_log" \
+NOAA_NAVIONICS_FAKE_PRE_TRIP_PREDEPARTURE="$pre_trip_mutated_repo/scripts/pre_departure_check_pi.sh" \
+  "$pre_trip_mutated_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-recovery >"$verify_output" 2>&1
+pre_trip_mutated_code=$?
+set -e
+chmod 0755 "$pre_trip_mutated_repo/scripts/pre_departure_check_pi.sh"
+if [[ "$pre_trip_mutated_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject a helper mutated after startup validation with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+grep -Fxq "refresh|pi@example.invalid --retries 5 --retry-delay 30 --status --gps-seconds 10" "$pre_trip_mutated_log"
+! grep -q 'pre-departure should not run' "$pre_trip_mutated_log"
 
 pre_trip_misdirected_repo="$tmpdir/pre-trip-misdirected-repo"
 pre_trip_misdirected_log="$tmpdir/pre-trip-misdirected-helper-calls"

@@ -673,11 +673,6 @@ EOF
 
 require_helper() {
   local path="$1"
-  local current_uid
-  local mode
-  local mode_tail
-  local owner_uid
-  local stat_output
 
   if [[ -L "$path" ]]; then
     echo "Helper script must not be a symlink: $path" >&2
@@ -688,31 +683,75 @@ require_helper() {
     echo "Helper script is missing or not executable: $path" >&2
     exit 2
   fi
-  current_uid="$(id -u)"
-  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect helper script owner and permissions: $path" >&2
+  if ! "$python3_cmd" - "$path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect helper script owner and permissions: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+if stat.S_ISLNK(before.st_mode):
+    print(f"Helper script must not be a symlink: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not stat.S_ISREG(before.st_mode):
+    print(f"Helper script is not a regular file: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if before.st_uid != os.getuid():
+    print(f"Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+    raise SystemExit(1)
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    print(f"Helper script has permissions {mode:03o}, expected no group/other write bits: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not mode & 0o111:
+    print(f"Helper script is not executable: {path}", file=sys.stderr)
+    raise SystemExit(1)
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    print(f"Could not open helper script through no-follow descriptor: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Helper script changed before it could be validated: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Helper script is not a regular file when opened: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if opened.st_uid != os.getuid():
+        print(f"Helper script is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        print(f"Helper script has permissions {opened_mode:03o}, expected no group/other write bits: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not opened_mode & 0o111:
+        print(f"Helper script is not executable when opened: {path}", file=sys.stderr)
+        raise SystemExit(1)
+finally:
+    os.close(fd)
+PY
+  then
     exit 2
   fi
-  owner_uid="${stat_output%% *}"
-  mode="${stat_output#* }"
-  if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "Helper script is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
-    exit 2
-  fi
-  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
-  case "$mode_tail" in
-    ?[2367]?|??[2367])
-      echo "Helper script has permissions ${mode}, expected no group/other write bits: $path" >&2
-      exit 2
-      ;;
-  esac
 }
 
 run_step() {
   local label="$1"
+  local command_path
   shift
+  command_path="$1"
+  shift
+  require_helper "$command_path"
   printf '==> %s\n' "$label"
-  "$@"
+  "$command_path" "$@"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -840,13 +879,11 @@ refresh_helper="${repo_root}/scripts/refresh_pi_charts.sh"
 recovery_helper="${repo_root}/scripts/export_pi_recovery_bundle.sh"
 verify_recovery_helper="${repo_root}/scripts/verify_pi_recovery_exports.sh"
 pre_departure_helper="${repo_root}/scripts/pre_departure_check_pi.sh"
+python3_cmd="$(require_local_command python3)"
 require_helper "$refresh_helper"
 require_helper "$recovery_helper"
 require_helper "$verify_recovery_helper"
 require_helper "$pre_departure_helper"
-if [[ "$skip_recovery" -eq 0 ]]; then
-  python3_cmd="$(require_local_command python3)"
-fi
 
 if [[ "$skip_refresh" -eq 0 ]]; then
   refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status --gps-seconds "$gps_seconds")
