@@ -290,7 +290,7 @@ Shut the Pi down cleanly before cutting boat power:
 scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm
 ```
 
-The shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request. It then flushes filesystem buffers, requests `systemctl poweroff` through noninteractive sudo, and waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation. Use `--dry-run` to prove that path without powering off.
+The shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request. It revalidates the SSH-transferred dry-run control on the Pi before resolving shutdown commands or syncing filesystems. It then flushes filesystem buffers, requests `systemctl poweroff` through noninteractive sudo, and waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation. Use `--dry-run` to prove that path without powering off.
 
 Run the full dock acceptance test, including a reboot and post-reboot verification:
 

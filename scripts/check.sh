@@ -997,6 +997,8 @@ grep -q 'ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o Con
 grep -q 'wait_for_ssh_shutdown' scripts/shutdown_pi_safely.sh
 grep -q 'Clean Pi poweroff confirmed by SSH drop' scripts/shutdown_pi_safely.sh
 grep -q 'Pi still accepts SSH after %ss; do not cut boat power yet' scripts/shutdown_pi_safely.sh
+grep -q 'validate_shutdown_controls' scripts/shutdown_pi_safely.sh
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1' scripts/shutdown_pi_safely.sh
 grep -q 'validate_ssh_target' scripts/refresh_pi_charts.sh
 grep -q 'validate_gps_device_path_arg' scripts/deploy_to_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/dock_test_pi.sh
@@ -1808,6 +1810,8 @@ grep -q 'Failed restore temp cleanup is no-follow and same-file validated before
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
+grep -q 'validate_shutdown_controls' scripts/shutdown_pi_safely.sh
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1' scripts/shutdown_pi_safely.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/shutdown_pi_safely.sh
 test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' scripts/shutdown_pi_safely.sh)" -ge 2
 test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' scripts/shutdown_pi_safely.sh)" -ge 2
@@ -13079,6 +13083,9 @@ grep -q 'Pi shutdown dry run passed for pi@example.invalid' "$verify_output"
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=1' "$shutdown_fake_ssh_args"
 grep -q '/bin/bash -s' "$shutdown_fake_ssh_args"
 grep -q 'pi@example.invalid' "$shutdown_fake_ssh_args"
+grep -q 'validate_shutdown_controls()' "$shutdown_fake_ssh_stdin"
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1' "$shutdown_fake_ssh_stdin"
+grep -q 'validate_shutdown_controls' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command sync' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command sudo' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command systemctl' "$shutdown_fake_ssh_stdin"

@@ -307,6 +307,17 @@ check_remote_directory_chain() {
   done
 }
 
+validate_shutdown_controls() {
+  case "${NOAA_NAVIONICS_SHUTDOWN_DRY_RUN:-}" in
+    0|1)
+      ;;
+    *)
+      echo "NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1" >&2
+      exit 1
+      ;;
+  esac
+}
+
 require_remote_command() {
   local command_name="$1"
   local command_path
@@ -337,6 +348,7 @@ require_remote_command() {
   printf '%s\n' "$resolved_path"
 }
 
+validate_shutdown_controls
 sync_cmd="$(require_remote_command sync)"
 sudo_cmd="$(require_remote_command sudo)"
 systemctl_cmd="$(require_remote_command systemctl)"
