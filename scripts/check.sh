@@ -896,8 +896,8 @@ grep -q 'enforcing unique normalized member paths' README.md
 grep -q 'enforcing unique normalized member paths' docs/sailboat-pi.md
 grep -q 'Recovery directory must not contain parent-directory components' scripts/verify_pi_recovery_exports.sh
 grep -q 'Recovery directory must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
-grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
-grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
+grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' README.md
+grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' docs/sailboat-pi.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' README.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Overwrite backups read the existing target through a no-follow descriptor' README.md
@@ -1697,8 +1697,15 @@ fi
 grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
-grep -q 'restored tracking.output must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
-grep -q 'restored tracking.output is too broad' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def safe_storage_output_from_config' scripts/restore_pi_recovery_user_data.sh
+grep -q 'safe_storage_output_from_config(home, "charts.output"' scripts/restore_pi_recovery_user_data.sh
+grep -q 'safe_storage_output_from_config(home, "tracking.output"' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored {label} must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored {label} is not safe storage' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored {label} is too broad' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored gps.mode must be either gpsd or serial' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored gps.gpsd_host must be local for onboard gpsd mode' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def inspect_existing_restore_target' scripts/restore_pi_recovery_user_data.sh
@@ -1721,8 +1728,8 @@ grep -q 'cleanup_private_restore_temp(tmp_path)' scripts/restore_pi_recovery_use
 grep -q 'has permissions .* expected 0600' scripts/restore_pi_recovery_user_data.sh
 grep -q 'does not match expected data' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
-grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
-grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
+grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' README.md
+grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' docs/sailboat-pi.md
 grep -q 'immediately before restore promotion verify that the target is still the backed-up file or still absent' README.md
 grep -q 'immediately before restore promotion verify that the target is still the backed-up file or still absent' docs/sailboat-pi.md
 grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' README.md
@@ -11309,12 +11316,34 @@ grep -q 'Recovery directory must not contain parent-directory components' "$veri
 recovery_restore_dir="$tmpdir/recovery-restore"
 recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
 recovery_restore_broad_dir="$tmpdir/recovery-restore-broad-dir"
+recovery_restore_bad_chart_dir="$tmpdir/recovery-restore-bad-chart-dir"
+recovery_restore_remote_gpsd_dir="$tmpdir/recovery-restore-remote-gpsd-dir"
+recovery_restore_bad_gps_device_dir="$tmpdir/recovery-restore-bad-gps-device-dir"
 recovery_restore_bad_opencpn_dir="$tmpdir/recovery-restore-bad-opencpn-dir"
 recovery_restore_unsafe_member_dir="$tmpdir/recovery-restore-unsafe-member-dir"
 recovery_restore_readme_dir="$tmpdir/recovery-restore-readme-dir"
 restore_home="$tmpdir/restore-home"
-mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir" "$restore_home"
-python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir" <<'PY'
+mkdir -p \
+  "$recovery_restore_dir" \
+  "$recovery_restore_parent_dir" \
+  "$recovery_restore_broad_dir" \
+  "$recovery_restore_bad_chart_dir" \
+  "$recovery_restore_remote_gpsd_dir" \
+  "$recovery_restore_bad_gps_device_dir" \
+  "$recovery_restore_bad_opencpn_dir" \
+  "$recovery_restore_unsafe_member_dir" \
+  "$recovery_restore_readme_dir" \
+  "$restore_home"
+python3 - \
+  "$recovery_restore_dir" \
+  "$recovery_restore_parent_dir" \
+  "$recovery_restore_broad_dir" \
+  "$recovery_restore_bad_chart_dir" \
+  "$recovery_restore_remote_gpsd_dir" \
+  "$recovery_restore_bad_gps_device_dir" \
+  "$recovery_restore_bad_opencpn_dir" \
+  "$recovery_restore_unsafe_member_dir" \
+  "$recovery_restore_readme_dir" <<'PY'
 from pathlib import Path
 import hashlib
 import io
@@ -11448,14 +11477,29 @@ retention_days = 90
 """
 bad_config = config.replace("output = ~/tracks-store", "output = ~/../../etc/noaa-navionics-restore")
 broad_config = config.replace("output = ~/tracks-store", "output = /mnt")
+bad_chart_config = config.replace("output = ~/charts/noaa-enc", "output = /tmp/noaa-navionics-restore", 1)
+remote_gpsd_config = config.replace("gpsd_host = 127.0.0.1", "gpsd_host = 192.0.2.10")
+bad_gps_device_config = config.replace("device = /dev/serial/by-id/mock-gps", "device = /dev/ttyUSB0")
 build_restore_fixture(Path(sys.argv[1]), config)
 build_restore_fixture(Path(sys.argv[2]), bad_config)
 build_restore_fixture(Path(sys.argv[3]), broad_config)
-build_restore_fixture(Path(sys.argv[4]), config, {"opencpn/plugins/bad.txt": "bad\n"})
-build_restore_fixture(Path(sys.argv[5]), config, {"opencpn/./unsafe.gpx": "<gpx />\n"})
-build_restore_fixture(Path(sys.argv[6]), config, readme_dir=True)
+build_restore_fixture(Path(sys.argv[4]), bad_chart_config)
+build_restore_fixture(Path(sys.argv[5]), remote_gpsd_config)
+build_restore_fixture(Path(sys.argv[6]), bad_gps_device_config)
+build_restore_fixture(Path(sys.argv[7]), config, {"opencpn/plugins/bad.txt": "bad\n"})
+build_restore_fixture(Path(sys.argv[8]), config, {"opencpn/./unsafe.gpx": "<gpx />\n"})
+build_restore_fixture(Path(sys.argv[9]), config, readme_dir=True)
 PY
-chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir"
+chmod 0700 \
+  "$recovery_restore_dir" \
+  "$recovery_restore_parent_dir" \
+  "$recovery_restore_broad_dir" \
+  "$recovery_restore_bad_chart_dir" \
+  "$recovery_restore_remote_gpsd_dir" \
+  "$recovery_restore_bad_gps_device_dir" \
+  "$recovery_restore_bad_opencpn_dir" \
+  "$recovery_restore_unsafe_member_dir" \
+  "$recovery_restore_readme_dir"
 
 restore_fake_python_bin="$tmpdir/restore-fake-python-bin"
 mkdir -p "$restore_fake_python_bin"
@@ -11744,6 +11788,42 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'restored tracking.output is too broad: /mnt' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_bad_chart_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject unsafe restored chart output with exit 1" >&2
+  exit 1
+fi
+grep -q 'restored charts.output is not safe storage: /tmp/noaa-navionics-restore' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_remote_gpsd_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject remote restored gpsd host with exit 1" >&2
+  exit 1
+fi
+grep -q 'restored gps.gpsd_host must be local for onboard gpsd mode' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_bad_gps_device_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject volatile restored GPS device with exit 1" >&2
+  exit 1
+fi
+grep -q 'restored gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps' "$verify_output"
+! grep -q 'would restore' "$verify_output"
 
 set +e
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_bad_opencpn_dir" >"$verify_output" 2>&1

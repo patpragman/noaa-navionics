@@ -175,7 +175,7 @@ python3_cmd="$(require_local_command python3)"
 NOAA_NAVIONICS_RESTORE_APPLY="$apply" \
 NOAA_NAVIONICS_RESTORE_OVERWRITE="$overwrite" \
 "$python3_cmd" - "$recovery_dir" <<'PY'
-from configparser import ConfigParser
+from configparser import ConfigParser, Error as ConfigParserError
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Optional
@@ -192,6 +192,10 @@ import tempfile
 
 CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
+GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 CORE_SUPPORT_COMMAND_FILES = [
     "commands/system-command-integrity.txt",
     "commands/date-utc.txt",
@@ -849,35 +853,146 @@ def opencpn_restore_relative(name: str) -> Optional[Path]:
     fail(f"OpenCPN archive contains unexpected restore member: {name}")
 
 
-def safe_track_output_from_config(config_text: str, home: Path) -> Path:
+def parse_restored_config(config_text: str) -> ConfigParser:
     parser = ConfigParser()
-    parser.read_string(config_text)
-    chart_output = parser.get("charts", "output", fallback="~/charts/noaa-enc")
-    track_output = parser.get("tracking", "output", fallback=chart_output)
-    expanded = Path(os.path.expanduser(track_output))
+    try:
+        parser.read_string(config_text)
+    except ConfigParserError as exc:
+        fail(f"restored config.ini is invalid: {exc}")
+    return parser
+
+
+def restored_config_text(parser: ConfigParser, section: str, key: str, default: str, *, label: str) -> str:
+    raw = parser.get(section, key, fallback=default)
+    value = str(raw).strip()
+    if not value:
+        fail(f"restored {label} must not be empty")
+    return value
+
+
+def parse_restored_config_int(
+    parser: ConfigParser,
+    section: str,
+    key: str,
+    default: int,
+    *,
+    label: str,
+    minimum: Optional[int] = None,
+    maximum: Optional[int] = None,
+) -> int:
+    raw = parser.get(section, key, fallback=str(default))
+    try:
+        value = int(str(raw).strip())
+    except ValueError:
+        fail(f"restored {label} must be an integer")
+    if minimum is not None and value < minimum:
+        fail(f"restored {label} must be at least {minimum}")
+    if maximum is not None and value > maximum:
+        fail(f"restored {label} must be at most {maximum}")
+    return value
+
+
+def parse_restored_config_float(
+    parser: ConfigParser,
+    section: str,
+    key: str,
+    default: float,
+    *,
+    label: str,
+    minimum: Optional[float] = None,
+) -> float:
+    raw = parser.get(section, key, fallback=str(default))
+    try:
+        value = float(str(raw).strip())
+    except ValueError:
+        fail(f"restored {label} must be a number")
+    if value != value or value in {float("inf"), float("-inf")}:
+        fail(f"restored {label} must be finite")
+    if minimum is not None and value < minimum:
+        fail(f"restored {label} must be at least {minimum:g}")
+    return value
+
+
+def safe_storage_output_from_config(home: Path, label: str, value: str) -> Path:
+    expanded = Path(os.path.expanduser(value))
     if not expanded.is_absolute():
-        fail(f"restored tracking.output is not absolute after expansion: {track_output}")
+        fail(f"restored {label} is not absolute after expansion: {value}")
     if ".." in expanded.parts:
-        fail(f"restored tracking.output must not contain parent-directory components: {track_output}")
+        fail(f"restored {label} must not contain parent-directory components: {value}")
 
     resolved_home = home.resolve()
     if expanded == resolved_home or expanded in resolved_home.parents:
-        fail(f"restored tracking.output is too broad: {expanded}")
+        fail(f"restored {label} is too broad: {expanded}")
     if expanded.is_relative_to(resolved_home):
         first = expanded.relative_to(resolved_home).parts[0]
         if first in {".cache", ".config", ".local"}:
-            fail(f"restored tracking.output must not be inside home {first}: {expanded}")
+            fail(f"restored {label} must not be inside home {first}: {expanded}")
         return expanded
     forbidden_roots = {Path("/"), Path("/boot"), Path("/dev"), Path("/etc"), Path("/opt"), Path("/proc"), Path("/root"), Path("/sys"), Path("/tmp"), Path("/usr"), Path("/var")}
     if expanded in forbidden_roots or any(root in expanded.parents for root in forbidden_roots if root != Path("/")):
-        fail(f"restored tracking.output is not safe storage: {expanded}")
+        fail(f"restored {label} is not safe storage: {expanded}")
     allowed_roots = (Path("/media"), Path("/mnt"), Path("/run/media"))
     for root in allowed_roots:
         if expanded == root:
-            fail(f"restored tracking.output is too broad: {expanded}")
+            fail(f"restored {label} is too broad: {expanded}")
         if root in expanded.parents:
             return expanded
-    fail(f"restored tracking.output must be under the Pi home, /media, /mnt, or /run/media: {expanded}")
+    fail(f"restored {label} must be under the Pi home, /media, /mnt, or /run/media: {expanded}")
+
+
+def safe_gps_device_path(path: str) -> bool:
+    by_id_prefix = "/dev/serial/by-id/"
+    if path.startswith(by_id_prefix):
+        suffix = path[len(by_id_prefix):]
+        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+            char in GPS_BY_ID_SAFE_CHARS for char in suffix
+        )
+    return path in STABLE_GPS_DEVICE_PATHS
+
+
+def safe_track_output_from_config(config_text: str, home: Path) -> Path:
+    parser = parse_restored_config(config_text)
+    chart_output_text = restored_config_text(
+        parser,
+        "charts",
+        "output",
+        "~/charts/noaa-enc",
+        label="charts.output",
+    )
+    chart_output = safe_storage_output_from_config(home, "charts.output", chart_output_text)
+
+    gps_mode = restored_config_text(parser, "gps", "mode", "gpsd", label="gps.mode").lower()
+    if gps_mode not in {"gpsd", "serial"}:
+        fail("restored gps.mode must be either gpsd or serial")
+    gps_device = restored_config_text(
+        parser,
+        "gps",
+        "device",
+        "/dev/serial/by-id/YOUR_GPS_DEVICE",
+        label="gps.device",
+    )
+    if not safe_gps_device_path(gps_device):
+        fail("restored gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    gps_baud = parse_restored_config_int(parser, "gps", "baud", 4800, label="gps.baud")
+    if gps_baud not in GPS_BAUD_RATES:
+        fail("restored gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200")
+    gpsd_host = restored_config_text(parser, "gps", "gpsd_host", "127.0.0.1", label="gps.gpsd_host")
+    if any(separator in gpsd_host for separator in (";", "|")) or any(char.isspace() for char in gpsd_host):
+        fail("restored gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")
+    if gps_mode == "gpsd" and gpsd_host.lower() not in GPSD_LOCAL_HOSTS:
+        fail("restored gps.gpsd_host must be local for onboard gpsd mode: 127.0.0.1, localhost, or ::1")
+    parse_restored_config_int(parser, "gps", "gpsd_port", 2947, label="gps.gpsd_port", minimum=1, maximum=65535)
+    parse_restored_config_int(parser, "tracking", "retention_days", 90, label="tracking.retention_days", minimum=0)
+    parse_restored_config_float(parser, "anchor", "radius_meters", 50.0, label="anchor.radius_meters", minimum=1.0)
+
+    track_output_text = restored_config_text(
+        parser,
+        "tracking",
+        "output",
+        str(chart_output),
+        label="tracking.output",
+    )
+    return safe_storage_output_from_config(home, "tracking.output", track_output_text)
 
 
 def main() -> None:
