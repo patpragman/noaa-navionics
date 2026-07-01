@@ -748,6 +748,7 @@ if not members:
 seen_names = set()
 members_by_name = {}
 data_file_count = 0
+data_member_names = []
 for member in members:
     name = member.name
     normalized = PurePosixPath(name)
@@ -774,6 +775,12 @@ for member in members:
         ):
             print(f"{label} contains non-GPX track data member: {name}", file=sys.stderr)
             raise SystemExit(124)
+        if label == "track export archive":
+            track_name = normalized_name.removeprefix("tracks/")
+            if not track_name or "/" in track_name:
+                print(f"{label} contains nested or empty track data member: {name}", file=sys.stderr)
+                raise SystemExit(124)
+            data_member_names.append(track_name)
         data_file_count += 1
 readme = members_by_name.get("README.txt")
 if readme is None:
@@ -821,6 +828,27 @@ if label == "track export archive":
     if track_count != data_file_count:
         print(
             f"{label} manifest track_count does not match data file count: {track_count} != {data_file_count}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    tracks = manifest_payload.get("tracks")
+    if not isinstance(tracks, list):
+        print(f"{label} manifest tracks must be a list", file=sys.stderr)
+        raise SystemExit(124)
+    manifest_track_names = []
+    for index, track in enumerate(tracks):
+        if not isinstance(track, dict):
+            print(f"{label} manifest tracks[{index}] must be an object", file=sys.stderr)
+            raise SystemExit(124)
+        name = track.get("name")
+        if not isinstance(name, str) or not name or "/" in name or "\\" in name or name in {".", ".."}:
+            print(f"{label} manifest tracks[{index}].name is invalid: {name!r}", file=sys.stderr)
+            raise SystemExit(124)
+        manifest_track_names.append(name)
+    if sorted(manifest_track_names) != sorted(data_member_names):
+        print(
+            f"{label} manifest track names do not match data files: "
+            f"{sorted(manifest_track_names)!r} != {sorted(data_member_names)!r}",
             file=sys.stderr,
         )
         raise SystemExit(124)
