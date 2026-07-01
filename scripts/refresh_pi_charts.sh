@@ -564,7 +564,62 @@ PY
 run_noaa_navionics() {
   local app_exec
   app_exec="$(check_installed_noaa_command)"
-  "$app_exec" "$@"
+  "$python3_cmd" - "$app_exec" "$@" <<'PY'
+from pathlib import Path
+import os
+import stat
+import subprocess
+import sys
+
+path = Path(sys.argv[1])
+args = sys.argv[2:]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect installed noaa-navionics command before descriptor execution: {path}: {exc}")
+if not stat.S_ISREG(before.st_mode):
+    fail(f"Installed noaa-navionics command must be regular before descriptor execution: {path}")
+if before.st_uid != os.getuid():
+    fail(f"Installed noaa-navionics command is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}")
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    fail(f"Installed noaa-navionics command has permissions {mode:03o}, expected no group/other write bits: {path}")
+if not mode & 0o111:
+    fail(f"Installed noaa-navionics command is not executable before descriptor execution: {path}")
+
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    fail(f"Could not open installed noaa-navionics command through no-follow descriptor for execution: {path}: {exc}")
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        fail(f"Installed noaa-navionics command changed before descriptor execution: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"Installed noaa-navionics command must be regular when opened for descriptor execution: {path}")
+    if opened.st_uid != os.getuid():
+        fail(f"Installed noaa-navionics command is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        fail(f"Installed noaa-navionics command has permissions {opened_mode:03o}, expected no group/other write bits: {path}")
+    if not opened_mode & 0o111:
+        fail(f"Installed noaa-navionics command is not executable when opened for descriptor execution: {path}")
+    try:
+        result = subprocess.run([f"/proc/self/fd/{fd}", *args], pass_fds=(fd,))
+    except OSError as exc:
+        fail(f"Could not execute installed noaa-navionics command through validated descriptor: {path}: {exc}")
+finally:
+    os.close(fd)
+raise SystemExit(result.returncode)
+PY
 }
 
 require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"

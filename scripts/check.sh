@@ -701,8 +701,8 @@ grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
-grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" README.md
-grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" docs/sailboat-pi.md
+grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, executes that installed command through the validated no-follow descriptor, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" README.md
+grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, executes that installed command through the validated no-follow descriptor, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" docs/sailboat-pi.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' README.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
@@ -712,8 +712,8 @@ grep -q 'It does not deploy, reboot, download charts, or write the Pi status art
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
-grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution" README.md
-grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution" docs/sailboat-pi.md
+grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" README.md
+grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
@@ -7323,6 +7323,10 @@ grep -q 'check_installed_command_tree' "$status_fake_ssh_stdin"
 grep -q 'installed noaa-navionics command target has permissions' "$status_fake_ssh_stdin"
 grep -q 'could not open installed noaa-navionics command through no-follow descriptor' "$status_fake_ssh_stdin"
 grep -q 'installed noaa-navionics command changed before it could be validated' "$status_fake_ssh_stdin"
+grep -q 'installed noaa-navionics command changed before descriptor execution' "$status_fake_ssh_stdin"
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' "$status_fake_ssh_stdin"
+grep -q 'could not execute installed noaa-navionics command through validated descriptor' "$status_fake_ssh_stdin"
+! grep -q '"$app_exec" "$@"' "$status_fake_ssh_stdin"
 grep -q 'run_noaa_navionics()' "$status_fake_ssh_stdin"
 grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' "$status_fake_ssh_stdin"
 grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"' "$status_fake_ssh_stdin"
@@ -7430,6 +7434,10 @@ grep -q 'check_installed_noaa_command_tree' "$refresh_fake_ssh_stdin"
 grep -q 'Installed noaa-navionics command target has permissions' "$refresh_fake_ssh_stdin"
 grep -q 'Could not open installed noaa-navionics command through no-follow descriptor' "$refresh_fake_ssh_stdin"
 grep -q 'Installed noaa-navionics command changed before it could be validated' "$refresh_fake_ssh_stdin"
+grep -q 'Installed noaa-navionics command changed before descriptor execution' "$refresh_fake_ssh_stdin"
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' "$refresh_fake_ssh_stdin"
+grep -q 'Could not execute installed noaa-navionics command through validated descriptor' "$refresh_fake_ssh_stdin"
+! grep -q '"$app_exec" "$@"' "$refresh_fake_ssh_stdin"
 grep -q 'run_noaa_navionics()' "$refresh_fake_ssh_stdin"
 grep -q 'run_noaa_navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
 grep -q 'run_noaa_navionics "${sync_args\[@\]}"' "$refresh_fake_ssh_stdin"
