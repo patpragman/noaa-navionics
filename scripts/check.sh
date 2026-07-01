@@ -7112,6 +7112,10 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_UNSTRUCTURED_STATUS") == "1":
     for row in checks:
         if row["name"] == "GPSD":
             row.pop("data", None)
+if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_NON_PI_SKIP") == "1":
+    for row in checks:
+        if row["name"] == "Time Sync":
+            row["data"] = {"is_raspberry_pi": False, "skipped": True}
 payload = {
     "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     "ok": True,
@@ -7315,6 +7319,33 @@ grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps"
 grep -Fxq "status|pi@example.invalid --json" "$pre_trip_unstructured_log"
 test ! -e "$pre_trip_unstructured_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
 test ! -e "$pre_trip_unstructured_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
+
+pre_trip_non_pi_skip_repo="$tmpdir/pre-trip-non-pi-skip-repo"
+pre_trip_non_pi_skip_log="$tmpdir/pre-trip-non-pi-skip-helper-calls"
+pre_trip_non_pi_skip_output_dir="$tmpdir/pre-trip-non-pi-skip-output"
+cp -a "$pre_trip_repo" "$pre_trip_non_pi_skip_repo"
+mkdir -p "$pre_trip_non_pi_skip_output_dir"
+chmod 0777 "$pre_trip_non_pi_skip_output_dir"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_non_pi_skip_log" \
+NOAA_NAVIONICS_FAKE_PRE_TRIP_NON_PI_SKIP=1 \
+  "$pre_trip_non_pi_skip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_non_pi_skip_output_dir" \
+  --skip-refresh >"$verify_output" 2>&1
+pre_trip_non_pi_skip_code=$?
+set -e
+if [[ "$pre_trip_non_pi_skip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject captured status with non-Pi diagnostic skips with exit 2" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s): Time Sync' "$verify_output"
+grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps" "$pre_trip_non_pi_skip_log"
+grep -Fxq "status|pi@example.invalid --json" "$pre_trip_non_pi_skip_log"
+test ! -e "$pre_trip_non_pi_skip_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
+test ! -e "$pre_trip_non_pi_skip_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
 
 pre_trip_stale_repo="$tmpdir/pre-trip-stale-repo"
 pre_trip_stale_log="$tmpdir/pre-trip-stale-helper-calls"
@@ -7622,6 +7653,10 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") == "1":
     for row in checks:
         if row["name"] == "GPSD":
             row.pop("data", None)
+if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_NON_PI_SKIP") == "1":
+    for row in checks:
+        if row["name"] == "Pi Power":
+            row["data"] = {"is_raspberry_pi": False, "skipped": True}
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -8247,6 +8282,26 @@ fi
 grep -q 'status snapshot JSON missing structured readiness data for: GPSD' "$verify_output"
 ! grep -q 'Saved Pi status snapshot' "$verify_output"
 grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_unstructured_status_log"
+
+post_trip_non_pi_skip_log="$tmpdir/post-trip-non-pi-skip-helper-calls"
+post_trip_non_pi_skip_output_dir="$tmpdir/post-trip-non-pi-skip-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_non_pi_skip_log" \
+NOAA_NAVIONICS_FAKE_POST_TRIP_NON_PI_SKIP=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_non_pi_skip_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject successful status JSON with non-Pi diagnostic skips with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot JSON records non-Pi diagnostic skip(s): Pi Power' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_non_pi_skip_log"
 
 post_trip_failure_log="$tmpdir/post-trip-failure-helper-calls"
 post_trip_failure_output_dir="$tmpdir/post-trip-failure-output"
@@ -10706,6 +10761,39 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for: GPSD' "$verify_output"
+
+recovery_verify_non_pi_skip_status_dir="$tmpdir/recovery-verify-non-pi-skip-status"
+cp -a "$recovery_verify_dir" "$recovery_verify_non_pi_skip_status_dir"
+python3 - "$recovery_verify_non_pi_skip_status_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+status = json.loads((root / "pre-departure-status.json").read_text(encoding="utf-8"))
+for row in status["checks"]:
+    if row.get("name") == "GPS Time Source":
+        row["data"] = {"is_raspberry_pi": False, "skipped": True}
+payload = json.dumps(status, sort_keys=True).encode("utf-8") + b"\n"
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_non_pi_skip_status_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a pre-departure status with non-Pi diagnostic skips with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s): GPS Time Source' "$verify_output"
 
 recovery_verify_invalid_gps_mode_status_dir="$tmpdir/recovery-verify-invalid-gps-mode-status"
 cp -a "$recovery_verify_dir" "$recovery_verify_invalid_gps_mode_status_dir"
