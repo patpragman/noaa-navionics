@@ -755,6 +755,17 @@ def shell_python_heredoc(source: str) -> str:
     return match.group("body")
 
 
+def shell_function_python_heredoc(source: str, function_name: str) -> str:
+    match = re.search(
+        rf"^{re.escape(function_name)}\(\) \{{.*?<<'PY'\n(?P<body>.*?)\nPY\n",
+        source,
+        re.MULTILINE | re.DOTALL,
+    )
+    if not match:
+        raise AssertionError(f"missing embedded Python heredoc in {function_name}")
+    return match.group("body")
+
+
 def python_string_set_assignment(source: str, name: str) -> set[str]:
     tree = ast.parse(source)
     for statement in tree.body:
@@ -12008,6 +12019,33 @@ class StatusReportTests(unittest.TestCase):
 
     def test_recovery_verifier_required_status_checks_match_shared_readiness(self):
         source = shell_python_heredoc(Path("scripts/verify_pi_recovery_exports.sh").read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_READINESS_CHECKS"),
+            set(report_module.CORE_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_READINESS_CHECKS"),
+            set(report_module.GPSD_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "SERIAL_READINESS_CHECKS"),
+            set(report_module.SERIAL_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
+            set(report_module.CORE_SERVICE_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_SERVICE_CHECKS"),
+            set(report_module.GPSD_SERVICE_CHECKS),
+        )
+
+    def test_post_trip_required_status_checks_match_shared_readiness(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8"),
+            "verify_status_snapshot_json",
+        )
 
         self.assertEqual(
             python_string_set_assignment(source, "CORE_READINESS_CHECKS"),

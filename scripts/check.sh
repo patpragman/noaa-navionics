@@ -797,8 +797,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, and populated readiness/service check lists, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, and populated readiness/service check lists, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a deployed source revision, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' docs/sailboat-pi.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' README.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
@@ -1789,6 +1789,11 @@ grep -q 'status snapshot JSON generated_at timestamp is too far in the future' s
 grep -q 'status snapshot JSON missing valid host boot_id' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing deployed source_revision' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing non-empty {field} list' scripts/post_trip_collect_pi.sh
+grep -q 'CORE_READINESS_CHECKS = {' scripts/post_trip_collect_pi.sh
+grep -q 'def validate_successful_status_snapshot' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing required readiness check(s)' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing structured readiness data for' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON has invalid gps_mode' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'Real post-trip shutdown requires collecting at least one artifact first' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
@@ -4124,6 +4129,7 @@ grep -q 'test_status_text_rejects_incomplete_ready_report' tests/test_downloader
 grep -q 'test_status_text_rejects_malformed_ready_report' tests/test_downloader.py
 grep -q 'test_verify_pi_required_status_checks_match_shared_gpsd_readiness' tests/test_downloader.py
 grep -q 'test_recovery_verifier_required_status_checks_match_shared_readiness' tests/test_downloader.py
+grep -q 'test_post_trip_required_status_checks_match_shared_readiness' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_gui_status_report_uses_shared_readiness_validation' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_ok_preserves_not_ready_readiness_headline' tests/test_downloader.py
@@ -7276,16 +7282,88 @@ printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
 if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_INVALID_JSON:-0}" == "1" ]]; then
   printf 'not json\n'
 else
-  if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_STALE_STATUS:-0}" == "1" ]]; then
-    generated_at="2000-01-01T00:00:00Z"
-  else
-    generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  fi
-  source_revision="fixture123"
-  if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_UNKNOWN_REVISION:-0}" == "1" ]]; then
-    source_revision="unknown"
-  fi
-  printf '{"generated_at": "%s", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "%s"}, "checks": [{"name": "GPS", "ok": true, "detail": "fix"}], "service_checks": [{"name": "Track Log", "ok": true, "detail": "recent point"}]}\n' "$generated_at" "$source_revision"
+  python3 - <<'PY'
+from datetime import datetime, timezone
+import json
+import os
+
+core_readiness_checks = [
+    "Python",
+    "Source Revision",
+    "Clock",
+    "Time Sync",
+    "Tkinter",
+    "OpenCPN",
+    "Display Power",
+    "Chart Package",
+    "Charts",
+    "Chart Update Debris",
+    "Manifest",
+    "OpenCPN Charts",
+    "Disk",
+    "Pi Power",
+    "Pi Thermal",
+]
+gpsd_readiness_checks = [
+    "OpenCPN GPSD",
+    "GPSD Config",
+    "Chrony Config",
+    "GPSD",
+    "GPS Time Source",
+]
+core_service_checks = [
+    "Chart Sync",
+    "Chart Sync Settings",
+    "Chart Sync Unit File",
+    "Chart Timer",
+    "Chart Timer Install",
+    "Chart Timer Settings",
+    "Chart Timer Unit File",
+    "Track Log",
+    "Track Logger",
+    "Track Logger Install",
+    "Track Logger Settings",
+    "Track Logger Unit File",
+    "Boot Readiness",
+    "Boot Readiness Install",
+    "Boot Readiness Settings",
+    "Boot Readiness Unit File",
+    "Boot Readiness Run",
+    "Desktop Startup",
+    "Launcher Settings",
+    "User Linger",
+]
+gpsd_service_checks = ["GPSD Socket", "GPSD Service", "Chrony Service"]
+
+generated_at = "2000-01-01T00:00:00Z"
+if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_STALE_STATUS") != "1":
+    generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+source_revision = "unknown" if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNKNOWN_REVISION") == "1" else "fixture123"
+checks = [
+    {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
+    for name in sorted(core_readiness_checks + gpsd_readiness_checks)
+]
+if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_MISSING_REQUIRED_STATUS") == "1":
+    checks = [row for row in checks if row["name"] != "Manifest"]
+if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") == "1":
+    for row in checks:
+        if row["name"] == "GPSD":
+            row.pop("data", None)
+payload = {
+    "generated_at": generated_at,
+    "ok": True,
+    "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
+    "app": {"source_revision": source_revision},
+    "config": {"gps_mode": "gpsd", "chart_output": "/charts", "track_output": "/charts"},
+    "track_log": {"track_output": "/charts"},
+    "checks": checks,
+    "service_checks": [
+        {"name": name, "ok": True, "detail": "ok"}
+        for name in sorted(core_service_checks + gpsd_service_checks)
+    ],
+}
+print(json.dumps(payload, sort_keys=True))
+PY
 fi
 if [[ -n "${NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER:-}" ]]; then
   chmod 0775 "$NOAA_NAVIONICS_FAKE_POST_TRIP_MUTATE_HELPER"
@@ -7836,6 +7914,46 @@ fi
 grep -q 'status snapshot JSON missing deployed source_revision' "$verify_output"
 ! grep -q 'Saved Pi status snapshot' "$verify_output"
 grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_unknown_revision_log"
+
+post_trip_missing_required_status_log="$tmpdir/post-trip-missing-required-status-helper-calls"
+post_trip_missing_required_status_output_dir="$tmpdir/post-trip-missing-required-status-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_missing_required_status_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_MISSING_REQUIRED_STATUS=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_missing_required_status_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject successful status JSON missing a required readiness check with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot JSON missing required readiness check(s): Manifest' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_missing_required_status_log"
+
+post_trip_unstructured_status_log="$tmpdir/post-trip-unstructured-status-helper-calls"
+post_trip_unstructured_status_output_dir="$tmpdir/post-trip-unstructured-status-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_unstructured_status_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_unstructured_status_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject successful status JSON missing structured readiness data with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot JSON missing structured readiness data for: GPSD' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_unstructured_status_log"
 
 post_trip_failure_log="$tmpdir/post-trip-failure-helper-calls"
 post_trip_failure_output_dir="$tmpdir/post-trip-failure-output"
