@@ -426,6 +426,7 @@ def format_status_text(report: dict[str, object]) -> str:
             "created_at_source",
             "is_symlink",
             "directory_is_symlink",
+            "chart_storage_symlink_component",
             "manifest_symlink_component",
             "uid",
             "mode",
@@ -1163,22 +1164,26 @@ def _track_log_readiness_check(track_log: dict[str, object]) -> CheckResult:
 
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:
-    manifest_path = Path(chart_output).expanduser() / MANIFEST_NAME
-    manifest_symlink_component = _first_symlink_ancestor(manifest_path.parent)
+    chart_storage_path = Path(chart_output).expanduser()
+    manifest_path = chart_storage_path / MANIFEST_NAME
+    chart_storage_symlink_component = _first_symlink_ancestor(chart_storage_path)
     summary: dict[str, object] = {
         "path": str(manifest_path),
         "exists": manifest_path.exists(),
         "is_symlink": manifest_path.is_symlink(),
         "directory_is_symlink": manifest_path.parent.is_symlink(),
+        "chart_storage_symlink_component": (
+            str(chart_storage_symlink_component) if chart_storage_symlink_component is not None else ""
+        ),
         "manifest_symlink_component": (
-            str(manifest_symlink_component) if manifest_symlink_component is not None else ""
+            str(chart_storage_symlink_component) if chart_storage_symlink_component is not None else ""
         ),
     }
     if manifest_path.is_symlink():
         summary["error"] = f"manifest path is a symlink: {manifest_path}"
         return summary
-    if manifest_symlink_component is not None:
-        summary["error"] = f"manifest directory is a symlink: {manifest_symlink_component}"
+    if chart_storage_symlink_component is not None:
+        summary["error"] = f"manifest directory is a symlink: {chart_storage_symlink_component}"
         return summary
     if manifest_path.parent.exists():
         if not manifest_path.parent.is_dir():

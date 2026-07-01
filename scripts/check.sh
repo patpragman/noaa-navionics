@@ -3984,6 +3984,7 @@ grep -q 'recorded through a symlinked path component' docs/sailboat-pi.md
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor' README.md
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor' docs/sailboat-pi.md
 grep -q '"directory_is_symlink"' src/noaa_navionics/report.py
+grep -q '"chart_storage_symlink_component"' src/noaa_navionics/report.py
 grep -q '"manifest_symlink_component"' src/noaa_navionics/report.py
 grep -q '"directory_uid"' src/noaa_navionics/report.py
 grep -q '"directory_mode"' src/noaa_navionics/report.py
@@ -4010,6 +4011,7 @@ grep -q 'test_read_manifest_rejects_non_directory_manifest_parent' tests/test_do
 grep -q 'test_read_manifest_rejects_writable_manifest_directory' tests/test_downloader.py
 grep -q 'status report manifest directory has permissions' scripts/verify_pi.sh
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
+grep -q 'status report chart storage path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest download path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report manifest extract path contains a symlink' scripts/verify_pi.sh
