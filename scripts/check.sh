@@ -903,8 +903,8 @@ grep -q 'support bundle helper rejects broad/system local output directories, co
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters or parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters or parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
@@ -934,8 +934,8 @@ grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q "validating the diagnostic support archive's core command-evidence files without loading its contents into memory" README.md
 grep -q "validating the diagnostic support archive's core command-evidence files without loading its contents into memory" docs/sailboat-pi.md
-grep -q 'rejecting copied recovery directory paths with control characters or parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' README.md
-grep -q 'rejecting copied recovery directory paths with control characters or parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' docs/sailboat-pi.md
+grep -q 'rejecting copied recovery directory paths with control characters, parent-directory components, or symlinked path components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' README.md
+grep -q 'rejecting copied recovery directory paths with control characters, parent-directory components, or symlinked path components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' docs/sailboat-pi.md
 grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' README.md
 grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' docs/sailboat-pi.md
 grep -q 'requiring regular README archive files and regular manifest files when manifests are required' README.md
@@ -946,6 +946,8 @@ grep -q 'Recovery directory must not contain parent-directory components' script
 grep -q 'Recovery directory must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
 grep -q 'Recovery directory must not contain control characters' scripts/verify_pi_recovery_exports.sh
 grep -q 'Recovery directory must not contain control characters' scripts/restore_pi_recovery_user_data.sh
+grep -q 'reject_symlinked_path_components "Recovery directory" "$recovery_dir"' scripts/verify_pi_recovery_exports.sh
+grep -q 'reject_symlinked_path_components "Recovery directory" "$recovery_dir"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' README.md
 grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' docs/sailboat-pi.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' README.md
@@ -12418,6 +12420,22 @@ if [[ "$recovery_verify_code" -ne 2 ]]; then
 fi
 grep -q 'Recovery directory must not be a symlink' "$verify_output"
 
+recovery_verify_ancestor_real="$tmpdir/recovery-verify-ancestor-real"
+recovery_verify_ancestor_link="$tmpdir/recovery-verify-ancestor-link"
+mkdir -p "$recovery_verify_ancestor_real"
+ln -s "$recovery_verify_ancestor_real" "$recovery_verify_ancestor_link"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_ancestor_link/recovery" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject symlinked recovery path components with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery directory path contains a symlink' "$verify_output"
+! grep -q 'Verified Pi recovery exports:' "$verify_output"
+
 set +e
 scripts/verify_pi_recovery_exports.sh "$tmpdir/recovery-verify-parent/../recovery-verify" >"$verify_output" 2>&1
 recovery_verify_code=$?
@@ -12659,6 +12677,22 @@ if [[ "$recovery_restore_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Recovery directory must not contain parent-directory components' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_ancestor_real="$tmpdir/recovery-restore-ancestor-real"
+recovery_restore_ancestor_link="$tmpdir/recovery-restore-ancestor-link"
+mkdir -p "$recovery_restore_ancestor_real"
+ln -s "$recovery_restore_ancestor_real" "$recovery_restore_ancestor_link"
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_ancestor_link/recovery" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject symlinked recovery path components with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery directory path contains a symlink' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 set +e

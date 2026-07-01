@@ -126,6 +126,43 @@ require_local_command() {
   printf '%s\n' "$command_path"
 }
 
+reject_symlinked_path_components() {
+  local label="$1"
+  local path="$2"
+  local current
+  local component
+  local remaining
+
+  if [[ "$path" == /* ]]; then
+    current="/"
+    remaining="${path#/}"
+  else
+    current="."
+    remaining="$path"
+  fi
+
+  while [[ -n "$remaining" ]]; do
+    component="${remaining%%/*}"
+    if [[ "$component" == "$remaining" ]]; then
+      remaining=""
+    else
+      remaining="${remaining#*/}"
+    fi
+    if [[ -z "$component" || "$component" == "." ]]; then
+      continue
+    fi
+    if [[ "$current" == "/" ]]; then
+      current="/$component"
+    else
+      current="${current}/${component}"
+    fi
+    if [[ -L "$current" ]]; then
+      echo "$label path contains a symlink: $current" >&2
+      exit 2
+    fi
+  done
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
@@ -170,6 +207,7 @@ if [[ -L "$recovery_dir" ]]; then
   echo "Recovery directory must not be a symlink: $recovery_dir" >&2
   exit 2
 fi
+reject_symlinked_path_components "Recovery directory" "$recovery_dir"
 if [[ ! -d "$recovery_dir" ]]; then
   echo "Recovery directory must be a real directory: $recovery_dir" >&2
   exit 2
