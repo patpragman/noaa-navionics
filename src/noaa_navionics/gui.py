@@ -428,7 +428,7 @@ class DownloaderApp(tk.Tk):
         self.hint.configure(text=hint)
 
     def _start_download(self) -> None:
-        if self.worker and self.worker.is_alive():
+        if self.worker is not None:
             return
 
         try:
@@ -446,7 +446,7 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_preflight(self) -> None:
-        if self.worker and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.status.set("Running preflight")
@@ -455,7 +455,7 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_gps_fix(self) -> None:
-        if self.worker and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.status.set("Reading GPS fix")
@@ -484,7 +484,7 @@ class DownloaderApp(tk.Tk):
         self.status.set("Config loaded")
 
     def _start_config_sync(self) -> None:
-        if self.worker and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.progress.configure(mode="determinate", value=0)
@@ -494,7 +494,7 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_status_report(self) -> None:
-        if self.worker and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.status.set("Writing status report")
@@ -503,7 +503,7 @@ class DownloaderApp(tk.Tk):
         self.worker.start()
 
     def _start_opencpn_config(self) -> None:
-        if self.worker and self.worker.is_alive():
+        if self.worker is not None:
             return
         self._set_busy(True)
         self.status.set("Configuring OpenCPN")
@@ -623,6 +623,7 @@ class DownloaderApp(tk.Tk):
                         self.progress.configure(mode="indeterminate")
                         self.status.set(f"{done:,} bytes")
                 elif kind == "done":
+                    self.worker = None
                     self._set_busy(False)
                     self.progress.configure(mode="determinate", value=100)
                     result = payload
@@ -634,6 +635,7 @@ class DownloaderApp(tk.Tk):
                         self._log(f"Extracted to: {result.extracted_to}")
                     self.status.set("Done")
                 elif kind == "preflight":
+                    self.worker = None
                     self._set_busy(False)
                     ok = True
                     for result in payload:
@@ -642,11 +644,13 @@ class DownloaderApp(tk.Tk):
                         self._log(f"{mark:4} {result.name:10} {result.detail}")
                     self.status.set("Preflight passed" if ok else "Preflight needs attention")
                 elif kind == "gps-fix":
+                    self.worker = None
                     self._set_busy(False)
                     for line in payload:
                         self._log(line)
                     self.status.set("GPS fix ready")
                 elif kind == "status-report":
+                    self.worker = None
                     self._set_busy(False)
                     report, output = payload
                     self._log(format_status_text(report))
@@ -655,12 +659,14 @@ class DownloaderApp(tk.Tk):
                         "Status report passed" if status_report_is_ready(report) else "Status report needs attention"
                     )
                 elif kind == "log-lines":
+                    self.worker = None
                     self._set_busy(False)
                     status, lines = payload
                     for line in lines:
                         self._log(line)
                     self.status.set(status)
                 elif kind == "error":
+                    self.worker = None
                     self._set_busy(False)
                     self.status.set("Error")
                     self._log(f"Error: {payload}")

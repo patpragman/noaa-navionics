@@ -3794,6 +3794,89 @@ class GuiTests(unittest.TestCase):
         self.assertTrue(any("status report is missing this readiness check" in message for message in app.logs))
         self.assertEqual(len(app.after_calls), 1)
 
+    def test_gui_download_waits_for_unprocessed_worker_result(self):
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeApp:
+            def __init__(self):
+                self.worker = FinishedWorker()
+
+            def _selected_package(self):
+                raise AssertionError("download should wait until queued worker result is processed")
+
+            def _set_busy(self, busy):
+                raise AssertionError("download should not start a new worker")
+
+        app = FakeApp()
+
+        gui_module.DownloaderApp._start_download(app)
+
+        self.assertIsInstance(app.worker, FinishedWorker)
+
+    def test_gui_poll_queue_keeps_worker_during_progress_and_clears_on_done(self):
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeProgress:
+            def __init__(self, app):
+                self.app = app
+                self.calls = []
+
+            def configure(self, **kwargs):
+                self.calls.append((kwargs, self.app.worker))
+
+        class FakeResult:
+            def __init__(self):
+                self.skipped = False
+                self.path = Path("/tmp/charts.zip")
+                self.extracted_to = None
+
+        class FakeApp:
+            def __init__(self):
+                self.queue = gui_module.Queue()
+                self.queue.put(("progress", (5, 10)))
+                self.queue.put(("done", FakeResult()))
+                self.worker = FinishedWorker()
+                self.progress = FakeProgress(self)
+                self.status = FakeVar()
+                self.logs = []
+                self.busy_calls = []
+                self.after_calls = []
+
+            def _set_busy(self, busy):
+                self.busy_calls.append((busy, self.worker))
+
+            def _log(self, message):
+                self.logs.append(message)
+
+            def after(self, milliseconds, callback):
+                self.after_calls.append((milliseconds, callback))
+
+            def _poll_queue(self):
+                raise AssertionError("scheduled callback should not run during this test")
+
+        app = FakeApp()
+
+        gui_module.DownloaderApp._poll_queue(app)
+
+        self.assertEqual(app.progress.calls[0][0], {"mode": "determinate", "value": 50.0})
+        self.assertIsInstance(app.progress.calls[0][1], FinishedWorker)
+        self.assertEqual(app.busy_calls, [(False, None)])
+        self.assertIsNone(app.worker)
+        self.assertEqual(app.status.value, "Done")
+        self.assertTrue(any("Downloaded: /tmp/charts.zip" in message for message in app.logs))
+        self.assertEqual(len(app.after_calls), 1)
+
     def test_status_gui_mark_does_not_hide_active_anchor_alarm(self):
         class FakeVar:
             def __init__(self):

@@ -3641,6 +3641,10 @@ grep -q 'fix has no timestamp' src/noaa_navionics/gui.py
 grep -q 'download requires writable chart storage with enough free space' src/noaa_navionics/gui.py
 grep -q 'sync requires a complete onboard chart package' src/noaa_navionics/gui.py
 grep -q 'sync requires writable chart storage with enough free space' src/noaa_navionics/gui.py
+grep -q 'if self.worker is not None:' src/noaa_navionics/gui.py
+grep -q 'self.worker = None' src/noaa_navionics/gui.py
+grep -q 'test_gui_download_waits_for_unprocessed_worker_result' tests/test_downloader.py
+grep -q 'test_gui_poll_queue_keeps_worker_during_progress_and_clears_on_done' tests/test_downloader.py
 grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
