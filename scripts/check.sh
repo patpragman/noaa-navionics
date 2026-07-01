@@ -637,12 +637,14 @@ grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, reje
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
-grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
-grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' docs/sailboat-pi.md
+grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
+grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
 grep -q "status helper validates the Pi's installed private venv command path and onboard config file" README.md
 grep -q "status helper validates the Pi's installed private venv command path and onboard config file" docs/sailboat-pi.md
+grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' README.md
+grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
 grep -q 'rejects symlinked command-tree or config path components' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/check_pi_status.sh
@@ -653,8 +655,10 @@ grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-d
 grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" README.md
 grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
-grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' README.md
-grep -q 'Add `--status --gps-seconds N` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
+grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
+grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
+grep -q 'uses the commissioned launcher GPS wait unless `--gps-seconds N` is supplied' README.md
+grep -q 'uses the commissioned launcher GPS wait unless `--gps-seconds N` is supplied' docs/sailboat-pi.md
 grep -q 'live fix time, signed age, position' README.md
 grep -q 'live fix time, signed age, position' docs/sailboat-pi.md
 grep -q 'No chart data is downloaded on the local computer' README.md
@@ -1423,11 +1427,12 @@ grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scrip
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
+grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' scripts/refresh_pi_charts.sh
 grep -q 'reject_symlinked_path_components' scripts/refresh_pi_charts.sh
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/refresh_pi_charts.sh
 grep -q 'check_installed_noaa_command_tree' scripts/refresh_pi_charts.sh
 grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/refresh_pi_charts.sh
-grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' scripts/refresh_pi_charts.sh
+grep -q 'status_args=(status-report --config "$config")' scripts/refresh_pi_charts.sh
 grep -q 'Post-refresh status report' scripts/refresh_pi_charts.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID' scripts/verify_pi.sh
@@ -1447,7 +1452,8 @@ grep -q 'export_pi_recovery_bundle.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'verify_pi_recovery_exports.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_pi_charts.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
-grep -q -- '--status --gps-seconds "$gps_seconds"' scripts/pre_trip_prepare_pi.sh
+grep -q 'refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)' scripts/pre_trip_prepare_pi.sh
+grep -q 'refresh_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$output_dir"' scripts/pre_trip_prepare_pi.sh
@@ -1482,7 +1488,9 @@ grep -q 'sync_private_parent_directory(path)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot directory changed before sync' scripts/post_trip_collect_pi.sh
 grep -q 'fsyncs that status snapshot file and its private trip directory before reporting it saved' README.md
 grep -q 'fsyncs that status snapshot file and its private trip directory before reporting it saved' docs/sailboat-pi.md
-grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json' scripts/post_trip_collect_pi.sh
+grep -q 'status_args=("$target")' scripts/post_trip_collect_pi.sh
+grep -q 'status_args+=(--gps-seconds "$gps_seconds")' scripts/post_trip_collect_pi.sh
+grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "${status_args\[@\]}"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_status_snapshot_json "$status_path"' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot changed while opening it' scripts/post_trip_collect_pi.sh
@@ -1530,6 +1538,8 @@ grep -q 'Helper script changed before it could be validated' scripts/pre_trip_pr
 ! grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
+grep -q 'launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"' scripts/check_pi_status.sh
+grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' scripts/check_pi_status.sh
 grep -q 'reject_symlinked_path_components' scripts/check_pi_status.sh
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
@@ -5949,7 +5959,7 @@ if [[ "$pre_trip_mutated_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
-grep -Fxq "refresh|pi@example.invalid --retries 5 --retry-delay 30 --status --gps-seconds 10" "$pre_trip_mutated_log"
+grep -Fxq "refresh|pi@example.invalid --retries 5 --retry-delay 30 --status" "$pre_trip_mutated_log"
 ! grep -q 'pre-departure should not run' "$pre_trip_mutated_log"
 
 pre_trip_misdirected_repo="$tmpdir/pre-trip-misdirected-repo"
@@ -6246,7 +6256,7 @@ if [[ "$post_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
-grep -Eq '^status\|pi@example.invalid --gps-seconds 10 --json$' "$post_trip_mutated_helper_log"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_mutated_helper_log"
 ! grep -q '^tracks|' "$post_trip_mutated_helper_log"
 chmod 0755 "$post_trip_repo/scripts/export_pi_tracks.sh"
 
@@ -6344,7 +6354,7 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'status snapshot is not valid JSON' "$verify_output"
 ! grep -q 'Saved Pi status snapshot' "$verify_output"
-grep -Eq '^status\|pi@example.invalid --gps-seconds 10 --json$' "$post_trip_invalid_json_log"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_invalid_json_log"
 
 post_trip_failure_log="$tmpdir/post-trip-failure-helper-calls"
 post_trip_failure_output_dir="$tmpdir/post-trip-failure-output"
@@ -6653,6 +6663,7 @@ grep -q 'app_exec="$(check_installed_noaa_command)"' "$status_fake_ssh_stdin"
 grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' "$status_fake_ssh_stdin"
 grep -q 'status-report' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
+grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' "$status_fake_ssh_stdin"
 grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"
 grep -q '"$app_exec" "${status_args\[@\]}"' "$status_fake_ssh_stdin"
 ! grep -q -- '--output' "$status_fake_ssh_stdin"
@@ -6729,7 +6740,9 @@ grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$ref
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' "$refresh_fake_ssh_stdin"
 grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
 grep -q 'Post-refresh status report' "$refresh_fake_ssh_stdin"
-grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' "$refresh_fake_ssh_stdin"
+grep -q 'status_args=(status-report --config "$config")' "$refresh_fake_ssh_stdin"
+grep -q -- '--gps-seconds "$gps_seconds"' "$refresh_fake_ssh_stdin"
+grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' "$refresh_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
 grep -q 'reject_symlinked_path_components' "$refresh_fake_ssh_stdin"
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command" "$app_bin"' "$refresh_fake_ssh_stdin"

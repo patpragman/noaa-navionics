@@ -13,7 +13,7 @@ Collects post-trip evidence from an already commissioned Raspberry Pi:
 
 Options:
   --track-days N       Export GPX tracks modified in the last N days; 0 exports all (default: 30)
-  --gps-seconds N      Seconds to wait for a GPS fix in the status snapshot (default: 10)
+  --gps-seconds N      Override the commissioned GPS fix wait in the status snapshot
   --skip-status        Skip the local private JSON status snapshot
   --skip-tracks        Skip GPX track export
   --skip-support       Skip diagnostic support bundle collection
@@ -40,7 +40,7 @@ target="$1"
 shift
 output_dir="pi-post-trip-exports"
 track_days=30
-gps_seconds=10
+gps_seconds=""
 skip_status=0
 skip_tracks=0
 skip_support=0
@@ -887,7 +887,12 @@ if [[ "$skip_status" -eq 0 ]]; then
   printf '==> Saving Pi status snapshot\n'
   set +e
   require_helper "$status_helper"
-  write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json
+  status_args=("$target")
+  if [[ -n "$gps_seconds" ]]; then
+    status_args+=(--gps-seconds "$gps_seconds")
+  fi
+  status_args+=(--json)
+  write_private_status_snapshot "$status_path" "$status_helper" "${status_args[@]}"
   status_code=$?
   set -e
   verify_private_output_file "status snapshot" "$status_path"

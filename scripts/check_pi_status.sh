@@ -10,7 +10,7 @@ Raspberry Pi over SSH. This is a lightweight status snapshot for maintenance
 or underway checks; it does not replace verify_pi.sh or dock_test_pi.sh.
 
 Options:
-  --gps-seconds N   Seconds to wait for a GPS fix (default: 10)
+  --gps-seconds N   Override the commissioned GPS fix wait from launcher.env
   --json            Print the raw JSON status report
 
 Nothing is installed, enabled, rebooted, shut down, downloaded, or written on
@@ -30,7 +30,7 @@ fi
 
 target="$1"
 shift
-gps_seconds=10
+gps_seconds=""
 json=0
 ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
@@ -224,6 +224,7 @@ export PATH
 command_path="${HOME}/.local/bin/noaa-navionics"
 expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
 config_path="${HOME}/.config/noaa-navionics/config.ini"
+launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"
 
 fail() {
   printf 'error: %s\n' "$*" >&2
@@ -381,8 +382,12 @@ check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"
 status_args=(
   status-report
   --config "$config_path"
-  --gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"
 )
+if [[ -n "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" ]]; then
+  status_args+=(--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS")
+else
+  status_args+=(--gps-seconds-from-launcher-env "$launcher_env_path")
+fi
 if [[ "$NOAA_NAVIONICS_STATUS_JSON" == "1" ]]; then
   status_args+=(--json)
 fi

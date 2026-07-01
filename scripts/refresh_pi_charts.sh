@@ -14,7 +14,7 @@ Options:
   --retries N         Download attempts on the Pi before failing (default: 5)
   --retry-delay N     Seconds between retryable failures (default: 30)
   --status            Run a read-only status-report after chart sync succeeds
-  --gps-seconds N     Seconds to wait for a GPS fix during --status (default: 10)
+  --gps-seconds N     Override the commissioned GPS fix wait during --status
 
 Nothing is installed, enabled, rebooted, shut down, or downloaded on the
 local computer.
@@ -37,7 +37,7 @@ force=0
 retries=5
 retry_delay=30
 status=0
-gps_seconds=10
+gps_seconds=""
 ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -262,12 +262,13 @@ export PATH
 
 app_bin="${HOME}/.local/bin/noaa-navionics"
 config="${HOME}/.config/noaa-navionics/config.ini"
+launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"
 force="${NOAA_NAVIONICS_REFRESH_FORCE:-0}"
 retries="${NOAA_NAVIONICS_REFRESH_RETRIES:-5}"
 retry_delay="${NOAA_NAVIONICS_REFRESH_RETRY_DELAY:-30}"
 status="${NOAA_NAVIONICS_REFRESH_STATUS:-0}"
-gps_seconds="${NOAA_NAVIONICS_REFRESH_GPS_SECONDS:-10}"
+gps_seconds="${NOAA_NAVIONICS_REFRESH_GPS_SECONDS:-}"
 
 require_nonnegative_integer() {
   local name="$1"
@@ -439,7 +440,9 @@ check_installed_noaa_command() {
 
 require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
 require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
-require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
+if [[ -n "$gps_seconds" ]]; then
+  require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
+fi
 app_exec="$(check_installed_noaa_command)"
 check_user_owned_private_file "onboard NOAA Navionics config" "$config"
 
@@ -452,7 +455,13 @@ fi
 "$app_exec" "${sync_args[@]}"
 if [[ "$status" == "1" ]]; then
   printf '\nPost-refresh status report:\n'
-  "$app_exec" status-report --config "$config" --gps-seconds "$gps_seconds"
+  status_args=(status-report --config "$config")
+  if [[ -n "$gps_seconds" ]]; then
+    status_args+=(--gps-seconds "$gps_seconds")
+  else
+    status_args+=(--gps-seconds-from-launcher-env "$launcher_env")
+  fi
+  "$app_exec" "${status_args[@]}"
 fi
 printf 'Pi NOAA chart refresh completed using %s.\n' "$config"
 REMOTE

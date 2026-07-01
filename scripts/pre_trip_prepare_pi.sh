@@ -15,7 +15,7 @@ Options:
   --device PATH       Stable GPS device path expected on the Pi
   --output-dir DIR    Local recovery export parent directory (default: pi-recovery-exports)
   --track-days N      Export GPX tracks modified in the last N days; 0 exports all (default: 30)
-  --gps-seconds N     Seconds to wait for GPS during status/pre-departure checks (default: 10)
+  --gps-seconds N     Override commissioned GPS wait for status/pre-departure checks
   --retries N         Chart download attempts on the Pi (default: 5)
   --retry-delay N     Seconds between chart download retry attempts (default: 30)
   --force-refresh     Force a NOAA chart redownload on the Pi
@@ -49,7 +49,7 @@ shift
 device=""
 output_dir="pi-recovery-exports"
 track_days=30
-gps_seconds=10
+gps_seconds=""
 retries=5
 retry_delay=30
 force_refresh=0
@@ -886,7 +886,10 @@ require_helper "$verify_recovery_helper"
 require_helper "$pre_departure_helper"
 
 if [[ "$skip_refresh" -eq 0 ]]; then
-  refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status --gps-seconds "$gps_seconds")
+  refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)
+  if [[ -n "$gps_seconds" ]]; then
+    refresh_args+=(--gps-seconds "$gps_seconds")
+  fi
   if [[ "$force_refresh" -eq 1 ]]; then
     refresh_args+=(--force)
   fi
@@ -915,7 +918,10 @@ else
 fi
 
 if [[ "$skip_pre_departure" -eq 0 ]]; then
-  pre_departure_args=("$target" --device "$device" --gps-seconds "$gps_seconds")
+  pre_departure_args=("$target" --device "$device")
+  if [[ -n "$gps_seconds" ]]; then
+    pre_departure_args+=(--gps-seconds "$gps_seconds")
+  fi
   if [[ "$allow_dirty" -eq 1 ]]; then
     pre_departure_args+=(--allow-dirty)
   fi
