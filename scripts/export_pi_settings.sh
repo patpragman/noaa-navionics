@@ -426,11 +426,9 @@ from __future__ import annotations
 
 import json
 import os
-import posixpath
 import stat
 import sys
 import tarfile
-from pathlib import PurePosixPath
 
 archive_path = sys.argv[1]
 count_field = sys.argv[2]
@@ -444,11 +442,14 @@ def fail(message: str) -> None:
 def normalized_member_name(name: str) -> str:
     if "\\" in name:
         fail(f"Export archive contains unsafe backslash member: {name}")
-    path = PurePosixPath(name)
-    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+    if name.startswith("/"):
         fail(f"Export archive contains unsafe member path: {name}")
-    normalized = posixpath.normpath(name)
-    if normalized in {"", "."} or normalized.startswith("../") or "/../" in normalized:
+    normalized = name
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = normalized.rstrip("/")
+    parts = normalized.split("/") if normalized else []
+    if not parts or any(part in {"", ".", ".."} for part in parts):
         fail(f"Export archive contains unsafe member path: {name}")
     return normalized
 
