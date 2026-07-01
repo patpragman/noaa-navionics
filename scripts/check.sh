@@ -4000,6 +4000,7 @@ grep -q 'def _pi_health_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _storage_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chart_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _opencpn_readiness_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _gps_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
@@ -4019,6 +4020,8 @@ grep -q 'status report OpenCPN Charts check has no structured data' src/noaa_nav
 grep -q 'status report OpenCPN Charts did not prove configured chart directory' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN GPSD check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN GPSD found unexpected enabled GPSD connections' src/noaa_navionics/report.py
+grep -q 'status report {expected_name} check has no structured fix data' src/noaa_navionics/report.py
+grep -q 'status report {expected_name} timestamp does not match gps_fix' src/noaa_navionics/report.py
 grep -q 'status report GPS Device check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report GPS Device by-id path is not a symlink' src/noaa_navionics/report.py
 grep -q 'status report GPS Device is not a character device' src/noaa_navionics/report.py
@@ -4071,6 +4074,7 @@ grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/
 grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_chart_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_opencpn_readiness_evidence' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_structured_gps_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_serial_gps_device_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gpsd_config_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_chrony_gps_time_evidence' tests/test_downloader.py
@@ -4115,6 +4119,8 @@ grep -q 'READY reports also require structured Chart Package, Charts, and Chart 
 grep -q 'READY reports also require structured Chart Package, Charts, and Chart Update Debris evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' README.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence' README.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence' docs/sailboat-pi.md
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' README.md
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured OpenCPN GPSD evidence' README.md

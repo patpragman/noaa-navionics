@@ -310,6 +310,7 @@ def status_report_validation_failures(
     failures.extend(_storage_validation_failures(report))
     failures.extend(_chart_readiness_validation_failures(report))
     failures.extend(_opencpn_readiness_validation_failures(report))
+    failures.extend(_gps_readiness_validation_failures(report))
     failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_command_evidence_validation_failures(report))
     failures.extend(_gpsd_config_validation_failures(report))
@@ -544,6 +545,63 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD unexpected connection list was not parsed"))
                 elif unexpected:
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD found unexpected enabled GPSD connections"))
+    return failures
+
+
+def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config = report.get("config")
+    checks = report.get("checks")
+    gps_fix = report.get("gps_fix")
+    if not isinstance(config, dict) or not isinstance(checks, list):
+        return []
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    expected_name = "GPS" if gps_mode == "serial" else "GPSD"
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    row = check_rows.get(expected_name)
+    if not isinstance(row, dict) or not row.get("ok"):
+        return []
+    data = row.get("data")
+    if not isinstance(data, dict):
+        return [CheckResult(expected_name, False, f"status report {expected_name} check has no structured fix data")]
+
+    failures: list[CheckResult] = []
+    latitude = _finite_gps_fix_float(data.get("latitude"))
+    longitude = _finite_gps_fix_float(data.get("longitude"))
+    if latitude is None or longitude is None:
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix has non-numeric coordinates"))
+    elif abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix coordinates are invalid 0,0"))
+    timestamp = _parse_gps_fix_timestamp(data.get("timestamp"))
+    if timestamp is None:
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix has no valid timestamp"))
+    satellites = data.get("satellites")
+    hdop = data.get("hdop")
+    if satellites is None and hdop is None:
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix has no satellite or HDOP quality fields"))
+    if satellites is not None and (isinstance(satellites, bool) or not isinstance(satellites, int) or satellites < 4):
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix satellites is weak or invalid"))
+    parsed_hdop = _finite_gps_fix_float(hdop)
+    if hdop is not None and (parsed_hdop is None or parsed_hdop < 0.0 or parsed_hdop > 5.0):
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix HDOP is weak or invalid"))
+
+    if isinstance(gps_fix, dict) and gps_fix.get("ok") is True:
+        if str(gps_fix.get("source", "")).strip() != expected_name:
+            failures.append(CheckResult(expected_name, False, f"status report {expected_name} row does not match gps_fix source"))
+        summary_latitude = _finite_gps_fix_float(gps_fix.get("latitude"))
+        summary_longitude = _finite_gps_fix_float(gps_fix.get("longitude"))
+        if latitude is not None and summary_latitude is not None and abs(latitude - summary_latitude) > 1e-7:
+            failures.append(CheckResult(expected_name, False, f"status report {expected_name} latitude does not match gps_fix"))
+        if longitude is not None and summary_longitude is not None and abs(longitude - summary_longitude) > 1e-7:
+            failures.append(CheckResult(expected_name, False, f"status report {expected_name} longitude does not match gps_fix"))
+        summary_timestamp = _parse_gps_fix_timestamp(gps_fix.get("timestamp"))
+        if timestamp is not None and summary_timestamp is not None and timestamp != summary_timestamp:
+            failures.append(CheckResult(expected_name, False, f"status report {expected_name} timestamp does not match gps_fix"))
+        if satellites is not None and gps_fix.get("satellites") is not None and satellites != gps_fix.get("satellites"):
+            failures.append(CheckResult(expected_name, False, f"status report {expected_name} satellites do not match gps_fix"))
+        if hdop is not None and gps_fix.get("hdop") is not None:
+            summary_hdop = _finite_gps_fix_float(gps_fix.get("hdop"))
+            if parsed_hdop is not None and summary_hdop is not None and abs(parsed_hdop - summary_hdop) > 1e-9:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} HDOP does not match gps_fix"))
     return failures
 
 

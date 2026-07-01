@@ -523,6 +523,15 @@ def complete_status_gui_report(
                 "usable_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
                 "selected_or_combined": True,
             }
+        elif row["name"] in {"GPS", "GPSD"}:
+            row["detail"] = "fix"
+            row["data"] = {
+                "timestamp": generated_at,
+                "latitude": 61.2181,
+                "longitude": -149.9003,
+                "satellites": 8,
+                "hdop": 0.9,
+            }
         elif row["name"] == "Pi Power":
             row["detail"] = "no under-voltage or throttling reported"
             row["data"] = {
@@ -11672,6 +11681,57 @@ class StatusReportTests(unittest.TestCase):
 
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == "GPS Fix" and expected in failure.detail for failure in failures))
+
+    def test_status_report_ready_requires_structured_gps_readiness_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def fix_data(**overrides):
+            data = {
+                "timestamp": generated_at,
+                "latitude": 61.2181,
+                "longitude": -149.9003,
+                "satellites": 8,
+                "hdop": 0.9,
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            ("gpsd", "GPSD", None, "GPSD check has no structured fix data"),
+            ("gpsd", "GPSD", fix_data(latitude="north"), "fix has non-numeric coordinates"),
+            ("gpsd", "GPSD", fix_data(latitude=0.0, longitude=0.0), "fix coordinates are invalid 0,0"),
+            ("gpsd", "GPSD", fix_data(timestamp="not-a-time"), "fix has no valid timestamp"),
+            ("gpsd", "GPSD", fix_data(satellites=None, hdop=None), "fix has no satellite or HDOP quality fields"),
+            ("gpsd", "GPSD", fix_data(satellites=3), "fix satellites is weak or invalid"),
+            ("gpsd", "GPSD", fix_data(hdop=6.0), "fix HDOP is weak or invalid"),
+            ("gpsd", "GPSD", fix_data(latitude=61.5), "latitude does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(longitude=-149.5), "longitude does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(timestamp=(now - timedelta(seconds=1)).isoformat().replace("+00:00", "Z")), "timestamp does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(satellites=9), "satellites do not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(hdop=1.1), "HDOP does not match gps_fix"),
+            ("serial", "GPS", None, "GPS check has no structured fix data"),
+            ("serial", "GPS", fix_data(latitude=61.5), "latitude does not match gps_fix"),
+        ]
+        for gps_mode, row_name, data, expected in cases:
+            with self.subTest(gps_mode=gps_mode, row_name=row_name, expected=expected):
+                report = complete_status_gui_report(gps_mode=gps_mode, generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == row_name and expected in failure.detail for failure in failures))
+
+        report = complete_status_gui_report(generated_at=generated_at)
+        report["checks"].append({"name": "GPS", "ok": True, "detail": "legacy serial row"})
+
+        self.assertTrue(status_report_is_ready(report, now=now))
+        self.assertFalse(status_report_validation_failures(report, now=now))
 
     def test_status_report_ready_requires_valid_track_log_summary(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
