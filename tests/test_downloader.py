@@ -1180,6 +1180,68 @@ class OpenCPNConfigTests(unittest.TestCase):
         self.assertEqual(opencpn_module._process_state_from_stat_text("123 (opencpn) Z 1 2 3"), "Z")
         self.assertEqual(opencpn_module._process_state_from_stat_text("malformed"), "")
 
+    def test_opencpn_running_from_proc_accepts_live_current_user_process(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            proc = Path(tmpdir)
+            process = proc / "123"
+            process.mkdir()
+            (process / "stat").write_text("123 (opencpn) S 1 2 3\n", encoding="ascii")
+            (process / "comm").write_text("opencpn\n", encoding="utf-8")
+
+            self.assertTrue(opencpn_module._opencpn_running_from_proc(proc))
+
+    def test_opencpn_running_from_proc_ignores_zombie_process(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            proc = Path(tmpdir)
+            process = proc / "123"
+            process.mkdir()
+            (process / "stat").write_text("123 (opencpn) Z 1 2 3\n", encoding="ascii")
+            (process / "comm").write_text("opencpn\n", encoding="utf-8")
+
+            self.assertFalse(opencpn_module._opencpn_running_from_proc(proc))
+
+    def test_opencpn_running_from_proc_rejects_symlinked_process_comm(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            proc = Path(tmpdir)
+            process = proc / "123"
+            process.mkdir()
+            target = proc / "fake-comm"
+            target.write_text("opencpn\n", encoding="utf-8")
+            (process / "stat").write_text("123 (opencpn) S 1 2 3\n", encoding="ascii")
+            try:
+                (process / "comm").symlink_to(target)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            self.assertFalse(opencpn_module._opencpn_running_from_proc(proc))
+
+    def test_opencpn_running_from_proc_rejects_replaced_process_directory(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            proc = Path(tmpdir)
+            process = proc / "123"
+            replacement = proc / "replacement"
+            process.mkdir()
+            replacement.mkdir()
+            (process / "stat").write_text("123 (old) S 1 2 3\n", encoding="ascii")
+            (process / "comm").write_text("old\n", encoding="utf-8")
+            (replacement / "stat").write_text("123 (opencpn) S 1 2 3\n", encoding="ascii")
+            (replacement / "comm").write_text("opencpn\n", encoding="utf-8")
+            original_open = opencpn_module.os.open
+
+            def replacing_open(path, flags, mode=0o777, *, dir_fd=None):
+                if dir_fd is None and Path(path) == process:
+                    process.rename(proc / "old-process")
+                    replacement.rename(process)
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                opencpn_module.os.open = replacing_open
+                self.assertFalse(opencpn_module._opencpn_running_from_proc(proc))
+            finally:
+                opencpn_module.os.open = original_open
+
     def test_check_opencpn_gpsd_config_reports_missing_and_configured(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = Path(tmpdir) / "opencpn.conf"

@@ -183,21 +183,59 @@ def configure_gpsd_connection(
 
 def opencpn_running() -> bool:
     proc = Path("/proc")
+    return _opencpn_running_from_proc(proc)
+
+
+def _opencpn_running_from_proc(proc: Path) -> bool:
     if not proc.exists():
         return False
     current_uid = os.getuid()
     for process in proc.glob("[0-9]*"):
-        try:
-            if process.stat().st_uid != current_uid:
-                continue
-            state = _process_state_from_stat_text((process / "stat").read_text(encoding="ascii", errors="ignore"))
-            if state == "Z":
-                continue
-            if (process / "comm").read_text(encoding="utf-8", errors="ignore").strip() == "opencpn":
-                return True
-        except OSError:
+        details = _read_process_state_and_comm(process, expected_uid=current_uid)
+        if details is None:
             continue
+        state, comm = details
+        if state == "Z":
+            continue
+        if comm == "opencpn":
+            return True
     return False
+
+
+def _read_process_state_and_comm(process: Path, *, expected_uid: int) -> Optional[tuple[str, str]]:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(process, follow_symlinks=False)
+    except OSError:
+        return None
+    if not stat.S_ISDIR(before.st_mode) or before.st_uid != expected_uid:
+        return None
+    try:
+        process_fd = os.open(process, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError:
+        return None
+    try:
+        opened = os.fstat(process_fd)
+        if not os.path.samestat(before, opened) or not stat.S_ISDIR(opened.st_mode) or opened.st_uid != expected_uid:
+            return None
+        stat_text = _read_process_file_text(process_fd, "stat", encoding="ascii")
+        comm = _read_process_file_text(process_fd, "comm", encoding="utf-8").strip()
+    except OSError:
+        return None
+    finally:
+        os.close(process_fd)
+    return _process_state_from_stat_text(stat_text), comm
+
+
+def _read_process_file_text(process_fd: int, name: str, *, encoding: str) -> str:
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise OSError(f"process {name} is not a regular file")
+        return os.read(fd, 4096).decode(encoding, errors="ignore")
+    finally:
+        os.close(fd)
 
 
 def _process_state_from_stat_text(text: str) -> str:

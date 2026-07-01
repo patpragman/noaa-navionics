@@ -73,6 +73,14 @@ PY
 grep -q 'status-report' systemd/noaa-navionics-preflight.service
 grep -q 'def _process_state_from_stat_text' src/noaa_navionics/opencpn.py
 grep -q '_process_state_from_stat_text' tests/test_downloader.py
+grep -q 'def _read_process_state_and_comm' src/noaa_navionics/opencpn.py
+grep -q 'os.open(process, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)' src/noaa_navionics/opencpn.py
+grep -q 'os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=process_fd)' src/noaa_navionics/opencpn.py
+grep -q 'test_opencpn_running_from_proc_accepts_live_current_user_process' tests/test_downloader.py
+grep -q 'test_opencpn_running_from_proc_rejects_symlinked_process_comm' tests/test_downloader.py
+grep -q 'test_opencpn_running_from_proc_rejects_replaced_process_directory' tests/test_downloader.py
+grep -q 'checking same-user `/proc` process directories, `stat`, and `comm` through no-follow descriptors' README.md
+grep -q 'checking same-user `/proc` process directories, `stat`, and `comm` through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'status.json' systemd/noaa-navionics-preflight.service
 grep -q -- '--gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env' systemd/noaa-navionics-preflight.service
 ! grep -q '^Environment=' systemd/noaa-navionics-preflight.service
