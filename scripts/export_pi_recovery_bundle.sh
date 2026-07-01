@@ -32,6 +32,7 @@ target="$1"
 shift
 output_dir="pi-recovery-exports"
 track_days=0
+python3_cmd=""
 if [[ $# -gt 0 && "$1" != --* ]]; then
   output_dir="$1"
   shift
@@ -44,6 +45,94 @@ require_non_negative_integer() {
     echo "$name must be a non-negative integer" >&2
     exit 2
   fi
+}
+
+local_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_local_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    echo "Could not inspect local command ${item_kind}: $item_path" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    echo "Local command ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 2
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Local command ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+check_local_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_local_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+validate_trusted_local_command() {
+  local command_name="$1"
+  local command_path="$2"
+  local resolved_path
+
+  if ! local_path_in_trusted_system_dir "$command_path"; then
+    echo "Local ${command_name} command is not in a trusted system directory: $command_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$command_path" ]]; then
+    echo "Local ${command_name} command is not executable: $command_path" >&2
+    exit 2
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    echo "Could not resolve local ${command_name} command: $command_path" >&2
+    exit 2
+  fi
+  if ! local_path_in_trusted_system_dir "$resolved_path"; then
+    echo "Resolved local ${command_name} command is not in a trusted system directory: $resolved_path" >&2
+    exit 2
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not executable after resolution: $resolved_path" >&2
+    exit 2
+  fi
+  check_local_owner_and_mode "$command_name" "$resolved_path"
+  check_local_directory_chain "$resolved_path"
+}
+
+require_local_command() {
+  local command_name="$1"
+  local command_path
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    echo "Missing required local command: $command_name" >&2
+    exit 2
+  fi
+  validate_trusted_local_command "$command_name" "$command_path"
+  printf '%s\n' "$command_path"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -232,11 +321,6 @@ utc_timestamp() {
 
 require_helper() {
   local path="$1"
-  local current_uid
-  local mode
-  local mode_tail
-  local owner_uid
-  local stat_output
 
   if [[ -L "$path" ]]; then
     echo "Helper script must not be a symlink: $path" >&2
@@ -247,31 +331,75 @@ require_helper() {
     echo "Helper script is missing or not executable: $path" >&2
     exit 2
   fi
-  current_uid="$(id -u)"
-  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect helper script owner and permissions: $path" >&2
+  if ! "$python3_cmd" - "$path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect helper script owner and permissions: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+if stat.S_ISLNK(before.st_mode):
+    print(f"Helper script must not be a symlink: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not stat.S_ISREG(before.st_mode):
+    print(f"Helper script is not a regular file: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if before.st_uid != os.getuid():
+    print(f"Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+    raise SystemExit(1)
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    print(f"Helper script has permissions {mode:03o}, expected no group/other write bits: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not mode & 0o111:
+    print(f"Helper script is not executable: {path}", file=sys.stderr)
+    raise SystemExit(1)
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    print(f"Could not open helper script through no-follow descriptor: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Helper script changed before it could be validated: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Helper script is not a regular file when opened: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if opened.st_uid != os.getuid():
+        print(f"Helper script is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        print(f"Helper script has permissions {opened_mode:03o}, expected no group/other write bits: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not opened_mode & 0o111:
+        print(f"Helper script is not executable when opened: {path}", file=sys.stderr)
+        raise SystemExit(1)
+finally:
+    os.close(fd)
+PY
+  then
     exit 2
   fi
-  owner_uid="${stat_output%% *}"
-  mode="${stat_output#* }"
-  if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "Helper script is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
-    exit 2
-  fi
-  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
-  case "$mode_tail" in
-    ?[2367]?|??[2367])
-      echo "Helper script has permissions ${mode}, expected no group/other write bits: $path" >&2
-      exit 2
-      ;;
-  esac
 }
 
 run_step() {
   local label="$1"
+  local command_path
   shift
+  command_path="$1"
+  shift
+  require_helper "$command_path"
   printf '==> %s\n' "$label"
-  "$@"
+  "$command_path" "$@"
 }
 
 validate_ssh_target "$target"
@@ -284,6 +412,7 @@ opencpn_helper="${repo_root}/scripts/export_pi_opencpn_data.sh"
 tracks_helper="${repo_root}/scripts/export_pi_tracks.sh"
 support_helper="${repo_root}/scripts/collect_pi_support_bundle.sh"
 verify_helper="${repo_root}/scripts/verify_pi_recovery_exports.sh"
+python3_cmd="$(require_local_command python3)"
 require_helper "$settings_helper"
 require_helper "$opencpn_helper"
 require_helper "$tracks_helper"

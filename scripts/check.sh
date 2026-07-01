@@ -725,8 +725,10 @@ grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics 
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' README.md
 grep -q 'scripts/export_pi_recovery_bundle.sh pi@raspberrypi.local --track-days 30' docs/sailboat-pi.md
-grep -q 'recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits' README.md
-grep -q 'recovery export helper validates each local export helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'recovery export helper validates each local export helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
+grep -q 'recovery export helper validates each local export helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before helper validation' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before helper validation' docs/sailboat-pi.md
 grep -q 'and verifies the completed local recovery set before reporting success' README.md
 grep -q 'and verifies the completed local recovery set before reporting success' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
@@ -1274,6 +1276,15 @@ grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_recovery_bundle.sh
+grep -q 'require_local_command python3' scripts/export_pi_recovery_bundle.sh
+grep -q 'validate_trusted_local_command' scripts/export_pi_recovery_bundle.sh
+grep -q 'Local ${command_name} command is not in a trusted system directory' scripts/export_pi_recovery_bundle.sh
+grep -q 'Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}' scripts/export_pi_recovery_bundle.sh
+grep -q 'Helper script has permissions {mode:03o}, expected no group/other write bits' scripts/export_pi_recovery_bundle.sh
+grep -q 'Could not open helper script through no-follow descriptor' scripts/export_pi_recovery_bundle.sh
+grep -q 'Helper script changed before it could be validated' scripts/export_pi_recovery_bundle.sh
+grep -q 'require_helper "$command_path"' scripts/export_pi_recovery_bundle.sh
+! sed -n '/^require_helper()/,/^}/p' scripts/export_pi_recovery_bundle.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'if mode != 0o600' scripts/verify_pi_recovery_exports.sh
 grep -q 'if opened_mode != 0o600' scripts/verify_pi_recovery_exports.sh
@@ -1486,7 +1497,6 @@ grep -q 'member.isfile() or member.isdir()' scripts/post_trip_collect_pi.sh
 grep -q 'os.path.samestat(initial, opened)' scripts/post_trip_collect_pi.sh
 grep -q 'tarfile.open(fileobj=handle, mode="r:gz")' scripts/post_trip_collect_pi.sh
 for helper_wrapper in \
-  scripts/export_pi_recovery_bundle.sh \
   scripts/pre_departure_check_pi.sh; do
   grep -q 'reject_symlinked_path_components "Helper script" "$path"' "$helper_wrapper"
   grep -q 'path contains a symlink' "$helper_wrapper"
@@ -7493,12 +7503,36 @@ for helper in export_pi_settings.sh export_pi_opencpn_data.sh export_pi_tracks.s
   cat >"$recovery_repo/scripts/$helper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$(basename "$0")|$*" >>"$NOAA_NAVIONICS_FAKE_RECOVERY_LOG"
+if [[ "$(basename "$0")" == "export_pi_settings.sh" && -n "${NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER:-}" ]]; then
+  chmod 0775 "$NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER"
+fi
 printf 'fake %s\n' "$(basename "$0")"
 EOF
   chmod +x "$recovery_repo/scripts/$helper"
 done
 mkdir -p "$recovery_output_dir"
 chmod 0777 "$recovery_output_dir"
+recovery_fake_python_bin="$tmpdir/recovery-fake-python-bin"
+mkdir -p "$recovery_fake_python_bin"
+cat >"$recovery_fake_python_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "untrusted fake python should not run" >&2
+exit 99
+EOF
+chmod +x "$recovery_fake_python_bin/python3"
+set +e
+NOAA_NAVIONICS_FAKE_RECOVERY_LOG="$recovery_log" \
+  PATH="$recovery_fake_python_bin:$PATH" \
+  "$recovery_repo/scripts/export_pi_recovery_bundle.sh" \
+  pi@example.invalid "$tmpdir/recovery-untrusted-python-output" >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject an untrusted local python3 command with exit 2" >&2
+  exit 1
+fi
+grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
 NOAA_NAVIONICS_FAKE_RECOVERY_LOG="$recovery_log" \
   "$recovery_repo/scripts/export_pi_recovery_bundle.sh" \
   pi@example.invalid "$recovery_output_dir/" --track-days 14 >"$verify_output" 2>&1
@@ -7520,6 +7554,26 @@ grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-re
 grep -Eq '^export_pi_tracks.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 14$' "$recovery_log"
 grep -Eq '^collect_pi_support_bundle.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
 grep -Eq '^verify_pi_recovery_exports.sh\|.*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_log"
+
+recovery_mutated_helper_log="$tmpdir/recovery-mutated-helper-calls"
+recovery_mutated_helper_output_dir="$tmpdir/recovery-mutated-helper-output"
+set +e
+NOAA_NAVIONICS_FAKE_RECOVERY_LOG="$recovery_mutated_helper_log" \
+  NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER="$recovery_repo/scripts/export_pi_tracks.sh" \
+  "$recovery_repo/scripts/export_pi_recovery_bundle.sh" \
+  pi@example.invalid "$recovery_mutated_helper_output_dir" >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject a helper mutated after startup validation with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$verify_output"
+grep -Eq '^export_pi_settings.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_mutated_helper_log"
+grep -Eq '^export_pi_opencpn_data.sh\|pi@example.invalid .*/noaa-navionics-pi-recovery-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$recovery_mutated_helper_log"
+! grep -q '^export_pi_tracks.sh|' "$recovery_mutated_helper_log"
+chmod 0755 "$recovery_repo/scripts/export_pi_tracks.sh"
 
 recovery_verify_dir="$tmpdir/recovery-verify"
 mkdir -p "$recovery_verify_dir"
