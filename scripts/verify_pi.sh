@@ -3003,10 +3003,44 @@ check_chartplotter_log_after_boot() {
   "$python3_cmd" - "$path" <<'PY'
 from pathlib import Path
 from datetime import datetime, timezone
+import math
 import os
 import stat
 import sys
 import time
+
+def read_proc_uptime_seconds():
+    path = Path("/proc/uptime")
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect /proc/uptime: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise SystemExit(f"/proc/uptime path is a symlink: {path}")
+    if not stat.S_ISREG(before.st_mode):
+        raise SystemExit(f"/proc/uptime path is not a regular file: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        raise SystemExit(f"could not open /proc/uptime: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise SystemExit(f"/proc/uptime changed before it could be read: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"/proc/uptime is not a regular file when opened: {path}")
+        fields = os.read(fd, 4096).decode("ascii", "ignore").split()
+    finally:
+        os.close(fd)
+    if not fields:
+        raise SystemExit("/proc/uptime is empty")
+    try:
+        uptime_seconds = float(fields[0])
+    except ValueError as exc:
+        raise SystemExit(f"/proc/uptime has invalid uptime value: {fields[0]!r}") from exc
+    if not math.isfinite(uptime_seconds) or uptime_seconds < 0:
+        raise SystemExit(f"/proc/uptime must be finite and non-negative: {uptime_seconds!r}")
+    return uptime_seconds
 
 path = Path(sys.argv[1]).expanduser()
 if path.is_symlink():
@@ -3088,10 +3122,7 @@ if "xset command(s) failed" in latest_startup:
     raise SystemExit("launcher failed to disable one or more display power settings")
 if "xset is unavailable" in latest_startup:
     raise SystemExit("launcher could not find xset for display power settings")
-try:
-    uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
-except Exception as exc:
-    raise SystemExit(f"could not read /proc/uptime: {exc}") from exc
+uptime_seconds = read_proc_uptime_seconds()
 boot_epoch = time.time() - uptime_seconds
 line_start = text.rfind("\n", 0, startup_index) + 1
 line_prefix = text[line_start:startup_index]
@@ -3825,6 +3856,40 @@ import time
 config_path = Path(sys.argv[1]).expanduser()
 timeout = max(10.0, float(sys.argv[2]))
 max_trackpoint_age = 600.0
+
+def read_proc_uptime_seconds():
+    path = Path("/proc/uptime")
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect /proc/uptime: {exc}") from exc
+    if stat_module.S_ISLNK(before.st_mode):
+        raise SystemExit(f"/proc/uptime path is a symlink: {path}")
+    if not stat_module.S_ISREG(before.st_mode):
+        raise SystemExit(f"/proc/uptime path is not a regular file: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        raise SystemExit(f"could not open /proc/uptime: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise SystemExit(f"/proc/uptime changed before it could be read: {path}")
+        if not stat_module.S_ISREG(opened.st_mode):
+            raise SystemExit(f"/proc/uptime is not a regular file when opened: {path}")
+        fields = os.read(fd, 4096).decode("ascii", "ignore").split()
+    finally:
+        os.close(fd)
+    if not fields:
+        raise SystemExit("/proc/uptime is empty")
+    try:
+        uptime_seconds = float(fields[0])
+    except ValueError as exc:
+        raise SystemExit(f"/proc/uptime has invalid uptime value: {fields[0]!r}") from exc
+    if not math.isfinite(uptime_seconds) or uptime_seconds < 0:
+        raise SystemExit(f"/proc/uptime must be finite and non-negative: {uptime_seconds!r}")
+    return uptime_seconds
+
 flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
     fd = os.open(config_path, flags)
@@ -3858,10 +3923,7 @@ if not track_output:
     raise SystemExit("tracking.output is empty")
 track_output_path = Path(track_output).expanduser()
 tracks_dir = track_output_path / "tracks"
-try:
-    uptime_seconds = float(Path("/proc/uptime").read_text(encoding="ascii").split()[0])
-except Exception as exc:
-    raise SystemExit(f"could not read /proc/uptime: {exc}") from exc
+uptime_seconds = read_proc_uptime_seconds()
 boot_epoch = time.time() - uptime_seconds
 deadline = time.monotonic() + timeout
 last_detail = ""

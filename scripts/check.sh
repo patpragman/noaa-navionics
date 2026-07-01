@@ -1545,6 +1545,11 @@ grep -q 'def read_current_boot_id()' scripts/verify_pi.sh
 grep -q 'current boot ID path changed before it could be read' scripts/verify_pi.sh
 grep -q 'current boot ID path is a symlink' scripts/verify_pi.sh
 ! grep -q 'Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()' scripts/verify_pi.sh
+test "$(grep -c 'def read_proc_uptime_seconds()' scripts/verify_pi.sh)" -ge 2
+grep -q '/proc/uptime changed before it could be read' scripts/verify_pi.sh
+grep -q '/proc/uptime path is a symlink' scripts/verify_pi.sh
+grep -q '/proc/uptime must be finite and non-negative' scripts/verify_pi.sh
+! grep -q 'Path("/proc/uptime").read_text(encoding="ascii")' scripts/verify_pi.sh
 grep -q 'current boot ID is not a Linux boot_id value' scripts/verify_pi.sh
 grep -q 'current_boot_id="$(current_boot_id 2>/dev/null || true)"' scripts/verify_pi.sh
 grep -q 'read_proc_env_value()' scripts/verify_pi.sh
@@ -1763,6 +1768,8 @@ grep -q 'Status reports read the Linux `boot_id` and `/proc/uptime` through no-f
 grep -q 'Status reports read the Linux `boot_id` and `/proc/uptime` through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'reads the current boot ID through a no-follow descriptor before comparing status-report or launcher-lock boot evidence' README.md
 grep -q 'reads the current boot ID through a no-follow descriptor before comparing status-report or launcher-lock boot evidence' docs/sailboat-pi.md
+grep -q 'Verification reads `/proc/uptime` through a no-follow descriptor and requires finite non-negative uptime' README.md
+grep -q 'reads `/proc/uptime` through a no-follow descriptor and requires finite non-negative uptime' docs/sailboat-pi.md
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
 grep -q 'status report source revision directory is a symlink' scripts/verify_pi.sh
