@@ -394,6 +394,68 @@ check_output() {
   fi
 }
 
+cleanup_private_check_output() {
+  local path="$1"
+  [[ -n "$path" ]] || return 0
+  "$python3_cmd" - "$path" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(
+        f"Could not open verifier check-output directory for cleanup; leaving it in place: {path}: {exc}",
+        file=sys.stderr,
+    )
+    raise SystemExit(0)
+
+try:
+    parent_stat = os.fstat(parent_fd)
+    parent_mode = stat.S_IMODE(parent_stat.st_mode)
+    if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != os.getuid() or parent_mode & 0o022:
+        print(
+            f"Verifier check-output directory is not trusted for cleanup; leaving it in place: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(0)
+    try:
+        before = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) & 0o022:
+        print(
+            f"Verifier check-output file is not a trusted private regular file; leaving it in place: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(0)
+    try:
+        fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=parent_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Verifier check-output file changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=parent_fd)
+    os.fsync(parent_fd)
+finally:
+    os.close(parent_fd)
+PY
+}
+
 check_not_root_user() {
   [[ "$(id -u)" -ne 0 && "$USER" != "root" ]]
 }
@@ -3622,7 +3684,7 @@ wait_for_chartplotter_started() {
   while true; do
     if check_chartplotter_log_after_boot "$log_file" >"$check_output" 2>&1; then
       if opencpn_running; then
-        rm -f "$check_output"
+        cleanup_private_check_output "$check_output" || true
         return 0
       fi
       last_detail="OpenCPN is not running yet"
@@ -3631,7 +3693,7 @@ wait_for_chartplotter_started() {
     fi
     if [[ "$SECONDS" -ge "$deadline" ]]; then
       printf '%s\n' "${last_detail:-chartplotter did not start before timeout}" >&2
-      rm -f "$check_output"
+      cleanup_private_check_output "$check_output" || true
       return 1
     fi
     sleep "$chartplotter_start_interval"

@@ -1405,6 +1405,10 @@ grep -q 'chartplotter launcher log file integrity' scripts/verify_pi.sh
 grep -q 'chartplotter rotated launcher log file integrity' scripts/verify_pi.sh
 grep -q 'parses the active launcher log only through the no-follow descriptor it verified' README.md
 grep -q 'parses the active launcher log only through the no-follow descriptor it verified' docs/sailboat-pi.md
+grep -q 'Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation' README.md
+grep -q 'Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation' docs/sailboat-pi.md
+grep -q 'cleanup_private_check_output()' scripts/verify_pi.sh
+grep -q 'Verifier check-output file changed before cleanup; leaving it in place' scripts/verify_pi.sh
 grep -q 'wait_for_chartplotter_started' scripts/verify_pi.sh
 python3 - <<'PY'
 from pathlib import Path
@@ -1415,8 +1419,10 @@ end = text.index("\n}\n\nwait_for_chrony_gps_source", start)
 block = text[start:end]
 if "trap " in block:
     raise SystemExit("chartplotter wait temp cleanup must not use RETURN traps")
-if block.count('rm -f "$check_output"') < 2:
-    raise SystemExit("chartplotter wait temp file must be cleaned up on success and timeout")
+if block.count('cleanup_private_check_output "$check_output" || true') < 2:
+    raise SystemExit("chartplotter wait temp file must be descriptor-cleaned on success and timeout")
+if 'rm -f "$check_output"' in block:
+    raise SystemExit("chartplotter wait temp cleanup must not use plain rm")
 PY
 grep -q 'check_launcher_lock_live' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock live' scripts/verify_pi.sh
