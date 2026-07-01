@@ -805,7 +805,7 @@ for sibling in (staging, previous):
         label = "stale deployment staging path" if sibling == staging else "previous deployment path"
         remove_path(sibling, label=label)
 staging.mkdir(parents=True)
-os.chmod(staging, 0o755)
+os.chmod(staging, 0o700)
 fsync_parent()
 PY"
 }
@@ -870,14 +870,32 @@ def remove_path(path: Path, *, label: str) -> None:
     else:
         path.unlink()
 
+def tighten_private_staging() -> None:
+    expected_uid = os.getuid()
+    if staging.is_symlink() or not staging.exists() or not staging.is_dir():
+        raise SystemExit(f'Deployment staging directory is not ready: {staging}')
+    stat_result = staging.stat()
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Refusing deployment staging owned by uid {stat_result.st_uid}, expected {expected_uid}: {staging}'
+        )
+    os.chmod(staging, 0o700)
+    stat_result = staging.stat()
+    mode = stat_result.st_mode & 0o777
+    if stat_result.st_uid != expected_uid:
+        raise SystemExit(
+            f'Deployment staging owner changed while tightening it: {stat_result.st_uid}, expected {expected_uid}: {staging}'
+        )
+    if mode != 0o700:
+        raise SystemExit(f'Deployment staging has permissions {mode:04o}, expected private 0700: {staging}')
+
 validate_deployment_parent()
 
-if not staging.exists() or not staging.is_dir() or staging.is_symlink():
-    raise SystemExit(f'Deployment staging directory is not ready: {staging}')
 if staging.parent != repo.parent or previous.parent != repo.parent:
     raise SystemExit('Refusing to promote deployment staging outside deployment parent')
 if not staging.name.startswith(repo.name + '.') or not previous.name.startswith(repo.name + '.'):
     raise SystemExit('Refusing to promote unexpected deployment staging paths')
+tighten_private_staging()
 try:
     if previous.exists() or previous.is_symlink():
         remove_path(previous, label="previous deployment path")

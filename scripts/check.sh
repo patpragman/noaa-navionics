@@ -378,7 +378,11 @@ grep -q 'stat.S_ISREG(opened.st_mode)' scripts/deploy_to_pi.sh
 grep -q 'os.fsync(fd)' scripts/deploy_to_pi.sh
 grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' README.md
 grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' docs/sailboat-pi.md
-grep -q 'os.chmod(staging, 0o755)' scripts/deploy_to_pi.sh
+grep -q 'os.chmod(staging, 0o700)' scripts/deploy_to_pi.sh
+grep -q 'def tighten_private_staging' scripts/deploy_to_pi.sh
+grep -q 'Deployment staging has permissions {mode:04o}, expected private 0700' scripts/deploy_to_pi.sh
+grep -q 'retighten that staging directory after transfer before promotion' README.md
+grep -q 'retighten that staging directory after transfer before promotion' docs/sailboat-pi.md
 grep -q 'ssh_cmd="$(require_local_command ssh)"' scripts/deploy_to_pi.sh
 grep -q 'git_cmd="$(require_local_command git)"' scripts/deploy_to_pi.sh
 grep -q 'source_revision="$("$git_cmd" -C "$repo_root" rev-parse --short HEAD' scripts/deploy_to_pi.sh
