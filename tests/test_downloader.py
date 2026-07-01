@@ -8394,6 +8394,20 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("days old", result.detail)
 
+    def test_manifest_rejects_timezone_less_created_at(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = root / MANIFEST_NAME
+            manifest.write_text(
+                '{"created_at":"2026-07-01T12:00:00","package":{"label":"Test"},"download":{},"extract":{}}\n',
+                encoding="utf-8",
+            )
+
+            result = check_chart_manifest(root, max_age_days=1)
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest has no valid created_at", result.detail)
+
     def test_manifest_symlink_fails(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

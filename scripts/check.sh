@@ -3189,6 +3189,8 @@ grep -q 'manifest path .* is owned by uid' src/noaa_navionics/health.py
 grep -q 'manifest path .* has permissions' src/noaa_navionics/health.py
 grep -q 'test_manifest_nonregular_path_fails' tests/test_downloader.py
 grep -q 'test_manifest_writable_file_fails' tests/test_downloader.py
+grep -q 'test_manifest_rejects_timezone_less_created_at' tests/test_downloader.py
+grep -q 'parsed.tzinfo is None or parsed.utcoffset() is None' src/noaa_navionics/health.py
 grep -q 'manifest extract path is a symlink' src/noaa_navionics/health.py
 grep -q 'manifest extract path contains a symlink' src/noaa_navionics/health.py
 grep -q 'manifest extract path is outside chart directory' src/noaa_navionics/health.py

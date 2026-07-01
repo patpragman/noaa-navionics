@@ -2185,12 +2185,15 @@ def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
 
 
 def _parse_manifest_time(value: str) -> Optional[datetime]:
-    if not value:
+    if not value.strip():
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     except ValueError:
         return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed.astimezone(timezone.utc)
 
 
 _THROTTLE_BITS = {
