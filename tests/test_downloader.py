@@ -6480,6 +6480,42 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(result.skipped)
             self.assertFalse(lock.exists())
 
+    def test_stale_download_lock_cleanup_leaves_replaced_lock_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "chart.zip").write_bytes(b"existing")
+            lock = root / DOWNLOAD_LOCK_NAME
+            lock.write_text("stale\n", encoding="ascii")
+            os.chmod(lock, 0o600)
+            old_time = time.time() - downloader_module.DOWNLOAD_LOCK_STALE_SECONDS - 60
+            os.utime(lock, (old_time, old_time))
+            package = Package("Stale lock test", "https://example.invalid/chart.zip", "chart.zip")
+            original_lock_is_stale = downloader_module._lock_is_stale
+            calls = 0
+
+            def replacing_lock_is_stale(lock_path, *, stale_seconds=downloader_module.DOWNLOAD_LOCK_STALE_SECONDS):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    replacement = lock_path.with_name("replacement-download.lock")
+                    replacement.write_text("new owner\n", encoding="ascii")
+                    os.chmod(replacement, 0o600)
+                    os.replace(replacement, lock_path)
+                    return True
+                return False
+
+            try:
+                downloader_module._lock_is_stale = replacing_lock_is_stale
+                with redirect_stderr(StringIO()) as stderr:
+                    with self.assertRaisesRegex(RuntimeError, "chart update already in progress"):
+                        download_package(package, root)
+            finally:
+                downloader_module._lock_is_stale = original_lock_is_stale
+
+            self.assertEqual(calls, 2)
+            self.assertEqual(lock.read_text(encoding="ascii"), "new owner\n")
+            self.assertIn("chart update lock cleanup changed before cleanup", stderr.getvalue())
+
     def test_stale_download_lock_cleanup_rejects_writable_lock_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -6610,6 +6646,22 @@ class ManifestTests(unittest.TestCase):
                 lock.write_text("new owner\n", encoding="ascii")
 
             self.assertEqual(lock.read_text(encoding="ascii"), "new owner\n")
+
+    def test_download_lock_cleanup_preserves_replaced_lock_with_same_text(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            lock = root / DOWNLOAD_LOCK_NAME
+
+            with redirect_stderr(StringIO()) as stderr:
+                with downloader_module._chart_update_lock(root):
+                    lock_text = lock.read_text(encoding="ascii")
+                    replacement = root / "replacement-download.lock"
+                    replacement.write_text(lock_text, encoding="ascii")
+                    os.chmod(replacement, 0o600)
+                    os.replace(replacement, lock)
+
+            self.assertEqual(lock.read_text(encoding="ascii"), lock_text)
+            self.assertIn("chart update lock cleanup changed before cleanup", stderr.getvalue())
 
     def test_download_lock_syncs_create_and_cleanup(self):
         calls = []

@@ -2811,11 +2811,18 @@ grep -q 'with os.fdopen(fd, encoding="ascii", errors="ignore") as handle' src/no
 ! grep -q 'lock_path.read_text(encoding="ascii", errors="ignore")' src/noaa_navionics/downloader.py
 grep -q 'test_stale_download_lock_cleanup_rejects_writable_lock_file' tests/test_downloader.py
 grep -q 'expected private 0600; leaving it in place: {lock_path}' src/noaa_navionics/downloader.py
-grep -q '_validate_stale_lock_for_cleanup(lock_path)' src/noaa_navionics/downloader.py
+grep -q 'stale_lock_stat = _validate_stale_lock_for_cleanup(lock_path)' src/noaa_navionics/downloader.py
+grep -q 'cleanup_private_temp_file(' src/noaa_navionics/downloader.py
+grep -q 'label="chart update lock cleanup"' src/noaa_navionics/downloader.py
+grep -q 'expected_stat=stale_lock_stat' src/noaa_navionics/downloader.py
+grep -q 'expected_stat=lock_stat' src/noaa_navionics/downloader.py
+grep -q 'test_stale_download_lock_cleanup_leaves_replaced_lock_path' tests/test_downloader.py
+grep -q 'test_download_lock_cleanup_preserves_replaced_lock_with_same_text' tests/test_downloader.py
+grep -q 'chart update lock cleanup changed before cleanup' tests/test_downloader.py
 grep -q 'test_download_lock_rejects_public_active_lock_file' tests/test_downloader.py
 grep -q 'test_stale_download_lock_cleanup_rejects_public_lock_file' tests/test_downloader.py
-grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or non-private lock files' README.md
-grep -q 'stale lock reads use a no-follow descriptor, stale lock cleanup refuses misowned or non-private lock files' docs/sailboat-pi.md
+grep -q 'stale lock reads use a no-follow descriptor, stale and release lock cleanup is same-file validated before unlinking, stale lock cleanup refuses misowned or non-private lock files' README.md
+grep -q 'stale lock reads use a no-follow descriptor, stale and release lock cleanup is same-file validated before unlinking, stale lock cleanup refuses misowned or non-private lock files' docs/sailboat-pi.md
 grep -q 'boot_id=' src/noaa_navionics/downloader.py
 grep -q 'BOOT_ID_RE.fullmatch' src/noaa_navionics/downloader.py
 grep -q '_valid_boot_id(owner_boot_id) and _valid_boot_id(current_boot_id)' src/noaa_navionics/downloader.py

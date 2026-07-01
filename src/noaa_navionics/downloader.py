@@ -729,15 +729,13 @@ def _chart_update_lock(output_path: Path):
         except FileExistsError as exc:
             if lock_path.is_symlink():
                 raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
-            _validate_stale_lock_for_cleanup(lock_path)
+            stale_lock_stat = _validate_stale_lock_for_cleanup(lock_path)
             if _lock_is_stale(lock_path):
-                try:
-                    lock_path.unlink()
-                    _fsync_directory(output_path)
-                except FileNotFoundError:
-                    continue
-                except OSError:
-                    pass
+                cleanup_private_temp_file(
+                    lock_path,
+                    label="chart update lock cleanup",
+                    expected_stat=stale_lock_stat,
+                )
                 continue
             raise RuntimeError(f"chart update already in progress; lock exists at {lock_path}") from exc
         except OSError as exc:
@@ -746,6 +744,7 @@ def _chart_update_lock(output_path: Path):
             raise
         try:
             lock_fd = opened_fd
+            lock_stat = os.fstat(lock_fd)
             os.fchmod(lock_fd, 0o600)
             os.write(lock_fd, lock_text.encode("ascii"))
             os.fsync(lock_fd)
@@ -754,14 +753,7 @@ def _chart_update_lock(output_path: Path):
         except OSError as exc:
             os.close(lock_fd)
             lock_fd = None
-            try:
-                if not lock_path.is_symlink():
-                    lock_path.unlink()
-                    _fsync_directory(output_path)
-            except FileNotFoundError:
-                pass
-            except OSError:
-                pass
+            cleanup_private_temp_file(lock_path, label="chart update lock cleanup", expected_stat=lock_stat)
             if lock_path.is_symlink():
                 raise RuntimeError(f"chart update lock path is a symlink: {lock_path}") from exc
             raise
@@ -774,15 +766,14 @@ def _chart_update_lock(output_path: Path):
             if lock_path.is_symlink():
                 return
             if _read_chart_update_lock_text(lock_path) == lock_text:
-                lock_path.unlink()
-                _fsync_directory(output_path)
+                cleanup_private_temp_file(lock_path, label="chart update lock cleanup", expected_stat=lock_stat)
         except FileNotFoundError:
             pass
         except RuntimeError:
             pass
 
 
-def _validate_stale_lock_for_cleanup(lock_path: Path) -> None:
+def _validate_stale_lock_for_cleanup(lock_path: Path) -> os.stat_result:
     try:
         lock_stat = lock_path.lstat()
     except OSError as exc:
@@ -801,6 +792,7 @@ def _validate_stale_lock_for_cleanup(lock_path: Path) -> None:
             f"chart update lock path has permissions {mode:04o}, "
             f"expected private 0600; leaving it in place: {lock_path}"
         )
+    return lock_stat
 
 
 def _lock_is_stale(lock_path: Path, *, stale_seconds: int = DOWNLOAD_LOCK_STALE_SECONDS) -> bool:
