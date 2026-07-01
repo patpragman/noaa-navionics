@@ -280,6 +280,7 @@ def status_report_validation_failures(
 ) -> list[CheckResult]:
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     failures.extend(_host_validation_failures(report.get("host")))
+    failures.extend(_gps_fix_validation_failures(report, now=now))
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
@@ -340,6 +341,69 @@ def _host_validation_failures(host: object) -> list[CheckResult]:
     if not BOOT_ID_RE.fullmatch(boot_id):
         return [CheckResult("Status Report", False, f"status report host boot_id is not a Linux boot_id value: {boot_id}")]
     return []
+
+
+def _gps_fix_validation_failures(
+    report: dict[str, object],
+    *,
+    now: Optional[datetime] = None,
+) -> list[CheckResult]:
+    gps_fix = report.get("gps_fix")
+    if not isinstance(gps_fix, dict):
+        return [CheckResult("GPS Fix", False, "status report missing gps_fix section")]
+    if gps_fix.get("ok") is not True:
+        return [CheckResult("GPS Fix", False, f"status report gps_fix is not ok: {gps_fix.get('detail', '<missing detail>')}")]
+    source = str(gps_fix.get("source", "")).strip()
+    config = report.get("config")
+    gps_mode = str(config.get("gps_mode", "")).strip().lower() if isinstance(config, dict) else ""
+    expected_source = "GPS" if gps_mode == "serial" else "GPSD"
+    if source != expected_source:
+        return [CheckResult("GPS Fix", False, f"status report gps_fix source {source or '<missing>'} is not {expected_source}")]
+    latitude = _finite_gps_fix_float(gps_fix.get("latitude"))
+    longitude = _finite_gps_fix_float(gps_fix.get("longitude"))
+    if latitude is None or longitude is None:
+        return [CheckResult("GPS Fix", False, "status report gps_fix has non-numeric coordinates")]
+    if not (-90.0 <= latitude <= 90.0):
+        return [CheckResult("GPS Fix", False, f"status report gps_fix latitude is outside -90..90: {latitude}")]
+    if not (-180.0 <= longitude <= 180.0):
+        return [CheckResult("GPS Fix", False, f"status report gps_fix longitude is outside -180..180: {longitude}")]
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        return [CheckResult("GPS Fix", False, "status report gps_fix coordinates are invalid 0,0")]
+    timestamp = _parse_gps_fix_timestamp(gps_fix.get("timestamp"))
+    if timestamp is None:
+        return [CheckResult("GPS Fix", False, "status report gps_fix has no valid timestamp")]
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    age_seconds = (current - timestamp).total_seconds()
+    if age_seconds < -STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
+        return [CheckResult("GPS Fix", False, f"status report gps_fix timestamp is in the future by {-age_seconds:.0f}s")]
+    if age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
+        return [CheckResult("GPS Fix", False, f"status report gps_fix timestamp is stale ({age_seconds:.0f}s old)")]
+    reported_age_seconds = _finite_gps_fix_float(gps_fix.get("age_seconds"))
+    if reported_age_seconds is None:
+        return [CheckResult("GPS Fix", False, "status report gps_fix age_seconds is not numeric")]
+    if reported_age_seconds < 0.0:
+        return [CheckResult("GPS Fix", False, f"status report gps_fix age_seconds is negative: {reported_age_seconds:g}")]
+    if reported_age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
+        return [CheckResult("GPS Fix", False, f"status report gps_fix age_seconds is stale: {reported_age_seconds:g}s")]
+    satellites = gps_fix.get("satellites")
+    hdop = gps_fix.get("hdop")
+    if satellites is None and hdop is None:
+        return [CheckResult("GPS Fix", False, "status report gps_fix has no satellite or HDOP quality fields")]
+    if satellites is not None and (isinstance(satellites, bool) or not isinstance(satellites, int) or satellites < 4):
+        return [CheckResult("GPS Fix", False, f"status report gps_fix satellites is weak or invalid: {satellites!r}")]
+    parsed_hdop = _finite_gps_fix_float(hdop)
+    if hdop is not None and (parsed_hdop is None or parsed_hdop < 0.0 or parsed_hdop > 5.0):
+        return [CheckResult("GPS Fix", False, f"status report gps_fix hdop is weak or invalid: {hdop!r}")]
+    return []
+
+
+def _finite_gps_fix_float(value: object) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        return None
+    return parsed
 
 
 def missing_required_readiness_checks(report: dict[str, object]) -> tuple[list[str], list[str]]:

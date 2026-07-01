@@ -168,16 +168,19 @@ def complete_status_gui_report(
     gps_mode: str = "gpsd",
     generated_at=None,
 ) -> dict[str, object]:
+    generated_at = generated_at or fresh_status_timestamp()
     checks = set(status_gui_module.CORE_READINESS_CHECKS)
     service_checks = set(status_gui_module.CORE_SERVICE_CHECKS)
     if gps_mode == "serial":
         checks.update(status_gui_module.SERIAL_READINESS_CHECKS)
+        gps_source = "GPS"
     else:
         checks.update(status_gui_module.GPSD_READINESS_CHECKS)
         service_checks.update(status_gui_module.GPSD_SERVICE_CHECKS)
+        gps_source = "GPSD"
     return {
         "ok": ok,
-        "generated_at": generated_at or fresh_status_timestamp(),
+        "generated_at": generated_at,
         "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
         "config": {
             "gps_mode": gps_mode,
@@ -185,6 +188,17 @@ def complete_status_gui_report(
             "track_output": "/charts",
         },
         "track_log": {"track_output": "/charts"},
+        "gps_fix": {
+            "source": gps_source,
+            "ok": True,
+            "detail": "fix",
+            "timestamp": generated_at,
+            "age_seconds": 0.0,
+            "latitude": 61.2181,
+            "longitude": -149.9003,
+            "satellites": 8,
+            "hdop": 0.9,
+        },
         "checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)],
         "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(service_checks)],
     }
@@ -3541,12 +3555,6 @@ class GuiTests(unittest.TestCase):
 
         app = FakeApp()
         report = complete_status_gui_report()
-        report["gps_fix"] = {
-            "source": "GPSD",
-            "ok": True,
-            "latitude": 61.0,
-            "longitude": -149.0,
-        }
 
         status_gui_module.StatusApp._show_report(app, report)
 
@@ -3608,12 +3616,6 @@ class GuiTests(unittest.TestCase):
 
         app = FakeApp()
         report = complete_status_gui_report()
-        report["gps_fix"] = {
-            "source": "GPSD",
-            "ok": True,
-            "latitude": 61.0,
-            "longitude": -149.0,
-        }
 
         status_gui_module.StatusApp._show_report(app, report)
 
@@ -3689,7 +3691,7 @@ class GuiTests(unittest.TestCase):
         status_gui_module.StatusApp._show_report(app, report)
 
         self.assertEqual(app.headline.value, "NOT READY")
-        self.assertEqual(app.summary.value, "2 reported readiness check(s) need attention.")
+        self.assertEqual(app.summary.value, "3 reported readiness check(s) need attention.")
         self.assertEqual(app.gps_summary.value, "GPSD FAIL | no fix")
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
@@ -9786,6 +9788,32 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertEqual(failures[0].name, "Status Report")
                 self.assertIn(expected, failures[0].detail)
+
+    def test_status_report_ready_requires_valid_gps_fix_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        cases = [
+            ({}, "missing gps_fix section"),
+            ({"gps_fix": {"ok": False, "detail": "no fix"}}, "not ok"),
+            ({"gps_fix": {"ok": True, "source": "GPS"}}, "source GPS is not GPSD"),
+            ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 0.0, "longitude": 0.0, "timestamp": now.isoformat().replace("+00:00", "Z"), "age_seconds": 0.0, "satellites": 8, "hdop": 0.9}}, "coordinates are invalid"),
+            ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 61.0, "longitude": -149.0, "timestamp": (now - timedelta(seconds=601)).isoformat().replace("+00:00", "Z"), "age_seconds": 601.0, "satellites": 8, "hdop": 0.9}}, "timestamp is stale"),
+            ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 61.0, "longitude": -149.0, "timestamp": now.isoformat().replace("+00:00", "Z"), "age_seconds": 0.0}}, "no satellite or HDOP quality fields"),
+            ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 61.0, "longitude": -149.0, "timestamp": now.isoformat().replace("+00:00", "Z"), "age_seconds": 0.0, "satellites": 3, "hdop": 0.9}}, "satellites is weak"),
+            ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 61.0, "longitude": -149.0, "timestamp": now.isoformat().replace("+00:00", "Z"), "age_seconds": 0.0, "satellites": 8, "hdop": 6.0}}, "hdop is weak"),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "gps_fix" not in updates:
+                    report.pop("gps_fix", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "GPS Fix" and expected in failure.detail for failure in failures))
 
     def test_verify_pi_required_status_checks_match_shared_gpsd_readiness(self):
         source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
