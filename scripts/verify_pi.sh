@@ -948,6 +948,26 @@ if not isinstance(checks, list) or not checks:
     raise SystemExit("status report has no checks")
 if not isinstance(service_checks, list) or not service_checks:
     raise SystemExit("status report has no service checks")
+check_rows = {}
+for row in checks:
+    if not isinstance(row, dict):
+        raise SystemExit("status report has malformed checks row")
+    name = str(row.get("name", "")).strip()
+    if not name:
+        raise SystemExit("status report has unnamed readiness check")
+    if name in check_rows:
+        raise SystemExit(f"status report has duplicate readiness check: {name}")
+    check_rows[name] = row
+service_rows = {}
+for row in service_checks:
+    if not isinstance(row, dict):
+        raise SystemExit("status report has malformed service_checks row")
+    name = str(row.get("name", "")).strip()
+    if not name:
+        raise SystemExit("status report has unnamed service check")
+    if name in service_rows:
+        raise SystemExit(f"status report has duplicate service check: {name}")
+    service_rows[name] = row
 actual_config_path = str(report.get("config_path", "")).strip()
 if expected_config_path and actual_config_path != expected_config_path:
     raise SystemExit(f"status report config path {actual_config_path} does not match {expected_config_path}")
@@ -1871,8 +1891,6 @@ if expected_config_path:
             f"status report manifest extract path {extract_path} has {actual_enc_cell_count} ENC cells, "
             f"expected exactly {manifest_file_enc_cell_count}"
         )
-check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
-service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
 required_checks = {
     "Python",
     "Source Revision",
@@ -1922,10 +1940,10 @@ required_service_checks = {
     "GPSD Service",
     "Chrony Service",
 }
-missing_checks = sorted(required_checks - check_names)
+missing_checks = sorted(required_checks - set(check_rows))
 if missing_checks:
     raise SystemExit("status report missing readiness checks: " + ", ".join(missing_checks))
-missing_service_checks = sorted(required_service_checks - service_check_names)
+missing_service_checks = sorted(required_service_checks - set(service_rows))
 if missing_service_checks:
     raise SystemExit("status report missing service checks: " + ", ".join(missing_service_checks))
 for row_name in (
@@ -1936,7 +1954,7 @@ for row_name in (
     "Chrony Config",
     "GPS Time Source",
 ):
-    row = next((check for check in checks if isinstance(check, dict) and check.get("name") == row_name), None)
+    row = check_rows.get(row_name)
     if not isinstance(row, dict):
         continue
     data = row.get("data")
@@ -2162,7 +2180,7 @@ if actual_revision.endswith("-dirty"):
     raise SystemExit(f"status report dirty deployed source revision is not production-ready: {actual_revision}")
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")
-source_revision_row = next((check for check in checks if isinstance(check, dict) and check.get("name") == "Source Revision"), None)
+source_revision_row = check_rows.get("Source Revision")
 source_revision_data = source_revision_row.get("data") if isinstance(source_revision_row, dict) else None
 if not isinstance(source_revision_data, dict):
     raise SystemExit("status report Source Revision row missing structured data")

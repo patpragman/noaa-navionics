@@ -2263,6 +2263,8 @@ grep -q 'Verification reads `/proc/uptime` through a no-follow descriptor and re
 grep -q 'reads `/proc/uptime` through a no-follow descriptor and requires finite non-negative uptime' docs/sailboat-pi.md
 grep -q "embedded source revision check, matching Source Revision row evidence" README.md
 grep -q "expected source revision check, matching Source Revision row evidence" docs/sailboat-pi.md
+grep -q "malformed, unnamed, or duplicate readiness or service rows" README.md
+grep -q "malformed, unnamed, or duplicate readiness or service rows" docs/sailboat-pi.md
 grep -q 'no dirty `-dirty` source revision' README.md
 grep -q 'no dirty `-dirty` source revision' docs/sailboat-pi.md
 grep -q 'no non-Pi diagnostic skips for Pi-only checks in the status artifact' README.md
@@ -2271,6 +2273,8 @@ grep -q 'does not make dirty status artifacts production-ready' docs/sailboat-pi
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report missing deployed source revision' scripts/verify_pi.sh
 grep -q 'status report dirty deployed source revision is not production-ready' scripts/verify_pi.sh
+grep -q 'status report has duplicate readiness check' scripts/verify_pi.sh
+grep -q 'status report has duplicate service check' scripts/verify_pi.sh
 grep -q 'status report Source Revision row does not match deployed source revision' scripts/verify_pi.sh
 grep -q 'recorded a non-Pi diagnostic skip during Pi verification' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink or missing symlink status' scripts/verify_pi.sh
@@ -4222,6 +4226,7 @@ grep -q 'test_status_report_ready_requires_valid_user_and_unit_file_summaries' t
 grep -q 'test_status_report_ready_requires_valid_service_summaries' tests/test_downloader.py
 grep -q 'test_verify_pi_validates_status_report_service_summaries' tests/test_downloader.py
 grep -q 'test_status_snapshot_validators_reject_source_revision_row_mismatches' tests/test_downloader.py
+grep -q 'test_verify_pi_rejects_malformed_or_duplicate_status_rows' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_launcher_settings_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_opencpn_config_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_desktop_summary' tests/test_downloader.py

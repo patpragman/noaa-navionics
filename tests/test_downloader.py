@@ -12371,6 +12371,25 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, verify_source)
 
+    def test_verify_pi_rejects_malformed_or_duplicate_status_rows(self):
+        verify_source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            "status report has malformed checks row",
+            "status report has unnamed readiness check",
+            "status report has duplicate readiness check",
+            "status report has malformed service_checks row",
+            "status report has unnamed service check",
+            "status report has duplicate service check",
+            "missing_checks = sorted(required_checks - set(check_rows))",
+            "missing_service_checks = sorted(required_service_checks - set(service_rows))",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, verify_source)
+
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
