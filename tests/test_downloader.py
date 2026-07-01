@@ -187,7 +187,21 @@ def complete_status_gui_report(
             "chart_output": "/charts",
             "track_output": "/charts",
         },
-        "track_log": {"track_output": "/charts"},
+        "track_log": {
+            "track_output": "/charts",
+            "track_output_is_symlink": False,
+            "track_storage_symlink_component": "",
+            "tracks_dir": "/charts/tracks",
+            "ok": True,
+            "latest_path": "/charts/tracks/track-20260701.gpx",
+            "latest_time": generated_at,
+            "latest_latitude": 61.2181,
+            "latest_longitude": -149.9003,
+            "age_seconds": 0.0,
+            "latest_satellites": 8,
+            "latest_hdop": 0.9,
+            "detail": "recent GPX trackpoint",
+        },
         "gps_fix": {
             "source": gps_source,
             "ok": True,
@@ -9814,6 +9828,49 @@ class StatusReportTests(unittest.TestCase):
 
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == "GPS Fix" and expected in failure.detail for failure in failures))
+
+    def test_status_report_ready_requires_valid_track_log_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_track_log = {
+            "track_output": "/charts",
+            "track_output_is_symlink": False,
+            "track_storage_symlink_component": "",
+            "tracks_dir": "/charts/tracks",
+            "ok": True,
+            "latest_path": "/charts/tracks/track-20260701.gpx",
+            "latest_latitude": 61.0,
+            "latest_longitude": -149.0,
+            "age_seconds": 0.0,
+            "latest_satellites": 8,
+            "latest_hdop": 0.9,
+        }
+        cases = [
+            ({}, "missing track_log section"),
+            ({"track_log": {**valid_track_log, "ok": False, "detail": "no track"}}, "is not ok"),
+            ({"track_log": {**valid_track_log, "track_output_is_symlink": True}}, "track_output is a symlink"),
+            ({"track_log": {key: value for key, value in valid_track_log.items() if key != "track_storage_symlink_component"}}, "missing track_storage_symlink_component"),
+            ({"track_log": {**valid_track_log, "track_storage_symlink_component": "/charts"}}, "storage path contains a symlink"),
+            ({"track_log": {**valid_track_log, "latest_path": ""}}, "has no latest_path"),
+            ({"track_log": {**valid_track_log, "latest_latitude": 0.0, "latest_longitude": 0.0}}, "coordinates are invalid"),
+            ({"track_log": {**valid_track_log, "age_seconds": -1.0}}, "age_seconds is negative"),
+            ({"track_log": {**valid_track_log, "age_seconds": 601.0}}, "age_seconds is stale"),
+            ({"track_log": {key: value for key, value in valid_track_log.items() if key not in {"latest_satellites", "latest_hdop"}}}, "no latest satellite or HDOP quality fields"),
+            ({"track_log": {**valid_track_log, "latest_satellites": 3}}, "latest_satellites is weak"),
+            ({"track_log": {**valid_track_log, "latest_hdop": 6.0}}, "latest_hdop is weak"),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "track_log" not in updates:
+                    report.pop("track_log", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "Track Log" and expected in failure.detail for failure in failures))
 
     def test_verify_pi_required_status_checks_match_shared_gpsd_readiness(self):
         source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")

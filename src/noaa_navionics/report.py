@@ -281,6 +281,7 @@ def status_report_validation_failures(
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
+    failures.extend(_track_log_validation_failures(report.get("track_log")))
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
@@ -394,6 +395,48 @@ def _gps_fix_validation_failures(
     parsed_hdop = _finite_gps_fix_float(hdop)
     if hdop is not None and (parsed_hdop is None or parsed_hdop < 0.0 or parsed_hdop > 5.0):
         return [CheckResult("GPS Fix", False, f"status report gps_fix hdop is weak or invalid: {hdop!r}")]
+    return []
+
+
+def _track_log_validation_failures(track_log: object) -> list[CheckResult]:
+    if not isinstance(track_log, dict):
+        return [CheckResult("Track Log", False, "status report missing track_log section")]
+    if track_log.get("track_output_is_symlink") is not False:
+        return [CheckResult("Track Log", False, "status report track_log track_output is a symlink or missing symlink status")]
+    if "track_storage_symlink_component" not in track_log:
+        return [CheckResult("Track Log", False, "status report track_log missing track_storage_symlink_component")]
+    if str(track_log.get("track_storage_symlink_component", "")).strip():
+        return [CheckResult("Track Log", False, "status report track_log storage path contains a symlink")]
+    if track_log.get("ok") is not True:
+        return [CheckResult("Track Log", False, f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")]
+    if not str(track_log.get("latest_path", "")).strip():
+        return [CheckResult("Track Log", False, "status report track_log has no latest_path")]
+    latitude = _finite_gps_fix_float(track_log.get("latest_latitude"))
+    longitude = _finite_gps_fix_float(track_log.get("latest_longitude"))
+    age_seconds = _finite_gps_fix_float(track_log.get("age_seconds"))
+    if latitude is None or longitude is None:
+        return [CheckResult("Track Log", False, "status report track_log has non-numeric latest coordinates")]
+    if age_seconds is None:
+        return [CheckResult("Track Log", False, "status report track_log age_seconds is not numeric")]
+    if not (-90.0 <= latitude <= 90.0):
+        return [CheckResult("Track Log", False, f"status report track_log latest_latitude is outside -90..90: {latitude}")]
+    if not (-180.0 <= longitude <= 180.0):
+        return [CheckResult("Track Log", False, f"status report track_log latest_longitude is outside -180..180: {longitude}")]
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        return [CheckResult("Track Log", False, "status report track_log latest coordinates are invalid 0,0")]
+    if age_seconds < 0.0:
+        return [CheckResult("Track Log", False, f"status report track_log age_seconds is negative: {age_seconds:g}")]
+    if age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
+        return [CheckResult("Track Log", False, f"status report track_log age_seconds is stale: {age_seconds:g}s")]
+    satellites = track_log.get("latest_satellites")
+    hdop = track_log.get("latest_hdop")
+    if satellites is None and hdop is None:
+        return [CheckResult("Track Log", False, "status report track_log has no latest satellite or HDOP quality fields")]
+    if satellites is not None and (isinstance(satellites, bool) or not isinstance(satellites, int) or satellites < 4):
+        return [CheckResult("Track Log", False, f"status report track_log latest_satellites is weak or invalid: {satellites!r}")]
+    parsed_hdop = _finite_gps_fix_float(hdop)
+    if hdop is not None and (parsed_hdop is None or parsed_hdop < 0.0 or parsed_hdop > 5.0):
+        return [CheckResult("Track Log", False, f"status report track_log latest_hdop is weak or invalid: {hdop!r}")]
     return []
 
 
