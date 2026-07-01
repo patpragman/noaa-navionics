@@ -12222,6 +12222,9 @@ class GpsTests(unittest.TestCase):
             ),
         )
 
+    def _fake_stat_result(self, mode: int, *, inode: int = 100, device: int = 200) -> os.stat_result:
+        return os.stat_result((mode, inode, device, 1, os.getuid(), os.getgid(), 0, 0, 0, 0))
+
     def test_distance_meters_uses_haversine_distance(self):
         self.assertAlmostEqual(distance_meters(0.0, 0.0, 0.0, 1.0), 111195.1, delta=1.0)
         self.assertAlmostEqual(distance_meters(61.0, -149.0, 61.0, -149.0), 0.0, delta=0.001)
@@ -12239,19 +12242,26 @@ class GpsTests(unittest.TestCase):
 
     def test_open_nmea_stream_closes_fd_when_termios_setup_fails(self):
         closed_fds = []
+        char_stat = self._fake_stat_result(stat.S_IFCHR | 0o600)
+        original_stat = gps_module.os.stat
         original_open = gps_module.os.open
+        original_fstat = gps_module.os.fstat
         original_close = gps_module.os.close
         original_tcgetattr = gps_module.termios.tcgetattr
 
         try:
+            gps_module.os.stat = lambda path: char_stat
             gps_module.os.open = lambda path, flags: 123
+            gps_module.os.fstat = lambda fd: char_stat
             gps_module.os.close = lambda fd: closed_fds.append(fd)
             gps_module.termios.tcgetattr = lambda fd: (_ for _ in ()).throw(OSError("termios failed"))
 
             with self.assertRaisesRegex(OSError, "termios failed"):
                 gps_module.open_nmea_stream("/dev/serial/by-id/mock-gps")
         finally:
+            gps_module.os.stat = original_stat
             gps_module.os.open = original_open
+            gps_module.os.fstat = original_fstat
             gps_module.os.close = original_close
             gps_module.termios.tcgetattr = original_tcgetattr
 
@@ -12259,14 +12269,19 @@ class GpsTests(unittest.TestCase):
 
     def test_open_nmea_stream_closes_fd_when_fdopen_fails(self):
         closed_fds = []
+        char_stat = self._fake_stat_result(stat.S_IFCHR | 0o600)
+        original_stat = gps_module.os.stat
         original_open = gps_module.os.open
+        original_fstat = gps_module.os.fstat
         original_close = gps_module.os.close
         original_fdopen = gps_module.os.fdopen
         original_tcgetattr = gps_module.termios.tcgetattr
         original_tcsetattr = gps_module.termios.tcsetattr
 
         try:
+            gps_module.os.stat = lambda path: char_stat
             gps_module.os.open = lambda path, flags: 456
+            gps_module.os.fstat = lambda fd: char_stat
             gps_module.os.close = lambda fd: closed_fds.append(fd)
             gps_module.os.fdopen = lambda fd, mode, buffering=0: (_ for _ in ()).throw(OSError("fdopen failed"))
             gps_module.termios.tcgetattr = lambda fd: [0, 0, 0, 0, 0, 0, [0] * 64]
@@ -12275,13 +12290,62 @@ class GpsTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "fdopen failed"):
                 gps_module.open_nmea_stream("/dev/serial/by-id/mock-gps")
         finally:
+            gps_module.os.stat = original_stat
             gps_module.os.open = original_open
+            gps_module.os.fstat = original_fstat
             gps_module.os.close = original_close
             gps_module.os.fdopen = original_fdopen
             gps_module.termios.tcgetattr = original_tcgetattr
             gps_module.termios.tcsetattr = original_tcsetattr
 
         self.assertEqual(closed_fds, [456])
+
+    def test_open_nmea_stream_rejects_non_character_device_before_opening(self):
+        regular_stat = self._fake_stat_result(stat.S_IFREG | 0o600)
+        original_stat = gps_module.os.stat
+        original_open = gps_module.os.open
+
+        def unexpected_open(path, flags):
+            raise AssertionError("open_nmea_stream should reject non-character device before opening")
+
+        try:
+            gps_module.os.stat = lambda path: regular_stat
+            gps_module.os.open = unexpected_open
+            with self.assertRaisesRegex(OSError, "GPS serial device is not a character device"):
+                gps_module.open_nmea_stream("/dev/serial/by-id/mock-gps")
+        finally:
+            gps_module.os.stat = original_stat
+            gps_module.os.open = original_open
+
+    def test_open_nmea_stream_rejects_replaced_device_before_termios(self):
+        closed_fds = []
+        before_stat = self._fake_stat_result(stat.S_IFCHR | 0o600, inode=100)
+        after_stat = self._fake_stat_result(stat.S_IFCHR | 0o600, inode=101)
+        original_stat = gps_module.os.stat
+        original_open = gps_module.os.open
+        original_fstat = gps_module.os.fstat
+        original_close = gps_module.os.close
+        original_tcgetattr = gps_module.termios.tcgetattr
+
+        def unexpected_tcgetattr(fd):
+            raise AssertionError("open_nmea_stream should reject replaced device before termios setup")
+
+        try:
+            gps_module.os.stat = lambda path: before_stat
+            gps_module.os.open = lambda path, flags: 789
+            gps_module.os.fstat = lambda fd: after_stat
+            gps_module.os.close = lambda fd: closed_fds.append(fd)
+            gps_module.termios.tcgetattr = unexpected_tcgetattr
+            with self.assertRaisesRegex(RuntimeError, "GPS serial device changed before it could be opened"):
+                gps_module.open_nmea_stream("/dev/serial/by-id/mock-gps")
+        finally:
+            gps_module.os.stat = original_stat
+            gps_module.os.open = original_open
+            gps_module.os.fstat = original_fstat
+            gps_module.os.close = original_close
+            gps_module.termios.tcgetattr = original_tcgetattr
+
+        self.assertEqual(closed_fds, [789])
 
     def test_parse_gga_sentence(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"

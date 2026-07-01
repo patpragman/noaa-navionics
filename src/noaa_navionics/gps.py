@@ -8,6 +8,7 @@ import json
 import math
 import os
 import socket
+import stat
 import termios
 import time
 from xml.sax.saxutils import escape
@@ -125,7 +126,7 @@ def merge_fixes(previous: Optional[GPSFix], update: GPSFix) -> GPSFix:
 def open_nmea_stream(device: str, baud: int = 4800) -> BinaryIO:
     if baud not in BAUD_RATES:
         raise ValueError(f"unsupported baud rate {baud}; choose one of {sorted(BAUD_RATES)}")
-    fd = os.open(device, os.O_RDONLY | os.O_NOCTTY)
+    fd = _open_nmea_device_fd(device)
     try:
         attrs = termios.tcgetattr(fd)
         attrs[0] = attrs[0] & ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
@@ -140,6 +141,30 @@ def open_nmea_stream(device: str, baud: int = 4800) -> BinaryIO:
         attrs[6][termios.VTIME] = 10
         termios.tcsetattr(fd, termios.TCSANOW, attrs)
         return os.fdopen(fd, "rb", buffering=0)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        raise
+
+
+def _open_nmea_device_fd(device: str) -> int:
+    target = Path(device)
+    try:
+        before = os.stat(target)
+    except OSError:
+        raise
+    if not stat.S_ISCHR(before.st_mode):
+        raise OSError(f"GPS serial device is not a character device: {target}")
+    fd = os.open(target, os.O_RDONLY | os.O_NOCTTY | getattr(os, "O_CLOEXEC", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            raise RuntimeError(f"GPS serial device changed before it could be opened: {target}")
+        if not stat.S_ISCHR(opened.st_mode):
+            raise RuntimeError(f"GPS serial device is not a character device after opening: {target}")
+        return fd
     except Exception:
         try:
             os.close(fd)

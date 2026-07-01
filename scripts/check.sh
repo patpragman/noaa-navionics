@@ -2983,6 +2983,13 @@ grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' sr
 grep -q 'os.fsync(self.file.fileno())' src/noaa_navionics/gps.py
 grep -q 'def _fsync_directory' src/noaa_navionics/gps.py
 grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/gps.py
+grep -q 'def _open_nmea_device_fd' src/noaa_navionics/gps.py
+grep -q 'GPS serial device changed before it could be opened' src/noaa_navionics/gps.py
+grep -q 'stat.S_ISCHR(opened.st_mode)' src/noaa_navionics/gps.py
+grep -q 'test_open_nmea_stream_rejects_non_character_device_before_opening' tests/test_downloader.py
+grep -q 'test_open_nmea_stream_rejects_replaced_device_before_termios' tests/test_downloader.py
+grep -q 'same character device through immediate descriptor revalidation' README.md
+grep -q 'same character device through immediate descriptor revalidation' docs/sailboat-pi.md
 grep -q 'test_gpx_logger_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'GPX directory sync uses no-follow directory opens' README.md
 grep -q 'GPX directory sync uses no-follow directory opens' docs/sailboat-pi.md
