@@ -315,6 +315,45 @@ path = Path(sys.argv[1])
 command = sys.argv[2:]
 flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
 
+
+def sync_private_parent_directory(target: Path) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(target.parent, follow_symlinks=False)
+    except OSError as exc:
+        print(f"Could not inspect status snapshot directory before sync {target.parent}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    if not stat.S_ISDIR(before.st_mode):
+        print(f"status snapshot directory must be a real directory: {target.parent}", file=sys.stderr)
+        raise SystemExit(124)
+    if before.st_uid != os.getuid():
+        print(
+            f"status snapshot directory is owned by uid {before.st_uid}, expected current user {os.getuid()}: {target.parent}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o700:
+        print(f"status snapshot directory has permissions {mode:04o}, expected private 0700: {target.parent}", file=sys.stderr)
+        raise SystemExit(124)
+    try:
+        parent_fd = os.open(target.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"Could not open status snapshot directory for sync {target.parent}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    try:
+        opened = os.fstat(parent_fd)
+        if not os.path.samestat(before, opened):
+            print(f"status snapshot directory changed before sync: {target.parent}", file=sys.stderr)
+            raise SystemExit(124)
+        os.fsync(parent_fd)
+    except OSError as exc:
+        print(f"Could not sync status snapshot directory {target.parent}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    finally:
+        os.close(parent_fd)
+
+
 try:
     fd = os.open(path, flags, 0o600)
 except OSError as exc:
@@ -339,6 +378,13 @@ try:
     with os.fdopen(fd, "wb") as output:
         fd = -1
         result = subprocess.run(command, stdout=output)
+        try:
+            output.flush()
+            os.fsync(output.fileno())
+        except OSError as exc:
+            print(f"Could not sync status snapshot file {path}: {exc}", file=sys.stderr)
+            raise SystemExit(124) from exc
+    sync_private_parent_directory(path)
     raise SystemExit(result.returncode)
 finally:
     if fd >= 0:

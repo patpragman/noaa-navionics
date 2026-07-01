@@ -671,8 +671,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before cr
 grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -1376,6 +1376,12 @@ grep -q '"$python3_cmd" - "$path" "$@"' scripts/post_trip_collect_pi.sh
 ! grep -q '^  python3 -' scripts/post_trip_collect_pi.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/post_trip_collect_pi.sh
 grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
+grep -q 'def sync_private_parent_directory' scripts/post_trip_collect_pi.sh
+grep -q 'os.fsync(output.fileno())' scripts/post_trip_collect_pi.sh
+grep -q 'sync_private_parent_directory(path)' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot directory changed before sync' scripts/post_trip_collect_pi.sh
+grep -q 'fsyncs that status snapshot file and its private trip directory before reporting it saved' README.md
+grep -q 'fsyncs that status snapshot file and its private trip directory before reporting it saved' docs/sailboat-pi.md
 grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json' scripts/post_trip_collect_pi.sh
 grep -q 'verify_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_status_snapshot_json "$status_path"' scripts/post_trip_collect_pi.sh
