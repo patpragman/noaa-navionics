@@ -1472,8 +1472,10 @@ if expected_config_path:
         )
     if manifest.get("exists") is not True:
         raise SystemExit(f"status report manifest does not exist: {expected_manifest_path}")
-    if manifest.get("is_symlink") is True:
-        raise SystemExit(f"status report manifest path is a symlink: {expected_manifest_path}")
+    if manifest.get("is_symlink") is not False:
+        raise SystemExit(
+            f"status report manifest path is a symlink or missing symlink status: {expected_manifest_path}"
+        )
     if manifest.get("directory_is_symlink") is not False:
         raise SystemExit(
             f"status report manifest directory is a symlink or missing symlink status: {expected_manifest_path.parent}"
@@ -1662,8 +1664,12 @@ if expected_config_path:
                 return None
             current = parent
     download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
-    if manifest.get("download_path_is_symlink") is True or download_path.is_symlink():
-        raise SystemExit(f"status report manifest download path is a symlink: {download_path}")
+    if manifest.get("download_path_is_symlink") is not False or download_path.is_symlink():
+        raise SystemExit(
+            f"status report manifest download path is a symlink or missing symlink status: {download_path}"
+        )
+    if "download_path_symlink_component" not in manifest:
+        raise SystemExit(f"status report manifest missing download_path_symlink_component: {expected_manifest_path}")
     download_path_symlink_component = str(manifest.get("download_path_symlink_component", "")).strip()
     if download_path_symlink_component:
         raise SystemExit(
@@ -1719,8 +1725,12 @@ if expected_config_path:
     if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
     extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
-    if manifest.get("extract_path_is_symlink") is True or extract_path.is_symlink():
-        raise SystemExit(f"status report manifest extract path is a symlink: {extract_path}")
+    if manifest.get("extract_path_is_symlink") is not False or extract_path.is_symlink():
+        raise SystemExit(
+            f"status report manifest extract path is a symlink or missing symlink status: {extract_path}"
+        )
+    if "extract_path_symlink_component" not in manifest:
+        raise SystemExit(f"status report manifest missing extract_path_symlink_component: {expected_manifest_path}")
     extract_path_symlink_component = str(manifest.get("extract_path_symlink_component", "")).strip()
     if extract_path_symlink_component:
         raise SystemExit(
