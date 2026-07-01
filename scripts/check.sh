@@ -418,11 +418,16 @@ grep -q 'Deployment directory is not ready for source revision write' scripts/de
 grep -q 'Promoted source revision file is a symlink' scripts/deploy_to_pi.sh
 grep -q 'Promoted source revision path is not a regular file' scripts/deploy_to_pi.sh
 grep -q 'Promoted source revision content mismatch' scripts/deploy_to_pi.sh
+grep -q 'cleanup_source_revision_temp(tmp_path)' scripts/deploy_to_pi.sh
+grep -q 'Deployment source revision temp changed before cleanup; leaving it in place' scripts/deploy_to_pi.sh
+! grep -q 'tmp_path.unlink()' scripts/deploy_to_pi.sh
 grep -q 'fd = os.open(target, flags)' scripts/deploy_to_pi.sh
 grep -q 'stat.S_ISREG(opened.st_mode)' scripts/deploy_to_pi.sh
 grep -q 'os.fsync(fd)' scripts/deploy_to_pi.sh
 grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' README.md
 grep -q 'reopens that promoted revision file through a no-follow descriptor before syncing it' docs/sailboat-pi.md
+grep -q 'Failed remote source-revision temp cleanup is no-follow and same-file validated before unlinking' README.md
+grep -q 'Failed remote source-revision temp cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'os.chmod(staging, 0o700)' scripts/deploy_to_pi.sh
 grep -q 'def tighten_private_staging' scripts/deploy_to_pi.sh
 grep -q 'Deployment staging has permissions {mode:04o}, expected private 0700' scripts/deploy_to_pi.sh
