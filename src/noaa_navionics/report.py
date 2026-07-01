@@ -257,6 +257,7 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp_path, target)
+        _validate_written_status_report(target)
         _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
@@ -265,6 +266,38 @@ def write_status_report(report: dict[str, object], output: Path) -> Path:
             except FileNotFoundError:
                 pass
     return target
+
+
+def _validate_written_status_report(path: Path) -> None:
+    target = Path(path).expanduser()
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(target, follow_symlinks=False)
+        fd = os.open(target, flags)
+    except OSError as exc:
+        raise RuntimeError(f"could not open status report for validation: {target}: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise RuntimeError(f"status report changed while being opened: {target}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"status report must be a regular file: {target}")
+        if opened.st_uid != os.getuid():
+            raise RuntimeError(f"status report {target} is owned by uid {opened.st_uid}, expected {os.getuid()}")
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode != 0o600:
+            raise RuntimeError(f"status report {target} has permissions {mode:04o}, expected private 0600")
+        with os.fdopen(fd, encoding="utf-8") as handle:
+            fd = -1
+            try:
+                payload = json.load(handle)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"status report is not valid JSON: {target}: {exc}") from exc
+    finally:
+        if fd >= 0:
+            os.close(fd)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"status report JSON must be an object: {target}")
 
 
 def _prepare_private_status_parent(path: Path) -> None:

@@ -9843,6 +9843,43 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 2)
 
+    def test_write_status_report_validates_promoted_file_with_no_follow_open(self):
+        calls = []
+        original_open = report_module.os.open
+
+        def recording_open(path, flags, *args, **kwargs):
+            calls.append((Path(path), flags))
+            return original_open(path, flags, *args, **kwargs)
+
+        report_module.os.open = recording_open
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir) / "status.json"
+                write_status_report({"ok": True}, output)
+        finally:
+            report_module.os.open = original_open
+
+        status_opens = [(path, flags) for path, flags in calls if path.name == "status.json"]
+        self.assertTrue(status_opens)
+        self.assertTrue(any(flags & getattr(os, "O_NOFOLLOW", 0) for _, flags in status_opens))
+
+    def test_write_status_report_rejects_corrupt_promoted_file(self):
+        original_replace = report_module.os.replace
+
+        def corrupting_replace(src, dst):
+            original_replace(src, dst)
+            Path(dst).write_text("not json\n", encoding="utf-8")
+            Path(dst).chmod(0o600)
+
+        report_module.os.replace = corrupting_replace
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir) / "status.json"
+                with self.assertRaisesRegex(RuntimeError, "status report is not valid JSON"):
+                    write_status_report({"ok": True}, output)
+        finally:
+            report_module.os.replace = original_replace
+
     def test_write_status_report_directory_sync_uses_no_follow_open(self):
         calls = []
         original_open = report_module.os.open

@@ -2747,6 +2747,10 @@ grep -q 'non-private old GPX entries' README.md
 grep -q 'non-private old GPX entries' docs/sailboat-pi.md
 grep -q 'def _prepare_private_status_parent' src/noaa_navionics/report.py
 grep -q 'def _prepare_home_status_cache_parent' src/noaa_navionics/report.py
+grep -q 'def _validate_written_status_report' src/noaa_navionics/report.py
+grep -q '_validate_written_status_report(target)' src/noaa_navionics/report.py
+grep -q 'status report is not valid JSON' src/noaa_navionics/report.py
+grep -q 'status report JSON must be an object' src/noaa_navionics/report.py
 grep -q 'status report parent directory' src/noaa_navionics/report.py
 grep -q 'status report parent path contains a symlink' src/noaa_navionics/report.py
 grep -q 'status report cache parent directory' src/noaa_navionics/report.py
@@ -2767,9 +2771,13 @@ grep -q 'test_write_status_report_rejects_output_directory_when_tightening_fails
 grep -q 'test_write_status_report_rejects_home_cache_parent_when_tightening_fails' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
+grep -q 'test_write_status_report_validates_promoted_file_with_no_follow_open' tests/test_downloader.py
+grep -q 'test_write_status_report_rejects_corrupt_promoted_file' tests/test_downloader.py
 grep -q 'test_write_status_report_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'Status report directory sync uses no-follow directory opens' README.md
 grep -q 'Status report directory sync uses no-follow directory opens' docs/sailboat-pi.md
+grep -q 'Status report writes reopen the promoted JSON through a no-follow descriptor, verify private `0600` permissions, and parse the file before reporting success' README.md
+grep -q 'promoted JSON is reopened through a no-follow descriptor, checked as private `0600`, and parsed before the writer reports success' docs/sailboat-pi.md
 grep -q 'chartplotter launcher cache directory has permissions' scripts/verify_pi.sh
 grep -q 'launcher log cache parent directory is owned by uid' scripts/verify_pi.sh
 grep -q 'launcher log cache parent directory has permissions' scripts/verify_pi.sh
