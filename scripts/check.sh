@@ -36,6 +36,7 @@ from pathlib import Path
 import re
 
 scripts = [
+    Path("scripts/collect_pi_support_bundle.sh"),
     Path("scripts/deploy_to_pi.sh"),
     Path("scripts/install_raspberry_pi.sh"),
     Path("scripts/verify_pi.sh"),
@@ -534,8 +535,10 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
-grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, and metadata helper snippets" README.md
-grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, and metadata helper snippets" docs/sailboat-pi.md
+grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" README.md
+grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" docs/sailboat-pi.md
+grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' README.md
+grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
@@ -955,6 +958,10 @@ grep -q 'support bundle cache directory must be user-owned private 0700' scripts
 grep -q 'support bundle cleanup requires Python shutil.rmtree with symlink-attack resistance' scripts/collect_pi_support_bundle.sh
 grep -q 'not getattr(shutil.rmtree, "avoids_symlink_attacks", False)' scripts/collect_pi_support_bundle.sh
 grep -q 'shutil.rmtree(bundle_root)' scripts/collect_pi_support_bundle.sh
+grep -q 'tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT)' scripts/collect_pi_support_bundle.sh
+grep -q 'refusing to archive symlinked support bundle entry' scripts/collect_pi_support_bundle.sh
+grep -q 'support bundle file changed before archive' scripts/collect_pi_support_bundle.sh
+! grep -q 'tar -C "$bundle_root" -czf - .' scripts/collect_pi_support_bundle.sh
 grep -q 'src_fd = os.open(source, os.O_RDONLY | nofollow)' scripts/collect_pi_support_bundle.sh
 grep -q 'file changed before copy' scripts/collect_pi_support_bundle.sh
 grep -q 'shutil.copyfileobj(src_handle, dst_handle)' scripts/collect_pi_support_bundle.sh
@@ -5870,7 +5877,10 @@ grep -q 'check_installed_noaa_command' "$support_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$support_fake_ssh_stdin"
 grep -q 'run_command noaa-gps-device-candidates "$app_exec" list-gps-devices' "$support_fake_ssh_stdin"
 grep -q 'skipped noaa-navionics list-gps-devices' "$support_fake_ssh_stdin"
-grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
+grep -q 'tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT)' "$support_fake_ssh_stdin"
+grep -q 'refusing to archive symlinked support bundle entry' "$support_fake_ssh_stdin"
+grep -q 'support bundle file changed before archive' "$support_fake_ssh_stdin"
+! grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
 grep -q 'configured-storage-paths.txt' "$support_fake_ssh_stdin"
 grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
 grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"

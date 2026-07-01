@@ -873,7 +873,117 @@ date -u >>"${bundle_root}/README.txt"
 printf 'Target user: %s\n' "$(id -un 2>/dev/null || printf unknown)" >>"${bundle_root}/README.txt"
 printf 'This bundle is diagnostic evidence only. It includes configured chart manifests and storage listings. It does not include downloaded NOAA chart archives, extracted ENC cells, or GPX track contents by default.\n' >>"${bundle_root}/README.txt"
 
-tar -C "$bundle_root" -czf - .
+"$python3_cmd" - "$bundle_root" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+import tarfile
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def first_symlink_ancestor(path: Path):
+    current = path
+    for candidate in [current, *current.parents]:
+        if candidate.is_symlink():
+            return candidate
+    return None
+
+
+def checked_directory(path: Path, label: str) -> os.stat_result:
+    try:
+        result = path.lstat()
+    except OSError as exc:
+        fail(f"could not inspect {label}: {exc}")
+    if stat.S_ISLNK(result.st_mode):
+        fail(f"{label} is a symlink: {path}")
+    if not stat.S_ISDIR(result.st_mode):
+        fail(f"{label} is not a directory: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"{label} is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode & 0o077:
+        fail(f"{label} has permissions {mode:04o}, expected private 0700: {path}")
+    return result
+
+
+def iter_bundle_paths(root: Path):
+    stack = [root]
+    while stack:
+        directory = stack.pop()
+        checked_directory(directory, "support bundle directory")
+        try:
+            children = sorted(directory.iterdir(), key=lambda item: item.name)
+        except OSError as exc:
+            fail(f"could not list support bundle directory {directory}: {exc}")
+        for child in children:
+            try:
+                child_stat = child.lstat()
+            except OSError as exc:
+                fail(f"could not inspect support bundle entry {child}: {exc}")
+            if stat.S_ISLNK(child_stat.st_mode):
+                fail(f"refusing to archive symlinked support bundle entry: {child}")
+            if stat.S_ISDIR(child_stat.st_mode):
+                stack.append(child)
+            elif not stat.S_ISREG(child_stat.st_mode):
+                fail(f"refusing to archive non-regular support bundle entry: {child}")
+            yield child, child_stat
+
+
+def archive_directory(archive: tarfile.TarFile, root: Path, path: Path, stat_result: os.stat_result) -> None:
+    arcname = path.relative_to(root).as_posix()
+    if not arcname:
+        return
+    info = tarfile.TarInfo(arcname + "/")
+    info.type = tarfile.DIRTYPE
+    info.mode = stat.S_IMODE(stat_result.st_mode) & 0o700
+    info.mtime = int(stat_result.st_mtime)
+    info.uid = stat_result.st_uid
+    info.gid = stat_result.st_gid
+    archive.addfile(info)
+
+
+def archive_file(archive: tarfile.TarFile, root: Path, path: Path, stat_result: os.stat_result) -> None:
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    current_stat = os.fstat(fd)
+    if (current_stat.st_dev, current_stat.st_ino) != (stat_result.st_dev, stat_result.st_ino):
+        os.close(fd)
+        fail(f"support bundle file changed before archive: {path}")
+    if not stat.S_ISREG(current_stat.st_mode):
+        os.close(fd)
+        fail(f"opened support bundle entry is not regular: {path}")
+    if current_stat.st_uid != os.getuid():
+        os.close(fd)
+        fail(f"opened support bundle entry is owned by uid {current_stat.st_uid}, expected {os.getuid()}: {path}")
+    arcname = path.relative_to(root).as_posix()
+    info = tarfile.TarInfo(arcname)
+    info.size = current_stat.st_size
+    info.mode = stat.S_IMODE(current_stat.st_mode) & 0o777
+    info.mtime = int(current_stat.st_mtime)
+    info.uid = current_stat.st_uid
+    info.gid = current_stat.st_gid
+    with os.fdopen(fd, "rb") as handle:
+        archive.addfile(info, handle)
+
+
+bundle_root_path = Path(sys.argv[1]).expanduser()
+if first_symlink_ancestor(bundle_root_path.parent) is not None:
+    fail(f"support bundle parent path contains a symlink: {first_symlink_ancestor(bundle_root_path.parent)}")
+checked_directory(bundle_root_path, "support bundle root")
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    for path, path_stat in iter_bundle_paths(bundle_root_path):
+        if stat.S_ISDIR(path_stat.st_mode):
+            archive_directory(archive, bundle_root_path, path, path_stat)
+        else:
+            archive_file(archive, bundle_root_path, path, path_stat)
+PY
 REMOTE
 
 if [[ ! -s "$partial_path" ]]; then
