@@ -1854,12 +1854,17 @@ grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config path is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report OpenCPN config missing config_symlink_component' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory .* has permissions' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
 grep -q 'status report launcher settings path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
-grep -q 'status report desktop autostart path is a symlink' scripts/verify_pi.sh
-grep -q 'status report LightDM autologin config path is a symlink' scripts/verify_pi.sh
+grep -q 'status report desktop autostart path is a symlink or missing symlink status' scripts/verify_pi.sh
+grep -q 'status report desktop autostart missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' scripts/verify_pi.sh
+grep -q 'status report LightDM autologin config missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'path is a symlink or missing symlink status' scripts/verify_pi.sh
+grep -q 'missing path_symlink_component' scripts/verify_pi.sh
 grep -q 'def verify_status_file_owner_and_mode' scripts/verify_pi.sh
 grep -q 'status report {label} uid' scripts/verify_pi.sh
 grep -q 'status report {label} mode' scripts/verify_pi.sh
@@ -3980,6 +3985,8 @@ grep -q 'Status reports and Pi readiness read that revision through a no-follow 
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the source revision directory is user-owned and not group/world-writable' docs/sailboat-pi.md
 grep -q 'requires source-revision and launcher-settings symlink-status fields' README.md
 grep -q 'requires source-revision and launcher-settings symlink-status fields' docs/sailboat-pi.md
+grep -q 'requires GUI and service startup path symlink-status fields' README.md
+grep -q 'requires GUI and service startup path symlink-status fields' docs/sailboat-pi.md
 grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_nonregular_source_revision' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_writable_source_revision' tests/test_downloader.py

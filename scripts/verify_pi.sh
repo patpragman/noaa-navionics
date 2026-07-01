@@ -1212,10 +1212,19 @@ if expected_config_path:
         raise SystemExit("status report OpenCPN config path is empty")
     if opencpn_config.get("exists") is not True:
         raise SystemExit(f"status report OpenCPN config does not exist: {opencpn_config_path}")
-    if opencpn_config.get("is_symlink") is True:
-        raise SystemExit(f"status report OpenCPN config is a symlink: {opencpn_config_path}")
-    if opencpn_config.get("directory_is_symlink") is True:
-        raise SystemExit(f"status report OpenCPN config directory is a symlink: {Path(opencpn_config_path).expanduser().parent}")
+    if opencpn_config.get("is_symlink") is not False:
+        raise SystemExit(
+            f"status report OpenCPN config is a symlink or missing symlink status: {opencpn_config_path}"
+        )
+    if opencpn_config.get("directory_is_symlink") is not False:
+        raise SystemExit(
+            "status report OpenCPN config directory is a symlink or missing symlink status: "
+            f"{Path(opencpn_config_path).expanduser().parent}"
+        )
+    if "config_symlink_component" not in opencpn_config:
+        raise SystemExit(
+            f"status report OpenCPN config missing config_symlink_component: {opencpn_config_path}"
+        )
     opencpn_symlink_component = str(opencpn_config.get("config_symlink_component", "")).strip()
     if opencpn_symlink_component:
         raise SystemExit(f"status report OpenCPN config path contains a symlink: {opencpn_symlink_component}")
@@ -1346,8 +1355,10 @@ if expected_config_path:
     autostart_path = str(autostart.get("path", "")).strip()
     if autostart.get("exists") is not True:
         raise SystemExit(f"status report desktop autostart does not exist: {autostart_path}")
-    if autostart.get("is_symlink") is True:
-        raise SystemExit(f"status report desktop autostart path is a symlink: {autostart_path}")
+    if autostart.get("is_symlink") is not False:
+        raise SystemExit(
+            f"status report desktop autostart path is a symlink or missing symlink status: {autostart_path}"
+        )
     autostart_file = Path(autostart_path).expanduser()
     if autostart_file.is_symlink():
         raise SystemExit(f"status report desktop autostart path is a symlink: {autostart_file}")
@@ -1355,6 +1366,10 @@ if expected_config_path:
         raise SystemExit(
             "status report desktop autostart directory is a symlink or missing symlink status: "
             f"{autostart_file.parent}"
+        )
+    if "path_symlink_component" not in autostart:
+        raise SystemExit(
+            f"status report desktop autostart missing path_symlink_component: {autostart_path}"
         )
     autostart_symlink_component = str(autostart.get("path_symlink_component", "")).strip()
     if autostart_symlink_component:
@@ -1407,8 +1422,11 @@ if expected_config_path:
     lightdm_path = str(lightdm.get("path", "")).strip()
     if lightdm.get("exists") is not True:
         raise SystemExit(f"status report LightDM autologin config does not exist: {lightdm_path}")
-    if lightdm.get("is_symlink") is True:
-        raise SystemExit(f"status report LightDM autologin config path is a symlink: {lightdm_path}")
+    if lightdm.get("is_symlink") is not False:
+        raise SystemExit(
+            "status report LightDM autologin config path is a symlink or missing symlink status: "
+            f"{lightdm_path}"
+        )
     lightdm_file = Path(lightdm_path).expanduser()
     if lightdm_file.is_symlink():
         raise SystemExit(f"status report LightDM autologin config path is a symlink: {lightdm_file}")
@@ -1416,6 +1434,10 @@ if expected_config_path:
         raise SystemExit(
             "status report LightDM autologin config directory is a symlink or missing symlink status: "
             f"{lightdm_file.parent}"
+        )
+    if "path_symlink_component" not in lightdm:
+        raise SystemExit(
+            f"status report LightDM autologin config missing path_symlink_component: {lightdm_path}"
         )
     lightdm_symlink_component = str(lightdm.get("path_symlink_component", "")).strip()
     if lightdm_symlink_component:
@@ -1847,14 +1869,18 @@ for unit, expected_target in expected_unit_files.items():
         raise SystemExit(f"status report {unit} path {unit_path} does not match {expected_unit_path}")
     if state.get("exists") is not True:
         raise SystemExit(f"status report {unit} does not exist: {expected_unit_path}")
-    if state.get("is_symlink") is True:
-        raise SystemExit(f"status report {unit} path is a symlink: {expected_unit_path}")
+    if state.get("is_symlink") is not False:
+        raise SystemExit(
+            f"status report {unit} path is a symlink or missing symlink status: {expected_unit_path}"
+        )
     if expected_unit_path.is_symlink():
         raise SystemExit(f"status report {unit} path is a symlink: {expected_unit_path}")
     if state.get("directory_is_symlink") is not False:
         raise SystemExit(
             f"status report {unit} directory is a symlink or missing symlink status: {expected_unit_path.parent}"
         )
+    if "path_symlink_component" not in state:
+        raise SystemExit(f"status report {unit} missing path_symlink_component: {expected_unit_path}")
     unit_symlink_component = str(state.get("path_symlink_component", "")).strip()
     if unit_symlink_component:
         raise SystemExit(f"status report {unit} path contains a symlink: {unit_symlink_component}")
