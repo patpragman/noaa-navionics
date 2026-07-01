@@ -9,6 +9,7 @@ ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navion
 StandardOutput=null
 Restart=on-failure
 RestartSec=10
+TimeoutStopSec=30s
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

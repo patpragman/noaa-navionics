@@ -4747,6 +4747,8 @@ check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
 check "track service loaded restart" loaded_unit_property_equals noaa-navionics-track.service Restart on-failure
 check "track service restart delay" grep -Fxq 'RestartSec=10' "$track_service"
 check "track service loaded restart delay" loaded_unit_property_equals noaa-navionics-track.service RestartUSec 10s
+check "track service graceful stop timeout" grep -Fxq 'TimeoutStopSec=30s' "$track_service"
+check "track service loaded graceful stop timeout" loaded_unit_property_equals noaa-navionics-track.service TimeoutStopUSec 30s
 check "track service no new privileges" grep -Fxq 'NoNewPrivileges=true' "$track_service"
 check "track service loaded no new privileges" loaded_unit_property_equals noaa-navionics-track.service NoNewPrivileges yes
 check "track service private tmp" grep -Fxq 'PrivateTmp=true' "$track_service"

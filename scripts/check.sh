@@ -2287,6 +2287,8 @@ grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded restart' scripts/verify_pi.sh
 grep -q 'track service restart delay' scripts/verify_pi.sh
 grep -q 'track service loaded restart delay' scripts/verify_pi.sh
+grep -q 'track service graceful stop timeout' scripts/verify_pi.sh
+grep -q 'track service loaded graceful stop timeout' scripts/verify_pi.sh
 grep -q 'track service start limit burst' scripts/verify_pi.sh
 grep -q 'track service loaded start limit interval' scripts/verify_pi.sh
 grep -q 'track service loaded start limit burst' scripts/verify_pi.sh
@@ -4272,6 +4274,7 @@ grep -q 'track service loaded type' scripts/verify_pi.sh
 grep -q 'preflight service loaded type' scripts/verify_pi.sh
 grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'RestartSec=10' systemd/noaa-navionics-track.service
+grep -q 'TimeoutStopSec=30s' systemd/noaa-navionics-track.service
 grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
 grep -q 'UMask=0077' systemd/noaa-navionics-track.service
 grep -q 'chart service private files' scripts/verify_pi.sh
@@ -4374,6 +4377,7 @@ grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter
 grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes "track logger service"' scripts/provision_sailboat_pi.sh
@@ -8880,6 +8884,7 @@ HOME="$full_provision_home" scripts/provision_sailboat_pi.sh \
 grep -q 'systemctl --user daemon-reload' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes' "$provision_output"
