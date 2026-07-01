@@ -553,6 +553,7 @@ grep -q 'ssh_keygen_cmd="$(require_local_command ssh-keygen)"' scripts/enroll_pi
 grep -q 'python3_cmd="$(require_local_command python3)"' scripts/enroll_pi_host_key.sh
 grep -q 'validate_known_hosts_arg "$known_hosts"' scripts/enroll_pi_host_key.sh
 grep -q -- '--known-hosts path must not contain parent-directory components' scripts/enroll_pi_host_key.sh
+grep -q 'reject_symlinked_path_components "--known-hosts" "$value"' scripts/enroll_pi_host_key.sh
 grep -q 'os.open(path.name, flags, 0o600, dir_fd=parent_fd)' scripts/enroll_pi_host_key.sh
 grep -q 'append_verified_known_hosts "$known_hosts" "$match_path"' scripts/enroll_pi_host_key.sh
 grep -q 'known_hosts changed before append' scripts/enroll_pi_host_key.sh
@@ -560,8 +561,8 @@ grep -q 'private_temp_identity' scripts/enroll_pi_host_key.sh
 grep -q 'cleanup_private_host_key_temp' scripts/enroll_pi_host_key.sh
 grep -q 'changed before cleanup; leaving it in place' scripts/enroll_pi_host_key.sh
 grep -q 'Do not enroll a host key using root@' scripts/enroll_pi_host_key.sh
-grep -q 'Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components before scanning the network' README.md
-grep -q 'Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components before scanning the network' docs/sailboat-pi.md
+grep -q 'Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components or symlinked path components before scanning the network' README.md
+grep -q 'Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components or symlinked path components before scanning the network' docs/sailboat-pi.md
 grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' README.md
 grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 ! grep -q ': >"$path"' scripts/enroll_pi_host_key.sh
@@ -6722,6 +6723,33 @@ if [[ -e "$host_key_parent_log" ]] && grep -q '^scan|' "$host_key_parent_log"; t
   exit 1
 fi
 
+host_key_ancestor_real="$tmpdir/host-key-ancestor-real"
+host_key_ancestor_link="$tmpdir/host-key-ancestor-link"
+host_key_ancestor_log="$tmpdir/host-key-ancestor-log"
+mkdir -p "$host_key_ancestor_real"
+ln -s "$host_key_ancestor_real" "$host_key_ancestor_link"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_ancestor_log" \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$host_key_ancestor_link/known_hosts" \
+  --expected-sha256 SHA256:abcdefghijklmnopqrstuv >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to reject symlinked known_hosts path components with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--known-hosts path contains a symlink' "$verify_output"
+if [[ -e "$host_key_ancestor_log" ]] && grep -q '^scan|' "$host_key_ancestor_log"; then
+  cat "$host_key_ancestor_log" >&2
+  echo "expected enroll_pi_host_key.sh not to scan before rejecting a symlinked known_hosts path component" >&2
+  exit 1
+fi
+
 host_key_symlink_dir="$tmpdir/host-key-symlink"
 mkdir -p "$host_key_symlink_dir"
 ln -s "$tmpdir/host-key-symlink-target" "$host_key_symlink_dir/known_hosts"
@@ -6740,7 +6768,7 @@ if [[ "$host_key_code" -ne 2 ]]; then
   echo "expected enroll_pi_host_key.sh to reject symlinked known_hosts with exit 2" >&2
   exit 1
 fi
-grep -q 'known_hosts path contains a symlink' "$verify_output"
+grep -q -- '--known-hosts path contains a symlink' "$verify_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout nope >"$dock_output" 2>&1

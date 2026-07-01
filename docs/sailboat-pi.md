@@ -39,7 +39,7 @@ scripts/enroll_pi_host_key.sh pi@raspberrypi.local --expected-sha256 SHA256:YOUR
 ```
 
 Get the expected SHA256 host-key fingerprint from the Pi console or another trusted channel, not from the same network scan you are trying to verify.
-Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components before scanning the network. Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking, leaving changed or unsafe scan/match/key temp paths in place.
+Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components or symlinked path components before scanning the network. Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking, leaving changed or unsafe scan/match/key temp paths in place.
 Remote deployment directories must be dedicated `noaa-navionics` paths under regular, user-owned, non-writable, non-symlinked user storage, and parent-directory components such as `..` are rejected before any SSH deployment starts. Remote deployment cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree` before removing stale staging or previous deployment directories.
 
 After installation and before provisioning, plug in the GPS and run this on the Pi:

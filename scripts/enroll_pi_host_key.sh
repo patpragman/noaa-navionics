@@ -218,6 +218,7 @@ validate_known_hosts_arg() {
       exit 2
       ;;
   esac
+  reject_symlinked_path_components "--known-hosts" "$value"
 }
 
 reject_symlinked_path_components() {
