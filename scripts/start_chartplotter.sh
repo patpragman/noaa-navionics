@@ -1219,35 +1219,88 @@ try:
     if lock_mode & 0o077:
         raise SystemExit(f"chartplotter launcher lock directory has permissions {lock_mode:04o}, expected private 0700: {lock}")
 
-    def write_private_file(name: str, value: str) -> None:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
-        fd = os.open(name, flags, 0o600, dir_fd=dir_fd)
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+    def validate_private_file_fd(fd: int, name: str) -> None:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"chartplotter launcher lock {name} is not a regular file")
+        if opened.st_uid != expected_uid:
+            raise SystemExit(
+                f"chartplotter launcher lock {name} is owned by uid {opened.st_uid}, expected {expected_uid}"
+            )
+        mode = opened.st_mode & 0o777
+        if mode != 0o600:
+            raise SystemExit(f"chartplotter launcher lock {name} has permissions {mode:04o}, expected private 0600")
+
+    def write_all(fd: int, data: bytes) -> None:
+        view = memoryview(data)
+        while view:
+            written = os.write(fd, view)
+            if written <= 0:
+                raise SystemExit("could not write chartplotter launcher lock metadata")
+            view = view[written:]
+
+    def validate_lock_file_content(name: str, value: str) -> None:
+        fd = os.open(name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
         try:
-            opened = os.fstat(fd)
-            if not stat.S_ISREG(opened.st_mode):
-                raise SystemExit(f"chartplotter launcher lock {name} is not a regular file")
-            if opened.st_uid != expected_uid:
-                raise SystemExit(
-                    f"chartplotter launcher lock {name} is owned by uid {opened.st_uid}, expected {expected_uid}"
-                )
-            os.fchmod(fd, 0o600)
-            os.write(fd, f"{value}\n".encode("ascii"))
-            os.fsync(fd)
+            validate_private_file_fd(fd, name)
+            data = os.read(fd, 4096).decode("ascii", "ignore")
         finally:
             os.close(fd)
+        if data != f"{value}\n":
+            raise SystemExit(f"chartplotter launcher lock {name} content changed during promotion")
+
+    def write_private_file(name: str, value: str) -> None:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow
+        data = f"{value}\n".encode("ascii")
+        tmp_name = None
+        fd = -1
+        for attempt in range(100):
+            candidate = f".{name}.{os.getpid()}.{attempt}.tmp"
+            try:
+                fd = os.open(candidate, flags, 0o600, dir_fd=dir_fd)
+            except FileExistsError:
+                continue
+            tmp_name = candidate
+            break
+        if tmp_name is None:
+            raise SystemExit(f"could not create private temporary chartplotter launcher lock {name}")
+        try:
+            try:
+                validate_private_file_fd(fd, tmp_name)
+                os.fchmod(fd, 0o600)
+                write_all(fd, data)
+                os.fsync(fd)
+            finally:
+                if fd >= 0:
+                    os.close(fd)
+            os.replace(tmp_name, name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+            tmp_name = None
+            validate_lock_file_content(name, value)
+        finally:
+            if tmp_name is not None:
+                try:
+                    os.unlink(tmp_name, dir_fd=dir_fd)
+                except FileNotFoundError:
+                    pass
+
+    def unlink_optional_private_file(name: str) -> None:
+        try:
+            fd = os.open(name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        except FileNotFoundError:
+            return
+        try:
+            validate_private_file_fd(fd, name)
+        finally:
+            os.close(fd)
+        os.unlink(name, dir_fd=dir_fd)
 
     write_private_file("pid", pid_text)
     if boot_id_text:
         write_private_file("boot_id", boot_id_text)
     else:
-        try:
-            existing = os.stat("boot_id", dir_fd=dir_fd, follow_symlinks=False)
-        except FileNotFoundError:
-            pass
-        else:
-            if not stat.S_ISREG(existing.st_mode):
-                raise SystemExit("chartplotter launcher lock boot_id is not a regular file")
-            os.unlink("boot_id", dir_fd=dir_fd)
+        unlink_optional_private_file("boot_id")
     os.fsync(dir_fd)
 finally:
     os.close(dir_fd)

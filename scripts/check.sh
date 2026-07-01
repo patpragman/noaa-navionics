@@ -133,18 +133,21 @@ grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/start_chartplotter.sh
 ! grep -q 'with path.open("rb") as handle' scripts/start_chartplotter.sh
 grep -q 'write_private_file("pid", pid_text)' scripts/start_chartplotter.sh
 grep -q 'write_private_file("boot_id", boot_id_text)' scripts/start_chartplotter.sh
+grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow' scripts/start_chartplotter.sh
+grep -q 'os.replace(tmp_name, name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)' scripts/start_chartplotter.sh
+grep -q 'validate_lock_file_content(name, value)' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file()' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file boot_id "chartplotter launcher lock boot ID"' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file pid "chartplotter launcher lock pid"' scripts/start_chartplotter.sh
-grep -q 'os.open(name, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
+grep -q 'fd = os.open(candidate, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
 grep -q 'lock_mode = lock_stat.st_mode & 0o777' scripts/start_chartplotter.sh
 grep -q 'expected private 0700: {lock}' scripts/start_chartplotter.sh
 grep -q 'expected private 0600' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock directory has permissions' scripts/start_chartplotter.sh
 grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' README.md
 grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' docs/sailboat-pi.md
-grep -q 'writes and reads lock PID and boot-ID files through no-follow descriptor opens' README.md
-grep -q 'writes and reads lock PID and boot-ID files through no-follow descriptor opens' docs/sailboat-pi.md
+grep -q 'promotes lock PID and boot-ID files through exclusive private temporary files and atomic replacement, then reads them back through no-follow descriptors' README.md
+grep -q 'promotes lock PID and boot-ID files through exclusive private temporary files and atomic replacement, then reads them back through no-follow descriptors' docs/sailboat-pi.md
 ! grep -q 'chmod 0600 "${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -Fq '>"${launcher_lock_dir}/pid"' scripts/start_chartplotter.sh
 ! grep -Fq '>"${launcher_lock_dir}/boot_id"' scripts/start_chartplotter.sh
