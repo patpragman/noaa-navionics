@@ -588,6 +588,7 @@ if [[ "$status" == "1" ]]; then
   if [[ -n "$gps_seconds" ]]; then
     status_args+=(--gps-seconds "$gps_seconds")
   else
+    check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env"
     status_args+=(--gps-seconds-from-launcher-env "$launcher_env")
   fi
   run_noaa_navionics "${status_args[@]}"

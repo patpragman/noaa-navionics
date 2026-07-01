@@ -507,6 +507,9 @@ run_noaa_navionics() {
 
 python3_cmd="$(require_remote_command python3)"
 check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"
+if [[ -z "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" ]]; then
+  check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"
+fi
 
 status_args=(
   status-report

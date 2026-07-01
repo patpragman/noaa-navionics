@@ -697,8 +697,8 @@ grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
-grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, and validates the onboard config file" README.md
-grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, and validates the onboard config file" docs/sailboat-pi.md
+grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" README.md
+grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" docs/sailboat-pi.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' README.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
@@ -713,8 +713,8 @@ grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
-grep -q 'uses the commissioned launcher GPS wait unless `--gps-seconds N` is supplied' README.md
-grep -q 'uses the commissioned launcher GPS wait unless `--gps-seconds N` is supplied' docs/sailboat-pi.md
+grep -q 'validates the private launcher environment before post-refresh status uses the commissioned GPS wait unless `--gps-seconds N` is supplied' README.md
+grep -q 'validates the private launcher environment before post-refresh status uses the commissioned GPS wait unless `--gps-seconds N` is supplied' docs/sailboat-pi.md
 grep -q 'live fix time, signed age, position' README.md
 grep -q 'live fix time, signed age, position' docs/sailboat-pi.md
 grep -q 'No chart data is downloaded on the local computer' README.md
@@ -1706,6 +1706,7 @@ grep -q 'Helper script changed before it could be validated' scripts/pre_trip_pr
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"' scripts/check_pi_status.sh
+grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"' scripts/check_pi_status.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' scripts/check_pi_status.sh
 grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/check_pi_status.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/check_pi_status.sh
@@ -7296,6 +7297,8 @@ grep -q 'could not open installed noaa-navionics command through no-follow descr
 grep -q 'installed noaa-navionics command changed before it could be validated' "$status_fake_ssh_stdin"
 grep -q 'run_noaa_navionics()' "$status_fake_ssh_stdin"
 grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' "$status_fake_ssh_stdin"
+grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"' "$status_fake_ssh_stdin"
+grep -Fq 'if [[ -z "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" ]]; then' "$status_fake_ssh_stdin"
 grep -q 'status-report' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' "$status_fake_ssh_stdin"
@@ -7388,6 +7391,7 @@ grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
 grep -q 'Post-refresh status report' "$refresh_fake_ssh_stdin"
 grep -q 'status_args=(status-report --config "$config")' "$refresh_fake_ssh_stdin"
 grep -q -- '--gps-seconds "$gps_seconds"' "$refresh_fake_ssh_stdin"
+grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env"' "$refresh_fake_ssh_stdin"
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' "$refresh_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
 grep -q 'reject_symlinked_path_components' "$refresh_fake_ssh_stdin"
