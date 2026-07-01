@@ -177,8 +177,9 @@ def normalized_member_name(name: str) -> str:
 
 def validate_member_name(name: str, archive_path: Path) -> str:
     normalized = normalized_member_name(name)
-    if not normalized:
-        return normalized
+    parts = normalized.split("/") if normalized else []
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        fail(f"{archive_path.name} contains unsafe member path: {name}")
     if "\\" in normalized:
         fail(f"{archive_path.name} contains unsafe backslash member: {name}")
     member_path = PurePosixPath(normalized)

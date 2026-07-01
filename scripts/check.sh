@@ -1117,6 +1117,8 @@ grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi_recovery_exports.sh
 grep -q 'archive changed while being opened' scripts/verify_pi_recovery_exports.sh
+grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/verify_pi_recovery_exports.sh
+grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/verify_pi_recovery_exports.sh
 grep -q 'contains duplicate member' scripts/verify_pi_recovery_exports.sh
 grep -q 'unsupported non-regular member' scripts/verify_pi_recovery_exports.sh
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/verify_pi_recovery_exports.sh
@@ -1139,6 +1141,8 @@ grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive has permissions .* expected private 0600' scripts/restore_pi_recovery_user_data.sh
+grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/restore_pi_recovery_user_data.sh
+grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'load_contents=(label != "support")' scripts/restore_pi_recovery_user_data.sh
 grep -q 'OpenCPN archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
 for export_wrapper in \
@@ -6758,6 +6762,74 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
 fi
 grep -q 'contains duplicate member: README.txt' "$verify_output"
 
+recovery_verify_unsafe_member_dir="$tmpdir/recovery-verify-unsafe-member"
+mkdir -p "$recovery_verify_unsafe_member_dir"
+python3 - "$recovery_verify_unsafe_member_dir" <<'PY'
+from pathlib import Path
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+def build_archive(directory, name, manifest, extra_member):
+    path = directory / name
+    with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+        add_text(archive, "README.txt", "recovery fixture\n")
+        if manifest is not None:
+            add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
+        add_text(archive, extra_member, "fixture\n")
+    path.chmod(0o600)
+
+
+root = Path(sys.argv[1])
+build_archive(
+    root,
+    "noaa-navionics-pi-settings-pi_example_invalid-20260101T000002Z.tgz",
+    {"file_count": 1},
+    "noaa-navionics/./config.ini",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000002Z.tgz",
+    {"file_count": 1},
+    "opencpn/navobj.xml",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000002Z.tgz",
+    {"track_count": 1},
+    "tracks/track.gpx",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-support-pi_example_invalid-20260101T000002Z.tgz",
+    None,
+    "commands/date-utc.txt",
+)
+PY
+chmod 0700 "$recovery_verify_unsafe_member_dir"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_unsafe_member_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject dot-segment archive members with exit 1" >&2
+  exit 1
+fi
+grep -q 'contains unsafe member path: noaa-navionics/./config.ini' "$verify_output"
+
 chmod 0755 "$recovery_verify_dir"
 set +e
 scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
@@ -6800,9 +6872,10 @@ recovery_restore_dir="$tmpdir/recovery-restore"
 recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
 recovery_restore_broad_dir="$tmpdir/recovery-restore-broad-dir"
 recovery_restore_bad_opencpn_dir="$tmpdir/recovery-restore-bad-opencpn-dir"
+recovery_restore_unsafe_member_dir="$tmpdir/recovery-restore-unsafe-member-dir"
 restore_home="$tmpdir/restore-home"
-mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$restore_home"
-python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" <<'PY'
+mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$restore_home"
+python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" <<'PY'
 from pathlib import Path
 import io
 import json
@@ -6894,8 +6967,9 @@ build_restore_fixture(Path(sys.argv[1]), config)
 build_restore_fixture(Path(sys.argv[2]), bad_config)
 build_restore_fixture(Path(sys.argv[3]), broad_config)
 build_restore_fixture(Path(sys.argv[4]), config, {"opencpn/plugins/bad.txt": "bad\n"})
+build_restore_fixture(Path(sys.argv[5]), config, {"opencpn/./unsafe.gpx": "<gpx />\n"})
 PY
-chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir"
+chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir"
 
 restore_fake_python_bin="$tmpdir/restore-fake-python-bin"
 mkdir -p "$restore_fake_python_bin"
@@ -6948,6 +7022,17 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'OpenCPN archive contains unexpected restore member: opencpn/plugins/bad.txt' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_unsafe_member_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject dot-segment archive members with exit 1" >&2
+  exit 1
+fi
+grep -q 'contains unsafe member path: opencpn/./unsafe.gpx' "$verify_output"
 
 chmod 0755 "$recovery_restore_dir"
 set +e
