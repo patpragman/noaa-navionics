@@ -12475,6 +12475,18 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('get("skipped") is True', source)
                 self.assertIn("records non-Pi diagnostic skip(s)", source)
 
+    def test_status_snapshot_validators_reject_non_boolean_row_ok_values(self):
+        for script in (
+            "scripts/pre_trip_prepare_pi.sh",
+            "scripts/verify_pi_recovery_exports.sh",
+            "scripts/post_trip_collect_pi.sh",
+        ):
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                self.assertIn('not isinstance(row.get("ok"), bool)', source)
+                self.assertIn("readiness check {name} ok is not boolean", source)
+                self.assertIn("service check {name} ok is not boolean", source)
+
     def test_status_snapshot_validators_reject_source_revision_row_mismatches(self):
         for script in (
             "scripts/pre_trip_prepare_pi.sh",

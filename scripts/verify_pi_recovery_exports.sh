@@ -681,6 +681,8 @@ def validate_pre_departure_status_checks(status: dict[str, object], expected_sou
         name = str(row.get("name", "")).strip()
         if not name:
             fail("pre-departure status snapshot JSON has unnamed readiness check")
+        if not isinstance(row.get("ok"), bool):
+            fail(f"pre-departure status snapshot JSON readiness check {name} ok is not boolean")
         if name in check_rows:
             fail(f"pre-departure status snapshot JSON has duplicate readiness check: {name}")
         check_rows[name] = row
@@ -692,6 +694,8 @@ def validate_pre_departure_status_checks(status: dict[str, object], expected_sou
         name = str(row.get("name", "")).strip()
         if not name:
             fail("pre-departure status snapshot JSON has unnamed service check")
+        if not isinstance(row.get("ok"), bool):
+            fail(f"pre-departure status snapshot JSON service check {name} ok is not boolean")
         if name in service_rows:
             fail(f"pre-departure status snapshot JSON has duplicate service check: {name}")
         service_rows[name] = row

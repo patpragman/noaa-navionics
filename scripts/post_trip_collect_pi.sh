@@ -606,6 +606,8 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path, 
         name = str(row.get("name", "")).strip()
         if not name:
             fail(f"status snapshot JSON has unnamed readiness check: {path}")
+        if not isinstance(row.get("ok"), bool):
+            fail(f"status snapshot JSON readiness check {name} ok is not boolean: {path}")
         if name in check_rows:
             fail(f"status snapshot JSON has duplicate readiness check: {name}: {path}")
         check_rows[name] = row
@@ -617,6 +619,8 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path, 
         name = str(row.get("name", "")).strip()
         if not name:
             fail(f"status snapshot JSON has unnamed service check: {path}")
+        if not isinstance(row.get("ok"), bool):
+            fail(f"status snapshot JSON service check {name} ok is not boolean: {path}")
         if name in service_rows:
             fail(f"status snapshot JSON has duplicate service check: {name}: {path}")
         service_rows[name] = row
