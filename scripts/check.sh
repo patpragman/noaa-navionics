@@ -792,8 +792,8 @@ grep -q 'No chart data is downloaded on the local computer' README.md
 grep -q 'No chart data is downloaded on the local computer' docs/sailboat-pi.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
-grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
+grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" README.md
@@ -810,8 +810,8 @@ grep -q 'Pi-side temporary collection directory only under a private user-owned 
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' README.md
-grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' README.md
+grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus a positive manifest count and manifest track names that match the regular GPX data files while rejecting duplicate or unsupported archive members before reporting success' README.md
 grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus a positive manifest count and manifest track names that match the regular GPX data files while rejecting duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
 grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' README.md
@@ -861,16 +861,16 @@ grep -q 'continues exporting tracks/support even when the status snapshot report
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root' README.md
-grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root' README.md
+grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' docs/sailboat-pi.md
 grep -q 'positive manifest count and manifest file names that match the regular data files' README.md
 grep -q 'positive manifest count and manifest file names that match the regular data files' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root' README.md
-grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root' README.md
+grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
 grep -q 'production `/etc/chrony/chrony.conf` when readable' README.md
 grep -q 'production `/etc/chrony/chrony.conf` when readable' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted NOAA Navionics config' README.md
@@ -885,8 +885,8 @@ grep -q 'and verifies the completed local recovery set before reporting success'
 grep -q 'and verifies the completed local recovery set before reporting success' docs/sailboat-pi.md
 grep -q 'writes a private `0600` `SHA256SUMS.txt` for the four recovery archives' README.md
 grep -q 'writes a private `0600` `SHA256SUMS.txt` for the four recovery archives' docs/sailboat-pi.md
-grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
-grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
+grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
+grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
@@ -899,8 +899,8 @@ grep -q 'creating, syncing, writing, parsing, and cleaning up the private recove
 grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
-grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components' README.md
-grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
+grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
+grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
@@ -1751,6 +1751,7 @@ for export_wrapper in \
   scripts/post_trip_collect_pi.sh \
   scripts/pre_trip_prepare_pi.sh; do
   grep -q 'reject_symlinked_path_components()' "$export_wrapper"
+  grep -q 'Output directory must not contain control characters' "$export_wrapper"
   grep -q 'Output directory must not contain parent-directory components' "$export_wrapper"
   grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$export_wrapper"
   grep -q 'path contains a symlink' "$export_wrapper"
@@ -9414,6 +9415,24 @@ if [[ "$support_bundle_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+
+for control_output_wrapper in \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_recovery_bundle.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh; do
+  set +e
+  "$control_output_wrapper" pi@example.invalid "$tmpdir/control-output"$'\n'"path" >"$verify_output" 2>&1
+  control_output_code=$?
+  set -e
+  if [[ "$control_output_code" -ne 2 ]]; then
+    cat "$verify_output" >&2
+    echo "expected $control_output_wrapper to reject control characters in output directory with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'Output directory must not contain control characters' "$verify_output"
+done
 
 support_parent_real="$tmpdir/support-parent-real"
 support_parent_link="$tmpdir/support-parent-link"
