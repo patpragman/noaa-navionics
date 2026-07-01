@@ -781,6 +781,8 @@ grep -q 'rejects broad/system local output directories, parent-directory compone
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' README.md
+grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
@@ -1719,6 +1721,15 @@ grep -q 'status snapshot JSON missing boolean ok field' scripts/post_trip_collec
 grep -q 'for field in ("checks", "service_checks")' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing {field} list' scripts/post_trip_collect_pi.sh
 grep -q 'validate_post_trip_archive' scripts/post_trip_collect_pi.sh
+grep -q 'write_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
+grep -q 'verify_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
+grep -q 'MANIFEST_NAME = "SHA256SUMS.txt"' scripts/post_trip_collect_pi.sh
+grep -q 'Wrote post-trip checksum manifest:' scripts/post_trip_collect_pi.sh
+grep -q 'Verified post-trip checksum manifest:' scripts/post_trip_collect_pi.sh
+grep -q 'post-trip checksum mismatch for' scripts/post_trip_collect_pi.sh
+grep -q 'post-trip checksum manifest is missing artifact' scripts/post_trip_collect_pi.sh
+grep -q 'post-trip checksum manifest lists unexpected artifact' scripts/post_trip_collect_pi.sh
+grep -q 'hashlib.sha256' scripts/post_trip_collect_pi.sh
 grep -q 'run_artifact_step' scripts/post_trip_collect_pi.sh
 grep -q 'track export archive' scripts/post_trip_collect_pi.sh
 grep -q 'support bundle archive' scripts/post_trip_collect_pi.sh
@@ -6940,6 +6951,8 @@ NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_log" \
   --gps-seconds 15 \
   --shutdown-dry-run >"$verify_output" 2>&1
 grep -q 'Post-trip Pi collection completed for pi@example.invalid' "$verify_output"
+grep -q 'Wrote post-trip checksum manifest:' "$verify_output"
+grep -q 'Verified post-trip checksum manifest:' "$verify_output"
 post_trip_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
 test -d "$post_trip_dir"
 test "$(stat -c '%a' "$post_trip_output_dir")" = 700
@@ -6947,21 +6960,41 @@ test "$(stat -c '%a' "$post_trip_dir")" = 700
 test "$(stat -c '%a' "$post_trip_dir/status.json")" = 600
 test "$(stat -c '%a' "$post_trip_dir/noaa-navionics-pi-tracks-fixture.tgz")" = 600
 test "$(stat -c '%a' "$post_trip_dir/noaa-navionics-pi-support-fixture.tgz")" = 600
+test "$(stat -c '%a' "$post_trip_dir/SHA256SUMS.txt")" = 600
 test "$(stat -c '%u' "$post_trip_output_dir")" = "$(id -u)"
 test "$(stat -c '%u' "$post_trip_dir")" = "$(id -u)"
 test "$(stat -c '%u' "$post_trip_dir/status.json")" = "$(id -u)"
 test "$(stat -c '%u' "$post_trip_dir/noaa-navionics-pi-tracks-fixture.tgz")" = "$(id -u)"
 test "$(stat -c '%u' "$post_trip_dir/noaa-navionics-pi-support-fixture.tgz")" = "$(id -u)"
+test "$(stat -c '%u' "$post_trip_dir/SHA256SUMS.txt")" = "$(id -u)"
 grep -q '"ok": true' "$post_trip_dir/status.json"
-python3 - "$post_trip_dir/noaa-navionics-pi-tracks-fixture.tgz" "$post_trip_dir/noaa-navionics-pi-support-fixture.tgz" <<'PY'
+python3 - "$post_trip_dir" "$post_trip_dir/noaa-navionics-pi-tracks-fixture.tgz" "$post_trip_dir/noaa-navionics-pi-support-fixture.tgz" <<'PY'
+from pathlib import Path
+import hashlib
 import sys
 import tarfile
 
-for path in sys.argv[1:]:
+root = Path(sys.argv[1])
+for path in sys.argv[2:]:
     with tarfile.open(path, "r:gz") as archive:
         names = archive.getnames()
     if names != ["README.txt"]:
         raise SystemExit(f"unexpected post-trip archive members in {path}: {names!r}")
+entries = {}
+for line in (root / "SHA256SUMS.txt").read_text(encoding="ascii").splitlines():
+    digest, name = line.split("  ", 1)
+    entries[name] = digest
+expected = {
+    "status.json",
+    "noaa-navionics-pi-tracks-fixture.tgz",
+    "noaa-navionics-pi-support-fixture.tgz",
+}
+if set(entries) != expected:
+    raise SystemExit(f"unexpected post-trip checksum entries: {entries!r}")
+for name, digest in entries.items():
+    actual = hashlib.sha256((root / name).read_bytes()).hexdigest()
+    if actual != digest:
+        raise SystemExit(f"post-trip checksum mismatch for {name}")
 PY
 grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 ! grep -q '//' "$post_trip_log"
@@ -7102,10 +7135,14 @@ if [[ "$post_trip_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' "$verify_output"
+grep -q 'Wrote post-trip checksum manifest:' "$verify_output"
+grep -q 'Verified post-trip checksum manifest:' "$verify_output"
 post_trip_failure_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
 test -d "$post_trip_failure_dir"
 test "$(stat -c '%a' "$post_trip_failure_dir/status.json")" = 600
+test "$(stat -c '%a' "$post_trip_failure_dir/SHA256SUMS.txt")" = 600
 test "$(stat -c '%u' "$post_trip_failure_dir/status.json")" = "$(id -u)"
+test "$(stat -c '%u' "$post_trip_failure_dir/SHA256SUMS.txt")" = "$(id -u)"
 grep -q '"ok": true' "$post_trip_failure_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 12 --json$' "$post_trip_failure_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 3$' "$post_trip_failure_log"

@@ -741,6 +741,283 @@ PY
   return "$status"
 }
 
+write_post_trip_checksum_manifest() {
+  local directory="$1"
+  "$python3_cmd" - "$directory" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import hashlib
+import os
+import stat
+import tempfile
+import sys
+
+MANIFEST_NAME = "SHA256SUMS.txt"
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(124)
+
+
+def inspect_private_directory(path: Path) -> None:
+    try:
+        result = path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect post-trip directory before checksum manifest: {path}: {exc}")
+    if not stat.S_ISDIR(result.st_mode):
+        fail(f"Post-trip checksum directory is not a real directory: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"Post-trip checksum directory is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o700:
+        fail(f"Post-trip checksum directory has permissions {mode:04o}, expected private 0700: {path}")
+
+
+def hash_private_file(path: Path) -> str:
+    if path.is_symlink():
+        fail(f"Post-trip artifact must not be a symlink before checksum manifest: {path}")
+    try:
+        before = path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect post-trip artifact before checksum manifest: {path}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"Post-trip artifact must be regular before checksum manifest: {path}")
+    if before.st_uid != os.getuid():
+        fail(f"Post-trip artifact is owned by uid {before.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"Post-trip artifact has permissions {mode:04o}, expected private 0600: {path}")
+    fd = -1
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"Post-trip artifact changed before checksum manifest: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"Post-trip artifact must be regular when opened for checksum: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"Post-trip artifact is owned by uid {opened.st_uid}, expected {os.getuid()} when opened: {path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"Post-trip artifact has permissions {opened_mode:04o}, expected private 0600 when opened: {path}")
+        digest = hashlib.sha256()
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+directory = Path(sys.argv[1])
+inspect_private_directory(directory)
+artifact_paths = []
+status_path = directory / "status.json"
+if status_path.exists() or status_path.is_symlink():
+    artifact_paths.append(status_path)
+artifact_paths.extend(sorted(directory.glob("*.tgz")))
+if not artifact_paths:
+    print(f"No post-trip artifacts to checksum in: {directory}")
+    raise SystemExit(0)
+
+manifest_path = directory / MANIFEST_NAME
+if manifest_path.exists() or manifest_path.is_symlink():
+    fail(f"Refusing to overwrite existing post-trip checksum manifest: {manifest_path}")
+
+lines = [f"{hash_private_file(path)}  {path.name}\n" for path in artifact_paths]
+payload = "".join(lines).encode("ascii")
+temp_fd = -1
+temp_path = None
+try:
+    temp_fd, temp_name = tempfile.mkstemp(prefix=f".{MANIFEST_NAME}.", suffix=".tmp", dir=directory)
+    temp_path = Path(temp_name)
+    os.fchmod(temp_fd, 0o600)
+    os.write(temp_fd, payload)
+    os.fsync(temp_fd)
+    os.close(temp_fd)
+    temp_fd = -1
+    os.replace(temp_path, manifest_path)
+    temp_path = None
+    dir_fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+except OSError as exc:
+    fail(f"Could not write post-trip checksum manifest: {exc}")
+finally:
+    if temp_fd >= 0:
+        os.close(temp_fd)
+    if temp_path is not None:
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+
+try:
+    final = manifest_path.lstat()
+except OSError as exc:
+    fail(f"Could not inspect post-trip checksum manifest after writing: {manifest_path}: {exc}")
+if not stat.S_ISREG(final.st_mode):
+    fail(f"Post-trip checksum manifest is not a regular file after writing: {manifest_path}")
+if final.st_uid != os.getuid():
+    fail(f"Post-trip checksum manifest is owned by uid {final.st_uid}, expected {os.getuid()}: {manifest_path}")
+mode = stat.S_IMODE(final.st_mode)
+if mode != 0o600:
+    fail(f"Post-trip checksum manifest has permissions {mode:04o}, expected private 0600: {manifest_path}")
+print(f"Wrote post-trip checksum manifest: {manifest_path}")
+PY
+  local status=$?
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
+verify_post_trip_checksum_manifest() {
+  local directory="$1"
+  "$python3_cmd" - "$directory" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import hashlib
+import os
+import re
+import stat
+import sys
+
+MANIFEST_NAME = "SHA256SUMS.txt"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(124)
+
+
+def inspect_private_file(path: Path, label: str) -> os.stat_result:
+    if path.is_symlink():
+        fail(f"{label} must not be a symlink: {path}")
+    try:
+        result = path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect {label}: {path}: {exc}")
+    if not stat.S_ISREG(result.st_mode):
+        fail(f"{label} must be a regular file: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"{label} is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o600:
+        fail(f"{label} has permissions {mode:04o}, expected private 0600: {path}")
+    return result
+
+
+def read_private_file(path: Path, label: str) -> bytes:
+    before = inspect_private_file(path, label)
+    fd = -1
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"{label} changed while opening it: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"{label} must be regular when opened: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"{label} is owned by uid {opened.st_uid}, expected {os.getuid()} when opened: {path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"{label} has permissions {opened_mode:04o}, expected private 0600 when opened: {path}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            return handle.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def hash_private_file(path: Path) -> str:
+    before = inspect_private_file(path, "post-trip artifact")
+    fd = -1
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"post-trip artifact changed before checksum verification: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"post-trip artifact must be regular when opened for checksum verification: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"post-trip artifact is owned by uid {opened.st_uid}, expected {os.getuid()} when opened for checksum verification: {path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"post-trip artifact has permissions {opened_mode:04o}, expected private 0600 when opened for checksum verification: {path}")
+        digest = hashlib.sha256()
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+directory = Path(sys.argv[1])
+manifest_path = directory / MANIFEST_NAME
+if not manifest_path.exists() and not manifest_path.is_symlink():
+    status_path = directory / "status.json"
+    if not (status_path.exists() or status_path.is_symlink()) and not list(directory.glob("*.tgz")):
+        print(f"No post-trip artifacts to verify in: {directory}")
+        raise SystemExit(0)
+try:
+    text = read_private_file(manifest_path, "post-trip checksum manifest").decode("ascii")
+except UnicodeDecodeError as exc:
+    fail(f"post-trip checksum manifest is not ASCII: {exc}")
+entries: dict[str, str] = {}
+for line_number, raw_line in enumerate(text.splitlines(), start=1):
+    if not raw_line.strip():
+        continue
+    if "  " not in raw_line:
+        fail(f"post-trip checksum manifest line {line_number} must use two-space sha256 filename format")
+    digest, name = raw_line.split("  ", 1)
+    if not SHA256_RE.fullmatch(digest):
+        fail(f"post-trip checksum manifest line {line_number} has invalid SHA-256 digest")
+    if "/" in name or name in {"", ".", ".."} or "\\" in name:
+        fail(f"post-trip checksum manifest line {line_number} has unsafe artifact name: {name}")
+    if name in entries:
+        fail(f"post-trip checksum manifest contains duplicate artifact name: {name}")
+    entries[name] = digest
+if not entries:
+    fail("post-trip checksum manifest is empty")
+
+expected_names = set()
+status_path = directory / "status.json"
+if status_path.exists() or status_path.is_symlink():
+    expected_names.add("status.json")
+expected_names.update(path.name for path in directory.glob("*.tgz"))
+missing = sorted(expected_names - set(entries))
+extra = sorted(set(entries) - expected_names)
+if missing:
+    fail(f"post-trip checksum manifest is missing artifact(s): {', '.join(missing)}")
+if extra:
+    fail(f"post-trip checksum manifest lists unexpected artifact(s): {', '.join(extra)}")
+for name, expected_digest in entries.items():
+    artifact_path = directory / name
+    actual_digest = hash_private_file(artifact_path)
+    if actual_digest != expected_digest:
+        fail(f"post-trip checksum mismatch for {name}: expected {expected_digest}, got {actual_digest}")
+print(f"Verified post-trip checksum manifest: {manifest_path}")
+PY
+  local status=$?
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
 run_helper_descriptor() {
   local command_path="$1"
   local status
@@ -1153,6 +1430,9 @@ case "$shutdown_mode" in
   "")
     ;;
 esac
+
+write_post_trip_checksum_manifest "$trip_dir"
+verify_post_trip_checksum_manifest "$trip_dir"
 
 printf '\nPost-trip Pi artifacts written to: %s\n' "$trip_dir"
 if [[ "$status_code" -ne 0 ]]; then
