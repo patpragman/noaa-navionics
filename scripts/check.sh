@@ -956,10 +956,16 @@ grep -q 'stable/volatile GPS classification' README.md
 grep -q 'stable/volatile GPS classification' docs/sailboat-pi.md
 grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery' README.md
 grep -q 'validates the installed `noaa-navionics` private venv command before running GPS discovery' docs/sailboat-pi.md
+grep -q 'validates the final local support bundle through a no-follow descriptor before reporting success' README.md
+grep -q 'validates the final local support bundle through a no-follow descriptor before reporting success' docs/sailboat-pi.md
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
 grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bundle.sh
+grep -q 'validate_private_support_bundle "$bundle_path"' scripts/collect_pi_support_bundle.sh
+grep -q 'Support bundle contains duplicate member' scripts/collect_pi_support_bundle.sh
+grep -q 'Support bundle contains no diagnostic files' scripts/collect_pi_support_bundle.sh
+grep -q 'fd = os.open(bundle_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
 grep -q 'mktemp -d "${cache_dir}/support-bundle.XXXXXX"' scripts/collect_pi_support_bundle.sh
 grep -q 'support bundle cache directory must be user-owned private 0700' scripts/collect_pi_support_bundle.sh
@@ -5886,7 +5892,30 @@ if [[ "$args" == *"&& /bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$args" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
-printf 'fake-support-bundle\n'
+if [[ "${NOAA_NAVIONICS_FAKE_BAD_SUPPORT_BUNDLE:-0}" == "1" ]]; then
+  printf 'not a gzip tar\n'
+  exit 0
+fi
+python3 - <<'PY'
+import io
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake support bundle\n")
+    add_text(archive, "commands/date-utc.txt", "date output\n")
+PY
 EOF
 chmod +x "$support_fake_ssh_bin/ssh"
 mkdir -p "$support_output_dir"
@@ -5940,6 +5969,25 @@ grep -q 'configured-storage-paths.txt' "$support_fake_ssh_stdin"
 grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
 grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'configured-track-storage-tree' "$support_fake_ssh_stdin"
+
+support_bad_output_dir="$tmpdir/support-bundles-bad-archive"
+mkdir -p "$support_bad_output_dir"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_BAD_SUPPORT_BUNDLE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_bad_output_dir" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject an unreadable successful bundle with exit 1" >&2
+  exit 1
+fi
+grep -q 'Support bundle is not a readable gzip tar' "$verify_output"
+! grep -q 'Collected Pi support bundle:' "$verify_output"
 
 set +e
 scripts/export_pi_tracks.sh root@example.invalid >"$verify_output" 2>&1

@@ -39,6 +39,7 @@ if [[ $# -gt 1 ]]; then
 fi
 
 ssh_cmd=""
+python3_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -418,10 +419,91 @@ finalize_private_archive() {
   fi
 }
 
+validate_private_support_bundle() {
+  local path="$1"
+  "$python3_cmd" - "$path" <<'PY'
+from __future__ import annotations
+
+import os
+import posixpath
+import stat
+import sys
+import tarfile
+from pathlib import PurePosixPath
+
+bundle_path = sys.argv[1]
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def normalized_member_name(name: str) -> str:
+    if "\\" in name:
+        fail(f"Support bundle contains unsafe backslash member: {name}")
+    path = PurePosixPath(name)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        fail(f"Support bundle contains unsafe member path: {name}")
+    normalized = posixpath.normpath(name)
+    if normalized in {"", "."} or normalized.startswith("../") or "/../" in normalized:
+        fail(f"Support bundle contains unsafe member path: {name}")
+    return normalized
+
+
+try:
+    before = os.stat(bundle_path, follow_symlinks=False)
+    fd = os.open(bundle_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError as exc:
+    fail(f"Could not open support bundle for validation: {bundle_path}: {exc}")
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        fail(f"Support bundle changed while being opened: {bundle_path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"Support bundle must be a regular file: {bundle_path}")
+    if opened.st_uid != os.getuid():
+        fail(f"Support bundle is owned by uid {opened.st_uid}, expected {os.getuid()}: {bundle_path}")
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        fail(f"Support bundle has permissions {mode:04o}, expected private 0600: {bundle_path}")
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
+        try:
+            with tarfile.open(fileobj=handle, mode="r:gz") as archive:
+                members = archive.getmembers()
+                by_name = {}
+                for member in members:
+                    normalized = normalized_member_name(member.name)
+                    if normalized in by_name:
+                        fail(f"Support bundle contains duplicate member: {normalized}")
+                    by_name[normalized] = member
+                    if not (member.isreg() or member.isdir()):
+                        fail(f"Support bundle contains unsupported member type: {member.name}")
+        except (tarfile.TarError, OSError) as exc:
+            fail(f"Support bundle is not a readable gzip tar: {bundle_path}: {exc}")
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+if "README.txt" not in by_name:
+    fail("Support bundle is missing README.txt")
+diagnostic_members = [
+    name
+    for name, member in by_name.items()
+    if name != "README.txt" and member.isreg()
+]
+if not diagnostic_members:
+    fail("Support bundle contains no diagnostic files")
+PY
+}
+
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 output_dir="$(strip_trailing_slashes "$output_dir")"
 ssh_cmd="$(require_local_command ssh)"
+python3_cmd="$(require_local_command python3)"
 remote_python_cmd="$(remote_python_command)"
 remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
 
@@ -992,6 +1074,7 @@ if [[ ! -s "$partial_path" ]]; then
 fi
 mv -- "$partial_path" "$bundle_path"
 finalize_private_archive "$bundle_path"
+validate_private_support_bundle "$bundle_path"
 trap - EXIT
 
 printf 'Collected Pi support bundle: %s\n' "$bundle_path"
