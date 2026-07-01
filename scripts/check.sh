@@ -741,6 +741,8 @@ grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-
 grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' docs/sailboat-pi.md
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' README.md
+grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' README.md
+grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' docs/sailboat-pi.md
 grep -q 'requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' docs/sailboat-pi.md
@@ -1287,6 +1289,8 @@ grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_da
 grep -q 'archive has permissions .* expected private 0600' scripts/restore_pi_recovery_user_data.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/restore_pi_recovery_user_data.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'README.txt is not a regular file' scripts/restore_pi_recovery_user_data.sh
+grep -q 'manifest.json is not a regular file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'load_contents=(label != "support")' scripts/restore_pi_recovery_user_data.sh
 grep -q 'OpenCPN archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
 for export_wrapper in \
@@ -7670,9 +7674,10 @@ recovery_restore_parent_dir="$tmpdir/recovery-restore-parent-dir"
 recovery_restore_broad_dir="$tmpdir/recovery-restore-broad-dir"
 recovery_restore_bad_opencpn_dir="$tmpdir/recovery-restore-bad-opencpn-dir"
 recovery_restore_unsafe_member_dir="$tmpdir/recovery-restore-unsafe-member-dir"
+recovery_restore_readme_dir="$tmpdir/recovery-restore-readme-dir"
 restore_home="$tmpdir/restore-home"
-mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$restore_home"
-python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" <<'PY'
+mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir" "$restore_home"
+python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir" <<'PY'
 from pathlib import Path
 import io
 import json
@@ -7690,10 +7695,21 @@ def add_text(archive, name, text):
     archive.addfile(info, io.BytesIO(data))
 
 
-def build_archive(directory, name, manifest, members):
+def add_readme_dir(archive):
+    info = tarfile.TarInfo("README.txt")
+    info.type = tarfile.DIRTYPE
+    info.mode = 0o700
+    info.mtime = int(time.time())
+    archive.addfile(info)
+
+
+def build_archive(directory, name, manifest, members, *, readme_dir=False):
     path = directory / name
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
-        add_text(archive, "README.txt", "restore fixture\n")
+        if readme_dir:
+            add_readme_dir(archive)
+        else:
+            add_text(archive, "README.txt", "restore fixture\n")
         if manifest is not None:
             add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
         for member_name, text in members.items():
@@ -7701,7 +7717,7 @@ def build_archive(directory, name, manifest, members):
     path.chmod(0o600)
 
 
-def build_restore_fixture(root, config, opencpn_extra=None):
+def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False):
     opencpn_members = {
         "opencpn/navobj.xml": "<navobj />\n",
         "opencpn/layers/route.gpx": "<gpx />\n",
@@ -7716,6 +7732,7 @@ def build_restore_fixture(root, config, opencpn_extra=None):
             "noaa-navionics/config.ini": config,
             "noaa-navionics/launcher.env": "NOAA_NAVIONICS_GPS_SECONDS=60\n",
         },
+        readme_dir=readme_dir,
     )
     build_archive(
         root,
@@ -7765,8 +7782,9 @@ build_restore_fixture(Path(sys.argv[2]), bad_config)
 build_restore_fixture(Path(sys.argv[3]), broad_config)
 build_restore_fixture(Path(sys.argv[4]), config, {"opencpn/plugins/bad.txt": "bad\n"})
 build_restore_fixture(Path(sys.argv[5]), config, {"opencpn/./unsafe.gpx": "<gpx />\n"})
+build_restore_fixture(Path(sys.argv[6]), config, readme_dir=True)
 PY
-chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir"
+chmod 0700 "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir"
 
 restore_fake_python_bin="$tmpdir/restore-fake-python-bin"
 mkdir -p "$restore_fake_python_bin"
@@ -7830,6 +7848,17 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'contains unsafe member path: opencpn/./unsafe.gpx' "$verify_output"
+
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_readme_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject non-regular README.txt archive members with exit 1" >&2
+  exit 1
+fi
+grep -q 'README.txt is not a regular file' "$verify_output"
 
 chmod 0755 "$recovery_restore_dir"
 set +e

@@ -233,6 +233,7 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
 
     files: dict[str, bytes] = {}
     names: set[str] = set()
+    members_by_name = {}
     regular_file_count = 0
     fd = -1
     try:
@@ -252,6 +253,10 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
             with tarfile.open(fileobj=archive_file, mode="r:gz") as archive:
                 for member in archive.getmembers():
                     normalized = validate_member_name(member.name, archive_path)
+                    if normalized in names:
+                        fail(f"{archive_path.name} contains duplicate member: {normalized}")
+                    names.add(normalized)
+                    members_by_name[normalized] = member
                     if member.issym() or member.islnk() or member.isdev():
                         fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
                     if member.isdir():
@@ -260,9 +265,6 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
                         fail(f"{archive_path.name} contains unsupported member type: {member.name}")
                     if not normalized:
                         fail(f"{archive_path.name} contains blank file member name")
-                    if normalized in names:
-                        fail(f"{archive_path.name} contains duplicate member: {normalized}")
-                    names.add(normalized)
                     regular_file_count += 1
                     if not load_contents:
                         continue
@@ -276,11 +278,17 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
         if fd >= 0:
             os.close(fd)
 
-    if "README.txt" not in names:
+    readme = members_by_name.get("README.txt")
+    if readme is None:
         fail(f"{archive_path.name} is missing README.txt")
+    if not readme.isfile():
+        fail(f"{archive_path.name} README.txt is not a regular file")
     if required_count_key is not None:
-        if "manifest.json" not in names:
+        manifest_member = members_by_name.get("manifest.json")
+        if manifest_member is None:
             fail(f"{archive_path.name} is missing manifest.json")
+        if not manifest_member.isfile():
+            fail(f"{archive_path.name} manifest.json is not a regular file")
         if "manifest.json" not in files:
             fail(f"{archive_path.name} manifest.json was not loaded")
         try:
