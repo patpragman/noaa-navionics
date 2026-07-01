@@ -666,6 +666,8 @@ grep -q 'when drift exceeds `\[anchor\].radius_meters`' README.md
 grep -q 'when drift exceeds `\[anchor\].radius_meters`' docs/sailboat-pi.md
 grep -q '`--radius-meters N` for a one-off radius override' README.md
 grep -q '`--radius-meters N` for a one-off radius override' docs/sailboat-pi.md
+grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' README.md
+grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
 grep -q 'post-trip helper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
