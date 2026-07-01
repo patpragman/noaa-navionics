@@ -13889,6 +13889,19 @@ class GpsTests(unittest.TestCase):
         self.assertIn("not stable", device_check.detail)
         self.assertFalse(gps_check.ok)
         self.assertIn("not checked because", gps_check.detail)
+        self.assertIn("noaa-navionics list-gps-devices", gps_check.detail)
+
+    def test_preflight_missing_gps_points_to_device_discovery(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            results = health_module.run_preflight(
+                chart_dir=Path(tmpdir) / "charts",
+                gps_seconds=0,
+            )
+
+        gps_check = next(check for check in results if check.name == "GPS")
+        self.assertFalse(gps_check.ok)
+        self.assertIn("--gps-device /dev/serial/by-id/YOUR_GPS_DEVICE", gps_check.detail)
+        self.assertIn("noaa-navionics list-gps-devices", gps_check.detail)
 
 
 class PiHealthTests(unittest.TestCase):

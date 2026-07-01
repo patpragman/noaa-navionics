@@ -50,6 +50,7 @@ TRUSTED_SYSTEM_COMMAND_DIRS = {
     Path("/sbin"),
     Path("/bin"),
 }
+GPS_DEVICE_DISCOVERY_HINT = "run noaa-navionics list-gps-devices on the Pi"
 
 
 @dataclass(frozen=True)
@@ -118,13 +119,20 @@ def run_preflight(
         if gps_device_check.ok:
             results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
         else:
-            results.append(CheckResult("GPS", False, f"not checked because {gps_device_check.detail}"))
+            results.append(
+                CheckResult(
+                    "GPS",
+                    False,
+                    _gps_not_checked_detail(gps_device_check.detail),
+                )
+            )
     else:
         results.append(
             CheckResult(
                 "GPS",
                 False,
-                "not checked; pass --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE or --gps-sample file.nmea",
+                "not checked; pass --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE "
+                f"or --gps-sample file.nmea; {GPS_DEVICE_DISCOVERY_HINT}",
             )
         )
     return results
@@ -1502,6 +1510,10 @@ def _volatile_usb_device_path(path: str) -> bool:
     return name.startswith("ttyUSB") or name.startswith("ttyACM")
 
 
+def _gps_not_checked_detail(reason: str) -> str:
+    return f"not checked because {reason}; {GPS_DEVICE_DISCOVERY_HINT}"
+
+
 def check_gps_device(
     device: str,
     *,
@@ -1511,7 +1523,7 @@ def check_gps_device(
 ) -> CheckResult:
     gps_device_check = check_gps_device_path(device)
     if not gps_device_check.ok:
-        return CheckResult("GPS", False, f"not checked because {gps_device_check.detail}")
+        return CheckResult("GPS", False, _gps_not_checked_detail(gps_device_check.detail))
     deadline = time.monotonic() + seconds
     stale_detail = ""
     quality_detail = ""

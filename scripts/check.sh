@@ -2695,7 +2695,10 @@ grep -q 'test_cli_gps_monitor_rejects_volatile_explicit_serial_device' tests/tes
 grep -q 'test_cli_log_track_rejects_by_id_device_that_is_not_symlink' tests/test_downloader.py
 grep -q 'test_cli_gps_monitor_rejects_by_id_device_that_is_not_symlink' tests/test_downloader.py
 grep -q 'gps_device_check = check_gps_device_path(gps_device)' src/noaa_navionics/health.py
-grep -q 'not checked because {gps_device_check.detail}' src/noaa_navionics/health.py
+grep -q 'GPS_DEVICE_DISCOVERY_HINT = "run noaa-navionics list-gps-devices on the Pi"' src/noaa_navionics/health.py
+grep -q 'def _gps_not_checked_detail' src/noaa_navionics/health.py
+grep -q '_gps_not_checked_detail(gps_device_check.detail)' src/noaa_navionics/health.py
+grep -q 'test_preflight_missing_gps_points_to_device_discovery' tests/test_downloader.py
 grep -q 'test_preflight_rejects_volatile_direct_serial_device_before_opening' tests/test_downloader.py
 grep -q 'def check_gps_device' src/noaa_navionics/health.py
 grep -q 'gps_device_check = check_gps_device_path(device)' src/noaa_navionics/health.py
