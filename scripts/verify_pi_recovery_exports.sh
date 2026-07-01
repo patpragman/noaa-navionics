@@ -233,48 +233,69 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
     if not os.access(archive_path, os.R_OK):
         fail(f"archive is not readable: {archive_path}")
 
+    fd = -1
     try:
-        with tarfile.open(archive_path, mode="r:gz") as archive:
-            members = archive.getmembers()
-            names = set()
-            regular_file_count = 0
-            for member in members:
-                normalized = validate_member_name(member.name, archive_path)
-                if normalized:
-                    names.add(normalized)
-                if member.issym() or member.islnk() or member.isdev():
-                    fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
-                if member.isfile():
-                    regular_file_count += 1
-                elif not member.isdir():
-                    fail(f"{archive_path.name} contains unsupported member type: {member.name}")
+        fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"archive must be a regular file after opening: {archive_path}")
+        if (opened.st_dev, opened.st_ino) != (result.st_dev, result.st_ino):
+            fail(f"archive changed while being opened: {archive_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"archive is owned by uid {opened.st_uid}, expected {os.getuid()}: {archive_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode & 0o077:
+            fail(f"archive has permissions {opened_mode:04o}, expected private 0600: {archive_path}")
+        with os.fdopen(fd, "rb") as archive_file:
+            fd = -1
+            with tarfile.open(fileobj=archive_file, mode="r:gz") as archive:
+                members = archive.getmembers()
+                names = set()
+                members_by_name = {}
+                regular_file_count = 0
+                for member in members:
+                    normalized = validate_member_name(member.name, archive_path)
+                    if normalized:
+                        if normalized in names:
+                            fail(f"{archive_path.name} contains duplicate member: {normalized}")
+                        names.add(normalized)
+                        members_by_name[normalized] = member
+                    if member.issym() or member.islnk() or member.isdev():
+                        fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
+                    if member.isfile():
+                        regular_file_count += 1
+                    elif not member.isdir():
+                        fail(f"{archive_path.name} contains unsupported member type: {member.name}")
 
-            if "README.txt" not in names:
-                fail(f"{archive_path.name} is missing README.txt")
+                if "README.txt" not in names:
+                    fail(f"{archive_path.name} is missing README.txt")
 
-            manifest_key = spec["manifest_key"]
-            if manifest_key is not None:
-                if "manifest.json" not in names:
-                    fail(f"{archive_path.name} is missing manifest.json")
-                try:
-                    manifest_file = archive.extractfile("manifest.json")
-                except (KeyError, OSError, tarfile.TarError) as exc:
-                    fail(f"{archive_path.name} manifest.json could not be read: {exc}")
-                if manifest_file is None:
-                    fail(f"{archive_path.name} manifest.json is not a regular file")
-                try:
-                    manifest = json.loads(manifest_file.read().decode("utf-8"))
-                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                    fail(f"{archive_path.name} manifest.json is invalid JSON: {exc}")
-                count = manifest.get(str(manifest_key))
-                if not isinstance(count, int) or count <= 0:
-                    fail(f"{archive_path.name} manifest {manifest_key} must be a positive integer")
+                manifest_key = spec["manifest_key"]
+                if manifest_key is not None:
+                    if "manifest.json" not in names:
+                        fail(f"{archive_path.name} is missing manifest.json")
+                    try:
+                        manifest_file = archive.extractfile(members_by_name["manifest.json"])
+                    except (KeyError, OSError, tarfile.TarError) as exc:
+                        fail(f"{archive_path.name} manifest.json could not be read: {exc}")
+                    if manifest_file is None:
+                        fail(f"{archive_path.name} manifest.json is not a regular file")
+                    try:
+                        manifest = json.loads(manifest_file.read().decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                        fail(f"{archive_path.name} manifest.json is invalid JSON: {exc}")
+                    count = manifest.get(str(manifest_key))
+                    if not isinstance(count, int) or count <= 0:
+                        fail(f"{archive_path.name} manifest {manifest_key} must be a positive integer")
 
-            if regular_file_count <= 0:
-                fail(f"{archive_path.name} does not contain any regular files")
-            return regular_file_count
+                if regular_file_count <= 0:
+                    fail(f"{archive_path.name} does not contain any regular files")
+                return regular_file_count
     except (OSError, tarfile.TarError) as exc:
         fail(f"{archive_path.name} is not a readable gzip tar archive: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def find_archive(recovery_dir: Path, spec: dict[str, object]) -> Path:

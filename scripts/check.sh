@@ -609,10 +609,12 @@ grep -q 'support bundle helper rejects broad/system local output directories or 
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file' README.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file' docs/sailboat-pi.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' README.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
+grep -q 'safe and unique normalized member paths' README.md
+grep -q 'safe and unique normalized member paths' docs/sailboat-pi.md
 grep -q 'It does not contact the Pi' README.md
 grep -q 'It does not contact the Pi' docs/sailboat-pi.md
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' README.md
@@ -1045,6 +1047,9 @@ grep -q 'manifest.json' scripts/verify_pi_recovery_exports.sh
 grep -q 'README.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
+grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi_recovery_exports.sh
+grep -q 'archive changed while being opened' scripts/verify_pi_recovery_exports.sh
+grep -q 'contains duplicate member' scripts/verify_pi_recovery_exports.sh
 grep -q 'unsupported non-regular member' scripts/verify_pi_recovery_exports.sh
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/verify_pi_recovery_exports.sh
 grep -q 'archive has permissions .* expected private 0600' scripts/verify_pi_recovery_exports.sh
@@ -6310,6 +6315,77 @@ grep -q 'commissioning settings:' "$verify_output"
 grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
+
+recovery_verify_duplicate_dir="$tmpdir/recovery-verify-duplicate"
+mkdir -p "$recovery_verify_duplicate_dir"
+python3 - "$recovery_verify_duplicate_dir" <<'PY'
+from pathlib import Path
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+def build_archive(directory, name, manifest, extra_member, *, duplicate_readme=False):
+    path = directory / name
+    with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+        add_text(archive, "README.txt", "recovery fixture\n")
+        if duplicate_readme:
+            add_text(archive, "./README.txt", "duplicate recovery fixture\n")
+        if manifest is not None:
+            add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
+        add_text(archive, extra_member, "fixture\n")
+    path.chmod(0o600)
+
+
+root = Path(sys.argv[1])
+build_archive(
+    root,
+    "noaa-navionics-pi-settings-pi_example_invalid-20260101T000001Z.tgz",
+    {"file_count": 1},
+    "noaa-navionics/config.ini",
+    duplicate_readme=True,
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-opencpn-pi_example_invalid-20260101T000001Z.tgz",
+    {"file_count": 1},
+    "opencpn/navobj.xml",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000001Z.tgz",
+    {"track_count": 1},
+    "tracks/track.gpx",
+)
+build_archive(
+    root,
+    "noaa-navionics-pi-support-pi_example_invalid-20260101T000001Z.tgz",
+    None,
+    "commands/date-utc.txt",
+)
+PY
+chmod 0700 "$recovery_verify_duplicate_dir"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_duplicate_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject duplicate normalized archive members with exit 1" >&2
+  exit 1
+fi
+grep -q 'contains duplicate member: README.txt' "$verify_output"
 
 chmod 0755 "$recovery_verify_dir"
 set +e
