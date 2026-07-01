@@ -574,12 +574,8 @@ class StatusApp(tk.Tk):
             self.last_report.set(f"Status report: {self.output_path}")
         else:
             self.last_report.set("Status report was not written to disk.")
-        if self.anchor_watch_alarm_active and self.anchor_watch_alarm_summary is not None:
-            self.headline.set("NOT READY")
-            self.summary.set(self.anchor_watch_alarm_summary)
-            if self.anchor_watch_alarm_detail is not None:
-                self.gps_summary.set(self.anchor_watch_alarm_detail)
-        elif bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None:
+        alarm_visible = self._show_anchor_watch_alarm_if_active()
+        if not alarm_visible and bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None:
             self.summary.set(self.anchor_watch_status_summary)
             if self.anchor_watch_status_detail is not None:
                 self.gps_summary.set(self.anchor_watch_status_detail)
@@ -589,6 +585,7 @@ class StatusApp(tk.Tk):
         self._set_busy(False)
         self.summary.set(f"Saved position mark: {path}")
         self.last_report.set(" | ".join(lines))
+        self._show_anchor_watch_alarm_if_active()
         self._schedule_refresh()
 
     def _show_anchor(self, distance: float, radius_meters: float, anchor_fix: GPSFix, current_fix: GPSFix) -> None:
@@ -602,6 +599,7 @@ class StatusApp(tk.Tk):
         self.last_report.set(details)
         if alarm:
             self.bell()
+        self._show_anchor_watch_alarm_if_active()
         self._schedule_refresh()
 
     def _show_anchor_watch_set(self, anchor_fix: GPSFix, radius_meters: float) -> None:
@@ -649,6 +647,15 @@ class StatusApp(tk.Tk):
         self.gps_summary.set("GPS: unavailable")
         self._schedule_anchor_watch()
         self._schedule_refresh()
+
+    def _show_anchor_watch_alarm_if_active(self) -> bool:
+        if not self.anchor_watch_alarm_active or self.anchor_watch_alarm_summary is None:
+            return False
+        self.headline.set("NOT READY")
+        self.summary.set(self.anchor_watch_alarm_summary)
+        if self.anchor_watch_alarm_detail is not None:
+            self.gps_summary.set(self.anchor_watch_alarm_detail)
+        return True
 
     def _set_busy(self, busy: bool) -> None:
         state = tk.DISABLED if busy else tk.NORMAL
