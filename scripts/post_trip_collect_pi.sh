@@ -594,6 +594,7 @@ if not members:
     print(f"{label} is empty: {path}", file=sys.stderr)
     raise SystemExit(124)
 seen_names = set()
+members_by_name = {}
 for member in members:
     name = member.name
     normalized = PurePosixPath(name)
@@ -608,9 +609,17 @@ for member in members:
         print(f"{label} contains duplicate normalized member name: {name}", file=sys.stderr)
         raise SystemExit(124)
     seen_names.add(normalized_name)
+    members_by_name[normalized_name] = member
     if not (member.isfile() or member.isdir()):
         print(f"{label} contains unsupported member type: {name}", file=sys.stderr)
         raise SystemExit(124)
+readme = members_by_name.get("README.txt")
+if readme is None:
+    print(f"{label} is missing README.txt", file=sys.stderr)
+    raise SystemExit(124)
+if not readme.isfile():
+    print(f"{label} README.txt is not a regular file", file=sys.stderr)
+    raise SystemExit(124)
 PY
   status=$?
   set -e

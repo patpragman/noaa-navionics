@@ -682,8 +682,8 @@ grep -q 'saves a local private `0600` JSON status snapshot through an exclusive 
 grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
-grep -q 'rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
-grep -q 'rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' docs/sailboat-pi.md
+grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
+grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
@@ -1434,6 +1434,10 @@ grep -q 'contains unsafe member name' scripts/post_trip_collect_pi.sh
 grep -q 'contains unsafe backslash member name' scripts/post_trip_collect_pi.sh
 grep -q 'contains duplicate normalized member name' scripts/post_trip_collect_pi.sh
 grep -q 'contains unsupported member type' scripts/post_trip_collect_pi.sh
+grep -q 'is missing README.txt' scripts/post_trip_collect_pi.sh
+grep -q 'README.txt is not a regular file' scripts/post_trip_collect_pi.sh
+grep -q 'requires a regular archive `README.txt`' README.md
+grep -q 'requires a regular archive `README.txt`' docs/sailboat-pi.md
 grep -q 'backslash member names' README.md
 grep -q 'backslash member names' docs/sailboat-pi.md
 grep -q 'name in {"", ".", ".."}' scripts/post_trip_collect_pi.sh
@@ -5804,6 +5808,12 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         info.mode = 0o600
         info.mtime = int(time.time())
         archive.addfile(info, io.BytesIO(data))
+    elif os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_README_DIR_TRACK_MEMBER") == "1":
+        info = tarfile.TarInfo("README.txt")
+        info.type = tarfile.DIRTYPE
+        info.mode = 0o700
+        info.mtime = int(time.time())
+        archive.addfile(info)
     else:
         data = b"fake track export\n"
         info = tarfile.TarInfo("README.txt")
@@ -5965,6 +5975,25 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'track export archive contains unsafe backslash member name: tracks\\track.gpx' "$verify_output"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_backslash_member_log"
+
+post_trip_readme_dir_log="$tmpdir/post-trip-readme-dir-helper-calls"
+post_trip_readme_dir_output_dir="$tmpdir/post-trip-readme-dir-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_readme_dir_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_README_DIR_TRACK_MEMBER=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_readme_dir_output_dir" \
+  --skip-status \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a non-regular README.txt archive member with exit 2" >&2
+  exit 1
+fi
+grep -q 'track export archive README.txt is not a regular file' "$verify_output"
+grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_readme_dir_log"
 
 post_trip_invalid_json_log="$tmpdir/post-trip-invalid-json-helper-calls"
 post_trip_invalid_json_output_dir="$tmpdir/post-trip-invalid-json-output"
