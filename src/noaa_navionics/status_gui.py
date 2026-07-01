@@ -755,7 +755,7 @@ class StatusApp(tk.Tk):
             state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL
         )
         self.stop_anchor_watch_button.configure(
-            state=tk.DISABLED if busy or self.anchor_watch_fix is None else tk.NORMAL
+            state=tk.DISABLED if self.anchor_watch_fix is None else tk.NORMAL
         )
         settings_state = tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL
         self.anchor_radius_entry.configure(state=settings_state)

@@ -3708,6 +3708,7 @@ grep -q 'Ignored stale anchor watch error; watch was stopped or reset.' src/noaa
 grep -q 'Anchor watch is already active; stop it before starting a new watch.' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_already_active' src/noaa_navionics/status_gui.py
 grep -q 'settings_state = tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
+grep -q 'state=tk.DISABLED if self.anchor_watch_fix is None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'radius_meters = self.anchor_watch_radius_meters' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
@@ -3757,7 +3758,10 @@ grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional d
 grep -q 'mean_longitude_degrees(longitudes)' src/noaa_navionics/status_gui.py
 grep -q 'test_status_gui_anchor_watch_averages_longitude_across_date_line' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_longitude_across_date_line' tests/test_downloader.py
+grep -q 'test_status_gui_stop_watch_stays_available_while_anchor_watch_check_is_busy' tests/test_downloader.py
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' README.md
+grep -q 'Stop Watch stays available during long GPS/readiness actions so a watch can still be cancelled while a check is running' README.md
+grep -q 'Stop Watch stays available during long GPS/readiness actions so a watch can still be cancelled while a check is running' docs/sailboat-pi.md
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' docs/sailboat-pi.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' README.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' docs/sailboat-pi.md

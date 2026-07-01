@@ -4310,6 +4310,45 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.anchor_radius_entry.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.anchor_samples_entry.state, status_gui_module.tk.DISABLED)
 
+    def test_status_gui_stop_watch_stays_available_while_anchor_watch_check_is_busy(self):
+        class FakeButton:
+            def __init__(self):
+                self.state = None
+
+            def configure(self, *, state):
+                self.state = state
+
+        class FakeApp:
+            def __init__(self):
+                self.refresh_button = FakeButton()
+                self.mark_button = FakeButton()
+                self.mob_button = FakeButton()
+                self.anchor_button = FakeButton()
+                self.anchor_watch_button = FakeButton()
+                self.stop_anchor_watch_button = FakeButton()
+                self.anchor_radius_entry = FakeButton()
+                self.anchor_samples_entry = FakeButton()
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._set_busy(app, True)
+
+        self.assertEqual(app.refresh_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.mark_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.mob_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.anchor_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.NORMAL)
+        self.assertEqual(app.anchor_radius_entry.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.anchor_samples_entry.state, status_gui_module.tk.DISABLED)
+
     def test_status_gui_stop_watch_requires_second_press(self):
         class FakeVar:
             def __init__(self):
