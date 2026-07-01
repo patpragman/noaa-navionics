@@ -569,8 +569,10 @@ finally:
 ' "$log_file"
 }
 
-finish_private_log_stream() {
+finish_launcher() {
   local status=$?
+  trap - EXIT
+  release_launcher_lock || true
   exec 1>&- 2>&-
   if [[ -n "${launcher_log_stream_pid:-}" ]]; then
     wait "$launcher_log_stream_pid" || true
@@ -653,7 +655,7 @@ start_private_log_stream() {
   launcher_log_stream_pid=$!
   exec >"$log_pipe" 2>&1
   cleanup_private_log_pipe "$log_pipe" || true
-  trap finish_private_log_stream EXIT
+  trap finish_launcher EXIT
 }
 
 read_trusted_launcher_env() {
@@ -1774,7 +1776,6 @@ acquire_launcher_lock() {
     chmod 0700 "$launcher_lock_dir"
     write_launcher_lock_files
     lock_acquired=1
-    trap release_launcher_lock EXIT
     return 0
   fi
   if ! launcher_lock_from_current_boot; then
@@ -1806,7 +1807,6 @@ acquire_launcher_lock() {
     chmod 0700 "$launcher_lock_dir"
     write_launcher_lock_files
     lock_acquired=1
-    trap release_launcher_lock EXIT
     return 0
   fi
   echo "Could not acquire chartplotter launcher lock; leaving any active launcher in charge." >&2

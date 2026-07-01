@@ -130,14 +130,16 @@ grep -q 'os.O_WRONLY | os.O_APPEND | os.O_CREAT | nofollow' scripts/start_chartp
 grep -q 'rotate_launcher_log_if_needed' scripts/start_chartplotter.sh
 grep -q 'append_private_log_stream' scripts/start_chartplotter.sh
 grep -q 'start_private_log_stream' scripts/start_chartplotter.sh
-grep -q 'finish_private_log_stream' scripts/start_chartplotter.sh
+grep -q 'finish_launcher' scripts/start_chartplotter.sh
 grep -q 'mkfifo -m 0600 "$log_pipe"' scripts/start_chartplotter.sh
 grep -q 'cleanup_private_log_pipe()' scripts/start_chartplotter.sh
 grep -q 'cleanup_private_log_pipe "$log_pipe" || true' scripts/start_chartplotter.sh
 grep -q 'Launcher log pipe changed before cleanup; leaving it in place' scripts/start_chartplotter.sh
 ! grep -q 'rm -f "$log_pipe"' scripts/start_chartplotter.sh
 grep -q 'wait "$launcher_log_stream_pid" || true' scripts/start_chartplotter.sh
-grep -q 'trap finish_private_log_stream EXIT' scripts/start_chartplotter.sh
+grep -q 'trap finish_launcher EXIT' scripts/start_chartplotter.sh
+grep -q 'release_launcher_lock || true' scripts/start_chartplotter.sh
+! grep -q 'trap release_launcher_lock EXIT' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log changed while being rotated' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log stream is not a regular file' scripts/start_chartplotter.sh
 grep -q 'os.path.samestat(opened, rotated_opened)' scripts/start_chartplotter.sh
