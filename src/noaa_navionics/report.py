@@ -300,6 +300,7 @@ def status_report_validation_failures(
     failures.extend(_service_summary_validation_failures(report))
     failures.extend(_clock_time_validation_failures(report))
     failures.extend(_pi_health_validation_failures(report))
+    failures.extend(_storage_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -320,6 +321,72 @@ def status_report_validation_failures(
     failures.extend(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
+    return failures
+
+
+def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    failures: list[CheckResult] = []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    for name in ("Disk", "Track Disk"):
+        row = check_rows.get(name)
+        if not isinstance(row, dict) or not row.get("ok"):
+            continue
+        data = row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult(name, False, f"status report {name} check has no structured data"))
+            continue
+        configured_path = str(data.get("configured_path", "")).strip()
+        checked_path = str(data.get("checked_path", "")).strip()
+        if not _status_absolute_path(configured_path):
+            failures.append(CheckResult(name, False, f"status report {name} configured path is not absolute"))
+        if not _status_absolute_path(checked_path):
+            failures.append(CheckResult(name, False, f"status report {name} checked path is not absolute"))
+        if data.get("exists") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} checked path does not exist"))
+        if data.get("is_directory") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} checked path is not a directory"))
+        symlink_component = str(data.get("storage_symlink_component", "")).strip()
+        if symlink_component:
+            failures.append(CheckResult(name, False, f"status report {name} storage path contains a symlink"))
+        if data.get("missing_removable_mount") is True:
+            failures.append(CheckResult(name, False, f"status report {name} removable storage is not mounted"))
+        uid = data.get("uid")
+        expected_uid = data.get("expected_uid")
+        if (
+            isinstance(uid, bool)
+            or isinstance(expected_uid, bool)
+            or not isinstance(uid, int)
+            or not isinstance(expected_uid, int)
+            or uid != expected_uid
+        ):
+            failures.append(CheckResult(name, False, f"status report {name} storage owner is invalid"))
+        mode = str(data.get("mode", "")).strip()
+        try:
+            parsed_mode = int(mode, 8)
+        except ValueError:
+            failures.append(CheckResult(name, False, f"status report {name} storage mode is invalid"))
+        else:
+            if parsed_mode & 0o022:
+                failures.append(CheckResult(name, False, f"status report {name} storage is group/world writable"))
+        min_free_gb = _positive_status_float(data.get("min_free_gb"))
+        free_gb = _finite_gps_fix_float(data.get("free_gb"))
+        if min_free_gb is None:
+            failures.append(CheckResult(name, False, f"status report {name} missing minimum free-space threshold"))
+        if free_gb is None or free_gb < 0.0:
+            failures.append(CheckResult(name, False, f"status report {name} missing finite free-space measurement"))
+        elif min_free_gb is not None and free_gb < min_free_gb:
+            failures.append(
+                CheckResult(
+                    name,
+                    False,
+                    f"status report {name} free space {free_gb:.1f} GB is below {min_free_gb:.1f} GB",
+                )
+            )
+        if data.get("writable") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} storage is not writable"))
     return failures
 
 

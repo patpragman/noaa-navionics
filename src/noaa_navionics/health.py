@@ -1241,38 +1241,61 @@ def _unexpected_enc_dirs(chart_dir: Path, extract_path: Path) -> list[Path]:
 def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float = 2.0) -> CheckResult:
     path = Path(chart_dir).expanduser()
     existing = path if path.exists() else path.parent
+    data: dict[str, object] = {
+        "configured_path": str(path),
+        "checked_path": str(existing),
+        "exists": existing.exists(),
+        "min_free_gb": float(min_free_gb),
+    }
     if not existing.exists():
-        return CheckResult(name, False, f"{existing} does not exist; create or mount the configured storage path")
+        data["is_directory"] = False
+        return CheckResult(
+            name,
+            False,
+            f"{existing} does not exist; create or mount the configured storage path",
+            data,
+        )
     symlink = _first_storage_symlink(path)
     if symlink is not None:
-        return CheckResult(name, False, f"{symlink} is a symlink; use a real mounted storage directory")
+        data["storage_symlink_component"] = str(symlink)
+        return CheckResult(name, False, f"{symlink} is a symlink; use a real mounted storage directory", data)
+    data["storage_symlink_component"] = ""
+    data["is_directory"] = existing.is_dir()
     if not existing.is_dir():
-        return CheckResult(name, False, f"{existing} is not a directory")
+        return CheckResult(name, False, f"{existing} is not a directory", data)
     mount_detail = _missing_removable_mount(path, existing)
+    data["missing_removable_mount"] = bool(mount_detail)
     if mount_detail:
-        return CheckResult(name, False, mount_detail)
+        return CheckResult(name, False, mount_detail, data)
     stat_result = existing.stat()
+    data["uid"] = stat_result.st_uid
+    data["expected_uid"] = os.getuid()
     if stat_result.st_uid != os.getuid():
         return CheckResult(
             name,
             False,
             f"{existing} is owned by uid {stat_result.st_uid}, expected {os.getuid()}",
+            data,
         )
     mode = stat_result.st_mode & 0o777
+    data["mode"] = f"{mode:04o}"
     if mode & 0o022:
         return CheckResult(
             name,
             False,
             f"{existing} has permissions {mode:04o}, expected no group/other write bits",
+            data,
         )
     usage = shutil.disk_usage(existing)
     free_gb = usage.free / (1024 ** 3)
     writable = _directory_writable(existing)
+    data["free_gb"] = free_gb
+    data["writable"] = writable
     ok = free_gb >= min_free_gb and writable
     detail = f"{free_gb:.1f} GB free at {existing}; minimum {min_free_gb:.1f} GB"
     if not writable:
         detail += "; not writable"
-    return CheckResult(name, ok, detail)
+    return CheckResult(name, ok, detail, data)
 
 
 def _first_storage_symlink(configured_path: Path) -> Optional[Path]:

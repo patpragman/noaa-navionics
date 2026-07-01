@@ -3997,16 +3997,23 @@ grep -q 'status report generated_at timestamp is stale' src/noaa_navionics/repor
 grep -q 'status report generated_at timestamp is in the future' src/noaa_navionics/report.py
 grep -q 'def _clock_time_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _pi_health_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _storage_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Time Sync did not report SystemClockSynchronized=yes' src/noaa_navionics/report.py
 grep -q 'status report Pi Power check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Pi Power reported throttling flags' src/noaa_navionics/report.py
 grep -q 'status report Pi Thermal missing finite temperature' src/noaa_navionics/report.py
+grep -q 'status report {name} check has no structured data' src/noaa_navionics/report.py
+grep -q 'Track Disk check has no structured data' tests/test_downloader.py
+grep -q 'status report {name} free space' src/noaa_navionics/report.py
 grep -q '"system_clock_synchronized"' src/noaa_navionics/health.py
 grep -q '"ntp_synchronized"' src/noaa_navionics/health.py
 grep -q '"throttled_value"' src/noaa_navionics/health.py
 grep -q '"reported_flags"' src/noaa_navionics/health.py
 grep -q '"temperature_c"' src/noaa_navionics/health.py
+grep -q '"free_gb"' src/noaa_navionics/health.py
+grep -q '"missing_removable_mount"' src/noaa_navionics/health.py
+grep -q '"storage_symlink_component"' src/noaa_navionics/health.py
 grep -q 'status report is missing this readiness check' src/noaa_navionics/report.py
 grep -q 'status report has malformed' src/noaa_navionics/report.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/status_gui.py
@@ -4017,6 +4024,7 @@ grep -q 'test_status_report_ready_rejects_future_generated_at' tests/test_downlo
 grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_clock_and_time_sync_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_missing_or_malformed_host_boot_id' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_app_source_revision_summary' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_valid_config_summary' tests/test_downloader.py
@@ -4051,6 +4059,8 @@ grep -q 'READY reports also require structured Clock and Time Sync evidence' REA
 grep -q 'READY reports also require structured Clock and Time Sync evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' README.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured Disk and Track Disk storage evidence' README.md
+grep -q 'READY reports also require structured Disk and Track Disk storage evidence' docs/sailboat-pi.md
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py

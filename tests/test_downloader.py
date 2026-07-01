@@ -351,6 +351,22 @@ def complete_status_gui_report(
                 "system_clock_synchronized": "yes",
                 "ntp_synchronized": "yes",
             }
+        elif row["name"] == "Disk":
+            row["detail"] = "12.5 GB free at /charts; minimum 2.0 GB"
+            row["data"] = {
+                "configured_path": "/charts",
+                "checked_path": "/charts",
+                "exists": True,
+                "is_directory": True,
+                "storage_symlink_component": "",
+                "missing_removable_mount": False,
+                "uid": 1000,
+                "expected_uid": 1000,
+                "mode": "0755",
+                "min_free_gb": 2.0,
+                "free_gb": 12.5,
+                "writable": True,
+            }
         elif row["name"] == "Pi Power":
             row["detail"] = "no under-voltage or throttling reported"
             row["data"] = {
@@ -10199,6 +10215,76 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(non_pi_report, now=now))
         self.assertFalse(status_report_validation_failures(non_pi_report, now=now))
 
+    def test_status_report_ready_requires_structured_storage_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def storage_data(**overrides):
+            data = {
+                "configured_path": "/charts",
+                "checked_path": "/charts",
+                "exists": True,
+                "is_directory": True,
+                "storage_symlink_component": "",
+                "missing_removable_mount": False,
+                "uid": 1000,
+                "expected_uid": 1000,
+                "mode": "0755",
+                "min_free_gb": 2.0,
+                "free_gb": 12.5,
+                "writable": True,
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            (None, "Disk check has no structured data"),
+            (storage_data(free_gb=1.0), "free space 1.0 GB is below 2.0 GB"),
+            (storage_data(mode="0777"), "storage is group/world writable"),
+            (storage_data(writable=False), "storage is not writable"),
+            (storage_data(storage_symlink_component="/storage-link"), "storage path contains a symlink"),
+            (storage_data(missing_removable_mount=True), "removable storage is not mounted"),
+            (storage_data(uid=1001), "storage owner is invalid"),
+            (storage_data(configured_path="relative/charts"), "configured path is not absolute"),
+        ]
+        for data, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                disk = next(check for check in report["checks"] if check["name"] == "Disk")
+                if data is None:
+                    disk.pop("data", None)
+                else:
+                    disk["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "Disk" and expected in failure.detail for failure in failures))
+
+        track_report = complete_status_gui_report(generated_at=generated_at)
+        track_report["config"]["track_output"] = "/tracks"
+        track_report["track_log"]["track_output"] = "/tracks"
+        track_report["track_log"]["tracks_dir"] = "/tracks/tracks"
+        track_report["track_log"]["latest_path"] = "/tracks/tracks/track-20260701.gpx"
+        track_report["checks"].append({"name": "Track Disk", "ok": True, "detail": "12.5 GB free"})
+
+        failures = status_report_validation_failures(track_report, now=now)
+
+        self.assertFalse(status_report_is_ready(track_report, now=now))
+        self.assertTrue(
+            any(
+                failure.name == "Track Disk" and "Track Disk check has no structured data" in failure.detail
+                for failure in failures
+            )
+        )
+
+        track_disk = next(check for check in track_report["checks"] if check["name"] == "Track Disk")
+        track_disk["detail"] = "12.5 GB free at /tracks; minimum 2.0 GB"
+        track_disk["data"] = storage_data(configured_path="/tracks", checked_path="/tracks")
+
+        self.assertTrue(status_report_is_ready(track_report, now=now))
+        self.assertFalse(status_report_validation_failures(track_report, now=now))
+
     def test_status_report_ready_rejects_missing_or_malformed_host_boot_id(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         cases = [
@@ -17350,6 +17436,9 @@ class GpsTests(unittest.TestCase):
             result = check_disk_space(path)
             self.assertFalse(result.ok)
             self.assertIn("not a directory", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("configured_path"), str(path))
+            self.assertEqual(result.data.get("is_directory"), False)
 
     def test_disk_check_rejects_symlinked_storage_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17363,6 +17452,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("is a symlink", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("storage_symlink_component"), str(link))
 
     def test_disk_check_rejects_storage_under_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17388,6 +17479,9 @@ class GpsTests(unittest.TestCase):
             result = check_disk_space(path)
             self.assertFalse(result.ok)
             self.assertIn("does not exist", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("exists"), False)
+            self.assertEqual(result.data.get("checked_path"), str(path.parent))
 
     def test_disk_check_reports_unwritable_directory(self):
         original = health_module._directory_writable
@@ -17397,6 +17491,8 @@ class GpsTests(unittest.TestCase):
                 result = check_disk_space(Path(tmpdir))
             self.assertFalse(result.ok)
             self.assertIn("not writable", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("writable"), False)
         finally:
             health_module._directory_writable = original
 
@@ -17413,6 +17509,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("expected no group/other write bits", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("mode"), "0777")
 
     def test_disk_check_uses_configured_free_space_floor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17423,6 +17521,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("minimum", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertLess(result.data.get("free_gb"), result.data.get("min_free_gb"))
 
     def test_disk_check_rejects_unmounted_removable_storage_path(self):
         original_roots = health_module.REMOVABLE_STORAGE_ROOTS
@@ -17439,6 +17539,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("no mounted storage device", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("missing_removable_mount"), True)
         finally:
             health_module.REMOVABLE_STORAGE_ROOTS = original_roots
             health_module.os.path.ismount = original_ismount
@@ -17458,6 +17560,11 @@ class GpsTests(unittest.TestCase):
                 result = check_disk_space(charts)
 
             self.assertTrue(result.ok)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("configured_path"), str(charts))
+            self.assertEqual(result.data.get("storage_symlink_component"), "")
+            self.assertEqual(result.data.get("missing_removable_mount"), False)
+            self.assertEqual(result.data.get("writable"), True)
         finally:
             health_module.REMOVABLE_STORAGE_ROOTS = original_roots
             health_module.os.path.ismount = original_ismount
