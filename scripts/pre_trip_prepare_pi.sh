@@ -981,9 +981,26 @@ def validate_successful_status_snapshot(payload: dict[str, object], expected_sou
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail("pre-departure status snapshot JSON missing config chart_output")
+    gps_fix = payload.get("gps_fix")
+    if not isinstance(gps_fix, dict):
+        fail("pre-departure status snapshot JSON missing gps_fix section")
+    if not isinstance(gps_fix.get("ok"), bool):
+        fail("pre-departure status snapshot JSON gps_fix ok is not boolean")
+    if gps_fix.get("ok") is not True:
+        fail(
+            "pre-departure status snapshot JSON gps_fix is not ok: "
+            + str(gps_fix.get("detail", "<missing detail>"))
+        )
     track_log = payload.get("track_log")
     if not isinstance(track_log, dict):
         fail("pre-departure status snapshot JSON missing track_log section")
+    if not isinstance(track_log.get("ok"), bool):
+        fail("pre-departure status snapshot JSON track_log ok is not boolean")
+    if track_log.get("ok") is not True:
+        fail(
+            "pre-departure status snapshot JSON track_log is not ok: "
+            + str(track_log.get("detail", "<missing detail>"))
+        )
     track_output = str(track_log.get("track_output", "")).strip()
     if not track_output:
         fail("pre-departure status snapshot JSON missing track_log track_output")

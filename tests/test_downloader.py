@@ -12489,6 +12489,34 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn("readiness check {name} ok is not boolean", source)
                 self.assertIn("service check {name} ok is not boolean", source)
 
+    def test_status_snapshot_validators_reject_non_boolean_summary_ok_values(self):
+        expectations = {
+            "scripts/pre_trip_prepare_pi.sh": (
+                "pre-departure status snapshot JSON gps_fix ok is not boolean",
+                "pre-departure status snapshot JSON track_log ok is not boolean",
+                "pre-departure status snapshot JSON gps_fix is not ok",
+                "pre-departure status snapshot JSON track_log is not ok",
+            ),
+            "scripts/verify_pi_recovery_exports.sh": (
+                "pre-departure status snapshot JSON gps_fix ok is not boolean",
+                "pre-departure status snapshot JSON track_log ok is not boolean",
+                "pre-departure status snapshot JSON gps_fix is not ok",
+                "pre-departure status snapshot JSON track_log is not ok",
+            ),
+            "scripts/post_trip_collect_pi.sh": (
+                "status snapshot JSON gps_fix ok is not boolean",
+                "status snapshot JSON track_log ok is not boolean",
+                "status snapshot JSON gps_fix is not ok",
+                "status snapshot JSON track_log is not ok",
+            ),
+        }
+        for script, expected_messages in expectations.items():
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                for expected in expected_messages:
+                    with self.subTest(expected=expected):
+                        self.assertIn(expected, source)
+
     def test_status_snapshot_validators_reject_source_revision_row_mismatches(self):
         for script in (
             "scripts/pre_trip_prepare_pi.sh",

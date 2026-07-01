@@ -634,9 +634,28 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path, 
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail(f"status snapshot JSON missing config chart_output: {path}")
+    gps_fix = payload.get("gps_fix")
+    if not isinstance(gps_fix, dict):
+        fail(f"status snapshot JSON missing gps_fix section: {path}")
+    if not isinstance(gps_fix.get("ok"), bool):
+        fail(f"status snapshot JSON gps_fix ok is not boolean: {path}")
+    if gps_fix.get("ok") is not True:
+        fail(
+            "status snapshot JSON gps_fix is not ok: "
+            + str(gps_fix.get("detail", "<missing detail>"))
+            + f": {path}"
+        )
     track_log = payload.get("track_log")
     if not isinstance(track_log, dict):
         fail(f"status snapshot JSON missing track_log section: {path}")
+    if not isinstance(track_log.get("ok"), bool):
+        fail(f"status snapshot JSON track_log ok is not boolean: {path}")
+    if track_log.get("ok") is not True:
+        fail(
+            "status snapshot JSON track_log is not ok: "
+            + str(track_log.get("detail", "<missing detail>"))
+            + f": {path}"
+        )
     track_output = str(track_log.get("track_output", "")).strip()
     if not track_output:
         fail(f"status snapshot JSON missing track_log track_output: {path}")
