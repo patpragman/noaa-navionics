@@ -342,9 +342,87 @@ PY
 
 run_step() {
   local command_path="$1"
+  local status
   shift
   require_helper "$command_path"
-  "$command_path" "$@"
+  set +e
+  "$python3_cmd" - "$command_path" "$@" <<'PY'
+from pathlib import Path
+import os
+import stat
+import subprocess
+import sys
+
+path = Path(sys.argv[1])
+args = sys.argv[2:]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(124)
+
+
+if not path.is_absolute():
+    fail(f"Helper script path must be absolute before descriptor execution: {path}")
+
+current = Path("/")
+for part in path.parts[1:]:
+    if part in {"", "."}:
+        continue
+    current = current / part
+    try:
+        component = os.lstat(current)
+    except OSError as exc:
+        fail(f"Could not inspect helper script path component before descriptor execution {current}: {exc}")
+    if stat.S_ISLNK(component.st_mode):
+        fail(f"Helper script path contains a symlink before descriptor execution: {current}")
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect helper script before descriptor execution: {path}: {exc}")
+if not stat.S_ISREG(before.st_mode):
+    fail(f"Helper script must be regular before descriptor execution: {path}")
+if before.st_uid != os.getuid():
+    fail(f"Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}")
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    fail(f"Helper script has permissions {mode:03o}, expected no group/other write bits: {path}")
+if not mode & 0o111:
+    fail(f"Helper script is not executable before descriptor execution: {path}")
+
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    fail(f"Could not open helper script through no-follow descriptor for execution: {path}: {exc}")
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        fail(f"Helper script changed before descriptor execution: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"Helper script must be regular when opened for descriptor execution: {path}")
+    if opened.st_uid != os.getuid():
+        fail(f"Helper script is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        fail(f"Helper script has permissions {opened_mode:03o}, expected no group/other write bits: {path}")
+    if not opened_mode & 0o111:
+        fail(f"Helper script is not executable when opened for descriptor execution: {path}")
+    try:
+        result = subprocess.run([f"/proc/self/fd/{fd}", *args], pass_fds=(fd,))
+    except OSError as exc:
+        fail(f"Could not execute helper script through validated descriptor: {path}: {exc}")
+finally:
+    os.close(fd)
+raise SystemExit(result.returncode)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
 }
 
 while [[ $# -gt 0 ]]; do
