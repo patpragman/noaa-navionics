@@ -1177,7 +1177,7 @@ run_command date-utc date -u
 run_command uname uname -a
 run_command hostname hostname
 run_command uptime uptime
-run_command package-versions bash -lc 'for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if dpkg-query -W -f="${binary:Package}\t${Version}\t${db:Status-Abbrev}\n" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done'
+run_command package-versions bash -lc 'format='\''${binary:Package}\t${Version}\t${db:Status-Abbrev}\n'\''; for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if dpkg-query -W -f="$format" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done'
 run_command df df -h
 run_command mount-findmnt findmnt
 run_command serial-devices bash -lc 'ls -l /dev/serial /dev/serial/by-id 2>&1 || true'

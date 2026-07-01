@@ -1141,6 +1141,9 @@ grep -q 'copy_regular_if_readable /etc/os-release' scripts/collect_pi_support_bu
 grep -q 'copy_regular_if_readable /etc/chrony/chrony.conf' scripts/collect_pi_support_bundle.sh
 grep -q 'package-versions' scripts/collect_pi_support_bundle.sh
 grep -q 'dpkg-query -W' scripts/collect_pi_support_bundle.sh
+grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" scripts/collect_pi_support_bundle.sh
+grep -Fq -- '-f="$format"' scripts/collect_pi_support_bundle.sh
+! grep -Fq -- '-f="${binary:Package}' scripts/collect_pi_support_bundle.sh
 grep -q 'list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
 grep -q 'status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
@@ -6933,6 +6936,9 @@ grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
 grep -q 'copy_regular_if_readable /etc/os-release' "$support_fake_ssh_stdin"
 grep -q 'package-versions' "$support_fake_ssh_stdin"
 grep -q 'dpkg-query -W' "$support_fake_ssh_stdin"
+grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" "$support_fake_ssh_stdin"
+grep -Fq -- '-f="$format"' "$support_fake_ssh_stdin"
+! grep -Fq -- '-f="${binary:Package}' "$support_fake_ssh_stdin"
 grep -q 'user-unit-properties' "$support_fake_ssh_stdin"
 grep -q 'system-service-properties' "$support_fake_ssh_stdin"
 grep -q 'noaa-gps-device-candidates' "$support_fake_ssh_stdin"
