@@ -311,19 +311,30 @@ def check_time_synchronization() -> CheckResult:
         if "=" in line:
             key, value = line.split("=", 1)
             values[key.strip()] = value.strip().lower()
-    sync_values = [
-        value
-        for key in ("SystemClockSynchronized", "NTPSynchronized")
-        for value in [values.get(key)]
-        if value in {"yes", "no"}
-    ]
-    if "yes" in sync_values:
-        return CheckResult("Time Sync", True, "system clock is synchronized")
-    if sync_values:
+    system_clock_sync = values.get("SystemClockSynchronized")
+    ntp_sync = values.get("NTPSynchronized")
+    if system_clock_sync == "yes":
+        detail = "system clock is synchronized"
+        if ntp_sync in {"yes", "no"}:
+            detail += f" (NTPSynchronized={ntp_sync})"
+        return CheckResult("Time Sync", True, detail)
+    if system_clock_sync == "no":
+        detail = (
+            "system clock is not synchronized; connect network time or configure GPS time before relying on chart age and GPX timestamps"
+        )
+        if ntp_sync in {"yes", "no"}:
+            detail += f" (SystemClockSynchronized=no, NTPSynchronized={ntp_sync})"
         return CheckResult(
             "Time Sync",
             False,
-            "system clock is not synchronized; connect network time or configure GPS time before relying on chart age and GPX timestamps",
+            detail,
+        )
+    if ntp_sync in {"yes", "no"}:
+        return CheckResult(
+            "Time Sync",
+            False,
+            f"timedatectl did not report SystemClockSynchronized=yes (NTPSynchronized={ntp_sync}); "
+            "connect network time or configure GPS time before relying on chart age and GPX timestamps",
         )
     return CheckResult("Time Sync", False, f"could not determine clock synchronization from timedatectl: {output}")
 

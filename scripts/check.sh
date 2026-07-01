@@ -2537,7 +2537,10 @@ grep -q 'NOAA_NAVIONICS_SOURCE_REVISION_PATH' src/noaa_navionics/health.py
 grep -q 'deployed source revision path is a symlink' src/noaa_navionics/health.py
 grep -q 'deployed source revision is not recorded' src/noaa_navionics/health.py
 grep -q 'SystemClockSynchronized' src/noaa_navionics/health.py
+grep -q 'system_clock_sync == "yes"' src/noaa_navionics/health.py
+grep -q 'timedatectl did not report SystemClockSynchronized=yes' src/noaa_navionics/health.py
 grep -q '_trusted_system_command("timedatectl", "Time sync command")' src/noaa_navionics/health.py
+grep -q 'test_check_time_synchronization_rejects_ntp_yes_without_system_clock_sync' tests/test_downloader.py
 grep -q 'test_check_time_synchronization_rejects_user_owned_timedatectl_on_pi' tests/test_downloader.py
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
 grep -q 'def check_chrony_gps_time_config' src/noaa_navionics/health.py
@@ -2584,6 +2587,8 @@ grep -q 'uncommented chrony GPSD time-source config' README.md
 grep -q 'uncommented GPSD time-source config' docs/sailboat-pi.md
 grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' README.md
 grep -q 'symlinked, non-regular, writable, or misowned chrony config paths' docs/sailboat-pi.md
+grep -q 'SystemClockSynchronized=yes` before relying on chart age and GPX timestamps; `NTPSynchronized=yes` alone is not enough' README.md
+grep -q 'SystemClockSynchronized=yes`; `NTPSynchronized=yes` alone is not enough' docs/sailboat-pi.md
 grep -q 'chart directory does not exist' src/noaa_navionics/health.py
 grep -q 'no fresh navigation-quality GPSD fix' src/noaa_navionics/health.py
 grep -q 'GPSD fix missing satellite or HDOP quality fields' src/noaa_navionics/health.py

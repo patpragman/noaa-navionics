@@ -15136,7 +15136,7 @@ class PiHealthTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("synchronized", result.detail)
 
-    def test_check_time_synchronization_accepts_ntp_fallback_yes(self):
+    def test_check_time_synchronization_rejects_ntp_yes_without_system_clock_sync(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             bin_dir = Path(tmpdir)
             fake = bin_dir / "timedatectl"
@@ -15157,8 +15157,9 @@ class PiHealthTests(unittest.TestCase):
                 health_module._is_raspberry_pi = original_is_pi
                 health_module._trusted_system_command = original_trusted_command
 
-            self.assertTrue(result.ok)
-            self.assertIn("synchronized", result.detail)
+            self.assertFalse(result.ok)
+            self.assertIn("SystemClockSynchronized=no", result.detail)
+            self.assertIn("NTPSynchronized=yes", result.detail)
 
     def test_check_time_synchronization_accepts_system_clock_yes_over_ntp_no(self):
         with tempfile.TemporaryDirectory() as tmpdir:
