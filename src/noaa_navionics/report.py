@@ -2866,10 +2866,9 @@ def _track_log_summary_once(
                 last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
                 continue
             timestamp_text = match.group(1).strip()
-            try:
-                track_time = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")).astimezone(timezone.utc)
-            except ValueError:
-                last_detail = f"{path} has an invalid GPX trackpoint timestamp: {timestamp_text}"
+            track_time, timestamp_error = _parse_gpx_trackpoint_timestamp(timestamp_text)
+            if track_time is None:
+                last_detail = f"{path} {timestamp_error}"
                 continue
             if newest_time is None or track_time > newest_time:
                 newest_time = track_time
@@ -2914,6 +2913,16 @@ def _track_log_summary_once(
         return summary
     summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
     return summary
+
+
+def _parse_gpx_trackpoint_timestamp(value: str) -> tuple[Optional[datetime], str]:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None, f"has an invalid GPX trackpoint timestamp: {value}"
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None, "has a timezone-less GPX trackpoint timestamp"
+    return parsed.astimezone(timezone.utc), ""
 
 
 def _read_trusted_gpx_track_file(
