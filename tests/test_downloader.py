@@ -12346,6 +12346,31 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('get("skipped") is True', source)
                 self.assertIn("records non-Pi diagnostic skip(s)", source)
 
+    def test_status_snapshot_validators_reject_source_revision_row_mismatches(self):
+        for script in (
+            "scripts/pre_trip_prepare_pi.sh",
+            "scripts/verify_pi_recovery_exports.sh",
+            "scripts/post_trip_collect_pi.sh",
+        ):
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                self.assertIn("Source Revision row missing revision", source)
+                self.assertIn("Source Revision row records a dirty revision", source)
+                self.assertIn("Source Revision row does not match deployed source_revision", source)
+
+        verify_source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+        for expected in (
+            "status report Source Revision row missing structured data",
+            "status report Source Revision row missing revision",
+            "status report Source Revision row records a dirty revision",
+            "status report Source Revision row does not match deployed source revision",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, verify_source)
+
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

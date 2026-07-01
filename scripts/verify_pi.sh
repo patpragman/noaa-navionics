@@ -2162,6 +2162,17 @@ if actual_revision.endswith("-dirty"):
     raise SystemExit(f"status report dirty deployed source revision is not production-ready: {actual_revision}")
 if expected_revision != "unknown" and actual_revision != expected_revision:
     raise SystemExit(f"status report source revision {actual_revision} does not match {expected_revision}")
+source_revision_row = next((check for check in checks if isinstance(check, dict) and check.get("name") == "Source Revision"), None)
+source_revision_data = source_revision_row.get("data") if isinstance(source_revision_row, dict) else None
+if not isinstance(source_revision_data, dict):
+    raise SystemExit("status report Source Revision row missing structured data")
+row_revision = str(source_revision_data.get("revision", "")).strip()
+if not row_revision or row_revision == "unknown":
+    raise SystemExit("status report Source Revision row missing revision")
+if row_revision.endswith("-dirty"):
+    raise SystemExit("status report Source Revision row records a dirty revision")
+if row_revision != actual_revision:
+    raise SystemExit("status report Source Revision row does not match deployed source revision")
 if require_current_boot:
     host = report.get("host")
     if not isinstance(host, dict):
