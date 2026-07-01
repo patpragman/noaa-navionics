@@ -287,6 +287,37 @@ require_positive_integer() {
   fi
 }
 
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+reject_symlinked_path_components() {
+  local label="$1"
+  local path="$2"
+  local current="$path"
+
+  if [[ "$path" != /* ]]; then
+    fail "$label path must be absolute: $path"
+  fi
+  while [[ "$current" != "/" ]]; do
+    if [[ -L "$current" ]]; then
+      fail "$label path contains a symlink: $current"
+    fi
+    current="$(dirname -- "$current")"
+  done
+}
+
+reject_symlinked_parent_components() {
+  local label="$1"
+  local path="$2"
+
+  if [[ "$path" != /* ]]; then
+    fail "$label path must be absolute: $path"
+  fi
+  reject_symlinked_path_components "$label parent" "$(dirname -- "$path")"
+}
+
 check_user_owned_private_file() {
   local label="$1"
   local path="$2"
@@ -296,30 +327,26 @@ check_user_owned_private_file() {
   local mode_tail
   local current_uid
 
+  reject_symlinked_path_components "$label" "$path"
   if [[ -L "$path" ]]; then
-    echo "$label must not be a symlink: $path" >&2
-    exit 1
+    fail "$label must not be a symlink: $path"
   fi
   if [[ ! -f "$path" ]]; then
-    echo "$label is missing or not a regular file: $path" >&2
-    exit 1
+    fail "$label is missing or not a regular file: $path"
   fi
   if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect $label: $path" >&2
-    exit 1
+    fail "Could not inspect $label: $path"
   fi
   current_uid="$(id -u)"
   owner_uid="${stat_output%% *}"
   mode="${stat_output#* }"
   mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
   if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "$label is owned by uid $owner_uid, expected $current_uid: $path" >&2
-    exit 1
+    fail "$label is owned by uid $owner_uid, expected $current_uid: $path"
   fi
   case "$mode_tail" in
     ?[2367]?|??[2367])
-      echo "$label has permissions $mode, expected no group/other write: $path" >&2
-      exit 1
+      fail "$label has permissions $mode, expected no group/other write: $path"
       ;;
   esac
 }
@@ -333,30 +360,26 @@ check_user_owned_nonwritable_directory() {
   local mode_tail
   local current_uid
 
+  reject_symlinked_path_components "$label" "$path"
   if [[ -L "$path" ]]; then
-    echo "$label is a symlink: $path" >&2
-    exit 1
+    fail "$label is a symlink: $path"
   fi
   if [[ ! -d "$path" ]]; then
-    echo "$label is missing or not a directory: $path" >&2
-    exit 1
+    fail "$label is missing or not a directory: $path"
   fi
   if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect $label: $path" >&2
-    exit 1
+    fail "Could not inspect $label: $path"
   fi
   current_uid="$(id -u)"
   owner_uid="${stat_output%% *}"
   mode="${stat_output#* }"
   mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
   if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "$label is owned by uid $owner_uid, expected $current_uid: $path" >&2
-    exit 1
+    fail "$label is owned by uid $owner_uid, expected $current_uid: $path"
   fi
   case "$mode_tail" in
     ?[2367]?|??[2367])
-      echo "$label has permissions $mode, expected no group/other write: $path" >&2
-      exit 1
+      fail "$label has permissions $mode, expected no group/other write: $path"
       ;;
   esac
 }
@@ -380,42 +403,35 @@ check_installed_noaa_command() {
   local mode_tail
 
   check_installed_noaa_command_tree
+  reject_symlinked_parent_components "installed noaa-navionics command" "$app_bin"
   if [[ ! -L "$app_bin" ]]; then
-    echo "Installed noaa-navionics command is not the expected private venv symlink: $app_bin" >&2
-    exit 1
+    fail "Installed noaa-navionics command is not the expected private venv symlink: $app_bin"
   fi
   if ! resolved="$(readlink -f -- "$app_bin" 2>/dev/null)" || [[ -z "$resolved" ]]; then
-    echo "Could not resolve installed noaa-navionics command: $app_bin" >&2
-    exit 1
+    fail "Could not resolve installed noaa-navionics command: $app_bin"
   fi
   if [[ "$resolved" != "$expected_venv_bin" ]]; then
-    echo "Installed noaa-navionics command resolves to $resolved, expected $expected_venv_bin" >&2
-    exit 1
+    fail "Installed noaa-navionics command resolves to $resolved, expected $expected_venv_bin"
   fi
   if [[ ! -f "$resolved" ]]; then
-    echo "Installed noaa-navionics command target is not a regular file: $resolved" >&2
-    exit 1
+    fail "Installed noaa-navionics command target is not a regular file: $resolved"
   fi
   if [[ ! -x "$resolved" ]]; then
-    echo "Installed noaa-navionics command is not executable after resolution: $resolved" >&2
-    exit 1
+    fail "Installed noaa-navionics command is not executable after resolution: $resolved"
   fi
   if ! stat_output="$(stat -Lc '%u %a' -- "$resolved" 2>/dev/null)"; then
-    echo "Could not inspect installed noaa-navionics command target: $resolved" >&2
-    exit 1
+    fail "Could not inspect installed noaa-navionics command target: $resolved"
   fi
   current_uid="$(id -u)"
   owner_uid="${stat_output%% *}"
   mode="${stat_output#* }"
   mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
   if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "Installed noaa-navionics command target is owned by uid $owner_uid, expected $current_uid: $resolved" >&2
-    exit 1
+    fail "Installed noaa-navionics command target is owned by uid $owner_uid, expected $current_uid: $resolved"
   fi
   case "$mode_tail" in
     ?[2367]?|??[2367])
-      echo "Installed noaa-navionics command target has permissions $mode, expected no group/other write: $resolved" >&2
-      exit 1
+      fail "Installed noaa-navionics command target has permissions $mode, expected no group/other write: $resolved"
       ;;
   esac
   printf '%s\n' "$resolved"

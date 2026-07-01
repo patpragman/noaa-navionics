@@ -230,6 +230,32 @@ fail() {
   exit 1
 }
 
+reject_symlinked_path_components() {
+  local label="$1"
+  local path="$2"
+  local current="$path"
+
+  if [[ "$path" != /* ]]; then
+    fail "$label path must be absolute: $path"
+  fi
+  while [[ "$current" != "/" ]]; do
+    if [[ -L "$current" ]]; then
+      fail "$label path contains a symlink: $current"
+    fi
+    current="$(dirname -- "$current")"
+  done
+}
+
+reject_symlinked_parent_components() {
+  local label="$1"
+  local path="$2"
+
+  if [[ "$path" != /* ]]; then
+    fail "$label path must be absolute: $path"
+  fi
+  reject_symlinked_path_components "$label parent" "$(dirname -- "$path")"
+}
+
 check_user_owned_nonwritable_directory() {
   local label="$1"
   local path="$2"
@@ -239,6 +265,7 @@ check_user_owned_nonwritable_directory() {
   local owner_uid
   local stat_output
 
+  reject_symlinked_path_components "$label" "$path"
   if [[ -L "$path" ]]; then
     fail "$label is a symlink: $path"
   fi
@@ -271,6 +298,7 @@ check_user_owned_private_file() {
   local owner_uid
   local stat_output
 
+  reject_symlinked_path_components "$label" "$path"
   if [[ -L "$path" ]]; then
     fail "$label must not be a symlink: $path"
   fi
@@ -313,6 +341,7 @@ check_installed_noaa_command() {
   local stat_output
 
   check_installed_command_tree
+  reject_symlinked_parent_components "installed noaa-navionics command" "$command_path"
   if [[ ! -L "$command_path" ]]; then
     fail "installed noaa-navionics command is not the expected private venv symlink: $command_path"
   fi

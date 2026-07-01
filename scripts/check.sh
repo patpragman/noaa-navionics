@@ -643,6 +643,8 @@ grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
 grep -q "status helper validates the Pi's installed private venv command path and onboard config file" README.md
 grep -q "status helper validates the Pi's installed private venv command path and onboard config file" docs/sailboat-pi.md
+grep -q 'rejects symlinked command-tree or config path components' README.md
+grep -q 'rejects symlinked command-tree or config path components' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/check_pi_status.sh
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
@@ -1421,6 +1423,8 @@ grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scrip
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
+grep -q 'reject_symlinked_path_components' scripts/refresh_pi_charts.sh
+grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/refresh_pi_charts.sh
 grep -q 'check_installed_noaa_command_tree' scripts/refresh_pi_charts.sh
 grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/refresh_pi_charts.sh
 grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' scripts/refresh_pi_charts.sh
@@ -1526,6 +1530,8 @@ grep -q 'Helper script changed before it could be validated' scripts/pre_trip_pr
 ! grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
+grep -q 'reject_symlinked_path_components' scripts/check_pi_status.sh
+grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
 grep -q 'config_path="${HOME}/.config/noaa-navionics/config.ini"' scripts/check_pi_status.sh
 grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' scripts/check_pi_status.sh
@@ -6570,6 +6576,8 @@ grep -q 'NOAA_NAVIONICS_STATUS_JSON=1' "$status_fake_ssh_args"
 grep -q '/bin/bash -s' "$status_fake_ssh_args"
 grep -q 'pi@example.invalid' "$status_fake_ssh_args"
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
+grep -q 'reject_symlinked_path_components' "$status_fake_ssh_stdin"
+grep -q 'reject_symlinked_parent_components "installed noaa-navionics command" "$command_path"' "$status_fake_ssh_stdin"
 grep -q 'check_installed_command_tree' "$status_fake_ssh_stdin"
 grep -q 'installed noaa-navionics command target has permissions' "$status_fake_ssh_stdin"
 grep -q 'app_exec="$(check_installed_noaa_command)"' "$status_fake_ssh_stdin"
@@ -6654,6 +6662,8 @@ grep -q 'sync_args+=(--force)' "$refresh_fake_ssh_stdin"
 grep -q 'Post-refresh status report' "$refresh_fake_ssh_stdin"
 grep -q 'status-report --config "$config" --gps-seconds "$gps_seconds"' "$refresh_fake_ssh_stdin"
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
+grep -q 'reject_symlinked_path_components' "$refresh_fake_ssh_stdin"
+grep -q 'reject_symlinked_parent_components "installed noaa-navionics command" "$app_bin"' "$refresh_fake_ssh_stdin"
 grep -q 'check_installed_noaa_command_tree' "$refresh_fake_ssh_stdin"
 grep -q 'Installed noaa-navionics command target has permissions' "$refresh_fake_ssh_stdin"
 grep -q 'app_exec="$(check_installed_noaa_command)"' "$refresh_fake_ssh_stdin"
