@@ -3496,6 +3496,11 @@ grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
+grep -q 'CORE_READINESS_CHECKS' src/noaa_navionics/status_gui.py
+grep -q 'missing_required_readiness_checks' src/noaa_navionics/status_gui.py
+grep -q 'status report is missing this readiness check' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_rejects_incomplete_ready_report' tests/test_downloader.py
+grep -q 'complete_status_gui_report' tests/test_downloader.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
@@ -3568,6 +3573,8 @@ grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' README.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
+grep -q 'The status GUI marks incomplete status JSON as NOT READY' README.md
+grep -q 'The status GUI marks incomplete status JSON as NOT READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md

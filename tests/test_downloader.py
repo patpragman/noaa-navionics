@@ -155,6 +155,28 @@ def trusted_launcher_settings(**overrides: object) -> dict[str, object]:
     return state
 
 
+def complete_status_gui_report(*, ok: bool = True, gps_mode: str = "gpsd") -> dict[str, object]:
+    checks = set(status_gui_module.CORE_READINESS_CHECKS)
+    service_checks = set(status_gui_module.CORE_SERVICE_CHECKS)
+    if gps_mode == "serial":
+        checks.update(status_gui_module.SERIAL_READINESS_CHECKS)
+    else:
+        checks.update(status_gui_module.GPSD_READINESS_CHECKS)
+        service_checks.update(status_gui_module.GPSD_SERVICE_CHECKS)
+    return {
+        "ok": ok,
+        "generated_at": "2026-06-30T12:00:00Z",
+        "config": {
+            "gps_mode": gps_mode,
+            "chart_output": "/charts",
+            "track_output": "/charts",
+        },
+        "track_log": {"track_output": "/charts"},
+        "checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)],
+        "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(service_checks)],
+    }
+
+
 def trusted_unit_file_lines(unit_name: str) -> list[str]:
     lines_by_unit = {
         "noaa-navionics.service": [
@@ -2928,27 +2950,24 @@ class GuiTests(unittest.TestCase):
         self.assertNotIn("catalog", gui_module.PACKAGE_KIND_OPTIONS)
 
     def test_status_gui_summarizes_readiness_rows(self):
-        report = {
-            "ok": False,
-            "generated_at": "2026-06-30T12:00:00Z",
-            "checks": [
-                {"name": "Charts", "ok": True, "detail": "fresh"},
-                {"name": "GPS", "ok": False, "detail": "no fix"},
-            ],
-            "service_checks": [
-                {"name": "Track Log", "ok": True, "detail": "recent point"},
-            ],
-        }
+        report = complete_status_gui_report(ok=False, gps_mode="serial")
+        report["checks"].append({"name": "Extra GPS", "ok": False, "detail": "no fix"})
 
         rows = status_gui_module.status_rows(report)
 
         self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
         self.assertEqual(rows[0], status_gui_module.StatusRow("Overall", False, "generated 2026-06-30T12:00:00Z"))
-        self.assertIn(status_gui_module.StatusRow("GPS", False, "no fix"), rows)
+        self.assertIn(status_gui_module.StatusRow("Extra GPS", False, "no fix"), rows)
         self.assertEqual(status_gui_module.count_failures(rows), 2)
         self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
 
     def test_status_gui_reports_ready_when_all_rows_pass(self):
+        report = complete_status_gui_report()
+
+        self.assertEqual(status_gui_module.status_headline(report), "READY")
+        self.assertEqual(status_gui_module.format_panel_summary(report), "All reported navigation readiness checks are passing.")
+
+    def test_status_gui_rejects_incomplete_ready_report(self):
         report = {
             "ok": True,
             "generated_at": "2026-06-30T12:00:00Z",
@@ -2956,8 +2975,12 @@ class GuiTests(unittest.TestCase):
             "service_checks": [{"name": "Track Log", "ok": True, "detail": "recent point"}],
         }
 
-        self.assertEqual(status_gui_module.status_headline(report), "READY")
-        self.assertEqual(status_gui_module.format_panel_summary(report), "All reported navigation readiness checks are passing.")
+        rows = status_gui_module.status_rows(report)
+        missing = [row for row in rows if "missing this" in row.detail]
+
+        self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
+        self.assertTrue(missing)
+        self.assertIn("reported readiness check(s) need attention", status_gui_module.format_panel_summary(report))
 
     def test_status_gui_formats_structured_gps_summary(self):
         report = {
@@ -3491,16 +3514,12 @@ class GuiTests(unittest.TestCase):
                 return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
 
         app = FakeApp()
-        report = {
+        report = complete_status_gui_report()
+        report["gps_fix"] = {
+            "source": "GPSD",
             "ok": True,
-            "generated_at": "2026-06-30T12:00:00Z",
-            "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
-            "gps_fix": {
-                "source": "GPSD",
-                "ok": True,
-                "latitude": 61.0,
-                "longitude": -149.0,
-            },
+            "latitude": 61.0,
+            "longitude": -149.0,
         }
 
         status_gui_module.StatusApp._show_report(app, report)
@@ -3562,16 +3581,12 @@ class GuiTests(unittest.TestCase):
                 return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
 
         app = FakeApp()
-        report = {
+        report = complete_status_gui_report()
+        report["gps_fix"] = {
+            "source": "GPSD",
             "ok": True,
-            "generated_at": "2026-06-30T12:00:00Z",
-            "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
-            "gps_fix": {
-                "source": "GPSD",
-                "ok": True,
-                "latitude": 61.0,
-                "longitude": -149.0,
-            },
+            "latitude": 61.0,
+            "longitude": -149.0,
         }
 
         status_gui_module.StatusApp._show_report(app, report)
@@ -3633,15 +3648,16 @@ class GuiTests(unittest.TestCase):
                 return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
 
         app = FakeApp()
-        report = {
+        report = complete_status_gui_report(ok=False)
+        for check in report["checks"]:
+            if check["name"] == "GPSD":
+                check["ok"] = False
+                check["detail"] = "no fix"
+                break
+        report["gps_fix"] = {
+            "source": "GPSD",
             "ok": False,
-            "generated_at": "2026-06-30T12:00:00Z",
-            "checks": [{"name": "GPS", "ok": False, "detail": "no fix"}],
-            "gps_fix": {
-                "source": "GPSD",
-                "ok": False,
-                "detail": "no fix",
-            },
+            "detail": "no fix",
         }
 
         status_gui_module.StatusApp._show_report(app, report)

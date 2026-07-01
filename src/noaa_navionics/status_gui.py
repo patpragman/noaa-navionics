@@ -19,6 +19,60 @@ from .report import build_status_report, write_status_report
 
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
 ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0
+CORE_READINESS_CHECKS = frozenset(
+    {
+        "Python",
+        "Source Revision",
+        "Clock",
+        "Time Sync",
+        "Tkinter",
+        "OpenCPN",
+        "Display Power",
+        "Chart Package",
+        "Charts",
+        "Chart Update Debris",
+        "Manifest",
+        "OpenCPN Charts",
+        "Disk",
+        "Pi Power",
+        "Pi Thermal",
+    }
+)
+GPSD_READINESS_CHECKS = frozenset(
+    {
+        "OpenCPN GPSD",
+        "GPSD Config",
+        "Chrony Config",
+        "GPSD",
+        "GPS Time Source",
+    }
+)
+SERIAL_READINESS_CHECKS = frozenset({"GPS Device", "GPS"})
+CORE_SERVICE_CHECKS = frozenset(
+    {
+        "Chart Sync",
+        "Chart Sync Settings",
+        "Chart Sync Unit File",
+        "Chart Timer",
+        "Chart Timer Install",
+        "Chart Timer Settings",
+        "Chart Timer Unit File",
+        "Track Log",
+        "Track Logger",
+        "Track Logger Install",
+        "Track Logger Settings",
+        "Track Logger Unit File",
+        "Boot Readiness",
+        "Boot Readiness Install",
+        "Boot Readiness Settings",
+        "Boot Readiness Unit File",
+        "Boot Readiness Run",
+        "Desktop Startup",
+        "Launcher Settings",
+        "User Linger",
+    }
+)
+GPSD_SERVICE_CHECKS = frozenset({"GPSD Socket", "GPSD Service", "Chrony Service"})
 
 
 @dataclass(frozen=True)
@@ -29,7 +83,7 @@ class StatusRow:
 
 
 def status_headline(report: dict[str, object]) -> str:
-    return "READY" if bool(report.get("ok")) else "NOT READY"
+    return "READY" if bool(report.get("ok")) and count_failures(status_rows(report)) == 0 else "NOT READY"
 
 
 def status_rows(report: dict[str, object]) -> list[StatusRow]:
@@ -43,6 +97,7 @@ def status_rows(report: dict[str, object]) -> list[StatusRow]:
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
+            rows.append(StatusRow(section_name, False, f"status report missing {section_name} section"))
             continue
         for item in section:
             if not isinstance(item, dict):
@@ -50,7 +105,41 @@ def status_rows(report: dict[str, object]) -> list[StatusRow]:
             name = str(item.get("name", "Check"))
             detail = str(item.get("detail", ""))
             rows.append(StatusRow(name, bool(item.get("ok")), detail))
+    missing_checks, missing_service_checks = missing_required_readiness_checks(report)
+    for name in missing_checks:
+        rows.append(StatusRow(name, False, "status report is missing this readiness check"))
+    for name in missing_service_checks:
+        rows.append(StatusRow(name, False, "status report is missing this service check"))
     return rows
+
+
+def missing_required_readiness_checks(report: dict[str, object]) -> tuple[list[str], list[str]]:
+    checks = report.get("checks")
+    service_checks = report.get("service_checks")
+    if not isinstance(checks, list) or not isinstance(service_checks, list):
+        return [], []
+    check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
+    service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
+    required_checks = set(CORE_READINESS_CHECKS)
+    required_service_checks = set(CORE_SERVICE_CHECKS)
+    gps_mode = ""
+    config = report.get("config")
+    if isinstance(config, dict):
+        gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode == "serial":
+        required_checks.update(SERIAL_READINESS_CHECKS)
+    else:
+        required_checks.update(GPSD_READINESS_CHECKS)
+        required_service_checks.update(GPSD_SERVICE_CHECKS)
+    track_log = report.get("track_log")
+    if isinstance(track_log, dict):
+        track_output = str(track_log.get("track_output", "")).strip()
+        chart_output = ""
+        if isinstance(config, dict):
+            chart_output = str(config.get("chart_output", "")).strip()
+        if track_output and chart_output and track_output != chart_output:
+            required_checks.add("Track Disk")
+    return sorted(required_checks - check_names), sorted(required_service_checks - service_check_names)
 
 
 def count_failures(rows: list[StatusRow]) -> int:
