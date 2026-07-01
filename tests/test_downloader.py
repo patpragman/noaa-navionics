@@ -1038,6 +1038,48 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertFalse(list(root.glob(".opencpn.conf.*.part")))
             self.assertGreaterEqual(len(calls), 3)
 
+    def test_configure_chart_directory_validates_promoted_file_with_no_follow_open(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
+            calls = []
+            original_open = opencpn_module.os.open
+
+            def fake_open(open_path, flags, mode=0o777, *args, **kwargs):
+                calls.append((Path(open_path), flags))
+                return original_open(open_path, flags, mode, *args, **kwargs)
+
+            opencpn_module.os.open = fake_open
+            try:
+                configure_chart_directory(charts, config_path=config)
+            finally:
+                opencpn_module.os.open = original_open
+
+            promoted_opens = [(opened_path, flags) for opened_path, flags in calls if opened_path == config]
+            self.assertTrue(promoted_opens)
+            self.assertTrue(promoted_opens[-1][1] & getattr(os, "O_NOFOLLOW", 0))
+
+    def test_configure_chart_directory_rejects_corrupt_promoted_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
+            original_replace = opencpn_module.os.replace
+
+            def corrupt_after_replace(source, target):
+                original_replace(source, target)
+                Path(target).write_text("corrupt\n", encoding="utf-8")
+
+            opencpn_module.os.replace = corrupt_after_replace
+            try:
+                with self.assertRaisesRegex(RuntimeError, "promoted OpenCPN config .* does not match"):
+                    configure_chart_directory(charts, config_path=config)
+            finally:
+                opencpn_module.os.replace = original_replace
+
     def test_check_opencpn_chart_config_reports_missing_and_configured(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -3177,14 +3177,20 @@ grep -q 'def enabled_gpsd_connections' src/noaa_navionics/opencpn.py
 grep -q 'def enabled_gpsd_connections_from_values' src/noaa_navionics/opencpn.py
 grep -q 'def _is_enabled_gpsd_connection' src/noaa_navionics/opencpn.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/opencpn.py
+grep -q 'def _validate_written_config' src/noaa_navionics/opencpn.py
+grep -q '_validate_written_config(target, text)' src/noaa_navionics/opencpn.py
 grep -q 'def _write_backup' src/noaa_navionics/opencpn.py
 grep -q 'backup_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/opencpn.py
 grep -q 'os.fchmod(handle.fileno(), 0o600)' src/noaa_navionics/opencpn.py
 grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/opencpn.py
 grep -q 'test_opencpn_backup_uses_no_follow_private_open' tests/test_downloader.py
 grep -q 'test_opencpn_directory_sync_uses_no_follow_open' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_validates_promoted_file_with_no_follow_open' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_rejects_corrupt_promoted_file' tests/test_downloader.py
 grep -q 'OpenCPN backup and directory sync use no-follow opens' README.md
 grep -q 'OpenCPN backup and directory sync use no-follow opens' docs/sailboat-pi.md
+grep -q 'promoted OpenCPN config is reopened through a no-follow descriptor' README.md
+grep -q 'promoted OpenCPN config is reopened through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'def _prepare_config_parent' src/noaa_navionics/opencpn.py
 grep -q 'def _reject_unsafe_config_path' src/noaa_navionics/opencpn.py
 grep -q 'def _validate_chart_directory_for_opencpn' src/noaa_navionics/opencpn.py
