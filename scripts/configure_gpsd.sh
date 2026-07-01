@@ -768,6 +768,10 @@ case "$device" in
     ;;
 esac
 
+if [[ "$device" =~ [[:cntrl:]] ]]; then
+  echo "GPS device path must not contain control characters" >&2
+  exit 2
+fi
 if [[ "$device" =~ [[:space:]\"\'] ]]; then
   echo "GPS device path must not contain whitespace or quotes: $device" >&2
   exit 2
@@ -782,6 +786,10 @@ case "$gpsd_conf" in
     ;;
 esac
 
+if [[ "$gpsd_conf" =~ [[:cntrl:]] ]]; then
+  echo "GPSD config path must not contain control characters" >&2
+  exit 2
+fi
 if [[ "$gpsd_conf" =~ [[:space:]\"\'] ]]; then
   echo "GPSD config path must not contain whitespace or quotes: $gpsd_conf" >&2
   exit 2

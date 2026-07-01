@@ -631,6 +631,10 @@ case "$chrony_conf" in
     ;;
 esac
 
+if [[ "$chrony_conf" =~ [[:cntrl:]] ]]; then
+  echo "Chrony config path must not contain control characters" >&2
+  exit 2
+fi
 if [[ "$chrony_conf" =~ [[:space:]\"\'] ]]; then
   echo "Chrony config path must not contain whitespace or quotes: $chrony_conf" >&2
   exit 2
