@@ -6313,6 +6313,17 @@ fi
 grep -q 'Do not run pre-trip preparation as root@' "$verify_output"
 
 set +e
+scripts/pre_trip_prepare_pi.sh pi@localhost --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+set +e
 scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$verify_output" 2>&1
 pre_trip_code=$?
 set -e
@@ -6534,6 +6545,17 @@ if [[ "$post_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not collect post-trip artifacts as root@' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@localhost --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 set +e
 scripts/post_trip_collect_pi.sh pi@example.invalid --track-days nope >"$verify_output" 2>&1
@@ -7147,6 +7169,17 @@ fi
 grep -q 'Do not check NOAA Navionics status as root@' "$verify_output"
 
 set +e
+scripts/check_pi_status.sh pi@localhost >"$verify_output" 2>&1
+status_snapshot_code=$?
+set -e
+if [[ "$status_snapshot_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+set +e
 scripts/check_pi_status.sh pi@example.invalid --gps-seconds nope >"$verify_output" 2>&1
 status_snapshot_code=$?
 set -e
@@ -7207,6 +7240,17 @@ if [[ "$refresh_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not refresh charts as root@' "$verify_output"
+
+set +e
+scripts/refresh_pi_charts.sh pi@localhost >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 set +e
 scripts/refresh_pi_charts.sh pi@example.invalid --retries 0 >"$verify_output" 2>&1
@@ -7295,6 +7339,17 @@ if [[ "$support_bundle_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not collect support bundles as root@' "$verify_output"
+
+set +e
+scripts/collect_pi_support_bundle.sh pi@localhost >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 support_symlink="$tmpdir/support-output-link"
 ln -s "$tmpdir" "$support_symlink"
@@ -7581,6 +7636,17 @@ if [[ "$track_export_code" -ne 2 ]]; then
 fi
 grep -q 'Do not export tracks as root@' "$verify_output"
 
+set +e
+scripts/export_pi_tracks.sh pi@localhost >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
 track_export_symlink="$tmpdir/track-export-output-link"
 ln -s "$tmpdir" "$track_export_symlink"
 set +e
@@ -7813,6 +7879,17 @@ if [[ "$opencpn_export_code" -ne 2 ]]; then
 fi
 grep -q 'Do not export OpenCPN data as root@' "$verify_output"
 
+set +e
+scripts/export_pi_opencpn_data.sh pi@localhost >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
 opencpn_export_symlink="$tmpdir/opencpn-export-output-link"
 ln -s "$tmpdir" "$opencpn_export_symlink"
 set +e
@@ -7995,6 +8072,17 @@ if [[ "$settings_export_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not export settings as root@' "$verify_output"
+
+set +e
+scripts/export_pi_settings.sh pi@localhost >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 settings_export_symlink="$tmpdir/settings-export-output-link"
 ln -s "$tmpdir" "$settings_export_symlink"
@@ -8179,6 +8267,17 @@ if [[ "$recovery_export_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Do not export recovery bundles as root@' "$verify_output"
+
+set +e
+scripts/export_pi_recovery_bundle.sh pi@localhost >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
 set +e
 scripts/export_pi_recovery_bundle.sh pi@example.invalid --track-days nope >"$verify_output" 2>&1
