@@ -268,6 +268,7 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                 names = set()
                 members_by_name = {}
                 regular_file_count = 0
+                data_file_count = 0
                 for member in members:
                     normalized = validate_member_name(member.name, archive_path)
                     if normalized:
@@ -279,6 +280,8 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                         fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
                     if member.isfile():
                         regular_file_count += 1
+                        if normalized not in {"README.txt", "manifest.json"}:
+                            data_file_count += 1
                     elif not member.isdir():
                         fail(f"{archive_path.name} contains unsupported member type: {member.name}")
 
@@ -304,6 +307,11 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                     count = manifest.get(str(manifest_key))
                     if not isinstance(count, int) or count <= 0:
                         fail(f"{archive_path.name} manifest {manifest_key} must be a positive integer")
+                    if count != data_file_count:
+                        fail(
+                            f"{archive_path.name} manifest {manifest_key} does not match data file count: "
+                            f"{count} != {data_file_count}"
+                        )
 
                 if regular_file_count <= 0:
                     fail(f"{archive_path.name} does not contain any regular files")

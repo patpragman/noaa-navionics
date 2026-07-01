@@ -759,8 +759,8 @@ grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' README.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus positive-count manifest entries and rejecting duplicate or unsupported archive members before reporting success' README.md
-grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus positive-count manifest entries and rejecting duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
+grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus a positive manifest count that matches the regular data files and rejecting duplicate or unsupported archive members before reporting success' README.md
+grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus a positive manifest count that matches the regular data files and rejecting duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
 grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' README.md
 grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
@@ -1408,6 +1408,8 @@ grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/export_p
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/export_pi_tracks.sh
 grep -q 'count <= 0' scripts/export_pi_tracks.sh
 grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_tracks.sh
+grep -q 'data_file_count += 1' scripts/export_pi_tracks.sh
+grep -q 'Export archive manifest {count_field} does not match data file count' scripts/export_pi_tracks.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_tracks.sh
 grep -q 'mark-position' src/noaa_navionics/cli.py
 grep -q 'anchor-watch' src/noaa_navionics/cli.py
@@ -1445,6 +1447,8 @@ grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/export_p
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/export_pi_opencpn_data.sh
 grep -q 'count <= 0' scripts/export_pi_opencpn_data.sh
 grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_opencpn_data.sh
+grep -q 'data_file_count += 1' scripts/export_pi_opencpn_data.sh
+grep -q 'Export archive manifest {count_field} does not match data file count' scripts/export_pi_opencpn_data.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
@@ -1461,6 +1465,8 @@ grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/export_p
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/export_pi_settings.sh
 grep -q 'count <= 0' scripts/export_pi_settings.sh
 grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_settings.sh
+grep -q 'data_file_count += 1' scripts/export_pi_settings.sh
+grep -q 'Export archive manifest {count_field} does not match data file count' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_settings.sh
 grep -q 'info.size = current_stat.st_size' scripts/export_pi_settings.sh
@@ -1542,6 +1548,10 @@ grep -q 'README.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'README.txt is not a regular file' scripts/verify_pi_recovery_exports.sh
 grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
+grep -q 'data_file_count += 1' scripts/verify_pi_recovery_exports.sh
+grep -q 'does not match data file count' scripts/verify_pi_recovery_exports.sh
+grep -q 'data_file_count += 1' scripts/restore_pi_recovery_user_data.sh
+grep -q 'does not match data file count' scripts/restore_pi_recovery_user_data.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi_recovery_exports.sh
 grep -q 'archive changed while being opened' scripts/verify_pi_recovery_exports.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/verify_pi_recovery_exports.sh
@@ -8197,6 +8207,30 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_MISMATCHED_TRACK_MANIFEST:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake track export\n")
+    add_text(archive, "manifest.json", json.dumps({"track_count": 1}) + "\n")
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_UNSAFE_TRACK_ARCHIVE:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -8354,6 +8388,25 @@ grep -q 'Export archive manifest has invalid track_count: 0' "$verify_output"
 ! grep -q 'Exported Pi GPX tracks:' "$verify_output"
 
 set +e
+track_export_mismatched_manifest_output_dir="$tmpdir/track-exports-mismatched-manifest"
+mkdir -p "$track_export_mismatched_manifest_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_MISMATCHED_TRACK_MANIFEST=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
+  PATH="$track_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_mismatched_manifest_output_dir" --days 7 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject an archive whose track_count does not match data files with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive manifest track_count does not match data file count: 1 != 0' "$verify_output"
+! grep -q 'Exported Pi GPX tracks:' "$verify_output"
+
+set +e
 track_export_unsafe_output_dir="$tmpdir/track-exports-unsafe-member"
 mkdir -p "$track_export_unsafe_output_dir"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -8506,6 +8559,30 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_MISMATCHED_OPENCPN_MANIFEST:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake opencpn export\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_UNSAFE_OPENCPN_ARCHIVE:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -8626,6 +8703,25 @@ if [[ "$opencpn_export_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Export archive manifest has invalid file_count: 0' "$verify_output"
+! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
+
+set +e
+opencpn_export_mismatched_manifest_output_dir="$tmpdir/opencpn-exports-mismatched-manifest"
+mkdir -p "$opencpn_export_mismatched_manifest_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_MISMATCHED_OPENCPN_MANIFEST=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
+  PATH="$opencpn_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_mismatched_manifest_output_dir" >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject an archive whose file_count does not match data files with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive manifest file_count does not match data file count: 1 != 0' "$verify_output"
 ! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
 
 set +e
@@ -8781,6 +8877,30 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_MISMATCHED_SETTINGS_MANIFEST:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake settings export\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_UNSAFE_SETTINGS_ARCHIVE:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -8902,6 +9022,25 @@ if [[ "$settings_export_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Export archive manifest has invalid file_count: 0' "$verify_output"
+! grep -q 'Exported Pi commissioning settings:' "$verify_output"
+
+set +e
+settings_export_mismatched_manifest_output_dir="$tmpdir/settings-exports-mismatched-manifest"
+mkdir -p "$settings_export_mismatched_manifest_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_MISMATCHED_SETTINGS_MANIFEST=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
+  PATH="$settings_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_mismatched_manifest_output_dir" >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject an archive whose file_count does not match data files with exit 1" >&2
+  exit 1
+fi
+grep -q 'Export archive manifest file_count does not match data file count: 1 != 0' "$verify_output"
 ! grep -q 'Exported Pi commissioning settings:' "$verify_output"
 
 set +e
@@ -9332,6 +9471,52 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' "$verify_output"
+
+recovery_verify_mismatched_manifest_dir="$tmpdir/recovery-verify-mismatched-manifest"
+cp -a "$recovery_verify_dir" "$recovery_verify_mismatched_manifest_dir"
+python3 - "$recovery_verify_mismatched_manifest_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "recovery fixture\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 2}) + "\n")
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_mismatched_manifest_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject mismatched manifest data counts with exit 1" >&2
+  exit 1
+fi
+grep -q 'manifest file_count does not match data file count: 2 != 1' "$verify_output"
 
 recovery_verify_missing_checksum_dir="$tmpdir/recovery-verify-missing-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_missing_checksum_dir"
@@ -9883,6 +10068,54 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'checksum mismatch for' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_mismatched_manifest_dir="$tmpdir/recovery-restore-mismatched-manifest"
+cp -a "$recovery_restore_dir" "$recovery_restore_mismatched_manifest_dir"
+python3 - "$recovery_restore_mismatched_manifest_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 3}) + "\n")
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\noutput = ~/tracks-store\n")
+    add_text(archive, "noaa-navionics/launcher.env", "NOAA_NAVIONICS_GPS_SECONDS=60\n")
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_mismatched_manifest_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject mismatched manifest data counts with exit 1" >&2
+  exit 1
+fi
+grep -q 'manifest file_count does not match data file count: 3 != 2' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 set +e

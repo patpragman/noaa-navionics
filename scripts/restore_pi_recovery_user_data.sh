@@ -250,6 +250,7 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
     names: set[str] = set()
     members_by_name = {}
     regular_file_count = 0
+    data_file_count = 0
     fd = -1
     try:
         fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -281,6 +282,8 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
                     if not normalized:
                         fail(f"{archive_path.name} contains blank file member name")
                     regular_file_count += 1
+                    if normalized not in {"README.txt", "manifest.json"}:
+                        data_file_count += 1
                     if not load_contents:
                         continue
                     extracted = archive.extractfile(member)
@@ -313,6 +316,11 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
         count = manifest.get(required_count_key)
         if not isinstance(count, int) or count <= 0:
             fail(f"{archive_path.name} manifest {required_count_key} must be a positive integer")
+        if count != data_file_count:
+            fail(
+                f"{archive_path.name} manifest {required_count_key} does not match data file count: "
+                f"{count} != {data_file_count}"
+            )
     if regular_file_count <= 0:
         fail(f"{archive_path.name} does not contain any regular files")
     return files

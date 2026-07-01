@@ -618,6 +618,7 @@ try:
             with tarfile.open(fileobj=handle, mode="r:gz") as archive:
                 members = archive.getmembers()
                 by_name = {}
+                data_file_count = 0
                 for member in members:
                     normalized = normalized_member_name(member.name)
                     if normalized in by_name:
@@ -625,6 +626,8 @@ try:
                     by_name[normalized] = member
                     if not member.isreg():
                         fail(f"Export archive contains unsupported non-regular member: {member.name}")
+                    if normalized not in {"README.txt", "manifest.json"}:
+                        data_file_count += 1
                 if "README.txt" not in by_name:
                     fail("Export archive is missing README.txt")
                 manifest_member = by_name.get("manifest.json")
@@ -645,6 +648,8 @@ if not isinstance(manifest, dict):
 count = manifest.get(count_field)
 if not isinstance(count, int) or count <= 0:
     fail(f"Export archive manifest has invalid {count_field}: {count!r}")
+if count != data_file_count:
+    fail(f"Export archive manifest {count_field} does not match data file count: {count} != {data_file_count}")
 PY
 }
 
