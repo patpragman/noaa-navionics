@@ -3595,6 +3595,9 @@ grep -q 'Diagnostic NMEA sample files are read only through same-file no-follow 
 grep -q 'Malformed or non-finite NMEA timestamps and malformed or timezone-less GPSD timestamps are treated as missing timestamps' README.md
 grep -q 'Malformed or non-finite NMEA timestamps and malformed or timezone-less GPSD timestamps are treated as missing timestamps' docs/sailboat-pi.md
 grep -q 'test_parse_gpsd_tpv_ignores_malformed_or_timezone_less_time' tests/test_downloader.py
+grep -q 'test_gga_time_without_date_rejects_timezone_less_current_time' tests/test_downloader.py
+grep -q 'def _current_utc' src/noaa_navionics/gps.py
+grep -q 'GGA current time must include a timezone' src/noaa_navionics/gps.py
 grep -q 'parsed.tzinfo is None or parsed.utcoffset() is None' src/noaa_navionics/gps.py
 grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py

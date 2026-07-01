@@ -16009,6 +16009,10 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(before_midnight, datetime(2026, 6, 30, 0, 0, 10, tzinfo=timezone.utc))
         self.assertEqual(after_midnight, datetime(2026, 6, 29, 23, 59, 50, tzinfo=timezone.utc))
 
+    def test_gga_time_without_date_rejects_timezone_less_current_time(self):
+        with self.assertRaisesRegex(ValueError, "GGA current time must include a timezone"):
+            _parse_time_today("123519", now=datetime(2026, 6, 29, 12, 0, 0))
+
     def test_gga_fractional_time_rounds_across_midnight(self):
         rounded = _parse_time_today("235959.9999999", now=datetime(2026, 6, 29, 23, 59, 59, tzinfo=timezone.utc))
 

@@ -536,10 +536,8 @@ class GPXTrackLogger:
 
 
 def gpx_position_mark_path(base_dir: Path, timestamp: Optional[datetime] = None, *, prefix: str = "mark") -> Path:
-    current = timestamp or datetime.now(timezone.utc)
-    if current.tzinfo is None or current.utcoffset() is None:
-        raise ValueError("position mark timestamp must include a timezone")
-    stamp = current.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    current = _current_utc(timestamp, message="position mark timestamp must include a timezone")
+    stamp = current.strftime("%Y%m%dT%H%M%SZ")
     safe_prefix = "".join(char if char.isalnum() or char in ("-", "_") else "-" for char in prefix).strip("-_")
     if not safe_prefix:
         safe_prefix = "mark"
@@ -683,10 +681,8 @@ def default_track_path(base_dir: Path) -> Path:
 
 
 def daily_track_path(base_dir: Path, timestamp: Optional[datetime] = None) -> Path:
-    current = timestamp or datetime.now(timezone.utc)
-    if current.tzinfo is None or current.utcoffset() is None:
-        raise ValueError("daily track timestamp must include a timezone")
-    stamp = current.astimezone(timezone.utc).strftime("%Y%m%d")
+    current = _current_utc(timestamp, message="daily track timestamp must include a timezone")
+    stamp = current.strftime("%Y%m%d")
     return Path(base_dir).expanduser() / "tracks" / f"track-{stamp}.gpx"
 
 
@@ -823,7 +819,7 @@ def _parse_time_today(value: str, *, now: Optional[datetime] = None) -> Optional
     parsed_time = _time_parts(value)
     if parsed_time is None:
         return None
-    now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    now = _current_utc(now, message="GGA current time must include a timezone")
     hour, minute, second, microsecond, day_carry = parsed_time
     candidate = datetime(now.year, now.month, now.day, hour, minute, second, microsecond, tzinfo=timezone.utc)
     if day_carry:
@@ -844,6 +840,13 @@ def _parse_iso_time(value: str) -> Optional[datetime]:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         return None
     return parsed.astimezone(timezone.utc)
+
+
+def _current_utc(value: Optional[datetime], *, message: str) -> datetime:
+    current = value or datetime.now(timezone.utc)
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise ValueError(message)
+    return current.astimezone(timezone.utc)
 
 
 def _time_parts(value: str) -> Optional[tuple[int, int, int, int, int]]:
