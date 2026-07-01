@@ -641,6 +641,32 @@ diagnostic_members = [
 ]
 if not diagnostic_members:
     fail("Support bundle contains no diagnostic files")
+required_members = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+missing_members = [
+    name for name in required_members
+    if name not in by_name or not by_name[name].isreg()
+]
+if missing_members:
+    fail(f"Support bundle is missing required diagnostic file(s): {', '.join(missing_members)}")
 PY
 }
 

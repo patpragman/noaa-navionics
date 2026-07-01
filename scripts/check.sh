@@ -751,8 +751,8 @@ grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics 
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' README.md
 grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
-grep -q 'requires a regular `README.txt` and at least one diagnostic file, and rejects duplicate or unsupported archive members before reporting success' README.md
-grep -q 'requires a regular `README.txt` and at least one diagnostic file, and rejects duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
+grep -q 'requires a regular `README.txt` and at least one diagnostic file plus the core command-evidence files, and rejects duplicate or unsupported archive members before reporting success' README.md
+grep -q 'requires a regular `README.txt` and at least one diagnostic file plus the core command-evidence files, and rejects duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_tracks.sh pi@raspberrypi.local' README.md
@@ -1367,6 +1367,9 @@ grep -q 'Support bundle contains duplicate member' scripts/collect_pi_support_bu
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/collect_pi_support_bundle.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/collect_pi_support_bundle.sh
 grep -q 'Support bundle contains no diagnostic files' scripts/collect_pi_support_bundle.sh
+grep -q 'Support bundle is missing required diagnostic file' scripts/collect_pi_support_bundle.sh
+grep -q 'commands/system-command-integrity.txt' scripts/collect_pi_support_bundle.sh
+grep -q 'commands/recent-system-journal.txt' scripts/collect_pi_support_bundle.sh
 grep -q 'fd = os.open(bundle_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
 grep -q 'mktemp -d "${cache_dir}/support-bundle.XXXXXX"' scripts/collect_pi_support_bundle.sh
@@ -8074,7 +8077,8 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
-python3 - <<'PY'
+if [[ "${NOAA_NAVIONICS_FAKE_THIN_SUPPORT_BUNDLE:-0}" == "1" ]]; then
+  python3 - <<'PY'
 import io
 import sys
 import tarfile
@@ -8093,6 +8097,51 @@ def add_text(archive, name, text):
 with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
     add_text(archive, "README.txt", "fake support bundle\n")
     add_text(archive, "commands/date-utc.txt", "date output\n")
+PY
+  exit 0
+fi
+python3 - <<'PY'
+import io
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+CORE_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake support bundle\n")
+    for name in CORE_COMMAND_FILES:
+        add_text(archive, name, f"{name}\n")
 PY
 EOF
 chmod +x "$support_fake_ssh_bin/ssh"
@@ -8249,6 +8298,25 @@ if [[ "$support_bundle_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Support bundle contains unsafe member path: commands/./date-utc.txt' "$verify_output"
+! grep -q 'Collected Pi support bundle:' "$verify_output"
+
+support_thin_output_dir="$tmpdir/support-bundles-thin"
+mkdir -p "$support_thin_output_dir"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_THIN_SUPPORT_BUNDLE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_thin_output_dir" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject a support bundle missing required diagnostics with exit 1" >&2
+  exit 1
+fi
+grep -q 'Support bundle is missing required diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
 ! grep -q 'Collected Pi support bundle:' "$verify_output"
 
 support_bad_readme_output_dir="$tmpdir/support-bundles-bad-readme"
