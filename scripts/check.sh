@@ -551,6 +551,8 @@ grep -q 'known_hosts must be a regular non-symlink file' scripts/enroll_pi_host_
 grep -q 'ssh_keyscan_cmd="$(require_local_command ssh-keyscan)"' scripts/enroll_pi_host_key.sh
 grep -q 'ssh_keygen_cmd="$(require_local_command ssh-keygen)"' scripts/enroll_pi_host_key.sh
 grep -q 'python3_cmd="$(require_local_command python3)"' scripts/enroll_pi_host_key.sh
+grep -q 'validate_known_hosts_arg "$known_hosts"' scripts/enroll_pi_host_key.sh
+grep -q -- '--known-hosts path must not contain parent-directory components' scripts/enroll_pi_host_key.sh
 grep -q 'os.open(path.name, flags, 0o600, dir_fd=parent_fd)' scripts/enroll_pi_host_key.sh
 grep -q 'append_verified_known_hosts "$known_hosts" "$match_path"' scripts/enroll_pi_host_key.sh
 grep -q 'known_hosts changed before append' scripts/enroll_pi_host_key.sh
@@ -558,6 +560,8 @@ grep -q 'private_temp_identity' scripts/enroll_pi_host_key.sh
 grep -q 'cleanup_private_host_key_temp' scripts/enroll_pi_host_key.sh
 grep -q 'changed before cleanup; leaving it in place' scripts/enroll_pi_host_key.sh
 grep -q 'Do not enroll a host key using root@' scripts/enroll_pi_host_key.sh
+grep -q 'Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components before scanning the network' README.md
+grep -q 'Host-key enrollment rejects custom `--known-hosts` paths with parent-directory components before scanning the network' docs/sailboat-pi.md
 grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' README.md
 grep -q 'Host-key enrollment temporary cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 ! grep -q ': >"$path"' scripts/enroll_pi_host_key.sh
@@ -5907,6 +5911,29 @@ if [[ "$host_key_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'No scanned SSH host key matched expected fingerprint' "$verify_output"
+
+host_key_parent_log="$tmpdir/host-key-parent-log"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_parent_log" \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$tmpdir/host-key-parent/../known_hosts" \
+  --expected-sha256 SHA256:abcdefghijklmnopqrstuv >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to reject parent-directory known_hosts paths with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--known-hosts path must not contain parent-directory components' "$verify_output"
+if [[ -e "$host_key_parent_log" ]] && grep -q '^scan|' "$host_key_parent_log"; then
+  cat "$host_key_parent_log" >&2
+  echo "expected enroll_pi_host_key.sh not to scan before rejecting a parent-directory known_hosts path" >&2
+  exit 1
+fi
 
 host_key_symlink_dir="$tmpdir/host-key-symlink"
 mkdir -p "$host_key_symlink_dir"

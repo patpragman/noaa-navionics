@@ -202,6 +202,24 @@ validate_expected_sha256() {
   fi
 }
 
+validate_known_hosts_arg() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    echo "--known-hosts path is required" >&2
+    exit 2
+  fi
+  if [[ "$value" =~ [[:space:]\"\'] ]]; then
+    echo "--known-hosts path must not contain whitespace or quotes: $value" >&2
+    exit 2
+  fi
+  case "$value" in
+    ..|../*|*/..|*/../*)
+      echo "--known-hosts path must not contain parent-directory components: $value" >&2
+      exit 2
+      ;;
+  esac
+}
+
 reject_symlinked_path_components() {
   local label="$1"
   local path="$2"
@@ -628,6 +646,7 @@ if [[ -z "$expected_sha256" ]]; then
 fi
 validate_expected_sha256 "$expected_sha256"
 require_positive_port "$port"
+validate_known_hosts_arg "$known_hosts"
 
 ssh_keyscan_cmd="$(require_local_command ssh-keyscan)"
 ssh_keygen_cmd="$(require_local_command ssh-keygen)"
