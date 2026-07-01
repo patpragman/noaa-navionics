@@ -724,6 +724,44 @@ def validate_snapshot_track_log(track_log: dict[str, object], *, generated_at: d
     )
 
 
+def validate_snapshot_gps_row(
+    check_rows: dict[str, dict[str, object]],
+    *,
+    gps_mode: str,
+    gps_fix: dict[str, object],
+    path: Path,
+) -> None:
+    expected_name = "GPS" if gps_mode == "serial" else "GPSD"
+    row = check_rows.get(expected_name)
+    if not isinstance(row, dict):
+        fail(f"status snapshot JSON missing {expected_name} readiness row: {path}")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        fail(f"status snapshot JSON {expected_name} row has no structured fix data: {path}")
+    latitude = finite_status_float(data.get("latitude"))
+    longitude = finite_status_float(data.get("longitude"))
+    if latitude is None or longitude is None:
+        fail(f"status snapshot JSON {expected_name} row has non-numeric coordinates: {path}")
+    summary_latitude = finite_status_float(gps_fix.get("latitude"))
+    summary_longitude = finite_status_float(gps_fix.get("longitude"))
+    if summary_latitude is not None and abs(latitude - summary_latitude) > 1e-7:
+        fail(f"status snapshot JSON {expected_name} latitude does not match gps_fix: {path}")
+    if summary_longitude is not None and abs(longitude - summary_longitude) > 1e-7:
+        fail(f"status snapshot JSON {expected_name} longitude does not match gps_fix: {path}")
+    timestamp = parse_snapshot_timestamp(data.get("timestamp"), f"{expected_name} row", path)
+    summary_timestamp = parse_snapshot_timestamp(gps_fix.get("timestamp"), "gps_fix", path)
+    if timestamp != summary_timestamp:
+        fail(f"status snapshot JSON {expected_name} timestamp does not match gps_fix: {path}")
+    validate_snapshot_quality(data, satellite_field="satellites", hdop_field="hdop", label=f"{expected_name} row", path=path)
+    if gps_fix.get("satellites") is not None and data.get("satellites") != gps_fix.get("satellites"):
+        fail(f"status snapshot JSON {expected_name} satellites do not match gps_fix: {path}")
+    if gps_fix.get("hdop") is not None:
+        row_hdop = finite_status_float(data.get("hdop"))
+        summary_hdop = finite_status_float(gps_fix.get("hdop"))
+        if row_hdop is None or summary_hdop is None or abs(row_hdop - summary_hdop) > 1e-9:
+            fail(f"status snapshot JSON {expected_name} HDOP does not match gps_fix: {path}")
+
+
 def validate_successful_status_snapshot(
     payload: dict[str, object],
     path: Path,
@@ -825,6 +863,7 @@ def validate_successful_status_snapshot(
     )
     if missing_structured_data:
         fail(f"status snapshot JSON missing structured readiness data for: {', '.join(missing_structured_data)}: {path}")
+    validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix, path=path)
     non_pi_skips = sorted(
         name
         for name in required_checks & PI_ONLY_READINESS_CHECKS

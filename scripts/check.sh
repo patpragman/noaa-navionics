@@ -700,6 +700,9 @@ grep -q 'pre-departure status snapshot JSON track_log ok is not boolean' scripts
 grep -q 'pre-departure status snapshot JSON gps_fix has non-numeric coordinates' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {field} timestamp must include a timezone' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {label} has no satellite or HDOP quality fields' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {expected_name} latitude does not match gps_fix' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {expected_name} timestamp does not match gps_fix' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/pre_trip_prepare_pi.sh
@@ -878,8 +881,8 @@ grep -q 'recovery verifier validates the trusted root-owned local `python3` comm
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' README.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' docs/sailboat-pi.md
 grep -q 'pre-departure status snapshot JSON Source Revision row does not match deployed source_revision' scripts/verify_pi_recovery_exports.sh
@@ -1602,6 +1605,9 @@ grep -q 'pre-departure status snapshot JSON track_log ok is not boolean' scripts
 grep -q 'pre-departure status snapshot JSON gps_fix has non-numeric coordinates' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON {field} timestamp must include a timezone' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON {label} has no satellite or HDOP quality fields' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {expected_name} latitude does not match gps_fix' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {expected_name} timestamp does not match gps_fix' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/verify_pi_recovery_exports.sh
@@ -1846,6 +1852,9 @@ grep -q 'status snapshot JSON track_log ok is not boolean' scripts/post_trip_col
 grep -q 'status snapshot JSON gps_fix has non-numeric coordinates' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON {field} timestamp must include a timezone' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON {label} has no satellite or HDOP quality fields' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {expected_name} latitude does not match gps_fix' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {expected_name} timestamp does not match gps_fix' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing track_storage_symlink_component' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing latest_path' scripts/post_trip_collect_pi.sh
@@ -7200,6 +7209,16 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_MISMATCHED_SOURCE_ROW") == "1":
         if row["name"] == "Source Revision":
             row["data"] = {"revision": "stale"}
 generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+gps_fix_data = {
+    "latitude": 61.0,
+    "longitude": -149.0,
+    "timestamp": generated_at,
+    "satellites": 8,
+    "hdop": 0.9,
+}
+for row in checks:
+    if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_UNSTRUCTURED_STATUS") != "1":
+        row["data"] = dict(gps_fix_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -7210,12 +7229,12 @@ payload = {
         "ok": True,
         "detail": "ok",
         "source": "GPSD",
-        "latitude": 61.0,
-        "longitude": -149.0,
-        "timestamp": generated_at,
+        "latitude": gps_fix_data["latitude"],
+        "longitude": gps_fix_data["longitude"],
+        "timestamp": gps_fix_data["timestamp"],
         "age_seconds": 0.0,
-        "satellites": 8,
-        "hdop": 0.9,
+        "satellites": gps_fix_data["satellites"],
+        "hdop": gps_fix_data["hdop"],
     },
     "track_log": {
         "ok": True,
@@ -7799,6 +7818,16 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_MISMATCHED_SOURCE_ROW") == "1":
     for row in checks:
         if row["name"] == "Source Revision":
             row["data"] = {"revision": "stale"}
+gps_fix_data = {
+    "latitude": 61.0,
+    "longitude": -149.0,
+    "timestamp": generated_at,
+    "satellites": 8,
+    "hdop": 0.9,
+}
+for row in checks:
+    if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") != "1":
+        row["data"] = dict(gps_fix_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -7809,12 +7838,12 @@ payload = {
         "ok": True,
         "detail": "ok",
         "source": "GPSD",
-        "latitude": 61.0,
-        "longitude": -149.0,
-        "timestamp": generated_at,
+        "latitude": gps_fix_data["latitude"],
+        "longitude": gps_fix_data["longitude"],
+        "timestamp": gps_fix_data["timestamp"],
         "age_seconds": 0.0,
-        "satellites": 8,
-        "hdop": 0.9,
+        "satellites": gps_fix_data["satellites"],
+        "hdop": gps_fix_data["hdop"],
     },
     "track_log": {
         "ok": True,
@@ -10796,6 +10825,14 @@ def write_pre_departure_status(directory):
     for row in checks:
         if row["name"] == "Source Revision":
             row["data"] = {"revision": "fixture123"}
+        if row["name"] == "GPSD":
+            row["data"] = {
+                "latitude": 61.0,
+                "longitude": -149.0,
+                "timestamp": generated_at,
+                "satellites": 8,
+                "hdop": 0.9,
+            }
     service_checks = [
         {"name": name, "ok": True, "detail": "ok"}
         for name in sorted(CORE_SERVICE_CHECKS + GPSD_SERVICE_CHECKS)
