@@ -345,6 +345,97 @@ PY
   return "$status"
 }
 
+verify_status_snapshot_json() {
+  local path="$1"
+  local status
+  set +e
+  "$python3_cmd" - "$path" <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import stat
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+    fd = os.open(path, flags)
+except OSError as exc:
+    print(f"Could not open status snapshot for JSON validation {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        print(f"status snapshot changed while opening it: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"status snapshot must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"status snapshot is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"status snapshot has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "r", encoding="utf-8") as handle:
+        fd = -1
+        try:
+            payload = json.load(handle)
+        except json.JSONDecodeError as exc:
+            print(f"status snapshot is not valid JSON: {path}: {exc}", file=sys.stderr)
+            raise SystemExit(124) from exc
+except OSError as exc:
+    print(f"Could not validate status snapshot {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+if not isinstance(payload, dict):
+    print(f"status snapshot JSON must be an object: {path}", file=sys.stderr)
+    raise SystemExit(124)
+if not isinstance(payload.get("ok"), bool):
+    print(f"status snapshot JSON missing boolean ok field: {path}", file=sys.stderr)
+    raise SystemExit(124)
+if not isinstance(payload.get("generated_at"), str) or not payload["generated_at"].strip():
+    print(f"status snapshot JSON missing generated_at field: {path}", file=sys.stderr)
+    raise SystemExit(124)
+for field in ("checks", "service_checks"):
+    rows = payload.get(field)
+    if not isinstance(rows, list):
+        print(f"status snapshot JSON missing {field} list: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            print(f"status snapshot JSON {field}[{index}] must be an object: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        if not isinstance(row.get("name"), str) or not row["name"].strip():
+            print(f"status snapshot JSON {field}[{index}] missing name: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        if not isinstance(row.get("ok"), bool):
+            print(f"status snapshot JSON {field}[{index}] missing boolean ok: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        if not isinstance(row.get("detail"), str):
+            print(f"status snapshot JSON {field}[{index}] missing detail: {path}", file=sys.stderr)
+            raise SystemExit(124)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -539,6 +630,7 @@ if [[ "$skip_status" -eq 0 ]]; then
   set -e
   verify_private_output_file "status snapshot" "$status_path"
   if [[ "$status_code" -eq 0 ]]; then
+    verify_status_snapshot_json "$status_path"
     printf 'Saved Pi status snapshot: %s\n' "$status_path"
   else
     printf 'Pi status snapshot exited %s; saved output for diagnosis: %s\n' "$status_code" "$status_path" >&2

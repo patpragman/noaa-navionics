@@ -573,8 +573,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before cr
 grep -q 'validates the trusted root-owned local `python3` command path before creating the status snapshot' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, validates successful snapshots as descriptor-opened readiness JSON, exports GPX tracks, collects a diagnostic support bundle' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
@@ -1173,6 +1173,12 @@ grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' sc
 grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
 grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "$target" --gps-seconds "$gps_seconds" --json' scripts/post_trip_collect_pi.sh
 grep -q 'verify_private_output_file "status snapshot" "$status_path"' scripts/post_trip_collect_pi.sh
+grep -q 'verify_status_snapshot_json "$status_path"' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot changed while opening it' scripts/post_trip_collect_pi.sh
+grep -q 'json.load(handle)' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing boolean ok field' scripts/post_trip_collect_pi.sh
+grep -q 'for field in ("checks", "service_checks")' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing {field} list' scripts/post_trip_collect_pi.sh
 for helper_wrapper in \
   scripts/export_pi_recovery_bundle.sh \
   scripts/post_trip_collect_pi.sh \
@@ -5365,7 +5371,11 @@ cp scripts/post_trip_collect_pi.sh "$post_trip_repo/scripts/post_trip_collect_pi
 cat >"$post_trip_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
-printf '{"ok": true}\n'
+if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_INVALID_JSON:-0}" == "1" ]]; then
+  printf 'not json\n'
+else
+  printf '{"generated_at": "2026-06-30T12:00:00Z", "ok": true, "checks": [{"name": "GPS", "ok": true, "detail": "fix"}], "service_checks": [{"name": "Track Log", "ok": true, "detail": "recent point"}]}\n'
+fi
 exit "${NOAA_NAVIONICS_FAKE_POST_TRIP_STATUS_EXIT:-0}"
 EOF
 cat >"$post_trip_repo/scripts/export_pi_tracks.sh" <<'EOF'
@@ -5434,6 +5444,26 @@ grep -Eq '^status\|pi@example.invalid --gps-seconds 15 --json$' "$post_trip_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 9$' "$post_trip_log"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_log"
 grep -Eq '^shutdown\|pi@example.invalid --dry-run$' "$post_trip_log"
+
+post_trip_invalid_json_log="$tmpdir/post-trip-invalid-json-helper-calls"
+post_trip_invalid_json_output_dir="$tmpdir/post-trip-invalid-json-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_invalid_json_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_INVALID_JSON=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_invalid_json_output_dir" \
+  --skip-tracks \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject invalid successful status JSON with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot is not valid JSON' "$verify_output"
+! grep -q 'Saved Pi status snapshot' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --gps-seconds 10 --json$' "$post_trip_invalid_json_log"
 
 post_trip_failure_log="$tmpdir/post-trip-failure-helper-calls"
 post_trip_failure_output_dir="$tmpdir/post-trip-failure-output"
