@@ -18006,6 +18006,26 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("no timestamp", result.detail)
 
+    def test_check_gpsd_rejects_timezone_less_fix(self):
+        original = health_module.iter_gpsd_fixes
+        timezone_less = GPSFix(
+            timestamp=datetime.now().replace(microsecond=0),
+            latitude=61.0,
+            longitude=-149.0,
+            fix_quality=3,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        try:
+            health_module.iter_gpsd_fixes = lambda host, port, timeout, max_duration=None: iter([timezone_less])
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("fix timestamp has no timezone", result.detail)
+
     def test_check_gpsd_rejects_weak_fix_quality_when_reported(self):
         original = health_module.iter_gpsd_fixes
         weak = GPSFix(

@@ -2176,6 +2176,8 @@ def _fix_data(fix: GPSFix) -> dict[str, object]:
 def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
     if fix.timestamp is None:
         return "fix has no timestamp; cannot verify freshness"
+    if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
+        return "fix timestamp has no timezone; cannot verify freshness"
     age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
     if age_seconds > max_fix_age_seconds:
         return f"last timestamped fix was stale ({age_seconds:.0f}s old)"
