@@ -295,6 +295,8 @@ def status_report_validation_failures(
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
     failures.extend(_config_validation_failures(report))
+    failures.extend(_user_validation_failures(report.get("user")))
+    failures.extend(_unit_files_validation_failures(report.get("unit_files")))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
@@ -493,6 +495,107 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
                 )
             ]
     return []
+
+
+def _user_validation_failures(user: object) -> list[CheckResult]:
+    if not isinstance(user, dict):
+        return [CheckResult("User Linger", False, "status report missing user section")]
+    name = str(user.get("name", "")).strip()
+    if not name:
+        return [CheckResult("User Linger", False, "status report user name is empty")]
+    uid = user.get("uid")
+    if isinstance(uid, bool) or not isinstance(uid, int) or uid < 0:
+        return [CheckResult("User Linger", False, f"status report user uid is invalid: {uid!r}")]
+    check = _user_linger_check(user)
+    if not check.ok:
+        return [CheckResult(check.name, False, f"status report user summary invalid: {check.detail}")]
+    return []
+
+
+def _unit_files_validation_failures(unit_files: object) -> list[CheckResult]:
+    if not isinstance(unit_files, dict):
+        return [CheckResult("Unit Files", False, "status report missing unit_files section")]
+    checks = [
+        _unit_file_contains_check(
+            unit_files,
+            "noaa-navionics.service",
+            "Chart Sync Unit File",
+            [
+                "Type=oneshot",
+                "ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+                "ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+                "TimeoutStartSec=2h",
+                "Restart=on-failure",
+                "RestartSec=30min",
+                "StartLimitIntervalSec=6h",
+                "StartLimitBurst=3",
+            ],
+        ),
+        _unit_file_contains_check(
+            unit_files,
+            "noaa-navionics.timer",
+            "Chart Timer Unit File",
+            [
+                "OnCalendar=weekly",
+                "Persistent=true",
+                "RandomizedDelaySec=30min",
+            ],
+        ),
+        _unit_file_contains_check(
+            unit_files,
+            "noaa-navionics-track.service",
+            "Track Logger Unit File",
+            [
+                "Type=simple",
+                "ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+                "StandardOutput=null",
+                "Restart=on-failure",
+                "RestartSec=10",
+                "TimeoutStopSec=30s",
+                "StartLimitIntervalSec=10min",
+                "StartLimitBurst=60",
+            ],
+        ),
+        _unit_file_contains_check(
+            unit_files,
+            "noaa-navionics-preflight.service",
+            "Boot Readiness Unit File",
+            [
+                "Wants=noaa-navionics-track.service",
+                "After=noaa-navionics-track.service",
+                "Type=oneshot",
+                "ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
+                "TimeoutStartSec=0",
+                "Restart=on-failure",
+                "RestartSec=30",
+                "StartLimitIntervalSec=30min",
+                "StartLimitBurst=60",
+            ],
+        ),
+        _unit_file_install_target_check(
+            unit_files,
+            "noaa-navionics.timer",
+            "Chart Timer Install",
+            "timers.target",
+        ),
+        _unit_file_install_target_check(
+            unit_files,
+            "noaa-navionics-track.service",
+            "Track Logger Install",
+            "default.target",
+        ),
+        _unit_file_install_target_check(
+            unit_files,
+            "noaa-navionics-preflight.service",
+            "Boot Readiness Install",
+            "default.target",
+        ),
+    ]
+    return [
+        CheckResult(check.name, False, f"status report unit file summary invalid: {check.detail}")
+        for check in checks
+        if not check.ok
+    ]
 
 
 def _launcher_settings_validation_failures(launcher_settings: object) -> list[CheckResult]:

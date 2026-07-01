@@ -203,6 +203,26 @@ def complete_status_gui_report(
             "source_revision_directory_uid": os.getuid(),
             "source_revision_directory_mode": "0700",
         },
+        "user": {"name": "pi", "uid": os.getuid(), "linger": "yes"},
+        "unit_files": {
+            "directory": "/home/pi/.config/systemd/user",
+            "noaa-navionics.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.service",
+                [],
+            ),
+            "noaa-navionics.timer": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics.timer",
+                ["timers.target"],
+            ),
+            "noaa-navionics-track.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-track.service",
+                ["default.target"],
+            ),
+            "noaa-navionics-preflight.service": trusted_unit_file(
+                "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
+                ["default.target"],
+            ),
+        },
         "config_path": "/home/pi/.config/noaa-navionics/config.ini",
         "config": {
             "chart_package": "state",
@@ -9988,6 +10008,113 @@ class StatusReportTests(unittest.TestCase):
 
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == "Config" and expected in failure.detail for failure in failures))
+
+    def test_status_report_ready_requires_valid_user_and_unit_file_summaries(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_report = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )
+        valid_user = valid_report["user"]
+        valid_unit_files = valid_report["unit_files"]
+        timer_without_install_target = {
+            **valid_unit_files["noaa-navionics.timer"],
+            "wanted_by": [],
+        }
+        service_without_restart = {
+            **valid_unit_files["noaa-navionics.service"],
+            "lines": [
+                line
+                for line in valid_unit_files["noaa-navionics.service"]["lines"]
+                if line != "Restart=on-failure"
+            ],
+        }
+        cases = [
+            ({}, "missing user section", "User Linger"),
+            ({"user": {**valid_user, "name": ""}}, "user name is empty", "User Linger"),
+            ({"user": {**valid_user, "uid": "pi"}}, "user uid is invalid", "User Linger"),
+            ({"user": {**valid_user, "linger": "no"}}, "linger=no", "User Linger"),
+            ({"unit_files": None}, "missing unit_files section", "Unit Files"),
+            (
+                {"unit_files": {key: value for key, value in valid_unit_files.items() if key != "noaa-navionics.service"}},
+                "noaa-navionics.service missing from unit file summary",
+                "Chart Sync Unit File",
+            ),
+            (
+                {
+                    "unit_files": {
+                        **valid_unit_files,
+                        "noaa-navionics.service": {
+                            **valid_unit_files["noaa-navionics.service"],
+                            "is_symlink": True,
+                        },
+                    }
+                },
+                "unit file path is a symlink",
+                "Chart Sync Unit File",
+            ),
+            (
+                {
+                    "unit_files": {
+                        **valid_unit_files,
+                        "noaa-navionics.service": {
+                            key: value
+                            for key, value in valid_unit_files["noaa-navionics.service"].items()
+                            if key != "path_symlink_component"
+                        },
+                    }
+                },
+                "missing path_symlink_component",
+                "Chart Sync Unit File",
+            ),
+            (
+                {
+                    "unit_files": {
+                        **valid_unit_files,
+                        "noaa-navionics.service": {
+                            **valid_unit_files["noaa-navionics.service"],
+                            "mode": "0666",
+                        },
+                    }
+                },
+                "mode=0666",
+                "Chart Sync Unit File",
+            ),
+            (
+                {
+                    "unit_files": {
+                        **valid_unit_files,
+                        "noaa-navionics.service": service_without_restart,
+                    }
+                },
+                "missing unit file lines",
+                "Chart Sync Unit File",
+            ),
+            (
+                {
+                    "unit_files": {
+                        **valid_unit_files,
+                        "noaa-navionics.timer": timer_without_install_target,
+                    }
+                },
+                "WantedBy=<missing> expected timers.target",
+                "Chart Timer Install",
+            ),
+        ]
+        for updates, expected, failure_name in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "user" not in updates and "unit_files" not in updates:
+                    report.pop("user", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == failure_name and expected in failure.detail for failure in failures)
+                )
 
     def test_status_report_ready_requires_valid_launcher_settings_summary(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
