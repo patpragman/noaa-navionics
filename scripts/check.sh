@@ -1821,6 +1821,9 @@ grep -q 'validate_post_trip_archive' scripts/post_trip_collect_pi.sh
 grep -q 'write_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'verify_post_trip_checksum_manifest "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'MANIFEST_NAME = "SHA256SUMS.txt"' scripts/post_trip_collect_pi.sh
+grep -q 'def cleanup_private_temp' scripts/post_trip_collect_pi.sh
+grep -q 'post-trip checksum temp changed before cleanup; leaving it in place' scripts/post_trip_collect_pi.sh
+grep -q 'cleanup_private_temp(temp_path, temp_stat)' scripts/post_trip_collect_pi.sh
 grep -q 'Wrote post-trip checksum manifest:' scripts/post_trip_collect_pi.sh
 grep -q 'Verified post-trip checksum manifest:' scripts/post_trip_collect_pi.sh
 grep -q 'post-trip checksum mismatch for' scripts/post_trip_collect_pi.sh

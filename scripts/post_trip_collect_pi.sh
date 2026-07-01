@@ -967,6 +967,29 @@ def hash_private_file(path: Path) -> str:
             os.close(fd)
 
 
+def cleanup_private_temp(path: Path, expected: os.stat_result | None) -> None:
+    if expected is None:
+        print(f"post-trip checksum temp was not inspected before cleanup; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        current = path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"could not inspect post-trip checksum temp before cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    if not os.path.samestat(expected, current):
+        print(f"post-trip checksum temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(current.st_mode):
+        print(f"post-trip checksum temp is not regular before cleanup; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        path.unlink()
+    except OSError as exc:
+        print(f"could not remove post-trip checksum temp after validation: {path}: {exc}", file=sys.stderr)
+
+
 directory = Path(sys.argv[1])
 inspect_private_directory(directory)
 artifact_paths = []
@@ -986,10 +1009,12 @@ lines = [f"{hash_private_file(path)}  {path.name}\n" for path in artifact_paths]
 payload = "".join(lines).encode("ascii")
 temp_fd = -1
 temp_path = None
+temp_stat = None
 try:
     temp_fd, temp_name = tempfile.mkstemp(prefix=f".{MANIFEST_NAME}.", suffix=".tmp", dir=directory)
     temp_path = Path(temp_name)
     os.fchmod(temp_fd, 0o600)
+    temp_stat = os.fstat(temp_fd)
     os.write(temp_fd, payload)
     os.fsync(temp_fd)
     os.close(temp_fd)
@@ -1007,10 +1032,7 @@ finally:
     if temp_fd >= 0:
         os.close(temp_fd)
     if temp_path is not None:
-        try:
-            temp_path.unlink()
-        except OSError:
-            pass
+        cleanup_private_temp(temp_path, temp_stat)
 
 try:
     final = manifest_path.lstat()
