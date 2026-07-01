@@ -2034,6 +2034,9 @@ grep -q 'Could not execute helper script through validated descriptor' scripts/p
 ! grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"' scripts/pre_trip_prepare_pi.sh
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
+grep -q 'validate_status_controls' scripts/check_pi_status.sh
+grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' scripts/check_pi_status.sh
+grep -q 'NOAA_NAVIONICS_STATUS_JSON must be 0 or 1' scripts/check_pi_status.sh
 grep -q 'launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"' scripts/check_pi_status.sh
 grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"' scripts/check_pi_status.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' scripts/check_pi_status.sh
@@ -9196,6 +9199,10 @@ grep -q 'NOAA_NAVIONICS_STATUS_JSON=1' "$status_fake_ssh_args"
 grep -q '/bin/bash -s' "$status_fake_ssh_args"
 grep -q 'pi@example.invalid' "$status_fake_ssh_args"
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
+grep -q 'validate_status_controls()' "$status_fake_ssh_stdin"
+grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
+grep -q 'NOAA_NAVIONICS_STATUS_JSON must be 0 or 1' "$status_fake_ssh_stdin"
+grep -q 'validate_status_controls' "$status_fake_ssh_stdin"
 grep -q 'reject_symlinked_path_components' "$status_fake_ssh_stdin"
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command" "$command_path"' "$status_fake_ssh_stdin"
 grep -q 'python3_cmd="$(require_remote_command python3)"' "$status_fake_ssh_stdin"

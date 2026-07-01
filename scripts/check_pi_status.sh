@@ -240,6 +240,27 @@ fail() {
   exit 1
 }
 
+require_remote_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    fail "$name must be a positive integer"
+  fi
+}
+
+validate_status_controls() {
+  if [[ -n "${NOAA_NAVIONICS_STATUS_GPS_SECONDS:-}" ]]; then
+    require_remote_positive_integer "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"
+  fi
+  case "${NOAA_NAVIONICS_STATUS_JSON:-}" in
+    0|1)
+      ;;
+    *)
+      fail "NOAA_NAVIONICS_STATUS_JSON must be 0 or 1"
+      ;;
+  esac
+}
+
 remote_path_in_trusted_system_dir() {
   case "$1" in
     /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
@@ -561,6 +582,7 @@ PY
 }
 
 python3_cmd="$(require_remote_command python3)"
+validate_status_controls
 check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"
 if [[ -z "$NOAA_NAVIONICS_STATUS_GPS_SECONDS" ]]; then
   check_user_owned_private_file "NOAA Navionics launcher environment" "$launcher_env_path"
