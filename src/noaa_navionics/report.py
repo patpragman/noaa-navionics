@@ -117,6 +117,60 @@ LAUNCHER_ENV_KEYS = {
     "NOAA_NAVIONICS_OPENCPN_RESTARTS",
     "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY",
 }
+CORE_READINESS_CHECKS = frozenset(
+    {
+        "Python",
+        "Source Revision",
+        "Clock",
+        "Time Sync",
+        "Tkinter",
+        "OpenCPN",
+        "Display Power",
+        "Chart Package",
+        "Charts",
+        "Chart Update Debris",
+        "Manifest",
+        "OpenCPN Charts",
+        "Disk",
+        "Pi Power",
+        "Pi Thermal",
+    }
+)
+GPSD_READINESS_CHECKS = frozenset(
+    {
+        "OpenCPN GPSD",
+        "GPSD Config",
+        "Chrony Config",
+        "GPSD",
+        "GPS Time Source",
+    }
+)
+SERIAL_READINESS_CHECKS = frozenset({"GPS Device", "GPS"})
+CORE_SERVICE_CHECKS = frozenset(
+    {
+        "Chart Sync",
+        "Chart Sync Settings",
+        "Chart Sync Unit File",
+        "Chart Timer",
+        "Chart Timer Install",
+        "Chart Timer Settings",
+        "Chart Timer Unit File",
+        "Track Log",
+        "Track Logger",
+        "Track Logger Install",
+        "Track Logger Settings",
+        "Track Logger Unit File",
+        "Boot Readiness",
+        "Boot Readiness Install",
+        "Boot Readiness Settings",
+        "Boot Readiness Unit File",
+        "Boot Readiness Run",
+        "Desktop Startup",
+        "Launcher Settings",
+        "User Linger",
+    }
+)
+GPSD_SERVICE_CHECKS = frozenset({"GPSD Socket", "GPSD Service", "Chrony Service"})
 
 
 def build_status_report(
@@ -206,6 +260,69 @@ def _check_result_dict(check: CheckResult) -> dict[str, object]:
     if check.data is not None:
         row["data"] = check.data
     return row
+
+
+def status_report_is_ready(report: dict[str, object]) -> bool:
+    return bool(report.get("ok")) and not status_report_validation_failures(report) and _report_check_sections_all_ok(report)
+
+
+def status_report_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    failures = []
+    for section_name in ("checks", "service_checks"):
+        section = report.get(section_name)
+        if not isinstance(section, list):
+            failures.append(CheckResult("Status Report", False, f"status report missing {section_name} section"))
+            continue
+        if any(not isinstance(item, dict) for item in section):
+            failures.append(CheckResult("Status Report", False, f"status report has malformed {section_name} row"))
+    missing_checks, missing_service_checks = missing_required_readiness_checks(report)
+    failures.extend(
+        CheckResult(name, False, "status report is missing this readiness check") for name in missing_checks
+    )
+    failures.extend(
+        CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
+    )
+    return failures
+
+
+def missing_required_readiness_checks(report: dict[str, object]) -> tuple[list[str], list[str]]:
+    checks = report.get("checks")
+    service_checks = report.get("service_checks")
+    if not isinstance(checks, list) or not isinstance(service_checks, list):
+        return [], []
+    check_names = {str(check.get("name", "")) for check in checks if isinstance(check, dict)}
+    service_check_names = {str(check.get("name", "")) for check in service_checks if isinstance(check, dict)}
+    required_checks = set(CORE_READINESS_CHECKS)
+    required_service_checks = set(CORE_SERVICE_CHECKS)
+    gps_mode = ""
+    config = report.get("config")
+    if isinstance(config, dict):
+        gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode == "serial":
+        required_checks.update(SERIAL_READINESS_CHECKS)
+    else:
+        required_checks.update(GPSD_READINESS_CHECKS)
+        required_service_checks.update(GPSD_SERVICE_CHECKS)
+    track_log = report.get("track_log")
+    if isinstance(track_log, dict):
+        track_output = str(track_log.get("track_output", "")).strip()
+        chart_output = ""
+        if isinstance(config, dict):
+            chart_output = str(config.get("chart_output", "")).strip()
+        if track_output and chart_output and track_output != chart_output:
+            required_checks.add("Track Disk")
+    return sorted(required_checks - check_names), sorted(required_service_checks - service_check_names)
+
+
+def _report_check_sections_all_ok(report: dict[str, object]) -> bool:
+    for section_name in ("checks", "service_checks"):
+        section = report.get(section_name)
+        if not isinstance(section, list):
+            return False
+        for item in section:
+            if not isinstance(item, dict) or item.get("ok") is not True:
+                return False
+    return True
 
 
 def _gps_fix_summary(checks: list[CheckResult], *, now: Optional[datetime] = None) -> dict[str, object]:
@@ -399,7 +516,7 @@ def format_status_text(report: dict[str, object]) -> str:
         f"{report.get('app', {}).get('source_revision_symlink_component', '')}",
         f"Config: {report.get('config_path', '')}",
         f"Anchor radius: {report.get('config', {}).get('anchor_radius_meters', '')} m",
-        f"Ready: {'yes' if report.get('ok') else 'no'}",
+        f"Ready: {'yes' if status_report_is_ready(report) else 'no'}",
     ]
     gps_fix = report.get("gps_fix", {})
     if isinstance(gps_fix, dict) and gps_fix.get("source"):
@@ -410,6 +527,8 @@ def format_status_text(report: dict[str, object]) -> str:
             continue
         mark = "OK" if check.get("ok") else "FAIL"
         lines.append(f"{mark:4} {check.get('name', ''):10} {check.get('detail', '')}")
+    for check in status_report_validation_failures(report):
+        lines.append(f"FAIL {check.name:10} {check.detail}")
     service_checks = report.get("service_checks", [])
     if isinstance(service_checks, list) and service_checks:
         lines.extend(["", "Service Checks:"])

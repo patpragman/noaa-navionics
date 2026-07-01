@@ -56,6 +56,7 @@ from .report import (
     _read_launcher_settings_lines,
     build_status_report,
     format_status_text,
+    status_report_is_ready,
     write_status_report,
 )
 
@@ -604,7 +605,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(json.dumps(report, indent=2, sort_keys=True))
             else:
                 print(format_status_text(report))
-            return 0 if report["ok"] else 1
+            return 0 if status_report_is_ready(report) else 1
 
         if args.command == "gps-monitor":
             app_config = read_config(Path(args.config))

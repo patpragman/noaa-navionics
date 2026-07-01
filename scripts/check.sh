@@ -3497,9 +3497,17 @@ grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'CORE_READINESS_CHECKS' src/noaa_navionics/status_gui.py
-grep -q 'missing_required_readiness_checks' src/noaa_navionics/status_gui.py
-grep -q 'status report is missing this readiness check' src/noaa_navionics/status_gui.py
+grep -q 'def status_report_is_ready' src/noaa_navionics/report.py
+grep -q 'def status_report_validation_failures' src/noaa_navionics/report.py
+grep -q 'def missing_required_readiness_checks' src/noaa_navionics/report.py
+grep -q 'status report is missing this readiness check' src/noaa_navionics/report.py
+grep -q 'status report has malformed' src/noaa_navionics/report.py
+grep -q 'status_report_is_ready(report)' src/noaa_navionics/status_gui.py
+grep -q 'status_report_is_ready(report)' src/noaa_navionics/cli.py
 grep -q 'test_status_gui_rejects_incomplete_ready_report' tests/test_downloader.py
+grep -q 'test_status_text_rejects_incomplete_ready_report' tests/test_downloader.py
+grep -q 'test_status_text_rejects_malformed_ready_report' tests/test_downloader.py
+grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'complete_status_gui_report' tests/test_downloader.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
@@ -3537,7 +3545,7 @@ grep -q 'self.anchor_watch_alarm_summary: Optional\[str\] = None' src/noaa_navio
 grep -q 'self.anchor_watch_stop_confirm_after_id: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_status_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'if not self.anchor_watch_alarm_active or self.anchor_watch_alarm_summary is None' src/noaa_navionics/status_gui.py
-grep -q 'if not alarm_visible and bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None' src/noaa_navionics/status_gui.py
+grep -q 'and status_report_is_ready(report)' src/noaa_navionics/status_gui.py
 grep -q 'if self.anchor_watch_fix is not anchor_fix' src/noaa_navionics/status_gui.py
 grep -q 'Ignored stale anchor watch result; watch was stopped or reset.' src/noaa_navionics/status_gui.py
 grep -q 'anchor_watch_error' src/noaa_navionics/status_gui.py

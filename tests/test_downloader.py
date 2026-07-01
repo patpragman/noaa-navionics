@@ -104,6 +104,8 @@ from noaa_navionics.opencpn import (
 from noaa_navionics.report import (
     build_status_report,
     format_status_text,
+    status_report_is_ready,
+    status_report_validation_failures,
     write_status_report,
     _install_wanted_by_targets,
     _key_value_file_summary,
@@ -3668,6 +3670,72 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeTree:
+            def get_children(self):
+                return []
+
+            def delete(self, item):
+                raise AssertionError("no items should be deleted")
+
+            def insert(self, *args, **kwargs):
+                return None
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.anchor_watch_status_summary = "Anchor watch: Anchor OK: 3.0 m from anchor; radius 50 m"
+                self.anchor_watch_status_detail = "Anchor 61.000000, -149.000000 | Current 61.000010, -149.000010"
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.tree = FakeTree()
+                self.output_path = None
+                self.busy_calls = []
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+        app = FakeApp()
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPSD", "ok": True, "detail": "fix"}],
+            "service_checks": [{"name": "Track Log", "ok": True, "detail": "recent point"}],
+        }
+
+        status_gui_module.StatusApp._show_report(app, report)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertNotEqual(app.summary.value, app.anchor_watch_status_summary)
+        self.assertIn("reported readiness check(s) need attention", app.summary.value)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.refresh_scheduled, 1)
+
     def test_status_gui_mark_does_not_hide_active_anchor_alarm(self):
         class FakeVar:
             def __init__(self):
@@ -5319,7 +5387,7 @@ class CLIValidationTests(unittest.TestCase):
 
             def fake_build_status_report(**kwargs):
                 calls.append(kwargs)
-                return {"ok": True}
+                return complete_status_gui_report()
 
             try:
                 cli_module.build_status_report = fake_build_status_report
@@ -8908,6 +8976,36 @@ class StatusReportTests(unittest.TestCase):
 
         self.assertEqual(summary["source"], "GPSD")
         self.assertEqual(summary["age_seconds"], -45.0)
+
+    def test_status_text_rejects_incomplete_ready_report(self):
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
+            "service_checks": [{"name": "Track Log", "ok": True, "detail": "recent point"}],
+        }
+
+        text = format_status_text(report)
+        failures = status_report_validation_failures(report)
+
+        self.assertFalse(status_report_is_ready(report))
+        self.assertTrue(failures)
+        self.assertIn("Ready: no", text)
+        self.assertIn("status report is missing this readiness check", text)
+
+    def test_status_text_rejects_malformed_ready_report(self):
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPSD", "ok": True, "detail": "fix"}, "bad-row"],
+            "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(report_module.CORE_SERVICE_CHECKS | report_module.GPSD_SERVICE_CHECKS)],
+        }
+
+        text = format_status_text(report)
+
+        self.assertFalse(status_report_is_ready(report))
+        self.assertIn("Ready: no", text)
+        self.assertIn("status report has malformed checks row", text)
 
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
