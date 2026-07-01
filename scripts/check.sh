@@ -1735,13 +1735,20 @@ grep -q 'BOOT_ID_RE.fullmatch' src/noaa_navionics/report.py
 grep -q 'def _read_boot_id_text' src/noaa_navionics/report.py
 grep -q 'boot ID path changed before it could be read' src/noaa_navionics/report.py
 grep -q 'boot ID path is a symlink' src/noaa_navionics/report.py
+grep -q 'PROC_UPTIME_PATH = Path("/proc/uptime")' src/noaa_navionics/report.py
+grep -q 'def _read_proc_uptime_text' src/noaa_navionics/report.py
+grep -q 'proc uptime path changed before it could be read' src/noaa_navionics/report.py
+grep -q 'proc uptime path is a symlink' src/noaa_navionics/report.py
 grep -q 'test_boot_id_rejects_malformed_values' tests/test_downloader.py
 grep -q 'test_boot_id_rejects_symlinked_path' tests/test_downloader.py
 grep -q 'test_boot_id_rejects_replaced_path_before_reading' tests/test_downloader.py
+grep -q 'test_current_boot_epoch_reads_proc_uptime_with_no_follow_descriptor' tests/test_downloader.py
+grep -q 'test_proc_uptime_reader_rejects_symlinked_path' tests/test_downloader.py
+grep -q 'test_proc_uptime_reader_rejects_replaced_path_before_reading' tests/test_downloader.py
 grep -q 'boot_id` UUID shape' README.md
 grep -q 'boot_id` UUID shape' docs/sailboat-pi.md
-grep -q 'Status reports read the Linux `boot_id` through a no-follow descriptor and reject changed, symlinked, non-regular, or malformed boot ID evidence before stamping the JSON' README.md
-grep -q 'Status reports read the Linux `boot_id` through a no-follow descriptor and reject changed, symlinked, non-regular, or malformed boot ID evidence before stamping the JSON' docs/sailboat-pi.md
+grep -q 'Status reports read the Linux `boot_id` and `/proc/uptime` through no-follow descriptors' README.md
+grep -q 'Status reports read the Linux `boot_id` and `/proc/uptime` through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
 grep -q 'status report source revision directory is a symlink' scripts/verify_pi.sh

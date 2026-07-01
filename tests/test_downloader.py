@@ -8249,6 +8249,57 @@ class StatusReportTests(unittest.TestCase):
                 with self.assertRaises((ValueError, IndexError)):
                     _parse_proc_uptime_seconds(value)
 
+    def test_current_boot_epoch_reads_proc_uptime_with_no_follow_descriptor(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            uptime = Path(tmpdir) / "uptime"
+            uptime.write_text("12.5 100.0\n", encoding="ascii")
+            original_uptime_path = report_module.PROC_UPTIME_PATH
+            original_time = report_module.time.time
+            report_module.PROC_UPTIME_PATH = uptime
+            report_module.time.time = lambda: 100.0
+            try:
+                self.assertEqual(report_module._current_boot_epoch(), 87.5)
+            finally:
+                report_module.PROC_UPTIME_PATH = original_uptime_path
+                report_module.time.time = original_time
+
+    def test_proc_uptime_reader_rejects_symlinked_path(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            real_uptime = root / "real_uptime"
+            real_uptime.write_text("12.5 100.0\n", encoding="ascii")
+            uptime = root / "uptime"
+            try:
+                uptime.symlink_to(real_uptime)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            with self.assertRaisesRegex(RuntimeError, "proc uptime path is a symlink"):
+                report_module._read_proc_uptime_text(uptime)
+
+    def test_proc_uptime_reader_rejects_replaced_path_before_reading(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            uptime = root / "uptime"
+            uptime.write_text("12.5 100.0\n", encoding="ascii")
+            replacement = root / "replacement_uptime"
+            replacement.write_text("99.0 100.0\n", encoding="ascii")
+            original_open = report_module.os.open
+
+            def replacing_open(path, flags, mode=0o777, *, dir_fd=None):
+                if Path(path) == uptime:
+                    os.replace(replacement, uptime)
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                report_module.os.open = replacing_open
+                with self.assertRaisesRegex(RuntimeError, "proc uptime path changed before it could be read"):
+                    report_module._read_proc_uptime_text(uptime)
+            finally:
+                report_module.os.open = original_open
+
     def test_status_report_queries_user_service_hardening_properties(self):
         for unit in (
             "noaa-navionics.service",

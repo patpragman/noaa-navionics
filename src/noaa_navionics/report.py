@@ -28,6 +28,7 @@ DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
 DEFAULT_AUTOSTART_PATH = Path("~/.config/autostart/noaa-navionics-chartplotter.desktop")
 DEFAULT_LIGHTDM_AUTOLOGIN_PATH = Path("/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
+PROC_UPTIME_PATH = Path("/proc/uptime")
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 USER_UNIT_PROPERTIES = {
     "noaa-navionics.service": [
@@ -808,10 +809,42 @@ def _read_boot_id_text(path: Path) -> str:
 
 def _current_boot_epoch() -> Optional[float]:
     try:
-        uptime_seconds = _parse_proc_uptime_seconds(Path("/proc/uptime").read_text(encoding="ascii"))
-    except (OSError, ValueError, IndexError):
+        uptime_seconds = _parse_proc_uptime_seconds(_read_proc_uptime_text(PROC_UPTIME_PATH))
+    except (OSError, RuntimeError, ValueError, IndexError):
         return None
     return time.time() - uptime_seconds
+
+
+def _read_proc_uptime_text(path: Path) -> str:
+    target = Path(path)
+    try:
+        before = os.stat(target, follow_symlinks=False)
+    except OSError:
+        if target.is_symlink():
+            raise RuntimeError(f"proc uptime path is a symlink: {target}")
+        raise
+    if stat.S_ISLNK(before.st_mode):
+        raise RuntimeError(f"proc uptime path is a symlink: {target}")
+    if not stat.S_ISREG(before.st_mode):
+        raise RuntimeError(f"proc uptime path is not a regular file: {target}")
+    try:
+        fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        if target.is_symlink():
+            raise RuntimeError(f"proc uptime path is a symlink: {target}")
+        raise
+    try:
+        opened = os.fstat(fd)
+        if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+            raise RuntimeError(f"proc uptime path changed before it could be read: {target}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"proc uptime path is not a regular file when opened: {target}")
+        with os.fdopen(fd, encoding="ascii") as handle:
+            fd = -1
+            return handle.read().strip()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _parse_proc_uptime_seconds(value: str) -> float:
