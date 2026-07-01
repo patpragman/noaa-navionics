@@ -269,6 +269,7 @@ retries="${NOAA_NAVIONICS_REFRESH_RETRIES:-5}"
 retry_delay="${NOAA_NAVIONICS_REFRESH_RETRY_DELAY:-30}"
 status="${NOAA_NAVIONICS_REFRESH_STATUS:-0}"
 gps_seconds="${NOAA_NAVIONICS_REFRESH_GPS_SECONDS:-}"
+python3_cmd=""
 
 require_nonnegative_integer() {
   local name="$1"
@@ -291,6 +292,75 @@ require_positive_integer() {
 fail() {
   echo "$*" >&2
   exit 1
+}
+
+remote_path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_remote_owner_and_mode() {
+  local item_kind="$1"
+  local item_path="$2"
+  local mode
+  local mode_tail
+  local owner_uid
+  local stat_output
+
+  if ! stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)"; then
+    fail "Could not inspect remote command ${item_kind}: $item_path"
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+
+  if [[ "$owner_uid" != "0" ]]; then
+    fail "Remote ${item_kind} command is owned by uid ${owner_uid}, expected 0: ${item_path}"
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      fail "Remote ${item_kind} command has permissions ${mode}, expected no group/other write: ${item_path}"
+      ;;
+  esac
+}
+
+check_remote_directory_chain() {
+  local directory
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_remote_owner_and_mode directory "$directory"
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+require_remote_command() {
+  local command_name="$1"
+  local command_path
+  local resolved_path
+
+  if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
+    fail "Missing required remote command: $command_name"
+  fi
+  if ! remote_path_in_trusted_system_dir "$command_path"; then
+    fail "Remote ${command_name} command is not in a trusted system directory: $command_path"
+  fi
+  if ! resolved_path="$(readlink -f -- "$command_path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    fail "Could not resolve remote ${command_name} command: $command_path"
+  fi
+  if ! remote_path_in_trusted_system_dir "$resolved_path"; then
+    fail "Resolved remote ${command_name} command is not in a trusted system directory: $resolved_path"
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    fail "Remote ${command_name} command is not executable after resolution: $resolved_path"
+  fi
+  check_remote_directory_chain "$resolved_path"
+  check_remote_owner_and_mode "$command_name" "$resolved_path"
+  printf '%s\n' "$resolved_path"
 }
 
 reject_symlinked_path_components() {
@@ -435,7 +505,58 @@ check_installed_noaa_command() {
       fail "Installed noaa-navionics command target has permissions $mode, expected no group/other write: $resolved"
       ;;
   esac
+  "$python3_cmd" - "$resolved" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect installed noaa-navionics command target through no-follow stat: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+if not stat.S_ISREG(before.st_mode):
+    print(f"Installed noaa-navionics command target is not a regular non-symlink file: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if before.st_uid != os.getuid():
+    print(
+        f"Installed noaa-navionics command target is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    print(f"Installed noaa-navionics command target has permissions {mode:03o}, expected no group/other write: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not mode & 0o111:
+    print(f"Installed noaa-navionics command target is not executable: {path}", file=sys.stderr)
+    raise SystemExit(1)
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    print(f"Could not open installed noaa-navionics command through no-follow descriptor: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Installed noaa-navionics command changed before it could be validated: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Opened installed noaa-navionics command is not regular: {path}", file=sys.stderr)
+        raise SystemExit(1)
+finally:
+    os.close(fd)
+PY
   printf '%s\n' "$resolved"
+}
+
+run_noaa_navionics() {
+  local app_exec
+  app_exec="$(check_installed_noaa_command)"
+  "$app_exec" "$@"
 }
 
 require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
@@ -443,7 +564,7 @@ require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
 if [[ -n "$gps_seconds" ]]; then
   require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
 fi
-app_exec="$(check_installed_noaa_command)"
+python3_cmd="$(require_remote_command python3)"
 check_user_owned_private_file "onboard NOAA Navionics config" "$config"
 
 sync_args=(sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay")
@@ -451,8 +572,8 @@ if [[ "$force" == "1" ]]; then
   sync_args+=(--force)
 fi
 
-"$app_exec" wait-network --host www.charts.noaa.gov --port 443 --seconds 300
-"$app_exec" "${sync_args[@]}"
+run_noaa_navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300
+run_noaa_navionics "${sync_args[@]}"
 if [[ "$status" == "1" ]]; then
   printf '\nPost-refresh status report:\n'
   status_args=(status-report --config "$config")
@@ -461,7 +582,7 @@ if [[ "$status" == "1" ]]; then
   else
     status_args+=(--gps-seconds-from-launcher-env "$launcher_env")
   fi
-  "$app_exec" "${status_args[@]}"
+  run_noaa_navionics "${status_args[@]}"
 fi
 printf 'Pi NOAA chart refresh completed using %s.\n' "$config"
 REMOTE

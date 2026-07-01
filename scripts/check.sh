@@ -37,6 +37,7 @@ from pathlib import Path
 import re
 
 scripts = [
+    Path("scripts/check_pi_status.sh"),
     Path("scripts/collect_pi_support_bundle.sh"),
     Path("scripts/deploy_to_pi.sh"),
     Path("scripts/enroll_pi_host_key.sh"),
@@ -44,6 +45,7 @@ scripts = [
     Path("scripts/export_pi_settings.sh"),
     Path("scripts/export_pi_tracks.sh"),
     Path("scripts/install_raspberry_pi.sh"),
+    Path("scripts/refresh_pi_charts.sh"),
     Path("scripts/verify_pi.sh"),
     Path("scripts/start_chartplotter.sh"),
     Path("scripts/configure_gpsd.sh"),
@@ -680,8 +682,8 @@ grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
-grep -q "status helper validates the Pi's installed private venv command path and onboard config file" README.md
-grep -q "status helper validates the Pi's installed private venv command path and onboard config file" docs/sailboat-pi.md
+grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, and validates the onboard config file" README.md
+grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, and validates the onboard config file" docs/sailboat-pi.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' README.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
@@ -691,8 +693,8 @@ grep -q 'It does not deploy, reboot, download charts, or write the Pi status art
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
-grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" README.md
-grep -q "refresh helper validates the SSH target and the Pi's installed private venv command path" docs/sailboat-pi.md
+grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution" README.md
+grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' docs/sailboat-pi.md
@@ -1542,10 +1544,16 @@ grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$ret
 grep -q 'NOAA_NAVIONICS_REFRESH_STATUS' scripts/refresh_pi_charts.sh
 grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' scripts/refresh_pi_charts.sh
+grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/refresh_pi_charts.sh
+grep -q 'check_remote_directory_chain "$resolved_path"' scripts/refresh_pi_charts.sh
 grep -q 'reject_symlinked_path_components' scripts/refresh_pi_charts.sh
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/refresh_pi_charts.sh
 grep -q 'check_installed_noaa_command_tree' scripts/refresh_pi_charts.sh
-grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/refresh_pi_charts.sh
+grep -q '"$python3_cmd" - "$resolved" <<'\''PY'\''' scripts/refresh_pi_charts.sh
+grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/refresh_pi_charts.sh
+grep -q 'os.path.samestat(before, opened)' scripts/refresh_pi_charts.sh
+grep -q 'run_noaa_navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
+grep -q 'run_noaa_navionics "${sync_args\[@\]}"' scripts/refresh_pi_charts.sh
 grep -q 'status_args=(status-report --config "$config")' scripts/refresh_pi_charts.sh
 grep -q 'Post-refresh status report' scripts/refresh_pi_charts.sh
 grep -q -- '--expected-boot-id' scripts/verify_pi.sh
@@ -1655,15 +1663,20 @@ grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS' scripts/check_pi_status.sh
 grep -q 'NOAA_NAVIONICS_STATUS_JSON' scripts/check_pi_status.sh
 grep -q 'launcher_env_path="${HOME}/.config/noaa-navionics/launcher.env"' scripts/check_pi_status.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' scripts/check_pi_status.sh
+grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/check_pi_status.sh
+grep -q 'check_remote_directory_chain "$resolved_path"' scripts/check_pi_status.sh
 grep -q 'reject_symlinked_path_components' scripts/check_pi_status.sh
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/check_pi_status.sh
+grep -q '"$python3_cmd" - "$resolved_path" <<'\''PY'\''' scripts/check_pi_status.sh
+grep -q 'os.open(path, os.O_RDONLY | nofollow)' scripts/check_pi_status.sh
+grep -q 'os.path.samestat(before, opened)' scripts/check_pi_status.sh
 grep -q 'status-report' scripts/check_pi_status.sh
 grep -q 'config_path="${HOME}/.config/noaa-navionics/config.ini"' scripts/check_pi_status.sh
 grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' scripts/check_pi_status.sh
 grep -q -- '--config "$config_path"' scripts/check_pi_status.sh
 grep -q 'expected private venv symlink' scripts/check_pi_status.sh
 grep -q 'check_installed_command_tree' scripts/check_pi_status.sh
-grep -q 'app_exec="$(check_installed_noaa_command)"' scripts/check_pi_status.sh
+grep -q 'run_noaa_navionics "${status_args\[@\]}"' scripts/check_pi_status.sh
 grep -q 'Do not check NOAA Navionics status as root@' scripts/check_pi_status.sh
 ! grep -q -- '--output' scripts/check_pi_status.sh
 [[ "$(grep -c 'parser.read_string(config_text, source=str(config_path))' scripts/verify_pi.sh)" -ge 3 ]]
@@ -6984,15 +6997,19 @@ grep -q 'pi@example.invalid' "$status_fake_ssh_args"
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
 grep -q 'reject_symlinked_path_components' "$status_fake_ssh_stdin"
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command" "$command_path"' "$status_fake_ssh_stdin"
+grep -q 'python3_cmd="$(require_remote_command python3)"' "$status_fake_ssh_stdin"
+grep -q 'check_remote_directory_chain "$resolved_path"' "$status_fake_ssh_stdin"
 grep -q 'check_installed_command_tree' "$status_fake_ssh_stdin"
 grep -q 'installed noaa-navionics command target has permissions' "$status_fake_ssh_stdin"
-grep -q 'app_exec="$(check_installed_noaa_command)"' "$status_fake_ssh_stdin"
+grep -q 'could not open installed noaa-navionics command through no-follow descriptor' "$status_fake_ssh_stdin"
+grep -q 'installed noaa-navionics command changed before it could be validated' "$status_fake_ssh_stdin"
+grep -q 'run_noaa_navionics()' "$status_fake_ssh_stdin"
 grep -q 'check_user_owned_private_file "onboard NOAA Navionics config" "$config_path"' "$status_fake_ssh_stdin"
 grep -q 'status-report' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' "$status_fake_ssh_stdin"
 grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"
-grep -q '"$app_exec" "${status_args\[@\]}"' "$status_fake_ssh_stdin"
+grep -q 'run_noaa_navionics "${status_args\[@\]}"' "$status_fake_ssh_stdin"
 ! grep -q -- '--output' "$status_fake_ssh_stdin"
 
 set +e
@@ -7073,10 +7090,15 @@ grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' "$refresh_fake_ssh_
 grep -q 'expected_venv_bin="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$refresh_fake_ssh_stdin"
 grep -q 'reject_symlinked_path_components' "$refresh_fake_ssh_stdin"
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command" "$app_bin"' "$refresh_fake_ssh_stdin"
+grep -q 'python3_cmd="$(require_remote_command python3)"' "$refresh_fake_ssh_stdin"
+grep -q 'check_remote_directory_chain "$resolved_path"' "$refresh_fake_ssh_stdin"
 grep -q 'check_installed_noaa_command_tree' "$refresh_fake_ssh_stdin"
 grep -q 'Installed noaa-navionics command target has permissions' "$refresh_fake_ssh_stdin"
-grep -q 'app_exec="$(check_installed_noaa_command)"' "$refresh_fake_ssh_stdin"
-grep -q '"$app_exec" wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
+grep -q 'Could not open installed noaa-navionics command through no-follow descriptor' "$refresh_fake_ssh_stdin"
+grep -q 'Installed noaa-navionics command changed before it could be validated' "$refresh_fake_ssh_stdin"
+grep -q 'run_noaa_navionics()' "$refresh_fake_ssh_stdin"
+grep -q 'run_noaa_navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$refresh_fake_ssh_stdin"
+grep -q 'run_noaa_navionics "${sync_args\[@\]}"' "$refresh_fake_ssh_stdin"
 
 set +e
 scripts/collect_pi_support_bundle.sh root@example.invalid >"$verify_output" 2>&1
