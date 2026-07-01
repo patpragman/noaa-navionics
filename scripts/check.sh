@@ -3504,10 +3504,12 @@ grep -q 'status report is missing this readiness check' src/noaa_navionics/repor
 grep -q 'status report has malformed' src/noaa_navionics/report.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/status_gui.py
 grep -q 'status_report_is_ready(report)' src/noaa_navionics/cli.py
+grep -q 'status_report_is_ready(report)' src/noaa_navionics/gui.py
 grep -q 'test_status_gui_rejects_incomplete_ready_report' tests/test_downloader.py
 grep -q 'test_status_text_rejects_incomplete_ready_report' tests/test_downloader.py
 grep -q 'test_status_text_rejects_malformed_ready_report' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
+grep -q 'test_gui_status_report_uses_shared_readiness_validation' tests/test_downloader.py
 grep -q 'complete_status_gui_report' tests/test_downloader.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py

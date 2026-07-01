@@ -3736,6 +3736,51 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_gui_status_report_uses_shared_readiness_validation(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.queue = gui_module.Queue()
+                self.status = FakeVar()
+                self.logs = []
+                self.busy_calls = []
+                self.after_calls = []
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _log(self, message):
+                self.logs.append(message)
+
+            def after(self, milliseconds, callback):
+                self.after_calls.append((milliseconds, callback))
+
+            def _poll_queue(self):
+                raise AssertionError("scheduled callback should not run during this test")
+
+        app = FakeApp()
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPSD", "ok": True, "detail": "fix"}],
+            "service_checks": [{"name": "Track Log", "ok": True, "detail": "recent point"}],
+        }
+        app.queue.put(("status-report", (report, Path("/tmp/status.json"))))
+
+        gui_module.DownloaderApp._poll_queue(app)
+
+        self.assertEqual(app.status.value, "Status report needs attention")
+        self.assertEqual(app.busy_calls, [False])
+        self.assertTrue(any("Ready: no" in message for message in app.logs))
+        self.assertTrue(any("status report is missing this readiness check" in message for message in app.logs))
+        self.assertEqual(len(app.after_calls), 1)
+
     def test_status_gui_mark_does_not_hide_active_anchor_alarm(self):
         class FakeVar:
             def __init__(self):

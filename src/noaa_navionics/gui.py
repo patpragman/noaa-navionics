@@ -29,7 +29,7 @@ from .gps import (
 )
 from .health import check_chart_package, check_disk_space, run_preflight
 from .opencpn import configure_chart_directory, configure_gpsd_connection, opencpn_running
-from .report import build_status_report, format_status_text, write_status_report
+from .report import build_status_report, format_status_text, status_report_is_ready, write_status_report
 
 
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
@@ -651,7 +651,9 @@ class DownloaderApp(tk.Tk):
                     report, output = payload
                     self._log(format_status_text(report))
                     self._log(f"Status report: {output}")
-                    self.status.set("Status report passed" if report.get("ok") else "Status report needs attention")
+                    self.status.set(
+                        "Status report passed" if status_report_is_ready(report) else "Status report needs attention"
+                    )
                 elif kind == "log-lines":
                     self._set_busy(False)
                     status, lines = payload
