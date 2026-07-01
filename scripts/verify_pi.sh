@@ -908,8 +908,11 @@ if expected_launcher_env_path:
         )
     if launcher_settings.get("exists") is not True:
         raise SystemExit(f"status report launcher settings do not exist: {expected_launcher_env_path}")
-    if launcher_settings.get("is_symlink") is True:
-        raise SystemExit(f"status report launcher settings path is a symlink: {expected_launcher_env_path}")
+    if launcher_settings.get("is_symlink") is not False:
+        raise SystemExit(
+            "status report launcher settings path is a symlink or missing symlink status: "
+            f"{expected_launcher_env_path}"
+        )
     launcher_env_file = Path(expected_launcher_env_path).expanduser()
     if launcher_env_file.is_symlink():
         raise SystemExit(f"status report launcher settings path is a symlink: {launcher_env_file}")
@@ -918,9 +921,12 @@ if expected_launcher_env_path:
             "status report launcher settings directory is a symlink or missing symlink status: "
             f"{launcher_env_file.parent}"
         )
-    launcher_settings_symlink_component = str(
-        launcher_settings.get("launcher_settings_symlink_component", "")
-    ).strip()
+    if "launcher_settings_symlink_component" not in launcher_settings:
+        raise SystemExit(
+            "status report launcher settings missing launcher_settings_symlink_component: "
+            f"{expected_launcher_env_path}"
+        )
+    launcher_settings_symlink_component = str(launcher_settings.get("launcher_settings_symlink_component", "")).strip()
     if launcher_settings_symlink_component:
         raise SystemExit(
             "status report launcher settings path contains a symlink: "
@@ -1942,12 +1948,19 @@ if source_revision_path != str(Path("~/.local/share/noaa-navionics/source-revisi
         "status report source revision path "
         f"{source_revision_path or '<missing>'} does not match {Path('~/.local/share/noaa-navionics/source-revision').expanduser()}"
     )
-if app.get("source_revision_path_is_symlink") is True:
-    raise SystemExit(f"status report source revision path is a symlink: {source_revision_path}")
+if app.get("source_revision_path_is_symlink") is not False:
+    raise SystemExit(
+        "status report source revision path is a symlink or missing symlink status: "
+        f"{source_revision_path}"
+    )
 if app.get("source_revision_directory_is_symlink") is not False:
     raise SystemExit(
         "status report source revision directory is a symlink or missing symlink status: "
         f"{Path(source_revision_path).expanduser().parent}"
+    )
+if "source_revision_symlink_component" not in app:
+    raise SystemExit(
+        f"status report source revision missing source_revision_symlink_component: {source_revision_path}"
     )
 source_revision_symlink_component = str(app.get("source_revision_symlink_component", "")).strip()
 if source_revision_symlink_component:

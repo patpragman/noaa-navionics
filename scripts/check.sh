@@ -1847,7 +1847,8 @@ grep -q 'reads the current boot ID through a no-follow descriptor before compari
 grep -q 'Verification reads `/proc/uptime` through a no-follow descriptor and requires finite non-negative uptime' README.md
 grep -q 'reads `/proc/uptime` through a no-follow descriptor and requires finite non-negative uptime' docs/sailboat-pi.md
 grep -q 'status report source revision' scripts/verify_pi.sh
-grep -q 'status report source revision path is a symlink' scripts/verify_pi.sh
+grep -q 'status report source revision path is a symlink or missing symlink status' scripts/verify_pi.sh
+grep -q 'status report source revision missing source_revision_symlink_component' scripts/verify_pi.sh
 grep -q 'status report source revision directory is a symlink' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config path is a symlink' scripts/verify_pi.sh
@@ -1855,7 +1856,8 @@ grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.
 grep -q 'status report OpenCPN config path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory .* has permissions' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
-grep -q 'status report launcher settings path is a symlink' scripts/verify_pi.sh
+grep -q 'status report launcher settings path is a symlink or missing symlink status' scripts/verify_pi.sh
+grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config path is a symlink' scripts/verify_pi.sh
 grep -q 'def verify_status_file_owner_and_mode' scripts/verify_pi.sh
@@ -3976,6 +3978,8 @@ grep -q 'test_source_revision_reader_rejects_replaced_file_before_parsing' tests
 grep -q 'test_health_source_revision_reader_rejects_replaced_revision' tests/test_downloader.py
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the source revision directory is user-owned and not group/world-writable' README.md
 grep -q 'Status reports and Pi readiness read that revision through a no-follow descriptor after confirming the source revision directory is user-owned and not group/world-writable' docs/sailboat-pi.md
+grep -q 'requires source-revision and launcher-settings symlink-status fields' README.md
+grep -q 'requires source-revision and launcher-settings symlink-status fields' docs/sailboat-pi.md
 grep -q 'test_app_summary_rejects_symlinked_source_revision_ancestor' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_nonregular_source_revision' tests/test_downloader.py
 grep -q 'test_app_summary_rejects_writable_source_revision' tests/test_downloader.py
@@ -4008,6 +4012,7 @@ grep -q '"launcher_settings_symlink_component"' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' src/noaa_navionics/report.py
 grep -q 'launcher environment directory is a symlink' scripts/start_chartplotter.sh
 grep -q 'status report launcher settings path contains a symlink' scripts/verify_pi.sh
+grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
 grep -q 'manifest directory is a symlink' src/noaa_navionics/report.py
 grep -q 'manifest directory .* has permissions' src/noaa_navionics/report.py
 grep -q 'manifest directory .* has permissions' src/noaa_navionics/health.py
