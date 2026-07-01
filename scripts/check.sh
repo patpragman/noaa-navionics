@@ -975,9 +975,11 @@ grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' READ
 grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
-grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
+grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' README.md
-grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
+grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/shutdown_pi_safely.sh
 grep -q 'read-only diagnostic evidence' README.md
@@ -1012,6 +1014,9 @@ grep -q 'ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o Con
 grep -q 'wait_for_ssh_shutdown' scripts/shutdown_pi_safely.sh
 grep -q 'Clean Pi poweroff confirmed by SSH drop' scripts/shutdown_pi_safely.sh
 grep -q 'Pi still accepts SSH after %ss; do not cut boat power yet' scripts/shutdown_pi_safely.sh
+grep -q 'max_shutdown_timeout=600' scripts/shutdown_pi_safely.sh
+grep -q 'bounds the shutdown confirmation timeout to 1-600 seconds' README.md
+grep -q 'bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validate_shutdown_controls' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1' scripts/shutdown_pi_safely.sh
 grep -q 'validate_ssh_target' scripts/refresh_pi_charts.sh
@@ -1833,6 +1838,7 @@ grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'validate_shutdown_controls' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1' scripts/shutdown_pi_safely.sh
+grep -q 'max_shutdown_timeout=600' scripts/shutdown_pi_safely.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/shutdown_pi_safely.sh
 test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' scripts/shutdown_pi_safely.sh)" -ge 2
 test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' scripts/shutdown_pi_safely.sh)" -ge 2
@@ -13238,6 +13244,28 @@ if [[ "$shutdown_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--timeout must be a positive integer' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh pi@example.invalid --dry-run --timeout 601 >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject oversized --timeout with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--timeout must be between 1 and 600 seconds' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh pi@example.invalid --dry-run --timeout 999999999999999999999999999999 >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject huge --timeout with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--timeout must be between 1 and 600 seconds' "$verify_output"
 
 shutdown_fake_ssh_bin="$tmpdir/shutdown-fake-ssh-bin"
 shutdown_fake_ssh_args="$tmpdir/shutdown-fake-ssh-args"

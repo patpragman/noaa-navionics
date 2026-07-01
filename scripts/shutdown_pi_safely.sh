@@ -13,7 +13,7 @@ track-file corruption risk.
 Options:
   --confirm   Required for a real shutdown
   --dry-run   Validate the remote shutdown path without powering off
-  --timeout N Seconds to wait for SSH to stop responding after real shutdown (default: 90)
+  --timeout N Seconds to wait for SSH to stop responding after real shutdown (1-600; default: 90)
 
 Nothing is installed, enabled, downloaded, or changed on the local computer.
 EOF
@@ -37,6 +37,7 @@ ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
 shutdown_timeout=90
+max_shutdown_timeout=600
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 while [[ $# -gt 0 ]]; do
@@ -54,11 +55,16 @@ while [[ $# -gt 0 ]]; do
         echo "$1 requires a value" >&2
         exit 2
       fi
-      if [[ ! "${2:-}" =~ ^[1-9][0-9]*$ ]]; then
+      timeout_value="${2:-}"
+      if [[ ! "$timeout_value" =~ ^[1-9][0-9]*$ ]]; then
         echo "--timeout must be a positive integer" >&2
         exit 2
       fi
-      shutdown_timeout="${2:-}"
+      if (( ${#timeout_value} > ${#max_shutdown_timeout} )) || { (( ${#timeout_value} == ${#max_shutdown_timeout} )) && [[ "$timeout_value" > "$max_shutdown_timeout" ]]; }; then
+        echo "--timeout must be between 1 and ${max_shutdown_timeout} seconds" >&2
+        exit 2
+      fi
+      shutdown_timeout="$timeout_value"
       shift 2
       ;;
     -h|--help)
