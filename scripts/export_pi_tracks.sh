@@ -651,6 +651,7 @@ try:
             with tarfile.open(fileobj=handle, mode="r:gz") as archive:
                 members = archive.getmembers()
                 by_name = {}
+                data_member_names = []
                 data_file_count = 0
                 for member in members:
                     normalized = normalized_member_name(member.name)
@@ -660,6 +661,13 @@ try:
                     if not member.isreg():
                         fail(f"Export archive contains unsupported non-regular member: {member.name}")
                     if normalized not in {"README.txt", "manifest.json"}:
+                        if count_field == "track_count":
+                            if not normalized.startswith("tracks/") or not normalized.endswith(".gpx"):
+                                fail(f"Export archive contains non-GPX track data member: {member.name}")
+                            track_name = normalized.removeprefix("tracks/")
+                            if not track_name or "/" in track_name:
+                                fail(f"Export archive contains nested or empty track data member: {member.name}")
+                            data_member_names.append(track_name)
                         data_file_count += 1
                 if "README.txt" not in by_name:
                     fail("Export archive is missing README.txt")
@@ -683,6 +691,23 @@ if not isinstance(count, int) or count <= 0:
     fail(f"Export archive manifest has invalid {count_field}: {count!r}")
 if count != data_file_count:
     fail(f"Export archive manifest {count_field} does not match data file count: {count} != {data_file_count}")
+if count_field == "track_count":
+    tracks = manifest.get("tracks")
+    if not isinstance(tracks, list):
+        fail("Export archive manifest tracks must be a list")
+    manifest_track_names = []
+    for index, track in enumerate(tracks):
+        if not isinstance(track, dict):
+            fail(f"Export archive manifest tracks[{index}] must be an object")
+        name = track.get("name")
+        if not isinstance(name, str) or not name or "/" in name or "\\" in name or name in {".", ".."}:
+            fail(f"Export archive manifest tracks[{index}].name is invalid: {name!r}")
+        manifest_track_names.append(name)
+    if sorted(manifest_track_names) != sorted(data_member_names):
+        fail(
+            "Export archive manifest track names do not match data files: "
+            f"{sorted(manifest_track_names)!r} != {sorted(data_member_names)!r}"
+        )
 PY
 }
 
