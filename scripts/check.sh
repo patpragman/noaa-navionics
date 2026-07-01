@@ -849,10 +849,12 @@ grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' docs/sailboat-pi.md
-grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' README.md
+grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' README.md
+grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' docs/sailboat-pi.md
+grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' README.md
+grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' docs/sailboat-pi.md
 grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' README.md
 grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' docs/sailboat-pi.md
-grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive to be a user-owned private `0600` file, reading each restore archive through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Recovery directory must not contain parent-directory components' scripts/verify_pi_recovery_exports.sh
 grep -q 'Recovery directory must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
@@ -1524,6 +1526,12 @@ grep -q 'Local ${command_name} command is not in a trusted system directory' scr
 grep -q '"$python3_cmd" - "$recovery_dir"' scripts/restore_pi_recovery_user_data.sh
 ! grep -q '^python3 - "$recovery_dir"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user_data.sh
+grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def verify_checksum_manifest' scripts/restore_pi_recovery_user_data.sh
+grep -q 'checksum mismatch for' scripts/restore_pi_recovery_user_data.sh
+grep -q 'checksum manifest is missing archive' scripts/restore_pi_recovery_user_data.sh
+grep -q 'checksum manifest lists unexpected archive' scripts/restore_pi_recovery_user_data.sh
+grep -q 'hashlib.sha256' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery directory has permissions .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive changed while being opened' scripts/restore_pi_recovery_user_data.sh
 grep -q 'archive has permissions .* expected private 0600' scripts/restore_pi_recovery_user_data.sh
@@ -9237,6 +9245,7 @@ restore_home="$tmpdir/restore-home"
 mkdir -p "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir" "$restore_home"
 python3 - "$recovery_restore_dir" "$recovery_restore_parent_dir" "$recovery_restore_broad_dir" "$recovery_restore_bad_opencpn_dir" "$recovery_restore_unsafe_member_dir" "$recovery_restore_readme_dir" <<'PY'
 from pathlib import Path
+import hashlib
 import io
 import json
 import sys
@@ -9275,6 +9284,15 @@ def build_archive(directory, name, manifest, members, *, readme_dir=False):
     path.chmod(0o600)
 
 
+def write_checksums(directory):
+    lines = []
+    for path in sorted(directory.glob("noaa-navionics-pi-*.tgz")):
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+    manifest = directory / "SHA256SUMS.txt"
+    manifest.write_text("".join(lines), encoding="ascii")
+    manifest.chmod(0o600)
+
+
 def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False):
     opencpn_members = {
         "opencpn/navobj.xml": "<navobj />\n",
@@ -9310,6 +9328,7 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
         None,
         {"commands/date-utc.txt": "2026-01-01\n"},
     )
+    write_checksums(root)
 
 
 config = """[charts]
@@ -9373,6 +9392,46 @@ if [[ "$recovery_restore_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Recovery directory must not contain parent-directory components' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_missing_checksum_dir="$tmpdir/recovery-restore-missing-checksum"
+cp -a "$recovery_restore_dir" "$recovery_restore_missing_checksum_dir"
+rm -f "$recovery_restore_missing_checksum_dir/SHA256SUMS.txt"
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_missing_checksum_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a missing checksum manifest with exit 1" >&2
+  exit 1
+fi
+grep -q 'could not inspect checksum manifest' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_bad_checksum_dir="$tmpdir/recovery-restore-bad-checksum"
+cp -a "$recovery_restore_dir" "$recovery_restore_bad_checksum_dir"
+python3 - "$recovery_restore_bad_checksum_dir/SHA256SUMS.txt" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="ascii").splitlines()
+parts = lines[0].split("  ", 1)
+lines[0] = "0" * 64 + "  " + parts[1]
+path.write_text("\n".join(lines) + "\n", encoding="ascii")
+path.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_bad_checksum_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a mismatched checksum manifest with exit 1" >&2
+  exit 1
+fi
+grep -q 'checksum mismatch for' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 set +e

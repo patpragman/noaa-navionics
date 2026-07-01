@@ -179,15 +179,19 @@ from configparser import ConfigParser
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Optional
+import hashlib
 import io
 import json
 import os
+import re
 import stat
 import sys
 import tarfile
 import tempfile
 
 
+CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVES = [
     ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count"),
     ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count"),
@@ -220,20 +224,25 @@ def validate_member_name(name: str, archive_path: Path) -> str:
     return normalized
 
 
-def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, load_contents: bool = True) -> dict[str, bytes]:
-    if archive_path.is_symlink():
-        fail(f"archive must not be a symlink: {archive_path}")
+def inspect_private_file(path: Path, label: str) -> os.stat_result:
+    if path.is_symlink():
+        fail(f"{label} must not be a symlink: {path}")
     try:
-        result = archive_path.lstat()
+        result = path.lstat()
     except OSError as exc:
-        fail(f"could not inspect archive {archive_path}: {exc}")
+        fail(f"could not inspect {label} {path}: {exc}")
     if not stat.S_ISREG(result.st_mode):
-        fail(f"archive must be a regular file: {archive_path}")
+        fail(f"{label} must be a regular file: {path}")
     if result.st_uid != os.getuid():
-        fail(f"archive is owned by uid {result.st_uid}, expected {os.getuid()}: {archive_path}")
+        fail(f"{label} is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
     mode = stat.S_IMODE(result.st_mode)
     if mode != 0o600:
-        fail(f"archive has permissions {mode:04o}, expected private 0600: {archive_path}")
+        fail(f"{label} has permissions {mode:04o}, expected private 0600: {path}")
+    return result
+
+
+def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, load_contents: bool = True) -> dict[str, bytes]:
+    result = inspect_private_file(archive_path, "archive")
     if result.st_size <= 0:
         fail(f"archive is empty: {archive_path}")
 
@@ -309,6 +318,101 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
     return files
 
 
+def hash_private_archive(archive_path: Path) -> str:
+    result = inspect_private_file(archive_path, "archive")
+    fd = -1
+    try:
+        fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(result, opened):
+            fail(f"archive changed before checksum verification: {archive_path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"archive must be regular when opened for checksum verification: {archive_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"archive is owned by uid {opened.st_uid}, expected {os.getuid()} during checksum verification: {archive_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"archive has permissions {opened_mode:04o}, expected private 0600 during checksum verification: {archive_path}")
+        digest = hashlib.sha256()
+        with os.fdopen(fd, "rb") as archive_file:
+            fd = -1
+            for chunk in iter(lambda: archive_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError as exc:
+        fail(f"could not read archive for checksum verification {archive_path}: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
+    manifest_path = recovery_dir / CHECKSUM_MANIFEST_NAME
+    result = inspect_private_file(manifest_path, "checksum manifest")
+    fd = -1
+    try:
+        fd = os.open(manifest_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(result, opened):
+            fail(f"checksum manifest changed while being opened: {manifest_path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"checksum manifest must be regular when opened: {manifest_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"checksum manifest is owned by uid {opened.st_uid}, expected {os.getuid()} when opened: {manifest_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"checksum manifest has permissions {opened_mode:04o}, expected private 0600 when opened: {manifest_path}")
+        with os.fdopen(fd, "rb") as manifest_file:
+            fd = -1
+            try:
+                text = manifest_file.read().decode("ascii")
+            except UnicodeDecodeError as exc:
+                fail(f"checksum manifest is not ASCII: {exc}")
+    except OSError as exc:
+        fail(f"could not read checksum manifest {manifest_path}: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+    entries: dict[str, str] = {}
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        if not raw_line.strip():
+            continue
+        if "  " not in raw_line:
+            fail(f"checksum manifest line {line_number} must use two-space sha256 filename format")
+        digest, name = raw_line.split("  ", 1)
+        if not SHA256_RE.fullmatch(digest):
+            fail(f"checksum manifest line {line_number} has invalid SHA-256 digest")
+        normalized = validate_member_name(name, manifest_path)
+        if "/" in normalized:
+            fail(f"checksum manifest line {line_number} must name an archive in the recovery directory: {name}")
+        if normalized != name:
+            fail(f"checksum manifest line {line_number} uses a non-normal archive name: {name}")
+        if normalized in entries:
+            fail(f"checksum manifest contains duplicate archive name: {normalized}")
+        entries[normalized] = digest
+    if not entries:
+        fail("checksum manifest is empty")
+    return entries
+
+
+def verify_checksum_manifest(recovery_dir: Path, archive_paths: dict[str, Path]) -> None:
+    entries = read_checksum_manifest(recovery_dir)
+    expected_names = {path.name for path in archive_paths.values()}
+    actual_names = set(entries)
+    missing = sorted(expected_names - actual_names)
+    extra = sorted(actual_names - expected_names)
+    if missing:
+        fail(f"checksum manifest is missing archive(s): {', '.join(missing)}")
+    if extra:
+        fail(f"checksum manifest lists unexpected archive(s): {', '.join(extra)}")
+    for archive_path in archive_paths.values():
+        actual_digest = hash_private_archive(archive_path)
+        expected_digest = entries[archive_path.name]
+        if actual_digest != expected_digest:
+            fail(f"checksum mismatch for {archive_path.name}: expected {expected_digest}, got {actual_digest}")
+
+
 def assert_private_recovery_directory(path: Path) -> None:
     if path.is_symlink():
         fail(f"recovery directory is a symlink: {path}")
@@ -330,15 +434,20 @@ def assert_private_recovery_directory(path: Path) -> None:
 
 def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
     assert_private_recovery_directory(recovery_dir)
-    result = {}
-    for label, pattern, required_count_key in ARCHIVES:
+    archive_paths = {}
+    for label, pattern, _required_count_key in ARCHIVES:
         matches = sorted(recovery_dir.glob(pattern))
         if not matches:
             fail(f"missing {label} archive matching {pattern}")
         if len(matches) > 1:
             fail(f"expected one {label} archive, found {len(matches)}")
+        archive_paths[label] = matches[0]
+    verify_checksum_manifest(recovery_dir, archive_paths)
+
+    result = {}
+    for label, pattern, required_count_key in ARCHIVES:
         result[label] = inspect_archive(
-            matches[0],
+            archive_paths[label],
             required_count_key,
             load_contents=(label != "support"),
         )
