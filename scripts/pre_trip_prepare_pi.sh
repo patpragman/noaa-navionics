@@ -207,6 +207,64 @@ prepare_private_output_dir() {
   fi
 }
 
+strip_trailing_slashes() {
+  local value="$1"
+  while [[ "$value" != "/" && "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s' "$value"
+}
+
+require_recovery_dir_from_output() {
+  local recovery_dir="$1"
+  local output_root="$2"
+  local child_name
+  local current_uid
+  local mode
+  local owner_uid
+  local stat_output
+
+  recovery_dir="$(strip_trailing_slashes "$recovery_dir")"
+  output_root="$(strip_trailing_slashes "$output_root")"
+  if [[ -z "$recovery_dir" ]]; then
+    echo "Recovery export directory is empty" >&2
+    exit 1
+  fi
+  case "$recovery_dir" in
+    "$output_root"/noaa-navionics-pi-recovery-*)
+      ;;
+    *)
+      echo "Recovery export directory must be an immediate noaa-navionics-pi-recovery-* child of $output_root: $recovery_dir" >&2
+      exit 2
+      ;;
+  esac
+  child_name="${recovery_dir#"$output_root"/}"
+  if [[ "$child_name" == */* ]]; then
+    echo "Recovery export directory must be an immediate child of $output_root: $recovery_dir" >&2
+    exit 2
+  fi
+  reject_symlinked_path_components "Recovery export directory" "$recovery_dir"
+  if [[ ! -d "$recovery_dir" || -L "$recovery_dir" ]]; then
+    echo "Recovery export directory must be a real directory: $recovery_dir" >&2
+    exit 2
+  fi
+  current_uid="$(id -u)"
+  if ! stat_output="$(stat -Lc '%u %a' -- "$recovery_dir" 2>/dev/null)"; then
+    echo "Could not inspect recovery export directory owner and permissions: $recovery_dir" >&2
+    exit 2
+  fi
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  if [[ "$owner_uid" != "$current_uid" ]]; then
+    echo "Recovery export directory is owned by uid ${owner_uid}, expected current user ${current_uid}: $recovery_dir" >&2
+    exit 2
+  fi
+  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "700" ]]; then
+    echo "Recovery export directory has permissions ${mode}, expected private 0700: $recovery_dir" >&2
+    exit 2
+  fi
+}
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -411,6 +469,7 @@ if [[ -z "$device" && "$skip_pre_departure" -eq 0 ]]; then
   exit 2
 fi
 validate_output_dir_arg "$output_dir"
+output_dir="$(strip_trailing_slashes "$output_dir")"
 
 if [[ "$skip_refresh" -eq 1 && "$skip_recovery" -eq 1 && "$skip_pre_departure" -eq 1 ]]; then
   echo "At least one pre-trip preparation step must run" >&2
@@ -450,6 +509,7 @@ if [[ "$skip_recovery" -eq 0 ]]; then
     echo "Could not determine recovery export directory from export output" >&2
     exit 1
   fi
+  require_recovery_dir_from_output "$recovery_dir" "$output_dir"
   run_step "Verifying Pi recovery export archives" "$verify_recovery_helper" "$recovery_dir"
 else
   printf '==> Skipping Pi recovery export\n'

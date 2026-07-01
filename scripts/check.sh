@@ -486,8 +486,8 @@ grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/seria
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, exports and verifies a local recovery bundle' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' docs/sailboat-pi.md
 grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local --gps-seconds 10' README.md
@@ -5061,6 +5061,7 @@ cat >"$pre_trip_repo/scripts/export_pi_recovery_bundle.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'recovery|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 mkdir -p "$2/noaa-navionics-pi-recovery-test"
+chmod 0700 "$2/noaa-navionics-pi-recovery-test"
 printf 'Pi recovery exports written to: %s/noaa-navionics-pi-recovery-test\n' "$2"
 EOF
 cat >"$pre_trip_repo/scripts/verify_pi_recovery_exports.sh" <<'EOF'
@@ -5080,7 +5081,7 @@ NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
   "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
   pi@example.invalid \
   --device /dev/serial/by-id/mock-gps \
-  --output-dir "$pre_trip_output_dir" \
+  --output-dir "$pre_trip_output_dir/" \
   --track-days 14 \
   --gps-seconds 17 \
   --retries 6 \
@@ -5096,6 +5097,54 @@ grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
 test "$(stat -c '%a' "$pre_trip_output_dir")" = 700
 test "$(stat -c '%u' "$pre_trip_output_dir")" = "$(id -u)"
+
+pre_trip_misdirected_repo="$tmpdir/pre-trip-misdirected-repo"
+pre_trip_misdirected_log="$tmpdir/pre-trip-misdirected-helper-calls"
+pre_trip_misdirected_output_dir="$tmpdir/pre-trip-misdirected-output"
+pre_trip_misdirected_recovery_dir="$tmpdir/noaa-navionics-pi-recovery-misdirected"
+mkdir -p "$pre_trip_misdirected_repo/scripts"
+cp scripts/pre_trip_prepare_pi.sh "$pre_trip_misdirected_repo/scripts/pre_trip_prepare_pi.sh"
+cat >"$pre_trip_misdirected_repo/scripts/refresh_pi_charts.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'refresh|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+cat >"$pre_trip_misdirected_repo/scripts/export_pi_recovery_bundle.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'recovery|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+mkdir -p "$NOAA_NAVIONICS_FAKE_MISDIRECTED_RECOVERY_DIR"
+chmod 0700 "$NOAA_NAVIONICS_FAKE_MISDIRECTED_RECOVERY_DIR"
+printf 'Pi recovery exports written to: %s\n' "$NOAA_NAVIONICS_FAKE_MISDIRECTED_RECOVERY_DIR"
+EOF
+cat >"$pre_trip_misdirected_repo/scripts/verify_pi_recovery_exports.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'verify-recovery|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+cat >"$pre_trip_misdirected_repo/scripts/pre_departure_check_pi.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'pre-departure|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
+chmod +x "$pre_trip_misdirected_repo/scripts/"*.sh
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_misdirected_log" \
+NOAA_NAVIONICS_FAKE_MISDIRECTED_RECOVERY_DIR="$pre_trip_misdirected_recovery_dir" \
+  "$pre_trip_misdirected_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --output-dir "$pre_trip_misdirected_output_dir" \
+  --skip-refresh \
+  --skip-pre-departure >"$verify_output" 2>&1
+pre_trip_misdirected_code=$?
+set -e
+if [[ "$pre_trip_misdirected_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject a recovery directory outside the output directory with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery export directory must be an immediate noaa-navionics-pi-recovery-\* child' "$verify_output"
+if grep -q '^verify-recovery|' "$pre_trip_misdirected_log"; then
+  cat "$pre_trip_misdirected_log" >&2
+  echo "expected pre_trip_prepare_pi.sh not to verify a misdirected recovery directory" >&2
+  exit 1
+fi
 
 set +e
 scripts/post_trip_collect_pi.sh root@example.invalid >"$verify_output" 2>&1
