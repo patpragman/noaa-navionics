@@ -3511,6 +3511,9 @@ grep -q 'test_status_text_rejects_malformed_ready_report' tests/test_downloader.
 grep -q 'test_verify_pi_required_status_checks_match_shared_gpsd_readiness' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_gui_status_report_uses_shared_readiness_validation' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_ok_preserves_not_ready_readiness_headline' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_watch_set_preserves_not_ready_readiness_headline' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_watch_ok_preserves_not_ready_readiness_headline' tests/test_downloader.py
 grep -q 'complete_status_gui_report' tests/test_downloader.py
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py

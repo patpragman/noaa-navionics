@@ -3888,6 +3888,175 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_anchor_check_ok_preserves_not_ready_readiness_headline(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.last_status_report_ready = False
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.refresh_scheduled = 0
+                self.bells = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def bell(self):
+                self.bells += 1
+
+        app = FakeApp()
+        anchor_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=9,
+            hdop=0.9,
+        )
+        current_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.00001,
+            longitude=-149.00001,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        status_gui_module.StatusApp._show_anchor(app, 2.0, 50.0, anchor_fix, current_fix)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, "Anchor OK: 2.0 m from anchor; radius 50 m")
+        self.assertIn("Current 61.000010", app.gps_summary.value)
+        self.assertEqual(app.bells, 0)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.refresh_scheduled, 1)
+
+    def test_status_gui_anchor_watch_set_preserves_not_ready_readiness_headline(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.last_status_report_ready = False
+                self.anchor_radius = FakeVar()
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+        app = FakeApp()
+        anchor_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        status_gui_module.StatusApp._show_anchor_watch_set(app, anchor_fix, 50.0)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.anchor_watch_fix, anchor_fix)
+        self.assertEqual(app.anchor_watch_status_summary, "Anchor watch armed; radius 50 m")
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.watch_scheduled, 1)
+        self.assertEqual(app.refresh_scheduled, 1)
+
+    def test_status_gui_anchor_watch_ok_preserves_not_ready_readiness_headline(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self, anchor_fix):
+                self.last_status_report_ready = False
+                self.anchor_watch_fix = anchor_fix
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+                self.bells = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def bell(self):
+                self.bells += 1
+
+        anchor_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=9,
+            hdop=0.9,
+        )
+        current_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.00001,
+            longitude=-149.00001,
+            satellites=9,
+            hdop=0.9,
+        )
+        app = FakeApp(anchor_fix)
+
+        status_gui_module.StatusApp._show_anchor_watch(app, 2.0, 50.0, anchor_fix, current_fix)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, "Anchor watch: Anchor OK: 2.0 m from anchor; radius 50 m")
+        self.assertFalse(app.anchor_watch_alarm_active)
+        self.assertIsNone(app.anchor_watch_alarm_summary)
+        self.assertEqual(app.bells, 0)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.watch_scheduled, 1)
+        self.assertEqual(app.refresh_scheduled, 1)
+
     def test_status_gui_error_does_not_hide_active_anchor_watch_alarm(self):
         class FakeVar:
             def __init__(self):
