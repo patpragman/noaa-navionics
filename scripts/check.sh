@@ -2234,6 +2234,8 @@ grep -q 'revalidate root target paths before temporary-file creation and immedia
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md
+grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'dir=str(config_path.parent)' scripts/configure_gpsd.sh
 grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
@@ -2243,6 +2245,10 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'verify_promoted_root_file' "$script"
   grep -q 'verify_root_temp_file' "$script"
   grep -q 'cleanup_root_temp_file' "$script"
+  grep -q 'cleanup_private_local_temp_file' "$script"
+  grep -q 'cleanup_generated_config_temp()' "$script"
+  grep -q 'trap cleanup_generated_config_temp EXIT' "$script"
+  ! grep -q 'trap '\''rm -f "$tmp"'\'' EXIT' "$script"
   grep -q '"$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX"' "$script"
   grep -q 'verify_root_temp_file "$target_tmp" 0600' "$script"
   grep -q '"$sudo_cmd" install -m "$mode" "$source" "$target_tmp"' "$script"
@@ -2265,6 +2271,7 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'root config temporary file .* expected root' "$script"
   grep -q 'root config temporary file .* expected {expected_mode:04o}' "$script"
   grep -q 'root config temporary file changed before cleanup; leaving it in place' "$script"
+  grep -q 'generated config temp changed before cleanup; leaving it in place' "$script"
   grep -q 'os.unlink(path.name, dir_fd=dir_fd)' "$script"
   grep -q 'promoted root config does not match source' "$script"
   grep -q 'promoted root config.*expected' "$script"
@@ -2427,9 +2434,11 @@ grep -q 'GPS time setup reads existing chrony config, and readiness and producti
 grep -q 'GPSD setup, GPS time setup, and desktop autologin revalidate root target paths before temporary-file creation and immediately before promotion' README.md
 grep -q 'verify their root-owned temporary config files through no-follow descriptors before and after copying content' README.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' README.md
+grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md
 grep -q 'Promoted root config files are verified against their source through regular no-follow file descriptors before syncing' docs/sailboat-pi.md
 grep -q 'verify root-owned temporary config files through no-follow descriptors before and after copying content' docs/sailboat-pi.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'verifies the promoted config against its source through regular no-follow file descriptors before syncing' docs/sailboat-pi.md
 grep -q 'Production provisioning reads the existing onboard GPS config only after a no-follow descriptor' README.md
 grep -q 'provisioning reads the existing onboard GPS config only after a no-follow descriptor' docs/sailboat-pi.md
