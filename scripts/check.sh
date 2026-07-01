@@ -929,6 +929,10 @@ grep -q 'status.json' scripts/collect_pi_support_bundle.sh
 grep -q 'noaa-navionics-manifest.json' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-chart-storage-tree' scripts/collect_pi_support_bundle.sh
 grep -q 'configured-track-storage-tree' scripts/collect_pi_support_bundle.sh
+grep -q 'noaa-gps-device-candidates' scripts/collect_pi_support_bundle.sh
+grep -q 'list-gps-devices' scripts/collect_pi_support_bundle.sh
+grep -q 'stable/volatile GPS classification' README.md
+grep -q 'stable/volatile GPS classification' docs/sailboat-pi.md
 grep -q 'does not include downloaded NOAA chart archives' scripts/collect_pi_support_bundle.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
@@ -5791,6 +5795,8 @@ grep -q '"$python3_cmd" - "$src" "$dest"' "$support_fake_ssh_stdin"
 grep -q '"$python3_cmd" - "$config"' "$support_fake_ssh_stdin"
 grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
+grep -q 'noaa-gps-device-candidates' "$support_fake_ssh_stdin"
+grep -q '"${HOME}/.local/bin/noaa-navionics" list-gps-devices' "$support_fake_ssh_stdin"
 grep -q 'tar -C "$bundle_root" -czf - .' "$support_fake_ssh_stdin"
 grep -q 'configured-storage-paths.txt' "$support_fake_ssh_stdin"
 grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
