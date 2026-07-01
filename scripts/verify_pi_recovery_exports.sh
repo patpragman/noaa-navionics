@@ -138,7 +138,7 @@ fi
 python3_cmd="$(require_local_command python3)"
 
 "$python3_cmd" - "$recovery_dir" <<'PY'
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 import json
 import hashlib
@@ -152,6 +152,7 @@ import tarfile
 CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
 PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"
 PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"
+STATUS_FUTURE_TOLERANCE_SECONDS = 300
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 CORE_SUPPORT_COMMAND_FILES = [
@@ -586,6 +587,13 @@ def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
         fail(f"pre-departure status snapshot JSON has invalid generated_at timestamp: {exc}")
     if parsed_generated_at.tzinfo is None:
         fail("pre-departure status snapshot JSON generated_at timestamp must include a timezone")
+    generated_at_utc = parsed_generated_at.astimezone(timezone.utc)
+    age_seconds = (datetime.now(timezone.utc) - generated_at_utc).total_seconds()
+    if age_seconds < -STATUS_FUTURE_TOLERANCE_SECONDS:
+        fail(
+            "pre-departure status snapshot JSON generated_at timestamp is too far in the future "
+            f"({-age_seconds:.0f}s ahead; maximum {STATUS_FUTURE_TOLERANCE_SECONDS}s)"
+        )
     host = status.get("host")
     if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
         fail("pre-departure status snapshot JSON missing valid host boot_id")

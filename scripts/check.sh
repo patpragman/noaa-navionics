@@ -853,8 +853,8 @@ grep -q 'recovery verifier validates the trusted root-owned local `python3` comm
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped `generated_at`, a valid Linux boot ID, and a deployed source revision' README.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped `generated_at`, a valid Linux boot ID, and a deployed source revision' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped non-future `generated_at`, a valid Linux boot ID, and a deployed source revision' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with populated readiness and service check lists, a timezone-stamped non-future `generated_at`, a valid Linux boot ID, and a deployed source revision' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
@@ -1546,6 +1546,7 @@ grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
 grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/verify_pi_recovery_exports.sh
 grep -q 'PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"' scripts/verify_pi_recovery_exports.sh
 grep -q 'PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"' scripts/verify_pi_recovery_exports.sh
+grep -q 'STATUS_FUTURE_TOLERANCE_SECONDS = 300' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
@@ -1558,6 +1559,7 @@ grep -q 'pre-departure status checksum mismatch' scripts/verify_pi_recovery_expo
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing generated_at timestamp' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' scripts/verify_pi_recovery_exports.sh
 grep -q 'checksum manifest is missing archive' scripts/verify_pi_recovery_exports.sh
@@ -10037,6 +10039,50 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' "$verify_output"
+
+recovery_verify_future_status_dir="$tmpdir/recovery-verify-future-status"
+cp -a "$recovery_verify_dir" "$recovery_verify_future_status_dir"
+python3 - "$recovery_verify_future_status_dir" <<'PY'
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat().replace("+00:00", "Z")
+payload = (
+    json.dumps(
+        {
+            "ok": True,
+            "generated_at": future,
+            "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
+            "app": {"source_revision": "fixture123"},
+            "checks": [{"name": "GPS", "ok": True}],
+            "service_checks": [{"name": "Track Log", "ok": True}],
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    + b"\n"
+)
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_future_status_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a future pre-departure status timestamp with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' "$verify_output"
 
 recovery_verify_mismatched_manifest_dir="$tmpdir/recovery-verify-mismatched-manifest"
 cp -a "$recovery_verify_dir" "$recovery_verify_mismatched_manifest_dir"
