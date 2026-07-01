@@ -425,9 +425,7 @@ ssh_available() {
 }
 
 remote_boot_id() {
-  if [[ -z "$remote_python_cmd" ]]; then
-    remote_python_cmd="$(remote_python_command)"
-  fi
+  remote_python_cmd="$(remote_python_command)"
   "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_python_cmd' -" <<'REMOTE_BOOT_ID'
 import os
 import re
@@ -637,6 +635,8 @@ request_reboot() {
   if [[ -z "$remote_sudo_cmd" ]]; then
     remote_sudo_cmd="$(remote_sudo_command)"
   fi
+  validate_remote_reboot_command_trust "$remote_reboot_cmd"
+  validate_remote_root_command_trust sudo "$remote_sudo_cmd"
 
   if "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && '$remote_sudo_cmd' -n '$remote_reboot_cmd'" >/dev/null 2>&1; then
     return 0

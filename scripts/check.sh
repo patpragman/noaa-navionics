@@ -4574,6 +4574,8 @@ grep -q 'Remote ${command_label} command is not executable after resolution' scr
 grep -q '${remote_system_path} && export PATH && true' scripts/dock_test_pi.sh
 grep -Fq '${remote_system_path} && export PATH && '"'"'$remote_python_cmd'"'"' -' scripts/dock_test_pi.sh
 ! grep -q '${remote_system_path} && export PATH && python3 -' scripts/dock_test_pi.sh
+grep -q 'remote_python_cmd="$(remote_python_command)"' scripts/dock_test_pi.sh
+! grep -q 'if \[\[ -z "\$remote_python_cmd" \]\]' scripts/dock_test_pi.sh
 grep -q 'path = Path("/proc/sys/kernel/random/boot_id")' scripts/dock_test_pi.sh
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/dock_test_pi.sh
 grep -q 'fd = os.open(path, flags)' scripts/dock_test_pi.sh
@@ -4596,6 +4598,8 @@ grep -q 'ServerAliveInterval=30' scripts/verify_pi.sh
 grep -q 'ServerAliveInterval=30' scripts/dock_test_pi.sh
 grep -q 'reboot sudo preflight' scripts/dock_test_pi.sh
 grep -q 'request_reboot' scripts/dock_test_pi.sh
+grep -q 'validate_remote_reboot_command_trust "$remote_reboot_cmd"' scripts/dock_test_pi.sh
+grep -q 'validate_remote_root_command_trust sudo "$remote_sudo_cmd"' scripts/dock_test_pi.sh
 grep -q 'Failed to request reboot with passwordless sudo' scripts/dock_test_pi.sh
 grep -q 'remote_boot_id' scripts/dock_test_pi.sh
 grep -q 'validate_boot_id_value' scripts/dock_test_pi.sh
@@ -4613,8 +4617,10 @@ grep -q 'preflights noninteractive sudo reboot access before deploying or provis
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
 grep -q 'validates the remote absolute `reboot` and `sudo` command paths' README.md
 grep -q 'validates the remote absolute `reboot` and `sudo` command paths' docs/sailboat-pi.md
-grep -q 'validates the remote absolute `python3` command path before reading boot IDs' README.md
-grep -q 'validates the remote absolute `python3` command path before reading boot IDs' docs/sailboat-pi.md
+grep -q 'revalidates those same reboot and sudo command paths immediately before requesting reboot' README.md
+grep -q 'revalidates those same reboot and sudo command paths immediately before requesting reboot' docs/sailboat-pi.md
+grep -q 'validates the remote absolute `python3` command path before every boot-ID read' README.md
+grep -q 'validates the remote absolute `python3` command path before every boot-ID read' docs/sailboat-pi.md
 grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' README.md
 grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' docs/sailboat-pi.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' README.md
@@ -4648,6 +4654,12 @@ after_guard_index = text.index('validate_boot_id_value "post-reboot" "$after_boo
 strict_verify_index = text.index('--expected-boot-id "$after_boot_id"', after_guard_index)
 if not before_index < before_guard_index < request_reboot_index < after_index < after_guard_index < strict_verify_index:
     raise SystemExit("dock test must validate collected boot IDs before reboot comparison and strict verify")
+request_reboot_func = text[text.index("request_reboot() {"):text.index('if [[ "$no_reboot" -eq 0 ]]')]
+reboot_revalidate_index = request_reboot_func.index('validate_remote_reboot_command_trust "$remote_reboot_cmd"')
+sudo_revalidate_index = request_reboot_func.index('validate_remote_root_command_trust sudo "$remote_sudo_cmd"')
+sudo_request_index = request_reboot_func.index('"$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH &&')
+if not reboot_revalidate_index < sudo_request_index or not sudo_revalidate_index < sudo_request_index:
+    raise SystemExit("dock test must revalidate reboot and sudo command trust immediately before requesting reboot")
 PY
 
 install_output="$(mktemp)"
@@ -5632,6 +5644,79 @@ grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=' "$dock_smoke_ssh_log"
 ! grep -q 'command -v reboot' "$dock_smoke_ssh_log"
 ! grep -q 'command -v sudo' "$dock_smoke_ssh_log"
 ! grep -q 'boot_id' "$dock_smoke_ssh_log"
+
+dock_revalidate_ssh_bin="$tmpdir/dock-revalidate-ssh-bin"
+dock_revalidate_ssh_log="$tmpdir/dock-revalidate-ssh-log"
+dock_revalidate_state="$tmpdir/dock-revalidate-state"
+mkdir -p "$dock_revalidate_ssh_bin" "$dock_revalidate_state"
+cat >"$dock_revalidate_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+args="$*"
+printf '%s\n' "$args" >>"$NOAA_NAVIONICS_FAKE_SSH_LOG"
+case "$args" in
+  *"command -v reboot"*)
+    printf '/usr/sbin/reboot\n'
+    exit 0
+    ;;
+  *"command -v sudo"*)
+    printf '/usr/bin/sudo\n'
+    exit 0
+    ;;
+  *"command -v python3"*)
+    printf '/usr/bin/python3\n'
+    exit 0
+    ;;
+  *"/bin/sh -s -- /usr/sbin/reboot reboot"*|*"/bin/sh -s -- /usr/bin/sudo sudo"*|*"/bin/sh -s -- /usr/bin/python3 python3"*)
+    exit 0
+    ;;
+  *"-n -l '/usr/sbin/reboot'"*)
+    exit 0
+    ;;
+  *"'/usr/bin/sudo' -n '/usr/sbin/reboot'"*)
+    : >"$NOAA_NAVIONICS_FAKE_DOCK_STATE/reboot-requested"
+    exit 0
+    ;;
+  *"&& true"*)
+    if [[ -f "$NOAA_NAVIONICS_FAKE_DOCK_STATE/reboot-requested" && ! -f "$NOAA_NAVIONICS_FAKE_DOCK_STATE/ssh-drop-seen" ]]; then
+      : >"$NOAA_NAVIONICS_FAKE_DOCK_STATE/ssh-drop-seen"
+      exit 1
+    fi
+    exit 0
+    ;;
+  *"'/usr/bin/python3' -"*)
+    count_file="$NOAA_NAVIONICS_FAKE_DOCK_STATE/boot-count"
+    count=0
+    if [[ -r "$count_file" ]]; then
+      count="$(cat "$count_file")"
+    fi
+    if [[ "$count" -eq 0 ]]; then
+      printf '11111111-1111-1111-1111-111111111111\n'
+    else
+      printf '22222222-2222-2222-2222-222222222222\n'
+    fi
+    printf '%s\n' "$((count + 1))" >"$count_file"
+    exit 0
+    ;;
+  *"NOAA_NAVIONICS_EXPECTED_REVISION="*)
+    exit 0
+    ;;
+esac
+echo "unexpected fake dock acceptance ssh invocation: $args" >&2
+exit 1
+EOF
+chmod +x "$dock_revalidate_ssh_bin/ssh"
+NOAA_NAVIONICS_FAKE_SSH_LOG="$dock_revalidate_ssh_log" \
+NOAA_NAVIONICS_FAKE_DOCK_STATE="$dock_revalidate_state" \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  PATH="$dock_revalidate_ssh_bin:$PATH" \
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --allow-dirty --device /dev/serial/by-id/mock-gps --timeout 5 >"$dock_output" 2>&1
+grep -q 'Dock test passed after reboot' "$dock_output"
+test "$(grep -c 'command -v python3' "$dock_revalidate_ssh_log")" -eq 2
+test "$(grep -c '/bin/sh -s -- /usr/bin/python3 python3' "$dock_revalidate_ssh_log")" -eq 2
+test "$(grep -c '/bin/sh -s -- /usr/sbin/reboot reboot' "$dock_revalidate_ssh_log")" -eq 2
+test "$(grep -c '/bin/sh -s -- /usr/bin/sudo sudo' "$dock_revalidate_ssh_log")" -eq 2
+grep -q "'/usr/bin/sudo' -n '/usr/sbin/reboot'" "$dock_revalidate_ssh_log"
+grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID=22222222-2222-2222-2222-222222222222' "$dock_revalidate_ssh_log"
 
 dock_fake_ssh_bin="$tmpdir/dock-fake-ssh-bin"
 mkdir -p "$dock_fake_ssh_bin"
