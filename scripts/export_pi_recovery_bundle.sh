@@ -200,7 +200,7 @@ validate_ssh_target() {
   fi
   host_lower="${host_part,,}"
   case "$host_lower" in
-    localhost|localhost.localdomain|*.localhost|127.*|0.0.0.0)
+    localhost|localhost.localdomain|*.localhost|ip6-localhost|ip6-loopback|loopback|127.*|0|0.0.0.0)
       echo "SSH target must not point at this computer or loopback: $host_part" >&2
       exit 2
       ;;

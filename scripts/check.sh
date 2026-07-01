@@ -940,7 +940,7 @@ for pi_ssh_script in \
   scripts/post_trip_collect_pi.sh
 do
   grep -q 'SSH target must not point at this computer or loopback' "$pi_ssh_script"
-  grep -q 'localhost|localhost.localdomain|\*.localhost|127.\*|0.0.0.0' "$pi_ssh_script"
+  grep -q 'localhost|localhost.localdomain|\*.localhost|ip6-localhost|ip6-loopback|loopback|127.\*|0|0.0.0.0' "$pi_ssh_script"
 done
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
@@ -4979,6 +4979,17 @@ set -e
 if [[ "$verify_code" -ne 2 ]]; then
   cat "$verify_output" >&2
   echo "expected verify_pi.sh to reject loopback SSH targets with exit 2" >&2
+  exit 1
+fi
+grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+set +e
+scripts/verify_pi.sh pi@ip6-localhost >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject IPv6 loopback SSH aliases with exit 2" >&2
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
