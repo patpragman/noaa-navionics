@@ -583,12 +583,15 @@ grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/seria
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating, writing, parsing, and cleaning up the private recovery-output capture' README.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
 grep -q 'capture_recovery_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'cleanup_private_recovery_output_capture "${recovery_output:-}" || true' scripts/pre_trip_prepare_pi.sh
+grep -q 'def sync_private_capture_directory' scripts/pre_trip_prepare_pi.sh
+grep -q 'sync_private_capture_directory(directory)' scripts/pre_trip_prepare_pi.sh
+grep -q 'Recovery output capture directory changed before sync' scripts/pre_trip_prepare_pi.sh
 grep -q 'Recovery output capture changed before cleanup; leaving it in place' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)' scripts/pre_trip_prepare_pi.sh
@@ -705,6 +708,8 @@ grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' README.md
 grep -q 'pre-trip wrapper validates each local helper script as a current-user-owned executable with no group/other write bits' docs/sailboat-pi.md
+grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
+grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories or symlinked local output path components' README.md

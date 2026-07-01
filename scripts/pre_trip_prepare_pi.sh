@@ -369,6 +369,45 @@ from pathlib import Path
 
 directory = Path(sys.argv[1])
 
+
+def sync_private_capture_directory(path: Path) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        print(f"Could not inspect recovery output capture directory before sync {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    if not stat.S_ISDIR(before.st_mode):
+        print(f"Recovery output capture directory must be a real directory: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if before.st_uid != os.getuid():
+        print(
+            f"Recovery output capture directory is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o700:
+        print(f"Recovery output capture directory has permissions {mode:04o}, expected private 0700: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    try:
+        directory_fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"Could not open recovery output capture directory for sync {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    try:
+        opened = os.fstat(directory_fd)
+        if not os.path.samestat(before, opened):
+            print(f"Recovery output capture directory changed before sync: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        os.fsync(directory_fd)
+    except OSError as exc:
+        print(f"Could not sync recovery output capture directory {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    finally:
+        os.close(directory_fd)
+
+
 try:
     fd, path = tempfile.mkstemp(
         prefix=".noaa-navionics-pre-trip-recovery-output-",
@@ -397,6 +436,7 @@ try:
 finally:
     os.close(fd)
 
+sync_private_capture_directory(directory)
 print(path)
 PY
   status=$?
