@@ -773,8 +773,8 @@ grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' README.md
 grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
-grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' README.md
-grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution' docs/sailboat-pi.md
+grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' README.md
+grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
@@ -1649,6 +1649,11 @@ grep -q 'Helper script has permissions {mode:03o}, expected no group/other write
 grep -q 'Could not open helper script through no-follow descriptor' scripts/post_trip_collect_pi.sh
 grep -q 'Helper script changed before it could be validated' scripts/post_trip_collect_pi.sh
 grep -q 'require_helper "$command_path"' scripts/post_trip_collect_pi.sh
+grep -q 'run_helper_descriptor()' scripts/post_trip_collect_pi.sh
+grep -q 'Helper script changed before descriptor execution' scripts/post_trip_collect_pi.sh
+grep -q 'subprocess.run(\[f"/proc/self/fd/{fd}", \*args\], pass_fds=(fd,))' scripts/post_trip_collect_pi.sh
+grep -q 'Could not execute helper script through validated descriptor' scripts/post_trip_collect_pi.sh
+! grep -q '^  "\$command_path" "\$@"' scripts/post_trip_collect_pi.sh
 ! sed -n '/^require_helper()/,/^}/p' scripts/post_trip_collect_pi.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'require_local_command python3' scripts/post_trip_collect_pi.sh
 grep -q 'validate_trusted_local_command' scripts/post_trip_collect_pi.sh
