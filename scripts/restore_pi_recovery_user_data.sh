@@ -291,6 +291,8 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
                             if not track_name or "/" in track_name:
                                 fail(f"{archive_path.name} contains nested or empty track data member: {member.name}")
                             data_member_names.append(track_name)
+                        else:
+                            data_member_names.append(normalized)
                         data_file_count += 1
                     if not load_contents:
                         continue
@@ -329,7 +331,27 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
                 f"{archive_path.name} manifest {required_count_key} does not match data file count: "
                 f"{count} != {data_file_count}"
             )
-        if required_count_key == "track_count":
+        if required_count_key == "file_count":
+            files_manifest = manifest.get("files")
+            if not isinstance(files_manifest, list):
+                fail(f"{archive_path.name} manifest files must be a list")
+            manifest_file_names = []
+            for index, file_entry in enumerate(files_manifest):
+                if not isinstance(file_entry, dict):
+                    fail(f"{archive_path.name} manifest files[{index}] must be an object")
+                archive_path_value = file_entry.get("archive_path")
+                if not isinstance(archive_path_value, str):
+                    fail(
+                        f"{archive_path.name} manifest files[{index}].archive_path is invalid: "
+                        f"{archive_path_value!r}"
+                    )
+                manifest_file_names.append(validate_member_name(archive_path_value, archive_path))
+            if sorted(manifest_file_names) != sorted(data_member_names):
+                fail(
+                    f"{archive_path.name} manifest file names do not match data files: "
+                    f"{sorted(manifest_file_names)!r} != {sorted(data_member_names)!r}"
+                )
+        elif required_count_key == "track_count":
             tracks = manifest.get("tracks")
             if not isinstance(tracks, list):
                 fail(f"{archive_path.name} manifest tracks must be a list")

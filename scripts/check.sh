@@ -867,8 +867,8 @@ grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-rec
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' README.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' docs/sailboat-pi.md
-grep -Fq 'requiring the GPX manifest count and track names to match regular `tracks/*.gpx` data files' README.md
-grep -Fq 'requiring the GPX manifest count and track names to match regular `tracks/*.gpx` data files' docs/sailboat-pi.md
+grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' README.md
+grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' docs/sailboat-pi.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
@@ -1565,11 +1565,15 @@ grep -q 'file_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'track_count' scripts/verify_pi_recovery_exports.sh
 grep -q 'data_file_count += 1' scripts/verify_pi_recovery_exports.sh
 grep -q 'does not match data file count' scripts/verify_pi_recovery_exports.sh
+grep -q 'manifest files must be a list' scripts/verify_pi_recovery_exports.sh
+grep -q 'manifest file names do not match data files' scripts/verify_pi_recovery_exports.sh
 grep -q 'contains non-GPX track data member' scripts/verify_pi_recovery_exports.sh
 grep -q 'manifest tracks must be a list' scripts/verify_pi_recovery_exports.sh
 grep -q 'manifest track names do not match data files' scripts/verify_pi_recovery_exports.sh
 grep -q 'data_file_count += 1' scripts/restore_pi_recovery_user_data.sh
 grep -q 'does not match data file count' scripts/restore_pi_recovery_user_data.sh
+grep -q 'manifest files must be a list' scripts/restore_pi_recovery_user_data.sh
+grep -q 'manifest file names do not match data files' scripts/restore_pi_recovery_user_data.sh
 grep -q 'contains non-GPX track data member' scripts/restore_pi_recovery_user_data.sh
 grep -q 'manifest tracks must be a list' scripts/restore_pi_recovery_user_data.sh
 grep -q 'manifest track names do not match data files' scripts/restore_pi_recovery_user_data.sh
@@ -9629,6 +9633,8 @@ def add_text(archive, name, text):
 
 def build_archive(directory, name, manifest, extra_member):
     path = directory / name
+    if isinstance(manifest, dict) and "file_count" in manifest and "files" not in manifest:
+        manifest = {**manifest, "files": [{"archive_path": extra_member}]}
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         add_text(archive, "README.txt", "recovery fixture\n")
         if manifest is not None:
@@ -9867,6 +9873,56 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
 fi
 grep -q 'manifest file_count does not match data file count: 2 != 1' "$verify_output"
 
+recovery_verify_mismatched_file_names_dir="$tmpdir/recovery-verify-mismatched-file-names"
+cp -a "$recovery_verify_dir" "$recovery_verify_mismatched_file_names_dir"
+python3 - "$recovery_verify_mismatched_file_names_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "recovery fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "noaa-navionics/stale-config.ini"}]}) + "\n",
+    )
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_mismatched_file_names_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject mismatched file manifest names with exit 1" >&2
+  exit 1
+fi
+grep -q "manifest file names do not match data files: \\['noaa-navionics/stale-config.ini'\\] != \\['noaa-navionics/config.ini'\\]" "$verify_output"
+
 recovery_verify_mismatched_track_names_dir="$tmpdir/recovery-verify-mismatched-track-names"
 cp -a "$recovery_verify_dir" "$recovery_verify_mismatched_track_names_dir"
 python3 - "$recovery_verify_mismatched_track_names_dir" <<'PY'
@@ -9978,6 +10034,8 @@ def add_text(archive, name, text):
 
 def build_archive(directory, name, manifest, extra_member, *, duplicate_readme=False):
     path = directory / name
+    if isinstance(manifest, dict) and "file_count" in manifest and "files" not in manifest:
+        manifest = {**manifest, "files": [{"archive_path": extra_member}]}
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         add_text(archive, "README.txt", "recovery fixture\n")
         if duplicate_readme:
@@ -10060,6 +10118,8 @@ def add_text(archive, name, text):
 
 def build_archive(directory, name, manifest, extra_member):
     path = directory / name
+    if isinstance(manifest, dict) and "file_count" in manifest and "files" not in manifest:
+        manifest = {**manifest, "files": [{"archive_path": extra_member}]}
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         add_text(archive, "README.txt", "recovery fixture\n")
         if manifest is not None:
@@ -10147,6 +10207,8 @@ def add_readme_dir(archive):
 
 def build_archive(directory, name, manifest, extra_member, *, readme_dir=False):
     path = directory / name
+    if isinstance(manifest, dict) and "file_count" in manifest and "files" not in manifest:
+        manifest = {**manifest, "files": [{"archive_path": extra_member}]}
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         if readme_dir:
             add_readme_dir(archive)
@@ -10307,6 +10369,8 @@ def add_readme_dir(archive):
 
 def build_archive(directory, name, manifest, members, *, readme_dir=False):
     path = directory / name
+    if isinstance(manifest, dict) and "file_count" in manifest and "files" not in manifest:
+        manifest = {**manifest, "files": [{"archive_path": member_name} for member_name in members]}
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         if readme_dir:
             add_readme_dir(archive)
@@ -10515,6 +10579,58 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'manifest file_count does not match data file count: 3 != 2' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_mismatched_file_names_dir="$tmpdir/recovery-restore-mismatched-file-names"
+cp -a "$recovery_restore_dir" "$recovery_restore_mismatched_file_names_dir"
+python3 - "$recovery_restore_mismatched_file_names_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 2, "files": [{"archive_path": "noaa-navionics/stale-config.ini"}, {"archive_path": "noaa-navionics/launcher.env"}]}) + "\n",
+    )
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\noutput = ~/tracks-store\n")
+    add_text(archive, "noaa-navionics/launcher.env", "NOAA_NAVIONICS_GPS_SECONDS=60\n")
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_mismatched_file_names_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject mismatched file manifest names with exit 1" >&2
+  exit 1
+fi
+grep -q "manifest file names do not match data files: \\['noaa-navionics/launcher.env', 'noaa-navionics/stale-config.ini'\\] != \\['noaa-navionics/config.ini', 'noaa-navionics/launcher.env'\\]" "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_track_names_dir="$tmpdir/recovery-restore-mismatched-track-names"
