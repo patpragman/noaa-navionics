@@ -280,6 +280,7 @@ def status_report_validation_failures(
 ) -> list[CheckResult]:
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
     failures.extend(_host_validation_failures(report.get("host")))
+    failures.extend(_app_validation_failures(report.get("app")))
     failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log")))
     for section_name in ("checks", "service_checks"):
@@ -341,6 +342,52 @@ def _host_validation_failures(host: object) -> list[CheckResult]:
         return [CheckResult("Status Report", False, "status report missing valid host boot_id")]
     if not BOOT_ID_RE.fullmatch(boot_id):
         return [CheckResult("Status Report", False, f"status report host boot_id is not a Linux boot_id value: {boot_id}")]
+    return []
+
+
+def _app_validation_failures(app: object) -> list[CheckResult]:
+    if not isinstance(app, dict):
+        return [CheckResult("Status Report", False, "status report missing app section")]
+    source_revision = app.get("source_revision")
+    if not isinstance(source_revision, str) or not source_revision.strip() or source_revision.strip() == "unknown":
+        return [CheckResult("Status Report", False, "status report missing deployed source_revision")]
+    if not str(app.get("source_revision_path", "")).strip():
+        return [CheckResult("Status Report", False, "status report missing source_revision_path")]
+    if app.get("source_revision_path_is_symlink") is not False:
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                "status report source revision path is a symlink or missing symlink status",
+            )
+        ]
+    if app.get("source_revision_directory_is_symlink") is not False:
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                "status report source revision directory is a symlink or missing symlink status",
+            )
+        ]
+    if "source_revision_symlink_component" not in app:
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                "status report source revision missing source_revision_symlink_component",
+            )
+        ]
+    if str(app.get("source_revision_symlink_component", "")).strip():
+        return [CheckResult("Status Report", False, "status report source revision path contains a symlink")]
+    source_revision_error = str(app.get("source_revision_error", "")).strip()
+    if source_revision_error:
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                f"status report source revision error: {source_revision_error}",
+            )
+        ]
     return []
 
 

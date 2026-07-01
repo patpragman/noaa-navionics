@@ -182,6 +182,19 @@ def complete_status_gui_report(
         "ok": ok,
         "generated_at": generated_at,
         "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
+        "app": {
+            "version": "0.1.0",
+            "source_revision": "fixture123",
+            "source_revision_path": "/home/pi/.local/share/noaa-navionics/source-revision",
+            "source_revision_exists": True,
+            "source_revision_path_is_symlink": False,
+            "source_revision_directory_is_symlink": False,
+            "source_revision_symlink_component": "",
+            "source_revision_uid": os.getuid(),
+            "source_revision_mode": "0600",
+            "source_revision_directory_uid": os.getuid(),
+            "source_revision_directory_mode": "0700",
+        },
         "config": {
             "gps_mode": gps_mode,
             "chart_output": "/charts",
@@ -9802,6 +9815,54 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertEqual(failures[0].name, "Status Report")
                 self.assertIn(expected, failures[0].detail)
+
+    def test_status_report_ready_requires_valid_app_source_revision_summary(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        valid_app = complete_status_gui_report(
+            generated_at=now.isoformat().replace("+00:00", "Z"),
+        )["app"]
+        cases = [
+            ({}, "missing app section"),
+            ({"app": {**valid_app, "source_revision": ""}}, "missing deployed source_revision"),
+            ({"app": {**valid_app, "source_revision": "unknown"}}, "missing deployed source_revision"),
+            ({"app": {**valid_app, "source_revision_path": ""}}, "missing source_revision_path"),
+            ({"app": {**valid_app, "source_revision_path_is_symlink": True}}, "path is a symlink"),
+            (
+                {"app": {key: value for key, value in valid_app.items() if key != "source_revision_path_is_symlink"}},
+                "path is a symlink or missing symlink status",
+            ),
+            (
+                {"app": {**valid_app, "source_revision_directory_is_symlink": True}},
+                "directory is a symlink",
+            ),
+            (
+                {"app": {key: value for key, value in valid_app.items() if key != "source_revision_symlink_component"}},
+                "missing source_revision_symlink_component",
+            ),
+            (
+                {"app": {**valid_app, "source_revision_symlink_component": "/home/pi/.local/share"}},
+                "path contains a symlink",
+            ),
+            (
+                {"app": {**valid_app, "source_revision_error": "source revision path is not a regular file"}},
+                "source revision error",
+            ),
+        ]
+        for updates, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(
+                    generated_at=now.isoformat().replace("+00:00", "Z"),
+                )
+                report.update(updates)
+                if "app" not in updates:
+                    report.pop("app", None)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "Status Report" and expected in failure.detail for failure in failures)
+                )
 
     def test_status_report_ready_requires_valid_gps_fix_summary(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
