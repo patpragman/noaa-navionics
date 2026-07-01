@@ -146,6 +146,11 @@ grep -q 'validate_lock_file_content(name, value)' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file()' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file boot_id "chartplotter launcher lock boot ID"' scripts/start_chartplotter.sh
 grep -q 'read_launcher_lock_file pid "chartplotter launcher lock pid"' scripts/start_chartplotter.sh
+grep -q 'path = Path("/proc/sys/kernel/random/boot_id")' scripts/start_chartplotter.sh
+grep -q 'boot_id_re.fullmatch(value)' scripts/start_chartplotter.sh
+grep -q 'before.st_dev != opened.st_dev or before.st_ino != opened.st_ino' scripts/start_chartplotter.sh
+grep -q 'os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/start_chartplotter.sh
+! grep -q 'head -n 1 /proc/sys/kernel/random/boot_id' scripts/start_chartplotter.sh
 grep -q 'fd = os.open(candidate, flags, 0o600, dir_fd=dir_fd)' scripts/start_chartplotter.sh
 grep -q 'release_owned_launcher_lock' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock no longer belongs to this launcher; leaving it in place' scripts/start_chartplotter.sh
@@ -156,6 +161,8 @@ grep -q 'expected private 0600' scripts/start_chartplotter.sh
 grep -q 'chartplotter launcher lock directory has permissions' scripts/start_chartplotter.sh
 grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' README.md
 grep -q 'requires existing launcher lock directories to be private `0700` and PID/boot-ID files to be private `0600` before trusting them' docs/sailboat-pi.md
+grep -q 'current Linux boot ID through a no-follow descriptor before comparing or stamping current-boot launch locks' README.md
+grep -q 'current Linux boot ID read through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'promotes lock PID and boot-ID files through exclusive private temporary files and atomic replacement, then reads them back through no-follow descriptors' README.md
 grep -q 'promotes lock PID and boot-ID files through exclusive private temporary files and atomic replacement, then reads them back through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'leaves a lock untouched if it is swapped for a symlink or no longer belongs to the releasing launcher before release cleanup' README.md

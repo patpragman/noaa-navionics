@@ -1081,9 +1081,40 @@ PY
 }
 
 current_boot_id() {
-  if [[ -r /proc/sys/kernel/random/boot_id ]]; then
-    head -n 1 /proc/sys/kernel/random/boot_id 2>/dev/null || true
-  fi
+  "$python3_bin" - <<'PY' 2>/dev/null || true
+from pathlib import Path
+import os
+import re
+import stat
+import sys
+
+path = Path("/proc/sys/kernel/random/boot_id")
+boot_id_re = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+        raise OSError("boot ID path is not a trusted regular file")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError:
+    raise SystemExit(0)
+
+try:
+    opened = os.fstat(fd)
+    if before.st_dev != opened.st_dev or before.st_ino != opened.st_ino:
+        raise SystemExit(0)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(0)
+    lines = os.read(fd, 4096).decode("ascii", "ignore").splitlines()
+finally:
+    os.close(fd)
+
+if not lines:
+    raise SystemExit(0)
+value = lines[0].strip()
+if boot_id_re.fullmatch(value):
+    sys.stdout.write(value)
+PY
 }
 
 is_raspberry_pi() {
