@@ -618,6 +618,7 @@ try:
             with tarfile.open(fileobj=handle, mode="r:gz") as archive:
                 members = archive.getmembers()
                 by_name = {}
+                data_member_names = []
                 data_file_count = 0
                 for member in members:
                     normalized = normalized_member_name(member.name)
@@ -627,6 +628,7 @@ try:
                     if not member.isreg():
                         fail(f"Export archive contains unsupported non-regular member: {member.name}")
                     if normalized not in {"README.txt", "manifest.json"}:
+                        data_member_names.append(normalized)
                         data_file_count += 1
                 if "README.txt" not in by_name:
                     fail("Export archive is missing README.txt")
@@ -650,6 +652,23 @@ if not isinstance(count, int) or count <= 0:
     fail(f"Export archive manifest has invalid {count_field}: {count!r}")
 if count != data_file_count:
     fail(f"Export archive manifest {count_field} does not match data file count: {count} != {data_file_count}")
+if count_field == "file_count":
+    files = manifest.get("files")
+    if not isinstance(files, list):
+        fail("Export archive manifest files must be a list")
+    manifest_file_names = []
+    for index, file_entry in enumerate(files):
+        if not isinstance(file_entry, dict):
+            fail(f"Export archive manifest files[{index}] must be an object")
+        archive_path = file_entry.get("archive_path")
+        if not isinstance(archive_path, str):
+            fail(f"Export archive manifest files[{index}].archive_path is invalid: {archive_path!r}")
+        manifest_file_names.append(normalized_member_name(archive_path))
+    if sorted(manifest_file_names) != sorted(data_member_names):
+        fail(
+            "Export archive manifest file names do not match data files: "
+            f"{sorted(manifest_file_names)!r} != {sorted(data_member_names)!r}"
+        )
 PY
 }
 

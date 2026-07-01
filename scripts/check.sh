@@ -811,6 +811,8 @@ grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3
 grep -q 'OpenCPN export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing trusted regular OpenCPN config' docs/sailboat-pi.md
+grep -q 'positive manifest count and manifest file names that match the regular data files' README.md
+grep -q 'positive manifest count and manifest file names that match the regular data files' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/export_pi_settings.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root' README.md
@@ -1458,6 +1460,8 @@ grep -q 'count <= 0' scripts/export_pi_opencpn_data.sh
 grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_opencpn_data.sh
 grep -q 'data_file_count += 1' scripts/export_pi_opencpn_data.sh
 grep -q 'Export archive manifest {count_field} does not match data file count' scripts/export_pi_opencpn_data.sh
+grep -q 'Export archive manifest files must be a list' scripts/export_pi_opencpn_data.sh
+grep -q 'Export archive manifest file names do not match data files' scripts/export_pi_opencpn_data.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
@@ -1476,6 +1480,8 @@ grep -q 'count <= 0' scripts/export_pi_settings.sh
 grep -q 'Export archive manifest has invalid {count_field}' scripts/export_pi_settings.sh
 grep -q 'data_file_count += 1' scripts/export_pi_settings.sh
 grep -q 'Export archive manifest {count_field} does not match data file count' scripts/export_pi_settings.sh
+grep -q 'Export archive manifest files must be a list' scripts/export_pi_settings.sh
+grep -q 'Export archive manifest file names do not match data files' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_settings.sh
 grep -q 'info.size = current_stat.st_size' scripts/export_pi_settings.sh
@@ -8818,6 +8824,35 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_MISMATCHED_OPENCPN_NAMES:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake opencpn export\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "opencpn/stale-navobj.xml"}]}) + "\n",
+    )
+    add_text(archive, "opencpn/navobj.xml", "<navobj></navobj>\n")
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_UNSAFE_OPENCPN_ARCHIVE:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -8891,7 +8926,11 @@ def add_text(archive, name, text):
 
 with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
     add_text(archive, "README.txt", "fake opencpn export\n")
-    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "opencpn/navobj.xml"}]}) + "\n",
+    )
     add_text(archive, "opencpn/navobj.xml", "<navobj></navobj>\n")
 PY
 EOF
@@ -8957,6 +8996,25 @@ if [[ "$opencpn_export_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Export archive manifest file_count does not match data file count: 1 != 0' "$verify_output"
+! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
+
+set +e
+opencpn_export_mismatched_names_output_dir="$tmpdir/opencpn-exports-mismatched-names"
+mkdir -p "$opencpn_export_mismatched_names_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_MISMATCHED_OPENCPN_NAMES=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
+  PATH="$opencpn_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_mismatched_names_output_dir" >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject an archive whose manifest file names do not match data files with exit 1" >&2
+  exit 1
+fi
+grep -q "Export archive manifest file names do not match data files: \\['opencpn/stale-navobj.xml'\\] != \\['opencpn/navobj.xml'\\]" "$verify_output"
 ! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
 
 set +e
@@ -9136,6 +9194,37 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_MISMATCHED_SETTINGS_NAMES:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "fake settings export\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps(
+            {"file_count": 1, "files": [{"archive_path": "noaa-navionics/stale-config.ini"}]}
+        ) + "\n",
+    )
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_UNSAFE_SETTINGS_ARCHIVE:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -9209,7 +9298,13 @@ def add_text(archive, name, text):
 
 with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
     add_text(archive, "README.txt", "fake settings export\n")
-    add_text(archive, "manifest.json", json.dumps({"file_count": 1}) + "\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps(
+            {"file_count": 1, "files": [{"archive_path": "noaa-navionics/config.ini"}]}
+        ) + "\n",
+    )
     add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
 PY
 EOF
@@ -9276,6 +9371,25 @@ if [[ "$settings_export_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'Export archive manifest file_count does not match data file count: 1 != 0' "$verify_output"
+! grep -q 'Exported Pi commissioning settings:' "$verify_output"
+
+set +e
+settings_export_mismatched_names_output_dir="$tmpdir/settings-exports-mismatched-names"
+mkdir -p "$settings_export_mismatched_names_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_MISMATCHED_SETTINGS_NAMES=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
+  PATH="$settings_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_mismatched_names_output_dir" >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject an archive whose manifest file names do not match data files with exit 1" >&2
+  exit 1
+fi
+grep -q "Export archive manifest file names do not match data files: \\['noaa-navionics/stale-config.ini'\\] != \\['noaa-navionics/config.ini'\\]" "$verify_output"
 ! grep -q 'Exported Pi commissioning settings:' "$verify_output"
 
 set +e
