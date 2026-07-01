@@ -4884,6 +4884,15 @@ class CLIValidationTests(unittest.TestCase):
     def test_track_logger_rejects_negative_retention_days(self):
         self.assert_parse_error(["log-track", "--retention-days", "-1"])
 
+    def test_live_serial_device_validation_rejects_broken_by_id_symlink(self):
+        with (
+            patch("noaa_navionics.cli.Path.exists", return_value=False),
+            patch("noaa_navionics.cli.Path.is_symlink", return_value=True),
+            patch("noaa_navionics.cli.Path.resolve", return_value=Path("/dev/ttyACM0")),
+        ):
+            with self.assertRaisesRegex(ValueError, "broken by-id symlink"):
+                cli_module._validate_live_serial_device("/dev/serial/by-id/mock-gps")
+
 
 class ManifestTests(unittest.TestCase):
     class FakeResponse:

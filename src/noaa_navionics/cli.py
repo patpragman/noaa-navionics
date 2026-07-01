@@ -993,6 +993,12 @@ def _validate_live_serial_device(device: str) -> None:
         )
     path = Path(device).expanduser()
     path_text = str(path)
+    if path_text.startswith("/dev/serial/by-id/") and path.is_symlink() and not path.exists():
+        try:
+            target = path.resolve(strict=False)
+        except OSError:
+            target = path
+        raise ValueError(f"GPS serial device {path} is a broken by-id symlink to {target}")
     if path_text.startswith("/dev/serial/by-id/") and path.exists() and not path.is_symlink():
         raise ValueError(f"GPS serial device {path} is not a udev by-id symlink")
 
