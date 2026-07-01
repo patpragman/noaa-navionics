@@ -564,20 +564,33 @@ from noaa_navionics.health import (
     check_disk_space,
 )
 
-app_config = read_config(config_path)
-checks = [
-    check_chart_package(app_config.chart_package, app_config.chart_value),
-    check_chart_dir(app_config.chart_output),
-    check_chart_update_debris(app_config.chart_output),
-    check_chart_manifest(
-        app_config.chart_output,
-        max_age_days=app_config.max_chart_age_days,
-        expected_package=app_config.chart_package,
-        expected_value=app_config.chart_value,
-        require_archive=app_config.keep_zip,
-    ),
-    check_disk_space(app_config.chart_output, min_free_gb=app_config.min_free_gb),
-]
+try:
+    app_config = read_config(config_path)
+except Exception as exc:
+    raise SystemExit(
+        "Existing chart config is invalid when --skip-sync is used with unattended startup: "
+        f"{exc}"
+    )
+
+try:
+    checks = [
+        check_chart_package(app_config.chart_package, app_config.chart_value),
+        check_chart_dir(app_config.chart_output),
+        check_chart_update_debris(app_config.chart_output),
+        check_chart_manifest(
+            app_config.chart_output,
+            max_age_days=app_config.max_chart_age_days,
+            expected_package=app_config.chart_package,
+            expected_value=app_config.chart_value,
+            require_archive=app_config.keep_zip,
+        ),
+        check_disk_space(app_config.chart_output, min_free_gb=app_config.min_free_gb),
+    ]
+except Exception as exc:
+    raise SystemExit(
+        "existing complete charts could not be validated when --skip-sync is used with unattended startup: "
+        f"{exc}"
+    )
 failures = [f"{check.name}: {check.detail}" for check in checks if not check.ok]
 if failures:
     raise SystemExit(

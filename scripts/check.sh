@@ -3140,7 +3140,11 @@ grep -q 'validate_existing_system_service chrony.service chrony --skip-gps-time'
 grep -q 'not line.lstrip().startswith("#")' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_charts' scripts/provision_sailboat_pi.sh
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'Existing chart config is invalid when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'existing complete charts could not be validated when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
+grep -q 'malformed or unsafe chart config plus missing, incomplete, symlinked chart-directory ancestors' README.md
+grep -q 'malformed or unsafe chart config plus missing, incomplete, symlinked chart-directory ancestors' docs/sailboat-pi.md
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
 grep -q 'check_disk_space(app_config.chart_output' scripts/provision_sailboat_pi.sh
 grep -q 'validate_user_install_path' scripts/provision_sailboat_pi.sh
@@ -13804,6 +13808,34 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Existing chart config is required when --skip-sync is used with unattended startup' "$provision_output"
+
+skip_sync_malformed_home="$tmpdir/skip-sync-malformed-home"
+mkdir -p "$skip_sync_malformed_home/.config/noaa-navionics" "$skip_sync_malformed_home/.local/bin"
+chmod 0700 "$skip_sync_malformed_home/.config" "$skip_sync_malformed_home/.config/noaa-navionics"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$skip_sync_malformed_home/.local/bin/noaa-navionics"
+chmod +x "$skip_sync_malformed_home/.local/bin/noaa-navionics"
+cat >"$skip_sync_malformed_home/.config/noaa-navionics/config.ini" <<'EOF'
+[charts]
+package = bogus
+value = AK
+EOF
+chmod 0600 "$skip_sync_malformed_home/.config/noaa-navionics/config.ini"
+set +e
+HOME="$skip_sync_malformed_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-sync >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-sync with an invalid onboard chart config" >&2
+  exit 1
+fi
+grep -q 'Existing chart config is invalid when --skip-sync is used with unattended startup' "$provision_output"
+grep -q 'charts.package must be one of' "$provision_output"
+! grep -q 'Traceback' "$provision_output"
 
 skip_sync_unsafe_home="$workspace_tmpdir/skip-sync-unsafe-home"
 skip_sync_unsafe_charts="$skip_sync_unsafe_home/charts/noaa-enc"
