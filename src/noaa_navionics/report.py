@@ -1956,6 +1956,14 @@ def _gps_fix_validation_failures(
         return [CheckResult("GPS Fix", False, f"status report gps_fix age_seconds is negative: {reported_age_seconds:g}")]
     if reported_age_seconds > STATUS_REPORT_MAX_AGE_SECONDS:
         return [CheckResult("GPS Fix", False, f"status report gps_fix age_seconds is stale: {reported_age_seconds:g}s")]
+    if abs(reported_age_seconds - age_seconds) > STATUS_REPORT_FUTURE_TOLERANCE_SECONDS:
+        return [
+            CheckResult(
+                "GPS Fix",
+                False,
+                f"status report gps_fix age_seconds {reported_age_seconds:g} is inconsistent with timestamp age {age_seconds:g}",
+            )
+        ]
     satellites = gps_fix.get("satellites")
     hdop = gps_fix.get("hdop")
     if satellites is None and hdop is None:

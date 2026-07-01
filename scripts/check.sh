@@ -2188,6 +2188,7 @@ grep -q 'status report gps_fix latitude is outside -90..90' scripts/verify_pi.sh
 grep -q 'status report gps_fix timestamp is stale' scripts/verify_pi.sh
 grep -q 'status report gps_fix age_seconds is negative' scripts/verify_pi.sh
 grep -q 'status report gps_fix age_seconds is stale' scripts/verify_pi.sh
+grep -q 'abs(reported_gps_age_seconds - gps_age_seconds) > 30.0' scripts/verify_pi.sh
 grep -q 'status report gps_fix has no satellite or HDOP quality fields' scripts/verify_pi.sh
 grep -q 'status report gps_fix source' scripts/verify_pi.sh
 grep -q 'status_stat = os.fstat(fd)' scripts/verify_pi.sh
@@ -4056,6 +4057,7 @@ grep -q 'status report missing gps_fix section' src/noaa_navionics/report.py
 grep -q 'status report gps_fix source' src/noaa_navionics/report.py
 grep -q 'timestamp.tzinfo is None or timestamp.utcoffset() is None' src/noaa_navionics/report.py
 grep -q 'status report gps_fix timestamp is stale' src/noaa_navionics/report.py
+grep -q 'status report gps_fix age_seconds {reported_age_seconds:g} is inconsistent with timestamp age' src/noaa_navionics/report.py
 grep -q 'status report gps_fix has no satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'status report missing track_log section' src/noaa_navionics/report.py
 grep -q 'status report track_log track_output is a symlink or missing symlink status' src/noaa_navionics/report.py
@@ -4164,6 +4166,7 @@ grep -q 'status_report_is_ready(report)' src/noaa_navionics/gui.py
 grep -q 'test_status_report_ready_requires_fresh_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_future_generated_at' tests/test_downloader.py
 grep -q 'test_status_report_ready_rejects_malformed_generated_at' tests/test_downloader.py
+grep -q 'inconsistent with timestamp age' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_runtime_evidence' tests/test_downloader.py
 grep -q 'test_check_python_records_structured_runtime' tests/test_downloader.py
 grep -q 'test_check_tkinter_records_structured_availability' tests/test_downloader.py

@@ -2210,7 +2210,7 @@ if reported_gps_age_seconds < 0.0:
     raise SystemExit(f"status report gps_fix age_seconds is negative: {reported_gps_age_seconds:g}")
 if reported_gps_age_seconds > 600.0:
     raise SystemExit(f"status report gps_fix age_seconds is stale: {reported_gps_age_seconds:g}s")
-if reported_gps_age_seconds - gps_age_seconds > 30.0:
+if abs(reported_gps_age_seconds - gps_age_seconds) > 30.0:
     raise SystemExit(
         f"status report gps_fix age_seconds {reported_gps_age_seconds:g} "
         f"is inconsistent with timestamp age {gps_age_seconds:g}"
