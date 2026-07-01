@@ -857,7 +857,7 @@ save_pre_departure_status_snapshot() {
   "$python3_cmd" - "$command_path" "$directory" "$@" <<'PY'
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import hashlib
 import json
@@ -875,6 +875,8 @@ status_name = "pre-departure-status.json"
 checksum_name = "pre-departure-status.sha256"
 nofollow = getattr(os, "O_NOFOLLOW", 0)
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+STATUS_MAX_AGE_SECONDS = 15 * 60
+STATUS_FUTURE_TOLERANCE_SECONDS = 5 * 60
 
 
 def fail(message: str) -> None:
@@ -1060,6 +1062,18 @@ try:
         fail(f"pre-departure status snapshot JSON has invalid generated_at timestamp: {exc}")
     if parsed_generated_at.tzinfo is None:
         fail("pre-departure status snapshot JSON generated_at timestamp must include a timezone")
+    generated_at_utc = parsed_generated_at.astimezone(timezone.utc)
+    age_seconds = (datetime.now(timezone.utc) - generated_at_utc).total_seconds()
+    if age_seconds > STATUS_MAX_AGE_SECONDS:
+        fail(
+            "pre-departure status snapshot JSON generated_at timestamp is stale "
+            f"({age_seconds:.0f}s old; maximum {STATUS_MAX_AGE_SECONDS}s)"
+        )
+    if age_seconds < -STATUS_FUTURE_TOLERANCE_SECONDS:
+        fail(
+            "pre-departure status snapshot JSON generated_at timestamp is too far in the future "
+            f"({-age_seconds:.0f}s ahead; maximum {STATUS_FUTURE_TOLERANCE_SECONDS}s)"
+        )
     host = parsed.get("host")
     if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
         fail("pre-departure status snapshot JSON missing valid host boot_id")

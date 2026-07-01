@@ -683,6 +683,8 @@ grep -q 'pre-departure-status.sha256' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing generated_at timestamp' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON generated_at timestamp is stale' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON generated_at timestamp is too far in the future' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing valid host boot_id' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing deployed source_revision' scripts/pre_trip_prepare_pi.sh
 grep -q 'Saved pre-departure status snapshot:' scripts/pre_trip_prepare_pi.sh
@@ -705,8 +707,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale or far-future snapshot timestamps at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale or far-future snapshot timestamps at capture time' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -6595,7 +6597,8 @@ EOF
 cat >"$pre_trip_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
-printf '{"generated_at": "2026-06-30T12:00:00Z", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "fixture123"}, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n'
+generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '{"generated_at": "%s", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "fixture123"}, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n' "$generated_at"
 EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
 
@@ -6696,6 +6699,38 @@ if checksum_path.read_text(encoding="ascii") != expected:
     raise SystemExit("pre-trip status checksum did not match status snapshot")
 PY
 
+pre_trip_stale_repo="$tmpdir/pre-trip-stale-repo"
+pre_trip_stale_log="$tmpdir/pre-trip-stale-helper-calls"
+pre_trip_stale_output_dir="$tmpdir/pre-trip-stale-output"
+cp -a "$pre_trip_repo" "$pre_trip_stale_repo"
+cat >"$pre_trip_stale_repo/scripts/check_pi_status.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf '{"generated_at": "2000-01-01T00:00:00Z", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "fixture123"}, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n'
+EOF
+chmod +x "$pre_trip_stale_repo/scripts/check_pi_status.sh"
+mkdir -p "$pre_trip_stale_output_dir"
+chmod 0777 "$pre_trip_stale_output_dir"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_stale_log" \
+  "$pre_trip_stale_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_stale_output_dir" \
+  --skip-refresh >"$verify_output" 2>&1
+pre_trip_stale_code=$?
+set -e
+if [[ "$pre_trip_stale_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject stale pre-departure status timestamps with exit 2" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON generated_at timestamp is stale' "$verify_output"
+grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps" "$pre_trip_stale_log"
+grep -Fxq "status|pi@example.invalid --json" "$pre_trip_stale_log"
+test ! -e "$pre_trip_stale_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
+test ! -e "$pre_trip_stale_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
+
 pre_trip_mutated_repo="$tmpdir/pre-trip-mutated-repo"
 pre_trip_mutated_log="$tmpdir/pre-trip-mutated-helper-calls"
 mkdir -p "$pre_trip_mutated_repo/scripts"
@@ -6769,7 +6804,8 @@ EOF
 cat >"$pre_trip_misdirected_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
-printf '{"generated_at": "2026-06-30T12:00:00Z", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "fixture123"}, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n'
+generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '{"generated_at": "%s", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "fixture123"}, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n' "$generated_at"
 EOF
 chmod +x "$pre_trip_misdirected_repo/scripts/"*.sh
 set +e
