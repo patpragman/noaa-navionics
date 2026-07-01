@@ -216,6 +216,14 @@ prepare_private_output_dir() {
   fi
 }
 
+strip_trailing_slashes() {
+  local value="$1"
+  while [[ "$value" != "/" && "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s' "$value"
+}
+
 require_helper() {
   local path="$1"
   local current_uid
@@ -262,6 +270,7 @@ run_step() {
 
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
+output_dir="$(strip_trailing_slashes "$output_dir")"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 settings_helper="${repo_root}/scripts/export_pi_settings.sh"
