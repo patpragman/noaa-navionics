@@ -112,11 +112,24 @@ grep -q 'NOAA Navionics cache directory has permissions .* expected private 0700
 grep -q 'chmod 0700 "$cache_dir"' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log is not a regular file' scripts/start_chartplotter.sh
 grep -q 'os.O_WRONLY | os.O_APPEND | os.O_CREAT | nofollow' scripts/start_chartplotter.sh
+grep -q 'rotate_launcher_log_if_needed' scripts/start_chartplotter.sh
+grep -q 'append_private_log_stream' scripts/start_chartplotter.sh
+grep -q 'start_private_log_stream' scripts/start_chartplotter.sh
+grep -q 'finish_private_log_stream' scripts/start_chartplotter.sh
+grep -q 'mkfifo -m 0600 "$log_pipe"' scripts/start_chartplotter.sh
+grep -q 'wait "$launcher_log_stream_pid" || true' scripts/start_chartplotter.sh
+grep -q 'trap finish_private_log_stream EXIT' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher log changed while being rotated' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics launcher log stream is not a regular file' scripts/start_chartplotter.sh
+grep -q 'os.path.samestat(opened, rotated_opened)' scripts/start_chartplotter.sh
+grep -q 'write_all(log_fd, chunk)' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher log is owned by uid' scripts/start_chartplotter.sh
 grep -q 'os.fchmod(fd, 0o600)' scripts/start_chartplotter.sh
 grep -q 'opened = os.fstat(fd)' scripts/start_chartplotter.sh
 grep -q 'stat.S_ISREG(opened.st_mode)' scripts/start_chartplotter.sh
 grep -q 'stat.S_ISLNK(initial.st_mode)' scripts/start_chartplotter.sh
+! grep -q 'tee -a "$log_file"' scripts/start_chartplotter.sh
+! grep -q 'mv -f "$log_file" "${log_file}.1"' scripts/start_chartplotter.sh
 ! grep -q 'with path.open("rb") as handle' scripts/start_chartplotter.sh
 grep -q 'write_private_file("pid", pid_text)' scripts/start_chartplotter.sh
 grep -q 'write_private_file("boot_id", boot_id_text)' scripts/start_chartplotter.sh
@@ -180,7 +193,9 @@ grep -q 'shutil.rmtree is not symlink-attack resistant' scripts/start_chartplott
 grep -q 'chartplotter launcher lock path contains a symlink; leaving it in place' scripts/start_chartplotter.sh
 grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' README.md
 grep -q 'refuses symlinked, misowned, non-private lock metadata, or group/world-writable stale lock debris' docs/sailboat-pi.md
-grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` only after opening it through a no-follow descriptor' README.md
+grep -q 'appends output to the private `0600` file `~/.cache/noaa-navionics/chartplotter.log` through a no-follow descriptor-backed log stream' README.md
+grep -q 'verifies the rotated inode before syncing it' README.md
+grep -q 'log rotation verifies the rotated inode before syncing it' docs/sailboat-pi.md
 grep -q 'through a no-follow descriptor, rotates and syncs that log after 1 MB' docs/sailboat-pi.md
 grep -q 'revalidates both cache directories after creation or tightening before creating runtime files' README.md
 grep -q 'revalidates both cache directories after creation or tightening before creating runtime files' docs/sailboat-pi.md
@@ -238,10 +253,17 @@ wait_index = tail.index('wait "$opencpn_pid"')
 release_index = tail.find("release_launcher_lock")
 if release_index != -1 and release_index < wait_index:
     raise SystemExit("chartplotter launcher must keep its launch lock until OpenCPN exits")
+rotate_index = text.index("rotate_launcher_log_if_needed")
+prepare_index = text.index("prepare_private_log_file", rotate_index)
+stream_index = text.index("start_private_log_stream", prepare_index)
+startup_index = text.index("Starting NOAA Navionics chartplotter launcher", stream_index)
+if not rotate_index < prepare_index < stream_index < startup_index:
+    raise SystemExit("chartplotter launcher must rotate, prepare, and attach its safe log stream before startup output")
 PY
 grep -q 'max_log_bytes' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics rotated launcher log is a symlink' scripts/start_chartplotter.sh
-grep -q 'sync_paths "${log_file}.1"' scripts/start_chartplotter.sh
+grep -q 'os.fsync(rotated_fd)' scripts/start_chartplotter.sh
+grep -q 'os.fsync(parent_fd)' scripts/start_chartplotter.sh
 grep -q 'keep_display_awake' scripts/start_chartplotter.sh
 grep -q 'opencpn_running' scripts/start_chartplotter.sh
 grep -q 'opencpn_process_active' scripts/start_chartplotter.sh

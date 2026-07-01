@@ -396,6 +396,156 @@ if fd is not None:
 PY
 }
 
+rotate_launcher_log_if_needed() {
+  "$python3_bin" - "$log_file" "$max_log_bytes" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+max_bytes = int(sys.argv[2])
+rotated = path.with_name(path.name + ".1")
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    initial = path.lstat()
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    raise SystemExit(f"Could not inspect NOAA Navionics launcher log: {path}: {exc}") from exc
+if stat.S_ISLNK(initial.st_mode):
+    raise SystemExit(f"NOAA Navionics launcher log is a symlink: {path}")
+if not stat.S_ISREG(initial.st_mode):
+    raise SystemExit(f"NOAA Navionics launcher log is not a regular file: {path}")
+if initial.st_uid != expected_uid:
+    raise SystemExit(
+        f"NOAA Navionics launcher log is owned by uid {initial.st_uid}, expected {expected_uid}: {path}"
+    )
+if initial.st_size <= max_bytes:
+    raise SystemExit(0)
+
+source_fd = os.open(path, os.O_RDONLY | nofollow)
+rotated_fd = None
+parent_fd = None
+try:
+    opened = os.fstat(source_fd)
+    if not os.path.samestat(initial, opened):
+        raise SystemExit(f"NOAA Navionics launcher log changed while being opened: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"NOAA Navionics launcher log is not a regular file after open: {path}")
+    if opened.st_uid != expected_uid:
+        raise SystemExit(
+            f"NOAA Navionics launcher log is owned by uid {opened.st_uid}, expected {expected_uid}: {path}"
+        )
+
+    try:
+        rotated_initial = rotated.lstat()
+    except FileNotFoundError:
+        rotated_initial = None
+    if rotated_initial is not None:
+        if stat.S_ISLNK(rotated_initial.st_mode):
+            raise SystemExit(f"NOAA Navionics rotated launcher log is a symlink: {rotated}")
+        if not stat.S_ISREG(rotated_initial.st_mode):
+            raise SystemExit(f"NOAA Navionics rotated launcher log is not a regular file: {rotated}")
+        if rotated_initial.st_uid != expected_uid:
+            raise SystemExit(
+                f"NOAA Navionics rotated launcher log is owned by uid {rotated_initial.st_uid}, "
+                f"expected {expected_uid}: {rotated}"
+            )
+
+    os.replace(path, rotated)
+    rotated_fd = os.open(rotated, os.O_RDONLY | nofollow)
+    rotated_opened = os.fstat(rotated_fd)
+    if not os.path.samestat(opened, rotated_opened):
+        raise SystemExit(f"NOAA Navionics launcher log changed while being rotated: {path}")
+    os.fchmod(rotated_fd, 0o600)
+    os.fsync(rotated_fd)
+    parent_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow
+    parent_fd = os.open(path.parent, parent_flags)
+    os.fsync(parent_fd)
+finally:
+    if parent_fd is not None:
+        os.close(parent_fd)
+    if rotated_fd is not None:
+        os.close(rotated_fd)
+    os.close(source_fd)
+PY
+}
+
+append_private_log_stream() {
+  "$python3_bin" -c '
+import os
+import stat
+import sys
+
+path = sys.argv[1]
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | nofollow
+
+
+def write_all(fd, data):
+    view = memoryview(data)
+    while view:
+        written = os.write(fd, view)
+        if written == 0:
+            raise OSError("short write")
+        view = view[written:]
+
+
+try:
+    log_fd = os.open(path, flags, 0o600)
+except OSError as exc:
+    raise SystemExit(f"Could not open NOAA Navionics launcher log stream safely: {path}: {exc}") from exc
+try:
+    opened = os.fstat(log_fd)
+    if not stat.S_ISREG(opened.st_mode):
+        raise SystemExit(f"NOAA Navionics launcher log stream is not a regular file: {path}")
+    if opened.st_uid != expected_uid:
+        raise SystemExit(
+            f"NOAA Navionics launcher log stream is owned by uid {opened.st_uid}, "
+            f"expected {expected_uid}: {path}"
+        )
+    mode = opened.st_mode & 0o777
+    if mode != 0o600:
+        os.fchmod(log_fd, 0o600)
+    while True:
+        chunk = os.read(0, 65536)
+        if not chunk:
+            break
+        write_all(1, chunk)
+        write_all(log_fd, chunk)
+    os.fsync(log_fd)
+finally:
+    os.close(log_fd)
+' "$log_file"
+}
+
+finish_private_log_stream() {
+  local status=$?
+  exec 1>&- 2>&-
+  if [[ -n "${launcher_log_stream_pid:-}" ]]; then
+    wait "$launcher_log_stream_pid" || true
+  fi
+  exit "$status"
+}
+
+start_private_log_stream() {
+  local log_pipe="${cache_dir}/.chartplotter-log-${$}.pipe"
+  if [[ -e "$log_pipe" || -L "$log_pipe" ]]; then
+    echo "NOAA Navionics launcher log pipe already exists: $log_pipe" >&2
+    exit 1
+  fi
+  mkfifo -m 0600 "$log_pipe"
+  append_private_log_stream <"$log_pipe" &
+  launcher_log_stream_pid=$!
+  exec >"$log_pipe" 2>&1
+  rm -f "$log_pipe"
+  trap finish_private_log_stream EXIT
+}
+
 read_trusted_launcher_env() {
   "$python3_bin" - "$launcher_env" <<'PY'
 from pathlib import Path
@@ -1470,32 +1620,9 @@ fi
 python3_bin="$(python3_command_path)" || exit 127
 
 prepare_private_cache_dir
-if [[ -L "$log_file" ]]; then
-  echo "NOAA Navionics launcher log is a symlink: $log_file" >&2
-  exit 1
-fi
-if [[ -e "$log_file" && ! -f "$log_file" ]]; then
-  echo "NOAA Navionics launcher log is not a regular file: $log_file" >&2
-  exit 1
-fi
-if [[ -f "$log_file" ]]; then
-  log_bytes="$(wc -c <"$log_file" 2>/dev/null || printf '0')"
-  if [[ "$log_bytes" -gt "$max_log_bytes" ]]; then
-    if [[ -L "${log_file}.1" ]]; then
-      echo "NOAA Navionics rotated launcher log is a symlink: ${log_file}.1" >&2
-      exit 1
-    fi
-    if [[ -e "${log_file}.1" && ! -f "${log_file}.1" ]]; then
-      echo "NOAA Navionics rotated launcher log is not a regular file: ${log_file}.1" >&2
-      exit 1
-    fi
-    mv -f "$log_file" "${log_file}.1"
-    chmod 0600 "${log_file}.1"
-    sync_paths "${log_file}.1" || true
-  fi
-fi
+rotate_launcher_log_if_needed
 prepare_private_log_file
-exec > >(tee -a "$log_file") 2>&1
+start_private_log_stream
 
 printf '\n[%s] Starting NOAA Navionics chartplotter launcher\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 acquire_launcher_lock
