@@ -555,6 +555,14 @@ GPSD_READINESS_CHECKS = {
     "GPS Time Source",
 }
 SERIAL_READINESS_CHECKS = {"GPS Device", "GPS"}
+PI_ONLY_READINESS_CHECKS = {
+    "Source Revision",
+    "Time Sync",
+    "Pi Power",
+    "Pi Thermal",
+    "Chrony Config",
+    "GPS Time Source",
+}
 CORE_SERVICE_CHECKS = {
     "Chart Sync",
     "Chart Sync Settings",
@@ -656,6 +664,14 @@ def validate_successful_status_snapshot(payload: dict[str, object], path: Path) 
     )
     if missing_structured_data:
         fail(f"status snapshot JSON missing structured readiness data for: {', '.join(missing_structured_data)}: {path}")
+    non_pi_skips = sorted(
+        name
+        for name in required_checks & PI_ONLY_READINESS_CHECKS
+        if check_rows[name].get("data", {}).get("is_raspberry_pi") is False
+        and check_rows[name].get("data", {}).get("skipped") is True
+    )
+    if non_pi_skips:
+        fail(f"status snapshot JSON records non-Pi diagnostic skip(s): {', '.join(non_pi_skips)}: {path}")
 
 try:
     before = os.stat(path, follow_symlinks=False)

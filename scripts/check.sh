@@ -693,6 +693,7 @@ grep -q 'CORE_READINESS_CHECKS = {' scripts/pre_trip_prepare_pi.sh
 grep -q 'def validate_successful_status_snapshot' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing required readiness check(s)' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s)' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON has invalid gps_mode' scripts/pre_trip_prepare_pi.sh
 grep -q 'Saved pre-departure status snapshot:' scripts/pre_trip_prepare_pi.sh
 grep -q 'Saved pre-departure status checksum:' scripts/pre_trip_prepare_pi.sh
@@ -804,8 +805,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, and structured data on every required readiness row' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all rows passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' README.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
@@ -1580,6 +1581,7 @@ grep -q 'pre-departure status snapshot JSON missing non-empty {field} list' scri
 grep -q 'pre-departure status snapshot JSON missing required readiness check(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON has failed readiness check(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON has invalid gps_mode' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing track_log track_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing generated_at timestamp' scripts/verify_pi_recovery_exports.sh
@@ -1811,6 +1813,7 @@ grep -q 'CORE_READINESS_CHECKS = {' scripts/post_trip_collect_pi.sh
 grep -q 'def validate_successful_status_snapshot' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing required readiness check(s)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing structured readiness data for' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON records non-Pi diagnostic skip(s)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON has invalid gps_mode' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
 grep -q 'Real post-trip shutdown requires collecting at least one artifact first' scripts/post_trip_collect_pi.sh
@@ -4223,6 +4226,7 @@ grep -q 'test_verify_pi_required_status_checks_match_shared_gpsd_readiness' test
 grep -q 'test_recovery_verifier_required_status_checks_match_shared_readiness' tests/test_downloader.py
 grep -q 'test_post_trip_required_status_checks_match_shared_readiness' tests/test_downloader.py
 grep -q 'test_pre_trip_required_status_checks_match_shared_readiness' tests/test_downloader.py
+grep -q 'test_status_snapshot_validators_reject_non_pi_diagnostic_skips' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_gui_status_report_uses_shared_readiness_validation' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_ok_preserves_not_ready_readiness_headline' tests/test_downloader.py

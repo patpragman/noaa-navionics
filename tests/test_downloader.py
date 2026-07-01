@@ -12214,6 +12214,10 @@ class StatusReportTests(unittest.TestCase):
             set(report_module.SERIAL_READINESS_CHECKS),
         )
         self.assertEqual(
+            python_string_set_assignment(source, "PI_ONLY_READINESS_CHECKS"),
+            {"Source Revision", "Time Sync", "Pi Power", "Pi Thermal", "Chrony Config", "GPS Time Source"},
+        )
+        self.assertEqual(
             python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
             set(report_module.CORE_SERVICE_CHECKS),
         )
@@ -12241,6 +12245,10 @@ class StatusReportTests(unittest.TestCase):
             set(report_module.SERIAL_READINESS_CHECKS),
         )
         self.assertEqual(
+            python_string_set_assignment(source, "PI_ONLY_READINESS_CHECKS"),
+            {"Source Revision", "Time Sync", "Pi Power", "Pi Thermal", "Chrony Config", "GPS Time Source"},
+        )
+        self.assertEqual(
             python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
             set(report_module.CORE_SERVICE_CHECKS),
         )
@@ -12266,6 +12274,10 @@ class StatusReportTests(unittest.TestCase):
         self.assertEqual(
             python_string_set_assignment(source, "SERIAL_READINESS_CHECKS"),
             set(report_module.SERIAL_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "PI_ONLY_READINESS_CHECKS"),
+            {"Source Revision", "Time Sync", "Pi Power", "Pi Thermal", "Chrony Config", "GPS Time Source"},
         )
         self.assertEqual(
             python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
@@ -12320,6 +12332,19 @@ class StatusReportTests(unittest.TestCase):
                     "parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None",
                     source,
                 )
+
+    def test_status_snapshot_validators_reject_non_pi_diagnostic_skips(self):
+        for script in (
+            "scripts/pre_trip_prepare_pi.sh",
+            "scripts/verify_pi_recovery_exports.sh",
+            "scripts/post_trip_collect_pi.sh",
+        ):
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                self.assertIn("PI_ONLY_READINESS_CHECKS", source)
+                self.assertIn('get("is_raspberry_pi") is False', source)
+                self.assertIn('get("skipped") is True', source)
+                self.assertIn("records non-Pi diagnostic skip(s)", source)
 
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
