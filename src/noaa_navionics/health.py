@@ -301,7 +301,15 @@ def _first_symlink_ancestor(path: Path) -> Optional[Path]:
 
 
 def check_system_clock(now: Optional[datetime] = None, *, min_year: int = 2024) -> CheckResult:
-    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None or current_time.utcoffset() is None:
+        return CheckResult(
+            "Clock",
+            False,
+            "system clock current time must include a timezone before relying on chart age checks",
+            {"timestamp": None, "min_year": min_year},
+        )
+    current = current_time.astimezone(timezone.utc)
     data = {"timestamp": current.isoformat(), "min_year": min_year}
     if current.year < min_year:
         return CheckResult(

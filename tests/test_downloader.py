@@ -19334,6 +19334,13 @@ class PiHealthTests(unittest.TestCase):
         self.assertIn("system clock", result.detail)
         self.assertEqual(result.data, {"timestamp": "1970-01-01T00:00:00+00:00", "min_year": 2024})
 
+    def test_check_system_clock_rejects_timezone_less_current_time(self):
+        result = check_system_clock(datetime(2026, 6, 29, 12, 0, 0))
+
+        self.assertFalse(result.ok)
+        self.assertIn("must include a timezone", result.detail)
+        self.assertEqual(result.data, {"timestamp": None, "min_year": 2024})
+
     def test_check_system_clock_accepts_modern_time(self):
         result = check_system_clock(datetime(2026, 6, 29, tzinfo=timezone.utc))
         self.assertTrue(result.ok)
