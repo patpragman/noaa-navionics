@@ -374,6 +374,46 @@ backup = Path(sys.argv[2])
 parent = backup.parent
 nofollow = getattr(os, "O_NOFOLLOW", 0)
 
+
+def cleanup_backup_file(path: Path) -> None:
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        print(f"could not inspect root config backup for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    if not stat.S_ISREG(before.st_mode) or before.st_uid != 0 or stat.S_IMODE(before.st_mode) != 0o600:
+        print(f"root config backup is not a trusted root-owned private file; leaving it in place: {path}", file=sys.stderr)
+        return
+    try:
+        dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+    except OSError as exc:
+        print(f"could not open root config backup directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+        return
+    try:
+        parent_stat = os.fstat(dir_fd)
+        parent_mode = stat.S_IMODE(parent_stat.st_mode)
+        if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != 0 or parent_mode & 0o022:
+            print(f"root config backup directory is not trusted for cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        try:
+            fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        except FileNotFoundError:
+            return
+        try:
+            opened = os.fstat(fd)
+        finally:
+            os.close(fd)
+        if not os.path.samestat(before, opened):
+            print(f"root config backup changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+            return
+        os.unlink(path.name, dir_fd=dir_fd)
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
 if source.is_symlink():
     raise SystemExit(f"root config source is a symlink: {source}")
 if parent.is_symlink():
@@ -428,10 +468,7 @@ finally:
     if src_fd is not None:
         os.close(src_fd)
     if created and not completed:
-        try:
-            backup.unlink()
-        except FileNotFoundError:
-            pass
+        cleanup_backup_file(backup)
 
 try:
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
@@ -447,10 +484,8 @@ if parent_fd is not None:
 backup_stat = backup.stat()
 backup_mode = backup_stat.st_mode & 0o777
 if backup_stat.st_uid != 0 or backup_mode != 0o600:
-    try:
-        backup.unlink()
-    finally:
-        raise SystemExit(f"root config backup was not created as root-owned 0600: {backup}")
+    cleanup_backup_file(backup)
+    raise SystemExit(f"root config backup was not created as root-owned 0600: {backup}")
 PY
 }
 

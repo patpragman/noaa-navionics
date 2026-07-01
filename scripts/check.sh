@@ -2227,6 +2227,9 @@ grep -q '"$sudo_cmd" "$systemctl_cmd" restart gpsd.socket gpsd.service' scripts/
 grep -q 'backup_root_file_private "$gpsd_conf" "$backup"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gpsd.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gpsd.sh
+grep -q 'cleanup_backup_file(backup)' scripts/configure_gpsd.sh
+grep -q 'root config backup changed before cleanup; leaving it in place' scripts/configure_gpsd.sh
+! grep -q 'backup.unlink()' scripts/configure_gpsd.sh
 grep -q '"$python3_cmd" - "$tmp" "$device"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_gpsd.sh
 grep -q 'generated GPSD config temp .* expected 0600' scripts/configure_gpsd.sh
@@ -2257,6 +2260,8 @@ grep -q 'revalidate root target paths before temporary-file creation and immedia
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' README.md
+grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
@@ -2414,6 +2419,9 @@ grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_
 grep -q 'backup_root_file_private "$chrony_conf" "$backup"' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gps_time.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gps_time.sh
+grep -q 'cleanup_backup_file(backup)' scripts/configure_gps_time.sh
+grep -q 'root config backup changed before cleanup; leaving it in place' scripts/configure_gps_time.sh
+! grep -q 'backup.unlink()' scripts/configure_gps_time.sh
 grep -q 'write_generated_chrony_config(target, "".join(filtered))' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_gps_time.sh
 grep -q 'generated chrony config temp .* expected 0600' scripts/configure_gps_time.sh
