@@ -858,6 +858,15 @@ def read_trusted_text_file(path, label, expected_uid, *, private_mode=None, erro
 def read_private_user_file_text(path, label):
     return read_trusted_text_file(path, label, os.getuid(), private_mode=0o600)
 
+def parse_timezone_aware_timestamp(value, label):
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise SystemExit(f"{label} timestamp is invalid: {value}") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SystemExit(f"{label} timestamp must include a timezone: {value}")
+    return parsed.astimezone(timezone.utc)
+
 path = sys.argv[1]
 require_current_boot = sys.argv[2] == "1"
 expected_config_path = sys.argv[3]
@@ -929,10 +938,7 @@ if report.get("ok") is not True:
 generated_at = str(report.get("generated_at", ""))
 if not generated_at:
     raise SystemExit("status report has no generated_at")
-try:
-    generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00")).astimezone(timezone.utc)
-except ValueError as exc:
-    raise SystemExit(f"invalid generated_at: {generated_at}") from exc
+generated = parse_timezone_aware_timestamp(generated_at, "status report generated_at")
 age_seconds = (datetime.now(timezone.utc) - generated).total_seconds()
 if age_seconds < -30 or age_seconds > 600:
     raise SystemExit(f"status report is not fresh: {age_seconds:.0f}s old")
@@ -2193,10 +2199,7 @@ if abs(gps_latitude) < 1e-12 and abs(gps_longitude) < 1e-12:
 gps_timestamp = str(gps_fix.get("timestamp", "")).strip()
 if not gps_timestamp:
     raise SystemExit("status report gps_fix has no timestamp")
-try:
-    gps_time = datetime.fromisoformat(gps_timestamp.replace("Z", "+00:00")).astimezone(timezone.utc)
-except ValueError as exc:
-    raise SystemExit(f"status report gps_fix timestamp is invalid: {gps_timestamp}") from exc
+gps_time = parse_timezone_aware_timestamp(gps_timestamp, "status report gps_fix")
 gps_age_seconds = (datetime.now(timezone.utc) - gps_time).total_seconds()
 if gps_age_seconds < -30.0:
     raise SystemExit(f"status report gps_fix timestamp is in the future: {gps_timestamp}")
@@ -3217,6 +3220,15 @@ def read_proc_uptime_seconds():
         raise SystemExit(f"/proc/uptime must be finite and non-negative: {uptime_seconds!r}")
     return uptime_seconds
 
+def parse_timezone_aware_timestamp(value, label):
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise SystemExit(f"{label} timestamp is invalid: {value}") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SystemExit(f"{label} timestamp must include a timezone: {value}")
+    return parsed.astimezone(timezone.utc)
+
 path = Path(sys.argv[1]).expanduser()
 if path.is_symlink():
     raise SystemExit(f"launcher log is a symlink: {path}")
@@ -3304,10 +3316,7 @@ line_prefix = text[line_start:startup_index]
 if not line_prefix.startswith("[") or "]" not in line_prefix:
     raise SystemExit("launcher startup marker has no timestamp")
 timestamp_text = line_prefix[1:line_prefix.index("]")]
-try:
-    startup_time = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")).astimezone(timezone.utc)
-except ValueError as exc:
-    raise SystemExit(f"invalid launcher startup timestamp: {timestamp_text}") from exc
+startup_time = parse_timezone_aware_timestamp(timestamp_text, "launcher startup")
 if startup_time.timestamp() + 5 < boot_epoch:
     age = boot_epoch - startup_time.timestamp()
     raise SystemExit(f"launcher startup marker is older than current boot by {age:.0f}s")
@@ -4326,6 +4335,15 @@ def read_proc_uptime_seconds():
         raise SystemExit(f"/proc/uptime must be finite and non-negative: {uptime_seconds!r}")
     return uptime_seconds
 
+def parse_gpx_trackpoint_timestamp(value):
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None, f"has an invalid GPX trackpoint timestamp: {value}"
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None, "has a timezone-less GPX trackpoint timestamp"
+    return parsed.astimezone(timezone.utc), ""
+
 flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 try:
     fd = os.open(config_path, flags)
@@ -4536,10 +4554,9 @@ while True:
                     last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
                     continue
                 timestamp_text = match.group(1).strip()
-                try:
-                    track_time = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")).astimezone(timezone.utc)
-                except ValueError:
-                    last_detail = f"{path} has an invalid GPX trackpoint timestamp: {timestamp_text}"
+                track_time, timestamp_error = parse_gpx_trackpoint_timestamp(timestamp_text)
+                if track_time is None:
+                    last_detail = f"{path} {timestamp_error}"
                     continue
                 if newest_track_time is None or track_time > newest_track_time:
                     newest_track_time = track_time

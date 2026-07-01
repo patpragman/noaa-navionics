@@ -12158,6 +12158,22 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_verify_pi_rejects_timezone_less_live_timestamps(self):
+        source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
+
+        for expected in [
+            "def parse_timezone_aware_timestamp",
+            "timestamp must include a timezone",
+            'parse_timezone_aware_timestamp(generated_at, "status report generated_at")',
+            'parse_timezone_aware_timestamp(gps_timestamp, "status report gps_fix")',
+            'parse_timezone_aware_timestamp(timestamp_text, "launcher startup")',
+            "def parse_gpx_trackpoint_timestamp",
+            "has a timezone-less GPX trackpoint timestamp",
+            "parse_gpx_trackpoint_timestamp(timestamp_text)",
+        ]:
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

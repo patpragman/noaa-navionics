@@ -3603,6 +3603,11 @@ grep -q 'fix timestamp is stale' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/cli.py
 grep -q 'test_trackable_fixes_skip_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_trackable_fixes_skip_slightly_future_timestamped_fix' tests/test_downloader.py
+grep -q 'test_verify_pi_rejects_timezone_less_live_timestamps' tests/test_downloader.py
+grep -q 'parse_timezone_aware_timestamp(generated_at, "status report generated_at")' scripts/verify_pi.sh
+grep -q 'parse_timezone_aware_timestamp(gps_timestamp, "status report gps_fix")' scripts/verify_pi.sh
+grep -q 'parse_timezone_aware_timestamp(timestamp_text, "launcher startup")' scripts/verify_pi.sh
+grep -q 'has a timezone-less GPX trackpoint timestamp' scripts/verify_pi.sh
 grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, timezone-less timestamps, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
 grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, timezone-less timestamps, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
 ! grep -q 'pending_without_quality' src/noaa_navionics/cli.py
