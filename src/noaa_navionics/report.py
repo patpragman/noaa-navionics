@@ -1954,6 +1954,8 @@ def _gps_fix_validation_failures(
     gps_fix = report.get("gps_fix")
     if not isinstance(gps_fix, dict):
         return [CheckResult("GPS Fix", False, "status report missing gps_fix section")]
+    if not isinstance(gps_fix.get("ok"), bool):
+        return [CheckResult("GPS Fix", False, "status report gps_fix ok is not boolean")]
     if gps_fix.get("ok") is not True:
         return [CheckResult("GPS Fix", False, f"status report gps_fix is not ok: {gps_fix.get('detail', '<missing detail>')}")]
     source = str(gps_fix.get("source", "")).strip()
@@ -2020,6 +2022,8 @@ def _track_log_validation_failures(track_log: object, *, now: Optional[datetime]
         return [CheckResult("Track Log", False, "status report track_log missing track_storage_symlink_component")]
     if str(track_log.get("track_storage_symlink_component", "")).strip():
         return [CheckResult("Track Log", False, "status report track_log storage path contains a symlink")]
+    if not isinstance(track_log.get("ok"), bool):
+        return [CheckResult("Track Log", False, "status report track_log ok is not boolean")]
     if track_log.get("ok") is not True:
         return [CheckResult("Track Log", False, f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")]
     if not str(track_log.get("latest_path", "")).strip():

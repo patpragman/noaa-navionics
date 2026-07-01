@@ -12188,6 +12188,7 @@ class StatusReportTests(unittest.TestCase):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         cases = [
             ({}, "missing gps_fix section"),
+            ({"gps_fix": {"ok": "yes", "detail": "truthy"}}, "ok is not boolean"),
             ({"gps_fix": {"ok": False, "detail": "no fix"}}, "not ok"),
             ({"gps_fix": {"ok": True, "source": "GPS"}}, "source GPS is not GPSD"),
             ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 0.0, "longitude": 0.0, "timestamp": now.isoformat().replace("+00:00", "Z"), "age_seconds": 0.0, "satellites": 8, "hdop": 0.9}}, "coordinates are invalid"),
@@ -12283,6 +12284,7 @@ class StatusReportTests(unittest.TestCase):
         }
         cases = [
             ({}, "missing track_log section"),
+            ({"track_log": {**valid_track_log, "ok": "yes"}}, "ok is not boolean"),
             ({"track_log": {**valid_track_log, "ok": False, "detail": "no track"}}, "is not ok"),
             ({"track_log": {**valid_track_log, "track_output_is_symlink": True}}, "track_output is a symlink"),
             ({"track_log": {key: value for key, value in valid_track_log.items() if key != "track_storage_symlink_component"}}, "missing track_storage_symlink_component"),

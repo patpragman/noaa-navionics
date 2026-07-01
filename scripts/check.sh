@@ -2156,6 +2156,7 @@ grep -q 'def first_symlink_ancestor' scripts/verify_pi.sh
 grep -q 'track_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'status report track_log track_output is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report track_log missing track_storage_symlink_component' scripts/verify_pi.sh
+grep -q 'status report track_log ok is not boolean' scripts/verify_pi.sh
 grep -q 'required track-log symlink-status fields' README.md
 grep -q 'required track-log symlink-status fields' docs/sailboat-pi.md
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh
@@ -2203,6 +2204,7 @@ grep -q 'launcher-supervised OpenCPN running' scripts/verify_pi.sh
 grep -q 'status report JSON ready' scripts/verify_pi.sh
 grep -q 'boot status report JSON ready' scripts/verify_pi.sh
 grep -q 'status report has no gps_fix section' scripts/verify_pi.sh
+grep -q 'status report gps_fix ok is not boolean' scripts/verify_pi.sh
 grep -q 'status report gps_fix data does not match' scripts/verify_pi.sh
 grep -q 'status report gps_fix latitude is outside -90..90' scripts/verify_pi.sh
 grep -q 'status report gps_fix timestamp is stale' scripts/verify_pi.sh
@@ -4103,12 +4105,14 @@ grep -q 'status report manifest download byte count is not positive' src/noaa_na
 grep -q 'status report manifest has no ENC cells' src/noaa_navionics/report.py
 grep -q 'status report missing gps_fix section' src/noaa_navionics/report.py
 grep -q 'status report gps_fix source' src/noaa_navionics/report.py
+grep -q 'status report gps_fix ok is not boolean' src/noaa_navionics/report.py
 grep -q 'timestamp.tzinfo is None or timestamp.utcoffset() is None' src/noaa_navionics/report.py
 grep -q 'status report gps_fix timestamp is stale' src/noaa_navionics/report.py
 grep -q 'status report gps_fix age_seconds {reported_age_seconds:g} is inconsistent with timestamp age' src/noaa_navionics/report.py
 grep -q 'status report gps_fix has no satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'status report missing track_log section' src/noaa_navionics/report.py
 grep -q 'status report track_log track_output is a symlink or missing symlink status' src/noaa_navionics/report.py
+grep -q 'status report track_log ok is not boolean' src/noaa_navionics/report.py
 grep -q '_track_log_validation_failures(report.get("track_log"), now=now)' src/noaa_navionics/report.py
 grep -q 'status report track_log has no valid latest_time' src/noaa_navionics/report.py
 grep -q 'status report track_log age_seconds {age_seconds:g} is inconsistent with latest_time age' src/noaa_navionics/report.py
@@ -4392,8 +4396,8 @@ grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' READM
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
-grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
-grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
+grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, non-boolean, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, non-boolean, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
+grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, non-boolean, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, non-boolean, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' README.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md

@@ -2221,6 +2221,8 @@ if any(not isinstance(check, dict) or check.get("ok") is not True for check in s
 gps_fix = report.get("gps_fix")
 if not isinstance(gps_fix, dict):
     raise SystemExit("status report has no gps_fix section")
+if not isinstance(gps_fix.get("ok"), bool):
+    raise SystemExit("status report gps_fix ok is not boolean")
 if gps_fix.get("ok") is not True:
     raise SystemExit(f"status report gps_fix is not ok: {gps_fix.get('detail', '<missing detail>')}")
 gps_source = str(gps_fix.get("source", "")).strip()
@@ -2323,6 +2325,8 @@ if "track_storage_symlink_component" not in track_log:
 track_symlink_component = str(track_log.get("track_storage_symlink_component", "")).strip()
 if track_symlink_component:
     raise SystemExit(f"status report track_log storage path contains a symlink: {track_symlink_component}")
+if not isinstance(track_log.get("ok"), bool):
+    raise SystemExit("status report track_log ok is not boolean")
 if track_log.get("ok") is not True:
     raise SystemExit(f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")
 latest_track_path = str(track_log.get("latest_path", "")).strip()
