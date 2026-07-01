@@ -301,6 +301,7 @@ def status_report_validation_failures(
     failures.extend(_clock_time_validation_failures(report))
     failures.extend(_pi_health_validation_failures(report))
     failures.extend(_storage_validation_failures(report))
+    failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -322,6 +323,63 @@ def status_report_validation_failures(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
     return failures
+
+
+def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    config = report.get("config")
+    if not isinstance(config, dict) or str(config.get("gps_mode", "")).strip().lower() != "serial":
+        return []
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    row = check_rows.get("GPS Device")
+    if not isinstance(row, dict) or not row.get("ok"):
+        return []
+    data = row.get("data")
+    if not isinstance(data, dict):
+        return [CheckResult("GPS Device", False, "status report GPS Device check has no structured data")]
+    failures: list[CheckResult] = []
+    configured_path = str(data.get("configured_path", "")).strip()
+    expected_path = str(config.get("gps_device", "")).strip()
+    if not _status_absolute_path(configured_path):
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device path is not absolute"))
+    if configured_path != expected_path:
+        failures.append(
+            CheckResult(
+                "GPS Device",
+                False,
+                f"status report GPS Device path {configured_path or '<missing>'} does not match configured {expected_path or '<missing>'}",
+            )
+        )
+    if not _stable_status_gps_device_path(configured_path):
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device path is not stable"))
+    if data.get("stable_path") is not True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device missing stable path evidence"))
+    if data.get("volatile_path") is True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device path is volatile"))
+    if data.get("exists") is not True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device path does not exist"))
+    if data.get("is_directory") is True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device path is a directory"))
+    if configured_path.startswith("/dev/serial/by-id/") and data.get("is_symlink") is not True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device by-id path is not a symlink"))
+    if data.get("is_character_device") is not True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device is not a character device"))
+    resolved_path = str(data.get("resolved_path", "")).strip()
+    if not _status_absolute_path(resolved_path):
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device resolved path is not absolute"))
+    return failures
+
+
+def _stable_status_gps_device_path(path: str) -> bool:
+    by_id_prefix = "/dev/serial/by-id/"
+    if path.startswith(by_id_prefix):
+        suffix = path[len(by_id_prefix) :]
+        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+            char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-" for char in suffix
+        )
+    return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
 def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]:

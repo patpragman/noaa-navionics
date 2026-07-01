@@ -367,6 +367,19 @@ def complete_status_gui_report(
                 "free_gb": 12.5,
                 "writable": True,
             }
+        elif row["name"] == "GPS Device":
+            row["detail"] = "/dev/serial/by-id/mock-gps -> /dev/ttyACM0"
+            row["data"] = {
+                "configured_path": "/dev/serial/by-id/mock-gps",
+                "stable_path": True,
+                "volatile_path": False,
+                "is_by_id_path": True,
+                "is_symlink": True,
+                "exists": True,
+                "is_directory": False,
+                "resolved_path": "/dev/ttyACM0",
+                "is_character_device": True,
+            }
         elif row["name"] == "Pi Power":
             row["detail"] = "no under-voltage or throttling reported"
             row["data"] = {
@@ -10285,6 +10298,59 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(track_report, now=now))
         self.assertFalse(status_report_validation_failures(track_report, now=now))
 
+    def test_status_report_ready_requires_structured_serial_gps_device_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def device_data(**overrides):
+            data = {
+                "configured_path": "/dev/serial/by-id/mock-gps",
+                "stable_path": True,
+                "volatile_path": False,
+                "is_by_id_path": True,
+                "is_symlink": True,
+                "exists": True,
+                "is_directory": False,
+                "resolved_path": "/dev/ttyACM0",
+                "is_character_device": True,
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            (None, "GPS Device check has no structured data"),
+            (device_data(configured_path="/dev/ttyACM0"), "path /dev/ttyACM0 does not match configured"),
+            (device_data(configured_path="/dev/serial/by-id/mock/extra"), "path is not stable"),
+            (device_data(stable_path=False), "missing stable path evidence"),
+            (device_data(volatile_path=True), "path is volatile"),
+            (device_data(exists=False), "path does not exist"),
+            (device_data(is_directory=True), "path is a directory"),
+            (device_data(is_symlink=False), "by-id path is not a symlink"),
+            (device_data(is_character_device=False), "is not a character device"),
+            (device_data(resolved_path="ttyACM0"), "resolved path is not absolute"),
+        ]
+        for data, expected in cases:
+            with self.subTest(expected=expected):
+                report = complete_status_gui_report(gps_mode="serial", generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == "GPS Device")
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(
+                    any(failure.name == "GPS Device" and expected in failure.detail for failure in failures)
+                )
+
+        gpsd_report = complete_status_gui_report(generated_at=generated_at)
+        gpsd_report["checks"].append({"name": "GPS Device", "ok": True, "detail": "legacy row"})
+
+        self.assertTrue(status_report_is_ready(gpsd_report, now=now))
+        self.assertFalse(status_report_validation_failures(gpsd_report, now=now))
+
     def test_status_report_ready_rejects_missing_or_malformed_host_boot_id(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         cases = [
@@ -17078,6 +17144,10 @@ class GpsTests(unittest.TestCase):
         result = check_gps_device_path("/dev/serial/by-id/no-such-gps")
         self.assertFalse(result.ok)
         self.assertIn("does not exist", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("configured_path"), "/dev/serial/by-id/no-such-gps")
+        self.assertEqual(result.data.get("stable_path"), True)
+        self.assertEqual(result.data.get("exists"), False)
 
     def test_check_gps_device_path_reports_broken_by_id_symlink(self):
         with (
@@ -17090,6 +17160,10 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("broken by-id symlink", result.detail)
             self.assertIn("/dev/ttyACM0", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("is_symlink"), True)
+            self.assertEqual(result.data.get("exists"), False)
+            self.assertEqual(result.data.get("resolved_path"), "/dev/ttyACM0")
 
     def test_check_gps_device_path_accepts_stable_symlink(self):
         with (
@@ -17104,6 +17178,13 @@ class GpsTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("usb-gps", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("configured_path"), stable)
+            self.assertEqual(result.data.get("stable_path"), True)
+            self.assertEqual(result.data.get("is_by_id_path"), True)
+            self.assertEqual(result.data.get("is_symlink"), True)
+            self.assertEqual(result.data.get("is_character_device"), True)
+            self.assertEqual(result.data.get("resolved_path"), "/dev/ttyACM0")
 
     def test_check_gps_device_path_rejects_by_id_character_node_without_symlink(self):
         with (
@@ -17117,6 +17198,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("udev by-id symlink", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("is_symlink"), False)
 
     def test_check_gps_device_path_rejects_non_character_stable_path(self):
         with (
@@ -17130,6 +17213,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("character device", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("is_character_device"), False)
 
     def test_check_gps_device_path_rejects_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17137,6 +17222,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("directory", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("is_directory"), True)
 
     def test_stable_gps_device_path_rejects_bare_by_id_directory(self):
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/"))
@@ -17154,6 +17241,8 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("safe /dev/serial/by-id", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("stable_path"), False)
 
     def test_check_gps_device_path_rejects_volatile_usb_name(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17164,6 +17253,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("not stable", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("volatile_path"), True)
 
     def test_check_gps_device_path_rejects_unrecognized_existing_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -17174,6 +17265,8 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("recognized stable", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("stable_path"), False)
 
     def test_check_gpsd_startup_config_accepts_expected_device(self):
         with tempfile.TemporaryDirectory() as tmpdir:

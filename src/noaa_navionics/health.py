@@ -1519,45 +1519,61 @@ def open_trusted_gps_sample(sample: Path) -> Iterator[TextIO]:
 
 def check_gps_device_path(device: str) -> CheckResult:
     if not device:
-        return CheckResult("GPS Device", False, "no GPS device configured")
+        return CheckResult("GPS Device", False, "no GPS device configured", {"configured_path": ""})
     path = Path(device).expanduser()
     path_text = str(path)
-    if path_text.startswith("/dev/serial/by-id/") and not _stable_gps_device_path(path_text):
+    is_by_id_path = path_text.startswith("/dev/serial/by-id/")
+    data: dict[str, object] = {
+        "configured_path": path_text,
+        "stable_path": _stable_gps_device_path(path_text),
+        "volatile_path": _volatile_usb_device_path(path_text),
+        "is_by_id_path": is_by_id_path,
+    }
+    if is_by_id_path and not _stable_gps_device_path(path_text):
         return CheckResult(
             "GPS Device",
             False,
             f"{path} is not a safe /dev/serial/by-id/ GPS path",
+            data,
         )
-    if path_text.startswith("/dev/serial/by-id/") and path.is_symlink() and not path.exists():
+    data["is_symlink"] = path.is_symlink()
+    data["exists"] = path.exists()
+    if is_by_id_path and data["is_symlink"] and not data["exists"]:
         try:
             target = path.resolve(strict=False)
         except OSError:
             target = path
-        return CheckResult("GPS Device", False, f"{path} is a broken by-id symlink to {target}")
-    if not path.exists():
-        return CheckResult("GPS Device", False, f"{path} does not exist")
-    if path.is_dir():
-        return CheckResult("GPS Device", False, f"{path} is a directory, not a GPS device")
-    if path_text.startswith("/dev/serial/by-id/") and not path.is_symlink():
-        return CheckResult("GPS Device", False, f"{path} is not a udev by-id symlink")
+        data["resolved_path"] = str(target)
+        return CheckResult("GPS Device", False, f"{path} is a broken by-id symlink to {target}", data)
+    if not data["exists"]:
+        return CheckResult("GPS Device", False, f"{path} does not exist", data)
+    data["is_directory"] = path.is_dir()
+    if data["is_directory"]:
+        return CheckResult("GPS Device", False, f"{path} is a directory, not a GPS device", data)
+    if is_by_id_path and not data["is_symlink"]:
+        return CheckResult("GPS Device", False, f"{path} is not a udev by-id symlink", data)
     try:
         resolved = path.resolve()
     except OSError:
         resolved = path
+    data["resolved_path"] = str(resolved)
     if _volatile_usb_device_path(path_text):
         return CheckResult(
             "GPS Device",
             False,
             f"{path} exists but is not stable; use /dev/serial/by-id/ or a Raspberry Pi serial alias",
+            data,
         )
     if _stable_gps_device_path(path_text):
-        if not path.is_char_device():
-            return CheckResult("GPS Device", False, f"{path} exists but is not a character device")
-        return CheckResult("GPS Device", True, f"{path} -> {resolved}")
+        data["is_character_device"] = path.is_char_device()
+        if not data["is_character_device"]:
+            return CheckResult("GPS Device", False, f"{path} exists but is not a character device", data)
+        return CheckResult("GPS Device", True, f"{path} -> {resolved}", data)
     return CheckResult(
         "GPS Device",
         False,
         f"{path} exists but is not a recognized stable GPS path; use /dev/serial/by-id/, /dev/serial0, /dev/serial1, or /dev/gps",
+        data,
     )
 
 
