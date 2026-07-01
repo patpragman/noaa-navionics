@@ -787,6 +787,13 @@ if [[ "$gpsd_conf" =~ [[:space:]\"\'] ]]; then
   exit 2
 fi
 
+case "$gpsd_conf" in
+  */../*|*/..|../*|..)
+    echo "GPSD config path must not contain parent-directory components: $gpsd_conf" >&2
+    exit 2
+    ;;
+esac
+
 if [[ "$dry_run" -eq 0 && "$gpsd_conf" != "/etc/default/gpsd" ]]; then
   cat >&2 <<EOF
 Refusing to write a non-standard GPSD config path: $gpsd_conf

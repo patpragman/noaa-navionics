@@ -636,6 +636,13 @@ if [[ "$chrony_conf" =~ [[:space:]\"\'] ]]; then
   exit 2
 fi
 
+case "$chrony_conf" in
+  */../*|*/..|../*|..)
+    echo "Chrony config path must not contain parent-directory components: $chrony_conf" >&2
+    exit 2
+    ;;
+esac
+
 if [[ "$dry_run" -eq 0 && "$chrony_conf" != "/etc/chrony/chrony.conf" ]]; then
   cat >&2 <<EOF
 Refusing to write a non-standard chrony config path: $chrony_conf

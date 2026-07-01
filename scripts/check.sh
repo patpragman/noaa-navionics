@@ -2588,6 +2588,7 @@ grep -q 'GPSD config is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory is a symlink' scripts/configure_gpsd.sh
 grep -q 'GPSD config directory .* has permissions' scripts/configure_gpsd.sh
 test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/configure_gpsd.sh)" -ge 3
+grep -q 'GPSD config path must not contain parent-directory components' scripts/configure_gpsd.sh
 grep -q 'Refusing to write a non-standard GPSD config path' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _read_existing_config, _reject_unsafe_config_path, read_config' scripts/configure_gpsd.sh
@@ -2817,6 +2818,7 @@ grep -q 'Chrony config directory is a symlink' scripts/configure_gps_time.sh
 grep -q 'Chrony config directory .* has permissions' scripts/configure_gps_time.sh
 test "$(grep -c 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' scripts/configure_gps_time.sh)" -ge 2
 grep -q 'expected no group/other write bits' scripts/configure_gps_time.sh
+grep -q 'Chrony config path must not contain parent-directory components' scripts/configure_gps_time.sh
 grep -q 'Refusing to write a non-standard chrony config path' scripts/configure_gps_time.sh
 grep -q 'could not open chrony config' scripts/configure_gps_time.sh
 grep -q 'chrony config is not a regular file when opened' scripts/configure_gps_time.sh
@@ -9511,6 +9513,18 @@ if [[ "$gps_time_code" -ne 2 ]]; then
 fi
 
 set +e
+scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony-parent/../chrony.conf" >"$gpsd_output" 2>&1
+gps_time_code=$?
+set -e
+if [[ "$gps_time_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gps_time.sh to reject parent-directory chrony config paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'Chrony config path must not contain parent-directory components' "$gpsd_output"
+! grep -q 'Would update' "$gpsd_output"
+
+set +e
 scripts/configure_gps_time.sh --allow-non-pi --chrony-conf /etc/passwd >"$gpsd_output" 2>&1
 gps_time_code=$?
 set -e
@@ -9682,6 +9696,23 @@ if [[ "$gpsd_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'GPS device path is not a recognized stable path' "$gpsd_output"
+
+set +e
+scripts/configure_gpsd.sh \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --gpsd-conf "$tmpdir/gpsd-parent/../gpsd" \
+  --device /dev/serial/by-id/mock-gps >"$gpsd_output" 2>&1
+gpsd_code=$?
+set -e
+if [[ "$gpsd_code" -ne 2 ]]; then
+  cat "$gpsd_output" >&2
+  echo "expected configure_gpsd.sh to reject parent-directory GPSD config paths with exit 2" >&2
+  exit 1
+fi
+grep -q 'GPSD config path must not contain parent-directory components' "$gpsd_output"
+! grep -q 'Would write /etc/default/gpsd' "$gpsd_output"
 
 cat >"$tmpdir/unsafe-gpsd-config.ini" <<'EOF'
 [charts]
