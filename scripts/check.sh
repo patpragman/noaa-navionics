@@ -3521,6 +3521,7 @@ grep -q 'Failed waypoint cleanup is no-follow and same-file validated before unl
 grep -q 'test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_sets_anchor_from_first_fix_and_accepts_inside_radius' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_run_without_post_anchor_fix' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples_across_date_line' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
@@ -3529,6 +3530,8 @@ grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests
 grep -q 'need at least one drift check' src/noaa_navionics/cli.py
 grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' README.md
 grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' docs/sailboat-pi.md
+grep -q 'skipped timezone-less, stale, future-dated, weak, or incomplete fixes are reported as anchor-watch GPS evidence' README.md
+grep -q 'skipped timezone-less, stale, future-dated, weak, or incomplete fixes are reported as anchor-watch GPS evidence' docs/sailboat-pi.md
 grep -q 'longitude averaging is date-line-safe' README.md
 grep -q 'longitude averaging is date-line-safe' docs/sailboat-pi.md
 grep -q 'def mean_longitude_degrees' src/noaa_navionics/gps.py
@@ -3588,16 +3591,20 @@ grep -q 'fix.timestamp is None' src/noaa_navionics/gps.py
 grep -q 'signal.SIGTERM' src/noaa_navionics/cli.py
 grep -q 'Skipping weak {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping untimestamped {skip_subject} fix' src/noaa_navionics/cli.py
+grep -q 'Skipping timezone-less {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping low-detail {skip_subject} fix' src/noaa_navionics/cli.py
 grep -q 'Skipping weak track fix' tests/test_downloader.py
 grep -q 'Skipping untimestamped track fix' tests/test_downloader.py
+grep -q 'Skipping timezone-less track fix' tests/test_downloader.py
 grep -q 'Skipping low-detail track fix' tests/test_downloader.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/cli.py
+grep -q 'fix timestamp has no timezone; cannot write reliable GPX trackpoint' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is stale' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/cli.py
+grep -q 'test_trackable_fixes_skip_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_trackable_fixes_skip_slightly_future_timestamped_fix' tests/test_downloader.py
-grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
-grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
+grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, timezone-less timestamps, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
+grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, timezone-less timestamps, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
 ! grep -q 'pending_without_quality' src/noaa_navionics/cli.py
 grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
@@ -4279,8 +4286,8 @@ grep -q 'Stop Watch requires a second press within 8 seconds before it cancels r
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' README.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' docs/sailboat-pi.md
-grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes and broken, fake, or non-device stable serial paths' README.md
-grep -q 'Mark, MOB, and Anchor Check reject stale or future-dated GPS fixes and broken, fake, or non-device stable serial paths' docs/sailboat-pi.md
+grep -q 'Mark, MOB, and Anchor Check reject timezone-less, stale, or future-dated GPS fixes and broken, fake, or non-device stable serial paths' README.md
+grep -q 'Mark, MOB, and Anchor Check reject timezone-less, stale, or future-dated GPS fixes and broken, fake, or non-device stable serial paths' docs/sailboat-pi.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' README.md
 grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' docs/sailboat-pi.md
 grep -q 'mean_longitude_degrees(longitudes)' src/noaa_navionics/status_gui.py

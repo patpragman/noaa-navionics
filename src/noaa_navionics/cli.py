@@ -1111,6 +1111,12 @@ def _quality_checked_fixes(
                 print(f"Skipping untimestamped {skip_subject} fix: {detail}", file=sys.stderr)
                 last_skip_detail = detail
             continue
+        if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
+            detail = f"fix timestamp has no timezone; cannot {action}"
+            if detail != last_skip_detail:
+                print(f"Skipping timezone-less {skip_subject} fix: {detail}", file=sys.stderr)
+                last_skip_detail = detail
+            continue
         freshness_detail = _track_fix_freshness_failure(
             fix,
             max_fix_age_seconds=max_fix_age_seconds,
@@ -1139,6 +1145,8 @@ def _track_fix_freshness_failure(
 ) -> str:
     if fix.timestamp is None:
         return "fix has no timestamp; cannot write reliable GPX trackpoint"
+    if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
+        return "fix timestamp has no timezone; cannot write reliable GPX trackpoint"
     age_seconds = (datetime.now(timezone.utc) - fix.timestamp.astimezone(timezone.utc)).total_seconds()
     if age_seconds > max_fix_age_seconds:
         return f"fix timestamp is stale ({age_seconds:.0f}s old)"

@@ -2401,6 +2401,53 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("Anchor set: 61.000000, -149.000000", stdout.getvalue())
             self.assertIn("need at least one drift check", stderr.getvalue())
 
+    def test_cli_anchor_watch_rejects_timezone_less_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            naive_fix = GPSFix(
+                timestamp=datetime(2026, 6, 30, 12, 0, 0),
+                latitude=61.0,
+                longitude=-148.99,
+                satellites=9,
+                hdop=0.9,
+            )
+            original = cli_module._read_fixes
+
+            try:
+                cli_module._read_fixes = lambda *args, **kwargs: iter([naive_fix])
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(
+                        [
+                            "anchor-watch",
+                            "--config",
+                            str(app_config),
+                            "--anchor-lat",
+                            "61.0",
+                            "--anchor-lon",
+                            "-149.0",
+                            "--radius-meters",
+                            "50",
+                            "--seconds",
+                            "12",
+                        ]
+                    )
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertNotIn("Anchor distance:", stdout.getvalue())
+            self.assertIn("Skipping timezone-less anchor watch fix", stderr.getvalue())
+            self.assertIn("No usable GPS fix was available for anchor watch.", stderr.getvalue())
+
     def test_cli_anchor_watch_averages_anchor_samples(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -16475,6 +16522,29 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual(fixes, [timestamped])
         self.assertIn("Skipping untimestamped track fix", stderr.getvalue())
+
+    def test_trackable_fixes_skip_timezone_less_fix(self):
+        naive = GPSFix(
+            timestamp=datetime(2026, 6, 30, 12, 0, 0),
+            latitude=1.0,
+            longitude=2.0,
+            satellites=8,
+            hdop=1.2,
+        )
+        aware = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=3.0,
+            longitude=4.0,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        with redirect_stderr(StringIO()) as stderr:
+            fixes = list(_trackable_fixes(iter([naive, aware])))
+
+        self.assertEqual(fixes, [aware])
+        self.assertIn("Skipping timezone-less track fix", stderr.getvalue())
+        self.assertIn("fix timestamp has no timezone", stderr.getvalue())
 
     def test_trackable_fixes_skip_stale_timestamped_fix(self):
         stale = GPSFix(
