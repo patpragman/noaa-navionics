@@ -1037,15 +1037,17 @@ def _wait_for_network(
     deadline = time.monotonic() + seconds
     last_error = ""
     while True:
+        remaining = deadline - time.monotonic()
+        probe_timeout = min(timeout, max(0.001, remaining))
         try:
-            with socket.create_connection((host, port), timeout=timeout):
+            with socket.create_connection((host, port), timeout=probe_timeout):
                 return
         except OSError as exc:
             last_error = str(exc)
         if time.monotonic() >= deadline:
             detail = f": {last_error}" if last_error else ""
             raise RuntimeError(f"network not reachable at {host}:{port} within {seconds:g}s{detail}")
-        time.sleep(min(interval, max(0.1, deadline - time.monotonic())))
+        time.sleep(min(interval, max(0.001, deadline - time.monotonic())))
 
 
 def _trackable_fixes(

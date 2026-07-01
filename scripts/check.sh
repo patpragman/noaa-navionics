@@ -3802,6 +3802,12 @@ grep -q 'def _tcp_port' src/noaa_navionics/cli.py
 grep -q 'must be between 1 and 65535' src/noaa_navionics/cli.py
 grep -q 'wait_network.add_argument("--port", type=_tcp_port' src/noaa_navionics/cli.py
 grep -q 'socket.create_connection' src/noaa_navionics/cli.py
+grep -q 'probe_timeout = min(timeout, max(0.001, remaining))' src/noaa_navionics/cli.py
+grep -q 'socket.create_connection((host, port), timeout=probe_timeout)' src/noaa_navionics/cli.py
+grep -q 'test_wait_network_uses_immediate_probe_for_zero_second_budget' tests/test_downloader.py
+grep -q 'test_wait_network_caps_tcp_probe_timeout_to_remaining_budget' tests/test_downloader.py
+grep -q 'chart-refresh `wait-network` preflight caps each TCP probe to the remaining overall `--seconds` budget' README.md
+grep -q 'chart-refresh `wait-network` preflight caps each TCP probe to the remaining overall `--seconds` budget' docs/sailboat-pi.md
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics wait-network' src/noaa_navionics/report.py
 grep -q '"ExecStartPre"' src/noaa_navionics/report.py

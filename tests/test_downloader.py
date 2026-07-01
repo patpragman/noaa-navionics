@@ -4979,7 +4979,7 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["wait-network", "--interval", "0"])
         self.assert_parse_error(["wait-network", "--timeout", "nan"])
 
-    def test_wait_network_uses_bounded_tcp_probe(self):
+    def test_wait_network_uses_immediate_probe_for_zero_second_budget(self):
         calls = []
 
         class FakeConnection:
@@ -5010,7 +5010,46 @@ class CLIValidationTests(unittest.TestCase):
             cli_module.socket.create_connection = original
 
         self.assertEqual(code, 0)
-        self.assertEqual(calls, [(("example.invalid", 443), 1.0)])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], ("example.invalid", 443))
+        self.assertAlmostEqual(calls[0][1], 0.001)
+        self.assertIn("Network reachable: example.invalid:443", output.getvalue())
+
+    def test_wait_network_caps_tcp_probe_timeout_to_remaining_budget(self):
+        calls = []
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        original_connection = cli_module.socket.create_connection
+        original_monotonic = cli_module.time.monotonic
+        try:
+            cli_module.socket.create_connection = lambda address, timeout: calls.append((address, timeout)) or FakeConnection()
+            cli_module.time.monotonic = lambda: 100.0
+            with redirect_stdout(StringIO()) as output:
+                code = cli_module.main(
+                    [
+                        "wait-network",
+                        "--host",
+                        "example.invalid",
+                        "--port",
+                        "443",
+                        "--seconds",
+                        "2",
+                        "--timeout",
+                        "30",
+                    ]
+                )
+        finally:
+            cli_module.socket.create_connection = original_connection
+            cli_module.time.monotonic = original_monotonic
+
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [(("example.invalid", 443), 2.0)])
         self.assertIn("Network reachable: example.invalid:443", output.getvalue())
 
     def test_sync_rejects_incomplete_onboard_chart_packages(self):

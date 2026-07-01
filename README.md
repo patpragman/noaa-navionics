@@ -73,6 +73,7 @@ noaa-navionics download --state AK --output ~/charts/noaa-enc --extract
 
 For unreliable marina or hotspot networks, `download` and `sync-charts` accept `--retries` and `--retry-delay`.
 Retries must be at least `1`; retry delays must be `0` seconds or greater.
+The chart-refresh `wait-network` preflight caps each TCP probe to the remaining overall `--seconds` budget, so a slow DNS/TCP attempt cannot stretch an unattended boot wait beyond the configured limit.
 Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement, and extracted ENC directories/files are tightened to private `0700`/`0600` before promotion, so a swapped symlink, unsafe target, or permissive ZIP member mode does not become the live offline chart set.
 
 Download the 10-day update bundle:
