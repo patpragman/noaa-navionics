@@ -709,6 +709,10 @@ grep -q 'pre-departure status snapshot JSON config track_output is not absolute'
 grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Chart Update Debris found stale update debris' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON OpenCPN GPSD parsed connections do not include configured endpoint' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON GPSD Config devices do not match configured GPS device' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Chrony Config refclock line is not the managed GPSD SHM source' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON GPS Time Source did not prove selected or combined GPS time' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manifest summary' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/pre_trip_prepare_pi.sh
@@ -746,8 +750,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -1626,6 +1630,10 @@ grep -q 'pre-departure status snapshot JSON config track_output is not absolute'
 grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Chart Update Debris found stale update debris' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON OpenCPN GPSD parsed connections do not include configured endpoint' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON GPSD Config devices do not match configured GPS device' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Chrony Config refclock line is not the managed GPSD SHM source' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON GPS Time Source did not prove selected or combined GPS time' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manifest summary' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/verify_pi_recovery_exports.sh
@@ -1885,6 +1893,10 @@ grep -q 'status snapshot JSON config track_output is not absolute' scripts/post_
 grep -q 'status snapshot JSON Charts path does not match config chart_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Chart Update Debris found stale update debris' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON OpenCPN GPSD parsed connections do not include configured endpoint' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON GPSD Config devices do not match configured GPS device' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Chrony Config refclock line is not the managed GPSD SHM source' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON GPS Time Source did not prove selected or combined GPS time' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest row has no top-level manifest summary' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest path does not match manifest summary' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest created_at_source is not verified' scripts/post_trip_collect_pi.sh
@@ -7309,6 +7321,44 @@ opencpn_charts_data = {
     "configured": True,
     "chart_directories": ["/charts"],
 }
+opencpn_gpsd_data = {
+    "config_path": "/home/pi/.opencpn/opencpn.conf",
+    "expected_host": "127.0.0.1",
+    "expected_port": 2947,
+    "config_exists": True,
+    "configured": True,
+    "enabled_gpsd_connections": [{"host": "127.0.0.1", "port": 2947}],
+    "unexpected_connections": [],
+}
+gpsd_config_data = {
+    "path": "/etc/default/gpsd",
+    "expected_device": "/dev/serial/by-id/mock-gps",
+    "exists": True,
+    "is_symlink": False,
+    "directory_symlink_component": "",
+    "is_regular": True,
+    "start_daemon": "true",
+    "usbauto": "false",
+    "devices": ["/dev/serial/by-id/mock-gps"],
+    "gpsd_options": ["-n"],
+}
+chrony_config_data = {
+    "is_raspberry_pi": True,
+    "path": "/etc/chrony/chrony.conf",
+    "exists": True,
+    "is_symlink": False,
+    "directory_symlink_component": "",
+    "is_regular": True,
+    "managed_refclock_present": True,
+    "refclock_line": "refclock SHM 0 offset 0.5 delay 0.1 refid GPS",
+}
+gps_time_source_data = {
+    "is_raspberry_pi": True,
+    "chronyc_available": True,
+    "gps_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+    "usable_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+    "selected_or_combined": True,
+}
 for row in checks:
     if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_UNSTRUCTURED_STATUS") != "1":
         row["data"] = dict(gps_fix_data)
@@ -7320,6 +7370,14 @@ for row in checks:
         row["data"] = dict(debris_row_data)
     if row["name"] == "OpenCPN Charts":
         row["data"] = dict(opencpn_charts_data)
+    if row["name"] == "OpenCPN GPSD":
+        row["data"] = dict(opencpn_gpsd_data)
+    if row["name"] == "GPSD Config":
+        row["data"] = dict(gpsd_config_data)
+    if row["name"] == "Chrony Config":
+        row["data"] = dict(chrony_config_data)
+    if row["name"] == "GPS Time Source":
+        row["data"] = dict(gps_time_source_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -7327,6 +7385,9 @@ payload = {
     "app": {"source_revision": source_revision},
     "config": {
         "gps_mode": "gpsd",
+        "gps_device": "/dev/serial/by-id/mock-gps",
+        "gpsd_host": "127.0.0.1",
+        "gpsd_port": 2947,
         "chart_output": "/charts",
         "track_output": "/charts",
         "max_chart_age_days": 30,
@@ -7990,6 +8051,44 @@ opencpn_charts_data = {
     "configured": True,
     "chart_directories": ["/charts"],
 }
+opencpn_gpsd_data = {
+    "config_path": "/home/pi/.opencpn/opencpn.conf",
+    "expected_host": "127.0.0.1",
+    "expected_port": 2947,
+    "config_exists": True,
+    "configured": True,
+    "enabled_gpsd_connections": [{"host": "127.0.0.1", "port": 2947}],
+    "unexpected_connections": [],
+}
+gpsd_config_data = {
+    "path": "/etc/default/gpsd",
+    "expected_device": "/dev/serial/by-id/mock-gps",
+    "exists": True,
+    "is_symlink": False,
+    "directory_symlink_component": "",
+    "is_regular": True,
+    "start_daemon": "true",
+    "usbauto": "false",
+    "devices": ["/dev/serial/by-id/mock-gps"],
+    "gpsd_options": ["-n"],
+}
+chrony_config_data = {
+    "is_raspberry_pi": True,
+    "path": "/etc/chrony/chrony.conf",
+    "exists": True,
+    "is_symlink": False,
+    "directory_symlink_component": "",
+    "is_regular": True,
+    "managed_refclock_present": True,
+    "refclock_line": "refclock SHM 0 offset 0.5 delay 0.1 refid GPS",
+}
+gps_time_source_data = {
+    "is_raspberry_pi": True,
+    "chronyc_available": True,
+    "gps_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+    "usable_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+    "selected_or_combined": True,
+}
 for row in checks:
     if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") != "1":
         row["data"] = dict(gps_fix_data)
@@ -8001,6 +8100,14 @@ for row in checks:
         row["data"] = dict(debris_row_data)
     if row["name"] == "OpenCPN Charts":
         row["data"] = dict(opencpn_charts_data)
+    if row["name"] == "OpenCPN GPSD":
+        row["data"] = dict(opencpn_gpsd_data)
+    if row["name"] == "GPSD Config":
+        row["data"] = dict(gpsd_config_data)
+    if row["name"] == "Chrony Config":
+        row["data"] = dict(chrony_config_data)
+    if row["name"] == "GPS Time Source":
+        row["data"] = dict(gps_time_source_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -8008,6 +8115,9 @@ payload = {
     "app": {"source_revision": source_revision},
     "config": {
         "gps_mode": "gpsd",
+        "gps_device": "/dev/serial/by-id/mock-gps",
+        "gpsd_host": "127.0.0.1",
+        "gpsd_port": 2947,
         "chart_output": "/charts",
         "track_output": "/charts",
         "max_chart_age_days": 30,
@@ -11070,6 +11180,44 @@ def write_pre_departure_status(directory):
         "configured": True,
         "chart_directories": ["/charts"],
     }
+    opencpn_gpsd_data = {
+        "config_path": "/home/pi/.opencpn/opencpn.conf",
+        "expected_host": "127.0.0.1",
+        "expected_port": 2947,
+        "config_exists": True,
+        "configured": True,
+        "enabled_gpsd_connections": [{"host": "127.0.0.1", "port": 2947}],
+        "unexpected_connections": [],
+    }
+    gpsd_config_data = {
+        "path": "/etc/default/gpsd",
+        "expected_device": "/dev/serial/by-id/mock-gps",
+        "exists": True,
+        "is_symlink": False,
+        "directory_symlink_component": "",
+        "is_regular": True,
+        "start_daemon": "true",
+        "usbauto": "false",
+        "devices": ["/dev/serial/by-id/mock-gps"],
+        "gpsd_options": ["-n"],
+    }
+    chrony_config_data = {
+        "is_raspberry_pi": True,
+        "path": "/etc/chrony/chrony.conf",
+        "exists": True,
+        "is_symlink": False,
+        "directory_symlink_component": "",
+        "is_regular": True,
+        "managed_refclock_present": True,
+        "refclock_line": "refclock SHM 0 offset 0.5 delay 0.1 refid GPS",
+    }
+    gps_time_source_data = {
+        "is_raspberry_pi": True,
+        "chronyc_available": True,
+        "gps_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+        "usable_lines": ["#+ GPS 0 4 377 8 +12us[ +20us] +/- 100ms"],
+        "selected_or_combined": True,
+    }
     for row in checks:
         if row["name"] == "Manifest":
             row["data"] = dict(manifest_row_data)
@@ -11079,6 +11227,14 @@ def write_pre_departure_status(directory):
             row["data"] = dict(debris_row_data)
         if row["name"] == "OpenCPN Charts":
             row["data"] = dict(opencpn_charts_data)
+        if row["name"] == "OpenCPN GPSD":
+            row["data"] = dict(opencpn_gpsd_data)
+        if row["name"] == "GPSD Config":
+            row["data"] = dict(gpsd_config_data)
+        if row["name"] == "Chrony Config":
+            row["data"] = dict(chrony_config_data)
+        if row["name"] == "GPS Time Source":
+            row["data"] = dict(gps_time_source_data)
     service_checks = [
         {"name": name, "ok": True, "detail": "ok"}
         for name in sorted(CORE_SERVICE_CHECKS + GPSD_SERVICE_CHECKS)
@@ -11092,6 +11248,9 @@ def write_pre_departure_status(directory):
                 "app": {"source_revision": "fixture123"},
                 "config": {
                     "gps_mode": "gpsd",
+                    "gps_device": "/dev/serial/by-id/mock-gps",
+                    "gpsd_host": "127.0.0.1",
+                    "gpsd_port": 2947,
                     "chart_output": "/charts",
                     "track_output": "/charts",
                     "max_chart_age_days": 30,
@@ -11292,7 +11451,7 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   echo "expected verify_pi_recovery_exports.sh to reject a pre-departure status with non-Pi diagnostic skips with exit 1" >&2
   exit 1
 fi
-grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s): GPS Time Source' "$verify_output"
+grep -q 'pre-departure status snapshot JSON GPS Time Source records non-Pi diagnostic skip' "$verify_output"
 
 recovery_verify_mismatched_source_row_status_dir="$tmpdir/recovery-verify-mismatched-source-row-status"
 cp -a "$recovery_verify_dir" "$recovery_verify_mismatched_source_row_status_dir"

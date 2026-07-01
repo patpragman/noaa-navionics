@@ -1234,6 +1234,125 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
         fail("pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output")
 
 
+def normalize_snapshot_gpsd_host(value: object) -> str:
+    host = str(value).strip().lower()
+    return "127.0.0.1" if host in {"localhost", "::1"} else host
+
+
+def validate_snapshot_gpsd_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object]) -> None:
+    expected_device = str(config.get("gps_device", "")).strip()
+    if not expected_device:
+        fail("pre-departure status snapshot JSON missing config gps_device")
+    expected_host = normalize_snapshot_gpsd_host(config.get("gpsd_host", ""))
+    if expected_host not in {"127.0.0.1", "0.0.0.0"}:
+        fail("pre-departure status snapshot JSON config gpsd_host is not local")
+    expected_port = config.get("gpsd_port")
+    if isinstance(expected_port, bool) or not isinstance(expected_port, int) or not (1 <= expected_port <= 65535):
+        fail("pre-departure status snapshot JSON config gpsd_port is invalid")
+
+    opencpn_row = check_rows.get("OpenCPN GPSD")
+    if not isinstance(opencpn_row, dict):
+        fail("pre-departure status snapshot JSON missing OpenCPN GPSD readiness row")
+    opencpn_data = opencpn_row.get("data")
+    if not isinstance(opencpn_data, dict):
+        fail("pre-departure status snapshot JSON OpenCPN GPSD row has no structured data")
+    if not Path(str(opencpn_data.get("config_path", "")).strip()).is_absolute():
+        fail("pre-departure status snapshot JSON OpenCPN GPSD config path is not absolute")
+    if opencpn_data.get("config_exists") is not True:
+        fail("pre-departure status snapshot JSON OpenCPN GPSD config does not exist")
+    if normalize_snapshot_gpsd_host(opencpn_data.get("expected_host", "")) != expected_host:
+        fail("pre-departure status snapshot JSON OpenCPN GPSD host does not match config gpsd_host")
+    if opencpn_data.get("expected_port") != expected_port:
+        fail("pre-departure status snapshot JSON OpenCPN GPSD port does not match config gpsd_port")
+    if opencpn_data.get("configured") is not True:
+        fail("pre-departure status snapshot JSON OpenCPN GPSD did not prove configured endpoint")
+    connections = opencpn_data.get("enabled_gpsd_connections")
+    if not isinstance(connections, list) or not connections:
+        fail("pre-departure status snapshot JSON OpenCPN GPSD has no parsed enabled GPSD connections")
+    if not any(
+        isinstance(connection, dict)
+        and normalize_snapshot_gpsd_host(connection.get("host", "")) == expected_host
+        and connection.get("port") == expected_port
+        for connection in connections
+    ):
+        fail("pre-departure status snapshot JSON OpenCPN GPSD parsed connections do not include configured endpoint")
+    unexpected = opencpn_data.get("unexpected_connections")
+    if not isinstance(unexpected, list):
+        fail("pre-departure status snapshot JSON OpenCPN GPSD unexpected connection list was not parsed")
+    if unexpected:
+        fail("pre-departure status snapshot JSON OpenCPN GPSD found unexpected enabled GPSD connections")
+
+    gpsd_config_row = check_rows.get("GPSD Config")
+    if not isinstance(gpsd_config_row, dict):
+        fail("pre-departure status snapshot JSON missing GPSD Config readiness row")
+    gpsd_config_data = gpsd_config_row.get("data")
+    if not isinstance(gpsd_config_data, dict):
+        fail("pre-departure status snapshot JSON GPSD Config row has no structured data")
+    if str(gpsd_config_data.get("path", "")).strip() != "/etc/default/gpsd":
+        fail("pre-departure status snapshot JSON GPSD Config path is not /etc/default/gpsd")
+    if gpsd_config_data.get("exists") is not True:
+        fail("pre-departure status snapshot JSON GPSD Config path does not exist")
+    if gpsd_config_data.get("is_symlink") is not False:
+        fail("pre-departure status snapshot JSON GPSD Config path is a symlink")
+    if str(gpsd_config_data.get("directory_symlink_component", "")).strip():
+        fail("pre-departure status snapshot JSON GPSD Config directory contains a symlink")
+    if gpsd_config_data.get("is_regular") is not True:
+        fail("pre-departure status snapshot JSON GPSD Config path is not a regular file")
+    if gpsd_config_data.get("expected_device") != expected_device:
+        fail("pre-departure status snapshot JSON GPSD Config expected device does not match config")
+    devices = gpsd_config_data.get("devices")
+    if devices != [expected_device]:
+        fail("pre-departure status snapshot JSON GPSD Config devices do not match configured GPS device")
+    if gpsd_config_data.get("start_daemon") != "true":
+        fail("pre-departure status snapshot JSON GPSD Config START_DAEMON is not true")
+    if gpsd_config_data.get("usbauto") != "false":
+        fail("pre-departure status snapshot JSON GPSD Config USBAUTO is not false")
+    if "-n" not in gpsd_config_data.get("gpsd_options", []):
+        fail("pre-departure status snapshot JSON GPSD Config does not enable immediate polling")
+
+    chrony_row = check_rows.get("Chrony Config")
+    if not isinstance(chrony_row, dict):
+        fail("pre-departure status snapshot JSON missing Chrony Config readiness row")
+    chrony_data = chrony_row.get("data")
+    if not isinstance(chrony_data, dict):
+        fail("pre-departure status snapshot JSON Chrony Config row has no structured data")
+    if chrony_data.get("is_raspberry_pi") is False and chrony_data.get("skipped") is True:
+        fail("pre-departure status snapshot JSON Chrony Config records non-Pi diagnostic skip")
+    if str(chrony_data.get("path", "")).strip() != "/etc/chrony/chrony.conf":
+        fail("pre-departure status snapshot JSON Chrony Config path is not /etc/chrony/chrony.conf")
+    if chrony_data.get("exists") is not True:
+        fail("pre-departure status snapshot JSON Chrony Config path does not exist")
+    if chrony_data.get("is_symlink") is not False:
+        fail("pre-departure status snapshot JSON Chrony Config path is a symlink")
+    if str(chrony_data.get("directory_symlink_component", "")).strip():
+        fail("pre-departure status snapshot JSON Chrony Config directory contains a symlink")
+    if chrony_data.get("is_regular") is not True:
+        fail("pre-departure status snapshot JSON Chrony Config path is not a regular file")
+    if chrony_data.get("managed_refclock_present") is not True:
+        fail("pre-departure status snapshot JSON Chrony Config is missing managed GPSD SHM refclock")
+    if str(chrony_data.get("refclock_line", "")).strip() != "refclock SHM 0 offset 0.5 delay 0.1 refid GPS":
+        fail("pre-departure status snapshot JSON Chrony Config refclock line is not the managed GPSD SHM source")
+
+    time_row = check_rows.get("GPS Time Source")
+    if not isinstance(time_row, dict):
+        fail("pre-departure status snapshot JSON missing GPS Time Source readiness row")
+    time_data = time_row.get("data")
+    if not isinstance(time_data, dict):
+        fail("pre-departure status snapshot JSON GPS Time Source row has no structured data")
+    if time_data.get("is_raspberry_pi") is False and time_data.get("skipped") is True:
+        fail("pre-departure status snapshot JSON GPS Time Source records non-Pi diagnostic skip")
+    if time_data.get("is_raspberry_pi") is not True:
+        fail("pre-departure status snapshot JSON GPS Time Source did not identify a Raspberry Pi check")
+    if time_data.get("chronyc_available") is not True:
+        fail("pre-departure status snapshot JSON GPS Time Source did not validate chronyc availability")
+    if not isinstance(time_data.get("gps_lines"), list) or not time_data.get("gps_lines"):
+        fail("pre-departure status snapshot JSON GPS Time Source has no GPS refclock lines")
+    if not isinstance(time_data.get("usable_lines"), list) or not time_data.get("usable_lines"):
+        fail("pre-departure status snapshot JSON GPS Time Source has no selected or combined GPS refclock")
+    if time_data.get("selected_or_combined") is not True:
+        fail("pre-departure status snapshot JSON GPS Time Source did not prove selected or combined GPS time")
+
+
 def validate_successful_status_snapshot(
     payload: dict[str, object],
     expected_source_revision: str,
@@ -1351,6 +1470,8 @@ def validate_successful_status_snapshot(
     validate_snapshot_chart_rows(check_rows, config=config)
     validate_snapshot_manifest_row(check_rows, config=config, manifest=payload.get("manifest"))
     validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix)
+    if gps_mode == "gpsd":
+        validate_snapshot_gpsd_rows(check_rows, config=config)
     non_pi_skips = sorted(
         name
         for name in required_checks & PI_ONLY_READINESS_CHECKS
