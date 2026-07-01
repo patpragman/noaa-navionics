@@ -649,6 +649,7 @@ validate_post_trip_archive() {
   "$python3_cmd" - "$label" "$path" "$parent" <<'PY'
 from __future__ import annotations
 
+import json
 import os
 import stat
 import sys
@@ -746,6 +747,7 @@ if not members:
     raise SystemExit(124)
 seen_names = set()
 members_by_name = {}
+data_file_count = 0
 for member in members:
     name = member.name
     normalized = PurePosixPath(name)
@@ -764,12 +766,59 @@ for member in members:
     if not (member.isfile() or member.isdir()):
         print(f"{label} contains unsupported member type: {name}", file=sys.stderr)
         raise SystemExit(124)
+    if member.isfile() and normalized_name not in {"README.txt", "manifest.json"}:
+        data_file_count += 1
 readme = members_by_name.get("README.txt")
 if readme is None:
     print(f"{label} is missing README.txt", file=sys.stderr)
     raise SystemExit(124)
 if not readme.isfile():
     print(f"{label} README.txt is not a regular file", file=sys.stderr)
+    raise SystemExit(124)
+if label == "track export archive":
+    manifest = members_by_name.get("manifest.json")
+    if manifest is None:
+        print(f"{label} is missing manifest.json", file=sys.stderr)
+        raise SystemExit(124)
+    if not manifest.isfile():
+        print(f"{label} manifest.json is not a regular file", file=sys.stderr)
+        raise SystemExit(124)
+    try:
+        fd = os.open(path, os.O_RDONLY | nofollow)
+        try:
+            opened = os.fstat(fd)
+            if not os.path.samestat(initial, opened):
+                print(f"{label} changed before manifest validation: {path}", file=sys.stderr)
+                raise SystemExit(124)
+            with os.fdopen(fd, "rb") as handle:
+                fd = -1
+                with tarfile.open(fileobj=handle, mode="r:gz") as archive:
+                    manifest_file = archive.extractfile("manifest.json")
+                    if manifest_file is None:
+                        print(f"{label} manifest.json is not readable", file=sys.stderr)
+                        raise SystemExit(124)
+                    manifest_payload = json.loads(manifest_file.read().decode("utf-8"))
+        finally:
+            if fd >= 0:
+                os.close(fd)
+    except (json.JSONDecodeError, UnicodeDecodeError, tarfile.TarError, OSError) as exc:
+        print(f"{label} manifest.json is invalid or unreadable: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    if not isinstance(manifest_payload, dict):
+        print(f"{label} manifest.json must be a JSON object", file=sys.stderr)
+        raise SystemExit(124)
+    track_count = manifest_payload.get("track_count")
+    if not isinstance(track_count, int) or track_count <= 0:
+        print(f"{label} manifest track_count must be a positive integer", file=sys.stderr)
+        raise SystemExit(124)
+    if track_count != data_file_count:
+        print(
+            f"{label} manifest track_count does not match data file count: {track_count} != {data_file_count}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+elif label == "support bundle archive" and data_file_count <= 0:
+    print(f"{label} contains no diagnostic files", file=sys.stderr)
     raise SystemExit(124)
 PY
   status=$?

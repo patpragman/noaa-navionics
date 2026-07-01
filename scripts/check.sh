@@ -799,8 +799,8 @@ grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
-grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' README.md
-grep -q 'requires a regular archive `README.txt`, rejects duplicate normalized archive members, backslash member names, and symlink, hardlink, device, or FIFO members' docs/sailboat-pi.md
+grep -q 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` to match regular GPX data files and the support archive to contain at least one diagnostic file' README.md
+grep -q 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` to match regular GPX data files and the support archive to contain at least one diagnostic file' docs/sailboat-pi.md
 grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' README.md
 grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -1796,6 +1796,8 @@ grep -q 'contains duplicate normalized member name' scripts/post_trip_collect_pi
 grep -q 'contains unsupported member type' scripts/post_trip_collect_pi.sh
 grep -q 'is missing README.txt' scripts/post_trip_collect_pi.sh
 grep -q 'README.txt is not a regular file' scripts/post_trip_collect_pi.sh
+grep -q 'manifest track_count does not match data file count' scripts/post_trip_collect_pi.sh
+grep -q 'contains no diagnostic files' scripts/post_trip_collect_pi.sh
 grep -q 'requires a regular archive `README.txt`' README.md
 grep -q 'requires a regular archive `README.txt`' docs/sailboat-pi.md
 grep -q 'backslash member names' README.md
@@ -6984,6 +6986,7 @@ if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_BAD_TRACK_PATH:-0}" == "1" ]]; then
 fi
 python3 - "$archive" <<'PY'
 import io
+import json
 import os
 import sys
 import tarfile
@@ -7012,6 +7015,19 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         info.mode = 0o700
         info.mtime = int(time.time())
         archive.addfile(info)
+    elif os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_MISMATCHED_TRACK_MANIFEST") == "1":
+        data = b"fake track export\n"
+        info = tarfile.TarInfo("README.txt")
+        info.size = len(data)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(data))
+        manifest = json.dumps({"track_count": 1}).encode("utf-8") + b"\n"
+        info = tarfile.TarInfo("manifest.json")
+        info.size = len(manifest)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(manifest))
     else:
         data = b"fake track export\n"
         info = tarfile.TarInfo("README.txt")
@@ -7019,6 +7035,18 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         info.mode = 0o600
         info.mtime = int(time.time())
         archive.addfile(info, io.BytesIO(data))
+        manifest = json.dumps({"track_count": 1}).encode("utf-8") + b"\n"
+        info = tarfile.TarInfo("manifest.json")
+        info.size = len(manifest)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(manifest))
+        track = b"<gpx><trk /></gpx>\n"
+        info = tarfile.TarInfo("tracks/underway.gpx")
+        info.size = len(track)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(track))
 os.chmod(path, 0o600)
 PY
 printf 'Exported Pi GPX tracks: %s\n' "$archive"
@@ -7046,6 +7074,13 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
     info.mode = 0o600
     info.mtime = int(time.time())
     archive.addfile(info, io.BytesIO(data))
+    if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_README_ONLY") != "1":
+        diagnostic = b"date output\n"
+        info = tarfile.TarInfo("commands/date-utc.txt")
+        info.size = len(diagnostic)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(diagnostic))
 os.chmod(path, 0o600)
 PY
 printf 'Collected Pi support bundle: %s\n' "$archive"
@@ -7112,10 +7147,22 @@ import sys
 import tarfile
 
 root = Path(sys.argv[1])
-for path in sys.argv[2:]:
+expected_members = {
+    "noaa-navionics-pi-tracks-fixture.tgz": [
+        "README.txt",
+        "manifest.json",
+        "tracks/underway.gpx",
+    ],
+    "noaa-navionics-pi-support-fixture.tgz": [
+        "README.txt",
+        "commands/date-utc.txt",
+    ],
+}
+for path_text in sys.argv[2:]:
+    path = Path(path_text)
     with tarfile.open(path, "r:gz") as archive:
         names = archive.getnames()
-    if names != ["README.txt"]:
+    if names != expected_members[path.name]:
         raise SystemExit(f"unexpected post-trip archive members in {path}: {names!r}")
 entries = {}
 for line in (root / "SHA256SUMS.txt").read_text(encoding="ascii").splitlines():
@@ -7234,6 +7281,44 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'track export archive README.txt is not a regular file' "$verify_output"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_readme_dir_log"
+
+post_trip_mismatched_track_log="$tmpdir/post-trip-mismatched-track-helper-calls"
+post_trip_mismatched_track_output_dir="$tmpdir/post-trip-mismatched-track-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_mismatched_track_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_MISMATCHED_TRACK_MANIFEST=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_mismatched_track_output_dir" \
+  --skip-status \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a track archive with mismatched manifest counts with exit 2" >&2
+  exit 1
+fi
+grep -q 'track export archive manifest track_count does not match data file count: 1 != 0' "$verify_output"
+grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_mismatched_track_log"
+
+post_trip_readme_only_support_log="$tmpdir/post-trip-readme-only-support-helper-calls"
+post_trip_readme_only_support_output_dir="$tmpdir/post-trip-readme-only-support-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_readme_only_support_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_README_ONLY=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_readme_only_support_output_dir" \
+  --skip-status \
+  --skip-tracks >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a support archive with no diagnostic files with exit 2" >&2
+  exit 1
+fi
+grep -q 'support bundle archive contains no diagnostic files' "$verify_output"
+grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_readme_only_support_log"
 
 post_trip_invalid_json_log="$tmpdir/post-trip-invalid-json-helper-calls"
 post_trip_invalid_json_output_dir="$tmpdir/post-trip-invalid-json-output"
