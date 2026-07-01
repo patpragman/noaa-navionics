@@ -264,6 +264,55 @@ finally:
 PY
 }
 
+cleanup_root_temp_file() {
+  local path="$1"
+  [[ -n "$path" ]] || return 0
+  "$sudo_cmd" "$python3_cmd" - "$path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"could not inspect root config temporary file for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+mode = stat.S_IMODE(before.st_mode)
+if not stat.S_ISREG(before.st_mode) or before.st_uid != 0 or mode & 0o022:
+    print(f"root config temporary file is not a trusted root-owned file; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    print(f"could not open root config temporary file directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+try:
+    try:
+        fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"root config temporary file changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=dir_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 run() {
   if [[ "$dry_run" -eq 1 ]]; then
     printf '+'
@@ -292,27 +341,27 @@ install_root_file_atomic() {
   validate_lightdm_autologin_path
   target_tmp="$("$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX")"
   if ! verify_root_temp_file "$target_tmp" 0600; then
-    "$sudo_cmd" rm -f "$target_tmp"
+    cleanup_root_temp_file "$target_tmp"
     return 1
   fi
   if ! "$sudo_cmd" install -m "$mode" "$source" "$target_tmp"; then
-    "$sudo_cmd" rm -f "$target_tmp"
+    cleanup_root_temp_file "$target_tmp"
     return 1
   fi
   if ! verify_root_temp_file "$target_tmp" "$mode"; then
-    "$sudo_cmd" rm -f "$target_tmp"
+    cleanup_root_temp_file "$target_tmp"
     return 1
   fi
   if ! sync_path "$target_tmp"; then
-    "$sudo_cmd" rm -f "$target_tmp"
+    cleanup_root_temp_file "$target_tmp"
     return 1
   fi
   if ! validate_lightdm_autologin_path; then
-    "$sudo_cmd" rm -f "$target_tmp"
+    cleanup_root_temp_file "$target_tmp"
     return 1
   fi
   if ! "$sudo_cmd" mv -f "$target_tmp" "$target"; then
-    "$sudo_cmd" rm -f "$target_tmp"
+    cleanup_root_temp_file "$target_tmp"
     return 1
   fi
   verify_promoted_root_file "$source" "$target" "$mode"
