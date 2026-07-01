@@ -657,8 +657,11 @@ def _open_exclusive_private_binary(path: Path):
 
 def _remove_path(path: Path, *, missing_ok: bool = False, label: str = "chart update path") -> None:
     try:
-        _validate_removable_chart_tree(path, label=label)
-        if path.is_dir() and not path.is_symlink():
+        validated_stat = _validate_removable_chart_tree(path, label=label)
+        current_stat = path.lstat()
+        if not os.path.samestat(validated_stat, current_stat):
+            raise RuntimeError(f"{label} changed before cleanup; leaving it in place: {path}")
+        if stat.S_ISDIR(validated_stat.st_mode):
             if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
                 raise RuntimeError(
                     "Python shutil.rmtree is not symlink-attack resistant on this platform; "
@@ -666,13 +669,20 @@ def _remove_path(path: Path, *, missing_ok: bool = False, label: str = "chart up
                 )
             shutil.rmtree(path)
         else:
-            path.unlink()
+            parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+            try:
+                name_stat = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+                if not os.path.samestat(validated_stat, name_stat):
+                    raise RuntimeError(f"{label} changed before cleanup; leaving it in place: {path}")
+                os.unlink(path.name, dir_fd=parent_fd)
+            finally:
+                os.close(parent_fd)
     except FileNotFoundError:
         if not missing_ok:
             raise
 
 
-def _validate_removable_chart_tree(path: Path, *, label: str) -> None:
+def _validate_removable_chart_tree(path: Path, *, label: str) -> os.stat_result:
     def validate_one(candidate: Path) -> os.stat_result:
         try:
             stat_result = candidate.lstat()
@@ -693,12 +703,13 @@ def _validate_removable_chart_tree(path: Path, *, label: str) -> None:
 
     root_stat = validate_one(path)
     if not stat.S_ISDIR(root_stat.st_mode):
-        return
+        return root_stat
     for current_root, dirnames, filenames in os.walk(path):
         current = Path(current_root)
         validate_one(current)
         for name in [*dirnames, *filenames]:
             validate_one(current / name)
+    return root_stat
 
 
 def _fsync_tree(root: Path) -> None:

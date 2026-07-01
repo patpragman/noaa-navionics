@@ -9036,6 +9036,64 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((root / "AK_ENCs").exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
+    def test_extract_zip_rejects_replaced_previous_debris_before_cleanup(self):
+        original_validate = downloader_module._validate_removable_chart_tree
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                archive = root / "charts.zip"
+                with zipfile.ZipFile(archive, "w") as zip_file:
+                    zip_file.writestr("US5AK3CM/US5AK3CM.000", "new")
+                previous = root / ".AK_ENCs.previous"
+                previous.mkdir()
+                (previous / "old.000").write_text("old", encoding="ascii")
+
+                def replacing_validate(path, *, label):
+                    result = original_validate(path, label=label)
+                    if Path(path) == previous:
+                        swapped = root / ".AK_ENCs.previous-swapped"
+                        previous.rename(swapped)
+                        previous.mkdir()
+                        (previous / "replacement.000").write_text("replacement", encoding="ascii")
+                    return result
+
+                downloader_module._validate_removable_chart_tree = replacing_validate
+                with self.assertRaisesRegex(RuntimeError, "previous chart extraction changed before cleanup"):
+                    extract_zip(archive, root / "AK_ENCs")
+
+                self.assertTrue(previous.is_dir())
+                self.assertEqual((previous / "replacement.000").read_text(encoding="ascii"), "replacement")
+                self.assertFalse((root / "AK_ENCs").exists())
+                self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+        finally:
+            downloader_module._validate_removable_chart_tree = original_validate
+
+    def test_remove_path_rejects_replaced_regular_file_before_unlink(self):
+        original_validate = downloader_module._validate_removable_chart_tree
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                target = root / "stale.zip"
+                target.write_text("old", encoding="ascii")
+                target.chmod(0o600)
+                replacement = root / "replacement.zip"
+                replacement.write_text("replacement", encoding="ascii")
+                replacement.chmod(0o600)
+
+                def replacing_validate(path, *, label):
+                    result = original_validate(path, label=label)
+                    os.replace(replacement, path)
+                    return result
+
+                downloader_module._validate_removable_chart_tree = replacing_validate
+                with self.assertRaisesRegex(RuntimeError, "chart update path changed before cleanup"):
+                    downloader_module._remove_path(target)
+
+                self.assertTrue(target.exists())
+                self.assertEqual(target.read_text(encoding="ascii"), "replacement")
+        finally:
+            downloader_module._validate_removable_chart_tree = original_validate
+
     def test_extract_zip_cleanup_requires_symlink_safe_rmtree(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

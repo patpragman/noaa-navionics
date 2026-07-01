@@ -3399,11 +3399,19 @@ grep -q 'test_extract_zip_rejects_symlinked_destination_parent' tests/test_downl
 grep -q 'test_extract_zip_rejects_non_directory_destination' tests/test_downloader.py
 grep -q 'moved_existing_to_previous' src/noaa_navionics/downloader.py
 grep -q 'def _validate_removable_chart_tree' src/noaa_navionics/downloader.py
+grep -q 'validated_stat = _validate_removable_chart_tree(path, label=label)' src/noaa_navionics/downloader.py
+grep -q 'os.path.samestat(validated_stat, current_stat)' src/noaa_navionics/downloader.py
+grep -q 'os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)' src/noaa_navionics/downloader.py
+grep -q 'os.unlink(path.name, dir_fd=parent_fd)' src/noaa_navionics/downloader.py
 grep -q 'previous chart extraction path is a symlink before cleanup' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_symlinked_previous_debris_without_promoting_it' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_previous_debris_with_symlinked_child' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_replaced_previous_debris_before_cleanup' tests/test_downloader.py
+grep -q 'test_remove_path_rejects_replaced_regular_file_before_unlink' tests/test_downloader.py
 grep -q 'unsafe `.previous` extraction debris' README.md
 grep -q 'unsafe `.previous` extraction debris' docs/sailboat-pi.md
+grep -q 'extraction cleanup revalidates stale chart debris as the same file or directory immediately before removal' README.md
+grep -q 'extraction cleanup revalidates stale chart debris as the same file or directory immediately before removal' docs/sailboat-pi.md
 grep -q 'shutil.rmtree is not symlink-attack resistant' src/noaa_navionics/downloader.py
 grep -q '_remove_path(staging, missing_ok=True, label="chart extraction staging")' src/noaa_navionics/downloader.py
 grep -q 'test_extract_zip_cleanup_requires_symlink_safe_rmtree' tests/test_downloader.py
