@@ -11712,6 +11712,52 @@ class GpsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "coordinates must be finite"):
                     distance_meters(*coordinates)
 
+    def test_open_nmea_stream_closes_fd_when_termios_setup_fails(self):
+        closed_fds = []
+        original_open = gps_module.os.open
+        original_close = gps_module.os.close
+        original_tcgetattr = gps_module.termios.tcgetattr
+
+        try:
+            gps_module.os.open = lambda path, flags: 123
+            gps_module.os.close = lambda fd: closed_fds.append(fd)
+            gps_module.termios.tcgetattr = lambda fd: (_ for _ in ()).throw(OSError("termios failed"))
+
+            with self.assertRaisesRegex(OSError, "termios failed"):
+                gps_module.open_nmea_stream("/dev/serial/by-id/mock-gps")
+        finally:
+            gps_module.os.open = original_open
+            gps_module.os.close = original_close
+            gps_module.termios.tcgetattr = original_tcgetattr
+
+        self.assertEqual(closed_fds, [123])
+
+    def test_open_nmea_stream_closes_fd_when_fdopen_fails(self):
+        closed_fds = []
+        original_open = gps_module.os.open
+        original_close = gps_module.os.close
+        original_fdopen = gps_module.os.fdopen
+        original_tcgetattr = gps_module.termios.tcgetattr
+        original_tcsetattr = gps_module.termios.tcsetattr
+
+        try:
+            gps_module.os.open = lambda path, flags: 456
+            gps_module.os.close = lambda fd: closed_fds.append(fd)
+            gps_module.os.fdopen = lambda fd, mode, buffering=0: (_ for _ in ()).throw(OSError("fdopen failed"))
+            gps_module.termios.tcgetattr = lambda fd: [0, 0, 0, 0, 0, 0, [0] * 64]
+            gps_module.termios.tcsetattr = lambda fd, when, attrs: None
+
+            with self.assertRaisesRegex(OSError, "fdopen failed"):
+                gps_module.open_nmea_stream("/dev/serial/by-id/mock-gps")
+        finally:
+            gps_module.os.open = original_open
+            gps_module.os.close = original_close
+            gps_module.os.fdopen = original_fdopen
+            gps_module.termios.tcgetattr = original_tcgetattr
+            gps_module.termios.tcsetattr = original_tcsetattr
+
+        self.assertEqual(closed_fds, [456])
+
     def test_parse_gga_sentence(self):
         sentence = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
         fix = parse_nmea_sentence(sentence)

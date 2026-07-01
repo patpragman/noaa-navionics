@@ -124,19 +124,26 @@ def open_nmea_stream(device: str, baud: int = 4800) -> BinaryIO:
     if baud not in BAUD_RATES:
         raise ValueError(f"unsupported baud rate {baud}; choose one of {sorted(BAUD_RATES)}")
     fd = os.open(device, os.O_RDONLY | os.O_NOCTTY)
-    attrs = termios.tcgetattr(fd)
-    attrs[0] = attrs[0] & ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
-    attrs[1] = attrs[1] & ~termios.OPOST
-    attrs[2] = attrs[2] | termios.CLOCAL | termios.CREAD
-    attrs[2] = attrs[2] & ~(termios.PARENB | termios.PARODD | termios.CSTOPB | termios.CSIZE)
-    attrs[2] = attrs[2] | termios.CS8
-    attrs[3] = attrs[3] & ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
-    attrs[4] = BAUD_RATES[baud]
-    attrs[5] = BAUD_RATES[baud]
-    attrs[6][termios.VMIN] = 0
-    attrs[6][termios.VTIME] = 10
-    termios.tcsetattr(fd, termios.TCSANOW, attrs)
-    return os.fdopen(fd, "rb", buffering=0)
+    try:
+        attrs = termios.tcgetattr(fd)
+        attrs[0] = attrs[0] & ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
+        attrs[1] = attrs[1] & ~termios.OPOST
+        attrs[2] = attrs[2] | termios.CLOCAL | termios.CREAD
+        attrs[2] = attrs[2] & ~(termios.PARENB | termios.PARODD | termios.CSTOPB | termios.CSIZE)
+        attrs[2] = attrs[2] | termios.CS8
+        attrs[3] = attrs[3] & ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
+        attrs[4] = BAUD_RATES[baud]
+        attrs[5] = BAUD_RATES[baud]
+        attrs[6][termios.VMIN] = 0
+        attrs[6][termios.VTIME] = 10
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
+        return os.fdopen(fd, "rb", buffering=0)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        raise
 
 
 def read_nmea_lines(
