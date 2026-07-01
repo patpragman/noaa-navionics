@@ -891,6 +891,77 @@ def validate_snapshot_manifest_row(
         fail("pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary")
 
 
+def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object]) -> None:
+    chart_output = str(config.get("chart_output", "")).strip()
+
+    charts_row = check_rows.get("Charts")
+    if not isinstance(charts_row, dict):
+        fail("pre-departure status snapshot JSON missing Charts readiness row")
+    charts_data = charts_row.get("data")
+    if not isinstance(charts_data, dict):
+        fail("pre-departure status snapshot JSON Charts row has no structured data")
+    configured_path = str(charts_data.get("configured_path", "")).strip()
+    if configured_path != chart_output:
+        fail("pre-departure status snapshot JSON Charts path does not match config chart_output")
+    if charts_data.get("exists") is not True:
+        fail("pre-departure status snapshot JSON Charts path does not exist")
+    if str(charts_data.get("storage_symlink_component", "")).strip():
+        fail("pre-departure status snapshot JSON Charts path contains a symlink")
+    if charts_data.get("has_extracted_enc_cells") is not True:
+        fail("pre-departure status snapshot JSON Charts found no extracted ENC cells")
+    enc_cell_samples = charts_data.get("enc_cell_samples")
+    if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
+        fail("pre-departure status snapshot JSON Charts has no ENC cell sample paths")
+    if any(not Path(str(sample)).is_absolute() for sample in enc_cell_samples):
+        fail("pre-departure status snapshot JSON Charts ENC cell sample path is not absolute")
+
+    debris_row = check_rows.get("Chart Update Debris")
+    if not isinstance(debris_row, dict):
+        fail("pre-departure status snapshot JSON missing Chart Update Debris readiness row")
+    debris_data = debris_row.get("data")
+    if not isinstance(debris_data, dict):
+        fail("pre-departure status snapshot JSON Chart Update Debris row has no structured data")
+    configured_path = str(debris_data.get("configured_path", "")).strip()
+    if configured_path != chart_output:
+        fail("pre-departure status snapshot JSON Chart Update Debris path does not match config chart_output")
+    if str(debris_data.get("storage_symlink_component", "")).strip():
+        fail("pre-departure status snapshot JSON Chart Update Debris path contains a symlink")
+    debris_count = debris_data.get("debris_count")
+    if isinstance(debris_count, bool) or not isinstance(debris_count, int) or debris_count != 0:
+        fail("pre-departure status snapshot JSON Chart Update Debris found stale update debris")
+    debris = debris_data.get("debris")
+    if not isinstance(debris, list) or debris:
+        fail("pre-departure status snapshot JSON Chart Update Debris debris list is not empty")
+    if debris_data.get("clean") is not True:
+        fail("pre-departure status snapshot JSON Chart Update Debris did not prove a clean chart directory")
+
+    opencpn_row = check_rows.get("OpenCPN Charts")
+    if not isinstance(opencpn_row, dict):
+        fail("pre-departure status snapshot JSON missing OpenCPN Charts readiness row")
+    opencpn_data = opencpn_row.get("data")
+    if not isinstance(opencpn_data, dict):
+        fail("pre-departure status snapshot JSON OpenCPN Charts row has no structured data")
+    chart_dir = str(opencpn_data.get("chart_dir", "")).strip()
+    if not Path(chart_dir).is_absolute():
+        fail("pre-departure status snapshot JSON OpenCPN Charts chart directory is not absolute")
+    if chart_dir != chart_output:
+        fail("pre-departure status snapshot JSON OpenCPN Charts chart directory does not match config chart_output")
+    config_path = str(opencpn_data.get("config_path", "")).strip()
+    if not Path(config_path).is_absolute():
+        fail("pre-departure status snapshot JSON OpenCPN Charts config path is not absolute")
+    if opencpn_data.get("config_exists") is not True:
+        fail("pre-departure status snapshot JSON OpenCPN Charts config does not exist")
+    if opencpn_data.get("chart_dir_exists") is not True:
+        fail("pre-departure status snapshot JSON OpenCPN Charts chart directory does not exist")
+    if opencpn_data.get("configured") is not True:
+        fail("pre-departure status snapshot JSON OpenCPN Charts did not prove configured chart directory")
+    chart_directories = opencpn_data.get("chart_directories")
+    if not isinstance(chart_directories, list) or not chart_directories:
+        fail("pre-departure status snapshot JSON OpenCPN Charts has no parsed chart directories")
+    if not any(str(directory).strip() == chart_output for directory in chart_directories):
+        fail("pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output")
+
+
 def validate_pre_departure_status_checks(
     status: dict[str, object],
     expected_source_revision: str,
@@ -1020,6 +1091,7 @@ def validate_pre_departure_status_checks(
             "pre-departure status snapshot JSON missing structured readiness data for: "
             + ", ".join(missing_structured_data)
         )
+    validate_snapshot_chart_rows(check_rows, config=config)
     validate_snapshot_manifest_row(check_rows, config=config, manifest=status.get("manifest"))
     validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix)
     non_pi_skips = sorted(

@@ -706,6 +706,9 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Chart Update Debris found stale update debris' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manifest summary' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/pre_trip_prepare_pi.sh
@@ -743,8 +746,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, or GPS-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -1620,6 +1623,9 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON Chart Update Debris found stale update debris' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manifest summary' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/verify_pi_recovery_exports.sh
@@ -1876,6 +1882,9 @@ grep -q 'status snapshot JSON {expected_name} HDOP does not match gps_fix' scrip
 grep -q 'status snapshot JSON config chart_output is not absolute' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing config track_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON config track_output is not absolute' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Charts path does not match config chart_output' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON Chart Update Debris found stale update debris' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest row has no top-level manifest summary' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest path does not match manifest summary' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest created_at_source is not verified' scripts/post_trip_collect_pi.sh
@@ -7278,11 +7287,39 @@ manifest_row_data = {
     "enc_cell_count": manifest_summary["enc_cell_count"],
     "actual_enc_cell_count": manifest_summary["actual_enc_cell_count"],
 }
+chart_row_data = {
+    "configured_path": "/charts",
+    "exists": True,
+    "storage_symlink_component": "",
+    "enc_cell_samples": ["/charts/AK_ENCs/US5AK00M/US5AK00M.000"],
+    "has_extracted_enc_cells": True,
+}
+debris_row_data = {
+    "configured_path": "/charts",
+    "storage_symlink_component": "",
+    "debris": [],
+    "debris_count": 0,
+    "clean": True,
+}
+opencpn_charts_data = {
+    "config_path": "/home/pi/.opencpn/opencpn.conf",
+    "chart_dir": "/charts",
+    "config_exists": True,
+    "chart_dir_exists": True,
+    "configured": True,
+    "chart_directories": ["/charts"],
+}
 for row in checks:
     if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_UNSTRUCTURED_STATUS") != "1":
         row["data"] = dict(gps_fix_data)
     if row["name"] == "Manifest":
         row["data"] = dict(manifest_row_data)
+    if row["name"] == "Charts":
+        row["data"] = dict(chart_row_data)
+    if row["name"] == "Chart Update Debris":
+        row["data"] = dict(debris_row_data)
+    if row["name"] == "OpenCPN Charts":
+        row["data"] = dict(opencpn_charts_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -7931,11 +7968,39 @@ manifest_row_data = {
     "enc_cell_count": manifest_summary["enc_cell_count"],
     "actual_enc_cell_count": manifest_summary["actual_enc_cell_count"],
 }
+chart_row_data = {
+    "configured_path": "/charts",
+    "exists": True,
+    "storage_symlink_component": "",
+    "enc_cell_samples": ["/charts/AK_ENCs/US5AK00M/US5AK00M.000"],
+    "has_extracted_enc_cells": True,
+}
+debris_row_data = {
+    "configured_path": "/charts",
+    "storage_symlink_component": "",
+    "debris": [],
+    "debris_count": 0,
+    "clean": True,
+}
+opencpn_charts_data = {
+    "config_path": "/home/pi/.opencpn/opencpn.conf",
+    "chart_dir": "/charts",
+    "config_exists": True,
+    "chart_dir_exists": True,
+    "configured": True,
+    "chart_directories": ["/charts"],
+}
 for row in checks:
     if row["name"] == "GPSD" and os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") != "1":
         row["data"] = dict(gps_fix_data)
     if row["name"] == "Manifest":
         row["data"] = dict(manifest_row_data)
+    if row["name"] == "Charts":
+        row["data"] = dict(chart_row_data)
+    if row["name"] == "Chart Update Debris":
+        row["data"] = dict(debris_row_data)
+    if row["name"] == "OpenCPN Charts":
+        row["data"] = dict(opencpn_charts_data)
 payload = {
     "generated_at": generated_at,
     "ok": True,
@@ -10983,9 +11048,37 @@ def write_pre_departure_status(directory):
         "enc_cell_count": manifest_summary["enc_cell_count"],
         "actual_enc_cell_count": manifest_summary["actual_enc_cell_count"],
     }
+    chart_row_data = {
+        "configured_path": "/charts",
+        "exists": True,
+        "storage_symlink_component": "",
+        "enc_cell_samples": ["/charts/AK_ENCs/US5AK00M/US5AK00M.000"],
+        "has_extracted_enc_cells": True,
+    }
+    debris_row_data = {
+        "configured_path": "/charts",
+        "storage_symlink_component": "",
+        "debris": [],
+        "debris_count": 0,
+        "clean": True,
+    }
+    opencpn_charts_data = {
+        "config_path": "/home/pi/.opencpn/opencpn.conf",
+        "chart_dir": "/charts",
+        "config_exists": True,
+        "chart_dir_exists": True,
+        "configured": True,
+        "chart_directories": ["/charts"],
+    }
     for row in checks:
         if row["name"] == "Manifest":
             row["data"] = dict(manifest_row_data)
+        if row["name"] == "Charts":
+            row["data"] = dict(chart_row_data)
+        if row["name"] == "Chart Update Debris":
+            row["data"] = dict(debris_row_data)
+        if row["name"] == "OpenCPN Charts":
+            row["data"] = dict(opencpn_charts_data)
     service_checks = [
         {"name": name, "ok": True, "detail": "ok"}
         for name in sorted(CORE_SERVICE_CHECKS + GPSD_SERVICE_CHECKS)
