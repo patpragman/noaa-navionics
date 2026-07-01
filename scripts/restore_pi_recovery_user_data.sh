@@ -192,11 +192,31 @@ import tempfile
 
 CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
 ARCHIVES = [
-    ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count"),
-    ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count"),
-    ("tracks", "noaa-navionics-pi-tracks-*.tgz", "track_count"),
-    ("support", "noaa-navionics-pi-support-*.tgz", None),
+    ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count", []),
+    ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count", []),
+    ("tracks", "noaa-navionics-pi-tracks-*.tgz", "track_count", []),
+    ("support", "noaa-navionics-pi-support-*.tgz", None, CORE_SUPPORT_COMMAND_FILES),
 ]
 
 
@@ -241,7 +261,13 @@ def inspect_private_file(path: Path, label: str) -> os.stat_result:
     return result
 
 
-def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, load_contents: bool = True) -> dict[str, bytes]:
+def inspect_archive(
+    archive_path: Path,
+    required_count_key: Optional[str],
+    required_members: list[str],
+    *,
+    load_contents: bool = True,
+) -> dict[str, bytes]:
     result = inspect_private_file(archive_path, "archive")
     if result.st_size <= 0:
         fail(f"archive is empty: {archive_path}")
@@ -311,6 +337,15 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
         fail(f"{archive_path.name} is missing README.txt")
     if not readme.isfile():
         fail(f"{archive_path.name} README.txt is not a regular file")
+    missing_members = [
+        name for name in required_members
+        if name not in members_by_name or not members_by_name[name].isfile()
+    ]
+    if missing_members:
+        fail(
+            f"{archive_path.name} is missing required support diagnostic file(s): "
+            f"{', '.join(missing_members)}"
+        )
     if required_count_key is not None:
         manifest_member = members_by_name.get("manifest.json")
         if manifest_member is None:
@@ -490,7 +525,7 @@ def assert_private_recovery_directory(path: Path) -> None:
 def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
     assert_private_recovery_directory(recovery_dir)
     archive_paths = {}
-    for label, pattern, _required_count_key in ARCHIVES:
+    for label, pattern, _required_count_key, _required_members in ARCHIVES:
         matches = sorted(recovery_dir.glob(pattern))
         if not matches:
             fail(f"missing {label} archive matching {pattern}")
@@ -500,10 +535,11 @@ def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
     verify_checksum_manifest(recovery_dir, archive_paths)
 
     result = {}
-    for label, pattern, required_count_key in ARCHIVES:
+    for label, pattern, required_count_key, required_members in ARCHIVES:
         result[label] = inspect_archive(
             archive_paths[label],
             required_count_key,
+            required_members,
             load_contents=(label != "support"),
         )
     return result

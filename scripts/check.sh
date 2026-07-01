@@ -875,8 +875,8 @@ grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest co
 grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' docs/sailboat-pi.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
-grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
-grep -q 'validating the diagnostic support archive without loading its contents into memory' docs/sailboat-pi.md
+grep -q "validating the diagnostic support archive's core command-evidence files without loading its contents into memory" README.md
+grep -q "validating the diagnostic support archive's core command-evidence files without loading its contents into memory" docs/sailboat-pi.md
 grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' README.md
 grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' docs/sailboat-pi.md
 grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' README.md
@@ -1612,6 +1612,10 @@ grep -q '"$python3_cmd" - "$recovery_dir"' scripts/restore_pi_recovery_user_data
 ! grep -q '^python3 - "$recovery_dir"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user_data.sh
 grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/restore_pi_recovery_user_data.sh
+grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.sh
+grep -q 'commands/system-command-integrity.txt' scripts/restore_pi_recovery_user_data.sh
+grep -q 'commands/recent-system-journal.txt' scripts/restore_pi_recovery_user_data.sh
+grep -q 'is missing required support diagnostic file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def verify_checksum_manifest' scripts/restore_pi_recovery_user_data.sh
 grep -q 'checksum mismatch for' scripts/restore_pi_recovery_user_data.sh
 grep -q 'checksum manifest is missing archive' scripts/restore_pi_recovery_user_data.sh
@@ -8134,27 +8138,6 @@ import sys
 import tarfile
 import time
 
-CORE_SUPPORT_COMMAND_FILES = [
-    "commands/system-command-integrity.txt",
-    "commands/date-utc.txt",
-    "commands/uname.txt",
-    "commands/hostname.txt",
-    "commands/uptime.txt",
-    "commands/package-versions.txt",
-    "commands/df.txt",
-    "commands/mount-findmnt.txt",
-    "commands/serial-devices.txt",
-    "commands/user-units.txt",
-    "commands/user-unit-properties.txt",
-    "commands/system-services.txt",
-    "commands/system-service-properties.txt",
-    "commands/chrony-sources.txt",
-    "commands/timedatectl.txt",
-    "commands/pi-throttling.txt",
-    "commands/recent-user-journal.txt",
-    "commands/recent-system-journal.txt",
-]
-
 
 def add_text(archive, name, text):
     data = text.encode("utf-8")
@@ -10577,6 +10560,27 @@ import sys
 import tarfile
 import time
 
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
 
 def add_text(archive, name, text):
     data = text.encode("utf-8")
@@ -10653,7 +10657,7 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
         root,
         "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz",
         None,
-        {"commands/date-utc.txt": "2026-01-01\n"},
+        {name: f"{name}\n" for name in CORE_SUPPORT_COMMAND_FILES},
     )
     write_checksums(root)
 
@@ -10759,6 +10763,51 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'checksum mismatch for' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_thin_support_dir="$tmpdir/recovery-restore-thin-support"
+cp -a "$recovery_restore_dir" "$recovery_restore_thin_support_dir"
+python3 - "$recovery_restore_thin_support_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+support = next(root.glob("noaa-navionics-pi-support-*.tgz"))
+with tarfile.open(support, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    add_text(archive, "commands/date-utc.txt", "2026-01-01\n")
+support.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_thin_support_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a support bundle missing required diagnostics with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required support diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_manifest_dir="$tmpdir/recovery-restore-mismatched-manifest"
