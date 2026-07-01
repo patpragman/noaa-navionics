@@ -494,6 +494,144 @@ PY
   return "$status"
 }
 
+write_checksum_manifest() {
+  local directory="$1"
+  "$python3_cmd" - "$directory" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import hashlib
+import os
+import stat
+import tempfile
+import sys
+
+
+ARCHIVE_PATTERNS = [
+    "noaa-navionics-pi-settings-*.tgz",
+    "noaa-navionics-pi-opencpn-*.tgz",
+    "noaa-navionics-pi-tracks-*.tgz",
+    "noaa-navionics-pi-support-*.tgz",
+]
+MANIFEST_NAME = "SHA256SUMS.txt"
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def assert_private_directory(path: Path) -> None:
+    try:
+        result = path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect recovery directory before checksum manifest: {path}: {exc}")
+    if not stat.S_ISDIR(result.st_mode):
+        fail(f"Recovery checksum directory is not a real directory: {path}")
+    if result.st_uid != os.getuid():
+        fail(f"Recovery checksum directory is owned by uid {result.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(result.st_mode)
+    if mode != 0o700:
+        fail(f"Recovery checksum directory has permissions {mode:04o}, expected private 0700: {path}")
+
+
+def hash_private_file(path: Path) -> str:
+    if path.is_symlink():
+        fail(f"Recovery archive must not be a symlink before checksum manifest: {path}")
+    try:
+        before = path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect recovery archive before checksum manifest: {path}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"Recovery archive must be regular before checksum manifest: {path}")
+    if before.st_uid != os.getuid():
+        fail(f"Recovery archive is owned by uid {before.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"Recovery archive has permissions {mode:04o}, expected private 0600: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        fail(f"Could not open recovery archive through no-follow descriptor for checksum: {path}: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"Recovery archive changed before checksum manifest: {path}")
+        digest = hashlib.sha256()
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+directory = Path(sys.argv[1])
+assert_private_directory(directory)
+archive_paths = []
+for pattern in ARCHIVE_PATTERNS:
+    matches = sorted(directory.glob(pattern))
+    if len(matches) != 1:
+        fail(f"Expected exactly one archive matching {pattern} before checksum manifest, found {len(matches)}")
+    archive_paths.append(matches[0])
+
+manifest_path = directory / MANIFEST_NAME
+if manifest_path.exists() or manifest_path.is_symlink():
+    fail(f"Refusing to overwrite existing recovery checksum manifest: {manifest_path}")
+
+lines = []
+for archive_path in archive_paths:
+    lines.append(f"{hash_private_file(archive_path)}  {archive_path.name}\n")
+payload = "".join(lines).encode("ascii")
+temp_fd = -1
+temp_path = None
+try:
+    temp_fd, temp_name = tempfile.mkstemp(
+        prefix=f".{MANIFEST_NAME}.",
+        suffix=".tmp",
+        dir=directory,
+    )
+    temp_path = Path(temp_name)
+    os.fchmod(temp_fd, 0o600)
+    os.write(temp_fd, payload)
+    os.fsync(temp_fd)
+    os.close(temp_fd)
+    temp_fd = -1
+    os.replace(temp_path, manifest_path)
+    temp_path = None
+    dir_fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+except OSError as exc:
+    fail(f"Could not write recovery checksum manifest: {exc}")
+finally:
+    if temp_fd >= 0:
+        os.close(temp_fd)
+    if temp_path is not None:
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+
+try:
+    final = manifest_path.lstat()
+except OSError as exc:
+    fail(f"Could not inspect recovery checksum manifest after writing: {manifest_path}: {exc}")
+if not stat.S_ISREG(final.st_mode):
+    fail(f"Recovery checksum manifest is not a regular file after writing: {manifest_path}")
+if final.st_uid != os.getuid():
+    fail(f"Recovery checksum manifest is owned by uid {final.st_uid}, expected {os.getuid()}: {manifest_path}")
+mode = stat.S_IMODE(final.st_mode)
+if mode != 0o600:
+    fail(f"Recovery checksum manifest has permissions {mode:04o}, expected private 0600: {manifest_path}")
+print(f"Wrote recovery checksum manifest: {manifest_path}")
+PY
+}
+
 validate_ssh_target "$target"
 validate_output_dir_arg "$output_dir"
 output_dir="$(strip_trailing_slashes "$output_dir")"
@@ -526,6 +664,7 @@ run_step "Exporting commissioning settings" "$settings_helper" "$target" "$recov
 run_step "Exporting OpenCPN user data" "$opencpn_helper" "$target" "$recovery_dir"
 run_step "Exporting GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"
 run_step "Collecting diagnostic support bundle" "$support_helper" "$target" "$recovery_dir"
+write_checksum_manifest "$recovery_dir"
 run_step "Verifying recovery export archives" "$verify_helper" "$recovery_dir"
 
 printf '\nPi recovery exports written to: %s\n' "$recovery_dir"

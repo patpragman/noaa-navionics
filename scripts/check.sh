@@ -693,8 +693,8 @@ grep -q 'Could not execute helper script through validated descriptor' scripts/p
 grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q '| tee "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' README.md
-grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports and verifies a local recovery bundle' docs/sailboat-pi.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
+grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
@@ -811,6 +811,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation' docs/sailboat-pi.md
 grep -q 'and verifies the completed local recovery set before reporting success' README.md
 grep -q 'and verifies the completed local recovery set before reporting success' docs/sailboat-pi.md
+grep -q 'writes a private `0600` `SHA256SUMS.txt` for the four recovery archives' README.md
+grep -q 'writes a private `0600` `SHA256SUMS.txt` for the four recovery archives' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
@@ -829,8 +831,8 @@ grep -q 'support bundle helper rejects broad/system local output directories, pa
 grep -q 'support bundle helper rejects broad/system local output directories, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' README.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, and requires each archive to be a user-owned private `0600` file opened through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with parent-directory components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
@@ -1459,6 +1461,9 @@ for artifact_script in \
   ! grep -q 'mv -- "$partial_path"' "$artifact_script"
 done
 grep -q 'verify_pi_recovery_exports.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'write_checksum_manifest "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
+grep -q 'SHA256SUMS.txt' scripts/export_pi_recovery_bundle.sh
+grep -q 'Wrote recovery checksum manifest:' scripts/export_pi_recovery_bundle.sh
 grep -q 'Verifying recovery export archives" "$verify_helper" "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'GPX tracks" "$tracks_helper" "$target" "$recovery_dir" --days "$track_days"' scripts/export_pi_recovery_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_recovery_bundle.sh
@@ -1479,6 +1484,12 @@ grep -q 'Could not execute helper script through validated descriptor' scripts/e
 ! grep -q '"$command_path" "$@"' scripts/export_pi_recovery_bundle.sh
 ! sed -n '/^require_helper()/,/^}/p' scripts/export_pi_recovery_bundle.sh | grep -Fq 'stat -Lc '\''%u %a'\'' -- "$path"'
 grep -q 'tarfile.open' scripts/verify_pi_recovery_exports.sh
+grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/verify_pi_recovery_exports.sh
+grep -q 'def verify_checksum_manifest' scripts/verify_pi_recovery_exports.sh
+grep -q 'checksum mismatch for' scripts/verify_pi_recovery_exports.sh
+grep -q 'checksum manifest is missing archive' scripts/verify_pi_recovery_exports.sh
+grep -q 'checksum manifest lists unexpected archive' scripts/verify_pi_recovery_exports.sh
+grep -q 'hashlib.sha256' scripts/verify_pi_recovery_exports.sh
 grep -q 'if mode != 0o600' scripts/verify_pi_recovery_exports.sh
 grep -q 'if opened_mode != 0o600' scripts/verify_pi_recovery_exports.sh
 grep -q 'noaa-navionics-pi-settings-\*.tgz' scripts/verify_pi_recovery_exports.sh
@@ -8675,6 +8686,25 @@ printf '%s\n' "\${helper_name}|\$*" >>"\$NOAA_NAVIONICS_FAKE_RECOVERY_LOG"
 if [[ "\$helper_name" == "export_pi_settings.sh" && -n "\${NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER:-}" ]]; then
   chmod 0775 "\$NOAA_NAVIONICS_FAKE_RECOVERY_MUTATE_HELPER"
 fi
+output_dir="\${2:-}"
+case "\$helper_name" in
+  export_pi_settings.sh)
+    printf 'fake settings\n' >"\$output_dir/noaa-navionics-pi-settings-fake.tgz"
+    chmod 0600 "\$output_dir/noaa-navionics-pi-settings-fake.tgz"
+    ;;
+  export_pi_opencpn_data.sh)
+    printf 'fake opencpn\n' >"\$output_dir/noaa-navionics-pi-opencpn-fake.tgz"
+    chmod 0600 "\$output_dir/noaa-navionics-pi-opencpn-fake.tgz"
+    ;;
+  export_pi_tracks.sh)
+    printf 'fake tracks\n' >"\$output_dir/noaa-navionics-pi-tracks-fake.tgz"
+    chmod 0600 "\$output_dir/noaa-navionics-pi-tracks-fake.tgz"
+    ;;
+  collect_pi_support_bundle.sh)
+    printf 'fake support\n' >"\$output_dir/noaa-navionics-pi-support-fake.tgz"
+    chmod 0600 "\$output_dir/noaa-navionics-pi-support-fake.tgz"
+    ;;
+esac
 printf 'fake %s\n' "\$helper_name"
 EOF
   chmod +x "$recovery_repo/scripts/$helper"
@@ -8710,9 +8740,12 @@ grep -q 'Exporting commissioning settings' "$verify_output"
 grep -q 'Exporting OpenCPN user data' "$verify_output"
 grep -q 'Exporting GPX tracks' "$verify_output"
 grep -q 'Collecting diagnostic support bundle' "$verify_output"
+grep -q 'Wrote recovery checksum manifest:' "$verify_output"
 grep -q 'Verifying recovery export archives' "$verify_output"
 recovery_export_dir="$(sed -n 's/^Pi recovery exports written to: //p' "$verify_output")"
 test -d "$recovery_export_dir"
+test -f "$recovery_export_dir/SHA256SUMS.txt"
+test "$(stat -c '%a' "$recovery_export_dir/SHA256SUMS.txt")" = 600
 test "$(stat -c '%a' "$recovery_output_dir")" = 700
 test "$(stat -c '%a' "$recovery_export_dir")" = 700
 test "$(stat -c '%u' "$recovery_output_dir")" = "$(id -u)"
@@ -8748,6 +8781,7 @@ recovery_verify_dir="$tmpdir/recovery-verify"
 mkdir -p "$recovery_verify_dir"
 python3 - "$recovery_verify_dir" <<'PY'
 from pathlib import Path
+import hashlib
 import io
 import json
 import sys
@@ -8772,6 +8806,15 @@ def build_archive(directory, name, manifest, extra_member):
             add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
         add_text(archive, extra_member, "fixture\n")
     path.chmod(0o600)
+
+
+def write_checksums(directory):
+    lines = []
+    for path in sorted(directory.glob("noaa-navionics-pi-*.tgz")):
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+    manifest = directory / "SHA256SUMS.txt"
+    manifest.write_text("".join(lines), encoding="ascii")
+    manifest.chmod(0o600)
 
 
 root = Path(sys.argv[1])
@@ -8801,6 +8844,7 @@ with tarfile.open(
     add_text(archive, "./README.txt", "support fixture\n")
     add_text(archive, "./commands/date-utc.txt", "2026-01-01\n")
 (root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz").chmod(0o600)
+write_checksums(root)
 PY
 chmod 0700 "$recovery_verify_dir"
 
@@ -8830,10 +8874,49 @@ grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
 
+recovery_verify_missing_checksum_dir="$tmpdir/recovery-verify-missing-checksum"
+cp -a "$recovery_verify_dir" "$recovery_verify_missing_checksum_dir"
+rm -f "$recovery_verify_missing_checksum_dir/SHA256SUMS.txt"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_missing_checksum_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a missing checksum manifest with exit 1" >&2
+  exit 1
+fi
+grep -q 'missing checksum manifest SHA256SUMS.txt' "$verify_output"
+
+recovery_verify_bad_checksum_dir="$tmpdir/recovery-verify-bad-checksum"
+cp -a "$recovery_verify_dir" "$recovery_verify_bad_checksum_dir"
+python3 - "$recovery_verify_bad_checksum_dir/SHA256SUMS.txt" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="ascii").splitlines()
+parts = lines[0].split("  ", 1)
+lines[0] = "0" * 64 + "  " + parts[1]
+path.write_text("\n".join(lines) + "\n", encoding="ascii")
+path.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_bad_checksum_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a mismatched checksum manifest with exit 1" >&2
+  exit 1
+fi
+grep -q 'checksum mismatch for' "$verify_output"
+
 recovery_verify_duplicate_dir="$tmpdir/recovery-verify-duplicate"
 mkdir -p "$recovery_verify_duplicate_dir"
 python3 - "$recovery_verify_duplicate_dir" <<'PY'
 from pathlib import Path
+import hashlib
 import io
 import json
 import sys
@@ -8862,6 +8945,15 @@ def build_archive(directory, name, manifest, extra_member, *, duplicate_readme=F
     path.chmod(0o600)
 
 
+def write_checksums(directory):
+    lines = []
+    for path in sorted(directory.glob("noaa-navionics-pi-*.tgz")):
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+    manifest = directory / "SHA256SUMS.txt"
+    manifest.write_text("".join(lines), encoding="ascii")
+    manifest.chmod(0o600)
+
+
 root = Path(sys.argv[1])
 build_archive(
     root,
@@ -8888,6 +8980,7 @@ build_archive(
     None,
     "commands/date-utc.txt",
 )
+write_checksums(root)
 PY
 chmod 0700 "$recovery_verify_duplicate_dir"
 set +e
@@ -8905,6 +8998,7 @@ recovery_verify_unsafe_member_dir="$tmpdir/recovery-verify-unsafe-member"
 mkdir -p "$recovery_verify_unsafe_member_dir"
 python3 - "$recovery_verify_unsafe_member_dir" <<'PY'
 from pathlib import Path
+import hashlib
 import io
 import json
 import sys
@@ -8929,6 +9023,15 @@ def build_archive(directory, name, manifest, extra_member):
             add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
         add_text(archive, extra_member, "fixture\n")
     path.chmod(0o600)
+
+
+def write_checksums(directory):
+    lines = []
+    for path in sorted(directory.glob("noaa-navionics-pi-*.tgz")):
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+    manifest = directory / "SHA256SUMS.txt"
+    manifest.write_text("".join(lines), encoding="ascii")
+    manifest.chmod(0o600)
 
 
 root = Path(sys.argv[1])
@@ -8956,6 +9059,7 @@ build_archive(
     None,
     "commands/date-utc.txt",
 )
+write_checksums(root)
 PY
 chmod 0700 "$recovery_verify_unsafe_member_dir"
 set +e
@@ -8973,6 +9077,7 @@ recovery_verify_readme_dir="$tmpdir/recovery-verify-readme-dir"
 mkdir -p "$recovery_verify_readme_dir"
 python3 - "$recovery_verify_readme_dir" <<'PY'
 from pathlib import Path
+import hashlib
 import io
 import json
 import sys
@@ -9010,6 +9115,15 @@ def build_archive(directory, name, manifest, extra_member, *, readme_dir=False):
     path.chmod(0o600)
 
 
+def write_checksums(directory):
+    lines = []
+    for path in sorted(directory.glob("noaa-navionics-pi-*.tgz")):
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+    manifest = directory / "SHA256SUMS.txt"
+    manifest.write_text("".join(lines), encoding="ascii")
+    manifest.chmod(0o600)
+
+
 root = Path(sys.argv[1])
 build_archive(
     root,
@@ -9036,6 +9150,7 @@ build_archive(
     None,
     "commands/date-utc.txt",
 )
+write_checksums(root)
 PY
 chmod 0700 "$recovery_verify_readme_dir"
 set +e

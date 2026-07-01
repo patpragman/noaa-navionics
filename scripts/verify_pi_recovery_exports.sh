@@ -140,12 +140,16 @@ python3_cmd="$(require_local_command python3)"
 "$python3_cmd" - "$recovery_dir" <<'PY'
 from pathlib import Path, PurePosixPath
 import json
+import hashlib
 import os
+import re
 import stat
 import sys
 import tarfile
 
 
+CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVES = [
     {
         "label": "commissioning settings",
@@ -307,6 +311,113 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
             os.close(fd)
 
 
+def hash_private_archive(archive_path: Path) -> str:
+    try:
+        before = archive_path.lstat()
+    except OSError as exc:
+        fail(f"could not inspect archive before checksum verification {archive_path}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"archive must be a regular file before checksum verification: {archive_path}")
+    if before.st_uid != os.getuid():
+        fail(f"archive is owned by uid {before.st_uid}, expected {os.getuid()} before checksum verification: {archive_path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"archive has permissions {mode:04o}, expected private 0600 before checksum verification: {archive_path}")
+    fd = -1
+    try:
+        fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"archive changed before checksum verification: {archive_path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"archive must be regular when opened for checksum verification: {archive_path}")
+        digest = hashlib.sha256()
+        with os.fdopen(fd, "rb") as archive_file:
+            fd = -1
+            for chunk in iter(lambda: archive_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError as exc:
+        fail(f"could not read archive for checksum verification {archive_path}: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
+    manifest_path = recovery_dir / CHECKSUM_MANIFEST_NAME
+    if manifest_path.is_symlink():
+        fail(f"checksum manifest must not be a symlink: {manifest_path}")
+    try:
+        before = manifest_path.lstat()
+    except OSError as exc:
+        fail(f"missing checksum manifest {CHECKSUM_MANIFEST_NAME}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"checksum manifest must be a regular file: {manifest_path}")
+    if before.st_uid != os.getuid():
+        fail(f"checksum manifest is owned by uid {before.st_uid}, expected {os.getuid()}: {manifest_path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"checksum manifest has permissions {mode:04o}, expected private 0600: {manifest_path}")
+    fd = -1
+    try:
+        fd = os.open(manifest_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"checksum manifest changed while being opened: {manifest_path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"checksum manifest must be regular when opened: {manifest_path}")
+        with os.fdopen(fd, "rb") as manifest_file:
+            fd = -1
+            try:
+                text = manifest_file.read().decode("ascii")
+            except UnicodeDecodeError as exc:
+                fail(f"checksum manifest is not ASCII: {exc}")
+    except OSError as exc:
+        fail(f"could not read checksum manifest {manifest_path}: {exc}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+    entries: dict[str, str] = {}
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        if not raw_line.strip():
+            continue
+        if "  " not in raw_line:
+            fail(f"checksum manifest line {line_number} must use two-space sha256 filename format")
+        digest, name = raw_line.split("  ", 1)
+        if not SHA256_RE.fullmatch(digest):
+            fail(f"checksum manifest line {line_number} has invalid SHA-256 digest")
+        normalized = validate_member_name(name, manifest_path)
+        if "/" in normalized:
+            fail(f"checksum manifest line {line_number} must name an archive in the recovery directory: {name}")
+        if normalized != name:
+            fail(f"checksum manifest line {line_number} uses a non-normal archive name: {name}")
+        if normalized in entries:
+            fail(f"checksum manifest contains duplicate archive name: {normalized}")
+        entries[normalized] = digest
+    if not entries:
+        fail("checksum manifest is empty")
+    return entries
+
+
+def verify_checksum_manifest(recovery_dir: Path, archive_paths: list[Path]) -> None:
+    entries = read_checksum_manifest(recovery_dir)
+    expected_names = {path.name for path in archive_paths}
+    actual_names = set(entries)
+    missing = sorted(expected_names - actual_names)
+    extra = sorted(actual_names - expected_names)
+    if missing:
+        fail(f"checksum manifest is missing archive(s): {', '.join(missing)}")
+    if extra:
+        fail(f"checksum manifest lists unexpected archive(s): {', '.join(extra)}")
+    for archive_path in archive_paths:
+        actual_digest = hash_private_archive(archive_path)
+        expected_digest = entries[archive_path.name]
+        if actual_digest != expected_digest:
+            fail(f"checksum mismatch for {archive_path.name}: expected {expected_digest}, got {actual_digest}")
+
+
 def find_archive(recovery_dir: Path, spec: dict[str, object]) -> Path:
     matches = sorted(recovery_dir.glob(str(spec["pattern"])))
     if not matches:
@@ -320,10 +431,13 @@ def main() -> None:
     recovery_dir = Path(sys.argv[1])
     assert_private_recovery_directory(recovery_dir)
     summaries = []
+    archive_paths = []
     for spec in ARCHIVES:
         archive_path = find_archive(recovery_dir, spec)
         file_count = inspect_archive(archive_path, spec)
         summaries.append((str(spec["label"]), archive_path.name, file_count))
+        archive_paths.append(archive_path)
+    verify_checksum_manifest(recovery_dir, archive_paths)
 
     print(f"Verified Pi recovery exports: {recovery_dir}")
     for label, name, file_count in summaries:
