@@ -865,6 +865,8 @@ grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-rec
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' README.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' docs/sailboat-pi.md
+grep -Fq 'requiring the GPX manifest count and track names to match regular `tracks/*.gpx` data files' README.md
+grep -Fq 'requiring the GPX manifest count and track names to match regular `tracks/*.gpx` data files' docs/sailboat-pi.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q 'validating the diagnostic support archive without loading its contents into memory' README.md
@@ -873,8 +875,10 @@ grep -q 'rejecting copied recovery directory paths with parent-directory compone
 grep -q 'rejecting copied recovery directory paths with parent-directory components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' docs/sailboat-pi.md
 grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' README.md
 grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' docs/sailboat-pi.md
-grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' README.md
-grep -q 'requiring regular README archive files and regular manifest files when manifests are required, enforcing unique normalized member paths' docs/sailboat-pi.md
+grep -q 'requiring regular README archive files and regular manifest files when manifests are required' README.md
+grep -q 'requiring regular README archive files and regular manifest files when manifests are required' docs/sailboat-pi.md
+grep -q 'enforcing unique normalized member paths' README.md
+grep -q 'enforcing unique normalized member paths' docs/sailboat-pi.md
 grep -q 'Recovery directory must not contain parent-directory components' scripts/verify_pi_recovery_exports.sh
 grep -q 'Recovery directory must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal or broad mounted-storage roots in the recovered track output path' README.md
@@ -1560,6 +1564,9 @@ grep -q 'manifest tracks must be a list' scripts/verify_pi_recovery_exports.sh
 grep -q 'manifest track names do not match data files' scripts/verify_pi_recovery_exports.sh
 grep -q 'data_file_count += 1' scripts/restore_pi_recovery_user_data.sh
 grep -q 'does not match data file count' scripts/restore_pi_recovery_user_data.sh
+grep -q 'contains non-GPX track data member' scripts/restore_pi_recovery_user_data.sh
+grep -q 'manifest tracks must be a list' scripts/restore_pi_recovery_user_data.sh
+grep -q 'manifest track names do not match data files' scripts/restore_pi_recovery_user_data.sh
 grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi_recovery_exports.sh
 grep -q 'archive changed while being opened' scripts/verify_pi_recovery_exports.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/verify_pi_recovery_exports.sh
@@ -9849,7 +9856,7 @@ build_archive(
 build_archive(
     root,
     "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000001Z.tgz",
-    {"track_count": 1},
+    {"track_count": 1, "tracks": [{"name": "track.gpx"}]},
     "tracks/track.gpx",
 )
 build_archive(
@@ -9928,7 +9935,7 @@ build_archive(
 build_archive(
     root,
     "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000002Z.tgz",
-    {"track_count": 1},
+    {"track_count": 1, "tracks": [{"name": "track.gpx"}]},
     "tracks/track.gpx",
 )
 build_archive(
@@ -10019,7 +10026,7 @@ build_archive(
 build_archive(
     root,
     "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000003Z.tgz",
-    {"track_count": 1},
+    {"track_count": 1, "tracks": [{"name": "track.gpx"}]},
     "tracks/track.gpx",
 )
 build_archive(
@@ -10189,7 +10196,7 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
     build_archive(
         root,
         "noaa-navionics-pi-tracks-pi_example_invalid-20260101T000000Z.tgz",
-        {"track_count": 1},
+        {"track_count": 1, "tracks": [{"name": "underway.gpx"}]},
         {"tracks/underway.gpx": "<gpx><trk /></gpx>\n"},
     )
     build_archive(
@@ -10351,6 +10358,56 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
 fi
 grep -q 'manifest file_count does not match data file count: 3 != 2' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
+
+recovery_restore_mismatched_track_names_dir="$tmpdir/recovery-restore-mismatched-track-names"
+cp -a "$recovery_restore_dir" "$recovery_restore_mismatched_track_names_dir"
+python3 - "$recovery_restore_mismatched_track_names_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+tracks = next(root.glob("noaa-navionics-pi-tracks-*.tgz"))
+with tarfile.open(tracks, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"track_count": 1, "tracks": [{"name": "stale-track.gpx"}]}) + "\n",
+    )
+    add_text(archive, "tracks/underway.gpx", "<gpx><trk /></gpx>\n")
+tracks.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_mismatched_track_names_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject mismatched track manifest names with exit 1" >&2
+  exit 1
+fi
+grep -q "manifest track names do not match data files: \\['stale-track.gpx'\\] != \\['underway.gpx'\\]" "$verify_output"
 
 set +e
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_parent_dir" >"$verify_output" 2>&1

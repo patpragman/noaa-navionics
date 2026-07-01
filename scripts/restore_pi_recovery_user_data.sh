@@ -251,6 +251,7 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
     members_by_name = {}
     regular_file_count = 0
     data_file_count = 0
+    data_member_names = []
     fd = -1
     try:
         fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -283,6 +284,13 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
                         fail(f"{archive_path.name} contains blank file member name")
                     regular_file_count += 1
                     if normalized not in {"README.txt", "manifest.json"}:
+                        if required_count_key == "track_count":
+                            if not normalized.startswith("tracks/") or not normalized.endswith(".gpx"):
+                                fail(f"{archive_path.name} contains non-GPX track data member: {member.name}")
+                            track_name = normalized.removeprefix("tracks/")
+                            if not track_name or "/" in track_name:
+                                fail(f"{archive_path.name} contains nested or empty track data member: {member.name}")
+                            data_member_names.append(track_name)
                         data_file_count += 1
                     if not load_contents:
                         continue
@@ -321,6 +329,23 @@ def inspect_archive(archive_path: Path, required_count_key: Optional[str], *, lo
                 f"{archive_path.name} manifest {required_count_key} does not match data file count: "
                 f"{count} != {data_file_count}"
             )
+        if required_count_key == "track_count":
+            tracks = manifest.get("tracks")
+            if not isinstance(tracks, list):
+                fail(f"{archive_path.name} manifest tracks must be a list")
+            manifest_track_names = []
+            for index, track in enumerate(tracks):
+                if not isinstance(track, dict):
+                    fail(f"{archive_path.name} manifest tracks[{index}] must be an object")
+                name = track.get("name")
+                if not isinstance(name, str) or not name or "/" in name or "\\" in name or name in {".", ".."}:
+                    fail(f"{archive_path.name} manifest tracks[{index}].name is invalid: {name!r}")
+                manifest_track_names.append(name)
+            if sorted(manifest_track_names) != sorted(data_member_names):
+                fail(
+                    f"{archive_path.name} manifest track names do not match data files: "
+                    f"{sorted(manifest_track_names)!r} != {sorted(data_member_names)!r}"
+                )
     if regular_file_count <= 0:
         fail(f"{archive_path.name} does not contain any regular files")
     return files
