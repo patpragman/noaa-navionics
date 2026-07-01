@@ -535,6 +535,54 @@ PY
   return "$status"
 }
 
+cleanup_private_recovery_output_capture() {
+  local path="$1"
+  [[ -n "$path" ]] || return 0
+  "$python3_cmd" - "$path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"Could not inspect recovery output capture for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) != 0o600:
+    print(f"Recovery output capture is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    print(f"Could not open recovery output capture directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+try:
+    try:
+        fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Recovery output capture changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=dir_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -774,7 +822,7 @@ if [[ "$skip_recovery" -eq 0 ]]; then
   prepare_private_output_dir "Recovery output directory" "$output_dir"
   recovery_output="$(create_private_recovery_output_capture "$output_dir")"
   cleanup_recovery_output() {
-    rm -f -- "${recovery_output:-}"
+    cleanup_private_recovery_output_capture "${recovery_output:-}" || true
   }
   trap cleanup_recovery_output EXIT
   run_step "Exporting Pi recovery bundle" "$recovery_helper" "$target" "$output_dir" --track-days "$track_days" | capture_recovery_output "$recovery_output"
