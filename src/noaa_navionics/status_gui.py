@@ -336,6 +336,8 @@ class StatusApp(tk.Tk):
         self.anchor_watch_alarm_active = False
         self.anchor_watch_alarm_summary: Optional[str] = None
         self.anchor_watch_alarm_detail: Optional[str] = None
+        self.anchor_watch_status_summary: Optional[str] = None
+        self.anchor_watch_status_detail: Optional[str] = None
         if anchor_radius_meters is None:
             anchor_radius_meters = _configured_anchor_radius(self.config_path)
         self.anchor_radius = tk.StringVar(value=f"{anchor_radius_meters:g}")
@@ -466,6 +468,8 @@ class StatusApp(tk.Tk):
         self.anchor_watch_alarm_active = False
         self.anchor_watch_alarm_summary = None
         self.anchor_watch_alarm_detail = None
+        self.anchor_watch_status_summary = None
+        self.anchor_watch_status_detail = None
         if self.anchor_watch_after_id is not None:
             self.after_cancel(self.anchor_watch_after_id)
             self.anchor_watch_after_id = None
@@ -575,6 +579,10 @@ class StatusApp(tk.Tk):
             self.summary.set(self.anchor_watch_alarm_summary)
             if self.anchor_watch_alarm_detail is not None:
                 self.gps_summary.set(self.anchor_watch_alarm_detail)
+        elif bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None:
+            self.summary.set(self.anchor_watch_status_summary)
+            if self.anchor_watch_status_detail is not None:
+                self.gps_summary.set(self.anchor_watch_status_detail)
         self._schedule_refresh()
 
     def _show_mark(self, path: Path, lines: list[str]) -> None:
@@ -605,7 +613,10 @@ class StatusApp(tk.Tk):
         self.anchor_radius.set(f"{radius_meters:g}")
         self.headline.set("READY")
         details = f"Anchor watch set: {_format_anchor_fix_detail(anchor_fix)}"
-        self.summary.set(f"Anchor watch armed; radius {radius_meters:g} m")
+        watch_summary = f"Anchor watch armed; radius {radius_meters:g} m"
+        self.anchor_watch_status_summary = watch_summary
+        self.anchor_watch_status_detail = details
+        self.summary.set(watch_summary)
         self.gps_summary.set(details)
         self.last_report.set(details)
         self._schedule_anchor_watch()
@@ -621,6 +632,8 @@ class StatusApp(tk.Tk):
         details = f"Anchor {_format_anchor_fix_detail(anchor_fix)} | Current {_format_anchor_fix_detail(current_fix)}"
         self.gps_summary.set(details)
         self.last_report.set(details)
+        self.anchor_watch_status_summary = watch_summary
+        self.anchor_watch_status_detail = details
         self.anchor_watch_alarm_active = alarm
         self.anchor_watch_alarm_summary = watch_summary if alarm else None
         self.anchor_watch_alarm_detail = details if alarm else None

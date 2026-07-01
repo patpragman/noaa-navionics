@@ -2876,7 +2876,9 @@ grep -q 'anchor_watch_seconds=args.anchor_watch_seconds' src/noaa_navionics/stat
 grep -q 'self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_active = False' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
+grep -q 'self.anchor_watch_status_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
 grep -q 'if self.anchor_watch_alarm_active and self.anchor_watch_alarm_summary is not None' src/noaa_navionics/status_gui.py
+grep -q 'elif bool(report.get("ok")) and self.anchor_watch_fix is not None and self.anchor_watch_status_summary is not None' src/noaa_navionics/status_gui.py
 grep -q 'state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
@@ -2960,6 +2962,8 @@ grep -q 'test_status_gui_anchor_watch_captures_average_anchor_fix' tests/test_do
 grep -q 'test_status_gui_anchor_watch_checks_current_fix_against_stored_anchor' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_set_updates_button_state_after_storing_anchor' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_preserves_active_anchor_alarm' tests/test_downloader.py
+grep -q 'test_status_gui_status_refresh_preserves_active_anchor_watch_ok_status' tests/test_downloader.py
+grep -q 'test_status_gui_status_refresh_does_not_hide_readiness_failure_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_status_gui_disables_start_watch_while_anchor_watch_is_active' tests/test_downloader.py
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py

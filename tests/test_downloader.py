@@ -3054,6 +3054,8 @@ class GuiTests(unittest.TestCase):
                 self.anchor_watch_alarm_active = True
                 self.anchor_watch_alarm_summary = "old alarm"
                 self.anchor_watch_alarm_detail = "old detail"
+                self.anchor_watch_status_summary = "old status"
+                self.anchor_watch_status_detail = "old detail"
                 self.anchor_radius = FakeVar()
                 self.headline = FakeVar()
                 self.summary = FakeVar()
@@ -3088,6 +3090,8 @@ class GuiTests(unittest.TestCase):
         self.assertFalse(app.anchor_watch_alarm_active)
         self.assertIsNone(app.anchor_watch_alarm_summary)
         self.assertIsNone(app.anchor_watch_alarm_detail)
+        self.assertEqual(app.anchor_watch_status_summary, "Anchor watch armed; radius 50 m")
+        self.assertIn("Anchor watch set:", app.anchor_watch_status_detail)
         self.assertEqual(app.watch_scheduled, 1)
         self.assertEqual(app.refresh_scheduled, 1)
 
@@ -3147,6 +3151,141 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.headline.value, "NOT READY")
         self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
         self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.refresh_scheduled, 1)
+
+    def test_status_gui_status_refresh_preserves_active_anchor_watch_ok_status(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeTree:
+            def get_children(self):
+                return []
+
+            def delete(self, item):
+                raise AssertionError("no items should be deleted")
+
+            def insert(self, *args, **kwargs):
+                return None
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.anchor_watch_status_summary = "Anchor watch: Anchor OK: 3.0 m from anchor; radius 50 m"
+                self.anchor_watch_status_detail = "Anchor 61.000000, -149.000000 | Current 61.000010, -149.000010"
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.tree = FakeTree()
+                self.output_path = Path("/tmp/status.json")
+                self.busy_calls = []
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+        app = FakeApp()
+        report = {
+            "ok": True,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPS", "ok": True, "detail": "fix"}],
+            "gps_fix": {
+                "source": "GPSD",
+                "ok": True,
+                "latitude": 61.0,
+                "longitude": -149.0,
+            },
+        }
+
+        status_gui_module.StatusApp._show_report(app, report)
+
+        self.assertEqual(app.headline.value, "READY")
+        self.assertEqual(app.summary.value, app.anchor_watch_status_summary)
+        self.assertEqual(app.gps_summary.value, app.anchor_watch_status_detail)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.refresh_scheduled, 1)
+
+    def test_status_gui_status_refresh_does_not_hide_readiness_failure_for_anchor_watch_ok(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeTree:
+            def get_children(self):
+                return []
+
+            def delete(self, item):
+                raise AssertionError("no items should be deleted")
+
+            def insert(self, *args, **kwargs):
+                return None
+
+        class FakeApp:
+            def __init__(self):
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.anchor_watch_status_summary = "Anchor watch: Anchor OK: 3.0 m from anchor; radius 50 m"
+                self.anchor_watch_status_detail = "Anchor 61.000000, -149.000000 | Current 61.000010, -149.000010"
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.tree = FakeTree()
+                self.output_path = None
+                self.busy_calls = []
+                self.refresh_scheduled = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+        app = FakeApp()
+        report = {
+            "ok": False,
+            "generated_at": "2026-06-30T12:00:00Z",
+            "checks": [{"name": "GPS", "ok": False, "detail": "no fix"}],
+            "gps_fix": {
+                "source": "GPSD",
+                "ok": False,
+                "detail": "no fix",
+            },
+        }
+
+        status_gui_module.StatusApp._show_report(app, report)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, "2 reported readiness check(s) need attention.")
+        self.assertEqual(app.gps_summary.value, "GPSD FAIL | no fix")
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
@@ -3218,6 +3357,8 @@ class GuiTests(unittest.TestCase):
                 self.anchor_watch_alarm_active = True
                 self.anchor_watch_alarm_summary = "alarm"
                 self.anchor_watch_alarm_detail = "detail"
+                self.anchor_watch_status_summary = "status"
+                self.anchor_watch_status_detail = "detail"
                 self.anchor_watch_after_id = "after-id"
                 self.summary = FakeVar()
                 self.cancelled = []
@@ -3238,6 +3379,8 @@ class GuiTests(unittest.TestCase):
 
         self.assertIsNone(app.anchor_watch_fix)
         self.assertFalse(app.anchor_watch_alarm_active)
+        self.assertIsNone(app.anchor_watch_status_summary)
+        self.assertIsNone(app.anchor_watch_status_detail)
         self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.NORMAL)
         self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.cancelled, ["after-id"])
