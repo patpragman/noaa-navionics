@@ -10510,6 +10510,35 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report))
                 self.assertTrue(any(expected in failure.detail for failure in failures))
 
+    def test_status_report_ready_requires_boolean_ok(self):
+        missing = object()
+        cases = [
+            ("missing", missing),
+            ("string", "yes"),
+            ("integer", 1),
+            ("none", None),
+        ]
+        for label, value in cases:
+            with self.subTest(label=label):
+                report = complete_status_gui_report()
+                if value is missing:
+                    del report["ok"]
+                else:
+                    report["ok"] = value
+
+                failures = status_report_validation_failures(report)
+
+                self.assertFalse(status_report_is_ready(report))
+                self.assertTrue(
+                    any("status report top-level ok is not boolean" in failure.detail for failure in failures)
+                )
+
+        report = complete_status_gui_report(ok=False)
+        failures = status_report_validation_failures(report)
+
+        self.assertFalse(status_report_is_ready(report))
+        self.assertFalse(any("status report top-level ok is not boolean" in failure.detail for failure in failures))
+
     def test_status_report_ready_requires_fresh_generated_at(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         report = complete_status_gui_report(

@@ -287,7 +287,7 @@ def _check_result_dict(check: CheckResult) -> dict[str, object]:
 
 def status_report_is_ready(report: dict[str, object], *, now: Optional[datetime] = None) -> bool:
     return (
-        bool(report.get("ok"))
+        report.get("ok") is True
         and not status_report_validation_failures(report, now=now)
         and _report_check_sections_all_ok(report)
     )
@@ -299,6 +299,8 @@ def status_report_validation_failures(
     now: Optional[datetime] = None,
 ) -> list[CheckResult]:
     failures = _generated_at_validation_failures(report.get("generated_at"), now=now)
+    if not isinstance(report.get("ok"), bool):
+        failures.append(CheckResult("Status Report", False, "status report top-level ok is not boolean"))
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
     failures.extend(_runtime_readiness_validation_failures(report))
