@@ -875,8 +875,8 @@ grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' READ
 grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
-grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, verifies noninteractive sudo can run the exact `systemctl poweroff` command' README.md
-grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, verifies noninteractive sudo can run the exact `systemctl poweroff` command' docs/sailboat-pi.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/shutdown_pi_safely.sh
 grep -q 'read-only diagnostic evidence' README.md
 grep -q 'read-only diagnostic evidence' docs/sailboat-pi.md
@@ -1577,7 +1577,11 @@ grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.
 grep -q 'systemctl.*poweroff' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/shutdown_pi_safely.sh
+test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' scripts/shutdown_pi_safely.sh)" -ge 2
+test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' scripts/shutdown_pi_safely.sh)" -ge 2
+test "$(grep -c 'systemctl_cmd="$(require_remote_command systemctl)"' scripts/shutdown_pi_safely.sh)" -ge 2
 grep -Fq '"$sudo_cmd" -n -l "$systemctl_cmd" poweroff' scripts/shutdown_pi_safely.sh
+test "$(grep -Fc '"$sudo_cmd" -n -l "$systemctl_cmd" poweroff' scripts/shutdown_pi_safely.sh)" -ge 2
 grep -q 'Remote sudo is not permitted to run systemctl poweroff without a password prompt' scripts/shutdown_pi_safely.sh
 grep -q 'wait-network --host www.charts.noaa.gov --port 443 --seconds 300' scripts/refresh_pi_charts.sh
 grep -q 'sync-charts --config "$config" --retries "$retries" --retry-delay "$retry_delay"' scripts/refresh_pi_charts.sh
@@ -9371,9 +9375,13 @@ grep -q 'pi@example.invalid' "$shutdown_fake_ssh_args"
 grep -q 'require_remote_command sync' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command sudo' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command systemctl' "$shutdown_fake_ssh_stdin"
+test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' "$shutdown_fake_ssh_stdin")" -ge 2
+test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' "$shutdown_fake_ssh_stdin")" -ge 2
+test "$(grep -c 'systemctl_cmd="$(require_remote_command systemctl)"' "$shutdown_fake_ssh_stdin")" -ge 2
 grep -q 'check_remote_directory_chain "$resolved_path"' "$shutdown_fake_ssh_stdin"
 grep -q 'check_remote_owner_and_mode directory "$directory"' "$shutdown_fake_ssh_stdin"
 grep -Fq '"$sudo_cmd" -n -l "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin"
+test "$(grep -Fc '"$sudo_cmd" -n -l "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin")" -ge 2
 grep -q 'Allow passwordless sudo for: $systemctl_cmd poweroff' "$shutdown_fake_ssh_stdin"
 grep -Fq '"$sudo_cmd" -n "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin"
 

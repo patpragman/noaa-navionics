@@ -309,7 +309,15 @@ if ! "$sudo_cmd" -n -l "$systemctl_cmd" poweroff >/dev/null 2>&1; then
   exit 1
 fi
 
+sync_cmd="$(require_remote_command sync)"
 "$sync_cmd"
+sudo_cmd="$(require_remote_command sudo)"
+systemctl_cmd="$(require_remote_command systemctl)"
+if ! "$sudo_cmd" -n -l "$systemctl_cmd" poweroff >/dev/null 2>&1; then
+  echo "Remote sudo is not permitted to run systemctl poweroff without a password prompt." >&2
+  echo "Allow passwordless sudo for: $systemctl_cmd poweroff" >&2
+  exit 1
+fi
 if [[ "${NOAA_NAVIONICS_SHUTDOWN_DRY_RUN:-0}" == "1" ]]; then
   printf 'Dry run passed; would run: %s -n %s poweroff\n' "$sudo_cmd" "$systemctl_cmd"
   exit 0
