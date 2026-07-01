@@ -302,6 +302,7 @@ def status_report_validation_failures(
     failures.extend(_pi_health_validation_failures(report))
     failures.extend(_storage_validation_failures(report))
     failures.extend(_serial_gps_device_validation_failures(report))
+    failures.extend(_command_evidence_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
     failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
@@ -322,6 +323,65 @@ def status_report_validation_failures(
     failures.extend(
         CheckResult(name, False, "status report is missing this service check") for name in missing_service_checks
     )
+    return failures
+
+
+def _command_evidence_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    checks = report.get("checks")
+    if not isinstance(checks, list):
+        return []
+    check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
+    expected_commands = {
+        "OpenCPN": "opencpn",
+        "Display Power": "xset",
+    }
+    failures: list[CheckResult] = []
+    for name, expected_command in expected_commands.items():
+        row = check_rows.get(name)
+        if not isinstance(row, dict) or not row.get("ok"):
+            continue
+        data = row.get("data")
+        if not isinstance(data, dict):
+            failures.append(CheckResult(name, False, f"status report {name} check has no structured command data"))
+            continue
+        command = str(data.get("command", "")).strip()
+        if command != expected_command:
+            failures.append(
+                CheckResult(
+                    name,
+                    False,
+                    f"status report {name} command {command or '<missing>'} is not {expected_command}",
+                )
+            )
+        path = str(data.get("path", "")).strip()
+        directory = str(data.get("directory", "")).strip()
+        if not _status_absolute_path(path) or data.get("is_absolute") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} command path is not absolute"))
+        if not _status_absolute_path(directory):
+            failures.append(CheckResult(name, False, f"status report {name} command directory is not absolute"))
+        if data.get("is_symlink") is not False:
+            failures.append(CheckResult(name, False, f"status report {name} command is a symlink"))
+        if str(data.get("path_symlink_component", "")).strip():
+            failures.append(CheckResult(name, False, f"status report {name} command path contains a symlink"))
+        if data.get("trusted_system_directory") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} command is not in a trusted system directory"))
+        if data.get("is_regular") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} command is not a regular file"))
+        if data.get("executable") is not True:
+            failures.append(CheckResult(name, False, f"status report {name} command is not executable"))
+        for field, detail in (("uid", "command owner"), ("directory_uid", "command directory owner")):
+            value = data.get(field)
+            if isinstance(value, bool) or not isinstance(value, int) or value != 0:
+                failures.append(CheckResult(name, False, f"status report {name} {detail} is not root"))
+        for field, detail in (("mode", "command"), ("directory_mode", "command directory")):
+            mode = str(data.get(field, "")).strip()
+            try:
+                parsed_mode = int(mode, 8)
+            except ValueError:
+                failures.append(CheckResult(name, False, f"status report {name} {detail} mode is invalid"))
+            else:
+                if parsed_mode & 0o022:
+                    failures.append(CheckResult(name, False, f"status report {name} {detail} is group/world writable"))
     return failures
 
 

@@ -439,7 +439,13 @@ def check_opencpn() -> CheckResult:
             False,
             f"OpenCPN command directory is not a trusted system directory: {path.parent}",
         )
-    return CheckResult("OpenCPN", True, f"trusted executable at {path}")
+    data = _trusted_command_evidence(
+        "opencpn",
+        path,
+        stat_result=stat_result,
+        parent_stat=parent_stat,
+    )
+    return CheckResult("OpenCPN", True, f"trusted executable at {path}", data)
 
 
 def check_display_power_tool() -> CheckResult:
@@ -451,7 +457,41 @@ def check_display_power_tool() -> CheckResult:
             f"{error}; install x11-xserver-utils so the launcher can disable display blanking",
         )
     assert path is not None
-    return CheckResult("Display Power", True, f"trusted executable at {path}")
+    return CheckResult("Display Power", True, f"trusted executable at {path}", _trusted_command_evidence("xset", path))
+
+
+def _trusted_command_evidence(
+    command: str,
+    path: Path,
+    *,
+    stat_result: Optional[os.stat_result] = None,
+    parent_stat: Optional[os.stat_result] = None,
+) -> dict[str, object]:
+    path = Path(path)
+    symlink_component = _first_symlink_ancestor(path.parent)
+    if stat_result is None:
+        stat_result = path.stat()
+    if parent_stat is None:
+        parent_stat = path.parent.stat()
+    command_mode = stat_result.st_mode & 0o777
+    parent_mode = parent_stat.st_mode & 0o777
+    expected_uids = {0} if _is_raspberry_pi() else {0, os.getuid()}
+    return {
+        "command": command,
+        "path": str(path),
+        "directory": str(path.parent),
+        "is_absolute": path.is_absolute(),
+        "is_symlink": path.is_symlink(),
+        "path_symlink_component": "" if symlink_component is None else str(symlink_component),
+        "trusted_system_directory": path.parent in TRUSTED_SYSTEM_COMMAND_DIRS,
+        "is_regular": path.is_file(),
+        "executable": os.access(path, os.X_OK),
+        "uid": stat_result.st_uid,
+        "directory_uid": parent_stat.st_uid,
+        "expected_uids": sorted(expected_uids),
+        "mode": f"{command_mode:04o}",
+        "directory_mode": f"{parent_mode:04o}",
+    }
 
 
 def _trusted_system_command(command: str, label: str) -> tuple[Optional[Path], str]:

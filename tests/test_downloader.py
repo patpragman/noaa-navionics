@@ -351,6 +351,42 @@ def complete_status_gui_report(
                 "system_clock_synchronized": "yes",
                 "ntp_synchronized": "yes",
             }
+        elif row["name"] == "OpenCPN":
+            row["detail"] = "trusted executable at /usr/bin/opencpn"
+            row["data"] = {
+                "command": "opencpn",
+                "path": "/usr/bin/opencpn",
+                "directory": "/usr/bin",
+                "is_absolute": True,
+                "is_symlink": False,
+                "path_symlink_component": "",
+                "trusted_system_directory": True,
+                "is_regular": True,
+                "executable": True,
+                "uid": 0,
+                "directory_uid": 0,
+                "expected_uids": [0],
+                "mode": "0755",
+                "directory_mode": "0755",
+            }
+        elif row["name"] == "Display Power":
+            row["detail"] = "trusted executable at /usr/bin/xset"
+            row["data"] = {
+                "command": "xset",
+                "path": "/usr/bin/xset",
+                "directory": "/usr/bin",
+                "is_absolute": True,
+                "is_symlink": False,
+                "path_symlink_component": "",
+                "trusted_system_directory": True,
+                "is_regular": True,
+                "executable": True,
+                "uid": 0,
+                "directory_uid": 0,
+                "expected_uids": [0],
+                "mode": "0755",
+                "directory_mode": "0755",
+            }
         elif row["name"] == "Disk":
             row["detail"] = "12.5 GB free at /charts; minimum 2.0 GB"
             row["data"] = {
@@ -10351,6 +10387,63 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(gpsd_report, now=now))
         self.assertFalse(status_report_validation_failures(gpsd_report, now=now))
 
+    def test_status_report_ready_requires_structured_command_evidence(self):
+        now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def command_data(command="opencpn", path="/usr/bin/opencpn", **overrides):
+            data = {
+                "command": command,
+                "path": path,
+                "directory": "/usr/bin",
+                "is_absolute": True,
+                "is_symlink": False,
+                "path_symlink_component": "",
+                "trusted_system_directory": True,
+                "is_regular": True,
+                "executable": True,
+                "uid": 0,
+                "directory_uid": 0,
+                "expected_uids": [0],
+                "mode": "0755",
+                "directory_mode": "0755",
+            }
+            data.update(overrides)
+            return data
+
+        cases = [
+            ("OpenCPN", None, "OpenCPN check has no structured command data"),
+            ("OpenCPN", command_data(command="other"), "command other is not opencpn"),
+            ("OpenCPN", command_data(path="opencpn", is_absolute=False), "command path is not absolute"),
+            ("OpenCPN", command_data(is_symlink=True), "command is a symlink"),
+            ("OpenCPN", command_data(path_symlink_component="/usr-link"), "command path contains a symlink"),
+            ("OpenCPN", command_data(trusted_system_directory=False), "command is not in a trusted system directory"),
+            ("OpenCPN", command_data(is_regular=False), "command is not a regular file"),
+            ("OpenCPN", command_data(executable=False), "command is not executable"),
+            ("OpenCPN", command_data(uid=1000), "command owner is not root"),
+            ("OpenCPN", command_data(directory_uid=1000), "command directory owner is not root"),
+            ("OpenCPN", command_data(mode="0777"), "command is group/world writable"),
+            ("OpenCPN", command_data(directory_mode="0777"), "command directory is group/world writable"),
+            (
+                "Display Power",
+                command_data(command="other", path="/usr/bin/xset"),
+                "command other is not xset",
+            ),
+        ]
+        for row_name, data, expected in cases:
+            with self.subTest(row=row_name, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                row = next(check for check in report["checks"] if check["name"] == row_name)
+                if data is None:
+                    row.pop("data", None)
+                else:
+                    row["data"] = data
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == row_name and expected in failure.detail for failure in failures))
+
     def test_status_report_ready_rejects_missing_or_malformed_host_boot_id(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         cases = [
@@ -18508,6 +18601,13 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertIn("trusted executable", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("command"), "xset")
+        self.assertEqual(result.data.get("path"), str(fake))
+        self.assertEqual(result.data.get("directory"), str(bin_dir))
+        self.assertEqual(result.data.get("is_symlink"), False)
+        self.assertEqual(result.data.get("is_regular"), True)
+        self.assertEqual(result.data.get("executable"), True)
 
     def test_check_display_power_tool_rejects_user_owned_xset_on_pi(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -18548,6 +18648,13 @@ class PiHealthTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("trusted executable", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("command"), "opencpn")
+            self.assertEqual(result.data.get("path"), str(fake))
+            self.assertEqual(result.data.get("directory"), str(bin_dir))
+            self.assertEqual(result.data.get("is_symlink"), False)
+            self.assertEqual(result.data.get("is_regular"), True)
+            self.assertEqual(result.data.get("executable"), True)
 
     def test_check_opencpn_rejects_symlinked_command(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
