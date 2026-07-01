@@ -1663,6 +1663,16 @@ grep -q 'no launcher-supervised OpenCPN process was started with -parse_all_enc'
 grep -q 'launcher-supervised OpenCPN exited within' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN executable integrity failed after stability wait' scripts/verify_pi.sh
 grep -q 'launcher-supervised OpenCPN display environment failed after stability wait' scripts/verify_pi.sh
+grep -q 'chartplotter launcher OpenCPN launch revalidation' scripts/verify_pi.sh
+grep -q 'check "chartplotter launcher OpenCPN launch revalidation" grep -Fq '\''revalidate_opencpn_binary'\''' scripts/verify_pi.sh
+grep -q 'chartplotter launcher utility command revalidation' scripts/verify_pi.sh
+grep -q 'check "chartplotter launcher utility command revalidation" grep -Fq '\''revalidate_trusted_utility_command'\''' scripts/verify_pi.sh
+grep -q 'chartplotter launcher process lookup revalidation' scripts/verify_pi.sh
+grep -q 'check "chartplotter launcher process lookup revalidation" grep -Fq '\''revalidate_process_lookup_command'\''' scripts/verify_pi.sh
+grep -q 'chartplotter launcher display command revalidation' scripts/verify_pi.sh
+grep -q 'check "chartplotter launcher display command revalidation" grep -Fq '\''revalidate_display_power_command'\''' scripts/verify_pi.sh
+grep -q 'OpenCPN/pgrep/xset descriptor revalidation hooks' README.md
+grep -q 'OpenCPN/pgrep/xset descriptor revalidation hooks' docs/sailboat-pi.md
 grep -q 'launcher-supervised `opencpn` child process' README.md
 grep -q 'launcher-supervised `opencpn` child process' docs/sailboat-pi.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
