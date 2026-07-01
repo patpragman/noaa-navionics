@@ -39,6 +39,7 @@ import re
 scripts = [
     Path("scripts/collect_pi_support_bundle.sh"),
     Path("scripts/deploy_to_pi.sh"),
+    Path("scripts/enroll_pi_host_key.sh"),
     Path("scripts/export_pi_opencpn_data.sh"),
     Path("scripts/export_pi_settings.sh"),
     Path("scripts/export_pi_tracks.sh"),
@@ -543,6 +544,12 @@ grep -q 'known_hosts directory has permissions' scripts/enroll_pi_host_key.sh
 grep -q 'known_hosts must be a regular non-symlink file' scripts/enroll_pi_host_key.sh
 grep -q 'ssh_keyscan_cmd="$(require_local_command ssh-keyscan)"' scripts/enroll_pi_host_key.sh
 grep -q 'ssh_keygen_cmd="$(require_local_command ssh-keygen)"' scripts/enroll_pi_host_key.sh
+grep -q 'python3_cmd="$(require_local_command python3)"' scripts/enroll_pi_host_key.sh
+grep -q 'os.open(path.name, flags, 0o600, dir_fd=parent_fd)' scripts/enroll_pi_host_key.sh
+grep -q 'append_verified_known_hosts "$known_hosts" "$match_path"' scripts/enroll_pi_host_key.sh
+grep -q 'known_hosts changed before append' scripts/enroll_pi_host_key.sh
+! grep -q ': >"$path"' scripts/enroll_pi_host_key.sh
+! grep -q 'cat "$match_path" >>"$known_hosts"' scripts/enroll_pi_host_key.sh
 grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' scripts/dock_test_pi.sh
 grep -q 'local_command_path rsync' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path rsync' scripts/deploy_to_pi.sh
@@ -5723,6 +5730,26 @@ if [[ "$host_key_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'No scanned SSH host key matched expected fingerprint' "$verify_output"
+
+host_key_symlink_dir="$tmpdir/host-key-symlink"
+mkdir -p "$host_key_symlink_dir"
+ln -s "$tmpdir/host-key-symlink-target" "$host_key_symlink_dir/known_hosts"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_COMMANDS=1 \
+NOAA_NAVIONICS_FAKE_HOST_KEY_LOG="$host_key_log" \
+PATH="$host_key_fake_bin:$PATH" \
+  scripts/enroll_pi_host_key.sh \
+  pi@raspberrypi.local \
+  --known-hosts "$host_key_symlink_dir/known_hosts" \
+  --expected-sha256 SHA256:abcdefghijklmnopqrstuv >"$verify_output" 2>&1
+host_key_code=$?
+set -e
+if [[ "$host_key_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected enroll_pi_host_key.sh to reject symlinked known_hosts with exit 2" >&2
+  exit 1
+fi
+grep -q 'known_hosts path contains a symlink' "$verify_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --timeout nope >"$dock_output" 2>&1

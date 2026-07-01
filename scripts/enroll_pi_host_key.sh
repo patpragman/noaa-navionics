@@ -38,6 +38,7 @@ dry_run=0
 host_part=""
 ssh_keyscan_cmd=""
 ssh_keygen_cmd=""
+python3_cmd=""
 
 local_path_in_trusted_system_dir() {
   case "$1" in
@@ -225,54 +226,218 @@ reject_symlinked_path_components() {
 
 prepare_known_hosts_file() {
   local path="$1"
-  local directory
-  local current_uid
-  local owner_uid
-  local mode
-  local stat_output
+  local status
+  set +e
+  "$python3_cmd" - "$path" <<'PY'
+from __future__ import annotations
 
-  directory="$(dirname -- "$path")"
-  current_uid="$(id -u)"
-  reject_symlinked_path_components "known_hosts" "$directory"
-  mkdir -p -- "$directory"
-  reject_symlinked_path_components "known_hosts" "$path"
-  chmod 0700 -- "$directory"
-  if ! stat_output="$(stat -Lc '%u %a' -- "$directory" 2>/dev/null)"; then
-    echo "Could not inspect known_hosts directory owner and permissions: $directory" >&2
+import os
+import stat
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1]).expanduser()
+if not path.is_absolute():
+    path = Path.cwd() / path
+parent = path.parent
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+directory_flag = getattr(os, "O_DIRECTORY", 0)
+
+
+def reject_symlinked_components(label: str, target: Path) -> None:
+    parts = target.parts
+    if target.is_absolute():
+        current = Path(parts[0])
+        iterable = parts[1:]
+    else:
+        current = Path(".")
+        iterable = parts
+    for part in iterable:
+        if part in ("", "."):
+            continue
+        current = current / part
+        try:
+            st = os.lstat(current)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            print(f"Could not inspect {label} path component {current}: {exc}", file=sys.stderr)
+            raise SystemExit(124) from exc
+        if stat.S_ISLNK(st.st_mode):
+            print(f"{label} path contains a symlink: {current}", file=sys.stderr)
+            raise SystemExit(124)
+
+
+def require_private_dir(target: Path) -> os.stat_result:
+    try:
+        before = os.stat(target, follow_symlinks=False)
+    except OSError as exc:
+        print(f"Could not inspect known_hosts directory owner and permissions: {target}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    if not stat.S_ISDIR(before.st_mode):
+        print(f"known_hosts directory must be a real directory: {target}", file=sys.stderr)
+        raise SystemExit(124)
+    if before.st_uid != os.getuid():
+        print(
+            f"known_hosts directory is owned by uid {before.st_uid}, expected current user {os.getuid()}: {target}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o700:
+        print(f"known_hosts directory has permissions {mode:04o}, expected private 0700: {target}", file=sys.stderr)
+        raise SystemExit(124)
+    return before
+
+
+reject_symlinked_components("known_hosts", parent)
+try:
+    parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(parent, 0o700, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not create or tighten known_hosts directory {parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+reject_symlinked_components("known_hosts", path)
+parent_before = require_private_dir(parent)
+
+try:
+    parent_fd = os.open(parent, os.O_RDONLY | directory_flag | nofollow)
+except OSError as exc:
+    print(f"Could not open known_hosts directory safely {parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+try:
+    opened_parent = os.fstat(parent_fd)
+    if not os.path.samestat(parent_before, opened_parent):
+        print(f"known_hosts directory changed while opening it: {parent}", file=sys.stderr)
+        raise SystemExit(124)
+    flags = os.O_RDWR | os.O_CREAT | nofollow
+    try:
+        fd = os.open(path.name, flags, 0o600, dir_fd=parent_fd)
+    except OSError as exc:
+        print(f"Could not open known_hosts through no-follow descriptor {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            print(f"known_hosts must be a regular non-symlink file: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        if opened.st_uid != os.getuid():
+            print(
+                f"known_hosts is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+                file=sys.stderr,
+            )
+            raise SystemExit(124)
+        os.fchmod(fd, 0o600)
+        opened = os.fstat(fd)
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode != 0o600:
+            print(f"known_hosts has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        os.fsync(fd)
+        os.fsync(parent_fd)
+    except OSError as exc:
+        print(f"Could not validate known_hosts {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    finally:
+        os.close(fd)
+finally:
+    os.close(parent_fd)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
     exit 2
   fi
-  owner_uid="${stat_output%% *}"
-  mode="${stat_output#* }"
-  if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "known_hosts directory is owned by uid ${owner_uid}, expected current user ${current_uid}: $directory" >&2
+  return "$status"
+}
+
+append_verified_known_hosts() {
+  local path="$1"
+  local match_file="$2"
+  local status
+  set +e
+  "$python3_cmd" - "$path" "$match_file" <<'PY'
+from __future__ import annotations
+
+import os
+import stat
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1]).expanduser()
+if not path.is_absolute():
+    path = Path.cwd() / path
+match_file = Path(sys.argv[2])
+parent = path.parent
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+directory_flag = getattr(os, "O_DIRECTORY", 0)
+
+try:
+    parent_before = os.stat(parent, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect known_hosts directory before append {parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+if not stat.S_ISDIR(parent_before.st_mode):
+    print(f"known_hosts directory must be a real directory before append: {parent}", file=sys.stderr)
+    raise SystemExit(124)
+if parent_before.st_uid != os.getuid() or stat.S_IMODE(parent_before.st_mode) != 0o700:
+    print(f"known_hosts directory must be current-user-owned private 0700 before append: {parent}", file=sys.stderr)
+    raise SystemExit(124)
+
+try:
+    data = match_file.read_bytes()
+except OSError as exc:
+    print(f"Could not read verified host-key matches {match_file}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+if not data:
+    print(f"verified host-key match file is empty: {match_file}", file=sys.stderr)
+    raise SystemExit(124)
+if not data.endswith(b"\n"):
+    data += b"\n"
+
+try:
+    parent_fd = os.open(parent, os.O_RDONLY | directory_flag | nofollow)
+except OSError as exc:
+    print(f"Could not open known_hosts directory safely before append {parent}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+try:
+    opened_parent = os.fstat(parent_fd)
+    if not os.path.samestat(parent_before, opened_parent):
+        print(f"known_hosts directory changed before append: {parent}", file=sys.stderr)
+        raise SystemExit(124)
+    try:
+        before = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+        fd = os.open(path.name, os.O_WRONLY | os.O_APPEND | nofollow, dir_fd=parent_fd)
+    except OSError as exc:
+        print(f"Could not open known_hosts through no-follow append descriptor {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            print(f"known_hosts changed before append: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        if not stat.S_ISREG(opened.st_mode):
+            print(f"known_hosts must be a regular file before append: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        if opened.st_uid != os.getuid() or stat.S_IMODE(opened.st_mode) != 0o600:
+            print(f"known_hosts must be current-user-owned private 0600 before append: {path}", file=sys.stderr)
+            raise SystemExit(124)
+        os.write(fd, data)
+        os.fsync(fd)
+    except OSError as exc:
+        print(f"Could not append verified host key to known_hosts {path}: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    finally:
+        os.close(fd)
+finally:
+    os.close(parent_fd)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
     exit 2
   fi
-  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "700" ]]; then
-    echo "known_hosts directory has permissions ${mode}, expected private 0700: $directory" >&2
-    exit 2
-  fi
-  if [[ -e "$path" && ( -L "$path" || ! -f "$path" ) ]]; then
-    echo "known_hosts must be a regular non-symlink file: $path" >&2
-    exit 2
-  fi
-  if [[ ! -e "$path" ]]; then
-    : >"$path"
-  fi
-  chmod 0600 -- "$path"
-  if ! stat_output="$(stat -Lc '%u %a' -- "$path" 2>/dev/null)"; then
-    echo "Could not inspect known_hosts owner and permissions: $path" >&2
-    exit 2
-  fi
-  owner_uid="${stat_output%% *}"
-  mode="${stat_output#* }"
-  if [[ "$owner_uid" != "$current_uid" ]]; then
-    echo "known_hosts is owned by uid ${owner_uid}, expected current user ${current_uid}: $path" >&2
-    exit 2
-  fi
-  if [[ "$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')" != "600" ]]; then
-    echo "known_hosts has permissions ${mode}, expected private 0600: $path" >&2
-    exit 2
-  fi
+  return "$status"
 }
 
 host_marker() {
@@ -336,6 +501,7 @@ require_positive_port "$port"
 
 ssh_keyscan_cmd="$(require_local_command ssh-keyscan)"
 ssh_keygen_cmd="$(require_local_command ssh-keygen)"
+python3_cmd="$(require_local_command python3)"
 
 scan_path="$(mktemp)"
 match_path="$(mktemp)"
@@ -380,6 +546,6 @@ fi
 prepare_known_hosts_file "$known_hosts"
 marker="$(host_marker)"
 "$ssh_keygen_cmd" -R "$marker" -f "$known_hosts" >/dev/null 2>&1 || true
-cat "$match_path" >>"$known_hosts"
-chmod 0600 -- "$known_hosts"
+prepare_known_hosts_file "$known_hosts"
+append_verified_known_hosts "$known_hosts" "$match_path"
 printf '\nEnrolled verified SSH host key for %s in %s.\n' "$marker" "$known_hosts"
