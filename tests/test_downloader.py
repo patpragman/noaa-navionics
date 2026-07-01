@@ -14964,6 +14964,26 @@ class GpsTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("chart directory is a symlink", result.detail)
 
+    def test_chart_check_rejects_symlinked_chart_directory_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_storage = root / "real-storage"
+            charts = real_storage / "charts"
+            cell = charts / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("", encoding="ascii")
+            storage_link = root / "storage-link"
+            try:
+                storage_link.symlink_to(real_storage, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+
+            result = check_chart_dir(storage_link / "charts")
+
+            self.assertFalse(result.ok)
+            self.assertIn("chart directory path contains a symlink", result.detail)
+            self.assertIn("storage-link", result.detail)
+
     def test_disk_check_requires_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "charts"

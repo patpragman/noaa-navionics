@@ -665,8 +665,11 @@ def check_opencpn_gpsd_config(
 
 def check_chart_dir(chart_dir: Path) -> CheckResult:
     path = Path(chart_dir).expanduser()
-    if path.is_symlink():
-        return CheckResult("Charts", False, f"chart directory is a symlink: {path}")
+    symlink = _first_storage_symlink(path)
+    if symlink is not None:
+        if symlink == path:
+            return CheckResult("Charts", False, f"chart directory is a symlink: {path}")
+        return CheckResult("Charts", False, f"chart directory path contains a symlink: {symlink}")
     if not path.exists():
         return CheckResult("Charts", False, f"{path} does not exist")
     enc_cells = _limited_find(path, suffix=".000", limit=5)
