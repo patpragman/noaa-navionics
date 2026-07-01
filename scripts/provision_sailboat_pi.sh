@@ -4,7 +4,27 @@ umask 077
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+resolve_repo_root() {
+  local source_path="${BASH_SOURCE[0]}"
+  local cwd
+
+  case "$source_path" in
+    /proc/self/fd/*|/dev/fd/*)
+      cwd="$(pwd -P)"
+      if [[ -f "$cwd/setup.py" && -d "$cwd/scripts" && -d "$cwd/src/noaa_navionics" ]]; then
+        printf '%s\n' "$cwd"
+        return 0
+      fi
+      echo "Could not determine repo root from descriptor execution cwd: $cwd" >&2
+      exit 2
+      ;;
+    *)
+      cd "$(dirname "$source_path")/.." && pwd
+      ;;
+  esac
+}
+
+repo_root="$(resolve_repo_root)"
 default_config="${HOME}/.config/noaa-navionics/config.ini"
 config="$default_config"
 device=""
@@ -786,6 +806,192 @@ run() {
   fi
 }
 
+require_helper() {
+  local path="$1"
+
+  if [[ -L "$path" ]]; then
+    echo "Helper script must not be a symlink: $path" >&2
+    exit 2
+  fi
+  if [[ ! -f "$path" || ! -x "$path" ]]; then
+    echo "Helper script is missing or not executable: $path" >&2
+    exit 2
+  fi
+  if ! "$python3_cmd" - "$path" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+if not path.is_absolute():
+    print(f"Helper script path must be absolute: {path}", file=sys.stderr)
+    raise SystemExit(1)
+current = Path("/")
+for part in path.parts[1:]:
+    if part in {"", "."}:
+        continue
+    current = current / part
+    try:
+        component = os.lstat(current)
+    except OSError as exc:
+        print(f"Could not inspect helper script path component {current}: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    if stat.S_ISLNK(component.st_mode):
+        print(f"Helper script path contains a symlink: {current}", file=sys.stderr)
+        raise SystemExit(1)
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect helper script owner and permissions: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+if stat.S_ISLNK(before.st_mode):
+    print(f"Helper script must not be a symlink: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not stat.S_ISREG(before.st_mode):
+    print(f"Helper script is not a regular file: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if before.st_uid != os.getuid():
+    print(f"Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+    raise SystemExit(1)
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    print(f"Helper script has permissions {mode:03o}, expected no group/other write bits: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if not mode & 0o111:
+    print(f"Helper script is not executable: {path}", file=sys.stderr)
+    raise SystemExit(1)
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    print(f"Could not open helper script through no-follow descriptor: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        print(f"Helper script changed before it could be validated: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"Helper script is not a regular file when opened: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if opened.st_uid != os.getuid():
+        print(f"Helper script is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        print(f"Helper script has permissions {opened_mode:03o}, expected no group/other write bits: {path}", file=sys.stderr)
+        raise SystemExit(1)
+    if not opened_mode & 0o111:
+        print(f"Helper script is not executable when opened: {path}", file=sys.stderr)
+        raise SystemExit(1)
+finally:
+    os.close(fd)
+PY
+  then
+    exit 2
+  fi
+}
+
+run_helper_descriptor() {
+  local command_path="$1"
+  local status
+  shift
+
+  require_helper "$command_path"
+  if [[ "$dry_run" -eq 1 ]]; then
+    run "$command_path" "$@"
+    return 0
+  fi
+
+  set +e
+  "$python3_cmd" - "$command_path" "$@" <<'PY'
+from pathlib import Path
+import os
+import stat
+import subprocess
+import sys
+
+path = Path(sys.argv[1])
+args = sys.argv[2:]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(124)
+
+
+if not path.is_absolute():
+    fail(f"Helper script path must be absolute before descriptor execution: {path}")
+
+current = Path("/")
+for part in path.parts[1:]:
+    if part in {"", "."}:
+        continue
+    current = current / part
+    try:
+        component = os.lstat(current)
+    except OSError as exc:
+        fail(f"Could not inspect helper script path component before descriptor execution {current}: {exc}")
+    if stat.S_ISLNK(component.st_mode):
+        fail(f"Helper script path contains a symlink before descriptor execution: {current}")
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect helper script before descriptor execution: {path}: {exc}")
+if not stat.S_ISREG(before.st_mode):
+    fail(f"Helper script must be regular before descriptor execution: {path}")
+if before.st_uid != os.getuid():
+    fail(f"Helper script is owned by uid {before.st_uid}, expected current user {os.getuid()}: {path}")
+mode = stat.S_IMODE(before.st_mode)
+if mode & 0o022:
+    fail(f"Helper script has permissions {mode:03o}, expected no group/other write bits: {path}")
+if not mode & 0o111:
+    fail(f"Helper script is not executable before descriptor execution: {path}")
+
+try:
+    fd = os.open(path, os.O_RDONLY | nofollow)
+except OSError as exc:
+    fail(f"Could not open helper script through no-follow descriptor for execution: {path}: {exc}")
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        fail(f"Helper script changed before descriptor execution: {path}")
+    if not stat.S_ISREG(opened.st_mode):
+        fail(f"Helper script must be regular when opened for descriptor execution: {path}")
+    if opened.st_uid != os.getuid():
+        fail(f"Helper script is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}")
+    opened_mode = stat.S_IMODE(opened.st_mode)
+    if opened_mode & 0o022:
+        fail(f"Helper script has permissions {opened_mode:03o}, expected no group/other write bits: {path}")
+    if not opened_mode & 0o111:
+        fail(f"Helper script is not executable when opened for descriptor execution: {path}")
+    try:
+        result = subprocess.run([f"/proc/self/fd/{fd}", *args], pass_fds=(fd,))
+    except OSError as exc:
+        fail(f"Could not execute helper script through validated descriptor: {path}: {exc}")
+finally:
+    os.close(fd)
+raise SystemExit(result.returncode)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
+gpsd_helper="${repo_root}/scripts/configure_gpsd.sh"
+gps_time_helper="${repo_root}/scripts/configure_gps_time.sh"
+desktop_autologin_helper="${repo_root}/scripts/configure_desktop_autologin.sh"
+require_helper "$gpsd_helper"
+require_helper "$gps_time_helper"
+require_helper "$desktop_autologin_helper"
+
 validate_user_install_path() {
   local target="$1"
   local label="$2"
@@ -1452,7 +1658,7 @@ if [[ "$skip_gpsd" -eq 0 ]]; then
   if [[ "$dry_run" -eq 1 ]]; then
     gpsd_args+=(--dry-run)
   fi
-  run "${repo_root}/scripts/configure_gpsd.sh" "${gpsd_args[@]}"
+  run_helper_descriptor "$gpsd_helper" "${gpsd_args[@]}"
 fi
 
 if [[ "$skip_gps_time" -eq 0 ]]; then
@@ -1463,7 +1669,7 @@ if [[ "$skip_gps_time" -eq 0 ]]; then
   if [[ "$dry_run" -eq 1 ]]; then
     gps_time_args+=(--dry-run)
   fi
-  run "${repo_root}/scripts/configure_gps_time.sh" "${gps_time_args[@]}"
+  run_helper_descriptor "$gps_time_helper" "${gps_time_args[@]}"
 fi
 
 if [[ "$skip_sync" -eq 0 ]]; then
@@ -1511,7 +1717,7 @@ if [[ "$skip_autologin" -eq 0 ]]; then
   if [[ "$dry_run" -eq 1 ]]; then
     desktop_args+=(--dry-run)
   fi
-  run "${repo_root}/scripts/configure_desktop_autologin.sh" "${desktop_args[@]}"
+  run_helper_descriptor "$desktop_autologin_helper" "${desktop_args[@]}"
 fi
 
 if [[ "$skip_services" -eq 0 ]]; then

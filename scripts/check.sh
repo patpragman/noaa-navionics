@@ -1061,6 +1061,10 @@ grep -q 'venv cleanup refuses Python runtimes without symlink-attack-resistant `
 grep -q 'venv cleanup refuses Python runtimes without symlink-attack-resistant `shutil.rmtree`' docs/sailboat-pi.md
 grep -q 'usage()' scripts/install_raspberry_pi.sh
 grep -q 'usage()' scripts/provision_sailboat_pi.sh
+grep -q 'resolve_repo_root()' scripts/install_raspberry_pi.sh
+grep -q 'resolve_repo_root()' scripts/provision_sailboat_pi.sh
+grep -q 'Could not determine repo root from descriptor execution cwd' scripts/install_raspberry_pi.sh
+grep -q 'Could not determine repo root from descriptor execution cwd' scripts/provision_sailboat_pi.sh
 grep -q 'usage()' scripts/configure_gpsd.sh
 grep -q 'usage()' scripts/configure_gps_time.sh
 grep -q 'usage()' scripts/configure_desktop_autologin.sh
@@ -4690,6 +4694,20 @@ grep -q 'sudo_cmd="$(require_trusted_system_command sudo "Sudo command")"' scrip
 grep -q 'python3_command()' scripts/provision_sailboat_pi.sh
 grep -q 'python3_cmd="$(require_trusted_system_command python3 "Python command")"' scripts/provision_sailboat_pi.sh
 grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/provision_sailboat_pi.sh
+grep -q 'require_helper "$gpsd_helper"' scripts/provision_sailboat_pi.sh
+grep -q 'require_helper "$gps_time_helper"' scripts/provision_sailboat_pi.sh
+grep -q 'require_helper "$desktop_autologin_helper"' scripts/provision_sailboat_pi.sh
+grep -q 'run_helper_descriptor()' scripts/provision_sailboat_pi.sh
+grep -q 'Helper script changed before descriptor execution' scripts/provision_sailboat_pi.sh
+grep -q 'Could not execute helper script through validated descriptor' scripts/provision_sailboat_pi.sh
+grep -Fq 'run_helper_descriptor "$gpsd_helper" "${gpsd_args[@]}"' scripts/provision_sailboat_pi.sh
+grep -Fq 'run_helper_descriptor "$gps_time_helper" "${gps_time_args[@]}"' scripts/provision_sailboat_pi.sh
+grep -Fq 'run_helper_descriptor "$desktop_autologin_helper" "${desktop_args[@]}"' scripts/provision_sailboat_pi.sh
+! grep -Fq 'run "${repo_root}/scripts/configure_gpsd.sh"' scripts/provision_sailboat_pi.sh
+! grep -Fq 'run "${repo_root}/scripts/configure_gps_time.sh"' scripts/provision_sailboat_pi.sh
+! grep -Fq 'run "${repo_root}/scripts/configure_desktop_autologin.sh"' scripts/provision_sailboat_pi.sh
+grep -q 'Provisioning validates the GPSD, chrony GPS-time, and desktop autologin helper scripts through no-follow descriptors' README.md
+grep -q 'Provisioning validates the GPSD, chrony GPS-time, and desktop autologin helper scripts through no-follow descriptors' docs/sailboat-pi.md
 grep -q '"$python3_cmd" - "$@"' scripts/provision_sailboat_pi.sh
 grep -q '"$python3_cmd" - "$target" "$label"' scripts/provision_sailboat_pi.sh
 grep -q 'sudo_cmd="$(sudo_command)" || exit 2' scripts/provision_sailboat_pi.sh
@@ -4717,7 +4735,7 @@ text = Path("scripts/provision_sailboat_pi.sh").read_text(encoding="utf-8")
 python_resolve = text.index('python3_cmd="$(python3_command)" || exit 2')
 same_path = text.index('if ! same_path "$config" "$default_config"')
 status_index = text.index('run "$bin" status-report')
-autologin_index = text.index('configure_desktop_autologin.sh" "${desktop_args[@]}"')
+autologin_index = text.index('run_helper_descriptor "$desktop_autologin_helper" "${desktop_args[@]}"')
 if python_resolve > same_path:
     raise SystemExit("provisioning must validate Python before Python-backed path helpers")
 if status_index < autologin_index:
@@ -5261,6 +5279,28 @@ if [[ "$install_code" -ne 0 ]]; then
   exit 1
 fi
 grep -q 'Usage: scripts/install_raspberry_pi.sh' "$install_output"
+
+set +e
+(cd "$repo_root" && bash -c 'exec 9<scripts/install_raspberry_pi.sh; /proc/self/fd/9 --help') >"$install_output" 2>&1
+install_code=$?
+set -e
+if [[ "$install_code" -ne 0 ]]; then
+  cat "$install_output" >&2
+  echo "expected install_raspberry_pi.sh descriptor --help to resolve repo root and exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/install_raspberry_pi.sh' "$install_output"
+
+set +e
+(cd "$repo_root" && bash -c 'exec 9<scripts/provision_sailboat_pi.sh; /proc/self/fd/9 --help') >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 0 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh descriptor --help to resolve repo root and exit 0" >&2
+  exit 1
+fi
+grep -q 'Usage: scripts/provision_sailboat_pi.sh' "$provision_output"
 
 set +e
 scripts/install_raspberry_pi.sh --bad-option >"$install_output" 2>&1
@@ -9935,6 +9975,59 @@ scripts/provision_sailboat_pi.sh \
   --skip-services \
   --config "$tmpdir/skip-gpsd-manual.ini" >"$provision_output"
 grep -q 'configure_gps_time.sh --allow-non-pi --dry-run' "$provision_output"
+
+write_provision_noop_helper() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"$path"
+  chmod +x "$path"
+}
+
+provision_helper_parent_real="$tmpdir/provision-helper-parent-real"
+provision_helper_parent_link="$tmpdir/provision-helper-parent-link"
+mkdir -p "$provision_helper_parent_real/scripts"
+cp scripts/provision_sailboat_pi.sh "$provision_helper_parent_real/scripts/provision_sailboat_pi.sh"
+for helper in configure_gpsd.sh configure_gps_time.sh configure_desktop_autologin.sh; do
+  write_provision_noop_helper "$provision_helper_parent_real/scripts/$helper"
+done
+chmod +x "$provision_helper_parent_real/scripts/provision_sailboat_pi.sh"
+chmod 0775 "$provision_helper_parent_real/scripts/configure_gpsd.sh"
+set +e
+"$provision_helper_parent_real/scripts/provision_sailboat_pi.sh" \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-autologin \
+  --skip-services \
+  --skip-sync >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject a group-writable commissioning helper with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script has permissions 775, expected no group/other write bits' "$provision_output"
+chmod 0755 "$provision_helper_parent_real/scripts/configure_gpsd.sh"
+ln -s "$provision_helper_parent_real" "$provision_helper_parent_link"
+set +e
+"$provision_helper_parent_link/scripts/provision_sailboat_pi.sh" \
+  --allow-non-pi \
+  --dry-run \
+  --no-device-check \
+  --device /dev/serial/by-id/mock-gps \
+  --skip-autologin \
+  --skip-services \
+  --skip-sync >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject a symlinked commissioning helper parent path with exit 2" >&2
+  exit 1
+fi
+grep -q 'Helper script path contains a symlink' "$provision_output"
 
 full_provision_home="$tmpdir/provision-full-home"
 mkdir -p "$full_provision_home"

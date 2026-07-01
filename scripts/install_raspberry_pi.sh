@@ -4,7 +4,27 @@ umask 077
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+resolve_repo_root() {
+  local source_path="${BASH_SOURCE[0]}"
+  local cwd
+
+  case "$source_path" in
+    /proc/self/fd/*|/dev/fd/*)
+      cwd="$(pwd -P)"
+      if [[ -f "$cwd/setup.py" && -d "$cwd/scripts" && -d "$cwd/src/noaa_navionics" ]]; then
+        printf '%s\n' "$cwd"
+        return 0
+      fi
+      echo "Could not determine repo root from descriptor execution cwd: $cwd" >&2
+      exit 2
+      ;;
+    *)
+      cd "$(dirname "$source_path")/.." && pwd
+      ;;
+  esac
+}
+
+repo_root="$(resolve_repo_root)"
 config_dir="${HOME}/.config/noaa-navionics"
 systemd_user_dir="${HOME}/.config/systemd/user"
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
