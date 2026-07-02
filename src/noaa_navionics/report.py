@@ -1532,6 +1532,25 @@ def _stable_status_gps_device_path(path: str) -> bool:
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
+def _storage_readiness_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    check_name: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult(check_name, False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult(check_name, False, control_failure))
+        return None
+    return text
+
+
 def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     checks = report.get("checks")
     if not isinstance(checks, list):
@@ -1546,25 +1565,35 @@ def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]
         if not isinstance(data, dict):
             failures.append(CheckResult(name, False, f"status report {name} check has no structured data"))
             continue
-        configured_path_text = str(data.get("configured_path", ""))
-        checked_path_text = str(data.get("checked_path", ""))
-        configured_path_failure = _status_control_character_failure(configured_path_text, f"{name} configured path")
-        if configured_path_failure:
-            failures.append(CheckResult(name, False, configured_path_failure))
-        checked_path_failure = _status_control_character_failure(checked_path_text, f"{name} checked path")
-        if checked_path_failure:
-            failures.append(CheckResult(name, False, checked_path_failure))
-        configured_path = configured_path_text.strip()
-        checked_path = checked_path_text.strip()
-        if not _status_absolute_path(configured_path):
+        configured_path = _storage_readiness_text(
+            data,
+            "configured_path",
+            f"{name} configured path",
+            name,
+            failures,
+        )
+        checked_path = _storage_readiness_text(
+            data,
+            "checked_path",
+            f"{name} checked path",
+            name,
+            failures,
+        )
+        if configured_path is not None and not _status_absolute_path(configured_path):
             failures.append(CheckResult(name, False, f"status report {name} configured path is not absolute"))
-        if not _status_absolute_path(checked_path):
+        if checked_path is not None and not _status_absolute_path(checked_path):
             failures.append(CheckResult(name, False, f"status report {name} checked path is not absolute"))
         if data.get("exists") is not True:
             failures.append(CheckResult(name, False, f"status report {name} checked path does not exist"))
         if data.get("is_directory") is not True:
             failures.append(CheckResult(name, False, f"status report {name} checked path is not a directory"))
-        symlink_component = str(data.get("storage_symlink_component", "")).strip()
+        symlink_component = _storage_readiness_text(
+            data,
+            "storage_symlink_component",
+            f"{name} storage_symlink_component",
+            name,
+            failures,
+        )
         if symlink_component:
             failures.append(CheckResult(name, False, f"status report {name} storage path contains a symlink"))
         if data.get("missing_removable_mount") is True:
@@ -1579,14 +1608,15 @@ def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]
             or uid != expected_uid
         ):
             failures.append(CheckResult(name, False, f"status report {name} storage owner is invalid"))
-        mode = str(data.get("mode", "")).strip()
-        try:
-            parsed_mode = int(mode, 8)
-        except ValueError:
-            failures.append(CheckResult(name, False, f"status report {name} storage mode is invalid"))
-        else:
-            if parsed_mode & 0o022:
-                failures.append(CheckResult(name, False, f"status report {name} storage is group/world writable"))
+        mode = _storage_readiness_text(data, "mode", f"{name} mode", name, failures)
+        if mode is not None:
+            try:
+                parsed_mode = int(mode, 8)
+            except ValueError:
+                failures.append(CheckResult(name, False, f"status report {name} storage mode is invalid"))
+            else:
+                if parsed_mode & 0o022:
+                    failures.append(CheckResult(name, False, f"status report {name} storage is group/world writable"))
         min_free_gb = _positive_status_float(data.get("min_free_gb"))
         free_gb = _finite_gps_fix_float(data.get("free_gb"))
         if min_free_gb is None:

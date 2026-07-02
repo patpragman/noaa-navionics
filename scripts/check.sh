@@ -5247,6 +5247,11 @@ grep -q 'status report Pi Power reported throttling flags' src/noaa_navionics/re
 grep -q 'status report Pi Thermal missing finite temperature' src/noaa_navionics/report.py
 grep -q 'status report {name} check has no structured data' src/noaa_navionics/report.py
 grep -q 'Track Disk check has no structured data' tests/test_downloader.py
+grep -q 'def _storage_readiness_text' src/noaa_navionics/report.py
+grep -q 'configured path is not text' tests/test_downloader.py
+grep -q 'checked path is not text' tests/test_downloader.py
+grep -q 'storage_symlink_component is not text' tests/test_downloader.py
+grep -q 'mode is not text' tests/test_downloader.py
 grep -q 'status report {name} free space' src/noaa_navionics/report.py
 grep -q 'status report Chart Package check has no structured data' src/noaa_navionics/report.py
 grep -q 'def _chart_package_text' src/noaa_navionics/report.py
