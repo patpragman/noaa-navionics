@@ -869,6 +869,7 @@ candidates = [
     (home / ".config" / "noaa-navionics" / "launcher.env", uid, "noaa-navionics/launcher.env"),
     (home / ".local" / "share" / "noaa-navionics" / "source-revision", uid, "noaa-navionics/source-revision"),
     (home / ".config" / "autostart" / "noaa-navionics-chartplotter.desktop", uid, "desktop/noaa-navionics-chartplotter.desktop"),
+    (home / "Desktop" / "noaa-navionics-mob.desktop", uid, "desktop/noaa-navionics-mob.desktop"),
     (Path("/etc/default/gpsd"), 0, "system/etc-default-gpsd"),
     (Path("/etc/chrony/chrony.conf"), 0, "system/chrony.conf"),
     (Path("/etc/chrony/conf.d/noaa-navionics-gpsd.conf"), 0, "system/noaa-navionics-gpsd.conf"),

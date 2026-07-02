@@ -1709,6 +1709,8 @@ status_report="${HOME}/.cache/noaa-navionics/status.json"
 launcher_env="${HOME}/.config/noaa-navionics/launcher.env"
 autostart_dir="${HOME}/.config/autostart"
 autostart_entry="${autostart_dir}/noaa-navionics-chartplotter.desktop"
+desktop_dir="${HOME}/Desktop"
+mob_desktop_entry="${desktop_dir}/noaa-navionics-mob.desktop"
 systemd_user_dir="${HOME}/.config/systemd/user"
 chart_service="${systemd_user_dir}/noaa-navionics.service"
 chart_timer="${systemd_user_dir}/noaa-navionics.timer"
@@ -1889,8 +1891,11 @@ fi
 
 if [[ "$skip_autologin" -eq 0 ]]; then
   validate_user_install_path "$autostart_entry" "chartplotter desktop autostart"
+  validate_user_install_path "$mob_desktop_entry" "MOB desktop launcher"
   ensure_private_directory "$autostart_dir" "desktop autostart directory"
+  ensure_private_directory "$desktop_dir" "desktop launcher directory"
   install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644
+  install_file_atomic "${repo_root}/templates/noaa-navionics-mob.desktop" "$mob_desktop_entry" 0755
   desktop_args=(--user "$USER")
   if [[ "$allow_non_pi" -eq 1 ]]; then
     desktop_args+=(--allow-non-pi)

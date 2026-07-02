@@ -951,6 +951,9 @@ grep -q 'noaa-navionics mob' README.md
 grep -q 'noaa-navionics mob' docs/sailboat-pi.md
 grep -q 'mob` is the shorter equivalent intended for a desktop launcher, keyboard shortcut, or hardware button' README.md
 grep -q 'mob` is the shorter equivalent intended for a desktop launcher, keyboard shortcut, or hardware button' docs/sailboat-pi.md
+grep -q '~/Desktop/noaa-navionics-mob.desktop' README.md
+grep -q '~/Desktop/noaa-navionics-mob.desktop' docs/sailboat-pi.md
+grep -q 'requires the MOB desktop launcher to be present, private, visible, executable, non-autostarting, and pointed at `noaa-navionics mob`' docs/sailboat-pi.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" README.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" docs/sailboat-pi.md
 grep -q 'default Mark/MOB filenames advance to a suffixed name if the same timestamped mark already exists or appears during creation' README.md
@@ -3087,6 +3090,10 @@ grep -q 'chartplotter launcher file integrity' scripts/verify_pi.sh
 grep -q 'desktop autologin helper file integrity' scripts/verify_pi.sh
 grep -q 'GPS time helper file integrity' scripts/verify_pi.sh
 grep -q 'desktop autostart directory integrity' scripts/verify_pi.sh
+grep -q 'desktop launcher directory integrity' scripts/verify_pi.sh
+grep -q 'MOB desktop launcher executable' scripts/verify_pi.sh
+grep -q 'MOB desktop launcher exec' scripts/verify_pi.sh
+grep -q 'MOB desktop launcher not autostart' scripts/verify_pi.sh
 grep -q 'systemd user directory integrity' scripts/verify_pi.sh
 grep -q 'resolves outside private venv' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
@@ -3273,6 +3280,9 @@ grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
 grep -q 'must contain exactly' src/noaa_navionics/health.py
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
+grep -q 'Name=NOAA Navionics MOB' templates/noaa-navionics-mob.desktop
+grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob' templates/noaa-navionics-mob.desktop
+grep -q 'Terminal=true' templates/noaa-navionics-mob.desktop
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
 grep -q 'autologin-session=' scripts/configure_desktop_autologin.sh
 grep -q 'choose_xsession' scripts/configure_desktop_autologin.sh
@@ -5897,6 +5907,8 @@ grep -q 'configure_gps_time.sh' scripts/provision_sailboat_pi.sh
 grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'noaa-navionics-chartplotter.desktop' scripts/provision_sailboat_pi.sh
+grep -q 'mob_desktop_entry="${desktop_dir}/noaa-navionics-mob.desktop"' scripts/provision_sailboat_pi.sh
+grep -q 'ensure_private_directory "$desktop_dir" "desktop launcher directory"' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic' scripts/provision_sailboat_pi.sh
 grep -q 'promote_user_temp_path' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/provision_sailboat_pi.sh
@@ -5938,6 +5950,9 @@ grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-mob.desktop" "$mob_desktop_entry" 0755' scripts/provision_sailboat_pi.sh
+grep -q 'Desktop/noaa-navionics-mob.desktop' scripts/collect_pi_support_bundle.sh
+grep -q 'desktop/noaa-navionics-mob.desktop' scripts/export_pi_settings.sh
 grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
