@@ -5086,10 +5086,10 @@ fi
 check "chart service loaded fragment path" loaded_unit_property_equals noaa-navionics.service FragmentPath "$chart_service"
 check "chart service type" grep -Fxq 'Type=oneshot' "$chart_service"
 check "chart service loaded type" loaded_unit_property_equals noaa-navionics.service Type oneshot
-check "chart service network wait command" grep -Fq 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$chart_service"
-check "chart service loaded network wait command" loaded_unit_property_contains_all noaa-navionics.service ExecStartPre ".local/bin/noaa-navionics" "noaa-navionics wait-network" "--host www.charts.noaa.gov" "--port 443" "--seconds 300"
-check "chart service sync command" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
-check "chart service loaded sync command" loaded_unit_property_contains_all noaa-navionics.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics sync-charts" "--config" "noaa-navionics/config.ini" "--retries 5" "--retry-delay 30"
+check "chart service network wait command" grep -Fq 'ExecStartPre=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' "$chart_service"
+check "chart service loaded network wait command" loaded_unit_property_contains_all noaa-navionics.service ExecStartPre ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics wait-network" "--host www.charts.noaa.gov" "--port 443" "--seconds 300"
+check "chart service sync command" grep -Fq 'ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30' "$chart_service"
+check "chart service loaded sync command" loaded_unit_property_contains_all noaa-navionics.service ExecStart ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics sync-charts" "--config" "noaa-navionics/config.ini" "--retries 5" "--retry-delay 30"
 check "chart service timeout" grep -Fxq 'TimeoutStartSec=2h' "$chart_service"
 check "chart service loaded timeout" loaded_unit_property_equals noaa-navionics.service TimeoutStartUSec 2h
 check "chart service restart" grep -Fxq 'Restart=on-failure' "$chart_service"
@@ -5140,8 +5140,8 @@ fi
 check "track service loaded fragment path" loaded_unit_property_equals noaa-navionics-track.service FragmentPath "$track_service"
 check "track service type" grep -Fxq 'Type=simple' "$track_service"
 check "track service loaded type" loaded_unit_property_equals noaa-navionics-track.service Type simple
-check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
-check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily"
+check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
+check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily"
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
 check "track service loaded quiet stdout" loaded_unit_property_equals noaa-navionics-track.service StandardOutput null
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
@@ -5190,8 +5190,8 @@ check "preflight service type" grep -Fxq 'Type=oneshot' "$preflight_service"
 check "preflight service loaded type" loaded_unit_property_equals noaa-navionics-preflight.service Type oneshot
 check "preflight service no systemd GPS environment" sh -c '! grep -Eq "^(Environment|EnvironmentFile)=" "$1"' sh "$preflight_service"
 check "preflight service loaded no systemd GPS environment" sh -c '"$1" --user show noaa-navionics-preflight.service -p Environment -p EnvironmentFiles 2>/dev/null | grep -Fxq Environment= && "$1" --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fxq EnvironmentFiles=' sh "$systemctl_cmd"
-check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
-check "preflight service loaded status report" loaded_unit_property_contains_all noaa-navionics-preflight.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics status-report" "--config" "noaa-navionics/config.ini" "--gps-seconds-from-launcher-env" "noaa-navionics/launcher.env" "--output" "noaa-navionics/status.json"
+check "preflight service status report" grep -Fq 'ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
+check "preflight service loaded status report" loaded_unit_property_contains_all noaa-navionics-preflight.service ExecStart ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics status-report" "--config" "noaa-navionics/config.ini" "--gps-seconds-from-launcher-env" "noaa-navionics/launcher.env" "--output" "noaa-navionics/status.json"
 check "preflight service timeout" grep -Fxq 'TimeoutStartSec=15min' "$preflight_service"
 check "preflight service loaded timeout" loaded_unit_property_equals noaa-navionics-preflight.service TimeoutStartUSec 15min
 check "preflight service restart" grep -Fxq 'Restart=on-failure' "$preflight_service"

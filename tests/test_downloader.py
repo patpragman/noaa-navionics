@@ -170,8 +170,8 @@ def trusted_user_services_summary(**overrides: object) -> dict[str, object]:
                 "SystemCallArchitectures": "native",
                 "UMask": "0077",
                 "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.service",
-                "ExecStartPre": "/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
-                "ExecStart": "/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+                "ExecStartPre": "/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+                "ExecStart": "/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
             },
         },
         "noaa-navionics.timer": {
@@ -207,7 +207,7 @@ def trusted_user_services_summary(**overrides: object) -> dict[str, object]:
                 "SystemCallArchitectures": "native",
                 "UMask": "0077",
                 "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                "ExecStart": "/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily",
+                "ExecStart": "/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily",
             },
         },
         "noaa-navionics-preflight.service": {
@@ -236,7 +236,7 @@ def trusted_user_services_summary(**overrides: object) -> dict[str, object]:
                 "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
                 "Wants": "noaa-navionics-track.service",
                 "After": "noaa-navionics-track.service",
-                "ExecStart": "/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json",
+                "ExecStart": "/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json",
                 "Result": "success",
                 "ExecMainStatus": "0",
                 "ExecMainStartTimestampMonotonic": "123456",
@@ -800,8 +800,8 @@ def trusted_unit_file_lines(unit_name: str) -> list[str]:
             "StartLimitBurst=3",
             "[Service]",
             "Type=oneshot",
-            "ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
-            "ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+            "ExecStartPre=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+            "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
             "TimeoutStartSec=2h",
             "Restart=on-failure",
             "RestartSec=30min",
@@ -820,7 +820,7 @@ def trusted_unit_file_lines(unit_name: str) -> list[str]:
             "StartLimitBurst=60",
             "[Service]",
             "Type=simple",
-            "ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+            "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
             "StandardOutput=null",
             "Restart=on-failure",
             "RestartSec=10",
@@ -836,7 +836,7 @@ def trusted_unit_file_lines(unit_name: str) -> list[str]:
             "StartLimitBurst=60",
             "[Service]",
             "Type=oneshot",
-            "ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
+            "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
             "TimeoutStartSec=15min",
             "Restart=on-failure",
             "RestartSec=30",
@@ -14945,8 +14945,8 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics.service",
-                    "ExecStartPre": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "ExecStartPre": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
@@ -14981,7 +14981,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "active",
                 "properties": {
                     "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
                     "Restart": "on-failure",
@@ -15009,7 +15009,7 @@ class StatusReportTests(unittest.TestCase):
                     "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-preflight.service",
                     "Wants": "noaa-navionics-track.service",
                     "After": "noaa-navionics-track.service basic.target",
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "Environment": "",
                     "EnvironmentFiles": "",
@@ -15076,8 +15076,8 @@ class StatusReportTests(unittest.TestCase):
                 "active": "inactive",
                 "properties": {
                     "FragmentPath": "/tmp/noaa-navionics.service",
-                    "ExecStartPre": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "ExecStartPre": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
@@ -15968,8 +15968,8 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "static",
                 "active": "inactive",
                 "properties": {
-                    "ExecStartPre": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
+                    "ExecStartPre": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300 ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config /home/pi/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30 ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
@@ -15993,7 +15993,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
                     "Restart": "on-failure",
@@ -16018,7 +16018,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "Environment": "",
                     "EnvironmentFiles": "",
@@ -16128,7 +16128,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "Environment": "NOAA_NAVIONICS_GPS_SECONDS=2",
                     "EnvironmentFiles": "/home/pi/.config/noaa-navionics/launcher.env",
@@ -16170,7 +16170,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/bin/noaa-navionics ; argv[]=/home/pi/.local/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config /home/pi/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env /home/pi/.config/noaa-navionics/launcher.env --output /home/pi/.cache/noaa-navionics/status.json ; }",
                     "Type": "oneshot",
                     "Environment": "",
                     "EnvironmentFiles": "",
@@ -16325,7 +16325,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "static",
                 "active": "inactive",
                 "properties": {
-                    "ExecStart": "{ argv[]=/home/pi/.local/bin/noaa-navionics sync-charts ; }",
+                    "ExecStart": "{ argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts ; }",
                     "Type": "oneshot",
                     "TimeoutStartUSec": "2h",
                     "Restart": "on-failure",
@@ -16453,11 +16453,11 @@ class StatusReportTests(unittest.TestCase):
         boot_settings = next(check for check in checks if check.name == "Boot Readiness Settings")
 
         self.assertFalse(chart_settings.ok)
-        self.assertIn("missing .local/bin/noaa-navionics", chart_settings.detail)
+        self.assertIn("missing .local/share/noaa-navionics/venv/bin/noaa-navionics", chart_settings.detail)
         self.assertFalse(track_settings.ok)
-        self.assertIn("missing .local/bin/noaa-navionics", track_settings.detail)
+        self.assertIn("missing .local/share/noaa-navionics/venv/bin/noaa-navionics", track_settings.detail)
         self.assertFalse(boot_settings.ok)
-        self.assertIn("missing .local/bin/noaa-navionics", boot_settings.detail)
+        self.assertIn("missing .local/share/noaa-navionics/venv/bin/noaa-navionics", boot_settings.detail)
 
     def test_service_readiness_checks_fail_disabled_chart_timer(self):
         services = {

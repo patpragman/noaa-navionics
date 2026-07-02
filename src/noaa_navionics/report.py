@@ -1508,8 +1508,8 @@ def _unit_files_validation_failures(unit_files: object) -> list[CheckResult]:
             "Chart Sync Unit File",
             [
                 "Type=oneshot",
-                "ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
-                "ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+                "ExecStartPre=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+                "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
                 "TimeoutStartSec=2h",
                 "Restart=on-failure",
                 "RestartSec=30min",
@@ -1533,7 +1533,7 @@ def _unit_files_validation_failures(unit_files: object) -> list[CheckResult]:
             "Track Logger Unit File",
             [
                 "Type=simple",
-                "ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+                "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
                 "StandardOutput=null",
                 "Restart=on-failure",
                 "RestartSec=10",
@@ -1550,7 +1550,7 @@ def _unit_files_validation_failures(unit_files: object) -> list[CheckResult]:
                 "Wants=noaa-navionics-track.service",
                 "After=noaa-navionics-track.service",
                 "Type=oneshot",
-                "ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
+                "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
                 "TimeoutStartSec=15min",
                 "Restart=on-failure",
                 "RestartSec=30",
@@ -3907,7 +3907,7 @@ def _service_readiness_checks(
                     ),
                     contains={
                         "ExecStartPre": [
-                            ".local/bin/noaa-navionics",
+                            ".local/share/noaa-navionics/venv/bin/noaa-navionics",
                             "noaa-navionics wait-network",
                             "--host",
                             "www.charts.noaa.gov",
@@ -3915,7 +3915,7 @@ def _service_readiness_checks(
                             "--seconds 300",
                         ],
                         "ExecStart": [
-                            ".local/bin/noaa-navionics",
+                            ".local/share/noaa-navionics/venv/bin/noaa-navionics",
                             "noaa-navionics sync-charts",
                             "--config",
                             "noaa-navionics/config.ini",
@@ -3965,7 +3965,7 @@ def _service_readiness_checks(
                     ),
                     contains={
                         "ExecStart": [
-                            ".local/bin/noaa-navionics",
+                            ".local/share/noaa-navionics/venv/bin/noaa-navionics",
                             "noaa-navionics log-track",
                             "--config",
                             "noaa-navionics/config.ini",
@@ -4006,7 +4006,7 @@ def _service_readiness_checks(
                         "Wants": "noaa-navionics-track.service",
                         "After": "noaa-navionics-track.service",
                         "ExecStart": [
-                            ".local/bin/noaa-navionics",
+                            ".local/share/noaa-navionics/venv/bin/noaa-navionics",
                             "noaa-navionics status-report",
                             "--config",
                             "noaa-navionics/config.ini",
@@ -4035,8 +4035,8 @@ def _service_readiness_checks(
                     "Chart Sync Unit File",
                     [
                         "Type=oneshot",
-                        "ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
-                        "ExecStart=%h/.local/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
+                        "ExecStartPre=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300",
+                        "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics sync-charts --config %h/.config/noaa-navionics/config.ini --retries 5 --retry-delay 30",
                         "TimeoutStartSec=2h",
                         "Restart=on-failure",
                         "RestartSec=30min",
@@ -4060,7 +4060,7 @@ def _service_readiness_checks(
                     "Track Logger Unit File",
                     [
                         "Type=simple",
-                        "ExecStart=%h/.local/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+                        "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
                         "StandardOutput=null",
                         "Restart=on-failure",
                         "RestartSec=10",
@@ -4077,7 +4077,7 @@ def _service_readiness_checks(
                         "Wants=noaa-navionics-track.service",
                         "After=noaa-navionics-track.service",
                         "Type=oneshot",
-                        "ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
+                        "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json",
                         "TimeoutStartSec=15min",
                         "Restart=on-failure",
                         "RestartSec=30",

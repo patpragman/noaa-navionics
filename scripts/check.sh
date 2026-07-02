@@ -3151,7 +3151,7 @@ grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'chart service network wait command' scripts/verify_pi.sh
 grep -q 'chart service loaded network wait command' scripts/verify_pi.sh
 grep -q 'chart service loaded fragment path' scripts/verify_pi.sh
-grep -q 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service
+grep -q 'ExecStartPre=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service
 grep -q 'chart service loaded sync command' scripts/verify_pi.sh
 grep -q 'chart service loaded timeout' scripts/verify_pi.sh
 grep -q 'chart service loaded restart' scripts/verify_pi.sh
@@ -5225,7 +5225,9 @@ grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Install' src/noaa_navionics/report.py
-grep -q '".local/bin/noaa-navionics"' src/noaa_navionics/report.py
+grep -q '".local/share/noaa-navionics/venv/bin/noaa-navionics"' src/noaa_navionics/report.py
+grep -q 'private `%h/.local/share/noaa-navionics/venv/bin/noaa-navionics` command paths' README.md
+grep -q 'private `%h/.local/share/noaa-navionics/venv/bin/noaa-navionics` command paths' docs/sailboat-pi.md
 grep -q 'test_service_readiness_checks_fail_loaded_command_wrong_path' tests/test_downloader.py
 grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
@@ -5572,7 +5574,7 @@ grep -q 'cleanup_private_temp_file(tmp_path, label="status report temp", expecte
 ! grep -q 'tmp_path.unlink()' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service
-grep -q 'ExecStartPre=%h/.local/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service
+grep -q 'ExecStartPre=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics wait-network --host www.charts.noaa.gov --port 443 --seconds 300' systemd/noaa-navionics.service
 grep -q 'RandomizedDelaySec=30min' systemd/noaa-navionics.timer
 grep -q 'Type=oneshot' systemd/noaa-navionics.service
 grep -q 'Type=oneshot' systemd/noaa-navionics-preflight.service
