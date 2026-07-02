@@ -1599,6 +1599,7 @@ require_loaded_user_units() {
   require_loaded_user_unit_property noaa-navionics-track.service Type simple "track logger service"
   require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s "track logger service"
   require_loaded_user_unit_property noaa-navionics-preflight.service Type oneshot "boot readiness service"
+  require_loaded_user_unit_property noaa-navionics-preflight.service TimeoutStartUSec 15min "boot readiness service"
   require_loaded_user_unit_property noaa-navionics.service NoNewPrivileges yes "chart refresh service"
   require_loaded_user_unit_property noaa-navionics-track.service NoNewPrivileges yes "track logger service"
   require_loaded_user_unit_property noaa-navionics-preflight.service NoNewPrivileges yes "boot readiness service"

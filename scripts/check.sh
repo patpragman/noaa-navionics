@@ -107,7 +107,9 @@ grep -q 'noaa-navionics list-gps-devices' scripts/configure_gpsd.sh
 grep -q 'def _gps_seconds_from_launcher_env' src/noaa_navionics/cli.py
 grep -q 'test_status_report_rejects_symlinked_launcher_environment_for_gps_wait' tests/test_downloader.py
 grep -q 'test_status_report_rejects_unknown_launcher_environment_key_for_gps_wait' tests/test_downloader.py
-grep -q 'TimeoutStartSec=0' systemd/noaa-navionics-preflight.service
+grep -q 'TimeoutStartSec=15min' systemd/noaa-navionics-preflight.service
+grep -q 'uses a 15-minute systemd start timeout so a stuck readiness run fails and retries instead of hanging forever' README.md
+grep -q 'uses a 15-minute start timeout so stuck readiness runs fail and retry' docs/sailboat-pi.md
 grep -q 'chartplotter.log' scripts/start_chartplotter.sh
 grep -q 'chartplotter.launch.lock' scripts/start_chartplotter.sh
 grep -q 'umask 077' scripts/start_chartplotter.sh
@@ -4396,8 +4398,8 @@ grep -q 'test_check_gpsd_reports_last_connection_error_after_bounded_wait' tests
 grep -q 'last GPSD connection error' src/noaa_navionics/health.py
 grep -q 'GPSD readiness check retries initial connection refusals inside the configured GPS wait' README.md
 grep -q 'GPSD readiness check retries initial connection refusals inside the configured GPS wait' docs/sailboat-pi.md
-grep -q 'retries initial GPSD connection refusals inside that wait' README.md
-grep -q 'retries initial GPSD connection refusals inside that wait' docs/sailboat-pi.md
+grep -q 'retries initial GPSD connection refusals inside the configured GPS wait' README.md
+grep -q 'retries initial GPSD connection refusals inside the configured GPS wait' docs/sailboat-pi.md
 grep -q '"max_duration": max_duration' src/noaa_navionics/cli.py
 grep -q 'gpsd_idle_timeout' src/noaa_navionics/cli.py
 grep -q 'serial_idle_timeout' src/noaa_navionics/cli.py
@@ -5686,7 +5688,7 @@ grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
 grep -q 'loaded no new privileges' scripts/verify_pi.sh
 grep -q 'loaded private tmp' scripts/verify_pi.sh
 grep -q 'loaded protected system' scripts/verify_pi.sh
-grep -q 'TimeoutStartUSec.*infinity' src/noaa_navionics/report.py
+grep -q 'TimeoutStartUSec.*15min' src/noaa_navionics/report.py
 grep -q 'StartLimitIntervalSec=30min' systemd/noaa-navionics-preflight.service
 grep -q 'Wants=noaa-navionics-track.service' systemd/noaa-navionics-preflight.service
 grep -q 'After=noaa-navionics-track.service' systemd/noaa-navionics-preflight.service
@@ -5857,6 +5859,7 @@ grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service TimeoutStartUSec 15min "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service CapabilityBoundingSet "" "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service CapabilityBoundingSet "" "track logger service"' scripts/provision_sailboat_pi.sh

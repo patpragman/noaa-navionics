@@ -5190,8 +5190,8 @@ check "preflight service no systemd GPS environment" sh -c '! grep -Eq "^(Enviro
 check "preflight service loaded no systemd GPS environment" sh -c '"$1" --user show noaa-navionics-preflight.service -p Environment -p EnvironmentFiles 2>/dev/null | grep -Fxq Environment= && "$1" --user show noaa-navionics-preflight.service -p EnvironmentFiles 2>/dev/null | grep -Fxq EnvironmentFiles=' sh "$systemctl_cmd"
 check "preflight service status report" grep -Fq 'ExecStart=%h/.local/bin/noaa-navionics status-report --config %h/.config/noaa-navionics/config.ini --gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.env --output %h/.cache/noaa-navionics/status.json' "$preflight_service"
 check "preflight service loaded status report" loaded_unit_property_contains_all noaa-navionics-preflight.service ExecStart ".local/bin/noaa-navionics" "noaa-navionics status-report" "--config" "noaa-navionics/config.ini" "--gps-seconds-from-launcher-env" "noaa-navionics/launcher.env" "--output" "noaa-navionics/status.json"
-check "preflight service timeout" grep -Fxq 'TimeoutStartSec=0' "$preflight_service"
-check "preflight service loaded timeout" loaded_unit_property_equals noaa-navionics-preflight.service TimeoutStartUSec infinity
+check "preflight service timeout" grep -Fxq 'TimeoutStartSec=15min' "$preflight_service"
+check "preflight service loaded timeout" loaded_unit_property_equals noaa-navionics-preflight.service TimeoutStartUSec 15min
 check "preflight service restart" grep -Fxq 'Restart=on-failure' "$preflight_service"
 check "preflight service loaded restart" loaded_unit_property_equals noaa-navionics-preflight.service Restart on-failure
 check "preflight service restart delay" grep -Fxq 'RestartSec=30' "$preflight_service"
