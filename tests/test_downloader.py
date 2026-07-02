@@ -13708,6 +13708,16 @@ class StatusReportTests(unittest.TestCase):
         control_text_track_logger["noaa-navionics-track.service"]["enabled"] = "enabled\x00"
         weak_track_logger_settings = copy.deepcopy(valid_services)
         weak_track_logger_settings["noaa-navionics-track.service"]["properties"]["ProtectSystem"] = "no"
+        non_text_track_logger_settings = copy.deepcopy(valid_services)
+        non_text_track_logger_settings["noaa-navionics-track.service"]["properties"]["ProtectSystem"] = 123
+        control_text_track_logger_settings = copy.deepcopy(valid_services)
+        control_text_track_logger_settings["noaa-navionics-track.service"]["properties"]["ProtectSystem"] = "full\x00"
+        preflight_non_text_started = copy.deepcopy(valid_services)
+        preflight_non_text_started["noaa-navionics-preflight.service"]["properties"][
+            "ExecMainStartTimestampMonotonic"
+        ] = 123
+        preflight_error_control = copy.deepcopy(valid_services)
+        preflight_error_control["noaa-navionics-preflight.service"]["properties"]["error"] = "systemctl failed\x00"
         inactive_gpsd_socket = copy.deepcopy(valid_system_services)
         inactive_gpsd_socket["gpsd.socket"]["active"] = "inactive"
         non_text_gpsd_socket = copy.deepcopy(valid_system_services)
@@ -13741,6 +13751,26 @@ class StatusReportTests(unittest.TestCase):
                 {"services": weak_track_logger_settings},
                 "ProtectSystem=no expected full",
                 "Track Logger Settings",
+            ),
+            (
+                {"services": non_text_track_logger_settings},
+                "noaa-navionics-track.service ProtectSystem is not text",
+                "Track Logger Settings",
+            ),
+            (
+                {"services": control_text_track_logger_settings},
+                "noaa-navionics-track.service ProtectSystem contains control characters",
+                "Track Logger Settings",
+            ),
+            (
+                {"services": preflight_non_text_started},
+                "noaa-navionics-preflight.service ExecMainStartTimestampMonotonic is not text",
+                "Boot Readiness Run",
+            ),
+            (
+                {"services": preflight_error_control},
+                "noaa-navionics-preflight.service loaded properties error contains control characters",
+                "Boot Readiness Settings",
             ),
             (
                 {"system_services": inactive_gpsd_socket},

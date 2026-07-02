@@ -5398,16 +5398,24 @@ def _unit_properties_check(
     if not isinstance(properties, dict):
         return CheckResult(name, False, f"{unit} loaded properties missing from status report")
     error = properties.get("error")
-    if error:
+    if error is not None and not isinstance(error, str):
+        return CheckResult(name, False, f"{unit} loaded properties error is not text")
+    if isinstance(error, str) and _status_text_has_control_char(error):
+        return CheckResult(name, False, f"{unit} loaded properties error contains control characters")
+    if isinstance(error, str) and error:
         return CheckResult(name, False, f"{unit} loaded properties unavailable: {error}")
 
     failures = []
     for key, expected in (exact or {}).items():
-        actual = str(properties.get(key, ""))
+        actual, failure = _unit_property_text(properties, unit, key, name)
+        if failure:
+            return failure
         if actual != expected:
             failures.append(f"{key}={actual or '<missing>'} expected {expected}")
     for key, expected_value in (contains or {}).items():
-        actual = str(properties.get(key, ""))
+        actual, failure = _unit_property_text(properties, unit, key, name)
+        if failure:
+            return failure
         expected_values = [expected_value] if isinstance(expected_value, str) else expected_value
         for expected in expected_values:
             if expected not in actual:
@@ -5427,12 +5435,24 @@ def _preflight_execution_check(summary: dict[str, object], unit: str, name: str)
     if not isinstance(properties, dict):
         return CheckResult(name, False, f"{unit} loaded properties missing from status report")
     error = properties.get("error")
-    if error:
+    if error is not None and not isinstance(error, str):
+        return CheckResult(name, False, f"{unit} loaded properties error is not text")
+    if isinstance(error, str) and _status_text_has_control_char(error):
+        return CheckResult(name, False, f"{unit} loaded properties error contains control characters")
+    if isinstance(error, str) and error:
         return CheckResult(name, False, f"{unit} loaded properties unavailable: {error}")
-    active = str(state.get("active", "")).strip()
-    result = str(properties.get("Result", "")).strip()
-    status = str(properties.get("ExecMainStatus", "")).strip()
-    started = str(properties.get("ExecMainStartTimestampMonotonic", "")).strip()
+    active, failure = _unit_state_text(state, unit, "active", name)
+    if failure:
+        return failure
+    result, failure = _unit_property_text(properties, unit, "Result", name)
+    if failure:
+        return failure
+    status, failure = _unit_property_text(properties, unit, "ExecMainStatus", name)
+    if failure:
+        return failure
+    started, failure = _unit_property_text(properties, unit, "ExecMainStartTimestampMonotonic", name)
+    if failure:
+        return failure
     detail = f"{unit} active={active or '<missing>'} Result={result or '<missing>'} ExecMainStatus={status or '<missing>'}"
     if active in {"active", "activating"} and started.isdigit() and int(started) > 0:
         return CheckResult(name, True, detail + f" ExecMainStartTimestampMonotonic={started}")
@@ -5529,6 +5549,20 @@ def _unit_state_text(
     if _status_text_has_control_char(text):
         return "", CheckResult(name, False, f"{unit} {field} contains control characters")
     return text, None
+
+
+def _unit_property_text(
+    properties: dict[str, object],
+    unit: str,
+    key: str,
+    name: str,
+) -> tuple[str, Optional[CheckResult]]:
+    value = properties.get(key, "")
+    if not isinstance(value, str):
+        return "", CheckResult(name, False, f"{unit} {key} is not text")
+    if _status_text_has_control_char(value):
+        return "", CheckResult(name, False, f"{unit} {key} contains control characters")
+    return value, None
 
 
 def _unit_query_failed(value: str) -> bool:
