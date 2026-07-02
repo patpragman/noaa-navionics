@@ -10723,6 +10723,43 @@ if [[ "$support_bundle_code" -ne 2 ]]; then
 fi
 grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
 
+normalized_broad_home="$tmpdir/normalized-broad-home"
+mkdir -p "$normalized_broad_home"
+chmod 0755 "$normalized_broad_home"
+for normalized_output_wrapper in \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_recovery_bundle.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh \
+  scripts/post_trip_collect_pi.sh \
+  scripts/pre_trip_prepare_pi.sh; do
+  set +e
+  case "$normalized_output_wrapper" in
+    scripts/pre_trip_prepare_pi.sh)
+      HOME="$normalized_broad_home" "$normalized_output_wrapper" pi@example.invalid \
+        --device /dev/serial/by-id/mock-gps \
+        --output-dir "$normalized_broad_home//" >"$verify_output" 2>&1
+      ;;
+    *)
+      HOME="$normalized_broad_home" "$normalized_output_wrapper" pi@example.invalid \
+        "$normalized_broad_home//" >"$verify_output" 2>&1
+      ;;
+  esac
+  normalized_output_code=$?
+  set -e
+  if [[ "$normalized_output_code" -ne 2 ]]; then
+    cat "$verify_output" >&2
+    echo "expected $normalized_output_wrapper to reject normalized home output directories with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'Output directory must be a dedicated export directory, not a broad or system path' "$verify_output"
+  if [[ "$(stat -c '%a' "$normalized_broad_home")" != "755" ]]; then
+    echo "$normalized_output_wrapper changed the normalized broad home directory permissions" >&2
+    exit 1
+  fi
+done
+
 for control_output_wrapper in \
   scripts/collect_pi_support_bundle.sh \
   scripts/export_pi_opencpn_data.sh \

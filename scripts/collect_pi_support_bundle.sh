@@ -314,6 +314,7 @@ remote_python_command() {
 
 validate_output_dir_arg() {
   local value="$1"
+  value="$(strip_trailing_slashes "$value")"
   if [[ -z "$value" ]]; then
     echo "Output directory is required" >&2
     exit 2
