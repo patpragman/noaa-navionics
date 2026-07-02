@@ -10,6 +10,8 @@ Options:
   --allow-dirty       Allow deploying a dirty local worktree for deliberate test runs
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
   --skip-gps-time     Provision without configuring chrony GPS time
+  --skip-shutdown-check
+                     Skip the clean poweroff dry-run check during full dock acceptance
   --no-reboot         Do not reboot; run only pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot (1-900; default: 180)
   --gps-seconds N     Seconds to wait for a GPS fix during provisioning (1-600)
@@ -45,6 +47,7 @@ remote_dir="~/noaa-navionics"
 device=""
 skip_deploy=0
 no_reboot=0
+skip_shutdown_check=0
 timeout=180
 saw_timeout_option=0
 max_reboot_timeout=900
@@ -452,6 +455,10 @@ EOF
       provision_only_args+=("$1")
       shift
       ;;
+    --skip-shutdown-check)
+      skip_shutdown_check=1
+      shift
+      ;;
     --no-reboot)
       no_reboot=1
       shift
@@ -783,6 +790,11 @@ printf '\n[verify before reboot]\n'
 if [[ "$no_reboot" -eq 1 ]]; then
   printf '\nPre-reboot verification passed; reboot and chartplotter autostart proof were skipped.\n'
   exit 0
+fi
+
+if [[ "$skip_shutdown_check" -eq 0 ]]; then
+  printf '\n[shutdown dry run]\n'
+  "${repo_root}/scripts/shutdown_pi_safely.sh" "$target" --dry-run
 fi
 
 printf '\n[reboot]\n'

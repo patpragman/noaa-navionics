@@ -6962,10 +6962,14 @@ grep -q -- '--timeout requires reboot' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
 grep -q -- '--device is required for dock acceptance and pre-reboot smoke checks' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
+grep -q 'shutdown_pi_safely.sh" "$target" --dry-run' scripts/dock_test_pi.sh
+grep -q -- '--skip-shutdown-check' scripts/dock_test_pi.sh
 grep -q -- '--skip-autologin cannot be used for the dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' README.md
 grep -q 'preflights noninteractive sudo reboot access before deploying or provisioning' docs/sailboat-pi.md
+grep -q 'runs the clean shutdown helper in dry-run mode before rebooting' README.md
+grep -q 'runs the clean shutdown helper in dry-run mode before rebooting' docs/sailboat-pi.md
 grep -q 'validates the remote absolute `reboot` and `sudo` command paths' README.md
 grep -q 'validates the remote absolute `reboot` and `sudo` command paths' docs/sailboat-pi.md
 grep -q 'revalidates those same reboot and sudo command paths immediately before requesting reboot' README.md
@@ -8529,6 +8533,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' "$dock_output"
 grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=/dev/serial/by-id/mock-gps' "$dock_smoke_ssh_log"
 ! grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE= ' "$dock_smoke_ssh_log"
+! grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' "$dock_smoke_ssh_log"
 ! grep -q 'command -v reboot' "$dock_smoke_ssh_log"
 ! grep -q 'command -v sudo' "$dock_smoke_ssh_log"
 ! grep -q 'boot_id' "$dock_smoke_ssh_log"
@@ -8562,6 +8567,11 @@ case "$args" in
     ;;
   *"'/usr/bin/sudo' -n '/usr/sbin/reboot'"*)
     : >"$NOAA_NAVIONICS_FAKE_DOCK_STATE/reboot-requested"
+    exit 0
+    ;;
+  *"NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=1"*)
+    cat >/dev/null
+    printf 'Dry run passed; would stop noaa-navionics-track.service, sync filesystems, and run: /usr/bin/sudo -n /usr/bin/systemctl poweroff\n'
     exit 0
     ;;
   *"&& true"*)
@@ -8600,11 +8610,12 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --allow-dirty --device /dev/serial/by-id/mock-gps --timeout 5 >"$dock_output" 2>&1
 grep -q 'Dock test passed after reboot' "$dock_output"
 test "$(grep -c 'command -v python3' "$dock_revalidate_ssh_log")" -eq 2
-test "$(grep -c '/bin/sh -s -- /bin/bash bash' "$dock_revalidate_ssh_log")" -eq 2
+test "$(grep -c '/bin/sh -s -- /bin/bash bash' "$dock_revalidate_ssh_log")" -eq 3
 test "$(grep -c '/bin/sh -s -- /usr/bin/python3 python3' "$dock_revalidate_ssh_log")" -eq 2
 test "$(grep -c '/bin/sh -s -- /usr/sbin/reboot reboot' "$dock_revalidate_ssh_log")" -eq 2
 test "$(grep -c '/bin/sh -s -- /usr/bin/sudo sudo' "$dock_revalidate_ssh_log")" -eq 2
 grep -q "'/usr/bin/sudo' -n '/usr/sbin/reboot'" "$dock_revalidate_ssh_log"
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=1' "$dock_revalidate_ssh_log"
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID=22222222-2222-2222-2222-222222222222' "$dock_revalidate_ssh_log"
 
 dock_fake_ssh_bin="$tmpdir/dock-fake-ssh-bin"
@@ -8744,7 +8755,7 @@ NOAA_NAVIONICS_FAKE_SUDO_PATH=/usr/bin/sudo \
 NOAA_NAVIONICS_FAKE_PYTHON_PATH=/home/pi/bin/python3 \
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$dock_fake_ssh_bin:$PATH" \
-  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --allow-dirty --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --skip-shutdown-check --allow-dirty --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
 dock_code=$?
 set -e
 if [[ "$dock_code" -ne 1 ]]; then
