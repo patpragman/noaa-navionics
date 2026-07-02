@@ -14577,6 +14577,25 @@ class StatusReportTests(unittest.TestCase):
             set(report_module.GPSD_SERVICE_CHECKS),
         )
 
+    def test_trip_snapshot_validators_reject_non_string_text(self):
+        sources = {
+            "pre_trip": shell_function_python_heredoc(
+                Path("scripts/pre_trip_prepare_pi.sh").read_text(encoding="utf-8"),
+                "save_pre_departure_status_snapshot",
+            ),
+            "recovery": shell_python_heredoc(Path("scripts/verify_pi_recovery_exports.sh").read_text(encoding="utf-8")),
+            "post_trip": shell_function_python_heredoc(
+                Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8"),
+                "verify_status_snapshot_json",
+            ),
+        }
+
+        for name, source in sources.items():
+            with self.subTest(validator=name):
+                self.assertIn("def snapshot_text", source)
+                self.assertIn("is not a string", source)
+                self.assertIn("contains control characters", source)
+
     def test_post_trip_checksum_helpers_use_descriptor_validated_directory(self):
         script = Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8")
         sources = {

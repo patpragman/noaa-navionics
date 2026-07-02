@@ -947,6 +947,8 @@ def positive_status_int(value: object):
 
 
 def snapshot_text(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        fail(f"pre-departure status snapshot JSON {label} is not a string")
     text = str(value)
     if any(ord(char) < 32 or ord(char) == 127 for char in text):
         fail(f"pre-departure status snapshot JSON {label} contains control characters")
