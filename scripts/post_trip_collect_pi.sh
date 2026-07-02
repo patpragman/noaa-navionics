@@ -1258,7 +1258,7 @@ def validate_snapshot_gpsd_rows(
     config: dict[str, object],
     path: Path,
 ) -> None:
-    expected_device = str(config.get("gps_device", "")).strip()
+    expected_device = snapshot_text(config.get("gps_device", ""), "config gps_device", path)
     if not expected_device:
         fail(f"status snapshot JSON missing config gps_device: {path}")
     expected_host = normalize_snapshot_gpsd_host(snapshot_text(config.get("gpsd_host", ""), "config gpsd_host", path))
