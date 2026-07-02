@@ -5360,6 +5360,10 @@ grep -q 'Stop Watch requires a second press within 8 seconds before it cancels r
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' README.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' docs/sailboat-pi.md
+grep -q 'Anchor watch: ANCHOR ALARM: GPS check failed' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_active_anchor_watch_error_becomes_audible_alarm' tests/test_downloader.py
+grep -q 'treats active anchor-watch GPS/check failures as visible audible alarms' README.md
+grep -q 'treats active anchor-watch GPS/check failures as visible audible alarms' docs/sailboat-pi.md
 grep -q 'Mark, MOB, and Anchor Check reject timezone-less, stale, or future-dated GPS fixes and broken, fake, or non-device stable serial paths' README.md
 grep -q 'Mark, MOB, and Anchor Check reject timezone-less, stale, or future-dated GPS fixes and broken, fake, or non-device stable serial paths' docs/sailboat-pi.md
 grep -q 'Use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' README.md
