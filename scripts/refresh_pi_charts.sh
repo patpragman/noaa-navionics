@@ -140,6 +140,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "$gps_seconds" && "$status" -ne 1 ]]; then
+  echo "--gps-seconds requires --status" >&2
+  exit 2
+fi
+
 validate_ssh_target() {
   local value="$1"
   local user_part
@@ -374,6 +379,10 @@ validate_refresh_controls() {
   require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
   require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay" "$max_retry_delay"
   if [[ -n "$gps_seconds" ]]; then
+    if [[ "$status" != "1" ]]; then
+      echo "NOAA_NAVIONICS_REFRESH_GPS_SECONDS requires NOAA_NAVIONICS_REFRESH_STATUS=1" >&2
+      exit 1
+    fi
     require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
     require_integer_at_most "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"
   fi

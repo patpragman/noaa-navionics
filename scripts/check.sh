@@ -10115,6 +10115,17 @@ fi
 grep -q -- '--gps-seconds must be a positive integer' "$verify_output"
 
 set +e
+scripts/refresh_pi_charts.sh pi@example.invalid --gps-seconds 13 >"$verify_output" 2>&1
+refresh_code=$?
+set -e
+if [[ "$refresh_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected refresh_pi_charts.sh to reject --gps-seconds without --status with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--gps-seconds requires --status' "$verify_output"
+
+set +e
 scripts/refresh_pi_charts.sh pi@example.invalid --status --gps-seconds 601 >"$verify_output" 2>&1
 refresh_code=$?
 set -e
@@ -10166,6 +10177,7 @@ grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"' "$re
 grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries" "$max_retries"' "$refresh_fake_ssh_stdin"
 grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay" "$max_retry_delay"' "$refresh_fake_ssh_stdin"
 grep -q 'require_integer_at_most "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' "$refresh_fake_ssh_stdin"
+grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS requires NOAA_NAVIONICS_REFRESH_STATUS=1' "$refresh_fake_ssh_stdin"
 grep -q 'echo "$name must be 0 or 1" >&2' "$refresh_fake_ssh_stdin"
 grep -q 'echo "$name must be at most ${maximum}" >&2' "$refresh_fake_ssh_stdin"
 grep -q 'validate_refresh_controls' "$refresh_fake_ssh_stdin"
