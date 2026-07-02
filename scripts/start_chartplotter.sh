@@ -732,6 +732,12 @@ load_launcher_settings() {
   local value
   local start_on_failed_text
   local seen_gps_seconds=0
+  local seen_warning_seconds=0
+  local seen_readiness_attempts=0
+  local seen_readiness_retry_delay=0
+  local seen_start_on_failed=0
+  local seen_opencpn_restarts=0
+  local seen_opencpn_restart_delay=0
   if [[ -r "$launcher_env" ]]; then
     if ! launcher_env_text="$(read_trusted_launcher_env)"; then
       return 1
@@ -759,21 +765,27 @@ load_launcher_settings() {
           ;;
         NOAA_NAVIONICS_WARNING_SECONDS)
           warning_seconds="$value"
+          seen_warning_seconds=1
           ;;
         NOAA_NAVIONICS_READINESS_ATTEMPTS)
           readiness_attempts="$value"
+          seen_readiness_attempts=1
           ;;
         NOAA_NAVIONICS_READINESS_RETRY_DELAY)
           readiness_retry_delay="$value"
+          seen_readiness_retry_delay=1
           ;;
         NOAA_NAVIONICS_START_ON_FAILED_READINESS)
           start_on_failed_text="$value"
+          seen_start_on_failed=1
           ;;
         NOAA_NAVIONICS_OPENCPN_RESTARTS)
           opencpn_restarts="$value"
+          seen_opencpn_restarts=1
           ;;
         NOAA_NAVIONICS_OPENCPN_RESTART_DELAY)
           opencpn_restart_delay="$value"
+          seen_opencpn_restart_delay=1
           ;;
         *)
           echo "Unknown launcher environment key in $launcher_env: $key" >&2
@@ -785,6 +797,30 @@ load_launcher_settings() {
   start_on_failed_text="${start_on_failed_text:-no}"
   if [[ "$seen_gps_seconds" -ne 1 ]]; then
     echo "Missing NOAA_NAVIONICS_GPS_SECONDS in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
+  if [[ "$seen_warning_seconds" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_WARNING_SECONDS in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
+  if [[ "$seen_readiness_attempts" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_READINESS_ATTEMPTS in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
+  if [[ "$seen_readiness_retry_delay" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_READINESS_RETRY_DELAY in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
+  if [[ "$seen_start_on_failed" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_START_ON_FAILED_READINESS in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
+  if [[ "$seen_opencpn_restarts" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_OPENCPN_RESTARTS in $launcher_env; refusing chartplotter startup." >&2
+    return 1
+  fi
+  if [[ "$seen_opencpn_restart_delay" -ne 1 ]]; then
+    echo "Missing NOAA_NAVIONICS_OPENCPN_RESTART_DELAY in $launcher_env; refusing chartplotter startup." >&2
     return 1
   fi
   if [[ ! "$gps_seconds" =~ ^[1-9][0-9]*$ ]]; then

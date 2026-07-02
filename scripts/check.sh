@@ -247,6 +247,12 @@ grep -q 'NOAA Navionics launcher environment directory is owned by uid' scripts/
 grep -q 'NOAA Navionics launcher environment directory has permissions' scripts/start_chartplotter.sh
 grep -q 'NOAA Navionics launcher environment has permissions' scripts/start_chartplotter.sh
 grep -q 'Missing NOAA_NAVIONICS_GPS_SECONDS' scripts/start_chartplotter.sh
+grep -q 'Missing NOAA_NAVIONICS_WARNING_SECONDS' scripts/start_chartplotter.sh
+grep -q 'Missing NOAA_NAVIONICS_READINESS_ATTEMPTS' scripts/start_chartplotter.sh
+grep -q 'Missing NOAA_NAVIONICS_READINESS_RETRY_DELAY' scripts/start_chartplotter.sh
+grep -q 'Missing NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/start_chartplotter.sh
+grep -q 'Missing NOAA_NAVIONICS_OPENCPN_RESTARTS' scripts/start_chartplotter.sh
+grep -q 'Missing NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/start_chartplotter.sh
 grep -q 'Invalid NOAA_NAVIONICS_GPS_SECONDS=.*expected positive integer' scripts/start_chartplotter.sh
 grep -q 'max_gps_seconds=600' scripts/start_chartplotter.sh
 grep -q 'max_warning_seconds=600' scripts/start_chartplotter.sh
@@ -5324,6 +5330,8 @@ grep -q 'Status reports parse launcher settings only after checking the launcher
 grep -q 'records launcher settings in status reports only after checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' README.md
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' docs/sailboat-pi.md
+grep -q 'requires explicit `NOAA_NAVIONICS_GPS_SECONDS`, `NOAA_NAVIONICS_WARNING_SECONDS`, `NOAA_NAVIONICS_READINESS_ATTEMPTS`, `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, `NOAA_NAVIONICS_OPENCPN_RESTARTS`, `NOAA_NAVIONICS_OPENCPN_RESTART_DELAY`, and `NOAA_NAVIONICS_START_ON_FAILED_READINESS` values' README.md
+grep -q 'requires explicit `NOAA_NAVIONICS_GPS_SECONDS`, `NOAA_NAVIONICS_WARNING_SECONDS`, `NOAA_NAVIONICS_READINESS_ATTEMPTS`, `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, `NOAA_NAVIONICS_OPENCPN_RESTARTS`, `NOAA_NAVIONICS_OPENCPN_RESTART_DELAY`, and `NOAA_NAVIONICS_START_ON_FAILED_READINESS` values' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
@@ -5938,7 +5946,7 @@ write_test_launcher_env() {
   local home_dir="$1"
   mkdir -p "$home_dir/.config/noaa-navionics"
   chmod 0700 "$home_dir/.config/noaa-navionics"
-  printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$home_dir/.config/noaa-navionics/launcher.env"
+  printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$home_dir/.config/noaa-navionics/launcher.env"
   chmod 0600 "$home_dir/.config/noaa-navionics/launcher.env"
 }
 
@@ -15935,8 +15943,7 @@ launcher_public_cache_parent_home="$tmpdir/launcher-public-cache-parent-home"
 launcher_public_cache_parent_output="$tmpdir/launcher-public-cache-parent.out"
 mkdir -p "$launcher_public_cache_parent_home/.local/bin" "$launcher_public_cache_parent_home/.config/noaa-navionics" "$launcher_public_cache_parent_home/.cache"
 chmod 0700 "$launcher_public_cache_parent_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$launcher_public_cache_parent_home/.config/noaa-navionics/launcher.env"
-chmod 0600 "$launcher_public_cache_parent_home/.config/noaa-navionics/launcher.env"
+write_test_launcher_env "$launcher_public_cache_parent_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_public_cache_parent_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
@@ -15951,8 +15958,7 @@ launcher_public_cache_dir_home="$tmpdir/launcher-public-cache-dir-home"
 launcher_public_cache_dir_output="$tmpdir/launcher-public-cache-dir.out"
 mkdir -p "$launcher_public_cache_dir_home/.local/bin" "$launcher_public_cache_dir_home/.config/noaa-navionics" "$launcher_public_cache_dir_home/.cache/noaa-navionics"
 chmod 0700 "$launcher_public_cache_dir_home/.config/noaa-navionics" "$launcher_public_cache_dir_home/.cache"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\n' >"$launcher_public_cache_dir_home/.config/noaa-navionics/launcher.env"
-chmod 0600 "$launcher_public_cache_dir_home/.config/noaa-navionics/launcher.env"
+write_test_launcher_env "$launcher_public_cache_dir_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_public_cache_dir_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_public_cache_dir_home/.local/bin/noaa-navionics"
 chmod 0755 "$launcher_public_cache_dir_home/.cache/noaa-navionics"
@@ -16001,7 +16007,7 @@ test -d "$launcher_nonregular_log_home/.cache/noaa-navionics/chartplotter.log"
 launcher_home="$tmpdir/launcher-home"
 mkdir -p "$launcher_home/.local/bin" "$launcher_home/.cache/noaa-navionics" "$launcher_home/.config/noaa-navionics"
 chmod 0700 "$launcher_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=17\n' >"$launcher_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=17\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nprintf "noaa-navionics %%s\\n" "$*" >>"$HOME/.cache/noaa-navionics/noaa.log"\nexit 0\n' >"$launcher_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\necho fake opencpn\n' >"$tmpdir/opencpn"
@@ -16212,7 +16218,7 @@ test ! -e "$launcher_public_env_dir_home/.cache/noaa-navionics/opencpn-started"
 launcher_unknown_env_home="$tmpdir/launcher-unknown-env-home"
 mkdir -p "$launcher_unknown_env_home/.local/bin" "$launcher_unknown_env_home/.cache/noaa-navionics" "$launcher_unknown_env_home/.config/noaa-navionics"
 chmod 0700 "$launcher_unknown_env_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=17\nNOAA_NAVIONICS_EXTRA=1\n' >"$launcher_unknown_env_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=17\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\nNOAA_NAVIONICS_EXTRA=1\n' >"$launcher_unknown_env_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_unknown_env_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_unknown_env_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_unknown_env_home/.local/bin/noaa-navionics"
@@ -16268,10 +16274,29 @@ fi
 grep -q 'Missing NOAA_NAVIONICS_GPS_SECONDS' "$launcher_missing_gps_seconds_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_missing_gps_seconds_home/.cache/noaa-navionics/chartplotter.log"
 
+launcher_missing_fail_closed_home="$tmpdir/launcher-missing-fail-closed-home"
+mkdir -p "$launcher_missing_fail_closed_home/.local/bin" "$launcher_missing_fail_closed_home/.cache/noaa-navionics" "$launcher_missing_fail_closed_home/.config/noaa-navionics"
+chmod 0700 "$launcher_missing_fail_closed_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_missing_fail_closed_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_missing_fail_closed_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_missing_fail_closed_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_missing_fail_closed_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_missing_fail_closed_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_missing_fail_closed_code=$?
+set -e
+if [[ "$launcher_missing_fail_closed_code" -eq 0 ]]; then
+  cat "$launcher_missing_fail_closed_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject a launcher environment missing fail-closed policy" >&2
+  exit 1
+fi
+grep -q 'Missing NOAA_NAVIONICS_START_ON_FAILED_READINESS' "$launcher_missing_fail_closed_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_missing_fail_closed_home/.cache/noaa-navionics/chartplotter.log"
+
 launcher_invalid_timing_home="$tmpdir/launcher-invalid-timing-home"
 mkdir -p "$launcher_invalid_timing_home/.local/bin" "$launcher_invalid_timing_home/.cache/noaa-navionics" "$launcher_invalid_timing_home/.config/noaa-navionics"
 chmod 0700 "$launcher_invalid_timing_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=soon\n' >"$launcher_invalid_timing_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=soon\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_invalid_timing_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_invalid_timing_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_invalid_timing_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_invalid_timing_home/.local/bin/noaa-navionics"
@@ -16290,7 +16315,7 @@ grep -q 'Invalid NOAA_NAVIONICS_GPS_SECONDS=soon; expected positive integer' "$l
 launcher_oversized_gps_home="$tmpdir/launcher-oversized-gps-home"
 mkdir -p "$launcher_oversized_gps_home/.local/bin" "$launcher_oversized_gps_home/.cache/noaa-navionics" "$launcher_oversized_gps_home/.config/noaa-navionics"
 chmod 0700 "$launcher_oversized_gps_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=601\n' >"$launcher_oversized_gps_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=601\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_oversized_gps_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_oversized_gps_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_oversized_gps_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_oversized_gps_home/.local/bin/noaa-navionics"
@@ -16309,7 +16334,7 @@ grep -q 'Invalid NOAA_NAVIONICS_GPS_SECONDS=601; expected at most 600' "$launche
 launcher_oversized_policy_home="$tmpdir/launcher-oversized-policy-home"
 mkdir -p "$launcher_oversized_policy_home/.local/bin" "$launcher_oversized_policy_home/.cache/noaa-navionics" "$launcher_oversized_policy_home/.config/noaa-navionics"
 chmod 0700 "$launcher_oversized_policy_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_OPENCPN_RESTARTS=21\n' >"$launcher_oversized_policy_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=21\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_oversized_policy_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_oversized_policy_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_oversized_policy_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_oversized_policy_home/.local/bin/noaa-navionics"
@@ -16328,7 +16353,7 @@ grep -q 'Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=21; expected at most 20' "$laun
 launcher_preflight_fail_home="$tmpdir/launcher-preflight-fail-home"
 mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics" "$launcher_preflight_fail_home/.config/noaa-navionics"
 chmod 0700 "$launcher_preflight_fail_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=1\n' >"$launcher_preflight_fail_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=1\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_preflight_fail_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_preflight_fail_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_preflight_fail_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_preflight_fail_home/.local/bin/noaa-navionics"
@@ -16349,7 +16374,7 @@ grep -q 'Not starting OpenCPN automatically because readiness failed' "$launcher
 launcher_preflight_override_home="$tmpdir/launcher-preflight-override-home"
 mkdir -p "$launcher_preflight_override_home/.local/bin" "$launcher_preflight_override_home/.cache/noaa-navionics" "$launcher_preflight_override_home/.config/noaa-navionics"
 chmod 0700 "$launcher_preflight_override_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=1\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\n' >"$launcher_preflight_override_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=1\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=yes\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_preflight_override_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_preflight_override_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_preflight_override_home/.local/bin/noaa-navionics"
 chmod +x "$launcher_preflight_override_home/.local/bin/noaa-navionics"
@@ -16361,7 +16386,7 @@ grep -q 'OpenCPN exited with status 0' "$launcher_preflight_override_home/.cache
 launcher_retry_home="$tmpdir/launcher-retry-home"
 mkdir -p "$launcher_retry_home/.local/bin" "$launcher_retry_home/.cache/noaa-navionics" "$launcher_retry_home/.config/noaa-navionics"
 chmod 0700 "$launcher_retry_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_READINESS_ATTEMPTS=2\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=0\n' >"$launcher_retry_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=2\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=0\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_retry_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_retry_home/.config/noaa-navionics/launcher.env"
 cat >"$launcher_retry_home/.local/bin/noaa-navionics" <<'EOF'
 #!/usr/bin/env bash
@@ -16388,7 +16413,7 @@ test "$(cat "$launcher_retry_home/.cache/noaa-navionics/readiness-count")" -eq 2
 launcher_opencpn_restart_home="$tmpdir/launcher-opencpn-restart-home"
 mkdir -p "$launcher_opencpn_restart_home/.local/bin" "$launcher_opencpn_restart_home/.cache/noaa-navionics" "$launcher_opencpn_restart_home/.config/noaa-navionics"
 chmod 0700 "$launcher_opencpn_restart_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_OPENCPN_RESTARTS=2\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=2\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_opencpn_restart_home/.local/bin/noaa-navionics"
 cat >"$tmpdir/opencpn" <<'EOF'
@@ -16417,7 +16442,7 @@ launcher_mutated_opencpn_home="$tmpdir/launcher-mutated-opencpn-home"
 launcher_mutated_opencpn_bin="$tmpdir/launcher-mutated-opencpn-bin"
 mkdir -p "$launcher_mutated_opencpn_home/.local/bin" "$launcher_mutated_opencpn_home/.cache/noaa-navionics" "$launcher_mutated_opencpn_bin"
 write_test_launcher_env "$launcher_mutated_opencpn_home"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_OPENCPN_RESTARTS=1\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_mutated_opencpn_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=1\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_mutated_opencpn_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_mutated_opencpn_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_mutated_opencpn_home/.local/bin/noaa-navionics"
 cat >"$launcher_mutated_opencpn_bin/opencpn" <<'EOF'
