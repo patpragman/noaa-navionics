@@ -31,7 +31,7 @@ Options:
   --skip-pre-departure
                      Skip the live strict pre-departure verification
 
-Options for skipped steps are rejected so refresh, recovery, and
+Options for skipped steps are rejected so refresh, recovery, GPS-device, and
 pre-departure controls cannot be mistaken for checks that still ran.
 This wrapper does not install, enable, reboot, shut down, or download charts
 on the local computer. Chart downloads, if not skipped, run on the Raspberry Pi.
@@ -51,6 +51,7 @@ fi
 target="$1"
 shift
 device=""
+device_set=0
 output_dir="pi-recovery-exports"
 output_dir_set=0
 track_days=30
@@ -1910,6 +1911,7 @@ while [[ $# -gt 0 ]]; do
       fi
       validate_gps_device_path_arg "${2:-}"
       device="${2:-}"
+      device_set=1
       shift 2
       ;;
     --output-dir)
@@ -2052,6 +2054,11 @@ fi
 
 if [[ "$skip_refresh" -eq 1 && "$skip_pre_departure" -eq 1 && "$gps_seconds_set" -eq 1 ]]; then
   echo "--gps-seconds requires a status or pre-departure check; remove --skip-refresh/--skip-pre-departure or omit --gps-seconds" >&2
+  exit 2
+fi
+
+if [[ "$skip_pre_departure" -eq 1 && "$device_set" -eq 1 ]]; then
+  echo "--device requires the pre-departure verification step; remove --skip-pre-departure or omit --device" >&2
   exit 2
 fi
 

@@ -787,6 +787,8 @@ grep -q 'After a successful pre-departure check with recovery export enabled, it
 grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'Options for skipped pre-trip steps are rejected' README.md
 grep -q 'Options for skipped pre-trip steps are rejected' docs/sailboat-pi.md
+grep -q 'refresh, recovery, GPS-device, and pre-departure controls' README.md
+grep -q 'refresh, recovery, GPS-device, and pre-departure controls' docs/sailboat-pi.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' README.md
 grep -q 'normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`, saves a local private `0600` JSON status snapshot through an exclusive no-follow file create' docs/sailboat-pi.md
 grep -q 'Options for skipped post-trip steps are rejected' README.md
@@ -2023,6 +2025,8 @@ grep -q 'refresh_pi_charts.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'check_pi_status.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)' scripts/pre_trip_prepare_pi.sh
+grep -q 'device_set=0' scripts/pre_trip_prepare_pi.sh
+grep -q -- '--device requires the pre-departure verification step' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_pi.sh
 grep -q 'status_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_pi.sh
 grep -q 'status_args+=(--json)' scripts/pre_trip_prepare_pi.sh
@@ -7870,6 +7874,21 @@ if [[ -e "$pre_trip_bad_output" ]]; then
 fi
 
 set +e
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --skip-pre-departure --skip-recovery >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject --device with --skip-pre-departure with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device requires the pre-departure verification step' "$verify_output"
+if [[ -e "$pre_trip_bad_output" ]]; then
+  echo "expected pre_trip_prepare_pi.sh not to prepare output before rejecting no-op device" >&2
+  exit 1
+fi
+
+set +e
 scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 5 --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
 pre_trip_code=$?
 set -e
@@ -7922,7 +7941,7 @@ pre_trip_symlink_parent="$tmpdir/pre-trip-symlink-parent"
 mkdir -p "$pre_trip_real_parent"
 ln -s "$pre_trip_real_parent" "$pre_trip_symlink_parent"
 set +e
-scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --output-dir "$pre_trip_symlink_parent/output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --output-dir "$pre_trip_symlink_parent/output" --skip-refresh --skip-pre-departure >"$verify_output" 2>&1
 pre_trip_code=$?
 set -e
 if [[ "$pre_trip_code" -ne 2 ]]; then
