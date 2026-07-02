@@ -3605,6 +3605,92 @@ check_root_executable_file_integrity() {
   fi
 }
 
+path_in_trusted_system_dir() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+check_root_owner_and_mode_following_links() {
+  local item_kind="$1"
+  local item_path="$2"
+  local label="$3"
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+
+  stat_output="$(stat -Lc '%u %a' -- "$item_path" 2>/dev/null)" || {
+    printf 'could not inspect %s %s: %s\n' "$label" "$item_kind" "$item_path" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  if [[ "$owner_uid" != "0" ]]; then
+    printf '%s %s is owned by uid %s, expected root: %s\n' "$label" "$item_kind" "$owner_uid" "$item_path" >&2
+    return 1
+  fi
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    printf '%s %s has permissions %s, expected no group/other write bits: %s\n' "$label" "$item_kind" "$mode_text" "$item_path" >&2
+    return 1
+  fi
+}
+
+check_root_directory_chain_following_links() {
+  local path="$1"
+  local label="$2"
+  local directory
+
+  directory="$(dirname -- "$path")"
+  while :; do
+    check_root_owner_and_mode_following_links directory "$directory" "$label" || return 1
+    [[ "$directory" == "/" ]] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+check_root_trusted_system_executable_path_integrity() {
+  local path="$1"
+  local label="$2"
+  local resolved_path
+
+  case "$path" in
+    /*)
+      ;;
+    *)
+      printf '%s path is not absolute: %s\n' "$label" "$path" >&2
+      return 1
+      ;;
+  esac
+  if ! path_in_trusted_system_dir "$path"; then
+    printf '%s is not in a trusted system directory: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if ! resolved_path="$(readlink -f -- "$path" 2>/dev/null)" || [[ -z "$resolved_path" ]]; then
+    printf 'could not resolve %s path: %s\n' "$label" "$path" >&2
+    return 1
+  fi
+  if ! path_in_trusted_system_dir "$resolved_path"; then
+    printf '%s resolves outside trusted system directories: %s -> %s\n' "$label" "$path" "$resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -f "$resolved_path" ]]; then
+    printf '%s is not a regular file after resolution: %s -> %s\n' "$label" "$path" "$resolved_path" >&2
+    return 1
+  fi
+  if [[ ! -x "$resolved_path" ]]; then
+    printf '%s is not executable after resolution: %s\n' "$label" "$resolved_path" >&2
+    return 1
+  fi
+  check_root_directory_chain_following_links "$path" "$label" || return 1
+  check_root_directory_chain_following_links "$resolved_path" "$label" || return 1
+  check_root_owner_and_mode_following_links file "$resolved_path" "$label"
+}
+
 check_root_command_integrity() {
   local command_name="$1"
   local label="$2"
@@ -5641,6 +5727,7 @@ check "OpenCPN command" command -v opencpn
 check "OpenCPN command integrity" check_opencpn_command_integrity
 check "display power command integrity" check_display_power_command_integrity
 check "Tkinter readiness warning support" check_tkinter_available
+check "desktop launcher shell integrity" check_root_trusted_system_executable_path_integrity /bin/sh "desktop launcher shell"
 check "process lookup command integrity" check_root_command_integrity pgrep "process lookup command"
 check "sleep command integrity" check_root_command_integrity sleep "sleep command"
 check "Pi power command integrity" check_root_command_integrity vcgencmd "Pi power command"

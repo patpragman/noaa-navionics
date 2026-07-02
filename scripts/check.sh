@@ -3409,6 +3409,10 @@ grep -q 'does not match live unit file' scripts/verify_pi.sh
 grep -q 'GPSD device matches config' scripts/verify_pi.sh
 grep -q 'volatile; use /dev/serial/by-id/' scripts/verify_pi.sh
 grep -q 'check_root_command_integrity()' scripts/verify_pi.sh
+grep -q 'check_root_trusted_system_executable_path_integrity()' scripts/verify_pi.sh
+grep -q 'path_in_trusted_system_dir()' scripts/verify_pi.sh
+grep -q 'check_root_directory_chain_following_links "$path" "$label"' scripts/verify_pi.sh
+grep -q 'check_root_owner_and_mode_following_links file "$resolved_path" "$label"' scripts/verify_pi.sh
 grep -q 'root_command_path()' scripts/verify_pi.sh
 grep -q 'systemctl_command()' scripts/verify_pi.sh
 grep -q 'loginctl_command()' scripts/verify_pi.sh
@@ -3419,6 +3423,7 @@ grep -q 'check_root_executable_file_integrity "$path" "$label"' scripts/verify_p
 grep -q 'check "Python command integrity" python3_command' scripts/verify_pi.sh
 grep -q 'python3_cmd="$(python3_command)" || python3_cmd="/bin/false"' scripts/verify_pi.sh
 grep -q 'check "display power command integrity" check_display_power_command_integrity' scripts/verify_pi.sh
+grep -q 'check "desktop launcher shell integrity" check_root_trusted_system_executable_path_integrity /bin/sh "desktop launcher shell"' scripts/verify_pi.sh
 ! grep -q 'check "display power command" command -v xset' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" xset q' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" xset q' scripts/verify_pi.sh
@@ -3697,6 +3702,8 @@ grep -q 'Terminal=true' templates/noaa-navionics-mob.desktop
 ! grep -R '^Exec=sh ' templates
 grep -q 'Desktop launcher templates pin `/bin/sh` in `Exec=` commands' README.md
 grep -q 'Desktop launcher templates pin `/bin/sh` in `Exec=` commands' docs/sailboat-pi.md
+grep -q 'Pi verification validates `/bin/sh` as a trusted root-owned system executable path' README.md
+grep -q 'Pi verification validates `/bin/sh` as a trusted root-owned system executable path' docs/sailboat-pi.md
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
 grep -q 'autologin-session=' scripts/configure_desktop_autologin.sh
 grep -q 'choose_xsession' scripts/configure_desktop_autologin.sh
