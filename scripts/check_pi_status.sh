@@ -35,6 +35,7 @@ json=0
 ssh_cmd=""
 local_python_cmd=""
 max_status_gps_seconds=600
+max_status_json_bytes=$((1024 * 1024))
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -764,6 +765,226 @@ validate_track_log_service_row(report["track_log"], service_rows)
 '
 }
 
+create_private_status_json_capture() {
+  local status
+  set +e
+  "$local_python_cmd" - <<'PY'
+from __future__ import annotations
+
+import os
+import stat
+import sys
+import tempfile
+
+try:
+    fd, path = tempfile.mkstemp(prefix=".noaa-navionics-status-json-")
+except OSError as exc:
+    print(f"Could not create private status JSON capture: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+try:
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"status JSON capture must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"status JSON capture is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"status JSON capture has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+finally:
+    os.close(fd)
+print(path)
+PY
+  status=$?
+  set -e
+  if [[ "$status" -eq 124 ]]; then
+    exit 2
+  fi
+  return "$status"
+}
+
+cleanup_private_status_json_capture() {
+  local path="$1"
+  [[ -n "$path" ]] || return 0
+  "$local_python_cmd" - "$path" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+except FileNotFoundError:
+    raise SystemExit(0)
+except OSError as exc:
+    print(f"Could not inspect status JSON capture for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+
+if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) != 0o600:
+    print(f"status JSON capture is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    print(f"Could not open status JSON capture directory for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+try:
+    try:
+        fd = os.open(path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    except FileNotFoundError:
+        raise SystemExit(0)
+    try:
+        opened = os.fstat(fd)
+    finally:
+        os.close(fd)
+    if not os.path.samestat(before, opened):
+        print(f"status JSON capture changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
+    os.unlink(path.name, dir_fd=dir_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
+capture_remote_status_json() {
+  local path="$1"
+  local capture_code
+  local -a pipe_statuses
+  local remote_code
+  set +e
+  run_remote_status | "$local_python_cmd" -c '
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+max_bytes = int(sys.argv[2])
+flags = os.O_WRONLY | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+    fd = os.open(path, flags)
+except OSError as exc:
+    print(f"Could not open status JSON capture for writing {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        print(f"status JSON capture changed while opening it: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"status JSON capture must be a regular file: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"status JSON capture is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"status JSON capture has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "wb") as capture:
+        fd = -1
+        written = 0
+        while True:
+            chunk = sys.stdin.buffer.read(65536)
+            if not chunk:
+                break
+            next_written = written + len(chunk)
+            if next_written > max_bytes:
+                print(
+                    f"status JSON output exceeds size limit ({next_written} > {max_bytes} bytes)",
+                    file=sys.stderr,
+                )
+                raise SystemExit(124)
+            capture.write(chunk)
+            written = next_written
+        capture.flush()
+        os.fsync(capture.fileno())
+except OSError as exc:
+    print(f"Could not write status JSON capture {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+finally:
+    if fd >= 0:
+        os.close(fd)
+' "$path" "$max_status_json_bytes"
+  pipe_statuses=("${PIPESTATUS[@]}")
+  remote_code="${pipe_statuses[0]}"
+  capture_code="${pipe_statuses[1]}"
+  if [[ "$capture_code" -eq 124 ]]; then
+    return 124
+  fi
+  if [[ "$capture_code" -ne 0 ]]; then
+    return 124
+  fi
+  return "$remote_code"
+}
+
+read_private_status_json_capture() {
+  local path="$1"
+  "$local_python_cmd" - "$path" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    before = os.stat(path, follow_symlinks=False)
+    fd = os.open(path, flags)
+except OSError as exc:
+    print(f"Could not open status JSON capture for reading {path}: {exc}", file=sys.stderr)
+    raise SystemExit(124) from exc
+
+try:
+    opened = os.fstat(fd)
+    if not os.path.samestat(before, opened):
+        print(f"status JSON capture changed while opening it for reading: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if not stat.S_ISREG(opened.st_mode):
+        print(f"status JSON capture must be a regular file when read: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    if opened.st_uid != os.getuid():
+        print(
+            f"status JSON capture is owned by uid {opened.st_uid}, expected current user {os.getuid()}: {path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(124)
+    mode = stat.S_IMODE(opened.st_mode)
+    if mode != 0o600:
+        print(f"status JSON capture has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+        raise SystemExit(124)
+    with os.fdopen(fd, "rb") as handle:
+        fd = -1
+        sys.stdout.buffer.write(handle.read())
+finally:
+    if fd >= 0:
+        os.close(fd)
+PY
+}
+
 validate_ssh_target "$target"
 ssh_cmd="$(require_local_command ssh)"
 if [[ "$json" -eq 1 ]]; then
@@ -1191,10 +1412,28 @@ REMOTE
 }
 
 if [[ "$json" -eq 1 ]]; then
+  status_capture="$(create_private_status_json_capture)"
+  cleanup_status_capture() {
+    cleanup_private_status_json_capture "${status_capture:-}" || true
+  }
+  trap cleanup_status_capture EXIT
   set +e
-  status_output="$(run_remote_status)"
+  capture_remote_status_json "$status_capture"
   status_code=$?
   set -e
+  if [[ "$status_code" -eq 124 ]]; then
+    exit 2
+  fi
+  set +e
+  status_output="$(read_private_status_json_capture "$status_capture")"
+  read_status=$?
+  set -e
+  if [[ "$read_status" -eq 124 ]]; then
+    exit 2
+  fi
+  if [[ "$read_status" -ne 0 ]]; then
+    exit "$read_status"
+  fi
   if [[ -n "$status_output" ]]; then
     printf '%s\n' "$status_output"
   fi

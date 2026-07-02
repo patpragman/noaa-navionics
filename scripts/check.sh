@@ -953,8 +953,10 @@ grep -q 'By default it reads the commissioned GPS wait from the private launcher
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
 grep -q 'rejects symlinked command-tree or config path components' docs/sailboat-pi.md
-grep -q 'JSON output is captured in memory and locally parsed with a trusted root-owned `python3`' README.md
-grep -q 'JSON output is captured in memory and locally parsed with a trusted root-owned `python3`' docs/sailboat-pi.md
+grep -q 'JSON output is captured through a private local file' README.md
+grep -q 'JSON output is captured through a private local file' docs/sailboat-pi.md
+grep -q 'caps JSON status output at 1 MiB before loading it into memory' README.md
+grep -q 'caps JSON status output at 1 MiB before loading it into memory' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/check_pi_status.sh
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
@@ -12192,6 +12194,14 @@ cat >"$status_fake_ssh_bin/ssh" <<'EOF'
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
 generated_at="$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')"
+if [[ "${NOAA_NAVIONICS_FAKE_OVERSIZED_STATUS_JSON:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import sys
+
+sys.stdout.buffer.write(b"x" * (1024 * 1024 + 1))
+PY
+  exit 0
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
   printf '{"ok": "yes", "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
   exit 0
@@ -12415,7 +12425,12 @@ grep -q 'missing required service row names' README.md
 grep -q 'missing required service row names' docs/sailboat-pi.md
 grep -q 'GPS/GPSD readiness row and Track Log service row' README.md
 grep -q 'GPS/GPSD readiness row and Track Log service row' docs/sailboat-pi.md
-grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh
+grep -q 'max_status_json_bytes=$((1024 \* 1024))' scripts/check_pi_status.sh
+grep -q 'create_private_status_json_capture()' scripts/check_pi_status.sh
+grep -q 'capture_remote_status_json "$status_capture"' scripts/check_pi_status.sh
+grep -q 'status JSON output exceeds size limit' scripts/check_pi_status.sh
+grep -q 'read_private_status_json_capture "$status_capture"' scripts/check_pi_status.sh
+grep -q 'cleanup_private_status_json_capture "${status_capture:-}" || true' scripts/check_pi_status.sh
 grep -q 'json_validation_code=$?' scripts/check_pi_status.sh
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
 grep -q 'validate_status_controls()' "$status_fake_ssh_stdin"
@@ -12446,6 +12461,27 @@ grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' "$status_fake_
 grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"
 grep -q 'run_noaa_navionics "${status_args\[@\]}"' "$status_fake_ssh_stdin"
 ! grep -q -- '--output' "$status_fake_ssh_stdin"
+
+set +e
+status_json_tmp="$tmpdir/status-json-tmp"
+mkdir -p "$status_json_tmp"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_OVERSIZED_STATUS_JSON=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$status_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$status_fake_ssh_stdin" \
+  TMPDIR="$status_json_tmp" \
+  PATH="$status_fake_ssh_bin:$PATH" \
+  scripts/check_pi_status.sh pi@example.invalid --gps-seconds 12 --json >"$verify_output" 2>&1
+oversized_status_json_code=$?
+set -e
+if [[ "$oversized_status_json_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject oversized JSON status output with exit 2" >&2
+  exit 1
+fi
+grep -q 'status JSON output exceeds size limit' "$verify_output"
+! grep -q '^xxxxxxxxxxxxxxxx' "$verify_output"
+! find "$status_json_tmp" -maxdepth 1 -name '.noaa-navionics-status-json-*' -print -quit | grep -q .
 
 set +e
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
