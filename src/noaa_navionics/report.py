@@ -740,13 +740,21 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
         if not isinstance(data, dict):
             failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts check has no structured data"))
         else:
-            chart_dir = str(data.get("chart_dir", "")).strip()
+            chart_dir_text = str(data.get("chart_dir", ""))
+            chart_dir_failure = _status_control_character_failure(chart_dir_text, "OpenCPN Charts chart directory")
+            if chart_dir_failure:
+                failures.append(CheckResult("OpenCPN Charts", False, chart_dir_failure))
+            chart_dir = chart_dir_text.strip()
             expected_chart_output = str(config.get("chart_output", "")).strip()
             if not _status_absolute_path(chart_dir):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory is not absolute"))
             if chart_dir != expected_chart_output:
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory does not match configured chart output"))
-            config_path = str(data.get("config_path", "")).strip()
+            config_path_text = str(data.get("config_path", ""))
+            config_path_failure = _status_control_character_failure(config_path_text, "OpenCPN Charts config path")
+            if config_path_failure:
+                failures.append(CheckResult("OpenCPN Charts", False, config_path_failure))
+            config_path = config_path_text.strip()
             if not _status_absolute_path(config_path):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts config path is not absolute"))
             if data.get("config_exists") is not True:
@@ -758,6 +766,8 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
             chart_directories = data.get("chart_directories")
             if not isinstance(chart_directories, list) or not chart_directories:
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts has no parsed chart directories"))
+            elif any(_status_text_has_control_char(str(directory)) for directory in chart_directories):
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts parsed directories contain control characters"))
             elif not any(str(directory).strip() == expected_chart_output for directory in chart_directories):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts parsed directories do not include configured chart output"))
 
@@ -769,7 +779,11 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
             if not isinstance(data, dict):
                 failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD check has no structured data"))
             else:
-                config_path = str(data.get("config_path", "")).strip()
+                config_path_text = str(data.get("config_path", ""))
+                config_path_failure = _status_control_character_failure(config_path_text, "OpenCPN GPSD config path")
+                if config_path_failure:
+                    failures.append(CheckResult("OpenCPN GPSD", False, config_path_failure))
+                config_path = config_path_text.strip()
                 if not _status_absolute_path(config_path):
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD config path is not absolute"))
                 if data.get("config_exists") is not True:
@@ -1543,9 +1557,13 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
 
 
 def _status_control_character_failure(text: str, label: str) -> str:
-    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+    if _status_text_has_control_char(text):
         return f"status report {label} contains control characters"
     return ""
+
+
+def _status_text_has_control_char(text: str) -> bool:
+    return any(ord(char) < 32 or ord(char) == 127 for char in text)
 
 
 def _user_validation_failures(user: object) -> list[CheckResult]:
@@ -1742,9 +1760,13 @@ def _opencpn_config_validation_failures(report: dict[str, object]) -> list[Check
     opencpn_config = report.get("opencpn_config")
     if not isinstance(opencpn_config, dict):
         return [CheckResult("OpenCPN Config", False, "status report missing opencpn_config section")]
-    path = str(opencpn_config.get("path", "")).strip()
+    path_text = str(opencpn_config.get("path", ""))
+    path = path_text.strip()
     if not path:
         return [CheckResult("OpenCPN Config", False, "status report OpenCPN config path is empty")]
+    path_failure = _status_control_character_failure(path_text, "OpenCPN config path")
+    if path_failure:
+        return [CheckResult("OpenCPN Config", False, path_failure)]
     if not _status_absolute_path(path):
         return [CheckResult("OpenCPN Config", False, f"status report OpenCPN config path is not absolute: {path}")]
     if opencpn_config.get("exists") is not True:
@@ -1777,6 +1799,8 @@ def _opencpn_config_validation_failures(report: dict[str, object]) -> list[Check
     data_connections = opencpn_config.get("data_connections")
     if not isinstance(chart_directories, list) or any(not isinstance(value, str) for value in chart_directories):
         return [CheckResult("OpenCPN Config", False, "status report OpenCPN chart directories were not parsed")]
+    if any(_status_text_has_control_char(value) for value in chart_directories):
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN chart directories contain control characters")]
     if not isinstance(data_connections, list) or any(not isinstance(value, str) for value in data_connections):
         return [CheckResult("OpenCPN Config", False, "status report OpenCPN data connections were not parsed")]
 
@@ -2103,6 +2127,14 @@ def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
     path = str(manifest.get("path", "")).strip()
     download_path_text = str(manifest.get("download_path", "")).strip()
     extract_path_text = str(manifest.get("extract_path", "")).strip()
+    for value, label in (
+        (str(manifest.get("path", "")), "manifest path"),
+        (str(manifest.get("download_path", "")), "manifest download path"),
+        (str(manifest.get("extract_path", "")), "manifest extract path"),
+    ):
+        control_failure = _status_control_character_failure(value, label)
+        if control_failure:
+            return [CheckResult("Chart Manifest", False, control_failure)]
     if not _status_absolute_path(path):
         return [CheckResult("Chart Manifest", False, "status report manifest path is not absolute")]
     if not _status_absolute_path(download_path_text):
@@ -2238,9 +2270,20 @@ def _gps_fix_validation_failures(
 def _track_log_validation_failures(track_log: object, *, now: Optional[datetime] = None) -> list[CheckResult]:
     if not isinstance(track_log, dict):
         return [CheckResult("Track Log", False, "status report missing track_log section")]
-    track_output = str(track_log.get("track_output", "")).strip()
-    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
-    latest_path = str(track_log.get("latest_path", "")).strip()
+    track_output_text = str(track_log.get("track_output", ""))
+    tracks_dir_text = str(track_log.get("tracks_dir", ""))
+    latest_path_text = str(track_log.get("latest_path", ""))
+    for value, label in (
+        (track_output_text, "track_log track_output"),
+        (tracks_dir_text, "track_log tracks_dir"),
+        (latest_path_text, "track_log latest_path"),
+    ):
+        control_failure = _status_control_character_failure(value, label)
+        if control_failure:
+            return [CheckResult("Track Log", False, control_failure)]
+    track_output = track_output_text.strip()
+    tracks_dir = tracks_dir_text.strip()
+    latest_path = latest_path_text.strip()
     if not _status_absolute_path(track_output):
         return [CheckResult("Track Log", False, "status report track_log track_output is not absolute")]
     if not _status_absolute_path(tracks_dir):
@@ -2359,7 +2402,7 @@ def _positive_status_float(value: object) -> Optional[float]:
 
 
 def _status_absolute_path(value: str) -> bool:
-    return bool(value) and Path(value).expanduser().is_absolute()
+    return bool(value) and not _status_text_has_control_char(value) and Path(value).expanduser().is_absolute()
 
 
 def _normalize_status_path(value: str) -> str:

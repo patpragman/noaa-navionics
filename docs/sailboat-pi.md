@@ -87,7 +87,7 @@ Strict chartplotter verification also requires source-revision and launcher-sett
 Strict chartplotter verification requires GUI and service startup path symlink-status fields for OpenCPN config, desktop autostart, MOB desktop launcher, LightDM autologin, and installed user systemd units before trusting the generated JSON.
 Status-report readiness checks also fail when launcher, desktop, LightDM, or user-unit symlink-status evidence is missing, so incomplete generated JSON cannot mark the Pi ready before verification parses it.
 Pi verification also rejects generated status artifacts without top-level user service, loaded user-unit property, and GPSD/chrony system-service summaries.
-Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, and track storage paths before trusting a generated JSON artifact.
+Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, OpenCPN chart/config paths, manifest paths, and track storage paths before trusting a generated JSON artifact.
 Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation, leaving changed or untrusted paths in place.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
