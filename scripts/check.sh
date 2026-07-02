@@ -2573,6 +2573,8 @@ grep -q 'chartplotter launcher lock boot ID' scripts/verify_pi.sh
 grep -q 'chartplotter launcher lock symlink guard' scripts/verify_pi.sh
 grep -q 'opencpn_stability_seconds=10' scripts/verify_pi.sh
 grep -q 'opencpn_process_supervised_by_launcher' scripts/verify_pi.sh
+grep -q 'opencpn_process_tracked_by_launcher' scripts/verify_pi.sh
+grep -q 'launcher_log_shows_active_detached_opencpn_handoff' scripts/verify_pi.sh
 grep -q 'process_cmdline_has_launcher_name' scripts/verify_pi.sh
 grep -q 'process_cmdline_has_arg' scripts/verify_pi.sh
 grep -q 'stat_text.rsplit(") ", 1)' scripts/verify_pi.sh
@@ -2627,14 +2629,14 @@ grep -q 'chartplotter launcher display command revalidation' scripts/verify_pi.s
 grep -q 'check "chartplotter launcher display command revalidation" grep -Fq '\''revalidate_display_power_command'\''' scripts/verify_pi.sh
 grep -q 'OpenCPN/pgrep/xset descriptor revalidation hooks' README.md
 grep -q 'OpenCPN/pgrep/xset descriptor revalidation hooks' docs/sailboat-pi.md
-grep -q 'launcher-supervised `opencpn` child process' README.md
-grep -q 'launcher-supervised `opencpn` child process' docs/sailboat-pi.md
+grep -q 'launcher-supervised or active-handoff `opencpn` process' README.md
+grep -q 'launcher-supervised or active-handoff `opencpn` process' docs/sailboat-pi.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' docs/sailboat-pi.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' README.md
 grep -q 'remain running with that trusted executable and display environment through a short stability check' docs/sailboat-pi.md
-grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments through same-user no-follow `/proc` descriptors' README.md
-grep -q 'parses live launcher and OpenCPN process state, parentage, command lines, executable links, and environments through same-user no-follow `/proc` descriptors' docs/sailboat-pi.md
+grep -q 'parses live launcher and OpenCPN process state, parentage or active handoff, command lines, executable links, and environments through same-user no-follow `/proc` descriptors' README.md
+grep -q 'parses live launcher and OpenCPN process state, parentage or active handoff, command lines, executable links, and environments through same-user no-follow `/proc` descriptors' docs/sailboat-pi.md
 grep -q 'running on that same live X display from a trusted root-owned executable' README.md
 grep -q 'running on that same live X display from a trusted root-owned executable' docs/sailboat-pi.md
 grep -q 'trusted `XAUTHORITY` file when present' README.md

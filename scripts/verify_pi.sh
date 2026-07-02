@@ -3638,6 +3638,8 @@ startup_marker = "Starting NOAA Navionics chartplotter launcher"
 launch_marker = "Launching OpenCPN with ENC processing."
 duplicate_marker = "OpenCPN is already running; leaving the existing chartplotter instance in place."
 exit_marker = "OpenCPN exited with status"
+detached_marker = "OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits."
+detached_done_marker = "OpenCPN detached process exited; not restarting."
 startup_index = text.rfind(startup_marker)
 if startup_index < 0:
     raise SystemExit("launcher log does not contain startup marker")
@@ -3647,7 +3649,11 @@ if launch_marker not in latest_startup and duplicate_marker not in latest_startu
 if "NOAA Navionics preflight failed" in latest_startup:
     raise SystemExit("launcher reported failed readiness before OpenCPN startup")
 if exit_marker in latest_startup:
-    raise SystemExit("launcher log shows OpenCPN exited after current-boot startup")
+    latest_exit_index = latest_startup.rfind(exit_marker)
+    detached_index = latest_startup.rfind(detached_marker)
+    detached_done_index = latest_startup.rfind(detached_done_marker)
+    if detached_index < latest_exit_index or detached_done_index > detached_index:
+        raise SystemExit("launcher log shows OpenCPN exited after current-boot startup without active detached supervision")
 if "xset command(s) failed" in latest_startup:
     raise SystemExit("launcher failed to disable one or more display power settings")
 if "xset is unavailable" in latest_startup:
@@ -4156,7 +4162,7 @@ supervised_opencpn_pids() {
   local pid
   launcher_pid="$(launcher_lock_pid)" || return 1
   while IFS= read -r pid; do
-    if opencpn_process_active "$pid" && opencpn_process_supervised_by_launcher "$pid" "$launcher_pid"; then
+    if opencpn_process_active "$pid" && opencpn_process_tracked_by_launcher "$pid" "$launcher_pid"; then
       printf '%s\n' "$pid"
     fi
   done < <(pgrep -u "$(id -u)" -x opencpn 2>/dev/null || true)
@@ -4164,6 +4170,50 @@ supervised_opencpn_pids() {
 
 opencpn_supervised_running() {
   [[ -n "$(supervised_opencpn_pids)" ]]
+}
+
+launcher_log_shows_active_detached_opencpn_handoff() {
+  "$python3_cmd" - "$log_file" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+try:
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError:
+    raise SystemExit(1)
+try:
+    log_stat = os.fstat(fd)
+    if not stat.S_ISREG(log_stat.st_mode) or log_stat.st_uid != os.getuid() or (log_stat.st_mode & 0o777) != 0o600:
+        raise SystemExit(1)
+    with os.fdopen(fd, "r", encoding="utf-8", errors="replace") as handle:
+        fd = -1
+        text = handle.read()
+finally:
+    if fd >= 0:
+        os.close(fd)
+
+startup_marker = "Starting NOAA Navionics chartplotter launcher"
+detached_marker = "OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits."
+detached_done_marker = "OpenCPN detached process exited; not restarting."
+startup_index = text.rfind(startup_marker)
+if startup_index < 0:
+    raise SystemExit(1)
+latest_startup = text[startup_index:]
+detached_index = latest_startup.rfind(detached_marker)
+if detached_index < 0:
+    raise SystemExit(1)
+detached_done_index = latest_startup.rfind(detached_done_marker)
+raise SystemExit(0 if detached_done_index < detached_index else 1)
+PY
+}
+
+opencpn_process_tracked_by_launcher() {
+  local pid="$1"
+  local launcher_pid="$2"
+  opencpn_process_supervised_by_launcher "$pid" "$launcher_pid" || launcher_log_shows_active_detached_opencpn_handoff
 }
 
 read_proc_exe_path() {
