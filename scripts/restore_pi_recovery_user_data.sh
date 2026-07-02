@@ -263,6 +263,35 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+NOAA_SUPPORT_COMMAND_FILES = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+NOAA_SUPPORT_FILE_PATTERNS = [
+    (
+        "NOAA Navionics config copy",
+        re.compile(r"^files/home/[^/]+/\.config/noaa-navionics/config\.ini$"),
+    ),
+    (
+        "NOAA Navionics launcher environment copy",
+        re.compile(r"^files/home/[^/]+/\.config/noaa-navionics/launcher\.env$"),
+    ),
+    (
+        "NOAA Navionics saved status copy",
+        re.compile(r"^files/home/[^/]+/\.cache/noaa-navionics/status\.json$"),
+    ),
+    (
+        "NOAA Navionics source revision copy",
+        re.compile(r"^files/home/[^/]+/\.local/share/noaa-navionics/source-revision$"),
+    ),
+]
 CORE_RESTORE_SETTINGS_FILES = [
     "noaa-navionics/config.ini",
     "noaa-navionics/launcher.env",
@@ -275,7 +304,13 @@ ARCHIVES = [
     ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count", CORE_RESTORE_SETTINGS_FILES, MAX_SETTING_ARCHIVE_MEMBER_BYTES),
     ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count", [], MAX_OPENCPN_ARCHIVE_MEMBER_BYTES),
     ("tracks", "noaa-navionics-pi-tracks-*.tgz", "track_count", [], MAX_TRACK_ARCHIVE_MEMBER_BYTES),
-    ("support", "noaa-navionics-pi-support-*.tgz", None, CORE_SUPPORT_COMMAND_FILES, MAX_SUPPORT_ARCHIVE_MEMBER_BYTES),
+    (
+        "support",
+        "noaa-navionics-pi-support-*.tgz",
+        None,
+        [*CORE_SUPPORT_COMMAND_FILES, *NOAA_SUPPORT_COMMAND_FILES],
+        MAX_SUPPORT_ARCHIVE_MEMBER_BYTES,
+    ),
 ]
 
 
@@ -413,6 +448,17 @@ def inspect_archive(
             f"{archive_path.name} is missing required archive member(s): "
             f"{', '.join(missing_members)}"
         )
+    if archive_path.name.startswith("noaa-navionics-pi-support-"):
+        missing_pattern_labels = [
+            pattern_label
+            for pattern_label, pattern in NOAA_SUPPORT_FILE_PATTERNS
+            if not any(member.isfile() and pattern.fullmatch(name) for name, member in members_by_name.items())
+        ]
+        if missing_pattern_labels:
+            fail(
+                f"{archive_path.name} is missing required diagnostic evidence file(s): "
+                f"{', '.join(missing_pattern_labels)}"
+            )
     if required_count_key is not None:
         manifest_member = members_by_name.get("manifest.json")
         if manifest_member is None:

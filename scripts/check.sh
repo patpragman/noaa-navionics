@@ -1093,8 +1093,8 @@ grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest co
 grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' docs/sailboat-pi.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
-grep -q "validating the diagnostic support archive's core command-evidence files without loading its contents into memory" README.md
-grep -q "validating the diagnostic support archive's core command-evidence files without loading its contents into memory" docs/sailboat-pi.md
+grep -q "validating the diagnostic support archive's core command-evidence and NOAA support evidence files without loading its contents into memory" README.md
+grep -q "validating the diagnostic support archive's core command-evidence and NOAA support evidence files without loading its contents into memory" docs/sailboat-pi.md
 grep -q 'rejecting copied recovery directory paths with control characters, parent-directory components, or symlinked path components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' README.md
 grep -q 'rejecting copied recovery directory paths with control characters, parent-directory components, or symlinked path components, requiring the copied recovery directory to be user-owned private `0700` storage, requiring each archive and `SHA256SUMS.txt` to be user-owned private `0600` files, verifying each archive' docs/sailboat-pi.md
 grep -q 'verifying each archive'\''s SHA-256 digest before loading restore contents' README.md
@@ -2092,9 +2092,14 @@ grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.
 grep -q 'commands/system-command-integrity.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/df-inodes.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/recent-system-journal.txt' scripts/restore_pi_recovery_user_data.sh
+grep -q 'NOAA_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.sh
+grep -q 'commands/noaa-status-report-commissioned-json.txt' scripts/restore_pi_recovery_user_data.sh
+grep -q 'NOAA_SUPPORT_FILE_PATTERNS = \[' scripts/restore_pi_recovery_user_data.sh
+grep -q 'NOAA Navionics saved status copy' scripts/restore_pi_recovery_user_data.sh
 grep -q 'CORE_RESTORE_SETTINGS_FILES = \[' scripts/restore_pi_recovery_user_data.sh
 grep -q 'noaa-navionics/launcher.env' scripts/restore_pi_recovery_user_data.sh
 grep -q 'is missing required archive member' scripts/restore_pi_recovery_user_data.sh
+grep -q 'is missing required diagnostic evidence file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def verify_checksum_manifest' scripts/restore_pi_recovery_user_data.sh
 grep -q 'checksum mismatch for' scripts/restore_pi_recovery_user_data.sh
 grep -q 'checksum manifest is missing archive' scripts/restore_pi_recovery_user_data.sh
@@ -14074,8 +14079,6 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
-
-
 def add_text(archive, name, text):
     data = text.encode("utf-8")
     info = tarfile.TarInfo(name)
@@ -14944,6 +14947,23 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+NOAA_SUPPORT_COMMAND_FILES = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+NOAA_SUPPORT_HOME_FILES = [
+    "files/home/pi/.config/noaa-navionics/config.ini",
+    "files/home/pi/.config/noaa-navionics/launcher.env",
+    "files/home/pi/.cache/noaa-navionics/status.json",
+    "files/home/pi/.local/share/noaa-navionics/source-revision",
+]
 
 
 def add_text(archive, name, text):
@@ -15021,7 +15041,14 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
         root,
         "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz",
         None,
-        {name: f"{name}\n" for name in CORE_SUPPORT_COMMAND_FILES},
+        {
+            name: f"{name}\n"
+            for name in [
+                *CORE_SUPPORT_COMMAND_FILES,
+                *NOAA_SUPPORT_COMMAND_FILES,
+                *NOAA_SUPPORT_HOME_FILES,
+            ]
+        },
     )
     write_checksums(root)
 
@@ -15215,6 +15242,155 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'is missing required archive member(s): commands/system-command-integrity.txt' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_generic_support_dir="$tmpdir/recovery-restore-generic-support"
+cp -a "$recovery_restore_dir" "$recovery_restore_generic_support_dir"
+python3 - "$recovery_restore_generic_support_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import sys
+import tarfile
+import time
+
+
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/df-inodes.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+support = next(root.glob("noaa-navionics-pi-support-*.tgz"))
+with tarfile.open(support, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    for name in CORE_SUPPORT_COMMAND_FILES:
+        add_text(archive, name, f"{name}\n")
+support.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_generic_support_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a support bundle missing NOAA diagnostics with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required archive member(s): commands/configured-storage-paths.txt' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_no_home_support_dir="$tmpdir/recovery-restore-no-home-support"
+cp -a "$recovery_restore_dir" "$recovery_restore_no_home_support_dir"
+python3 - "$recovery_restore_no_home_support_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import sys
+import tarfile
+import time
+
+
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/df-inodes.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+NOAA_SUPPORT_COMMAND_FILES = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+support = next(root.glob("noaa-navionics-pi-support-*.tgz"))
+with tarfile.open(support, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    for name in [*CORE_SUPPORT_COMMAND_FILES, *NOAA_SUPPORT_COMMAND_FILES]:
+        add_text(archive, name, f"{name}\n")
+support.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_no_home_support_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a support bundle missing NOAA copied evidence with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required diagnostic evidence file(s): NOAA Navionics config copy' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_missing_launcher_dir="$tmpdir/recovery-restore-missing-launcher"
