@@ -688,6 +688,9 @@ def check_chrony_gps_time_config(config_path: Path = Path("/etc/chrony/chrony.co
 
 
 def check_chrony_gps_time_source(*, seconds: float = 5.0, poll_interval: float = 1.0) -> CheckResult:
+    wait_failure = _gps_wait_seconds_failure(seconds)
+    if wait_failure:
+        return CheckResult("GPS Time Source", False, wait_failure)
     if not _is_raspberry_pi():
         return CheckResult(
             "GPS Time Source",
@@ -2132,6 +2135,9 @@ def check_gps_device(
     seconds: float = 5.0,
     max_fix_age_seconds: float = 300.0,
 ) -> CheckResult:
+    wait_failure = _gps_wait_seconds_failure(seconds)
+    if wait_failure:
+        return CheckResult("GPS", False, wait_failure)
     gps_device_check = check_gps_device_path(device)
     if not gps_device_check.ok:
         return CheckResult("GPS", False, _gps_not_checked_detail(gps_device_check.detail))
@@ -2181,6 +2187,9 @@ def check_gpsd(
     seconds: float = 5.0,
     max_fix_age_seconds: float = 300.0,
 ) -> CheckResult:
+    wait_failure = _gps_wait_seconds_failure(seconds)
+    if wait_failure:
+        return CheckResult("GPSD", False, wait_failure)
     deadline = time.monotonic() + seconds
     stale_detail = ""
     quality_detail = ""

@@ -20809,6 +20809,21 @@ class GpsTests(unittest.TestCase):
         self.assertIn("not checked because", result.detail)
         self.assertIn("not stable", result.detail)
 
+    def test_check_gps_device_rejects_non_finite_wait_before_path_check(self):
+        original_path_check = health_module.check_gps_device_path
+
+        def unexpected_path_check(device):
+            raise AssertionError("check_gps_device should reject invalid GPS wait before device checks")
+
+        try:
+            health_module.check_gps_device_path = unexpected_path_check
+            result = check_gps_device("/dev/serial/by-id/mock-gps", seconds=float("nan"))
+        finally:
+            health_module.check_gps_device_path = original_path_check
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.detail, "GPS wait seconds must be finite and greater than 0")
+
     def test_check_gps_device_rejects_low_satellite_count(self):
         original = health_module.open_nmea_stream
 
@@ -20999,6 +21014,21 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("stale", result.detail)
+
+    def test_check_gpsd_rejects_non_finite_wait_before_polling(self):
+        original = health_module.iter_gpsd_fixes
+
+        def unexpected_iter_gpsd_fixes(**kwargs):
+            raise AssertionError("check_gpsd should reject invalid GPS wait before GPSD polling")
+
+        try:
+            health_module.iter_gpsd_fixes = unexpected_iter_gpsd_fixes
+            result = check_gpsd(seconds=float("inf"))
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.detail, "GPS wait seconds must be finite and greater than 0")
 
     def test_check_gpsd_rejects_future_timestamped_fix(self):
         original = health_module.iter_gpsd_fixes
@@ -22755,6 +22785,21 @@ class PiHealthTests(unittest.TestCase):
         self.assertIn("skipping", result.detail)
         self.assertEqual(result.data, {"is_raspberry_pi": False, "skipped": True})
 
+    def test_check_chrony_gps_time_source_rejects_non_finite_wait_before_pi_probe(self):
+        original_is_pi = health_module._is_raspberry_pi
+
+        def unexpected_is_pi():
+            raise AssertionError("chrony GPS time check should reject invalid GPS wait before Pi probing")
+
+        try:
+            health_module._is_raspberry_pi = unexpected_is_pi
+            result = check_chrony_gps_time_source(seconds=float("nan"))
+        finally:
+            health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.detail, "GPS wait seconds must be finite and greater than 0")
+
     def test_check_chrony_gps_time_source_accepts_usable_gps_refclock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             bin_dir = Path(tmpdir)
@@ -22766,7 +22811,7 @@ class PiHealthTests(unittest.TestCase):
             try:
                 health_module._is_raspberry_pi = lambda: True
                 health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
-                result = check_chrony_gps_time_source(seconds=0)
+                result = check_chrony_gps_time_source(seconds=0.001)
             finally:
                 health_module._is_raspberry_pi = original_is_pi
                 health_module._trusted_system_command = original_trusted_command
@@ -22810,7 +22855,7 @@ class PiHealthTests(unittest.TestCase):
             try:
                 health_module._is_raspberry_pi = lambda: True
                 health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
-                result = check_chrony_gps_time_source(seconds=0)
+                result = check_chrony_gps_time_source(seconds=0.001)
             finally:
                 health_module._is_raspberry_pi = original_is_pi
                 health_module._trusted_system_command = original_trusted_command
@@ -22867,7 +22912,7 @@ class PiHealthTests(unittest.TestCase):
             try:
                 health_module._is_raspberry_pi = lambda: True
                 health_module._trusted_system_command = lambda command, label: (fake, "") if command == "chronyc" else original_trusted_command(command, label)
-                result = check_chrony_gps_time_source(seconds=0)
+                result = check_chrony_gps_time_source(seconds=0.001)
             finally:
                 health_module._is_raspberry_pi = original_is_pi
                 health_module._trusted_system_command = original_trusted_command
@@ -22887,7 +22932,7 @@ class PiHealthTests(unittest.TestCase):
             try:
                 os.environ["PATH"] = str(bin_dir)
                 health_module._is_raspberry_pi = lambda: True
-                result = check_chrony_gps_time_source(seconds=0)
+                result = check_chrony_gps_time_source(seconds=0.001)
             finally:
                 os.environ["PATH"] = original_path
                 health_module._is_raspberry_pi = original_is_pi
