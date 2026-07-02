@@ -651,6 +651,7 @@ validate_private_support_bundle() {
 from __future__ import annotations
 
 import os
+import re
 import stat
 import sys
 import tarfile
@@ -750,6 +751,15 @@ required_members = [
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
 ]
 missing_members = [
     name for name in required_members
@@ -757,6 +767,34 @@ missing_members = [
 ]
 if missing_members:
     fail(f"Support bundle is missing required diagnostic file(s): {', '.join(missing_members)}")
+required_member_patterns = [
+    (
+        "NOAA Navionics config copy",
+        re.compile(r"^files/home/[^/]+/\.config/noaa-navionics/config\.ini$"),
+    ),
+    (
+        "NOAA Navionics launcher environment copy",
+        re.compile(r"^files/home/[^/]+/\.config/noaa-navionics/launcher\.env$"),
+    ),
+    (
+        "NOAA Navionics saved status copy",
+        re.compile(r"^files/home/[^/]+/\.cache/noaa-navionics/status\.json$"),
+    ),
+    (
+        "NOAA Navionics source revision copy",
+        re.compile(r"^files/home/[^/]+/\.local/share/noaa-navionics/source-revision$"),
+    ),
+]
+missing_pattern_labels = [
+    pattern_label
+    for pattern_label, pattern in required_member_patterns
+    if not any(member.isreg() and pattern.fullmatch(name) for name, member in by_name.items())
+]
+if missing_pattern_labels:
+    fail(
+        "Support bundle is missing required diagnostic evidence file(s): "
+        + ", ".join(missing_pattern_labels)
+    )
 PY
 }
 
