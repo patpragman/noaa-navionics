@@ -1430,8 +1430,12 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
                 "status report dirty deployed source_revision is not production-ready",
             )
         ]
-    if not str(app.get("source_revision_path", "")).strip():
+    source_revision_path = app.get("source_revision_path", "")
+    if not isinstance(source_revision_path, str) or not source_revision_path.strip():
         return [CheckResult("Status Report", False, "status report missing source_revision_path")]
+    control_failure = _status_control_character_failure(source_revision_path.strip(), "source_revision_path")
+    if control_failure:
+        return [CheckResult("Status Report", False, control_failure)]
     if app.get("source_revision_path_is_symlink") is not False:
         return [
             CheckResult(
@@ -1456,9 +1460,30 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
                 "status report source revision missing source_revision_symlink_component",
             )
         ]
-    if str(app.get("source_revision_symlink_component", "")).strip():
+    source_revision_symlink_component = app.get("source_revision_symlink_component", "")
+    if not isinstance(source_revision_symlink_component, str):
+        return [
+            CheckResult(
+                "Status Report",
+                False,
+                "status report source revision missing source_revision_symlink_component",
+            )
+        ]
+    control_failure = _status_control_character_failure(
+        source_revision_symlink_component.strip(),
+        "source_revision_symlink_component",
+    )
+    if control_failure:
+        return [CheckResult("Status Report", False, control_failure)]
+    if source_revision_symlink_component.strip():
         return [CheckResult("Status Report", False, "status report source revision path contains a symlink")]
-    source_revision_error = str(app.get("source_revision_error", "")).strip()
+    source_revision_error_value = app.get("source_revision_error", "")
+    if not isinstance(source_revision_error_value, str):
+        return [CheckResult("Status Report", False, "status report source_revision_error is not text")]
+    source_revision_error = source_revision_error_value.strip()
+    control_failure = _status_control_character_failure(source_revision_error, "source_revision_error")
+    if control_failure:
+        return [CheckResult("Status Report", False, control_failure)]
     if source_revision_error:
         return [
             CheckResult(

@@ -13443,7 +13443,12 @@ class StatusReportTests(unittest.TestCase):
             ({"app": {**valid_app, "source_revision": "unknown"}}, "missing deployed source_revision"),
             ({"app": {**valid_app, "source_revision": "fixture123\x00"}}, "source_revision contains control characters"),
             ({"app": {**valid_app, "source_revision": "fixture123-dirty"}}, "dirty deployed source_revision"),
+            ({"app": {**valid_app, "source_revision_path": 123}}, "missing source_revision_path"),
             ({"app": {**valid_app, "source_revision_path": ""}}, "missing source_revision_path"),
+            (
+                {"app": {**valid_app, "source_revision_path": "/home/pi/.local/share/noaa-navionics/source-revision\x00"}},
+                "source_revision_path contains control characters",
+            ),
             ({"app": {**valid_app, "source_revision_path_is_symlink": True}}, "path is a symlink"),
             (
                 {"app": {key: value for key, value in valid_app.items() if key != "source_revision_path_is_symlink"}},
@@ -13458,8 +13463,24 @@ class StatusReportTests(unittest.TestCase):
                 "missing source_revision_symlink_component",
             ),
             (
+                {"app": {**valid_app, "source_revision_symlink_component": 123}},
+                "missing source_revision_symlink_component",
+            ),
+            (
+                {"app": {**valid_app, "source_revision_symlink_component": "\x00"}},
+                "source_revision_symlink_component contains control characters",
+            ),
+            (
                 {"app": {**valid_app, "source_revision_symlink_component": "/home/pi/.local/share"}},
                 "path contains a symlink",
+            ),
+            (
+                {"app": {**valid_app, "source_revision_error": 123}},
+                "source_revision_error is not text",
+            ),
+            (
+                {"app": {**valid_app, "source_revision_error": "source revision path is not a regular file\x00"}},
+                "source_revision_error contains control characters",
             ),
             (
                 {"app": {**valid_app, "source_revision_error": "source revision path is not a regular file"}},

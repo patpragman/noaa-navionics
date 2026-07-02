@@ -4984,6 +4984,10 @@ grep -q 'status report missing app section' src/noaa_navionics/report.py
 grep -q 'status report missing deployed source_revision' src/noaa_navionics/report.py
 grep -q 'status report dirty deployed source_revision is not production-ready' src/noaa_navionics/report.py
 grep -q 'source_revision contains control characters' tests/test_downloader.py
+grep -q 'source_revision_path contains control characters' tests/test_downloader.py
+grep -q 'source_revision_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'source_revision_error contains control characters' tests/test_downloader.py
+grep -q 'source_revision_error is not text' tests/test_downloader.py
 grep -q 'status report {name} ok is not boolean' src/noaa_navionics/report.py
 grep -q 'status report has duplicate readiness check' src/noaa_navionics/report.py
 grep -q 'status report has duplicate service check' src/noaa_navionics/report.py
