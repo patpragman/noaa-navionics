@@ -16139,6 +16139,7 @@ class StatusReportTests(unittest.TestCase):
             "missing host summary",
             'status_text(host.get("boot_id", ""), "host boot_id")',
             "host boot_id is not a Linux boot_id value",
+            "top-level ok is false",
             "def status_number",
             'fail(f"{label} {field} is not numeric")',
             "def status_integer",
@@ -16272,6 +16273,7 @@ class StatusReportTests(unittest.TestCase):
             (("track_log", "latest_latitude"), "61.2181", "track_log latest_latitude is not numeric"),
             (("track_log", "latest_time"), "2026-07-02T12:00:00", "track_log latest_time must include a timezone"),
             (("track_log", "latest_satellites"), 3, "track_log latest_satellites is weak"),
+            (("ok",), False, "top-level ok is false"),
         )
         for path, value, expected_error in cases:
             report = copy.deepcopy(valid_report)

@@ -655,6 +655,8 @@ if not isinstance(report, dict):
     fail("top-level JSON value is not an object")
 if not isinstance(report.get("ok"), bool):
     fail("top-level ok is not boolean")
+if report.get("ok") is not True:
+    fail("top-level ok is false")
 
 generated_at = report.get("generated_at")
 if not isinstance(generated_at, str) or not generated_at.strip():

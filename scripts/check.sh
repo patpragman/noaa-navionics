@@ -12263,6 +12263,7 @@ grep -q 'local_python_cmd="$(require_local_command python3)"' scripts/check_pi_s
 grep -q 'validate_status_json_output()' scripts/check_pi_status.sh
 grep -q 'status JSON validation failed: {message}' scripts/check_pi_status.sh
 grep -q 'top-level ok is not boolean' scripts/check_pi_status.sh
+grep -q 'top-level ok is false' scripts/check_pi_status.sh
 grep -q 'generated_at timestamp must include a timezone' scripts/check_pi_status.sh
 grep -q 'from datetime import datetime, timezone' scripts/check_pi_status.sh
 grep -q 'import math' scripts/check_pi_status.sh
@@ -12320,6 +12321,7 @@ grep -q 'test_check_pi_status_required_rows_match_shared_readiness' tests/test_d
 grep -q 'test_check_pi_status_json_validator_executes_text_field_checks' tests/test_downloader.py
 grep -q 'complete_status_gui_report(gps_mode="serial")' tests/test_downloader.py
 grep -q 'missing required readiness check(s): GPS, GPS Device' tests/test_downloader.py
+grep -q 'top-level ok is false' tests/test_downloader.py
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' README.md
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' docs/sailboat-pi.md
 grep -q 'invalid critical config fields including chart/track output, GPS device/baud, GPSD port, track retention/fsync, and anchor radius' README.md
@@ -12328,6 +12330,8 @@ grep -q 'stale or future-dated `generated_at`' README.md
 grep -q 'stale or future-dated `generated_at`' docs/sailboat-pi.md
 grep -q 'malformed Linux `boot_id` host evidence' README.md
 grep -q 'malformed Linux `boot_id` host evidence' docs/sailboat-pi.md
+grep -q 'top-level `ok=false`' README.md
+grep -q 'top-level `ok=false`' docs/sailboat-pi.md
 grep -q 'GPS/track summaries that claim `ok=true` without finite position, timestamp, age, and quality evidence' README.md
 grep -q 'GPS/track summaries that claim `ok=true` without finite position, timestamp, age, and quality evidence' docs/sailboat-pi.md
 grep -q 'GPS/GPSD readiness-row fix data that does not match top-level GPS evidence' README.md
