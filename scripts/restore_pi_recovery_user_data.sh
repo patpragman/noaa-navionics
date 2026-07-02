@@ -263,12 +263,16 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+CORE_RESTORE_SETTINGS_FILES = [
+    "noaa-navionics/config.ini",
+    "noaa-navionics/launcher.env",
+]
 MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024
 MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024
 MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024
 MAX_SUPPORT_ARCHIVE_MEMBER_BYTES = 10 * 1024 * 1024
 ARCHIVES = [
-    ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count", [], MAX_SETTING_ARCHIVE_MEMBER_BYTES),
+    ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count", CORE_RESTORE_SETTINGS_FILES, MAX_SETTING_ARCHIVE_MEMBER_BYTES),
     ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count", [], MAX_OPENCPN_ARCHIVE_MEMBER_BYTES),
     ("tracks", "noaa-navionics-pi-tracks-*.tgz", "track_count", [], MAX_TRACK_ARCHIVE_MEMBER_BYTES),
     ("support", "noaa-navionics-pi-support-*.tgz", None, CORE_SUPPORT_COMMAND_FILES, MAX_SUPPORT_ARCHIVE_MEMBER_BYTES),
@@ -406,7 +410,7 @@ def inspect_archive(
     ]
     if missing_members:
         fail(
-            f"{archive_path.name} is missing required support diagnostic file(s): "
+            f"{archive_path.name} is missing required archive member(s): "
             f"{', '.join(missing_members)}"
         )
     if required_count_key is not None:
@@ -1149,14 +1153,13 @@ def main() -> None:
             MAX_SETTING_ARCHIVE_MEMBER_BYTES,
         ),
     ]
-    launcher = settings.get("noaa-navionics/launcher.env")
-    if launcher is not None:
-        planned.append((
-            "settings",
-            home / ".config" / "noaa-navionics" / "launcher.env",
-            launcher,
-            MAX_SETTING_ARCHIVE_MEMBER_BYTES,
-        ))
+    launcher = settings["noaa-navionics/launcher.env"]
+    planned.append((
+        "settings",
+        home / ".config" / "noaa-navionics" / "launcher.env",
+        launcher,
+        MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+    ))
 
     for name, data in sorted(opencpn.items()):
         relative = opencpn_restore_relative(name)

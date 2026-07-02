@@ -2077,7 +2077,9 @@ grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.
 grep -q 'commands/system-command-integrity.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/df-inodes.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/recent-system-journal.txt' scripts/restore_pi_recovery_user_data.sh
-grep -q 'is missing required support diagnostic file' scripts/restore_pi_recovery_user_data.sh
+grep -q 'CORE_RESTORE_SETTINGS_FILES = \[' scripts/restore_pi_recovery_user_data.sh
+grep -q 'noaa-navionics/launcher.env' scripts/restore_pi_recovery_user_data.sh
+grep -q 'is missing required archive member' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def verify_checksum_manifest' scripts/restore_pi_recovery_user_data.sh
 grep -q 'checksum mismatch for' scripts/restore_pi_recovery_user_data.sh
 grep -q 'checksum manifest is missing archive' scripts/restore_pi_recovery_user_data.sh
@@ -14984,7 +14986,58 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   echo "expected restore_pi_recovery_user_data.sh to reject a support bundle missing required diagnostics with exit 1" >&2
   exit 1
 fi
-grep -q 'is missing required support diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
+grep -q 'is missing required archive member(s): commands/system-command-integrity.txt' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_missing_launcher_dir="$tmpdir/recovery-restore-missing-launcher"
+cp -a "$recovery_restore_dir" "$recovery_restore_missing_launcher_dir"
+python3 - "$recovery_restore_missing_launcher_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "noaa-navionics/config.ini"}]}) + "\n",
+    )
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\noutput = ~/tracks-store\n")
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_missing_launcher_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a settings archive missing launcher policy with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required archive member(s): noaa-navionics/launcher.env' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_manifest_dir="$tmpdir/recovery-restore-mismatched-manifest"
