@@ -5095,6 +5095,10 @@ grep -q 'status report missing services section' src/noaa_navionics/report.py
 grep -q 'status report missing system_services section' src/noaa_navionics/report.py
 grep -q 'status report systemd user service properties were not loaded' src/noaa_navionics/report.py
 grep -q 'status report service summary invalid' src/noaa_navionics/report.py
+grep -q 'noaa-navionics-track.service active is not text' tests/test_downloader.py
+grep -q 'noaa-navionics-track.service enabled contains control characters' tests/test_downloader.py
+grep -q 'gpsd.socket active is not text' tests/test_downloader.py
+grep -q 'gpsd.socket enabled contains control characters' tests/test_downloader.py
 grep -q 'def require_status_unit' scripts/verify_pi.sh
 grep -q 'services = report.get("services")' scripts/verify_pi.sh
 grep -q 'system_services = report.get("system_services")' scripts/verify_pi.sh

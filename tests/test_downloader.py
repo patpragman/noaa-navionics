@@ -13702,10 +13702,18 @@ class StatusReportTests(unittest.TestCase):
         }
         inactive_track_logger = copy.deepcopy(valid_services)
         inactive_track_logger["noaa-navionics-track.service"]["active"] = "inactive"
+        non_text_track_logger = copy.deepcopy(valid_services)
+        non_text_track_logger["noaa-navionics-track.service"]["active"] = 123
+        control_text_track_logger = copy.deepcopy(valid_services)
+        control_text_track_logger["noaa-navionics-track.service"]["enabled"] = "enabled\x00"
         weak_track_logger_settings = copy.deepcopy(valid_services)
         weak_track_logger_settings["noaa-navionics-track.service"]["properties"]["ProtectSystem"] = "no"
         inactive_gpsd_socket = copy.deepcopy(valid_system_services)
         inactive_gpsd_socket["gpsd.socket"]["active"] = "inactive"
+        non_text_gpsd_socket = copy.deepcopy(valid_system_services)
+        non_text_gpsd_socket["gpsd.socket"]["active"] = 123
+        control_text_gpsd_socket = copy.deepcopy(valid_system_services)
+        control_text_gpsd_socket["gpsd.socket"]["enabled"] = "enabled\x00"
         cases = [
             ({}, "missing services section", "Status Report"),
             ({"system_services": None}, "missing system_services section", "Status Report"),
@@ -13720,6 +13728,16 @@ class StatusReportTests(unittest.TestCase):
                 "Track Logger",
             ),
             (
+                {"services": non_text_track_logger},
+                "noaa-navionics-track.service active is not text",
+                "Track Logger",
+            ),
+            (
+                {"services": control_text_track_logger},
+                "noaa-navionics-track.service enabled contains control characters",
+                "Track Logger",
+            ),
+            (
                 {"services": weak_track_logger_settings},
                 "ProtectSystem=no expected full",
                 "Track Logger Settings",
@@ -13727,6 +13745,16 @@ class StatusReportTests(unittest.TestCase):
             (
                 {"system_services": inactive_gpsd_socket},
                 "gpsd.socket enabled=enabled active=inactive",
+                "GPSD Socket",
+            ),
+            (
+                {"system_services": non_text_gpsd_socket},
+                "gpsd.socket active is not text",
+                "GPSD Socket",
+            ),
+            (
+                {"system_services": control_text_gpsd_socket},
+                "gpsd.socket enabled contains control characters",
                 "GPSD Socket",
             ),
         ]

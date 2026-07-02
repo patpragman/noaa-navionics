@@ -5451,8 +5451,12 @@ def _chart_sync_check(summary: dict[str, object], unit: str, name: str) -> Check
     state = summary.get(unit)
     if not isinstance(state, dict):
         return CheckResult(name, False, f"{unit} missing from status report")
-    enabled = str(state.get("enabled", ""))
-    active = str(state.get("active", ""))
+    enabled, failure = _unit_state_text(state, unit, "enabled", name)
+    if failure:
+        return failure
+    active, failure = _unit_state_text(state, unit, "active", name)
+    if failure:
+        return failure
     detail = f"{unit} enabled={enabled} active={active}"
     active_text = active.strip().lower()
     enabled_text = enabled.strip().lower()
@@ -5471,8 +5475,12 @@ def _unit_not_failed_check(summary: dict[str, object], unit: str, name: str) -> 
     state = summary.get(unit)
     if not isinstance(state, dict):
         return CheckResult(name, False, f"{unit} missing from status report")
-    enabled = str(state.get("enabled", ""))
-    active = str(state.get("active", ""))
+    enabled, failure = _unit_state_text(state, unit, "enabled", name)
+    if failure:
+        return failure
+    active, failure = _unit_state_text(state, unit, "active", name)
+    if failure:
+        return failure
     detail = f"{unit} enabled={enabled} active={active}"
     ok = active != "failed" and not _unit_query_failed(enabled) and not _unit_query_failed(active)
     return CheckResult(name, ok, detail)
@@ -5491,8 +5499,12 @@ def _unit_check(
     state = summary.get(unit)
     if not isinstance(state, dict):
         return CheckResult(name, False, f"{unit} missing from status report")
-    enabled = str(state.get("enabled", ""))
-    active = str(state.get("active", ""))
+    enabled, failure = _unit_state_text(state, unit, "enabled", name)
+    if failure:
+        return failure
+    active, failure = _unit_state_text(state, unit, "active", name)
+    if failure:
+        return failure
     if _unit_query_failed(enabled) or _unit_query_failed(active):
         return CheckResult(name, False, f"{unit} enabled={enabled} active={active}")
     if active == "failed":
@@ -5502,6 +5514,21 @@ def _unit_check(
     ok = enabled_ok and active_ok
     detail = f"{unit} enabled={enabled} active={active}"
     return CheckResult(name, ok, detail)
+
+
+def _unit_state_text(
+    state: dict[str, object],
+    unit: str,
+    field: str,
+    name: str,
+) -> tuple[str, Optional[CheckResult]]:
+    value = state.get(field, "")
+    if not isinstance(value, str):
+        return "", CheckResult(name, False, f"{unit} {field} is not text")
+    text = value.strip()
+    if _status_text_has_control_char(text):
+        return "", CheckResult(name, False, f"{unit} {field} contains control characters")
+    return text, None
 
 
 def _unit_query_failed(value: str) -> bool:
