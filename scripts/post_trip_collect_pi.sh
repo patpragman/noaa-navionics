@@ -1450,6 +1450,12 @@ def validate_successful_status_snapshot(
     config = payload.get("config")
     if not isinstance(config, dict):
         fail(f"status snapshot JSON missing config section: {path}")
+    chart_package = snapshot_text(config.get("chart_package", ""), "config chart_package", path).lower()
+    if chart_package not in {"state", "cgd", "region", "chart", "all"}:
+        fail(f"status snapshot JSON config chart_package is invalid: {path}")
+    chart_value = snapshot_text(config.get("chart_value", ""), "config chart_value", path)
+    if chart_package != "all" and not chart_value:
+        fail(f"status snapshot JSON missing config chart_value: {path}")
     gps_mode = snapshot_text(config.get("gps_mode", ""), "config gps_mode", path).lower()
     if gps_mode not in {"gpsd", "serial"}:
         fail(f"status snapshot JSON has invalid gps_mode: {gps_mode or '<missing>'}: {path}")
@@ -1466,6 +1472,9 @@ def validate_successful_status_snapshot(
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         fail(f"status snapshot JSON config gps_baud is invalid: {path}")
+    gpsd_port = config.get("gpsd_port")
+    if isinstance(gpsd_port, bool) or not isinstance(gpsd_port, int) or not (1 <= gpsd_port <= 65535):
+        fail(f"status snapshot JSON config gpsd_port is invalid: {path}")
     chart_output = snapshot_text(config.get("chart_output", ""), "config chart_output", path)
     if not chart_output:
         fail(f"status snapshot JSON missing config chart_output: {path}")
@@ -1476,6 +1485,15 @@ def validate_successful_status_snapshot(
         fail(f"status snapshot JSON missing config track_output: {path}")
     if not Path(configured_track_output).is_absolute():
         fail(f"status snapshot JSON config track_output is not absolute: {path}")
+    track_retention_days = config.get("track_retention_days")
+    if isinstance(track_retention_days, bool) or not isinstance(track_retention_days, int) or track_retention_days < 0:
+        fail(f"status snapshot JSON config track_retention_days is negative or invalid: {path}")
+    track_fsync_interval_seconds = finite_status_float(config.get("track_fsync_interval_seconds"))
+    if track_fsync_interval_seconds is None or track_fsync_interval_seconds < 0.0:
+        fail(f"status snapshot JSON config track_fsync_interval_seconds is negative or invalid: {path}")
+    anchor_radius_meters = finite_status_float(config.get("anchor_radius_meters"))
+    if anchor_radius_meters is None or anchor_radius_meters < 1.0:
+        fail(f"status snapshot JSON config anchor_radius_meters is below 1.0: {path}")
     gps_fix = payload.get("gps_fix")
     if not isinstance(gps_fix, dict):
         fail(f"status snapshot JSON missing gps_fix section: {path}")

@@ -849,9 +849,15 @@ grep -q 'pre-departure status snapshot JSON {expected_name} timestamp does not m
 grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Track Log service row has no structured track_log data' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Track Log {field} does not match track_log' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config chart_package is invalid' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON missing config chart_value' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config gpsd_port is invalid' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config track_retention_days is negative or invalid' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config track_fsync_interval_seconds is negative or invalid' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config anchor_radius_meters is below 1.0' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {row_name} missing inode capacity measurement' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON {row_name} has no free inodes' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/pre_trip_prepare_pi.sh
@@ -2092,9 +2098,15 @@ grep -q 'pre-departure status snapshot JSON {expected_name} timestamp does not m
 grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Track Log service row has no structured track_log data' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Track Log {field} does not match track_log' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config chart_package is invalid' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON missing config chart_value' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config gpsd_port is invalid' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config track_retention_days is negative or invalid' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config track_fsync_interval_seconds is negative or invalid' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON config anchor_radius_meters is below 1.0' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Chart Update Debris found stale update debris' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/verify_pi_recovery_exports.sh
@@ -2454,9 +2466,15 @@ grep -q 'status snapshot JSON {expected_name} timestamp does not match gps_fix' 
 grep -q 'status snapshot JSON {expected_name} HDOP does not match gps_fix' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Track Log service row has no structured track_log data' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Track Log {field} does not match track_log' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config chart_package is invalid' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing config chart_value' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config gpsd_port is invalid' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON config chart_output is not absolute' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing config track_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON config track_output is not absolute' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config track_retention_days is negative or invalid' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config track_fsync_interval_seconds is negative or invalid' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON config anchor_radius_meters is below 1.0' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Charts path does not match config chart_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Chart Update Debris found stale update debris' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/post_trip_collect_pi.sh
@@ -4500,6 +4518,7 @@ grep -q 'EARTH_RADIUS_METERS' src/noaa_navionics/gps.py
 grep -q 'anchor_radius_meters' src/noaa_navionics/config.py
 grep -q '\[anchor\]' src/noaa_navionics/config.py
 grep -q 'radius_meters = 50' examples/noaa-navionics.ini
+grep -q 'fsync_interval_seconds = 30' examples/noaa-navionics.ini
 grep -q '<wpt lat=' src/noaa_navionics/gps.py
 grep -q 'position mark requires satellite or HDOP quality data' src/noaa_navionics/gps.py
 grep -q 'expected a new regular GPX position mark file' src/noaa_navionics/gps.py
@@ -5201,6 +5220,8 @@ grep -q 'f"{row_name} configured path"' tests/test_downloader.py
 grep -q 'f"{row_name} checked path"' tests/test_downloader.py
 grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence' README.md
 grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence' docs/sailboat-pi.md
+grep -q 'missing or invalid critical config fields including chart package/value, GPSD port, track retention/fsync, and anchor radius' README.md
+grep -q 'missing or invalid critical config fields including chart package/value, GPSD port, track retention/fsync, and anchor radius' docs/sailboat-pi.md
 grep -q 'gps_mode is not text' tests/test_downloader.py
 grep -q 'status report config gps_mode is invalid' src/noaa_navionics/report.py
 grep -q 'gps_device is not text' tests/test_downloader.py
@@ -9567,6 +9588,8 @@ payload = {
     "app": {"source_revision": source_revision},
     "config_path": "/home/pi/.config/noaa-navionics/config.ini",
     "config": {
+        "chart_package": "state",
+        "chart_value": "AK",
         "gps_mode": "gpsd",
         "gps_device": "/dev/serial/by-id/mock-gps",
         "gps_baud": 4800,
@@ -9575,6 +9598,9 @@ payload = {
         "chart_output": "/charts",
         "track_output": "/charts",
         "max_chart_age_days": 30,
+        "track_retention_days": 90,
+        "track_fsync_interval_seconds": 30.0,
+        "anchor_radius_meters": 50.0,
     },
     "manifest": manifest_summary,
     "desktop": {
@@ -10595,6 +10621,8 @@ payload = {
     "app": {"source_revision": source_revision},
     "config_path": "/home/pi/.config/noaa-navionics/config.ini",
     "config": {
+        "chart_package": "state",
+        "chart_value": "AK",
         "gps_mode": "gpsd",
         "gps_device": "/dev/serial/by-id/mock-gps",
         "gps_baud": 4800,
@@ -10603,6 +10631,9 @@ payload = {
         "chart_output": "/charts",
         "track_output": "/charts",
         "max_chart_age_days": 30,
+        "track_retention_days": 90,
+        "track_fsync_interval_seconds": 30.0,
+        "anchor_radius_meters": 50.0,
     },
     "manifest": manifest_summary,
     "desktop": {
@@ -14713,6 +14744,8 @@ def write_pre_departure_status(directory):
                 "app": {"source_revision": "fixture123"},
                 "config_path": "/home/pi/.config/noaa-navionics/config.ini",
                 "config": {
+                    "chart_package": "state",
+                    "chart_value": "AK",
                     "gps_mode": "gpsd",
                     "gps_device": "/dev/serial/by-id/mock-gps",
                     "gps_baud": 4800,
@@ -14721,6 +14754,9 @@ def write_pre_departure_status(directory):
                     "chart_output": "/charts",
                     "track_output": "/charts",
                     "max_chart_age_days": 30,
+                    "track_retention_days": 90,
+                    "track_fsync_interval_seconds": 30.0,
+                    "anchor_radius_meters": 50.0,
                 },
                 "manifest": manifest_summary,
                 "desktop": {
