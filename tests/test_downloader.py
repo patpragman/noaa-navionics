@@ -16190,6 +16190,33 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_check_pi_status_required_rows_match_shared_readiness(self):
+        source = shell_function_python_command(
+            Path("scripts/check_pi_status.sh").read_text(encoding="utf-8"),
+            "validate_status_json_output",
+        )
+
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_READINESS_CHECKS"),
+            set(report_module.CORE_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_READINESS_CHECKS"),
+            set(report_module.GPSD_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "SERIAL_READINESS_CHECKS"),
+            set(report_module.SERIAL_READINESS_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "CORE_SERVICE_CHECKS"),
+            set(report_module.CORE_SERVICE_CHECKS),
+        )
+        self.assertEqual(
+            python_string_set_assignment(source, "GPSD_SERVICE_CHECKS"),
+            set(report_module.GPSD_SERVICE_CHECKS),
+        )
+
     def test_check_pi_status_json_validator_executes_text_field_checks(self):
         validator = shell_function_python_command(
             Path("scripts/check_pi_status.sh").read_text(encoding="utf-8"),
@@ -16205,6 +16232,17 @@ class StatusReportTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(valid_result.returncode, 0, valid_result.stderr)
+
+        serial_report = complete_status_gui_report(gps_mode="serial")
+        serial_result = subprocess.run(
+            [sys.executable, "-c", validator],
+            input=json.dumps(serial_report),
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(serial_result.returncode, 0, serial_result.stderr)
 
         cases = (
             (("checks", 0, "name"), "Chart\x00Readiness", "readiness check name contains control characters"),
@@ -16364,6 +16402,16 @@ class StatusReportTests(unittest.TestCase):
                     [row for row in report["service_checks"] if row["name"] != "Chart Sync Settings"],
                 ),
                 "missing required service check(s): Chart Sync Settings",
+            ),
+            (
+                lambda report: (
+                    report["config"].__setitem__("gps_mode", "serial"),
+                    report.__setitem__(
+                        "checks",
+                        [row for row in report["checks"] if row["name"] != "GPS Device"],
+                    ),
+                ),
+                "missing required readiness check(s): GPS, GPS Device",
             ),
         )
         for mutate, expected_error in required_row_cases:

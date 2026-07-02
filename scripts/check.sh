@@ -12316,7 +12316,10 @@ grep -q 'contains control characters' scripts/check_pi_status.sh
 grep -q 'is not a string' scripts/check_pi_status.sh
 grep -q 'validate_optional_text_fields' scripts/check_pi_status.sh
 grep -q 'test_check_pi_status_rejects_json_control_characters' tests/test_downloader.py
+grep -q 'test_check_pi_status_required_rows_match_shared_readiness' tests/test_downloader.py
 grep -q 'test_check_pi_status_json_validator_executes_text_field_checks' tests/test_downloader.py
+grep -q 'complete_status_gui_report(gps_mode="serial")' tests/test_downloader.py
+grep -q 'missing required readiness check(s): GPS, GPS Device' tests/test_downloader.py
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' README.md
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' docs/sailboat-pi.md
 grep -q 'invalid critical config fields including chart/track output, GPS device/baud, GPSD port, track retention/fsync, and anchor radius' README.md
