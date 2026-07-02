@@ -2999,6 +2999,17 @@ grep -q 'OpenCPN config directory_mode' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
 grep -q 'status report launcher settings path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
+grep -q 'launcher_settings_symlink_component = status_text(' scripts/verify_pi.sh
+grep -q 'launcher settings symlink component' scripts/verify_pi.sh
+grep -q 'gps_wait = status_text(' scripts/verify_pi.sh
+grep -q 'launcher settings NOAA_NAVIONICS_GPS_SECONDS' scripts/verify_pi.sh
+grep -q 'restart_attempts = status_text(' scripts/verify_pi.sh
+grep -q 'launcher settings NOAA_NAVIONICS_OPENCPN_RESTARTS' scripts/verify_pi.sh
+grep -q 'restart_delay = status_text(' scripts/verify_pi.sh
+grep -q 'launcher settings NOAA_NAVIONICS_OPENCPN_RESTART_DELAY' scripts/verify_pi.sh
+grep -q 'fail_open = status_text(' scripts/verify_pi.sh
+grep -q 'launcher settings NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/verify_pi.sh
+grep -q 'status_text(values.get(key, ""), f"launcher settings {key}")' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report desktop autostart missing path_symlink_component' scripts/verify_pi.sh
 grep -q 'status_text(user.get("name", ""), "user name")' scripts/verify_pi.sh

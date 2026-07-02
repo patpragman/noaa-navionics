@@ -1314,7 +1314,10 @@ if expected_launcher_env_path:
             "status report launcher settings missing launcher_settings_symlink_component: "
             f"{expected_launcher_env_path}"
         )
-    launcher_settings_symlink_component = str(launcher_settings.get("launcher_settings_symlink_component", "")).strip()
+    launcher_settings_symlink_component = status_text(
+        launcher_settings.get("launcher_settings_symlink_component", ""),
+        "launcher settings symlink component",
+    )
     if launcher_settings_symlink_component:
         raise SystemExit(
             "status report launcher settings path contains a symlink: "
@@ -1351,27 +1354,39 @@ if expected_launcher_env_path:
         raise SystemExit(
             f"status report launcher settings values {values!r} do not match launcher environment {actual_values!r}"
         )
-    gps_wait = str(values.get("NOAA_NAVIONICS_GPS_SECONDS", "")).strip()
+    gps_wait = status_text(
+        values.get("NOAA_NAVIONICS_GPS_SECONDS", ""),
+        "launcher settings NOAA_NAVIONICS_GPS_SECONDS",
+    )
     if gps_wait != os.environ.get("NOAA_NAVIONICS_GPS_SECONDS", "60"):
         raise SystemExit(
             f"status report launcher GPS wait {gps_wait} does not match verification wait "
             f"{os.environ.get('NOAA_NAVIONICS_GPS_SECONDS', '60')}"
         )
-    restart_attempts = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "")).strip()
+    restart_attempts = status_text(
+        values.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", ""),
+        "launcher settings NOAA_NAVIONICS_OPENCPN_RESTARTS",
+    )
     expected_restart_attempts = os.environ.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "3")
     if restart_attempts != expected_restart_attempts:
         raise SystemExit(
             f"status report launcher OpenCPN restart attempts {restart_attempts or '<missing>'} "
             f"do not match verification value {expected_restart_attempts}"
         )
-    restart_delay = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", "")).strip()
+    restart_delay = status_text(
+        values.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", ""),
+        "launcher settings NOAA_NAVIONICS_OPENCPN_RESTART_DELAY",
+    )
     expected_restart_delay = os.environ.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", "5")
     if restart_delay != expected_restart_delay:
         raise SystemExit(
             f"status report launcher OpenCPN restart delay {restart_delay or '<missing>'} "
             f"does not match verification value {expected_restart_delay}"
         )
-    fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
+    fail_open = status_text(
+        values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", ""),
+        "launcher settings NOAA_NAVIONICS_START_ON_FAILED_READINESS",
+    ).lower()
     if fail_open in {"1", "yes", "true", "on"}:
         raise SystemExit(
             "status report launcher settings enable NOAA_NAVIONICS_START_ON_FAILED_READINESS"
@@ -1381,7 +1396,7 @@ if expected_launcher_env_path:
             f"status report launcher settings contain invalid NOAA_NAVIONICS_START_ON_FAILED_READINESS={fail_open}"
         )
     for key in ("NOAA_NAVIONICS_OPENCPN_RESTARTS", "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY"):
-        value = str(values.get(key, "")).strip()
+        value = status_text(values.get(key, ""), f"launcher settings {key}")
         if value and (not value.isdigit() or int(value) < 0):
             raise SystemExit(f"status report launcher settings contain invalid {key}={value}")
 user = report.get("user")
