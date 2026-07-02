@@ -9,7 +9,7 @@ Options:
   --device PATH       Stable GPS device path on the Pi
   --allow-dirty       Allow deploying a dirty local worktree for deliberate test runs
   --skip-deploy       Do not deploy/provision; verify the existing Pi setup
-  --skip-gps-time     Pass through provisioning without configuring chrony GPS time
+  --skip-gps-time     Provision without configuring chrony GPS time
   --no-reboot         Do not reboot; run only pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot (1-900; default: 180)
   --gps-seconds N     Seconds to wait for a GPS fix during provisioning (1-600)
@@ -23,6 +23,8 @@ Options:
 
 Runs a dock acceptance test over SSH:
 deploy/provision, verify, reboot, wait for the Pi, and verify again.
+Provisioning-only options cannot be combined with --skip-deploy, and --timeout
+cannot be combined with --no-reboot.
 Nothing is installed or enabled on the local computer.
 EOF
 }
@@ -44,6 +46,7 @@ device=""
 skip_deploy=0
 no_reboot=0
 timeout=180
+saw_timeout_option=0
 max_reboot_timeout=900
 max_gps_seconds=600
 max_sync_retries=20
@@ -52,6 +55,7 @@ max_opencpn_restarts=20
 max_opencpn_restart_delay=3600
 deploy_args=()
 provision_args=()
+provision_only_args=()
 verify_args=()
 remote_reboot_cmd=""
 remote_sudo_cmd=""
@@ -352,6 +356,7 @@ while [[ $# -gt 0 ]]; do
       require_positive_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_sync_retries"
       provision_args+=("$1" "${2:-}")
+      provision_only_args+=("$1")
       shift 2
       ;;
     --sync-retry-delay)
@@ -362,6 +367,7 @@ while [[ $# -gt 0 ]]; do
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_sync_retry_delay"
       provision_args+=("$1" "${2:-}")
+      provision_only_args+=("$1")
       shift 2
       ;;
     --opencpn-restarts|--opencpn-restart-delay)
@@ -400,6 +406,7 @@ EOF
       ;;
     --skip-gps-time)
       provision_args+=("$1")
+      provision_only_args+=("$1")
       shift
       ;;
     --no-reboot)
@@ -418,6 +425,7 @@ EOF
         exit 2
       fi
       timeout="$timeout_value"
+      saw_timeout_option=1
       shift 2
       ;;
     -h|--help)
@@ -433,6 +441,16 @@ done
 
 validate_ssh_target "$target"
 require_positive_integer "--timeout" "$timeout"
+
+if [[ "$skip_deploy" -eq 1 && "${#provision_only_args[@]}" -gt 0 ]]; then
+  echo "Provisioning-only options require deploy/provision; remove --skip-deploy or omit: ${provision_only_args[*]}" >&2
+  exit 2
+fi
+
+if [[ "$no_reboot" -eq 1 && "$saw_timeout_option" -eq 1 ]]; then
+  echo "--timeout requires reboot; remove --no-reboot or omit --timeout" >&2
+  exit 2
+fi
 
 if [[ -z "$device" && ! ( "$skip_deploy" -eq 1 && "$no_reboot" -eq 1 ) ]]; then
   echo "--device is required for the rebooted dock acceptance test" >&2

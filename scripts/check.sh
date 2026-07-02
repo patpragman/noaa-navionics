@@ -5762,6 +5762,8 @@ grep -q 'validate_boot_id_value "post-reboot" "$after_boot_id"' scripts/dock_tes
 grep -q 'expected Linux boot_id value' scripts/dock_test_pi.sh
 grep -q 'boot ID changed after reboot' scripts/dock_test_pi.sh
 grep -q -- '--expected-boot-id "$after_boot_id"' scripts/dock_test_pi.sh
+grep -q 'Provisioning-only options require deploy/provision' scripts/dock_test_pi.sh
+grep -q -- '--timeout requires reboot' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
 grep -q -- '--device is required for the rebooted dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
@@ -7161,6 +7163,17 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--timeout must be between 1 and 900 seconds' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --timeout 5 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject --timeout with --no-reboot with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--timeout requires reboot' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy >"$dock_output" 2>&1
@@ -14519,6 +14532,42 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--sync-retries must be at most 20' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --sync-retries 2 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject provisioning-only --sync-retries with --skip-deploy with exit 2" >&2
+  exit 1
+fi
+grep -q -- 'Provisioning-only options require deploy/provision' "$dock_output"
+grep -q -- '--sync-retries' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --sync-retry-delay 5 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject provisioning-only --sync-retry-delay with --skip-deploy with exit 2" >&2
+  exit 1
+fi
+grep -q -- 'Provisioning-only options require deploy/provision' "$dock_output"
+grep -q -- '--sync-retry-delay' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --skip-gps-time >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject provisioning-only --skip-gps-time with --skip-deploy with exit 2" >&2
+  exit 1
+fi
+grep -q -- 'Provisioning-only options require deploy/provision' "$dock_output"
+grep -q -- '--skip-gps-time' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --opencpn-restart-delay 3601 >"$dock_output" 2>&1
