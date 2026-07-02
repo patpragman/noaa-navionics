@@ -1286,8 +1286,22 @@ grep -q 'root text target is a symlink' scripts/install_raspberry_pi.sh
 grep -q 'root text target directory path contains a symlink' scripts/install_raspberry_pi.sh
 grep -q 'root text target directory .* has permissions' scripts/install_raspberry_pi.sh
 grep -q 'root text target .* is owned by uid' scripts/install_raspberry_pi.sh
-grep -q 'cleanup_private_root_temp_file(tmp_path)' scripts/install_raspberry_pi.sh
+grep -q 'validate_root_text_temp_for_promotion(tmp_path, tmp_stat, mode)' scripts/install_raspberry_pi.sh
+grep -q 'root text temp changed before promotion; leaving it in place' scripts/install_raspberry_pi.sh
+grep -q 'cleanup_private_root_temp_file(tmp_path, tmp_stat)' scripts/install_raspberry_pi.sh
 grep -q 'root text temp changed before cleanup; leaving it in place' scripts/install_raspberry_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/install_raspberry_pi.sh").read_text()
+start = text.index("install_root_text_atomic() {")
+tmp_stat = text.index("tmp_stat = os.fstat(handle.fileno())", start)
+validate = text.index("validate_root_text_temp_for_promotion(tmp_path, tmp_stat, mode)", tmp_stat)
+promote = text.index("os.replace(tmp_path, target)", validate)
+cleanup = text.index("cleanup_private_root_temp_file(tmp_path, tmp_stat)", promote)
+if not tmp_stat < validate < promote < cleanup:
+    raise SystemExit("installer root text temp must be same-file validated before promotion and cleanup")
+PY
 ! grep -q 'tmp_path.unlink()' scripts/install_raspberry_pi.sh
 ! grep -q 'sudo tee -a /etc/apt/sources.list' scripts/install_raspberry_pi.sh
 grep -q 'DEBIAN_FRONTEND=noninteractive "$apt_get_bin"' scripts/install_raspberry_pi.sh
@@ -3329,6 +3343,8 @@ grep -q 'Failed installer source-revision and root text temporary cleanup is als
 grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Installer source-revision temp files are same-file validated before promotion' README.md
 grep -q 'Installer source-revision temp files are same-file validated before promotion' docs/sailboat-pi.md
+grep -q 'Installer root text temp files, including the Bookworm backports apt-source drop-in, are same-file validated before promotion' README.md
+grep -q 'Installer root text temp files, including the Bookworm backports apt-source drop-in, are same-file validated before promotion' docs/sailboat-pi.md
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md

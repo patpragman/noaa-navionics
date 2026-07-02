@@ -436,7 +436,7 @@ def first_symlink_ancestor(path: Path):
             return component
     return None
 
-def cleanup_private_root_temp_file(path: Path) -> None:
+def cleanup_private_root_temp_file(path: Path, expected_stat=None) -> None:
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     try:
         before = os.stat(path, follow_symlinks=False)
@@ -447,6 +447,9 @@ def cleanup_private_root_temp_file(path: Path) -> None:
         return
     if not stat.S_ISREG(before.st_mode) or before.st_uid != 0 or stat.S_IMODE(before.st_mode) & 0o022:
         print(f"root text temp is not a trusted root-owned private file; leaving it in place: {path}", file=sys.stderr)
+        return
+    if expected_stat is not None and not os.path.samestat(before, expected_stat):
+        print(f"root text temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
         return
     try:
         dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
@@ -474,6 +477,37 @@ def cleanup_private_root_temp_file(path: Path) -> None:
         os.fsync(dir_fd)
     finally:
         os.close(dir_fd)
+
+def validate_root_text_temp_for_promotion(path: Path, expected_stat, expected_mode: int) -> None:
+    if expected_stat is None:
+        raise SystemExit(f"root text temp was not opened safely before promotion: {path}")
+    try:
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f"could not inspect root text temp before promotion {path}: {exc}") from exc
+    if not stat.S_ISREG(current.st_mode):
+        raise SystemExit(f"root text temp is not a regular file before promotion: {path}")
+    if current.st_uid != 0:
+        raise SystemExit(f"root text temp {path} is owned by uid {current.st_uid}, expected root")
+    current_mode = stat.S_IMODE(current.st_mode)
+    if current_mode != expected_mode:
+        raise SystemExit(f"root text temp {path} has permissions {current_mode:04o}, expected {expected_mode:04o}")
+    if not os.path.samestat(current, expected_stat):
+        raise SystemExit(f"root text temp changed before promotion; leaving it in place: {path}")
+
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, expected_stat):
+            raise SystemExit(f"root text temp changed while being opened for promotion: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f"root text temp is not regular when opened for promotion: {path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened.st_uid != 0 or opened_mode != expected_mode:
+            raise SystemExit(f"root text temp {path} is not trusted root-owned storage before promotion")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 if target.is_symlink():
     raise SystemExit(f"root text target is a symlink: {target}")
@@ -525,6 +559,7 @@ if target.exists():
         )
 
 tmp_path = None
+tmp_stat = None
 try:
     with tempfile.NamedTemporaryFile(
         "w",
@@ -534,14 +569,14 @@ try:
         delete=False,
     ) as handle:
         tmp_path = Path(handle.name)
+        os.fchmod(handle.fileno(), mode)
         handle.write(text)
         if not text.endswith("\n"):
             handle.write("\n")
         handle.flush()
         os.fsync(handle.fileno())
-    os.chmod(tmp_path, mode)
-    with tmp_path.open("rb") as handle:
-        os.fsync(handle.fileno())
+        tmp_stat = os.fstat(handle.fileno())
+    validate_root_text_temp_for_promotion(tmp_path, tmp_stat, mode)
     os.replace(tmp_path, target)
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(target.parent, flags)
@@ -551,7 +586,7 @@ try:
         os.close(fd)
 finally:
     if tmp_path is not None:
-        cleanup_private_root_temp_file(tmp_path)
+        cleanup_private_root_temp_file(tmp_path, tmp_stat)
 PY
 }
 
