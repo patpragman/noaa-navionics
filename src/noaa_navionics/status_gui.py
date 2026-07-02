@@ -645,6 +645,7 @@ class StatusApp(tk.Tk):
         self._set_busy(False)
         rows = status_rows(report)
         headline = status_headline(report)
+        was_ready = getattr(self, "last_status_report_ready", False)
         self.last_status_report_ready = headline == "READY"
         self.headline.set(headline)
         self.summary.set(format_panel_summary(report))
@@ -664,6 +665,10 @@ class StatusApp(tk.Tk):
         else:
             self.last_report.set("Status report was not written to disk.")
         alarm_visible = self._show_anchor_watch_alarm_if_active()
+        if not alarm_visible and was_ready and headline != "READY":
+            bell = getattr(self, "bell", None)
+            if callable(bell):
+                bell()
         if (
             not alarm_visible
             and status_report_is_ready(report)

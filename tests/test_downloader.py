@@ -4610,6 +4610,74 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_status_refresh_rings_when_ready_report_becomes_not_ready(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeTree:
+            def get_children(self):
+                return []
+
+            def delete(self, item):
+                raise AssertionError("no items should be deleted")
+
+            def insert(self, *args, **kwargs):
+                return None
+
+        class FakeApp:
+            def __init__(self):
+                self.last_status_report_ready = True
+                self.anchor_watch_fix = None
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.tree = FakeTree()
+                self.output_path = None
+                self.busy_calls = []
+                self.refresh_scheduled = 0
+                self.bells = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def bell(self):
+                self.bells += 1
+
+        app = FakeApp()
+        report = complete_status_gui_report(ok=False)
+        for check in report["checks"]:
+            if check["name"] == "GPSD":
+                check["ok"] = False
+                check["detail"] = "no fix"
+                break
+        report["gps_fix"] = {
+            "source": "GPSD",
+            "ok": False,
+            "detail": "no fix",
+        }
+
+        status_gui_module.StatusApp._show_report(app, report)
+
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertFalse(app.last_status_report_ready)
+        self.assertEqual(app.bells, 1)
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.refresh_scheduled, 1)
+
     def test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok(self):
         class FakeVar:
             def __init__(self):
