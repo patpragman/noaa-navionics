@@ -559,7 +559,7 @@ class StatusApp(tk.Tk):
                 write_status_report(report, self.output_path)
             self.queue.put(("report", report))
         except Exception as exc:  # pragma: no cover - UI path
-            self.queue.put(("error", str(exc)))
+            self.queue.put(("report_error", str(exc)))
 
     def _mark_worker(self, *, mob: bool) -> None:
         try:
@@ -632,6 +632,8 @@ class StatusApp(tk.Tk):
                 elif kind == "anchor_watch_error":
                     anchor_fix, message = payload
                     self._show_anchor_watch_error(anchor_fix, str(message))
+                elif kind == "report_error":
+                    self._show_report_error(str(payload))
                 elif kind == "error":
                     self._show_error(str(payload))
                 elif kind == "worker_done":
@@ -752,6 +754,26 @@ class StatusApp(tk.Tk):
             self._schedule_refresh()
             return
         self._show_error(message)
+
+    def _show_report_error(self, message: str) -> None:
+        was_ready = getattr(self, "last_status_report_ready", False)
+        self.last_status_report_ready = False
+        self._set_busy(False)
+        self.last_report.set(f"Status refresh error: {message}")
+        alarm_visible = self._show_anchor_watch_alarm_if_active()
+        if alarm_visible:
+            self._schedule_anchor_watch()
+            self._schedule_refresh()
+            return
+        self.headline.set("NOT READY")
+        self.summary.set(message)
+        self.gps_summary.set("GPS: unavailable")
+        if was_ready:
+            bell = getattr(self, "bell", None)
+            if callable(bell):
+                bell()
+        self._schedule_anchor_watch()
+        self._schedule_refresh()
 
     def _show_anchor_watch_already_active(self) -> None:
         self._set_busy(False)

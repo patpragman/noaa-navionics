@@ -5253,6 +5253,110 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.refresh_scheduled, 1)
         self.assertEqual(app.bells, 1)
 
+    def test_status_gui_report_error_rings_when_ready_refresh_fails(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.last_status_report_ready = True
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+                self.bells = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def bell(self):
+                self.bells += 1
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._show_report_error(app, "status-report failed")
+
+        self.assertFalse(app.last_status_report_ready)
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, "status-report failed")
+        self.assertEqual(app.gps_summary.value, "GPS: unavailable")
+        self.assertEqual(app.last_report.value, "Status refresh error: status-report failed")
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.watch_scheduled, 1)
+        self.assertEqual(app.refresh_scheduled, 1)
+        self.assertEqual(app.bells, 1)
+
+    def test_status_gui_action_error_does_not_replace_last_ready_report_state(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeApp:
+            def __init__(self):
+                self.last_status_report_ready = True
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
+                self.headline = FakeVar()
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.last_report = FakeVar()
+                self.busy_calls = []
+                self.watch_scheduled = 0
+                self.refresh_scheduled = 0
+                self.bells = 0
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+            def _schedule_anchor_watch(self):
+                self.watch_scheduled += 1
+
+            def _schedule_refresh(self):
+                self.refresh_scheduled += 1
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def bell(self):
+                self.bells += 1
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._show_error(app, "position mark failed")
+
+        self.assertTrue(app.last_status_report_ready)
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, "position mark failed")
+        self.assertEqual(app.gps_summary.value, "GPS: unavailable")
+        self.assertEqual(app.last_report.value, "Error: position mark failed")
+        self.assertEqual(app.busy_calls, [False])
+        self.assertEqual(app.watch_scheduled, 1)
+        self.assertEqual(app.refresh_scheduled, 1)
+        self.assertEqual(app.bells, 0)
+
     def test_status_gui_stale_anchor_watch_result_does_not_restart_stopped_watch(self):
         class FakeVar:
             def __init__(self, value=None):
@@ -5739,6 +5843,40 @@ class GuiTests(unittest.TestCase):
 
         self.assertIsNone(app.worker)
         self.assertEqual(app.errors, [("GPSD timed out", None)])
+        self.assertEqual(app.poll_after_id, "next-poll-after")
+        self.assertEqual(app.after_calls, [(150, "_poll_queue")])
+
+    def test_status_gui_poll_queue_dispatches_status_refresh_errors_separately(self):
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.poll_after_id = "poll-after"
+                self.queue = status_gui_module.Queue()
+                self.queue.put(("report_error", "status-report failed"))
+                self.worker = FinishedWorker()
+                self.report_errors = []
+                self.after_calls = []
+
+            def _show_report_error(self, message):
+                self.report_errors.append((message, self.worker))
+
+            def after(self, delay_ms, callback):
+                self.after_calls.append((delay_ms, callback.__name__))
+                return "next-poll-after"
+
+            def _poll_queue(self):
+                return status_gui_module.StatusApp._poll_queue(self)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._poll_queue(app)
+
+        self.assertIsNone(app.worker)
+        self.assertEqual(app.report_errors, [("status-report failed", None)])
         self.assertEqual(app.poll_after_id, "next-poll-after")
         self.assertEqual(app.after_calls, [(150, "_poll_queue")])
 
