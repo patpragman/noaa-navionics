@@ -155,8 +155,9 @@ validate_gps_device_path_arg() {
     exit 2
   fi
   case "$value" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       suffix="${value#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
         return 0
       fi
@@ -165,11 +166,11 @@ validate_gps_device_path_arg() {
       return 0
       ;;
     /dev/ttyUSB*|/dev/ttyACM*)
-      echo "GPS device path is volatile; use /dev/serial/by-id/... instead: $value" >&2
+      echo "GPS device path is volatile; use /dev/serial/by-id/... or /dev/serial/by-path/... instead: $value" >&2
       exit 2
       ;;
   esac
-  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
+  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
   exit 2
 }
 
@@ -497,7 +498,7 @@ fi
 if [[ -z "$device" ]]; then
   echo "--device is required for dock acceptance and pre-reboot smoke checks" >&2
   echo "Install first, then run on the Pi: noaa-navionics list-gps-devices" >&2
-  echo "Use a stable /dev/serial/by-id/... path so verification proves the intended GPS receiver." >&2
+  echo "Use a stable /dev/serial/by-id/... or /dev/serial/by-path/... path so verification proves the intended GPS receiver." >&2
   exit 2
 fi
 

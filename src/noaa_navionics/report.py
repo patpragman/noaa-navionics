@@ -1012,8 +1012,8 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path does not exist"))
     if data.get("is_directory") is True:
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path is a directory"))
-    if configured_path.startswith("/dev/serial/by-id/") and data.get("is_symlink") is not True:
-        failures.append(CheckResult("GPS Device", False, "status report GPS Device by-id path is not a symlink"))
+    if configured_path.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/")) and data.get("is_symlink") is not True:
+        failures.append(CheckResult("GPS Device", False, "status report GPS Device udev path is not a symlink"))
     if data.get("is_character_device") is not True:
         failures.append(CheckResult("GPS Device", False, "status report GPS Device is not a character device"))
     resolved_path = str(data.get("resolved_path", "")).strip()
@@ -1023,12 +1023,12 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
 
 
 def _stable_status_gps_device_path(path: str) -> bool:
-    by_id_prefix = "/dev/serial/by-id/"
-    if path.startswith(by_id_prefix):
-        suffix = path[len(by_id_prefix) :]
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
-            char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-" for char in suffix
-        )
+    for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
+        if path.startswith(prefix):
+            suffix = path[len(prefix) :]
+            return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+                char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-" for char in suffix
+            )
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
@@ -1420,14 +1420,14 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
                 CheckResult(
                     "Config",
                     False,
-                    f"status report config gps_device is volatile; use /dev/serial/by-id/... instead: {gps_device}",
+                    f"status report config gps_device is volatile; use /dev/serial/by-id/... or /dev/serial/by-path/... instead: {gps_device}",
                 )
             ]
         return [
             CheckResult(
                 "Config",
                 False,
-                "status report config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
+                "status report config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
             )
         ]
     gps_baud = config.get("gps_baud")

@@ -1643,7 +1643,7 @@ else
   skip_command mount-findmnt "skipped findmnt capture: trusted findmnt command is unavailable"
 fi
 if [[ -n "$ls_cmd" ]]; then
-  run_command serial-devices bash -lc 'ls_cmd="$1"; "$ls_cmd" -l /dev/serial /dev/serial/by-id 2>&1 || true' _ "$ls_cmd"
+  run_command serial-devices bash -lc 'ls_cmd="$1"; "$ls_cmd" -l /dev/serial /dev/serial/by-id /dev/serial/by-path 2>&1 || true' _ "$ls_cmd"
 else
   skip_command serial-devices "skipped serial device listing: trusted ls command is unavailable"
 fi

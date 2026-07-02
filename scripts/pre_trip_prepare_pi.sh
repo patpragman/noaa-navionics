@@ -232,8 +232,9 @@ validate_gps_device_path_arg() {
     exit 2
   fi
   case "$value" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       suffix="${value#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
         return 0
       fi
@@ -242,11 +243,11 @@ validate_gps_device_path_arg() {
       return 0
       ;;
     /dev/ttyUSB*|/dev/ttyACM*)
-      echo "GPS device path is volatile; use /dev/serial/by-id/... instead: $value" >&2
+      echo "GPS device path is volatile; use /dev/serial/by-id/... or /dev/serial/by-path/... instead: $value" >&2
       exit 2
       ;;
   esac
-  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
+  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
   exit 2
 }
 
@@ -1036,13 +1037,13 @@ def positive_status_int(value: object):
 
 
 def stable_snapshot_gps_device_path(path: str) -> bool:
-    by_id_prefix = "/dev/serial/by-id/"
-    if path.startswith(by_id_prefix):
-        suffix = path[len(by_id_prefix) :]
-        allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-"
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
-            char in allowed for char in suffix
-        )
+    allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-"
+    for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
+        if path.startswith(prefix):
+            suffix = path[len(prefix) :]
+            return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+                char in allowed for char in suffix
+            )
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
@@ -1575,9 +1576,9 @@ def validate_successful_status_snapshot(
         if gps_device.startswith("/dev/ttyUSB") or gps_device.startswith("/dev/ttyACM"):
             fail(
                 "pre-departure status snapshot JSON config gps_device is volatile; "
-                "use /dev/serial/by-id/... instead"
+                "use /dev/serial/by-id/... or /dev/serial/by-path/... instead"
             )
-        fail("pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+        fail("pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps")
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         fail("pre-departure status snapshot JSON config gps_baud is invalid")

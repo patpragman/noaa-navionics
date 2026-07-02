@@ -90,14 +90,17 @@ grep -q -- '--gps-seconds-from-launcher-env %h/.config/noaa-navionics/launcher.e
 ! grep -q '^Environment=' systemd/noaa-navionics-preflight.service
 ! grep -q '^EnvironmentFile=' systemd/noaa-navionics-preflight.service
 grep -q 'list-gps-devices' src/noaa_navionics/cli.py
-grep -q 'test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names' tests/test_downloader.py
+grep -q 'test_cli_list_gps_devices_reports_stable_udev_and_volatile_names' tests/test_downloader.py
 grep -q 'test_cli_list_gps_devices_reports_broken_by_id_without_success' tests/test_downloader.py
-grep -q 'broken by-id symlink' src/noaa_navionics/cli.py
-grep -q 'broken by-id symlink' src/noaa_navionics/health.py
+grep -q 'broken {udev_kind} symlink' src/noaa_navionics/cli.py
+grep -q 'broken {udev_kind} symlink' src/noaa_navionics/health.py
 grep -q 'test_check_gps_device_path_reports_broken_by_id_symlink' tests/test_downloader.py
+grep -q 'test_check_gps_device_path_rejects_unsafe_by_path_name_before_existence' tests/test_downloader.py
 grep -q 'No usable stable GPS device paths were found' src/noaa_navionics/cli.py
-grep -q 'broken `/dev/serial/by-id/...` symlink' README.md
-grep -q 'broken `/dev/serial/by-id/...` symlinks' docs/sailboat-pi.md
+grep -q 'broken `/dev/serial/by-id/...` or `/dev/serial/by-path/...` symlink' README.md
+grep -q 'broken `/dev/serial/by-id/...` or `/dev/serial/by-path/...` symlinks' docs/sailboat-pi.md
+grep -q '/dev/serial/by-path/...' README.md
+grep -q '/dev/serial/by-path/...' docs/sailboat-pi.md
 grep -q 'noaa-navionics list-gps-devices' README.md
 grep -q 'noaa-navionics list-gps-devices' docs/sailboat-pi.md
 grep -q 'noaa-navionics list-gps-devices' scripts/install_raspberry_pi.sh
@@ -1570,7 +1573,7 @@ grep -Fq 'run_command package-versions bash -lc' scripts/collect_pi_support_bund
 grep -Fq '"$dpkg_query" -W -f="$format"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command df "$df_cmd" -h' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command serial-devices bash -lc' scripts/collect_pi_support_bundle.sh
-grep -Fq '"$ls_cmd" -l /dev/serial /dev/serial/by-id' scripts/collect_pi_support_bundle.sh
+grep -Fq '"$ls_cmd" -l /dev/serial /dev/serial/by-id /dev/serial/by-path' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command configured-chart-storage-tree bash -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$find_cmd" "$target" -maxdepth 2 -mindepth 1 -ls' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command noaa-cache-tree bash -lc' scripts/collect_pi_support_bundle.sh
@@ -2094,7 +2097,7 @@ grep -q 'restored {label} must not contain parent-directory components' scripts/
 grep -q 'restored {label} is not safe storage' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restored {label} is too broad' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restored gps.mode must be either gpsd or serial' scripts/restore_pi_recovery_user_data.sh
-grep -q 'restored gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored gps.device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restored gps.gpsd_host must be local for onboard gpsd mode' scripts/restore_pi_recovery_user_data.sh
 grep -q 'recovery-restore-backups' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def ensure_private_directory_tree' scripts/restore_pi_recovery_user_data.sh
@@ -3220,12 +3223,13 @@ grep -q 'ExecMainStartTimestampMonotonic' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
-grep -q 'GPSD by-id device is symlink' scripts/verify_pi.sh
+grep -q 'GPSD udev device is symlink' scripts/verify_pi.sh
 grep -q 'GPSD device is character device' scripts/verify_pi.sh
 grep -q 'GPSD client command integrity' scripts/verify_pi.sh
 grep -q 'GPSD socket enabled' scripts/verify_pi.sh
 grep -q 'GPSD socket active' scripts/verify_pi.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/verify_pi.sh
+grep -Fq 'suffix="${suffix#/dev/serial/by-path/}"' scripts/verify_pi.sh
 grep -Fq '"$suffix" != */*' scripts/verify_pi.sh
 grep -q 'def check_gpsd_startup_config' src/noaa_navionics/health.py
 grep -q 'GPSD config directory is a symlink' src/noaa_navionics/health.py
@@ -3310,8 +3314,8 @@ grep -q 'GPS device path is volatile' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd.sh
 grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
-grep -q 'GPS by-id device path is a broken symlink' scripts/configure_gpsd.sh
-grep -q 'GPS by-id device path is not a symlink' scripts/configure_gpsd.sh
+grep -q 'GPS udev device path is a broken symlink' scripts/configure_gpsd.sh
+grep -q 'GPS udev device path is not a symlink' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
 grep -q 'prepare_app_config_path' scripts/configure_gpsd.sh
@@ -3336,6 +3340,7 @@ grep -q '_read_existing_config(parser, config_path)' scripts/configure_gpsd.sh
 grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh
 grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD config validation temp", expected_stat=tmp_stat)' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
+grep -Fq 'suffix="${suffix#/dev/serial/by-path/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
 grep -q 'install_root_file_atomic "$tmp" "$tmp_identity" "$gpsd_conf" 0644' scripts/configure_gpsd.sh
@@ -3497,12 +3502,12 @@ done
 grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is volatile' scripts/provision_sailboat_pi.sh
-grep -q 'GPS by-id device path is a broken symlink' scripts/provision_sailboat_pi.sh
+grep -q 'GPS udev device path is a broken symlink' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is a symlink when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
-grep -q 'Existing GPS by-id device path is a broken symlink' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS udev device path is a broken symlink' scripts/provision_sailboat_pi.sh
 grep -q 'could not open existing GPS config when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when opened' scripts/provision_sailboat_pi.sh
 grep -q 'with os.fdopen(fd, encoding="utf-8") as handle' scripts/provision_sailboat_pi.sh
@@ -3520,9 +3525,9 @@ grep -q 'f"{label} must be at most {maximum} when --skip-gpsd is used"' scripts/
 grep -q 'validate_existing_system_service gpsd.socket "GPSD socket" --skip-gpsd' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service gpsd.service GPSD --skip-gpsd' scripts/provision_sailboat_pi.sh
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
-grep -q 'safe_by_id_chars' scripts/provision_sailboat_pi.sh
+grep -q 'safe_udev_chars' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is not a character device' scripts/provision_sailboat_pi.sh
-grep -q 'GPS by-id device path is not a symlink' scripts/provision_sailboat_pi.sh
+grep -q 'GPS udev device path is not a symlink' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_gps_time_config' scripts/provision_sailboat_pi.sh
 grep -q 'require_trusted_system_command()' scripts/configure_gps_time.sh
 grep -q 'path_in_trusted_system_dir()' scripts/configure_gps_time.sh
@@ -4354,8 +4359,8 @@ grep -q 'STABLE_GPS_DEVICE_PATHS' src/noaa_navionics/config.py
 grep -q 'def _stable_gps_device_path' src/noaa_navionics/config.py
 grep -q 'def _validate_live_serial_device' src/noaa_navionics/cli.py
 grep -q 'GPS serial device uses a volatile USB name' src/noaa_navionics/cli.py
-grep -q 'GPS serial device {path} is a broken by-id symlink' src/noaa_navionics/cli.py
-grep -q 'GPS serial device {path} is not a udev by-id symlink' src/noaa_navionics/cli.py
+grep -q 'GPS serial device {path} is a broken {udev_kind} symlink' src/noaa_navionics/cli.py
+grep -q 'GPS serial device {path} is not a udev {udev_kind} symlink' src/noaa_navionics/cli.py
 grep -q 'GPS serial device {path} is not a character device' src/noaa_navionics/cli.py
 grep -q 'test_live_serial_device_validation_rejects_broken_by_id_symlink' tests/test_downloader.py
 grep -q 'test_live_serial_device_validation_rejects_by_id_that_is_not_character_device' tests/test_downloader.py
@@ -4374,7 +4379,7 @@ grep -q 'def check_gps_device' src/noaa_navionics/health.py
 grep -q 'gps_device_check = check_gps_device_path(device)' src/noaa_navionics/health.py
 grep -q 'test_check_gps_device_rejects_volatile_path_before_opening' tests/test_downloader.py
 grep -q 'test_check_gps_device_path_rejects_by_id_character_node_without_symlink' tests/test_downloader.py
-grep -q 'is not a udev by-id symlink' src/noaa_navionics/health.py
+grep -q 'is not a udev {udev_kind} symlink' src/noaa_navionics/health.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/config.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/health.py
 grep -q 'volatile USB name' src/noaa_navionics/config.py
@@ -4538,8 +4543,8 @@ grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fixes' src/noaa_navionics/gui.py
 grep -q 'def _validate_serial_gps_device' src/noaa_navionics/gui.py
-grep -q 'GPS device path is a broken by-id symlink' src/noaa_navionics/gui.py
-grep -q 'GPS device path is not a udev by-id symlink' src/noaa_navionics/gui.py
+grep -q 'GPS device path is a broken {udev_kind} symlink' src/noaa_navionics/gui.py
+grep -q 'GPS device path is not a udev {udev_kind} symlink' src/noaa_navionics/gui.py
 grep -q 'GPS device path is not a character device' src/noaa_navionics/gui.py
 grep -q 'test_gui_gps_fix_rejects_broken_by_id_serial_before_opening' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_by_id_serial_that_is_not_symlink' tests/test_downloader.py
@@ -4754,7 +4759,7 @@ grep -q 'status report OpenCPN GPSD found unexpected enabled GPSD connections' s
 grep -q 'status report {expected_name} check has no structured fix data' src/noaa_navionics/report.py
 grep -q 'status report {expected_name} timestamp does not match gps_fix' src/noaa_navionics/report.py
 grep -q 'status report GPS Device check has no structured data' src/noaa_navionics/report.py
-grep -q 'status report GPS Device by-id path is not a symlink' src/noaa_navionics/report.py
+grep -q 'status report GPS Device udev path is not a symlink' src/noaa_navionics/report.py
 grep -q 'status report GPS Device is not a character device' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config devices do not match configured GPS device' src/noaa_navionics/report.py
@@ -14850,7 +14855,7 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   echo "expected restore_pi_recovery_user_data.sh to reject volatile restored GPS device with exit 1" >&2
   exit 1
 fi
-grep -q 'restored gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps' "$verify_output"
+grep -q 'restored gps.device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 set +e
@@ -15635,7 +15640,7 @@ gpsd_code=$?
 set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
-  echo "expected configure_gpsd.sh to reject bare GPS by-id directory paths with exit 2" >&2
+  echo "expected configure_gpsd.sh to reject bare GPS udev directory paths with exit 2" >&2
   exit 1
 fi
 
@@ -15645,7 +15650,7 @@ gpsd_code=$?
 set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
-  echo "expected configure_gpsd.sh to reject nested GPS by-id parent paths with exit 2" >&2
+  echo "expected configure_gpsd.sh to reject nested GPS udev parent paths with exit 2" >&2
   exit 1
 fi
 
@@ -15655,7 +15660,7 @@ gpsd_code=$?
 set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
-  echo "expected configure_gpsd.sh to reject nested GPS by-id paths with exit 2" >&2
+  echo "expected configure_gpsd.sh to reject nested GPS udev paths with exit 2" >&2
   exit 1
 fi
 
@@ -15665,7 +15670,7 @@ gpsd_code=$?
 set -e
 if [[ "$gpsd_code" -ne 2 ]]; then
   cat "$gpsd_output" >&2
-  echo "expected configure_gpsd.sh to reject shell metacharacters in GPS by-id paths with exit 2" >&2
+  echo "expected configure_gpsd.sh to reject shell metacharacters in GPS udev paths with exit 2" >&2
   exit 1
 fi
 grep -q 'GPS device path is not a recognized stable path' "$gpsd_output"

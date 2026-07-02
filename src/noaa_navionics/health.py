@@ -49,7 +49,7 @@ from .opencpn import (
 
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 RASPBERRY_PI_MODEL_PATH = Path("/proc/device-tree/model")
-GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+GPS_UDEV_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 REMOVABLE_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
 CHRONY_GPSD_REFCLOCK = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
 TRUSTED_SYSTEM_COMMAND_DIRS = {
@@ -142,6 +142,7 @@ def run_preflight(
                 "GPS",
                 False,
                 "not checked; pass --gps-device /dev/serial/by-id/YOUR_GPS_DEVICE "
+                "or /dev/serial/by-path/YOUR_GPS_DEVICE "
                 f"or --gps-sample file.nmea; {GPS_DEVICE_DISCOVERY_HINT}",
             )
         )
@@ -1801,35 +1802,40 @@ def check_gps_device_path(device: str) -> CheckResult:
     path = Path(device).expanduser()
     path_text = str(path)
     is_by_id_path = path_text.startswith("/dev/serial/by-id/")
+    is_by_path_path = path_text.startswith("/dev/serial/by-path/")
+    is_udev_path = is_by_id_path or is_by_path_path
+    udev_kind = "by-path" if is_by_path_path else "by-id"
     data: dict[str, object] = {
         "configured_path": path_text,
         "stable_path": _stable_gps_device_path(path_text),
         "volatile_path": _volatile_usb_device_path(path_text),
         "is_by_id_path": is_by_id_path,
+        "is_by_path_path": is_by_path_path,
+        "is_udev_path": is_udev_path,
     }
-    if is_by_id_path and not _stable_gps_device_path(path_text):
+    if is_udev_path and not _stable_gps_device_path(path_text):
         return CheckResult(
             "GPS Device",
             False,
-            f"{path} is not a safe /dev/serial/by-id/ GPS path",
+            f"{path} is not a safe /dev/serial/{udev_kind}/ GPS path",
             data,
         )
     data["is_symlink"] = path.is_symlink()
     data["exists"] = path.exists()
-    if is_by_id_path and data["is_symlink"] and not data["exists"]:
+    if is_udev_path and data["is_symlink"] and not data["exists"]:
         try:
             target = path.resolve(strict=False)
         except OSError:
             target = path
         data["resolved_path"] = str(target)
-        return CheckResult("GPS Device", False, f"{path} is a broken by-id symlink to {target}", data)
+        return CheckResult("GPS Device", False, f"{path} is a broken {udev_kind} symlink to {target}", data)
     if not data["exists"]:
         return CheckResult("GPS Device", False, f"{path} does not exist", data)
     data["is_directory"] = path.is_dir()
     if data["is_directory"]:
         return CheckResult("GPS Device", False, f"{path} is a directory, not a GPS device", data)
-    if is_by_id_path and not data["is_symlink"]:
-        return CheckResult("GPS Device", False, f"{path} is not a udev by-id symlink", data)
+    if is_udev_path and not data["is_symlink"]:
+        return CheckResult("GPS Device", False, f"{path} is not a udev {udev_kind} symlink", data)
     try:
         resolved = path.resolve()
     except OSError:
@@ -1839,7 +1845,7 @@ def check_gps_device_path(device: str) -> CheckResult:
         return CheckResult(
             "GPS Device",
             False,
-            f"{path} exists but is not stable; use /dev/serial/by-id/ or a Raspberry Pi serial alias",
+            f"{path} exists but is not stable; use /dev/serial/by-id/, /dev/serial/by-path/, or a Raspberry Pi serial alias",
             data,
         )
     if _stable_gps_device_path(path_text):
@@ -1850,7 +1856,7 @@ def check_gps_device_path(device: str) -> CheckResult:
     return CheckResult(
         "GPS Device",
         False,
-        f"{path} exists but is not a recognized stable GPS path; use /dev/serial/by-id/, /dev/serial0, /dev/serial1, or /dev/gps",
+        f"{path} exists but is not a recognized stable GPS path; use /dev/serial/by-id/, /dev/serial/by-path/, /dev/serial0, /dev/serial1, or /dev/gps",
         data,
     )
 
@@ -2012,15 +2018,15 @@ def _split_shell_words(value: str) -> list[str]:
 
 
 def _stable_gps_device_path(path: str) -> bool:
-    by_id_prefix = "/dev/serial/by-id/"
-    if path.startswith(by_id_prefix):
-        suffix = path[len(by_id_prefix) :]
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and _safe_gps_by_id_suffix(suffix)
+    for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
+        if path.startswith(prefix):
+            suffix = path[len(prefix) :]
+            return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and _safe_gps_udev_suffix(suffix)
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
-def _safe_gps_by_id_suffix(suffix: str) -> bool:
-    return bool(suffix) and all(char in GPS_BY_ID_SAFE_CHARS for char in suffix)
+def _safe_gps_udev_suffix(suffix: str) -> bool:
+    return bool(suffix) and all(char in GPS_UDEV_SAFE_CHARS for char in suffix)
 
 
 def _volatile_usb_device_path(path: str) -> bool:

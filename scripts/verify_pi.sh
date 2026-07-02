@@ -263,8 +263,9 @@ validate_gps_device_path_arg() {
     exit 2
   fi
   case "$value" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       suffix="${value#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
         return 0
       fi
@@ -273,11 +274,11 @@ validate_gps_device_path_arg() {
       return 0
       ;;
     /dev/ttyUSB*|/dev/ttyACM*)
-      echo "GPS device path is volatile; use /dev/serial/by-id/... instead: $value" >&2
+      echo "GPS device path is volatile; use /dev/serial/by-id/... or /dev/serial/by-path/... instead: $value" >&2
       exit 2
       ;;
   esac
-  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
+  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
   exit 2
 }
 
@@ -512,8 +513,9 @@ validate_remote_gps_device_control() {
     fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE must not contain whitespace or quotes: $value"
   fi
   case "$value" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       suffix="${value#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
         return 0
       fi
@@ -522,10 +524,10 @@ validate_remote_gps_device_control() {
       return 0
       ;;
     /dev/ttyUSB*|/dev/ttyACM*)
-      fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE is volatile; use /dev/serial/by-id/... instead: $value"
+      fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE is volatile; use /dev/serial/by-id/... or /dev/serial/by-path/... instead: $value"
       ;;
   esac
-  fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value"
+  fatal "NOAA_NAVIONICS_EXPECTED_GPS_DEVICE must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps: $value"
 }
 
 validate_verifier_controls() {
@@ -3367,8 +3369,9 @@ set_chartplotter_start_timeout_from_launcher_env() {
 
 stable_gps_device_path() {
   case "$1" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       local suffix="${1#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]
       return
       ;;
@@ -5046,8 +5049,8 @@ if [[ -r /etc/default/gpsd ]]; then
   if [[ -n "$gpsd_device" ]]; then
     check "GPSD device exists" test -e "$gpsd_device"
     check "GPSD device is not directory" test ! -d "$gpsd_device"
-    if [[ "$gpsd_device" == /dev/serial/by-id/* ]]; then
-      check "GPSD by-id device is symlink" test -L "$gpsd_device"
+    if [[ "$gpsd_device" == /dev/serial/by-id/* || "$gpsd_device" == /dev/serial/by-path/* ]]; then
+      check "GPSD udev device is symlink" test -L "$gpsd_device"
     fi
     check "GPSD device is character device" test -c "$gpsd_device"
     check "GPSD device matches config" check_gpsd_device_matches_config "$config" "$gpsd_device"
@@ -5057,7 +5060,7 @@ if [[ -r /etc/default/gpsd ]]; then
     if stable_gps_device_path "$gpsd_device"; then
       printf 'OK   GPSD stable device path %s\n' "$gpsd_device"
     elif volatile_usb_device_path "$gpsd_device"; then
-      printf 'FAIL GPSD device path %s is volatile; use /dev/serial/by-id/ or a Raspberry Pi serial alias\n' "$gpsd_device"
+      printf 'FAIL GPSD device path %s is volatile; use /dev/serial/by-id/, /dev/serial/by-path/, or a Raspberry Pi serial alias\n' "$gpsd_device"
       failures=$((failures + 1))
     else
       printf 'FAIL GPSD device path %s is not a recognized stable GPS path\n' "$gpsd_device"

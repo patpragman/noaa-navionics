@@ -240,7 +240,7 @@ CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
-GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+GPS_UDEV_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 CORE_SUPPORT_COMMAND_FILES = [
     "commands/system-command-integrity.txt",
@@ -1057,12 +1057,12 @@ def safe_storage_output_from_config(home: Path, label: str, value: str) -> Path:
 
 
 def safe_gps_device_path(path: str) -> bool:
-    by_id_prefix = "/dev/serial/by-id/"
-    if path.startswith(by_id_prefix):
-        suffix = path[len(by_id_prefix):]
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
-            char in GPS_BY_ID_SAFE_CHARS for char in suffix
-        )
+    for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
+        if path.startswith(prefix):
+            suffix = path[len(prefix):]
+            return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+                char in GPS_UDEV_SAFE_CHARS for char in suffix
+            )
     return path in STABLE_GPS_DEVICE_PATHS
 
 
@@ -1088,7 +1088,7 @@ def safe_track_output_from_config(config_text: str, home: Path) -> Path:
         label="gps.device",
     )
     if not safe_gps_device_path(gps_device):
-        fail("restored gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+        fail("restored gps.device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps")
     gps_baud = parse_restored_config_int(parser, "gps", "baud", 4800, label="gps.baud")
     if gps_baud not in GPS_BAUD_RATES:
         fail("restored gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200")

@@ -226,8 +226,9 @@ validate_gps_device_path_arg() {
     exit 2
   fi
   case "$value" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       suffix="${value#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       if [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]; then
         return 0
       fi
@@ -236,11 +237,11 @@ validate_gps_device_path_arg() {
       return 0
       ;;
     /dev/ttyUSB*|/dev/ttyACM*)
-      echo "GPS device path is volatile; use /dev/serial/by-id/... instead: $value" >&2
+      echo "GPS device path is volatile; use /dev/serial/by-id/... or /dev/serial/by-path/... instead: $value" >&2
       exit 2
       ;;
   esac
-  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
+  echo "GPS device path must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps: $value" >&2
   exit 2
 }
 
@@ -474,33 +475,37 @@ if expected_device and device != expected_device:
     raise SystemExit(
         f"gps.device {device} does not match requested --device {expected_device} when --skip-gpsd is used"
     )
-by_id_prefix = "/dev/serial/by-id/"
-safe_by_id_chars = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
-if device.startswith(by_id_prefix):
-    suffix = device[len(by_id_prefix):]
-    stable = bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
-        char in safe_by_id_chars for char in suffix
-    )
+udev_prefixes = ("/dev/serial/by-id/", "/dev/serial/by-path/")
+safe_udev_chars = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+stable = False
+for prefix in udev_prefixes:
+    if device.startswith(prefix):
+        suffix = device[len(prefix):]
+        stable = bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+            char in safe_udev_chars for char in suffix
+        )
+        break
 else:
     stable = device in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 name = Path(device).name
 if name.startswith(("ttyUSB", "ttyACM")):
-    raise SystemExit("gps.device uses a volatile USB name; use /dev/serial/by-id/... instead")
+    raise SystemExit("gps.device uses a volatile USB name; use /dev/serial/by-id/... or /dev/serial/by-path/... instead")
 if not stable:
-    raise SystemExit("gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    raise SystemExit("gps.device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps")
 path = Path(device).expanduser()
-if check_device and device.startswith(by_id_prefix) and path.is_symlink() and not path.exists():
+is_udev_path = device.startswith(udev_prefixes)
+if check_device and is_udev_path and path.is_symlink() and not path.exists():
     try:
         target = path.resolve(strict=False)
     except OSError:
         target = path
-    raise SystemExit(f"Existing GPS by-id device path is a broken symlink: {path} -> {target}")
+    raise SystemExit(f"Existing GPS udev device path is a broken symlink: {path} -> {target}")
 if check_device and not path.exists():
     raise SystemExit(f"GPS device does not exist: {path}")
 if check_device and path.is_dir():
     raise SystemExit(f"GPS device path is a directory, not a GPS device: {path}")
-if check_device and device.startswith(by_id_prefix) and not path.is_symlink():
-    raise SystemExit(f"GPS by-id device path is not a symlink: {path}")
+if check_device and is_udev_path and not path.is_symlink():
+    raise SystemExit(f"GPS udev device path is not a symlink: {path}")
 if check_device and not path.is_char_device():
     raise SystemExit(f"GPS device path is not a character device: {path}")
 PY
@@ -840,10 +845,10 @@ fi
 
 python3_cmd="$(python3_command)" || exit 2
 
-if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && "$device" == /dev/serial/by-id/* && -L "$device" && ! -e "$device" ]]; then
+if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && ( "$device" == /dev/serial/by-id/* || "$device" == /dev/serial/by-path/* ) && -L "$device" && ! -e "$device" ]]; then
   target="$(readlink -- "$device" 2>/dev/null || true)"
   cat >&2 <<EOF
-GPS by-id device path is a broken symlink: $device -> ${target:-<unknown>}
+GPS udev device path is a broken symlink: $device -> ${target:-<unknown>}
 Plug in the receiver, remove the stale link, or run: noaa-navionics list-gps-devices
 EOF
   exit 2
@@ -852,7 +857,7 @@ fi
 if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && ! -e "$device" ]]; then
   cat >&2 <<EOF
 GPS device does not exist: $device
-Use a stable path from /dev/serial/by-id/, or pass --no-device-check if it is not plugged in yet.
+Use a stable path from /dev/serial/by-id/ or /dev/serial/by-path/, or pass --no-device-check if it is not plugged in yet.
 EOF
   exit 2
 fi

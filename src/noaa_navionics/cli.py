@@ -498,21 +498,21 @@ def main(argv: Optional[list[str]] = None) -> int:
             if candidates:
                 if all(candidate.kind == "volatile" for candidate in candidates):
                     print(
-                        "Only volatile GPS device names were found; use /dev/serial/by-id/... "
+                        "Only volatile GPS device names were found; use /dev/serial/by-id/... or /dev/serial/by-path/... "
                         "or a documented stable alias such as /dev/gps before provisioning.",
                         file=sys.stderr,
                     )
                 else:
                     print(
                         "No usable stable GPS device paths were found; plug in the receiver, "
-                        "fix stale /dev/serial/by-id links, or use a documented stable alias "
+                        "fix stale /dev/serial/by-id or /dev/serial/by-path links, or use a documented stable alias "
                         "such as /dev/gps before provisioning.",
                         file=sys.stderr,
                     )
             else:
                 print(
                     "No GPS serial device candidates found. Plug in the receiver and prefer "
-                    "/dev/serial/by-id/... for provisioning.",
+                    "/dev/serial/by-id/... or /dev/serial/by-path/... for provisioning.",
                     file=sys.stderr,
                 )
             return 1
@@ -816,32 +816,33 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
     candidates: list[GPSDeviceCandidate] = []
     seen: set[str] = set()
 
-    by_id_dir = root / "serial/by-id"
-    try:
-        by_id_entries = sorted(by_id_dir.iterdir(), key=lambda path: path.name)
-    except OSError:
-        by_id_entries = []
-    for entry in by_id_entries:
-        display_path = _dev_display_path(entry, root)
-        if not _stable_gps_device_path(display_path):
-            continue
-        if not entry.is_symlink():
-            continue
-        target = _dev_display_path(entry.resolve(strict=False), root)
-        if not entry.exists():
-            candidates.append(
-                GPSDeviceCandidate(
-                    display_path,
-                    "broken",
-                    f"broken by-id symlink to {target}; plug in the receiver or remove the stale link",
-                    False,
+    for udev_kind in ("by-id", "by-path"):
+        udev_dir = root / f"serial/{udev_kind}"
+        try:
+            udev_entries = sorted(udev_dir.iterdir(), key=lambda path: path.name)
+        except OSError:
+            udev_entries = []
+        for entry in udev_entries:
+            display_path = _dev_display_path(entry, root)
+            if not _stable_gps_device_path(display_path):
+                continue
+            if not entry.is_symlink():
+                continue
+            target = _dev_display_path(entry.resolve(strict=False), root)
+            if not entry.exists():
+                candidates.append(
+                    GPSDeviceCandidate(
+                        display_path,
+                        "broken",
+                        f"broken {udev_kind} symlink to {target}; plug in the receiver or remove the stale link",
+                        False,
+                    )
                 )
-            )
+                seen.add(display_path)
+                continue
+            detail = f"points to {target}"
+            candidates.append(GPSDeviceCandidate(display_path, "stable", detail, True))
             seen.add(display_path)
-            continue
-        detail = f"points to {target}"
-        candidates.append(GPSDeviceCandidate(display_path, "stable", detail, True))
-        seen.add(display_path)
 
     for alias in ("gps", "serial0", "serial1"):
         path = root / alias
@@ -868,7 +869,7 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
             GPSDeviceCandidate(
                 display_path,
                 "volatile",
-                "not safe for unattended provisioning; prefer matching /dev/serial/by-id entry",
+                "not safe for unattended provisioning; prefer matching /dev/serial/by-id or /dev/serial/by-path entry",
                 False,
             )
         )
@@ -1017,21 +1018,23 @@ def _validate_live_serial_device(device: str) -> None:
     if not device:
         raise ValueError("GPS serial device is required")
     if _volatile_usb_device_path(device):
-        raise ValueError("GPS serial device uses a volatile USB name; use /dev/serial/by-id/... instead")
+        raise ValueError("GPS serial device uses a volatile USB name; use /dev/serial/by-id/... or /dev/serial/by-path/... instead")
     if not _stable_gps_device_path(device):
         raise ValueError(
-            "GPS serial device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps"
+            "GPS serial device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps"
         )
     path = Path(device).expanduser()
     path_text = str(path)
-    if path_text.startswith("/dev/serial/by-id/") and path.is_symlink() and not path.exists():
+    is_udev_path = path_text.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/"))
+    udev_kind = "by-path" if path_text.startswith("/dev/serial/by-path/") else "by-id"
+    if is_udev_path and path.is_symlink() and not path.exists():
         try:
             target = path.resolve(strict=False)
         except OSError:
             target = path
-        raise ValueError(f"GPS serial device {path} is a broken by-id symlink to {target}")
-    if path_text.startswith("/dev/serial/by-id/") and path.exists() and not path.is_symlink():
-        raise ValueError(f"GPS serial device {path} is not a udev by-id symlink")
+        raise ValueError(f"GPS serial device {path} is a broken {udev_kind} symlink to {target}")
+    if is_udev_path and path.exists() and not path.is_symlink():
+        raise ValueError(f"GPS serial device {path} is not a udev {udev_kind} symlink")
     if path.exists() and not path.is_char_device():
         raise ValueError(f"GPS serial device {path} is not a character device")
 

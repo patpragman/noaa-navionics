@@ -17,7 +17,7 @@ CHART_PACKAGES_REQUIRING_VALUE = {"state", "cgd", "region", "chart"}
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
-GPS_BY_ID_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+GPS_UDEV_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 UNSAFE_STORAGE_NAMES = {
     "",
     ".cache",
@@ -149,8 +149,8 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         raise ValueError(f"gps.device is required when gps.mode is {gps_mode}")
     if gps_device and not _stable_gps_device_path(gps_device):
         if _volatile_usb_device_path(gps_device):
-            raise ValueError("gps.device uses a volatile USB name; use /dev/serial/by-id/... instead")
-        raise ValueError("gps.device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+            raise ValueError("gps.device uses a volatile USB name; use /dev/serial/by-id/... or /dev/serial/by-path/... instead")
+        raise ValueError("gps.device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps")
     gpsd_host = _get_required_text(gps, "gpsd_host", defaults.gpsd_host, label="gps.gpsd_host")
     if any(separator in gpsd_host for separator in (";", "|")) or any(char.isspace() for char in gpsd_host):
         raise ValueError("gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes")
@@ -223,7 +223,7 @@ def default_config_text() -> str:
         "[gps]\n"
         "# mode can be gpsd or serial. Use gpsd for onboard production so OpenCPN can share the GPS.\n"
         f"mode = {defaults.gps_mode}\n"
-        "# Use /dev/serial/by-id/... for USB GPS, or a documented stable alias.\n"
+        "# Use /dev/serial/by-id/... or /dev/serial/by-path/... for USB GPS, or a documented stable alias.\n"
         f"device = {defaults.gps_device}\n"
         f"baud = {defaults.gps_baud}\n"
         f"gpsd_host = {defaults.gpsd_host}\n"
@@ -597,15 +597,15 @@ def _require_safe_storage_path(path: Path, *, label: str) -> None:
 
 
 def _stable_gps_device_path(path: str) -> bool:
-    by_id_prefix = "/dev/serial/by-id/"
-    if path.startswith(by_id_prefix):
-        suffix = path[len(by_id_prefix) :]
-        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and _safe_gps_by_id_suffix(suffix)
+    for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
+        if path.startswith(prefix):
+            suffix = path[len(prefix) :]
+            return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and _safe_gps_udev_suffix(suffix)
     return path in STABLE_GPS_DEVICE_PATHS
 
 
-def _safe_gps_by_id_suffix(suffix: str) -> bool:
-    return bool(suffix) and all(char in GPS_BY_ID_SAFE_CHARS for char in suffix)
+def _safe_gps_udev_suffix(suffix: str) -> bool:
+    return bool(suffix) and all(char in GPS_UDEV_SAFE_CHARS for char in suffix)
 
 
 def _volatile_usb_device_path(path: str) -> bool:

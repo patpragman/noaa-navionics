@@ -658,8 +658,9 @@ volatile_usb_device_path() {
 
 stable_gps_device_path() {
   case "$1" in
-    /dev/serial/by-id/*)
+    /dev/serial/by-id/*|/dev/serial/by-path/*)
       local suffix="${1#/dev/serial/by-id/}"
+      suffix="${suffix#/dev/serial/by-path/}"
       [[ -n "$suffix" && "$suffix" != */* && "$suffix" != "." && "$suffix" != ".." && "$suffix" =~ ^[A-Za-z0-9._:+@-]+$ ]]
       return
       ;;
@@ -926,7 +927,7 @@ fi
 if volatile_usb_device_path "$device"; then
   cat >&2 <<EOF
 GPS device path is volatile: $device
-Use /dev/serial/by-id/... for USB GPS receivers, or a stable Raspberry Pi serial alias such as /dev/serial0.
+Use /dev/serial/by-id/... or /dev/serial/by-path/... for USB GPS receivers, or a stable Raspberry Pi serial alias such as /dev/serial0.
 EOF
   exit 2
 fi
@@ -934,7 +935,7 @@ fi
 if ! stable_gps_device_path "$device"; then
   cat >&2 <<EOF
 GPS device path is not a recognized stable path: $device
-Use /dev/serial/by-id/... for USB GPS receivers, /dev/serial0 or /dev/serial1 for Raspberry Pi UART GPS, or /dev/gps for a managed stable alias.
+Use /dev/serial/by-id/... or /dev/serial/by-path/... for USB GPS receivers, /dev/serial0 or /dev/serial1 for Raspberry Pi UART GPS, or /dev/gps for a managed stable alias.
 EOF
   exit 2
 fi
@@ -948,10 +949,10 @@ EOF
   exit 2
 fi
 
-if [[ "$check_device" -eq 1 && "$device" == /dev/serial/by-id/* && -L "$device" && ! -e "$device" ]]; then
+if [[ "$check_device" -eq 1 && ( "$device" == /dev/serial/by-id/* || "$device" == /dev/serial/by-path/* ) && -L "$device" && ! -e "$device" ]]; then
   target="$(readlink -- "$device" 2>/dev/null || true)"
   cat >&2 <<EOF
-GPS by-id device path is a broken symlink: $device -> ${target:-<unknown>}
+GPS udev device path is a broken symlink: $device -> ${target:-<unknown>}
 Plug in the receiver, remove the stale link, or run: noaa-navionics list-gps-devices
 EOF
   exit 2
@@ -960,7 +961,7 @@ fi
 if [[ "$check_device" -eq 1 && ! -e "$device" ]]; then
   cat >&2 <<EOF
 GPS device does not exist: $device
-Use a stable path from /dev/serial/by-id/, or pass --no-device-check if it is not plugged in yet.
+Use a stable path from /dev/serial/by-id/ or /dev/serial/by-path/, or pass --no-device-check if it is not plugged in yet.
 EOF
   exit 2
 fi
@@ -970,8 +971,8 @@ if [[ "$check_device" -eq 1 && -d "$device" ]]; then
   exit 2
 fi
 
-if [[ "$check_device" -eq 1 && "$device" == /dev/serial/by-id/* && ! -L "$device" ]]; then
-  echo "GPS by-id device path is not a symlink: $device" >&2
+if [[ "$check_device" -eq 1 && ( "$device" == /dev/serial/by-id/* || "$device" == /dev/serial/by-path/* ) && ! -L "$device" ]]; then
+  echo "GPS udev device path is not a symlink: $device" >&2
   exit 2
 fi
 

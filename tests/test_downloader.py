@@ -1303,6 +1303,21 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
 
+    def test_config_accepts_usb_by_path_gps_device(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "config.ini"
+            device = "/dev/serial/by-path/platform-fd500000.usb-usb-0:1.2:1.0-port0"
+            path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                f"device = {device}\n",
+                encoding="utf-8",
+            )
+
+            config = read_config(path)
+
+            self.assertEqual(config.gps_device, device)
+
     def test_config_allows_run_media_storage_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "config.ini"
@@ -1363,6 +1378,10 @@ class ConfigTests(unittest.TestCase):
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/../ttyS0\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/mock/extra\n", "gps.device"),
             ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-id/$(id)\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-path/\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-path/../ttyS0\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-path/mock/extra\n", "gps.device"),
+            ("[gps]\nmode = gpsd\ndevice = /dev/serial/by-path/$(id)\n", "gps.device"),
             ("[gps]\nbaud = 12345\n", "gps.baud"),
             ("[gps]\ngpsd_host = 127.0.0.1;bad\n", "gps.gpsd_host"),
             ("[gps]\nmode = gpsd\ngpsd_host = 192.168.1.10\n", "gps.gpsd_host"),
@@ -2072,14 +2091,17 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Would add GPSD: 127.0.0.1:2947", output.getvalue())
 
-    def test_cli_list_gps_devices_reports_stable_by_id_and_volatile_names(self):
+    def test_cli_list_gps_devices_reports_stable_udev_and_volatile_names(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             dev_root = Path(tmpdir)
             by_id = dev_root / "serial/by-id"
+            by_path = dev_root / "serial/by-path"
             by_id.mkdir(parents=True)
+            by_path.mkdir(parents=True)
             volatile = dev_root / "ttyACM0"
             volatile.write_text("", encoding="ascii")
             (by_id / "usb-GPS_Receiver-if00").symlink_to("../../ttyACM0")
+            (by_path / "platform-fd500000.usb-usb-0:1.2:1.0-port0").symlink_to("../../ttyACM0")
 
             stdout = StringIO()
             stderr = StringIO()
@@ -2091,6 +2113,10 @@ class OpenCPNConfigTests(unittest.TestCase):
             output = stdout.getvalue()
             self.assertIn("PATH\tTYPE\tDETAIL", output)
             self.assertIn("/dev/serial/by-id/usb-GPS_Receiver-if00\tstable\tpoints to /dev/ttyACM0", output)
+            self.assertIn(
+                "/dev/serial/by-path/platform-fd500000.usb-usb-0:1.2:1.0-port0\tstable\tpoints to /dev/ttyACM0",
+                output,
+            )
             self.assertIn(
                 "/dev/ttyACM0\tvolatile\tnot safe for unattended provisioning",
                 output,
@@ -11624,7 +11650,7 @@ class StatusReportTests(unittest.TestCase):
             (device_data(volatile_path=True), "path is volatile"),
             (device_data(exists=False), "path does not exist"),
             (device_data(is_directory=True), "path is a directory"),
-            (device_data(is_symlink=False), "by-id path is not a symlink"),
+            (device_data(is_symlink=False), "udev path is not a symlink"),
             (device_data(is_character_device=False), "is not a character device"),
             (device_data(resolved_path="ttyACM0"), "resolved path is not absolute"),
         ]
@@ -11951,7 +11977,7 @@ class StatusReportTests(unittest.TestCase):
             ({"config": {**valid_config, "gps_device": "/dev/ttyUSB0"}}, "gps_device is volatile"),
             (
                 {"config": {**valid_config, "gps_device": "/dev/serial/by-id/mock/extra"}},
-                "gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
+                "gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
             ),
             ({"config": {**valid_config, "gps_baud": 1234}}, "gps_baud is invalid"),
             ({"config": {**valid_config, "gpsd_host": "192.0.2.10"}}, "gpsd_host is not local"),
@@ -12991,7 +13017,7 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix",
                 "pre-departure status snapshot JSON config_path is not absolute",
                 "pre-departure status snapshot JSON config gps_device is volatile",
-                "pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
+                "pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
                 "pre-departure status snapshot JSON config gps_baud is invalid",
                 "pre-departure status snapshot JSON config chart_output is not absolute",
                 "pre-departure status snapshot JSON missing config track_output",
@@ -13032,7 +13058,7 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix",
                 "pre-departure status snapshot JSON config_path is not absolute",
                 "pre-departure status snapshot JSON config gps_device is volatile",
-                "pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
+                "pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
                 "pre-departure status snapshot JSON config gps_baud is invalid",
                 "pre-departure status snapshot JSON config chart_output is not absolute",
                 "pre-departure status snapshot JSON missing config track_output",
@@ -13073,7 +13099,7 @@ class StatusReportTests(unittest.TestCase):
                 "status snapshot JSON {expected_name} HDOP does not match gps_fix",
                 "status snapshot JSON config_path is not absolute",
                 "status snapshot JSON config gps_device is volatile",
-                "status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
+                "status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
                 "status snapshot JSON config gps_baud is invalid",
                 "status snapshot JSON config chart_output is not absolute",
                 "status snapshot JSON missing config track_output",
@@ -19386,20 +19412,38 @@ class GpsTests(unittest.TestCase):
 
     def test_stable_gps_device_path_rejects_bare_by_id_directory(self):
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/"))
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-path/"))
 
     def test_stable_gps_device_path_rejects_nested_by_id_path(self):
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/mock/extra"))
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/../ttyS0"))
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-path/mock/extra"))
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-path/../ttyS0"))
 
     def test_stable_gps_device_path_rejects_shell_metacharacters(self):
         self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-id/$(id)"))
         self.assertFalse(config_module._stable_gps_device_path("/dev/serial/by-id/$(id)"))
+        self.assertFalse(health_module._stable_gps_device_path("/dev/serial/by-path/$(id)"))
+        self.assertFalse(config_module._stable_gps_device_path("/dev/serial/by-path/$(id)"))
+
+    def test_stable_gps_device_path_accepts_by_path(self):
+        device = "/dev/serial/by-path/platform-fd500000.usb-usb-0:1.2:1.0-port0"
+        self.assertTrue(health_module._stable_gps_device_path(device))
+        self.assertTrue(config_module._stable_gps_device_path(device))
 
     def test_check_gps_device_path_rejects_unsafe_by_id_name_before_existence(self):
         result = check_gps_device_path("/dev/serial/by-id/$(id)")
 
         self.assertFalse(result.ok)
         self.assertIn("safe /dev/serial/by-id", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("stable_path"), False)
+
+    def test_check_gps_device_path_rejects_unsafe_by_path_name_before_existence(self):
+        result = check_gps_device_path("/dev/serial/by-path/$(id)")
+
+        self.assertFalse(result.ok)
+        self.assertIn("safe /dev/serial/by-path", result.detail)
         self.assertIsNotNone(result.data)
         self.assertEqual(result.data.get("stable_path"), False)
 
