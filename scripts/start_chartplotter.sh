@@ -1947,6 +1947,14 @@ terminate_opencpn_child() {
   opencpn_child_pid=""
 }
 
+wait_for_existing_opencpn_to_exit() {
+  echo "OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits."
+  while opencpn_running; do
+    sleep 1
+  done
+  echo "OpenCPN detached process exited; not restarting."
+}
+
 shutdown_launcher() {
   trap - INT TERM
   terminate_opencpn_child
@@ -2371,6 +2379,10 @@ run_opencpn_supervised() {
     set -e
     opencpn_child_pid=""
     printf '[%s] OpenCPN exited with status %s\n' "$(utc_log_timestamp)" "$opencpn_status"
+    if opencpn_running; then
+      wait_for_existing_opencpn_to_exit
+      return 0
+    fi
     if [[ "$opencpn_status" -eq 0 ]]; then
       echo "OpenCPN exited cleanly; not restarting."
       return 0

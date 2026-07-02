@@ -398,6 +398,7 @@ grep -q 'validate_process_lookup_command_candidate' scripts/start_chartplotter.s
 grep -q 'process_lookup_command_path' scripts/start_chartplotter.sh
 grep -q 'revalidate_process_lookup_command' scripts/start_chartplotter.sh
 grep -q 'revalidate_trusted_utility_command' scripts/start_chartplotter.sh
+grep -q 'wait_for_existing_opencpn_to_exit' scripts/start_chartplotter.sh
 grep -q 'expected no group/other write bits before {phase}' scripts/start_chartplotter.sh
 grep -q 'Process lookup command pgrep was not found on PATH' scripts/start_chartplotter.sh
 grep -q 'Process lookup command path is not absolute' scripts/start_chartplotter.sh
@@ -415,6 +416,7 @@ grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/start_chartpl
 ! grep -q 'cat "/proc/${pid}/stat"' scripts/start_chartplotter.sh
 grep -q 'OpenCPN is already running' scripts/start_chartplotter.sh
 grep -q 'OpenCPN exited with status' scripts/start_chartplotter.sh
+grep -q 'OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits.' scripts/start_chartplotter.sh
 grep -q 'show_preflight_warning' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS' scripts/start_chartplotter.sh
 grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS' scripts/start_chartplotter.sh
@@ -17749,6 +17751,38 @@ HOME="$launcher_duplicate_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.
 kill "$duplicate_opencpn_pid" 2>/dev/null || true
 wait "$duplicate_opencpn_pid" 2>/dev/null || true
 grep -q 'OpenCPN is already running' "$launcher_duplicate_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_detached_opencpn_home="$tmpdir/launcher-detached-opencpn-home"
+launcher_detached_opencpn_bin="$tmpdir/launcher-detached-opencpn-bin"
+mkdir -p "$launcher_detached_opencpn_home/.local/bin" "$launcher_detached_opencpn_home/.cache/noaa-navionics" "$launcher_detached_opencpn_bin"
+write_test_launcher_env "$launcher_detached_opencpn_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_detached_opencpn_home/.local/bin/noaa-navionics"
+cat >"$launcher_detached_opencpn_bin/opencpn" <<'EOF'
+#!/usr/bin/env bash
+(
+  sleep 2
+) &
+printf '%s\n' "$!" >"$HOME/.cache/noaa-navionics/detached-opencpn-pid"
+exit 0
+EOF
+cat >"$launcher_detached_opencpn_bin/pgrep" <<'EOF'
+#!/usr/bin/env bash
+pid_file="$HOME/.cache/noaa-navionics/detached-opencpn-pid"
+if [[ -r "$pid_file" ]]; then
+  read -r pid <"$pid_file" || exit 0
+  if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+    printf '%s\n' "$pid"
+  fi
+fi
+exit 0
+EOF
+chmod +x "$launcher_detached_opencpn_home/.local/bin/noaa-navionics" "$launcher_detached_opencpn_bin/opencpn" "$launcher_detached_opencpn_bin/pgrep"
+HOME="$launcher_detached_opencpn_home" PATH="$launcher_detached_opencpn_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+test ! -e "$launcher_detached_opencpn_home/.cache/noaa-navionics/chartplotter.launch.lock"
+grep -q 'OpenCPN exited with status 0' "$launcher_detached_opencpn_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits.' "$launcher_detached_opencpn_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'OpenCPN detached process exited; not restarting.' "$launcher_detached_opencpn_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Restarting OpenCPN after nonzero exit status' "$launcher_detached_opencpn_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_empty_pgrep_home="$tmpdir/launcher-empty-pgrep-home"
 mkdir -p "$launcher_empty_pgrep_home/.local/bin" "$launcher_empty_pgrep_home/.cache/noaa-navionics"

@@ -459,7 +459,7 @@ Expected checks:
 - Raspberry Pi thermal sensor or `vcgencmd measure_temp` readable, and temperature below the hard limit
 - Fresh navigation-quality GPSD or direct NMEA fix with satellite or HDOP quality fields
 - Chart refresh timer, including its bounded NOAA TCP connectivity check, track logger, boot readiness service, GPSD socket/service, and chrony service are in the expected state
-- During the dock test after reboot, the status report and chartplotter launcher ran during the current boot, the private user-owned launcher lock is owned by a live launcher process, and launcher-supervised OpenCPN is running
+- During the dock test after reboot, the status report and chartplotter launcher ran during the current boot, the private user-owned launcher lock is owned by a live launcher process, and launcher-supervised OpenCPN is running. If the OpenCPN command hands off to a still-running same-user OpenCPN process, the launcher keeps the lock and waits for that process to exit instead of releasing supervision or restarting another copy.
 
 If any check fails, treat the Pi as not ready.
 
