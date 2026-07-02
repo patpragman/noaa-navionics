@@ -2440,11 +2440,10 @@ verify_post_trip_checksum_manifest "$trip_dir"
 printf '\nPost-trip Pi artifacts written to: %s\n' "$trip_dir"
 
 if [[ "$status_code" -ne 0 ]]; then
-  if [[ -n "$shutdown_mode" ]]; then
-    echo "Refusing optional Pi shutdown because the status snapshot reported a failure." >&2
-  fi
   echo "Post-trip collection completed, but the status snapshot reported a failure." >&2
-  exit 1
+  if [[ -n "$shutdown_mode" ]]; then
+    echo "Continuing with requested clean Pi shutdown after preserving post-trip artifacts." >&2
+  fi
 fi
 
 case "$shutdown_mode" in
@@ -2457,5 +2456,9 @@ case "$shutdown_mode" in
   "")
     ;;
 esac
+
+if [[ "$status_code" -ne 0 ]]; then
+  exit 1
+fi
 
 printf 'Post-trip Pi collection completed for %s.\n' "$target"

@@ -985,8 +985,10 @@ grep -q 'saves a local private `0600` JSON status snapshot through an exclusive 
 grep -q 'status snapshot JSON Source Revision row does not match deployed source_revision' scripts/post_trip_collect_pi.sh
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts and reports the trip folder before any optional shutdown attempt' README.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts and reports the trip folder before any optional shutdown attempt' docs/sailboat-pi.md
-grep -q 'refuses optional shutdown when the status snapshot reported a failure' README.md
-grep -q 'refuses optional shutdown when the status snapshot reported a failure' docs/sailboat-pi.md
+grep -q 'after artifacts are preserved even when the status snapshot reported a failure' README.md
+grep -q 'after artifacts are preserved even when the status snapshot reported a failure' docs/sailboat-pi.md
+grep -q 'runs any requested clean shutdown after collection, then exits non-zero' README.md
+grep -q 'runs any requested clean shutdown after collection, then exits non-zero' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' README.md
@@ -2250,8 +2252,8 @@ grep -q 'shutdown_pi_safely.sh' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip Pi artifacts written to:' scripts/post_trip_collect_pi.sh
 grep -q 'This wrapper writes local artifacts into output-dir' scripts/post_trip_collect_pi.sh
 grep -q 'change persistent Pi state' scripts/post_trip_collect_pi.sh
-grep -q 'Refusing optional Pi shutdown because the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' scripts/post_trip_collect_pi.sh
+grep -q 'Continuing with requested clean Pi shutdown after preserving post-trip artifacts' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON generated_at timestamp is stale' scripts/post_trip_collect_pi.sh
 grep -q 'parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON generated_at timestamp is too far in the future' scripts/post_trip_collect_pi.sh
@@ -10015,21 +10017,21 @@ post_trip_code=$?
 set -e
 if [[ "$post_trip_code" -ne 1 ]]; then
   cat "$verify_output" >&2
-  echo "expected post_trip_collect_pi.sh to refuse shutdown after a failed status snapshot" >&2
+  echo "expected post_trip_collect_pi.sh to preserve artifacts, run requested shutdown, then report a failed status snapshot" >&2
   exit 1
 fi
 grep -q 'Wrote post-trip checksum manifest:' "$verify_output"
 grep -q 'Verified post-trip checksum manifest:' "$verify_output"
 grep -q 'Post-trip Pi artifacts written to:' "$verify_output"
-grep -q 'Refusing optional Pi shutdown because the status snapshot reported a failure' "$verify_output"
 grep -q 'Post-trip collection completed, but the status snapshot reported a failure' "$verify_output"
-! grep -q 'fake shutdown' "$verify_output"
+grep -q 'Continuing with requested clean Pi shutdown after preserving post-trip artifacts' "$verify_output"
+grep -q 'fake shutdown' "$verify_output"
 post_trip_status_failure_shutdown_dir="$(sed -n 's/^Post-trip Pi artifacts written to: //p' "$verify_output")"
 test -n "$post_trip_status_failure_shutdown_dir"
 test "$(stat -c '%a' "$post_trip_status_failure_shutdown_dir/status.json")" = 600
 test "$(stat -c '%a' "$post_trip_status_failure_shutdown_dir/SHA256SUMS.txt")" = 600
 grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_status_failure_shutdown_log"
-! grep -q '^shutdown|' "$post_trip_status_failure_shutdown_log"
+grep -Eq '^shutdown\|pi@example.invalid --confirm$' "$post_trip_status_failure_shutdown_log"
 
 post_trip_mutated_helper_log="$tmpdir/post-trip-mutated-helper-calls"
 post_trip_mutated_helper_output_dir="$tmpdir/post-trip-mutated-helper-output"
