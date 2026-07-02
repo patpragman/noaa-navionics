@@ -2420,6 +2420,9 @@ grep -q 'run_artifact_step' scripts/post_trip_collect_pi.sh
 grep -q 'track export archive' scripts/post_trip_collect_pi.sh
 grep -q 'support bundle archive' scripts/post_trip_collect_pi.sh
 grep -q 'is missing required diagnostic file' scripts/post_trip_collect_pi.sh
+grep -q 'commands/noaa-status-report-commissioned-json.txt' scripts/post_trip_collect_pi.sh
+grep -q 'NOAA Navionics saved status copy' scripts/post_trip_collect_pi.sh
+grep -q 'is missing required diagnostic evidence file' scripts/post_trip_collect_pi.sh
 grep -q 'commands/system-command-integrity.txt' scripts/post_trip_collect_pi.sh
 grep -q 'commands/df-inodes.txt' scripts/post_trip_collect_pi.sh
 grep -q 'commands/recent-system-journal.txt' scripts/post_trip_collect_pi.sh
@@ -9935,6 +9938,23 @@ CORE_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+NOAA_COMMAND_FILES = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+NOAA_HOME_FILES = [
+    "files/home/pi/.config/noaa-navionics/config.ini",
+    "files/home/pi/.config/noaa-navionics/launcher.env",
+    "files/home/pi/.cache/noaa-navionics/status.json",
+    "files/home/pi/.local/share/noaa-navionics/source-revision",
+]
 
 path = sys.argv[1]
 os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -9948,8 +9968,10 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
     if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_README_ONLY") != "1":
         if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_THIN") == "1":
             names = ["commands/date-utc.txt"]
-        else:
+        elif os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_GENERIC_ONLY") == "1":
             names = CORE_COMMAND_FILES
+        else:
+            names = [*CORE_COMMAND_FILES, *NOAA_COMMAND_FILES, *NOAA_HOME_FILES]
         for name in names:
             diagnostic = f"{name}\n".encode("utf-8")
             info = tarfile.TarInfo(name)
@@ -10047,13 +10069,35 @@ core_command_files = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+noaa_command_files = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+noaa_home_files = [
+    "files/home/pi/.config/noaa-navionics/config.ini",
+    "files/home/pi/.config/noaa-navionics/launcher.env",
+    "files/home/pi/.cache/noaa-navionics/status.json",
+    "files/home/pi/.local/share/noaa-navionics/source-revision",
+]
 expected_members = {
     "noaa-navionics-pi-tracks-fixture.tgz": [
         "README.txt",
         "manifest.json",
         "tracks/underway.gpx",
     ],
-    "noaa-navionics-pi-support-fixture.tgz": ["README.txt", *core_command_files],
+    "noaa-navionics-pi-support-fixture.tgz": [
+        "README.txt",
+        *core_command_files,
+        *noaa_command_files,
+        *noaa_home_files,
+    ],
 }
 for path_text in sys.argv[2:]:
     path = Path(path_text)
@@ -10359,6 +10403,25 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'support bundle archive is missing required diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_thin_support_log"
+
+post_trip_generic_support_log="$tmpdir/post-trip-generic-support-helper-calls"
+post_trip_generic_support_output_dir="$tmpdir/post-trip-generic-support-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_generic_support_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_SUPPORT_GENERIC_ONLY=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_generic_support_output_dir" \
+  --skip-status \
+  --skip-tracks >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject a support archive missing NOAA diagnostics with exit 2" >&2
+  exit 1
+fi
+grep -q 'support bundle archive is missing required diagnostic file(s): commands/configured-storage-paths.txt' "$verify_output"
+grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_generic_support_log"
 
 post_trip_invalid_json_log="$tmpdir/post-trip-invalid-json-helper-calls"
 post_trip_invalid_json_output_dir="$tmpdir/post-trip-invalid-json-output"
