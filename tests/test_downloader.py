@@ -15658,9 +15658,14 @@ class StatusReportTests(unittest.TestCase):
             "contains control characters",
             "is not a string",
             "from datetime import datetime, timezone",
+            "import re",
+            "BOOT_ID_RE = re.compile",
             "status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()",
             "generated_at timestamp is in the future",
             "generated_at timestamp is stale",
+            "missing host summary",
+            'status_text(host.get("boot_id", ""), "host boot_id")',
+            "host boot_id is not a Linux boot_id value",
             "def validate_optional_text_fields",
             '(("checks", "readiness check"), ("service_checks", "service check"))',
             'status_text(name, f"{row_label} name")',
@@ -15701,6 +15706,8 @@ class StatusReportTests(unittest.TestCase):
             (("track_log", "latest_path"), "/charts/tracks/track\n.gpx", "track_log latest_path contains control characters"),
             (("generated_at",), "2000-01-01T00:00:00+00:00", "generated_at timestamp is stale"),
             (("generated_at",), "2999-01-01T00:00:00+00:00", "generated_at timestamp is in the future"),
+            (("host", "boot_id"), "not-a-boot-id", "host boot_id is not a Linux boot_id value"),
+            (("host", "boot_id"), "12345678-1234-4234-8234-123456789abc\x00", "host boot_id contains control characters"),
         )
         for path, value, expected_error in cases:
             report = copy.deepcopy(valid_report)

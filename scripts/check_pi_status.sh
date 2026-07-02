@@ -352,6 +352,7 @@ validate_status_json_output() {
   printf '%s' "$payload" | "$local_python_cmd" -c '
 from datetime import datetime, timezone
 import json
+import re
 import sys
 
 
@@ -375,6 +376,9 @@ def validate_optional_text_fields(section, label, fields):
     for field in fields:
         if field in section:
             status_text(section.get(field, ""), f"{label} {field}")
+
+
+BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 try:
@@ -401,6 +405,12 @@ if status_age_seconds < -30.0:
     fail("generated_at timestamp is in the future")
 if status_age_seconds > 600.0:
     fail("generated_at timestamp is stale")
+host = report.get("host")
+if not isinstance(host, dict):
+    fail("missing host summary")
+host_boot_id = status_text(host.get("boot_id", ""), "host boot_id")
+if not BOOT_ID_RE.fullmatch(host_boot_id):
+    fail("host boot_id is not a Linux boot_id value")
 
 for section_name, row_label in (("checks", "readiness check"), ("service_checks", "service check")):
     rows = report.get(section_name)
