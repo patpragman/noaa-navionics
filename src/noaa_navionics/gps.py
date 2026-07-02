@@ -202,6 +202,7 @@ def read_nmea_lines(
     idle_timeout: Optional[float] = None,
     max_line_bytes: int = NMEA_MAX_LINE_BYTES,
 ) -> Iterator[str]:
+    idle_timeout = _positive_seconds_or_none(idle_timeout, "idle_timeout")
     buffer = b""
     last_data_monotonic = time.monotonic()
     while True:
@@ -278,6 +279,10 @@ def iter_gpsd_fixes(
     max_message_bytes: int = GPSD_MAX_MESSAGE_BYTES,
     invalid_fix_callback: Optional[Callable[[GPSFix], None]] = None,
 ) -> Iterator[GPSFix]:
+    timeout = _positive_seconds(timeout, "timeout")
+    max_duration = _positive_seconds_or_none(max_duration, "max_duration")
+    idle_timeout = _positive_seconds_or_none(idle_timeout, "idle_timeout")
+    sky_max_age_seconds = _non_negative_seconds(sky_max_age_seconds, "sky_max_age_seconds")
     latest_sky: Optional[GPSFix] = None
     latest_sky_monotonic: Optional[float] = None
     deadline = time.monotonic() + max_duration if max_duration is not None else None
@@ -325,6 +330,38 @@ def iter_gpsd_fixes(
                         yield merge_fixes(latest_sky, fix)
                     else:
                         yield fix
+
+
+def _seconds_value(value: object, label: str) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a finite number of seconds")
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be a finite number of seconds") from exc
+    if not math.isfinite(seconds):
+        raise ValueError(f"{label} must be a finite number of seconds")
+    return seconds
+
+
+def _positive_seconds(value: object, label: str) -> float:
+    seconds = _seconds_value(value, label)
+    if seconds <= 0:
+        raise ValueError(f"{label} must be greater than zero seconds")
+    return seconds
+
+
+def _positive_seconds_or_none(value: Optional[object], label: str) -> Optional[float]:
+    if value is None:
+        return None
+    return _positive_seconds(value, label)
+
+
+def _non_negative_seconds(value: object, label: str) -> float:
+    seconds = _seconds_value(value, label)
+    if seconds < 0:
+        raise ValueError(f"{label} must be zero or more seconds")
+    return seconds
 
 
 def _finite_float_or_none(value: object) -> Optional[float]:

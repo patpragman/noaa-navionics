@@ -20602,6 +20602,32 @@ class GpsTests(unittest.TestCase):
         finally:
             gps_module.socket.create_connection = original_socket
 
+    def test_iter_gpsd_fixes_rejects_invalid_timing_before_connect(self):
+        original_socket = gps_module.socket.create_connection
+
+        def unexpected_create_connection(address, timeout=10.0):
+            raise AssertionError("socket should not be opened")
+
+        cases = [
+            ({"timeout": 0}, "timeout must be greater than zero seconds"),
+            ({"timeout": math.inf}, "timeout must be a finite number of seconds"),
+            ({"max_duration": 0}, "max_duration must be greater than zero seconds"),
+            ({"max_duration": math.nan}, "max_duration must be a finite number of seconds"),
+            ({"idle_timeout": 0}, "idle_timeout must be greater than zero seconds"),
+            ({"idle_timeout": True}, "idle_timeout must be a finite number of seconds"),
+            ({"sky_max_age_seconds": -0.1}, "sky_max_age_seconds must be zero or more seconds"),
+            ({"sky_max_age_seconds": math.inf}, "sky_max_age_seconds must be a finite number of seconds"),
+        ]
+
+        try:
+            gps_module.socket.create_connection = unexpected_create_connection
+            for kwargs, message in cases:
+                with self.subTest(kwargs=kwargs):
+                    with self.assertRaisesRegex(ValueError, re.escape(message)):
+                        list(iter_gpsd_fixes(**kwargs))
+        finally:
+            gps_module.socket.create_connection = original_socket
+
     def test_read_nmea_lines_raises_on_idle_timeout(self):
         original_monotonic = gps_module.time.monotonic
 
@@ -20616,6 +20642,24 @@ class GpsTests(unittest.TestCase):
                 next(read_nmea_lines(IdleStream(), idle_timeout=300.0))
         finally:
             gps_module.time.monotonic = original_monotonic
+
+    def test_read_nmea_lines_rejects_invalid_idle_timeout_before_read(self):
+        class UnexpectedReadStream:
+            def read(self, size=-1):
+                raise AssertionError("stream should not be read")
+
+        cases = [
+            (0, "idle_timeout must be greater than zero seconds"),
+            (-1, "idle_timeout must be greater than zero seconds"),
+            (math.inf, "idle_timeout must be a finite number of seconds"),
+            (math.nan, "idle_timeout must be a finite number of seconds"),
+            (False, "idle_timeout must be a finite number of seconds"),
+        ]
+
+        for idle_timeout, message in cases:
+            with self.subTest(idle_timeout=idle_timeout):
+                with self.assertRaisesRegex(ValueError, re.escape(message)):
+                    next(read_nmea_lines(UnexpectedReadStream(), idle_timeout=idle_timeout))
 
     def test_read_nmea_lines_rejects_overlong_unterminated_fragment(self):
         class LongFragmentStream:
