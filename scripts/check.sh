@@ -919,6 +919,8 @@ grep -q 'By default it reads the commissioned GPS wait from the private launcher
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
 grep -q 'rejects symlinked command-tree or config path components' docs/sailboat-pi.md
+grep -q 'JSON output is captured in memory and locally parsed with a trusted root-owned `python3`' README.md
+grep -q 'JSON output is captured in memory and locally parsed with a trusted root-owned `python3`' docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/check_pi_status.sh
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' README.md
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
@@ -11165,7 +11167,11 @@ cat >"$status_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
-printf 'fake status report\n'
+if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
+  printf '{"ok": "yes", "generated_at": "2026-07-02T12:00:00+00:00", "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n'
+  exit 0
+fi
+printf '{"ok": true, "generated_at": "2026-07-02T12:00:00+00:00", "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n'
 EOF
 chmod +x "$status_fake_ssh_bin/ssh"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -11173,12 +11179,22 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$status_fake_ssh_stdin" \
   PATH="$status_fake_ssh_bin:$PATH" \
   scripts/check_pi_status.sh pi@example.invalid --gps-seconds 12 --json >"$verify_output" 2>&1
-grep -q 'fake status report' "$verify_output"
+grep -q '"ok": true' "$verify_output"
 grep -q -- '-o BatchMode=yes' "$status_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_STATUS_GPS_SECONDS=12' "$status_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_STATUS_JSON=1' "$status_fake_ssh_args"
 grep -q '/bin/bash -s' "$status_fake_ssh_args"
 grep -q 'pi@example.invalid' "$status_fake_ssh_args"
+grep -q '"ok": true' "$verify_output"
+grep -q 'local_python_cmd="$(require_local_command python3)"' scripts/check_pi_status.sh
+grep -q 'validate_status_json_output()' scripts/check_pi_status.sh
+grep -q 'status JSON validation failed: {message}' scripts/check_pi_status.sh
+grep -q 'top-level ok is not boolean' scripts/check_pi_status.sh
+grep -q 'generated_at timestamp must include a timezone' scripts/check_pi_status.sh
+grep -q 'missing non-empty {section_name} list' scripts/check_pi_status.sh
+grep -q 'missing {section_name} summary' scripts/check_pi_status.sh
+grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh
+grep -q 'json_validation_code=$?' scripts/check_pi_status.sh
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
 grep -q 'validate_status_controls()' "$status_fake_ssh_stdin"
 grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_STATUS_GPS_SECONDS" "$NOAA_NAVIONICS_STATUS_GPS_SECONDS"' "$status_fake_ssh_stdin"
@@ -11208,6 +11224,23 @@ grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' "$status_fake_
 grep -q 'status_args+=(--json)' "$status_fake_ssh_stdin"
 grep -q 'run_noaa_navionics "${status_args\[@\]}"' "$status_fake_ssh_stdin"
 ! grep -q -- '--output' "$status_fake_ssh_stdin"
+
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$status_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$status_fake_ssh_stdin" \
+  PATH="$status_fake_ssh_bin:$PATH" \
+  scripts/check_pi_status.sh pi@example.invalid --gps-seconds 12 --json >"$verify_output" 2>&1
+bad_status_json_code=$?
+set -e
+if [[ "$bad_status_json_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected check_pi_status.sh to reject malformed JSON status output with exit 1" >&2
+  exit 1
+fi
+grep -q '"ok": "yes"' "$verify_output"
+grep -q 'status JSON validation failed: top-level ok is not boolean' "$verify_output"
 
 set +e
 scripts/refresh_pi_charts.sh root@example.invalid >"$verify_output" 2>&1

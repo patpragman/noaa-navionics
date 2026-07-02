@@ -33,6 +33,7 @@ shift
 gps_seconds=""
 json=0
 ssh_cmd=""
+local_python_cmd=""
 max_status_gps_seconds=600
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -277,13 +278,81 @@ require_local_command() {
   printf '%s\n' "$command_path"
 }
 
+validate_status_json_output() {
+  local payload="$1"
+  if [[ -z "$payload" ]]; then
+    echo "status JSON validation failed: empty output" >&2
+    return 1
+  fi
+  printf '%s' "$payload" | "$local_python_cmd" -c '
+from datetime import datetime
+import json
+import sys
+
+
+def fail(message):
+    print(f"status JSON validation failed: {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+try:
+    report = json.load(sys.stdin)
+except json.JSONDecodeError as exc:
+    fail(f"not valid JSON: {exc}")
+
+if not isinstance(report, dict):
+    fail("top-level JSON value is not an object")
+if not isinstance(report.get("ok"), bool):
+    fail("top-level ok is not boolean")
+
+generated_at = report.get("generated_at")
+if not isinstance(generated_at, str) or not generated_at.strip():
+    fail("generated_at timestamp is missing")
+try:
+    parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+except ValueError as exc:
+    fail(f"generated_at timestamp is invalid: {exc}")
+if parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None:
+    fail("generated_at timestamp must include a timezone")
+
+for section_name, row_label in (("checks", "readiness check"), ("service_checks", "service check")):
+    rows = report.get(section_name)
+    if not isinstance(rows, list) or not rows:
+        fail(f"missing non-empty {section_name} list")
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            fail(f"malformed {section_name} row")
+        name = row.get("name")
+        if not isinstance(name, str) or not name.strip():
+            fail(f"unnamed {row_label}")
+        normalized = name.strip()
+        if normalized in seen:
+            fail(f"duplicate {row_label}: {normalized}")
+        seen.add(normalized)
+        if not isinstance(row.get("ok"), bool):
+            fail(f"{normalized} ok is not boolean")
+
+for section_name in ("gps_fix", "track_log"):
+    summary = report.get(section_name)
+    if not isinstance(summary, dict):
+        fail(f"missing {section_name} summary")
+    if not isinstance(summary.get("ok"), bool):
+        fail(f"{section_name} ok is not boolean")
+'
+}
+
 validate_ssh_target "$target"
 ssh_cmd="$(require_local_command ssh)"
+if [[ "$json" -eq 1 ]]; then
+  local_python_cmd="$(require_local_command python3)"
+fi
 gps_seconds_quoted="$(printf '%q' "$gps_seconds")"
 json_quoted="$(printf '%q' "$json")"
 
-"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" \
-  "${remote_system_path} && export PATH && NOAA_NAVIONICS_STATUS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_STATUS_JSON=${json_quoted} /bin/bash -s" <<'REMOTE'
+run_remote_status() {
+  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" \
+    "${remote_system_path} && export PATH && NOAA_NAVIONICS_STATUS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_STATUS_JSON=${json_quoted} /bin/bash -s" <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
@@ -696,3 +765,24 @@ fi
 
 run_noaa_navionics "${status_args[@]}"
 REMOTE
+}
+
+if [[ "$json" -eq 1 ]]; then
+  set +e
+  status_output="$(run_remote_status)"
+  status_code=$?
+  set -e
+  if [[ -n "$status_output" ]]; then
+    printf '%s\n' "$status_output"
+  fi
+  set +e
+  validate_status_json_output "$status_output"
+  json_validation_code=$?
+  set -e
+  if [[ "$status_code" -ne 0 ]]; then
+    exit "$status_code"
+  fi
+  exit "$json_validation_code"
+fi
+
+run_remote_status
