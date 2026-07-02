@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -237,6 +238,7 @@ def download_package(
     retry_delay: float = 2.0,
     progress: Optional[ProgressCallback] = None,
 ) -> DownloadResult:
+    timeout, retries, retry_delay = _validate_download_timing(timeout, retries, retry_delay)
     output_path = Path(output_dir).expanduser()
     _prepare_output_dir(output_path)
     with _chart_update_lock(output_path):
@@ -251,6 +253,26 @@ def download_package(
             retry_delay=retry_delay,
             progress=progress,
         )
+
+
+def _validate_download_timing(timeout: float, retries: int, retry_delay: float) -> tuple[float, int, float]:
+    try:
+        timeout_seconds = float(timeout)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("timeout must be finite and greater than 0") from exc
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise ValueError("timeout must be finite and greater than 0")
+    if not isinstance(retries, int) or isinstance(retries, bool):
+        raise ValueError("retries must be an integer")
+    if retries < 1:
+        raise ValueError("retries must be at least 1")
+    try:
+        retry_delay_seconds = float(retry_delay)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("retry_delay must be finite and non-negative") from exc
+    if not math.isfinite(retry_delay_seconds) or retry_delay_seconds < 0:
+        raise ValueError("retry_delay must be finite and non-negative")
+    return timeout_seconds, retries, retry_delay_seconds
 
 
 def _download_package_unlocked(
@@ -289,8 +311,6 @@ def _download_package_unlocked(
             write_manifest(output_path, package, result)
         return result
 
-    if retries < 1:
-        raise ValueError("retries must be at least 1")
     tmp_path = destination.with_suffix(destination.suffix + ".part")
     if tmp_path.exists() or tmp_path.is_symlink():
         raise RuntimeError(f"partial download already exists; remove interrupted chart update debris: {tmp_path}")

@@ -5996,6 +5996,10 @@ grep -q 'Status reports and Pi verification also reject symlinked, non-regular, 
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
+grep -q 'def _validate_download_timing' src/noaa_navionics/downloader.py
+grep -q 'timeout must be finite and greater than 0' src/noaa_navionics/downloader.py
+grep -q 'retry_delay must be finite and non-negative' src/noaa_navionics/downloader.py
+grep -q 'test_download_rejects_invalid_timing_before_storage_or_network' tests/test_downloader.py
 grep -q 'def _prepare_output_dir' src/noaa_navionics/downloader.py
 grep -q 'chart output path contains a symlink' src/noaa_navionics/downloader.py
 grep -q 'chart output directory .* expected private 0700' src/noaa_navionics/downloader.py

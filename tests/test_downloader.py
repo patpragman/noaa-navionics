@@ -8419,6 +8419,43 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(data["enc_cell_count"], 1)
             self.assertEqual(data["actual_enc_cell_count"], 1)
 
+    def test_download_rejects_invalid_timing_before_storage_or_network(self):
+        original_prepare = downloader_module._prepare_output_dir
+        original_urlopen = downloader_module.urlopen
+
+        def unexpected_prepare_output_dir(path):
+            raise AssertionError("download timing validation should run before chart storage setup")
+
+        def unexpected_urlopen(request, timeout=60):
+            raise AssertionError("download timing validation should run before network access")
+
+        cases = (
+            ({"timeout": 0}, "timeout must be finite and greater than 0"),
+            ({"timeout": float("nan")}, "timeout must be finite and greater than 0"),
+            ({"timeout": float("inf")}, "timeout must be finite and greater than 0"),
+            ({"retries": 0}, "retries must be at least 1"),
+            ({"retries": 1.5}, "retries must be an integer"),
+            ({"retries": True}, "retries must be an integer"),
+            ({"retry_delay": -1}, "retry_delay must be finite and non-negative"),
+            ({"retry_delay": float("inf")}, "retry_delay must be finite and non-negative"),
+            ({"retry_delay": float("nan")}, "retry_delay must be finite and non-negative"),
+        )
+
+        try:
+            downloader_module._prepare_output_dir = unexpected_prepare_output_dir
+            downloader_module.urlopen = unexpected_urlopen
+            with tempfile.TemporaryDirectory() as tmpdir:
+                package = Package("Timing test", "https://example.invalid/chart.zip", "chart.zip")
+                output = Path(tmpdir) / "charts"
+                for kwargs, message in cases:
+                    with self.subTest(kwargs=kwargs):
+                        with self.assertRaisesRegex(ValueError, message):
+                            download_package(package, output, **kwargs)
+                        self.assertFalse(output.exists())
+        finally:
+            downloader_module._prepare_output_dir = original_prepare
+            downloader_module.urlopen = original_urlopen
+
     def test_download_tightens_chart_output_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
