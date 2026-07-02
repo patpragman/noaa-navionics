@@ -661,6 +661,101 @@ finally:
 PY
 }
 
+promote_user_temp_path() {
+  local tmp="$1"
+  local target="$2"
+  local mode="$3"
+  local label="$4"
+  local expected_type="$5"
+  "$python3_cmd" - "$tmp" "$target" "$mode" "$label" "$expected_type" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+tmp_path = Path(sys.argv[1]).expanduser()
+target_path = Path(sys.argv[2]).expanduser()
+expected_mode = int(sys.argv[3], 8)
+label = sys.argv[4]
+expected_type = sys.argv[5]
+expected_uid = os.getuid()
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+if expected_type not in {"regular", "link"}:
+    raise SystemExit(f"unsupported {label} promotion type: {expected_type}")
+if tmp_path.parent != target_path.parent:
+    raise SystemExit(f"{label} temporary path must be in target directory before promotion: {tmp_path}")
+
+try:
+    dir_fd = os.open(target_path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    if target_path.parent.is_symlink():
+        raise SystemExit(f"{label} target directory is a symlink: {target_path.parent}") from exc
+    raise SystemExit(f"could not open {label} target directory {target_path.parent}: {exc}") from exc
+try:
+    dir_stat = os.fstat(dir_fd)
+    dir_mode = stat.S_IMODE(dir_stat.st_mode)
+    if not stat.S_ISDIR(dir_stat.st_mode) or dir_stat.st_uid != expected_uid or dir_mode & 0o022:
+        raise SystemExit(f"{label} target directory is not trusted for promotion: {target_path.parent}")
+
+    try:
+        target_stat = os.stat(target_path.name, dir_fd=dir_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+    else:
+        if expected_type == "regular":
+            if not stat.S_ISREG(target_stat.st_mode):
+                raise SystemExit(f"{label} target is not a regular file before promotion: {target_path}")
+            if target_stat.st_uid != expected_uid or stat.S_IMODE(target_stat.st_mode) & 0o022:
+                raise SystemExit(f"{label} target is not trusted before promotion: {target_path}")
+        elif not stat.S_ISLNK(target_stat.st_mode):
+            raise SystemExit(f"{label} target is not a symlink before promotion: {target_path}")
+
+    tmp_stat = os.stat(tmp_path.name, dir_fd=dir_fd, follow_symlinks=False)
+    if tmp_stat.st_uid != expected_uid:
+        raise SystemExit(f"{label} temporary path {tmp_path} is owned by uid {tmp_stat.st_uid}, expected {expected_uid}")
+    if expected_type == "regular":
+        tmp_mode = stat.S_IMODE(tmp_stat.st_mode)
+        if not stat.S_ISREG(tmp_stat.st_mode):
+            raise SystemExit(f"{label} temporary path is not a regular file before promotion: {tmp_path}")
+        if tmp_mode != expected_mode:
+            raise SystemExit(f"{label} temporary path has permissions {tmp_mode:04o}, expected {expected_mode:04o}")
+        tmp_fd = os.open(tmp_path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        try:
+            opened = os.fstat(tmp_fd)
+            if not os.path.samestat(tmp_stat, opened):
+                raise SystemExit(f"{label} temporary path changed while being opened: {tmp_path}")
+            os.fsync(tmp_fd)
+        finally:
+            os.close(tmp_fd)
+    elif not stat.S_ISLNK(tmp_stat.st_mode):
+        raise SystemExit(f"{label} temporary path is not a symlink before promotion: {tmp_path}")
+
+    os.replace(tmp_path.name, target_path.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+
+    promoted = os.stat(target_path.name, dir_fd=dir_fd, follow_symlinks=False)
+    if not os.path.samestat(tmp_stat, promoted):
+        raise SystemExit(f"{label} promoted path is not the validated temporary path: {target_path}")
+    if expected_type == "regular":
+        promoted_mode = stat.S_IMODE(promoted.st_mode)
+        if promoted.st_uid != expected_uid or promoted_mode != expected_mode:
+            raise SystemExit(f"{label} promoted file has uid/mode {promoted.st_uid}:{promoted_mode:04o}, expected {expected_uid}:{expected_mode:04o}")
+        target_fd = os.open(target_path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+        try:
+            opened = os.fstat(target_fd)
+            if not os.path.samestat(promoted, opened):
+                raise SystemExit(f"{label} promoted file changed while being opened: {target_path}")
+            os.fsync(target_fd)
+        finally:
+            os.close(target_fd)
+    elif promoted.st_uid != expected_uid or not stat.S_ISLNK(promoted.st_mode):
+        raise SystemExit(f"{label} promoted path is not a trusted symlink: {target_path}")
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 install_user_file_atomic() {
   local source="$1"
   local target="$2"
@@ -686,7 +781,7 @@ install_user_file_atomic() {
     cleanup_user_temp_path "$tmp" "installed user file temporary path" || true
     return 1
   fi
-  if ! mv -f "$tmp" "$target"; then
+  if ! promote_user_temp_path "$tmp" "$target" "$mode" "installed user file" regular; then
     cleanup_user_temp_path "$tmp" "installed user file temporary path" || true
     return 1
   fi
@@ -795,7 +890,7 @@ link_user_atomic() {
     cleanup_user_temp_path "$tmp" "installed command symlink temporary path" || true
     return 1
   fi
-  if ! mv -f "$tmp" "$target"; then
+  if ! promote_user_temp_path "$tmp" "$target" 0777 "installed command symlink" link; then
     cleanup_user_temp_path "$tmp" "installed command symlink temporary path" || true
     return 1
   fi

@@ -1430,6 +1430,7 @@ grep -q 'trusted vcgencmd is not available' scripts/install_raspberry_pi.sh
 grep -q 'python3-setuptools procps' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic' scripts/install_raspberry_pi.sh
+grep -q 'promote_user_temp_path' scripts/install_raspberry_pi.sh
 grep -q 'verify_promoted_user_file' scripts/install_raspberry_pi.sh
 grep -q 'verify_installed_command_link' scripts/install_raspberry_pi.sh
 grep -q 'verify_installed_user_executable' scripts/install_raspberry_pi.sh
@@ -1440,7 +1441,11 @@ grep -q 'validate_user_install_path "$target_dir" "installed user file directory
 grep -q 'validate_user_install_path "$target_dir" "installed command symlink directory" directory' scripts/install_raspberry_pi.sh
 test "$(grep -c 'validate_user_install_path "$target" "installed user file" regular' scripts/install_raspberry_pi.sh)" -ge 2
 test "$(grep -c 'validate_user_install_path "$target" "installed command symlink" link' scripts/install_raspberry_pi.sh)" -ge 2
-grep -q 'mv -f "$tmp" "$target"' scripts/install_raspberry_pi.sh
+grep -q 'promote_user_temp_path "$tmp" "$target" "$mode" "installed user file" regular' scripts/install_raspberry_pi.sh
+grep -q 'promote_user_temp_path "$tmp" "$target" 0777 "installed command symlink" link' scripts/install_raspberry_pi.sh
+grep -q 'os.replace(tmp_path.name, target_path.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)' scripts/install_raspberry_pi.sh
+grep -q 'promoted path is not the validated temporary path' scripts/install_raspberry_pi.sh
+! grep -q 'mv -f "$tmp" "$target"' scripts/install_raspberry_pi.sh
 grep -q 'verify_promoted_user_file "$source" "$target" "$mode" "installed user file"' scripts/install_raspberry_pi.sh
 grep -q 'source_bytes = read_regular_nofollow(source, f"{label} source")' scripts/install_raspberry_pi.sh
 grep -q 'target_bytes = read_regular_nofollow(' scripts/install_raspberry_pi.sh
@@ -1449,6 +1454,8 @@ grep -q 'os.path.samestat(initial, opened)' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$target"' scripts/install_raspberry_pi.sh
 grep -q 'Installer revalidates user directories after creating or tightening them before placing temporary files there' README.md
 grep -q 'Installer revalidates user directories after creating or tightening them before placing temporary files there' docs/sailboat-pi.md
+grep -q 'Installer promotes command links, helper launchers, and user systemd unit temp paths by no-follow opened target-directory descriptors' README.md
+grep -q 'Installer promotes command links, helper launchers, and user systemd unit temp paths by no-follow opened target-directory descriptors' docs/sailboat-pi.md
 grep -q 'Failed installer user-file and command-link temporary-path cleanup is no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed installer user-file and command-link temporary-path cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'cleanup_user_temp_path "$tmp" "installed user file temporary path" || true' scripts/install_raspberry_pi.sh
@@ -1471,14 +1478,14 @@ file_start = text.index("install_user_file_atomic()")
 file_mkdir = text.index('mkdir -p "$target_dir"', file_start)
 file_validate_dir = text.index('validate_user_install_path "$target_dir" "installed user file directory" directory', file_mkdir)
 file_mktemp = text.index('mktemp "${target_dir}/.${target_name}.XXXXXX"', file_validate_dir)
-file_promote = text.index('mv -f "$tmp" "$target"', file_mktemp)
+file_promote = text.index('promote_user_temp_path "$tmp" "$target" "$mode" "installed user file" regular', file_mktemp)
 file_verify = text.index('verify_promoted_user_file "$source" "$target" "$mode" "installed user file"', file_promote)
 file_sync = text.index('sync_paths "$target"', file_verify)
 link_start = text.index("link_user_atomic()")
 link_mkdir = text.index('mkdir -p "$target_dir"', link_start)
 link_validate_dir = text.index('validate_user_install_path "$target_dir" "installed command symlink directory" directory', link_mkdir)
 link_mktemp = text.index('mktemp "${target_dir}/.${target_name}.XXXXXX"', link_validate_dir)
-link_promote = text.index('mv -f "$tmp" "$target"', link_mktemp)
+link_promote = text.index('promote_user_temp_path "$tmp" "$target" 0777 "installed command symlink" link', link_mktemp)
 if not ensure_mkdir < ensure_validate_after_mkdir < ensure_chmod < ensure_validate_after_chmod < ensure_sync:
     raise SystemExit("installer private directories must be revalidated after mkdir and chmod before syncing")
 if not file_mkdir < file_validate_dir < file_mktemp < file_promote < file_verify < file_sync:
