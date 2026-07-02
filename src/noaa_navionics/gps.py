@@ -28,6 +28,7 @@ NMEA_MAX_LINE_BYTES = 4096
 GPSD_MAX_MESSAGE_BYTES = 65536
 NMEA_CHECKSUM_HEX = frozenset("0123456789ABCDEFabcdef")
 EARTH_RADIUS_METERS = 6371008.8
+NULL_ISLAND_EPSILON_DEGREES = 1e-12
 
 
 @dataclass(frozen=True)
@@ -50,7 +51,7 @@ class GPSFix:
             and self.longitude is not None
             and _coordinate_in_range(self.latitude, latitude=True)
             and _coordinate_in_range(self.longitude, latitude=False)
-            and not (self.latitude == 0.0 and self.longitude == 0.0)
+            and not _coordinates_are_null_island(self.latitude, self.longitude)
             and self.fix_quality is not None
             and self.fix_quality != 0
         )
@@ -395,7 +396,7 @@ def gps_fix_quality_failure(
         return f"invalid GPS fix: latitude {latitude:.6f} outside -90..90"
     if longitude < -180.0 or longitude > 180.0:
         return f"invalid GPS fix: longitude {longitude:.6f} outside -180..180"
-    if latitude == 0.0 and longitude == 0.0:
+    if _coordinates_are_null_island(latitude, longitude):
         return "invalid GPS fix: 0.000000, 0.000000 coordinates"
     if fix.satellites is not None:
         if isinstance(fix.satellites, bool) or not isinstance(fix.satellites, int):
@@ -446,6 +447,10 @@ def distance_meters(
         + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
     )
     return 2.0 * EARTH_RADIUS_METERS * math.asin(min(1.0, math.sqrt(haversine)))
+
+
+def _coordinates_are_null_island(latitude: float, longitude: float) -> bool:
+    return abs(latitude) < NULL_ISLAND_EPSILON_DEGREES and abs(longitude) < NULL_ISLAND_EPSILON_DEGREES
 
 
 def mean_longitude_degrees(longitudes: Iterable[object]) -> float:

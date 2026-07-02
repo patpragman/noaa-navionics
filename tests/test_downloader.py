@@ -18126,6 +18126,16 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(fix.valid)
         self.assertEqual(list(iter_fixes([sentence])), [])
 
+    def test_iter_fixes_rejects_near_null_island_position(self):
+        sentence = "$GPGGA,123519,0000.000000000001,N,00000.000000000001,E,1,08,0.9,545.4,M,46.9,M,,"
+        fix = parse_nmea_sentence(sentence)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertFalse(fix.valid)
+        self.assertIn("0.000000, 0.000000", gps_fix_quality_failure(fix))
+        self.assertEqual(list(iter_fixes([sentence])), [])
+
     def test_iter_fixes_merges_gga_and_rmc(self):
         fixes = list(
             iter_fixes(
@@ -19250,6 +19260,15 @@ class GpsTests(unittest.TestCase):
         self.assertIsNotNone(fix)
         assert fix is not None
         self.assertFalse(fix.valid)
+
+    def test_parse_gpsd_tpv_marks_near_null_island_position_invalid(self):
+        payload = '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z","lat":1e-13,"lon":-1e-13}'
+        fix = parse_gpsd_tpv(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertFalse(fix.valid)
+        self.assertIn("0.000000, 0.000000", gps_fix_quality_failure(fix))
 
     def test_parse_gpsd_tpv_rejects_malformed_fix_mode(self):
         base = '"class":"TPV","time":"2026-06-28T12:34:56.000Z","lat":61.2181,"lon":-149.9003'
