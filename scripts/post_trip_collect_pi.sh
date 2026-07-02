@@ -1609,11 +1609,10 @@ if not BOOT_ID_RE.fullmatch(host_boot_id):
     print(f"status snapshot JSON missing valid host boot_id: {path}", file=sys.stderr)
     raise SystemExit(124)
 app = payload.get("app")
-source_revision = app.get("source_revision") if isinstance(app, dict) else None
-if not isinstance(source_revision, str):
+if not isinstance(app, dict):
     print(f"status snapshot JSON missing deployed source_revision: {path}", file=sys.stderr)
     raise SystemExit(124)
-source_revision_text = source_revision.strip()
+source_revision_text = snapshot_text(app.get("source_revision", ""), "app source_revision", path)
 if not source_revision_text or source_revision_text == "unknown":
     print(f"status snapshot JSON missing deployed source_revision: {path}", file=sys.stderr)
     raise SystemExit(124)

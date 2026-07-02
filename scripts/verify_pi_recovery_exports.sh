@@ -924,10 +924,9 @@ def verify_optional_pre_departure_status(recovery_dir: Path, recovery_fd: int) -
     if not BOOT_ID_RE.fullmatch(host_boot_id):
         fail("pre-departure status snapshot JSON missing valid host boot_id")
     app = status.get("app")
-    source_revision = app.get("source_revision") if isinstance(app, dict) else None
-    if not isinstance(source_revision, str):
+    if not isinstance(app, dict):
         fail("pre-departure status snapshot JSON missing deployed source_revision")
-    source_revision_text = source_revision.strip()
+    source_revision_text = snapshot_text(app.get("source_revision", ""), "app source_revision")
     if not source_revision_text or source_revision_text == "unknown":
         fail("pre-departure status snapshot JSON missing deployed source_revision")
     if source_revision_text.endswith("-dirty"):
