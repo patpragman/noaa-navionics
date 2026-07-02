@@ -812,6 +812,17 @@ def shell_function_python_heredoc(source: str, function_name: str) -> str:
     return match.group("body")
 
 
+def shell_function_python_command(source: str, function_name: str) -> str:
+    match = re.search(
+        rf"^{re.escape(function_name)}\(\) \{{.*?\"\$local_python_cmd\" -c '\n(?P<body>.*?)\n'\n\}}",
+        source,
+        re.MULTILINE | re.DOTALL,
+    )
+    if not match:
+        raise AssertionError(f"missing embedded Python command in {function_name}")
+    return match.group("body")
+
+
 def python_string_set_assignment(source: str, name: str) -> set[str]:
     tree = ast.parse(source)
     for statement in tree.body:
@@ -14685,6 +14696,7 @@ class StatusReportTests(unittest.TestCase):
         for expected in (
             "def status_text",
             "contains control characters",
+            "is not a string",
             "def validate_optional_text_fields",
             '(("checks", "readiness check"), ("service_checks", "service check"))',
             'status_text(name, f"{row_label} name")',
@@ -14698,6 +14710,49 @@ class StatusReportTests(unittest.TestCase):
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
+
+    def test_check_pi_status_json_validator_executes_text_field_checks(self):
+        validator = shell_function_python_command(
+            Path("scripts/check_pi_status.sh").read_text(encoding="utf-8"),
+            "validate_status_json_output",
+        )
+        valid_report = complete_status_gui_report()
+        valid_result = subprocess.run(
+            [sys.executable, "-c", validator],
+            input=json.dumps(valid_report),
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(valid_result.returncode, 0, valid_result.stderr)
+
+        cases = (
+            (("checks", 0, "name"), "Chart\x00Readiness", "readiness check name contains control characters"),
+            (("service_checks", 0, "name"), "gpsd\nservice", "service check name contains control characters"),
+            (("config", "chart_output"), "/charts\x7f", "config chart_output contains control characters"),
+            (("config", "gps_device"), ["not", "text"], "config gps_device is not a string"),
+            (("manifest", "download_path"), "/charts/AK\nENCs.zip", "manifest download_path contains control characters"),
+            (("gps_fix", "source"), "GPSD\x00", "gps_fix source contains control characters"),
+            (("track_log", "latest_path"), "/charts/tracks/track\n.gpx", "track_log latest_path contains control characters"),
+        )
+        for path, value, expected_error in cases:
+            report = copy.deepcopy(valid_report)
+            target = report
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = value
+            result = subprocess.run(
+                [sys.executable, "-c", validator],
+                input=json.dumps(report),
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            with self.subTest(path=path):
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(expected_error, result.stderr)
 
     def test_verify_pi_rejects_unsupported_expected_config_gps_baud(self):
         source = shell_function_python_heredoc(

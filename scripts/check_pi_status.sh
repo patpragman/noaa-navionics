@@ -361,6 +361,8 @@ def fail(message):
 
 
 def status_text(value, label):
+    if not isinstance(value, str):
+        fail(f"{label} is not a string")
     text = str(value)
     if any(ord(char) < 32 or ord(char) == 127 for char in text):
         fail(f"{label} contains control characters")
