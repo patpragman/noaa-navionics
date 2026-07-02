@@ -412,7 +412,7 @@ remote_command_path() {
   local command_path
   local status=0
   case "$command_name" in
-    python3|rsync|tar)
+    python3|rsync|sudo|tar)
       ;;
     *)
       echo "Unsupported remote command check: $command_name" >&2
@@ -460,6 +460,24 @@ EOF
   cat >&2 <<EOF
 Could not confirm required remote command on the Pi: $command_name
 Install $command_name on the Pi before deployment, then rerun this script.
+EOF
+  exit 2
+}
+
+check_remote_noninteractive_sudo_available() {
+  local remote_sudo_cmd
+  local remote_sudo_cmd_quoted
+
+  remote_sudo_cmd="$(require_remote_command_available sudo)"
+  remote_sudo_cmd_quoted="$(printf '%q' "$remote_sudo_cmd")"
+  if "$ssh_cmd" "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && ${remote_sudo_cmd_quoted} -n true" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  cat >&2 <<EOF
+Remote sudo is not available without a password prompt on $target.
+Deploy and provisioning run over batch SSH and cannot answer sudo prompts.
+Configure the Pi desktop user for noninteractive sudo, then rerun this script.
 EOF
   exit 2
 }
@@ -700,6 +718,7 @@ fi
 
 ssh_cmd="$(require_local_command ssh)"
 remote_python_cmd="$(require_remote_command_available python3)"
+check_remote_noninteractive_sudo_available
 
 write_remote_source_revision() {
   local remote_dir_value="$1"

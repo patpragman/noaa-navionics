@@ -568,6 +568,10 @@ grep -q 'remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/
 grep -q '${remote_system_path} && export PATH && command -v ${command_name}' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path()' scripts/deploy_to_pi.sh
 grep -q 'remote_command_path "$command_name" >/dev/null' scripts/deploy_to_pi.sh
+grep -q 'check_remote_noninteractive_sudo_available' scripts/deploy_to_pi.sh
+grep -q 'require_remote_command_available sudo' scripts/deploy_to_pi.sh
+grep -q -- '-n true' scripts/deploy_to_pi.sh
+grep -q 'Remote sudo is not available without a password prompt' scripts/deploy_to_pi.sh
 grep -q 'if ! validate_remote_deploy_command_trust "$command_name" "$command_path"; then' scripts/deploy_to_pi.sh
 grep -q 'remote_path_in_trusted_system_dir' scripts/deploy_to_pi.sh
 grep -q 'Remote deploy command ${command_name} is not in a trusted system directory' scripts/deploy_to_pi.sh
@@ -6900,6 +6904,10 @@ grep -Fq 'run_remote_repo_helper scripts/provision_sailboat_pi.sh "${remote_args
 ! grep -Fq 'cd ${remote_dir_quoted} && ${remote_system_path} && export PATH && scripts/provision_sailboat_pi.sh' scripts/deploy_to_pi.sh
 grep -q 'remote install and provisioning helper scripts run from no-follow descriptors' README.md
 grep -q 'remote install and provisioning helper scripts run from no-follow descriptors' docs/sailboat-pi.md
+grep -q 'validates trusted remote `sudo` plus noninteractive `sudo -n true` before copying' README.md
+grep -q 'validates trusted remote `sudo` plus noninteractive `sudo -n true` before copying' docs/sailboat-pi.md
+grep -q 'password-prompt sudo' README.md
+grep -q 'password-prompt sudo' docs/sailboat-pi.md
 grep -q 'must be a positive integer' scripts/dock_test_pi.sh
 grep -q 'max_reboot_timeout=900' scripts/dock_test_pi.sh
 grep -q 'dock test bounds reboot SSH wait time to 1-900 seconds' README.md
@@ -8197,7 +8205,20 @@ case "$args" in
     printf '%s\n' /usr/bin/python3
     exit 0
     ;;
+  *"command -v sudo"*)
+    printf '%s\n' /usr/bin/sudo
+    exit 0
+    ;;
   *"/bin/sh -s -- /usr/bin/python3 python3"*)
+    exit 0
+    ;;
+  *"/bin/sh -s -- /usr/bin/sudo sudo"*)
+    exit 0
+    ;;
+  *"/usr/bin/sudo -n true"*)
+    if [[ "${NOAA_NAVIONICS_FAKE_DEPLOY_SUDO_FAIL:-0}" == "1" ]]; then
+      exit 1
+    fi
     exit 0
     ;;
   *"command -v rsync"*)
@@ -8212,6 +8233,22 @@ echo "unexpected fake deploy ssh invocation: $args" >&2
 exit 1
 EOF
 chmod +x "$deploy_fake_ssh_bin/ssh"
+
+set +e
+NOAA_NAVIONICS_FAKE_DEPLOY_SUDO_FAIL=1 \
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  PATH="$deploy_fake_ssh_bin:$PATH" \
+  scripts/deploy_to_pi.sh pi@example.invalid --allow-dirty --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject remote sudo that requires a password with exit 2" >&2
+  exit 1
+fi
+grep -q 'Remote sudo is not available without a password prompt on pi@example.invalid' "$deploy_output"
+grep -q 'Deploy and provisioning run over batch SSH and cannot answer sudo prompts' "$deploy_output"
+! grep -q 'Remote deploy command tar is not in a trusted system directory' "$deploy_output"
 
 set +e
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
