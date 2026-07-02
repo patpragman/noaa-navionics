@@ -4145,7 +4145,8 @@ grep -q 'status report directory .* expected private 0700' src/noaa_navionics/re
 grep -q 'status report cache parent directory .* expected private 0700' src/noaa_navionics/report.py
 grep -q 'became a symlink after permission tightening' src/noaa_navionics/report.py
 grep -q 'os.chmod(cache_parent, 0o700)' src/noaa_navionics/report.py
-grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/report.py
+grep -q 'os.fchmod(handle.fileno(), 0o600)' src/noaa_navionics/report.py
+grep -q 'def _validate_status_temp_for_promotion' src/noaa_navionics/report.py
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/report.py
 grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/report.py
 grep -q 'status report cache directory' scripts/verify_pi.sh
@@ -4159,6 +4160,7 @@ grep -q 'test_write_status_report_rejects_home_cache_parent_when_tightening_fail
 grep -q 'test_write_status_report_rejects_symlinked_output_parent' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_symlinked_output_ancestor' tests/test_downloader.py
 grep -q 'test_write_status_report_validates_promoted_file_with_no_follow_open' tests/test_downloader.py
+grep -q 'test_write_status_report_revalidates_temp_before_promotion' tests/test_downloader.py
 grep -q 'test_write_status_report_rejects_corrupt_promoted_file' tests/test_downloader.py
 grep -q 'test_write_status_report_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'Status report directory sync uses no-follow directory opens' README.md
@@ -5438,7 +5440,7 @@ grep -q 'Anchor radius:' src/noaa_navionics/report.py
 grep -q '"extract_path": extract_path' src/noaa_navionics/report.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/report.py
 grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/report.py
-grep -q 'cleanup_private_temp_file(tmp_path, label="status report temp")' src/noaa_navionics/report.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="status report temp", expected_stat=tmp_stat)' src/noaa_navionics/report.py
 ! grep -q 'tmp_path.unlink()' src/noaa_navionics/report.py
 grep -q 'def _fsync_directory' src/noaa_navionics/report.py
 grep -q 'TimeoutStartSec=2h' systemd/noaa-navionics.service

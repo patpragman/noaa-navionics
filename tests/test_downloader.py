@@ -14658,6 +14658,28 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_opens)
         self.assertTrue(any(flags & getattr(os, "O_NOFOLLOW", 0) for _, flags in status_opens))
 
+    def test_write_status_report_revalidates_temp_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            output = root / "status.json"
+            original_validate = report_module._validate_status_temp_for_promotion
+
+            def swap_status_temp(path, *, expected_stat):
+                replacement = root / "replacement-status.part"
+                replacement.write_text("replacement\n", encoding="utf-8")
+                replacement.chmod(0o600)
+                os.replace(replacement, path)
+                original_validate(path, expected_stat=expected_stat)
+
+            with patch("noaa_navionics.report._validate_status_temp_for_promotion", side_effect=swap_status_temp):
+                with self.assertRaisesRegex(RuntimeError, "status report temp changed before promotion"):
+                    write_status_report({"ok": True}, output)
+
+            self.assertFalse(output.exists())
+            parts = list(root.glob(".status.json.*.part"))
+            self.assertEqual(len(parts), 1)
+            self.assertEqual(parts[0].read_text(encoding="utf-8"), "replacement\n")
+
     def test_write_status_report_rejects_corrupt_promoted_file(self):
         original_replace = report_module.os.replace
 
