@@ -1227,6 +1227,28 @@ class ConfigTests(unittest.TestCase):
             self.assertTrue(promoted_opens)
             self.assertTrue(promoted_opens[-1][1] & getattr(os, "O_NOFOLLOW", 0))
 
+    def test_write_default_config_revalidates_temp_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            path = root / "config.ini"
+            original_validate = config_module._validate_config_temp_for_promotion
+
+            def swap_config_temp(temp_path, *, expected_stat):
+                replacement = root / "replacement-config.part"
+                replacement.write_text("replacement\n", encoding="utf-8")
+                replacement.chmod(0o600)
+                os.replace(replacement, temp_path)
+                original_validate(temp_path, expected_stat=expected_stat)
+
+            with patch("noaa_navionics.config._validate_config_temp_for_promotion", side_effect=swap_config_temp):
+                with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config temp changed before promotion"):
+                    write_default_config(path)
+
+            self.assertFalse(path.exists())
+            parts = list(root.glob(".config.ini.*.part"))
+            self.assertEqual(len(parts), 1)
+            self.assertEqual(parts[0].read_text(encoding="utf-8"), "replacement\n")
+
     def test_write_default_config_rejects_corrupt_promoted_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "config.ini"

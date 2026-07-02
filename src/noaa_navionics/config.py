@@ -279,6 +279,7 @@ def _write_text_atomic(target: Path, text: str) -> None:
     _reject_unsafe_config_path(target)
     _prepare_config_parent(target)
     tmp_path = None
+    tmp_stat = None
     try:
         with tempfile.NamedTemporaryFile(
             "w",
@@ -289,16 +290,56 @@ def _write_text_atomic(target: Path, text: str) -> None:
             delete=False,
         ) as handle:
             tmp_path = Path(handle.name)
+            os.fchmod(handle.fileno(), 0o600)
             handle.write(text)
             handle.flush()
-            os.chmod(tmp_path, 0o600)
             os.fsync(handle.fileno())
+            tmp_stat = os.fstat(handle.fileno())
+        _validate_config_temp_for_promotion(tmp_path, expected_stat=tmp_stat)
         os.replace(tmp_path, target)
         _validate_written_config(target)
         _fsync_directory(target.parent)
     finally:
         if tmp_path is not None:
-            cleanup_private_temp_file(tmp_path, label="NOAA Navionics config temp")
+            cleanup_private_temp_file(tmp_path, label="NOAA Navionics config temp", expected_stat=tmp_stat)
+
+
+def _validate_config_temp_for_promotion(path: Path, *, expected_stat: Optional[os.stat_result]) -> None:
+    if expected_stat is None:
+        raise RuntimeError(f"NOAA Navionics config temp was not opened safely before promotion: {path}")
+    try:
+        current = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect NOAA Navionics config temp before promotion {path}: {exc}") from exc
+    if stat.S_ISLNK(current.st_mode):
+        raise RuntimeError(f"NOAA Navionics config temp is a symlink before promotion: {path}")
+    if not stat.S_ISREG(current.st_mode):
+        raise RuntimeError(f"NOAA Navionics config temp is not a regular file before promotion: {path}")
+    if current.st_uid != os.getuid():
+        raise RuntimeError(
+            f"NOAA Navionics config temp {path} is owned by uid {current.st_uid}, expected {os.getuid()}"
+        )
+    mode = stat.S_IMODE(current.st_mode)
+    if mode != 0o600:
+        raise RuntimeError(f"NOAA Navionics config temp {path} has permissions {mode:04o}, expected private 0600")
+    if not os.path.samestat(current, expected_stat):
+        raise RuntimeError(f"NOAA Navionics config temp changed before promotion; leaving it in place: {path}")
+
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, expected_stat):
+            raise RuntimeError(f"NOAA Navionics config temp changed while being opened for promotion: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"NOAA Navionics config temp is not regular when opened for promotion: {path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened.st_uid != os.getuid() or opened_mode != 0o600:
+            raise RuntimeError(
+                f"NOAA Navionics config temp {path} is not private current-user storage before promotion"
+            )
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def _validate_written_config(path: Path) -> None:

@@ -4302,7 +4302,8 @@ grep -q 'pass `--charts PATH` to check a different mounted chart directory expli
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/config.py
 grep -q 'def _write_text_atomic' src/noaa_navionics/config.py
 grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/config.py
-grep -q 'cleanup_private_temp_file(tmp_path, label="NOAA Navionics config temp")' src/noaa_navionics/config.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="NOAA Navionics config temp", expected_stat=tmp_stat)' src/noaa_navionics/config.py
+grep -q 'def _validate_config_temp_for_promotion' src/noaa_navionics/config.py
 ! grep -q 'tmp_path.unlink()' src/noaa_navionics/config.py
 grep -q 'def _validate_written_config' src/noaa_navionics/config.py
 grep -q '_validate_written_config(target)' src/noaa_navionics/config.py
@@ -4334,6 +4335,7 @@ grep -q 'test_write_default_config_tightens_public_parent' tests/test_downloader
 grep -q 'test_write_default_config_rejects_parent_when_tightening_fails' tests/test_downloader.py
 grep -q 'test_write_default_config_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'test_write_default_config_validates_promoted_file_with_no_follow_open' tests/test_downloader.py
+grep -q 'test_write_default_config_revalidates_temp_before_promotion' tests/test_downloader.py
 grep -q 'test_write_default_config_rejects_corrupt_promoted_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_config_file' tests/test_downloader.py
 grep -q 'test_read_config_rejects_symlinked_parent' tests/test_downloader.py
@@ -4353,7 +4355,7 @@ grep -q 'promoted config is reopened through a no-follow descriptor' docs/sailbo
 grep -q 'test_read_config_rejects_writable_config_file' tests/test_downloader.py
 grep -q 'symlinked config path components' README.md
 grep -q 'symlinked config path components' docs/sailboat-pi.md
-grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/config.py
+grep -q 'os.fchmod(handle.fileno(), 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'live_stream = deadline is None and not args.sample' src/noaa_navionics/cli.py
