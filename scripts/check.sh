@@ -5083,6 +5083,11 @@ grep -q 'status report manifest path .* does not match configured' src/noaa_navi
 grep -q 'status report track_log track_output .* does not match configured' src/noaa_navionics/report.py
 grep -q 'status report missing user section' src/noaa_navionics/report.py
 grep -q 'status report user summary invalid' src/noaa_navionics/report.py
+grep -q 'user name contains control characters' tests/test_downloader.py
+grep -q 'user linger contains control characters' tests/test_downloader.py
+grep -q 'user error contains control characters' tests/test_downloader.py
+grep -q 'user linger is not text' tests/test_downloader.py
+grep -q 'user error is not text' tests/test_downloader.py
 grep -q 'status report missing unit_files section' src/noaa_navionics/report.py
 grep -q 'status report unit file summary invalid' src/noaa_navionics/report.py
 grep -q 'noaa-navionics-preflight.service' src/noaa_navionics/report.py

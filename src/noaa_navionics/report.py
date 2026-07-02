@@ -1645,9 +1645,15 @@ def _status_text_has_control_char(text: str) -> bool:
 def _user_validation_failures(user: object) -> list[CheckResult]:
     if not isinstance(user, dict):
         return [CheckResult("User Linger", False, "status report missing user section")]
-    name = str(user.get("name", "")).strip()
+    name_value = user.get("name", "")
+    if not isinstance(name_value, str):
+        return [CheckResult("User Linger", False, "status report user name is empty")]
+    name = name_value.strip()
     if not name:
         return [CheckResult("User Linger", False, "status report user name is empty")]
+    control_failure = _status_control_character_failure(name, "user name")
+    if control_failure:
+        return [CheckResult("User Linger", False, control_failure)]
     uid = user.get("uid")
     if isinstance(uid, bool) or not isinstance(uid, int) or uid < 0:
         return [CheckResult("User Linger", False, f"status report user uid is invalid: {uid!r}")]
@@ -4537,11 +4543,29 @@ def _service_readiness_checks(
 
 
 def _user_linger_check(summary: dict[str, object]) -> CheckResult:
-    name = str(summary.get("name", "")).strip()
-    error = str(summary.get("error", "")).strip()
+    name_value = summary.get("name", "")
+    if not isinstance(name_value, str):
+        return CheckResult("User Linger", False, "user name is not text")
+    name = name_value.strip()
+    control_failure = _status_control_character_failure(name, "user name")
+    if control_failure:
+        return CheckResult("User Linger", False, control_failure.removeprefix("status report "))
+    error_value = summary.get("error", "")
+    if not isinstance(error_value, str):
+        return CheckResult("User Linger", False, "user error is not text")
+    error = error_value.strip()
+    control_failure = _status_control_character_failure(error, "user error")
+    if control_failure:
+        return CheckResult("User Linger", False, control_failure.removeprefix("status report "))
     if error:
         return CheckResult("User Linger", False, f"{name or '<unknown>'}: {error}")
-    linger = str(summary.get("linger", "")).strip()
+    linger_value = summary.get("linger", "")
+    if not isinstance(linger_value, str):
+        return CheckResult("User Linger", False, "user linger is not text")
+    linger = linger_value.strip()
+    control_failure = _status_control_character_failure(linger, "user linger")
+    if control_failure:
+        return CheckResult("User Linger", False, control_failure.removeprefix("status report "))
     if linger != "yes":
         return CheckResult("User Linger", False, f"{name or '<unknown>'} linger={linger or '<missing>'}, expected yes")
     return CheckResult("User Linger", True, f"{name} has linger enabled for reboot-persistent user services")

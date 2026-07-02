@@ -13595,9 +13595,15 @@ class StatusReportTests(unittest.TestCase):
         }
         cases = [
             ({}, "missing user section", "User Linger"),
+            ({"user": {**valid_user, "name": 123}}, "user name is empty", "User Linger"),
             ({"user": {**valid_user, "name": ""}}, "user name is empty", "User Linger"),
+            ({"user": {**valid_user, "name": "pi\x00"}}, "user name contains control characters", "User Linger"),
             ({"user": {**valid_user, "uid": "pi"}}, "user uid is invalid", "User Linger"),
+            ({"user": {**valid_user, "linger": 123}}, "user linger is not text", "User Linger"),
+            ({"user": {**valid_user, "linger": "yes\x00"}}, "user linger contains control characters", "User Linger"),
             ({"user": {**valid_user, "linger": "no"}}, "linger=no", "User Linger"),
+            ({"user": {**valid_user, "error": 123}}, "user error is not text", "User Linger"),
+            ({"user": {**valid_user, "error": "loginctl failed\x00"}}, "user error contains control characters", "User Linger"),
             ({"unit_files": None}, "missing unit_files section", "Unit Files"),
             (
                 {"unit_files": {key: value for key, value in valid_unit_files.items() if key != "noaa-navionics.service"}},
