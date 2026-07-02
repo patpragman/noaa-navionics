@@ -471,7 +471,15 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                 failures.append(CheckResult("Python", False, "status report Python version is below 3.9"))
             if not isinstance(min_version, list) or min_version[:2] != [3, 9]:
                 failures.append(CheckResult("Python", False, "status report Python minimum version is not recorded"))
-            executable = str(data.get("executable", "")).strip()
+            executable_value = data.get("executable", "")
+            if not isinstance(executable_value, str):
+                failures.append(CheckResult("Python", False, "status report Python executable path is not text"))
+                executable = ""
+            else:
+                executable = executable_value.strip()
+                control_failure = _status_control_character_failure(executable, "Python executable path")
+                if control_failure:
+                    failures.append(CheckResult("Python", False, control_failure))
             if not _status_absolute_path(executable):
                 failures.append(CheckResult("Python", False, "status report Python executable path is not absolute"))
 
@@ -481,7 +489,16 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
         if not isinstance(data, dict):
             failures.append(CheckResult("Tkinter", False, "status report Tkinter check has no structured data"))
         else:
-            if str(data.get("module", "")).strip() != "tkinter":
+            module_value = data.get("module", "")
+            if not isinstance(module_value, str):
+                failures.append(CheckResult("Tkinter", False, "status report Tkinter module is not text"))
+                module = ""
+            else:
+                module = module_value.strip()
+                control_failure = _status_control_character_failure(module, "Tkinter module")
+                if control_failure:
+                    failures.append(CheckResult("Tkinter", False, control_failure))
+            if module != "tkinter":
                 failures.append(CheckResult("Tkinter", False, "status report Tkinter module is not tkinter"))
             if data.get("available") is not True:
                 failures.append(CheckResult("Tkinter", False, "status report Tkinter availability was not proven"))

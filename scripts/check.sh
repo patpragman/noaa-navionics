@@ -5228,6 +5228,8 @@ grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chrony_gps_time_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report Python check has no structured data' src/noaa_navionics/report.py
+grep -q 'Python executable path contains control characters' tests/test_downloader.py
+grep -q 'Tkinter module contains control characters' tests/test_downloader.py
 grep -q 'status report Tkinter availability was not proven' src/noaa_navionics/report.py
 grep -q 'status report Source Revision does not match app source revision' src/noaa_navionics/report.py
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
