@@ -815,7 +815,7 @@ def validate_snapshot_autostart(payload: dict[str, object], *, path: Path) -> No
     autostart = desktop.get("autostart")
     if not isinstance(autostart, dict):
         fail(f"status snapshot JSON missing desktop autostart evidence: {path}")
-    autostart_path = str(autostart.get("path", "")).strip()
+    autostart_path = snapshot_text(autostart.get("path", ""), "desktop autostart path", path)
     if not autostart_path or not Path(autostart_path).is_absolute():
         fail(f"status snapshot JSON desktop autostart path is not absolute: {path}")
     if Path(autostart_path).name != "noaa-navionics-chartplotter.desktop":
@@ -828,7 +828,7 @@ def validate_snapshot_autostart(payload: dict[str, object], *, path: Path) -> No
         fail(f"status snapshot JSON desktop autostart directory is a symlink or missing symlink status: {path}")
     if "path_symlink_component" not in autostart:
         fail(f"status snapshot JSON desktop autostart missing path_symlink_component: {path}")
-    if str(autostart.get("path_symlink_component", "")).strip():
+    if snapshot_text(autostart.get("path_symlink_component", ""), "desktop autostart path_symlink_component", path):
         fail(f"status snapshot JSON desktop autostart path contains a symlink: {path}")
     snapshot_uid(autostart.get("uid"), label="desktop autostart", path=path)
     snapshot_uid(autostart.get("directory_uid"), label="desktop autostart directory", path=path)
@@ -860,7 +860,7 @@ def validate_snapshot_mob_launcher(payload: dict[str, object], *, path: Path) ->
     mob_launcher = desktop.get("mob_launcher")
     if not isinstance(mob_launcher, dict):
         fail(f"status snapshot JSON missing MOB desktop launcher evidence: {path}")
-    launcher_path = str(mob_launcher.get("path", "")).strip()
+    launcher_path = snapshot_text(mob_launcher.get("path", ""), "MOB desktop launcher path", path)
     if not launcher_path or not Path(launcher_path).is_absolute():
         fail(f"status snapshot JSON MOB desktop launcher path is not absolute: {path}")
     if Path(launcher_path).name != "noaa-navionics-mob.desktop":
@@ -873,7 +873,7 @@ def validate_snapshot_mob_launcher(payload: dict[str, object], *, path: Path) ->
         fail(f"status snapshot JSON MOB desktop launcher directory is a symlink or missing symlink status: {path}")
     if "path_symlink_component" not in mob_launcher:
         fail(f"status snapshot JSON MOB desktop launcher missing path_symlink_component: {path}")
-    if str(mob_launcher.get("path_symlink_component", "")).strip():
+    if snapshot_text(mob_launcher.get("path_symlink_component", ""), "MOB desktop launcher path_symlink_component", path):
         fail(f"status snapshot JSON MOB desktop launcher path contains a symlink: {path}")
     snapshot_uid(mob_launcher.get("uid"), label="MOB desktop launcher", path=path)
     snapshot_uid(mob_launcher.get("directory_uid"), label="MOB desktop launcher directory", path=path)
@@ -909,7 +909,7 @@ def validate_snapshot_status_launcher(payload: dict[str, object], *, path: Path)
     status_launcher = desktop.get("status_launcher")
     if not isinstance(status_launcher, dict):
         fail(f"status snapshot JSON missing status GUI desktop launcher evidence: {path}")
-    launcher_path = str(status_launcher.get("path", "")).strip()
+    launcher_path = snapshot_text(status_launcher.get("path", ""), "status GUI desktop launcher path", path)
     if not launcher_path or not Path(launcher_path).is_absolute():
         fail(f"status snapshot JSON status GUI desktop launcher path is not absolute: {path}")
     if Path(launcher_path).name != "noaa-navionics-status.desktop":
@@ -922,7 +922,7 @@ def validate_snapshot_status_launcher(payload: dict[str, object], *, path: Path)
         fail(f"status snapshot JSON status GUI desktop launcher directory is a symlink or missing symlink status: {path}")
     if "path_symlink_component" not in status_launcher:
         fail(f"status snapshot JSON status GUI desktop launcher missing path_symlink_component: {path}")
-    if str(status_launcher.get("path_symlink_component", "")).strip():
+    if snapshot_text(status_launcher.get("path_symlink_component", ""), "status GUI desktop launcher path_symlink_component", path):
         fail(f"status snapshot JSON status GUI desktop launcher path contains a symlink: {path}")
     snapshot_uid(status_launcher.get("uid"), label="status GUI desktop launcher", path=path)
     snapshot_uid(status_launcher.get("directory_uid"), label="status GUI desktop launcher directory", path=path)

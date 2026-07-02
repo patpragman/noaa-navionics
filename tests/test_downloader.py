@@ -14595,6 +14595,12 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn("def snapshot_text", source)
                 self.assertIn("is not a string", source)
                 self.assertIn("contains control characters", source)
+                self.assertIn('"desktop autostart path"', source)
+                self.assertIn('"desktop autostart path_symlink_component"', source)
+                self.assertIn('"MOB desktop launcher path"', source)
+                self.assertIn('"MOB desktop launcher path_symlink_component"', source)
+                self.assertIn('"status GUI desktop launcher path"', source)
+                self.assertIn('"status GUI desktop launcher path_symlink_component"', source)
 
     def test_post_trip_checksum_helpers_use_descriptor_validated_directory(self):
         script = Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8")
