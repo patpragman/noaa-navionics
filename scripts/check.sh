@@ -5102,8 +5102,13 @@ grep -q 'status report {unit} loaded properties missing' scripts/verify_pi.sh
 grep -q 'status report missing launcher_settings section' src/noaa_navionics/report.py
 grep -q 'status report launcher settings path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' src/noaa_navionics/report.py
+grep -q 'launcher settings symlink component contains control characters' tests/test_downloader.py
+grep -q 'launcher settings error contains control characters' tests/test_downloader.py
+grep -q 'launcher settings keys are not text' tests/test_downloader.py
 grep -q 'status report launcher settings values were not parsed' src/noaa_navionics/report.py
 grep -q 'status report launcher settings enable NOAA_NAVIONICS_START_ON_FAILED_READINESS' src/noaa_navionics/report.py
+grep -q 'NOAA_NAVIONICS_GPS_SECONDS contains control characters' tests/test_downloader.py
+grep -q 'NOAA_NAVIONICS_START_ON_FAILED_READINESS contains control characters' tests/test_downloader.py
 grep -q 'LAUNCHER_ENV_INTEGER_LIMITS = {' src/noaa_navionics/report.py
 grep -q '"NOAA_NAVIONICS_GPS_SECONDS": 600' src/noaa_navionics/report.py
 grep -q '"NOAA_NAVIONICS_READINESS_ATTEMPTS": 20' src/noaa_navionics/report.py

@@ -1769,9 +1769,15 @@ def _unit_files_validation_failures(unit_files: object) -> list[CheckResult]:
 def _launcher_settings_validation_failures(launcher_settings: object) -> list[CheckResult]:
     if not isinstance(launcher_settings, dict):
         return [CheckResult("Launcher Settings", False, "status report missing launcher_settings section")]
-    path = str(launcher_settings.get("path", "")).strip()
-    if not path:
-        return [CheckResult("Launcher Settings", False, "status report launcher settings path is empty")]
+    path, failure = _status_required_text_field(
+        launcher_settings,
+        "path",
+        "status report launcher settings path is empty",
+        "launcher settings path",
+        "Launcher Settings",
+    )
+    if failure:
+        return [failure]
     if not _status_absolute_path(path):
         return [CheckResult("Launcher Settings", False, f"status report launcher settings path is not absolute: {path}")]
     if launcher_settings.get("exists") is not True:
@@ -1800,9 +1806,25 @@ def _launcher_settings_validation_failures(launcher_settings: object) -> list[Ch
                 "status report launcher settings missing launcher_settings_symlink_component",
             )
         ]
-    if str(launcher_settings.get("launcher_settings_symlink_component", "")).strip():
+    symlink_component = launcher_settings.get("launcher_settings_symlink_component", "")
+    if not isinstance(symlink_component, str):
+        return [CheckResult("Launcher Settings", False, "status report launcher settings symlink component is not text")]
+    symlink_component_text = symlink_component.strip()
+    control_failure = _status_control_character_failure(
+        symlink_component_text,
+        "launcher settings symlink component",
+    )
+    if control_failure:
+        return [CheckResult("Launcher Settings", False, control_failure)]
+    if symlink_component_text:
         return [CheckResult("Launcher Settings", False, "status report launcher settings path contains a symlink")]
-    error = str(launcher_settings.get("error", "")).strip()
+    error_value = launcher_settings.get("error", "")
+    if not isinstance(error_value, str):
+        return [CheckResult("Launcher Settings", False, "status report launcher settings error is not text")]
+    error = error_value.strip()
+    control_failure = _status_control_character_failure(error, "launcher settings error")
+    if control_failure:
+        return [CheckResult("Launcher Settings", False, control_failure)]
     if error:
         return [CheckResult("Launcher Settings", False, f"status report launcher settings error: {error}")]
     values = launcher_settings.get("values")
@@ -1815,12 +1837,22 @@ def _launcher_settings_validation_failures(launcher_settings: object) -> list[Ch
         failures.extend(f"malformed launcher settings line {line}" for line in malformed_lines)
     else:
         failures.append("malformed launcher settings lines were not parsed")
-    unknown_keys = sorted(str(key) for key in values if str(key) not in LAUNCHER_ENV_KEYS)
+    if any(not isinstance(key, str) for key in values):
+        failures.append("launcher settings keys are not text")
+    unknown_keys = sorted(key for key in values if isinstance(key, str) and key not in LAUNCHER_ENV_KEYS)
     if unknown_keys:
         failures.append("unknown launcher settings key(s): " + ", ".join(unknown_keys))
 
     def required_positive_integer(key: str) -> None:
-        value = str(values.get(key, "")).strip()
+        raw_value = values.get(key, "")
+        if not isinstance(raw_value, str):
+            failures.append(f"{key}=<non-text> expected positive integer")
+            return
+        value = raw_value.strip()
+        control_failure = _status_control_character_failure(value, key)
+        if control_failure:
+            failures.append(control_failure)
+            return
         if not value.isdigit() or int(value) <= 0:
             failures.append(f"{key}={value or '<missing>'} expected positive integer")
             return
@@ -1829,7 +1861,15 @@ def _launcher_settings_validation_failures(launcher_settings: object) -> list[Ch
             failures.append(f"{key}={value} expected at most {maximum}")
 
     def required_nonnegative_integer(key: str) -> None:
-        value = str(values.get(key, "")).strip()
+        raw_value = values.get(key, "")
+        if not isinstance(raw_value, str):
+            failures.append(f"{key}=<non-text> expected non-negative integer")
+            return
+        value = raw_value.strip()
+        control_failure = _status_control_character_failure(value, key)
+        if control_failure:
+            failures.append(control_failure)
+            return
         if not value.isdigit() or int(value) < 0:
             failures.append(f"{key}={value or '<missing>'} expected non-negative integer")
             return
@@ -1843,7 +1883,15 @@ def _launcher_settings_validation_failures(launcher_settings: object) -> list[Ch
     required_nonnegative_integer("NOAA_NAVIONICS_WARNING_SECONDS")
     required_nonnegative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")
     required_nonnegative_integer("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY")
-    fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
+    fail_open_value = values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")
+    if not isinstance(fail_open_value, str):
+        failures.append("NOAA_NAVIONICS_START_ON_FAILED_READINESS=<non-text> expected explicit no")
+        fail_open = ""
+    else:
+        fail_open = fail_open_value.strip().lower()
+        control_failure = _status_control_character_failure(fail_open, "NOAA_NAVIONICS_START_ON_FAILED_READINESS")
+        if control_failure:
+            failures.append(control_failure)
     if fail_open in {"1", "yes", "true", "on"}:
         failures.append("status report launcher settings enable NOAA_NAVIONICS_START_ON_FAILED_READINESS")
     elif fail_open not in {"0", "no", "false", "off"}:

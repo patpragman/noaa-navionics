@@ -13763,7 +13763,12 @@ class StatusReportTests(unittest.TestCase):
         valid_values = valid_launcher_settings["values"]
         cases = [
             ({}, "missing launcher_settings section"),
+            ({"launcher_settings": {**valid_launcher_settings, "path": 123}}, "path is empty"),
             ({"launcher_settings": {**valid_launcher_settings, "path": ""}}, "path is empty"),
+            (
+                {"launcher_settings": {**valid_launcher_settings, "path": "/home/pi/.config/noaa-navionics/launcher.env\x00"}},
+                "launcher settings path contains control characters",
+            ),
             (
                 {"launcher_settings": {**valid_launcher_settings, "path": "launcher.env"}},
                 "path is not absolute",
@@ -13794,10 +13799,46 @@ class StatusReportTests(unittest.TestCase):
                 {
                     "launcher_settings": {
                         **valid_launcher_settings,
+                        "launcher_settings_symlink_component": 123,
+                    }
+                },
+                "launcher settings symlink component is not text",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "launcher_settings_symlink_component": "\x00",
+                    }
+                },
+                "launcher settings symlink component contains control characters",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
                         "launcher_settings_symlink_component": "/home/pi/.config",
                     }
                 },
                 "path contains a symlink",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "error": 123,
+                    }
+                },
+                "launcher settings error is not text",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "error": "launcher environment is not a regular file\x00",
+                    }
+                },
+                "launcher settings error contains control characters",
             ),
             (
                 {
@@ -13825,6 +13866,15 @@ class StatusReportTests(unittest.TestCase):
                 {
                     "launcher_settings": {
                         **valid_launcher_settings,
+                        "values": {**valid_values, 123: "1"},
+                    }
+                },
+                "launcher settings keys are not text",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
                         "malformed_lines": ["2: NOAA_NAVIONICS_GPS_SECONDS 60"],
                     }
                 },
@@ -13838,6 +13888,24 @@ class StatusReportTests(unittest.TestCase):
                     }
                 },
                 "NOAA_NAVIONICS_GPS_SECONDS=<missing>",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_GPS_SECONDS": 60},
+                    }
+                },
+                "NOAA_NAVIONICS_GPS_SECONDS=<non-text> expected positive integer",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_GPS_SECONDS": "60\x00"},
+                    }
+                },
+                "NOAA_NAVIONICS_GPS_SECONDS contains control characters",
             ),
             (
                 {
@@ -13874,6 +13942,24 @@ class StatusReportTests(unittest.TestCase):
                     }
                 },
                 "START_ON_FAILED_READINESS",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_START_ON_FAILED_READINESS": 0},
+                    }
+                },
+                "NOAA_NAVIONICS_START_ON_FAILED_READINESS=<non-text> expected explicit no",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "no\x00"},
+                    }
+                },
+                "NOAA_NAVIONICS_START_ON_FAILED_READINESS contains control characters",
             ),
             (
                 {
