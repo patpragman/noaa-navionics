@@ -14,6 +14,7 @@ Options:
 
 Restores:
   - NOAA Navionics config.ini and launcher.env
+  - Status GUI and MOB desktop launchers
   - OpenCPN user config, routes, waypoints, and layers
   - GPX track logs into the restored configured tracking directory
 
@@ -295,6 +296,8 @@ NOAA_SUPPORT_FILE_PATTERNS = [
 CORE_RESTORE_SETTINGS_FILES = [
     "noaa-navionics/config.ini",
     "noaa-navionics/launcher.env",
+    "desktop/noaa-navionics-status.desktop",
+    "desktop/noaa-navionics-mob.desktop",
 ]
 MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024
 MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024
@@ -806,7 +809,7 @@ def read_trusted_restore_file(path: Path, label: str, expected_stat: os.stat_res
         os.close(fd)
 
 
-def validate_private_file_content(path: Path, expected_data: bytes, label: str) -> None:
+def validate_private_file_content(path: Path, expected_data: bytes, label: str, expected_mode: int = 0o600) -> None:
     reject_unsafe_target(path, label)
     try:
         expected_stat = os.stat(path, follow_symlinks=False)
@@ -817,8 +820,8 @@ def validate_private_file_content(path: Path, expected_data: bytes, label: str) 
     if expected_stat.st_uid != os.getuid():
         fail(f"{label} {path} is owned by uid {expected_stat.st_uid}, expected {os.getuid()}")
     mode = stat.S_IMODE(expected_stat.st_mode)
-    if mode != 0o600:
-        fail(f"{label} {path} has permissions {mode:04o}, expected 0600")
+    if mode != expected_mode:
+        fail(f"{label} {path} has permissions {mode:04o}, expected {expected_mode:04o}")
 
     try:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -833,8 +836,8 @@ def validate_private_file_content(path: Path, expected_data: bytes, label: str) 
         if opened.st_uid != os.getuid():
             fail(f"{label} {path} is owned by uid {opened.st_uid}, expected {os.getuid()}")
         opened_mode = stat.S_IMODE(opened.st_mode)
-        if opened_mode != 0o600:
-            fail(f"{label} {path} has permissions {opened_mode:04o}, expected 0600")
+        if opened_mode != expected_mode:
+            fail(f"{label} {path} has permissions {opened_mode:04o}, expected {expected_mode:04o}")
         chunks = []
         while True:
             chunk = os.read(fd, 1024 * 1024)
@@ -872,8 +875,8 @@ def backup_existing(path: Path, backup_root: Path, expected_stat: Optional[os.st
     fsync_parent(backup_path)
 
 
-def validate_promoted_restore_file(path: Path, expected_data: bytes) -> None:
-    validate_private_file_content(path, expected_data, "promoted restored file")
+def validate_promoted_restore_file(path: Path, expected_data: bytes, expected_mode: int) -> None:
+    validate_private_file_content(path, expected_data, "promoted restored file", expected_mode)
 
 
 def cleanup_private_restore_temp(path: Path) -> None:
@@ -919,7 +922,7 @@ def cleanup_private_restore_temp(path: Path) -> None:
         os.close(parent_fd)
 
 
-def validate_restore_temp_for_promotion(path: Path, expected_stat: os.stat_result) -> None:
+def validate_restore_temp_for_promotion(path: Path, expected_stat: os.stat_result, expected_mode: int) -> None:
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     try:
         before = os.stat(path, follow_symlinks=False)
@@ -935,8 +938,11 @@ def validate_restore_temp_for_promotion(path: Path, expected_stat: os.stat_resul
             f"before promotion; leaving it in place: {path}"
         )
     mode = stat.S_IMODE(before.st_mode)
-    if mode != 0o600:
-        fail(f"restore temp has permissions {mode:04o}, expected 0600 before promotion; leaving it in place: {path}")
+    if mode != expected_mode:
+        fail(
+            f"restore temp has permissions {mode:04o}, expected {expected_mode:04o} "
+            f"before promotion; leaving it in place: {path}"
+        )
     try:
         fd = os.open(path, os.O_RDONLY | nofollow)
     except OSError as exc:
@@ -953,9 +959,9 @@ def validate_restore_temp_for_promotion(path: Path, expected_stat: os.stat_resul
                 f"when opened for promotion; leaving it in place: {path}"
             )
         opened_mode = stat.S_IMODE(opened.st_mode)
-        if opened_mode != 0o600:
+        if opened_mode != expected_mode:
             fail(
-                f"restore temp has permissions {opened_mode:04o}, expected 0600 "
+                f"restore temp has permissions {opened_mode:04o}, expected {expected_mode:04o} "
                 f"when opened for promotion; leaving it in place: {path}"
             )
     finally:
@@ -970,6 +976,7 @@ def write_file_atomic(
     overwrite: bool,
     apply: bool,
     max_existing_bytes: int,
+    mode: int = 0o600,
 ) -> str:
     existing_stat = inspect_existing_restore_target(path, "restore")
     if existing_stat is not None and not overwrite:
@@ -985,13 +992,13 @@ def write_file_atomic(
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
             handle.flush()
-            os.fchmod(handle.fileno(), 0o600)
+            os.fchmod(handle.fileno(), mode)
             os.fsync(handle.fileno())
             tmp_stat = os.fstat(handle.fileno())
-        validate_restore_temp_for_promotion(tmp_path, tmp_stat)
+        validate_restore_temp_for_promotion(tmp_path, tmp_stat, mode)
         validate_restore_target_state_before_promotion(path, existing_stat)
         os.replace(tmp_path, path)
-        validate_promoted_restore_file(path, data)
+        validate_promoted_restore_file(path, data, mode)
         fsync_parent(path)
     finally:
         cleanup_private_restore_temp(tmp_path)
@@ -1191,12 +1198,13 @@ def main() -> None:
         backup_root = home / ".cache" / "noaa-navionics" / "recovery-restore-backups" / stamp
         ensure_private_directory_tree(backup_root, home / ".cache", apply=True)
 
-    planned: list[tuple[str, Path, bytes, int]] = [
+    planned: list[tuple[str, Path, bytes, int, int]] = [
         (
             "settings",
             home / ".config" / "noaa-navionics" / "config.ini",
             config_bytes,
             MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+            0o600,
         ),
     ]
     launcher = settings["noaa-navionics/launcher.env"]
@@ -1205,13 +1213,30 @@ def main() -> None:
         home / ".config" / "noaa-navionics" / "launcher.env",
         launcher,
         MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+        0o600,
+    ))
+    status_launcher = settings["desktop/noaa-navionics-status.desktop"]
+    planned.append((
+        "settings",
+        home / "Desktop" / "noaa-navionics-status.desktop",
+        status_launcher,
+        MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+        0o755,
+    ))
+    mob_launcher = settings["desktop/noaa-navionics-mob.desktop"]
+    planned.append((
+        "settings",
+        home / "Desktop" / "noaa-navionics-mob.desktop",
+        mob_launcher,
+        MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+        0o755,
     ))
 
     for name, data in sorted(opencpn.items()):
         relative = opencpn_restore_relative(name)
         if relative is None:
             continue
-        planned.append(("opencpn", home / ".opencpn" / relative, data, MAX_OPENCPN_ARCHIVE_MEMBER_BYTES))
+        planned.append(("opencpn", home / ".opencpn" / relative, data, MAX_OPENCPN_ARCHIVE_MEMBER_BYTES, 0o600))
 
     for name, data in sorted(tracks.items()):
         if name in {"README.txt", "manifest.json"}:
@@ -1219,13 +1244,13 @@ def main() -> None:
         parts = PurePosixPath(name).parts
         if len(parts) != 2 or parts[0] != "tracks" or not parts[1].endswith(".gpx"):
             fail(f"tracks archive contains unexpected restore member: {name}")
-        planned.append(("tracks", track_dir / parts[1], data, MAX_TRACK_ARCHIVE_MEMBER_BYTES))
+        planned.append(("tracks", track_dir / parts[1], data, MAX_TRACK_ARCHIVE_MEMBER_BYTES, 0o600))
 
     if not apply:
         print("Dry run only. Re-run with --apply to write files.")
 
     restored = 0
-    for category, target, data, max_existing_bytes in planned:
+    for category, target, data, max_existing_bytes, mode in planned:
         action = write_file_atomic(
             target,
             data,
@@ -1233,6 +1258,7 @@ def main() -> None:
             overwrite=overwrite,
             apply=apply,
             max_existing_bytes=max_existing_bytes,
+            mode=mode,
         )
         restored += 1
         print(f"{action} {category}: {target}")

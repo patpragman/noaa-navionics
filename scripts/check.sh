@@ -1085,6 +1085,8 @@ grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and m
 grep -q 'pre-departure status snapshot JSON Source Revision row does not match deployed source_revision' scripts/verify_pi_recovery_exports.sh
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
+grep -q 'required commissioning settings members including the status GUI and MOB desktop launchers' README.md
+grep -q 'required commissioning settings members including the status GUI and MOB desktop launchers' docs/sailboat-pi.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' docs/sailboat-pi.md
 grep -q 'support bundle core command-evidence and NOAA support evidence files' README.md
@@ -1099,8 +1101,12 @@ grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-rec
 grep -q 'scripts/restore_pi_recovery_user_data.sh /path/to/noaa-navionics-pi-recovery-... --apply' docs/sailboat-pi.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' README.md
 grep -q 'restore helper is dry-run by default and requires `--apply` before writing. It validates the trusted root-owned local `python3` command path before running its restore engine' docs/sailboat-pi.md
+grep -q 'executable status GUI and MOB desktop launchers' README.md
+grep -q 'executable status GUI and MOB desktop launchers' docs/sailboat-pi.md
 grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' README.md
 grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' docs/sailboat-pi.md
+grep -q 'requiring the settings archive to include `noaa-navionics/config.ini`, `noaa-navionics/launcher.env`, `desktop/noaa-navionics-status.desktop`, and `desktop/noaa-navionics-mob.desktop`' README.md
+grep -q 'requiring the settings archive to include `noaa-navionics/config.ini`, `noaa-navionics/launcher.env`, `desktop/noaa-navionics-status.desktop`, and `desktop/noaa-navionics-mob.desktop`' docs/sailboat-pi.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q "validating the diagnostic support archive's core command-evidence and NOAA support evidence files without loading its contents into memory" README.md
@@ -1123,6 +1129,8 @@ grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS 
 grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' docs/sailboat-pi.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' README.md
 grep -q 'promoted restored file is reopened through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'verified as the same regular file with its expected private or executable mode' README.md
+grep -q 'verified as the same regular file with its expected private or executable mode' docs/sailboat-pi.md
 grep -q 'Overwrite backups read the existing target through a no-follow descriptor' README.md
 grep -q 'Overwrite backups read the existing target through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'reject writable, misowned, or category-oversized source files' README.md
@@ -2197,21 +2205,21 @@ grep -q 'restore target appeared before promotion; refusing to overwrite it' scr
 grep -q 'def read_trusted_restore_file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_private_file_content' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_promoted_restore_file' scripts/restore_pi_recovery_user_data.sh
-grep -q 'validate_promoted_restore_file(path, data)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_promoted_restore_file(path, data, mode)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'is too large to back up safely' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opened {label} is too large to back up safely' scripts/restore_pi_recovery_user_data.sh
 grep -q 'source_data = read_trusted_restore_file(path, "backup source", expected_stat, max_existing_bytes)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'backup_existing(path, backup_root, existing_stat, max_existing_bytes)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'max_existing_bytes=max_existing_bytes' scripts/restore_pi_recovery_user_data.sh
-grep -q 'planned: list\[tuple\[str, Path, bytes, int\]\]' scripts/restore_pi_recovery_user_data.sh
+grep -q 'planned: list\[tuple\[str, Path, bytes, int, int\]\]' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_restore_target_state_before_promotion(path, existing_stat)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(backup_path, source_data, "promoted restore backup")' scripts/restore_pi_recovery_user_data.sh
-grep -q 'validate_private_file_content(path, expected_data, "promoted restored file")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_private_file_content(path, expected_data, "promoted restored file", expected_mode)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_restore_temp_for_promotion' scripts/restore_pi_recovery_user_data.sh
-grep -q 'os.fchmod(handle.fileno(), 0o600)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'os.fchmod(handle.fileno(), mode)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tmp_stat = os.fstat(handle.fileno())' scripts/restore_pi_recovery_user_data.sh
-grep -q 'validate_restore_temp_for_promotion(tmp_path, tmp_stat)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_restore_temp_for_promotion(tmp_path, tmp_stat, mode)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore temp changed before promotion; leaving it in place' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore temp changed while being opened for promotion; leaving it in place' scripts/restore_pi_recovery_user_data.sh
 python3 - <<'PY'
@@ -2220,7 +2228,7 @@ from pathlib import Path
 text = Path("scripts/restore_pi_recovery_user_data.sh").read_text()
 write_start = text.index("def write_file_atomic(")
 tmp_stat = text.index("tmp_stat = os.fstat(handle.fileno())", write_start)
-validate_temp = text.index("validate_restore_temp_for_promotion(tmp_path, tmp_stat)", tmp_stat)
+validate_temp = text.index("validate_restore_temp_for_promotion(tmp_path, tmp_stat, mode)", tmp_stat)
 validate_target = text.index("validate_restore_target_state_before_promotion(path, existing_stat)", validate_temp)
 promote = text.index("os.replace(tmp_path, path)", validate_target)
 if not tmp_stat < validate_temp < validate_target < promote:
@@ -2230,7 +2238,7 @@ grep -q 'def cleanup_private_restore_temp' scripts/restore_pi_recovery_user_data
 grep -q 'restore temp changed before cleanup; leaving it in place' scripts/restore_pi_recovery_user_data.sh
 grep -q 'cleanup_private_restore_temp(tmp_path)' scripts/restore_pi_recovery_user_data.sh
 ! grep -q 'tmp_path.unlink()' scripts/restore_pi_recovery_user_data.sh
-grep -q 'has permissions .* expected 0600' scripts/restore_pi_recovery_user_data.sh
+grep -q 'expected {expected_mode:04o}' scripts/restore_pi_recovery_user_data.sh
 grep -q 'does not match expected data' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore directory .* expected private 0700' scripts/restore_pi_recovery_user_data.sh
 grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' README.md
@@ -15215,10 +15223,24 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
     build_archive(
         root,
         "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
-        {"file_count": 2},
+        {"file_count": 4},
         {
             "noaa-navionics/config.ini": config,
             "noaa-navionics/launcher.env": "NOAA_NAVIONICS_GPS_SECONDS=60\n",
+            "desktop/noaa-navionics-status.desktop": (
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                "Name=NOAA Navionics Status\n"
+                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"\n"
+                "Terminal=false\n"
+            ),
+            "desktop/noaa-navionics-mob.desktop": (
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                "Name=NOAA Navionics MOB\n"
+                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob --note desktop\"\n"
+                "Terminal=true\n"
+            ),
         },
         readme_dir=readme_dir,
     )
@@ -15666,9 +15688,11 @@ root = Path(sys.argv[1])
 settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
 with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
     add_text(archive, "README.txt", "restore fixture\n")
-    add_text(archive, "manifest.json", json.dumps({"file_count": 3}) + "\n")
+    add_text(archive, "manifest.json", json.dumps({"file_count": 5}) + "\n")
     add_text(archive, "noaa-navionics/config.ini", "[charts]\noutput = ~/tracks-store\n")
     add_text(archive, "noaa-navionics/launcher.env", "NOAA_NAVIONICS_GPS_SECONDS=60\n")
+    add_text(archive, "desktop/noaa-navionics-status.desktop", "[Desktop Entry]\nName=Status\n")
+    add_text(archive, "desktop/noaa-navionics-mob.desktop", "[Desktop Entry]\nName=MOB\n")
 settings.chmod(0o600)
 lines = []
 for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
@@ -15686,7 +15710,7 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   echo "expected restore_pi_recovery_user_data.sh to reject mismatched manifest data counts with exit 1" >&2
   exit 1
 fi
-grep -q 'manifest file_count does not match data file count: 3 != 2' "$verify_output"
+grep -q 'manifest file_count does not match data file count: 5 != 4' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_file_names_dir="$tmpdir/recovery-restore-mismatched-file-names"
@@ -15717,10 +15741,20 @@ with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
     add_text(
         archive,
         "manifest.json",
-        json.dumps({"file_count": 2, "files": [{"archive_path": "noaa-navionics/stale-config.ini"}, {"archive_path": "noaa-navionics/launcher.env"}]}) + "\n",
+        json.dumps({
+            "file_count": 4,
+            "files": [
+                {"archive_path": "noaa-navionics/stale-config.ini"},
+                {"archive_path": "noaa-navionics/launcher.env"},
+                {"archive_path": "desktop/noaa-navionics-status.desktop"},
+                {"archive_path": "desktop/noaa-navionics-mob.desktop"},
+            ],
+        }) + "\n",
     )
     add_text(archive, "noaa-navionics/config.ini", "[charts]\noutput = ~/tracks-store\n")
     add_text(archive, "noaa-navionics/launcher.env", "NOAA_NAVIONICS_GPS_SECONDS=60\n")
+    add_text(archive, "desktop/noaa-navionics-status.desktop", "[Desktop Entry]\nName=Status\n")
+    add_text(archive, "desktop/noaa-navionics-mob.desktop", "[Desktop Entry]\nName=MOB\n")
 settings.chmod(0o600)
 lines = []
 for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
@@ -15738,7 +15772,7 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   echo "expected restore_pi_recovery_user_data.sh to reject mismatched file manifest names with exit 1" >&2
   exit 1
 fi
-grep -q "manifest file names do not match data files: \\['noaa-navionics/launcher.env', 'noaa-navionics/stale-config.ini'\\] != \\['noaa-navionics/config.ini', 'noaa-navionics/launcher.env'\\]" "$verify_output"
+grep -q "manifest file names do not match data files: \\['desktop/noaa-navionics-mob.desktop', 'desktop/noaa-navionics-status.desktop', 'noaa-navionics/launcher.env', 'noaa-navionics/stale-config.ini'\\] != \\['desktop/noaa-navionics-mob.desktop', 'desktop/noaa-navionics-status.desktop', 'noaa-navionics/config.ini', 'noaa-navionics/launcher.env'\\]" "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_track_names_dir="$tmpdir/recovery-restore-mismatched-track-names"
@@ -15935,9 +15969,20 @@ with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
     add_bytes(
         archive,
         "manifest.json",
-        json.dumps({"file_count": 1, "files": [{"archive_path": "noaa-navionics/config.ini"}]}).encode("utf-8") + b"\n",
+        json.dumps({
+            "file_count": 4,
+            "files": [
+                {"archive_path": "noaa-navionics/config.ini"},
+                {"archive_path": "noaa-navionics/launcher.env"},
+                {"archive_path": "desktop/noaa-navionics-status.desktop"},
+                {"archive_path": "desktop/noaa-navionics-mob.desktop"},
+            ],
+        }).encode("utf-8") + b"\n",
     )
     add_bytes(archive, "noaa-navionics/config.ini", b"x" * (4 * 1024 * 1024 + 1))
+    add_bytes(archive, "noaa-navionics/launcher.env", b"NOAA_NAVIONICS_GPS_SECONDS=60\n")
+    add_bytes(archive, "desktop/noaa-navionics-status.desktop", b"[Desktop Entry]\nName=Status\n")
+    add_bytes(archive, "desktop/noaa-navionics-mob.desktop", b"[Desktop Entry]\nName=MOB\n")
 settings.chmod(0o600)
 lines = []
 for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
@@ -15963,10 +16008,12 @@ grep -q 'would restore settings:' "$verify_output"
 test ! -e "$restore_home/.config/noaa-navionics/config.ini"
 
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply >"$verify_output" 2>&1
-grep -q 'Restored 5 recovery user data file(s).' "$verify_output"
+grep -q 'Restored 7 recovery user data file(s).' "$verify_output"
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' "$verify_output"
 grep -q 'device = /dev/serial/by-id/mock-gps' "$restore_home/.config/noaa-navionics/config.ini"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=60' "$restore_home/.config/noaa-navionics/launcher.env"
+grep -q 'Name=NOAA Navionics Status' "$restore_home/Desktop/noaa-navionics-status.desktop"
+grep -q 'Name=NOAA Navionics MOB' "$restore_home/Desktop/noaa-navionics-mob.desktop"
 grep -q '<navobj />' "$restore_home/.opencpn/navobj.xml"
 grep -q '<gpx />' "$restore_home/.opencpn/layers/route.gpx"
 grep -q '<gpx><trk /></gpx>' "$restore_home/tracks-store/tracks/underway.gpx"
@@ -15978,6 +16025,7 @@ import stat
 home = Path(os.environ["RESTORE_HOME"])
 for path in (
     home / ".config" / "noaa-navionics",
+    home / "Desktop",
     home / ".opencpn",
     home / ".opencpn" / "layers",
     home / "tracks-store" / "tracks",
@@ -15995,6 +16043,13 @@ for path in (
     mode = stat.S_IMODE(path.stat().st_mode)
     if mode != 0o600:
         raise SystemExit(f"{path} has mode {mode:04o}, expected 0600")
+for path in (
+    home / "Desktop" / "noaa-navionics-status.desktop",
+    home / "Desktop" / "noaa-navionics-mob.desktop",
+):
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if mode != 0o755:
+        raise SystemExit(f"{path} has mode {mode:04o}, expected 0755")
 PY
 
 set +e
@@ -16030,7 +16085,7 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'backup source is too large to back up safely' "$verify_output"
-! grep -q 'Restored 5 recovery user data file(s).' "$verify_output"
+! grep -q 'Restored 7 recovery user data file(s).' "$verify_output"
 
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply --overwrite >"$verify_output" 2>&1
 grep -q 'Backed up replaced files under:' "$verify_output"

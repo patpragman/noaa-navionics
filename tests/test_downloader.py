@@ -13618,6 +13618,8 @@ class StatusReportTests(unittest.TestCase):
             [
                 "noaa-navionics/config.ini",
                 "noaa-navionics/launcher.env",
+                "desktop/noaa-navionics-status.desktop",
+                "desktop/noaa-navionics-mob.desktop",
             ],
         )
         self.assertIn("CORE_RESTORE_SETTINGS_FILES", source)
