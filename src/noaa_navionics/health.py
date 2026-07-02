@@ -29,7 +29,14 @@ from .gps import (
     iter_gpsd_fixes,
     open_nmea_stream,
 )
-from .downloader import MANIFEST_NAME, package_for, read_manifest
+from .downloader import (
+    MANIFEST_NAME,
+    MAX_ZIP_MEMBERS,
+    MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES,
+    MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES,
+    package_for,
+    read_manifest,
+)
 from .opencpn import (
     chart_directory_configured,
     enabled_gpsd_connections,
@@ -1346,15 +1353,32 @@ def _validate_retained_enc_archive(path: Path) -> str:
             fd = -1
             try:
                 with zipfile.ZipFile(handle) as archive:
-                    for member in archive.infolist():
+                    members = archive.infolist()
+                    if len(members) > MAX_ZIP_MEMBERS:
+                        return f"retained chart archive has too many members: {len(members)} > {MAX_ZIP_MEMBERS}"
+                    total_uncompressed = 0
+                    for member in members:
                         if _zip_member_path_is_unsafe(member.filename):
                             return f"retained chart archive has unsafe member path: {member.filename}"
+                        if not member.is_dir():
+                            if member.file_size > MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES:
+                                return (
+                                    "retained chart archive member is too large: "
+                                    f"{member.filename} ({member.file_size} bytes > "
+                                    f"{MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES})"
+                                )
+                            total_uncompressed += member.file_size
+                            if total_uncompressed > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+                                return (
+                                    "retained chart archive uncompressed size is too large: "
+                                    f"{total_uncompressed} bytes > {MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES}"
+                                )
                     bad_member = archive.testzip()
                     if bad_member is not None:
                         return f"retained chart archive has a failed CRC member: {bad_member}"
                     enc_cell_count = sum(
                         1
-                        for member in archive.infolist()
+                        for member in members
                         if not member.is_dir() and member.filename.lower().endswith(".000")
                     )
             except zipfile.BadZipFile:

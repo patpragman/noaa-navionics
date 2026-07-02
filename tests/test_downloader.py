@@ -7124,6 +7124,36 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((output / "AK_ENCs.zip.part").exists())
             self.assertFalse((root / "evil.000").exists())
 
+    def test_forced_download_rejects_oversized_zip_member_before_replacing_archive(self):
+        original_limit = downloader_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES
+        try:
+            downloader_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES = 3
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                good_zip = root / "good.zip"
+                with zipfile.ZipFile(good_zip, "w") as archive:
+                    archive.writestr("US5AK3CM/US5AK3CM.000", "ok")
+                output = root / "charts"
+                package = Package("State AK", good_zip.as_uri(), "AK_ENCs.zip")
+                download_package(package, output, extract=True, keep_zip=True, force=True)
+                archive_path = output / "AK_ENCs.zip"
+                original_archive_bytes = archive_path.read_bytes()
+                original_manifest = read_manifest(output)
+                oversized_zip = root / "oversized.zip"
+                with zipfile.ZipFile(oversized_zip, "w") as archive:
+                    archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+                oversized_package = Package("State AK", oversized_zip.as_uri(), "AK_ENCs.zip")
+
+                with self.assertRaisesRegex(RuntimeError, "downloaded ZIP member is too large"):
+                    download_package(oversized_package, output, extract=True, keep_zip=True, force=True)
+
+                self.assertEqual(archive_path.read_bytes(), original_archive_bytes)
+                self.assertEqual(read_manifest(output), original_manifest)
+                self.assertEqual((output / "AK_ENCs" / "US5AK3CM" / "US5AK3CM.000").read_text(encoding="ascii"), "ok")
+                self.assertFalse((output / "AK_ENCs.zip.part").exists())
+        finally:
+            downloader_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES = original_limit
+
     def test_forced_download_rejects_zip_without_enc_cells_before_replacing_archive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -9443,6 +9473,37 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("retained chart archive has unsafe member path", result.detail)
 
+    def test_manifest_archive_rejects_retained_zip_with_oversized_member(self):
+        original_limit = health_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES
+        try:
+            health_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES = 3
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                archive = root / "AK_ENCs.zip"
+                with zipfile.ZipFile(archive, "w") as zip_handle:
+                    zip_handle.writestr("US5AK3CM/US5AK3CM.000", "cell")
+                digest = downloader_module.sha256_file(archive)
+                extract = root / "AK_ENCs"
+                cell = extract / "US5AK3CM" / "US5AK3CM.000"
+                cell.parent.mkdir(parents=True)
+                cell.write_text("cell", encoding="ascii")
+                now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                (root / MANIFEST_NAME).write_text(
+                    '{"created_at":"' + now + '",'
+                    '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                    '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                    f'"download":{{"path":"{archive}","bytes":{archive.stat().st_size},"sha256":"{digest}"}},'
+                    f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                    encoding="utf-8",
+                )
+
+                result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+
+                self.assertFalse(result.ok)
+                self.assertIn("retained chart archive member is too large", result.detail)
+        finally:
+            health_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES = original_limit
+
     def test_sha256_trusted_file_rejects_writable_archive_before_hashing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             archive = Path(tmpdir) / "AK_ENCs.zip"
@@ -9706,6 +9767,46 @@ class ManifestTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
+    def test_extract_zip_rejects_too_many_members_before_staging(self):
+        original_limit = downloader_module.MAX_ZIP_MEMBERS
+        try:
+            downloader_module.MAX_ZIP_MEMBERS = 1
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                archive = root / "charts.zip"
+                with zipfile.ZipFile(archive, "w") as zip_file:
+                    zip_file.writestr("US5AK3CM/US5AK3CM.000", "cell")
+                    zip_file.writestr("US5AK3CM/US5AK3CM.001", "extra")
+                destination = root / "AK_ENCs"
+
+                with self.assertRaisesRegex(RuntimeError, "chart ZIP has too many members"):
+                    extract_zip(archive, destination)
+
+                self.assertFalse(destination.exists())
+                self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+        finally:
+            downloader_module.MAX_ZIP_MEMBERS = original_limit
+
+    def test_extract_zip_rejects_total_uncompressed_size_before_staging(self):
+        original_limit = downloader_module.MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES
+        try:
+            downloader_module.MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES = 5
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                archive = root / "charts.zip"
+                with zipfile.ZipFile(archive, "w") as zip_file:
+                    zip_file.writestr("US5AK3CM/US5AK3CM.000", "abc")
+                    zip_file.writestr("US5AK3CM/US5AK3CM.001", "def")
+                destination = root / "AK_ENCs"
+
+                with self.assertRaisesRegex(RuntimeError, "chart ZIP uncompressed size is too large"):
+                    extract_zip(archive, destination)
+
+                self.assertFalse(destination.exists())
+                self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+        finally:
+            downloader_module.MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES = original_limit
 
     def test_extract_zip_rejects_symlinked_destination(self):
         with tempfile.TemporaryDirectory() as tmpdir:

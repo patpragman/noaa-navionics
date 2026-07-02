@@ -31,6 +31,9 @@ DOWNLOAD_LOCK_STALE_SECONDS = 6 * 60 * 60
 USER_AGENT = "noaa-navionics/0.1 (+https://www.charts.noaa.gov/ENCs/ENCs.shtml)"
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+MAX_ZIP_MEMBERS = 200_000
+MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
+MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES = 16 * 1024 * 1024 * 1024
 
 UPDATE_PACKAGES = {
     "one-day": "OneDay_ENCs.zip",
@@ -576,15 +579,31 @@ def _catalog_entry_name_looks_like_enc(name: str) -> bool:
 def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
     try:
         with zipfile.ZipFile(zip_path) as archive:
-            for member in archive.infolist():
+            members = archive.infolist()
+            if len(members) > MAX_ZIP_MEMBERS:
+                raise RuntimeError(f"{label} has too many members: {len(members)} > {MAX_ZIP_MEMBERS}")
+            total_uncompressed = 0
+            for member in members:
                 if _zip_member_path_is_unsafe(member.filename):
                     raise RuntimeError(f"{label} has unsafe member path: {member.filename}")
+                if not member.is_dir():
+                    if member.file_size > MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES:
+                        raise RuntimeError(
+                            f"{label} member is too large: "
+                            f"{member.filename} ({member.file_size} bytes > {MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES})"
+                        )
+                    total_uncompressed += member.file_size
+                    if total_uncompressed > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+                        raise RuntimeError(
+                            f"{label} uncompressed size is too large: "
+                            f"{total_uncompressed} bytes > {MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES}"
+                        )
             bad_member = archive.testzip()
             if bad_member is not None:
                 raise RuntimeError(f"{label} has a failed CRC member: {bad_member}")
             enc_cell_count = sum(
                 1
-                for member in archive.infolist()
+                for member in members
                 if not member.is_dir() and member.filename.lower().endswith(".000")
             )
     except zipfile.BadZipFile as exc:
