@@ -4992,8 +4992,22 @@ grep -q 'status report source revision path contains a symlink' src/noaa_navioni
 grep -q 'status report source revision error' src/noaa_navionics/report.py
 grep -q 'status report missing config_path' src/noaa_navionics/report.py
 grep -q 'status report missing config section' src/noaa_navionics/report.py
+grep -q 'config_failures = _config_validation_failures(report)' src/noaa_navionics/report.py
+grep -q 'if not config_failures:' src/noaa_navionics/report.py
 grep -q 'status report config chart_package is invalid' src/noaa_navionics/report.py
 grep -q 'status report config chart_value is required' src/noaa_navionics/report.py
+grep -q 'def _status_control_character_failure' src/noaa_navionics/report.py
+grep -q 'contains control characters' src/noaa_navionics/report.py
+grep -q 'config_path contains control characters' tests/test_downloader.py
+grep -q 'chart_package contains control characters' tests/test_downloader.py
+grep -q 'chart_value contains control characters' tests/test_downloader.py
+grep -q 'chart_output contains control characters' tests/test_downloader.py
+grep -q 'track_output contains control characters' tests/test_downloader.py
+grep -q 'gps_mode contains control characters' tests/test_downloader.py
+grep -q 'gps_device contains control characters' tests/test_downloader.py
+grep -q 'gpsd_host contains control characters' tests/test_downloader.py
+grep -q 'Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, and track storage paths before trusting a generated JSON artifact' README.md
+grep -q 'Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, and track storage paths before trusting a generated JSON artifact' docs/sailboat-pi.md
 grep -q 'status report config gps_mode is invalid' src/noaa_navionics/report.py
 grep -q 'status report config gpsd_host is not local' src/noaa_navionics/report.py
 grep -q 'status report manifest path .* does not match configured' src/noaa_navionics/report.py

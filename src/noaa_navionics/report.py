@@ -331,25 +331,27 @@ def status_report_validation_failures(
     failures.extend(_host_validation_failures(report.get("host")))
     failures.extend(_app_validation_failures(report.get("app")))
     failures.extend(_runtime_readiness_validation_failures(report))
-    failures.extend(_config_validation_failures(report))
+    config_failures = _config_validation_failures(report)
+    failures.extend(config_failures)
     failures.extend(_user_validation_failures(report.get("user")))
     failures.extend(_unit_files_validation_failures(report.get("unit_files")))
     failures.extend(_service_summary_validation_failures(report))
     failures.extend(_clock_time_validation_failures(report))
     failures.extend(_pi_health_validation_failures(report))
-    failures.extend(_storage_validation_failures(report))
-    failures.extend(_chart_readiness_validation_failures(report, now=now))
-    failures.extend(_opencpn_readiness_validation_failures(report))
-    failures.extend(_gps_readiness_validation_failures(report))
-    failures.extend(_serial_gps_device_validation_failures(report))
     failures.extend(_command_evidence_validation_failures(report))
-    failures.extend(_gpsd_config_validation_failures(report))
-    failures.extend(_chrony_gps_time_validation_failures(report))
     failures.extend(_launcher_settings_validation_failures(report.get("launcher_settings")))
-    failures.extend(_opencpn_config_validation_failures(report))
     failures.extend(_desktop_validation_failures(report))
+    if not config_failures:
+        failures.extend(_storage_validation_failures(report))
+        failures.extend(_chart_readiness_validation_failures(report, now=now))
+        failures.extend(_opencpn_readiness_validation_failures(report))
+        failures.extend(_gps_readiness_validation_failures(report))
+        failures.extend(_serial_gps_device_validation_failures(report))
+        failures.extend(_gpsd_config_validation_failures(report))
+        failures.extend(_chrony_gps_time_validation_failures(report))
+        failures.extend(_opencpn_config_validation_failures(report))
+        failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
-    failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_track_log_validation_failures(report.get("track_log"), now=now))
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
@@ -1407,19 +1409,39 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     config_path = report.get("config_path")
     if not isinstance(config_path, str) or not config_path.strip():
         return [CheckResult("Config", False, "status report missing config_path")]
-    if not _status_absolute_path(config_path.strip()):
+    config_path_failure = _status_control_character_failure(config_path, "config_path")
+    if config_path_failure:
+        return [CheckResult("Config", False, config_path_failure)]
+    config_path_text = config_path.strip()
+    if not _status_absolute_path(config_path_text):
         return [CheckResult("Config", False, f"status report config_path is not absolute: {config_path}")]
     config = report.get("config")
     if not isinstance(config, dict):
         return [CheckResult("Config", False, "status report missing config section")]
-    chart_package = str(config.get("chart_package", "")).strip().lower()
+    chart_package_text = str(config.get("chart_package", ""))
+    control_failure = _status_control_character_failure(chart_package_text, "config chart_package")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    chart_package = chart_package_text.strip().lower()
     if chart_package not in CHART_PACKAGES:
         return [CheckResult("Config", False, f"status report config chart_package is invalid: {chart_package or '<missing>'}")]
-    chart_value = str(config.get("chart_value", "")).strip()
+    chart_value_text = str(config.get("chart_value", ""))
+    control_failure = _status_control_character_failure(chart_value_text, "config chart_value")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    chart_value = chart_value_text.strip()
     if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
         return [CheckResult("Config", False, f"status report config chart_value is required for {chart_package}")]
-    chart_output = str(config.get("chart_output", "")).strip()
-    track_output = str(config.get("track_output", "")).strip()
+    chart_output_text = str(config.get("chart_output", ""))
+    track_output_text = str(config.get("track_output", ""))
+    control_failure = _status_control_character_failure(chart_output_text, "config chart_output")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    control_failure = _status_control_character_failure(track_output_text, "config track_output")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    chart_output = chart_output_text.strip()
+    track_output = track_output_text.strip()
     if not _status_absolute_path(chart_output):
         return [CheckResult("Config", False, f"status report config chart_output is not absolute: {chart_output or '<missing>'}")]
     if not _status_absolute_path(track_output):
@@ -1433,10 +1455,18 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     min_free_gb = _positive_status_float(config.get("min_free_gb"))
     if min_free_gb is None:
         return [CheckResult("Config", False, "status report config min_free_gb is not positive")]
-    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    gps_mode_text = str(config.get("gps_mode", ""))
+    control_failure = _status_control_character_failure(gps_mode_text, "config gps_mode")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    gps_mode = gps_mode_text.strip().lower()
     if gps_mode not in {"gpsd", "serial"}:
         return [CheckResult("Config", False, f"status report config gps_mode is invalid: {gps_mode or '<missing>'}")]
-    gps_device = str(config.get("gps_device", "")).strip()
+    gps_device_text = str(config.get("gps_device", ""))
+    control_failure = _status_control_character_failure(gps_device_text, "config gps_device")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    gps_device = gps_device_text.strip()
     if not gps_device:
         return [CheckResult("Config", False, "status report config gps_device is empty")]
     if not _stable_status_gps_device_path(gps_device):
@@ -1458,7 +1488,11 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         return [CheckResult("Config", False, f"status report config gps_baud is invalid: {gps_baud!r}")]
-    gpsd_host = str(config.get("gpsd_host", "")).strip()
+    gpsd_host_text = str(config.get("gpsd_host", ""))
+    control_failure = _status_control_character_failure(gpsd_host_text, "config gpsd_host")
+    if control_failure:
+        return [CheckResult("Config", False, control_failure)]
+    gpsd_host = gpsd_host_text.strip()
     if not gpsd_host:
         return [CheckResult("Config", False, "status report config gpsd_host is empty")]
     if gps_mode == "gpsd" and gpsd_host.lower() not in GPSD_LOCAL_HOSTS:
@@ -1506,6 +1540,12 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
                 )
             ]
     return []
+
+
+def _status_control_character_failure(text: str, label: str) -> str:
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        return f"status report {label} contains control characters"
+    return ""
 
 
 def _user_validation_failures(user: object) -> list[CheckResult]:

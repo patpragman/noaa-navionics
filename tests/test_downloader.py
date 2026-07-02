@@ -13462,16 +13462,23 @@ class StatusReportTests(unittest.TestCase):
         valid_manifest = valid_report["manifest"]
         cases = [
             ({}, "missing config_path"),
+            ({"config_path": "/home/pi/.config/noaa-navionics/config.ini\x00"}, "config_path contains control characters"),
             ({"config_path": "config.ini"}, "config_path is not absolute"),
             ({"config": None}, "missing config section"),
+            ({"config": {**valid_config, "chart_package": "sta\x00te"}}, "chart_package contains control characters"),
             ({"config": {**valid_config, "chart_package": "bad"}}, "chart_package is invalid"),
+            ({"config": {**valid_config, "chart_value": "A\x00K"}}, "chart_value contains control characters"),
             ({"config": {**valid_config, "chart_value": ""}}, "chart_value is required"),
+            ({"config": {**valid_config, "chart_output": "/charts/noaa\x00enc"}}, "chart_output contains control characters"),
             ({"config": {**valid_config, "chart_output": "relative/charts"}}, "chart_output is not absolute"),
+            ({"config": {**valid_config, "track_output": "/tracks/noaa\x7f"}}, "track_output contains control characters"),
             ({"config": {**valid_config, "track_output": "relative/tracks"}}, "track_output is not absolute"),
             ({"config": {**valid_config, "extract": "yes"}}, "extract is not boolean"),
             ({"config": {**valid_config, "max_chart_age_days": 0}}, "max_chart_age_days is not positive"),
             ({"config": {**valid_config, "min_free_gb": 0.0}}, "min_free_gb is not positive"),
+            ({"config": {**valid_config, "gps_mode": "gp\x00sd"}}, "gps_mode contains control characters"),
             ({"config": {**valid_config, "gps_mode": "network"}}, "gps_mode is invalid"),
+            ({"config": {**valid_config, "gps_device": "/dev/serial/by-id/mock-gps\x00"}}, "gps_device contains control characters"),
             ({"config": {**valid_config, "gps_device": ""}}, "gps_device is empty"),
             ({"config": {**valid_config, "gps_device": "/dev/ttyUSB0"}}, "gps_device is volatile"),
             (
@@ -13479,6 +13486,7 @@ class StatusReportTests(unittest.TestCase):
                 "gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
             ),
             ({"config": {**valid_config, "gps_baud": 1234}}, "gps_baud is invalid"),
+            ({"config": {**valid_config, "gpsd_host": "127.0.0.1\x00"}}, "gpsd_host contains control characters"),
             ({"config": {**valid_config, "gpsd_host": "192.0.2.10"}}, "gpsd_host is not local"),
             ({"config": {**valid_config, "gpsd_port": 0}}, "gpsd_port is invalid"),
             (
