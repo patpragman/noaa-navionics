@@ -15472,6 +15472,35 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_verify_pi_status_mode_evidence_uses_strict_text_parser(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            "def status_octal_mode_text",
+            "if not isinstance(value, str):",
+            'text != f"{parsed:04o}"',
+            'status_octal_mode_text(summary.get("mode"), f"{label} mode")',
+            'status_octal_mode_text(track_log.get("tracks_mode"), "track_log tracks_mode")',
+            'status_octal_mode_text(track_log.get("latest_mode"), "track_log latest_mode")',
+            "status_opencpn_dir_mode = status_octal_mode_text(",
+            '"OpenCPN config directory_mode"',
+            'status_octal_mode_text(manifest.get("directory_mode"), "manifest directory_mode")',
+            'status_octal_mode_text(state.get("mode"), f"{unit} mode")',
+            'status_octal_mode_text(state.get("directory_mode"), f"{unit} directory_mode")',
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
+        self.assertNotIn('status_mode = str(', source)
+        self.assertNotIn('status_tracks_mode = str(', source)
+        self.assertNotIn('status_latest_mode = str(', source)
+        self.assertNotIn('status_opencpn_dir_mode = str(', source)
+        self.assertNotIn('status_manifest_dir_mode = str(', source)
+        self.assertNotIn('status_dir_mode = str(', source)
+
     def test_check_pi_status_rejects_json_control_characters(self):
         source = Path("scripts/check_pi_status.sh").read_text(encoding="utf-8")
 

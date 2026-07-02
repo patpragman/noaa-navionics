@@ -2984,6 +2984,8 @@ grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.
 grep -q 'status report OpenCPN config path contains a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config missing config_symlink_component' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory .* has permissions' scripts/verify_pi.sh
+grep -q 'status_opencpn_dir_mode = status_octal_mode_text(' scripts/verify_pi.sh
+grep -q 'OpenCPN config directory_mode' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
 grep -q 'status report launcher settings path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
@@ -3000,11 +3002,14 @@ grep -q 'status report LightDM autologin config path is a symlink or missing sym
 grep -q 'status report LightDM autologin config missing path_symlink_component' scripts/verify_pi.sh
 grep -q 'path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'def status_octal_mode_text' scripts/verify_pi.sh
+grep -q 'text != f"{parsed:04o}"' scripts/verify_pi.sh
 grep -q 'def verify_status_file_owner_and_mode' scripts/verify_pi.sh
 grep -q 'status report {label} uid' scripts/verify_pi.sh
 grep -q 'status report {label} mode' scripts/verify_pi.sh
 grep -q 'does not match live owner' scripts/verify_pi.sh
 grep -q 'does not match live permissions' scripts/verify_pi.sh
+grep -q 'status_octal_mode_text(summary.get("mode"), f"{label} mode")' scripts/verify_pi.sh
 grep -q 'status report desktop autostart is not a regular file' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config is not a regular file' scripts/verify_pi.sh
 grep -q 'config file integrity' scripts/verify_pi.sh
@@ -3022,11 +3027,13 @@ grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
 grep -q 'expected private 0700' scripts/verify_pi.sh
 grep -q 'status report track_log tracks_mode' scripts/verify_pi.sh
+grep -q 'status_octal_mode_text(track_log.get("tracks_mode"), "track_log tracks_mode")' scripts/verify_pi.sh
 grep -q 'could not open status report track_log latest_path' scripts/verify_pi.sh
 grep -q 'status report track_log latest_path changed before it could be verified' scripts/verify_pi.sh
 grep -q 'latest_track_fd = os.open(latest_track_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'status report track_log latest_mode' scripts/verify_pi.sh
+grep -q 'status_octal_mode_text(track_log.get("latest_mode"), "track_log latest_mode")' scripts/verify_pi.sh
 grep -q '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)' scripts/verify_pi.sh
 grep -q '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)' scripts/verify_pi.sh
 grep -q '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)' scripts/verify_pi.sh
@@ -3208,6 +3215,8 @@ grep -q 'status report {unit} uid' scripts/verify_pi.sh
 grep -q 'status report {unit} directory_uid' scripts/verify_pi.sh
 grep -q 'status report {unit} mode' scripts/verify_pi.sh
 grep -q 'status report {unit} directory_mode' scripts/verify_pi.sh
+grep -q 'status_octal_mode_text(state.get("mode"), f"{unit} mode")' scripts/verify_pi.sh
+grep -q 'status_octal_mode_text(state.get("directory_mode"), f"{unit} directory_mode")' scripts/verify_pi.sh
 grep -q 'status report {unit} has no parsed unit file lines' scripts/verify_pi.sh
 grep -q 'status report {unit} lines do not match live unit file' scripts/verify_pi.sh
 grep -q 'expected no group/other write bits' scripts/verify_pi.sh
@@ -6196,6 +6205,7 @@ grep -q 'test_read_manifest_rejects_non_directory_manifest_parent' tests/test_do
 grep -q 'test_read_manifest_rejects_writable_manifest_directory' tests/test_downloader.py
 grep -q 'status report manifest directory has permissions' scripts/verify_pi.sh
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
+grep -q 'status_octal_mode_text(manifest.get("directory_mode"), "manifest directory_mode")' scripts/verify_pi.sh
 grep -q 'status report manifest path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report manifest missing chart_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'status report chart storage path contains a symlink' scripts/verify_pi.sh

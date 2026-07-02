@@ -809,6 +809,22 @@ def status_text(value, label):
         raise SystemExit(f"status report {label} contains control characters")
     return text.strip()
 
+def status_octal_mode_text(value, label):
+    if not isinstance(value, str):
+        raise SystemExit(f"status report {label} is invalid")
+    text = value.strip()
+    if not text:
+        raise SystemExit(f"status report {label} is missing")
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        raise SystemExit(f"status report {label} contains control characters")
+    try:
+        parsed = int(text, 8)
+    except ValueError as exc:
+        raise SystemExit(f"status report {label} is invalid: {text!r}") from exc
+    if parsed < 0 or parsed > 0o7777 or text != f"{parsed:04o}":
+        raise SystemExit(f"status report {label} is invalid: {text!r}")
+    return text
+
 def read_current_boot_id():
     path = Path("/proc/sys/kernel/random/boot_id")
     try:
@@ -1091,9 +1107,7 @@ def verify_status_file_owner_and_mode(summary, path, stat_result, label, expecte
             f"status report {label} {path} is owned by uid {stat_result.st_uid}, expected {expected_uid}"
         )
     live_mode = stat_result.st_mode & 0o777
-    status_mode = str(summary.get("mode", "")).strip()
-    if not status_mode:
-        raise SystemExit(f"status report {label} has no mode: {path}")
+    status_mode = status_octal_mode_text(summary.get("mode"), f"{label} mode")
     if status_mode != f"{live_mode:04o}":
         raise SystemExit(
             f"status report {label} mode {status_mode} does not match live permissions "
@@ -1479,7 +1493,7 @@ if expected_config_path:
             f"status report track_log tracks_dir {expected_tracks_dir} has permissions "
             f"{tracks_dir_mode:04o}, expected private 0700"
         )
-    status_tracks_mode = str(track_log.get("tracks_mode", "")).strip()
+    status_tracks_mode = status_octal_mode_text(track_log.get("tracks_mode"), "track_log tracks_mode")
     if status_tracks_mode != f"{tracks_dir_mode:04o}":
         raise SystemExit(
             f"status report track_log tracks_mode {status_tracks_mode or '<missing>'} "
@@ -1534,7 +1548,7 @@ if expected_config_path:
             f"status report track_log latest_path {latest_track_path} has permissions "
             f"{latest_track_mode:04o}, expected private 0600"
         )
-    status_latest_mode = str(track_log.get("latest_mode", "")).strip()
+    status_latest_mode = status_octal_mode_text(track_log.get("latest_mode"), "track_log latest_mode")
     if status_latest_mode != f"{latest_track_mode:04o}":
         raise SystemExit(
             f"status report track_log latest_mode {status_latest_mode or '<missing>'} "
@@ -1661,7 +1675,10 @@ if expected_config_path:
             f"status report OpenCPN config directory_uid {parsed_opencpn_dir_uid} "
             f"does not match live owner {opencpn_dir_stat.st_uid}: {opencpn_config_dir}"
         )
-    status_opencpn_dir_mode = str(opencpn_config.get("directory_mode", "")).strip()
+    status_opencpn_dir_mode = status_octal_mode_text(
+        opencpn_config.get("directory_mode"),
+        "OpenCPN config directory_mode",
+    )
     if status_opencpn_dir_mode != f"{opencpn_dir_mode:04o}":
         raise SystemExit(
             f"status report OpenCPN config directory_mode {status_opencpn_dir_mode or '<missing>'} "
@@ -2126,7 +2143,7 @@ if expected_config_path:
             f"status report manifest directory is owned by uid {manifest_dir_stat.st_uid}, expected {os.getuid()}"
         )
     manifest_dir_mode = manifest_dir_stat.st_mode & 0o777
-    status_manifest_dir_mode = str(manifest.get("directory_mode", "")).strip()
+    status_manifest_dir_mode = status_octal_mode_text(manifest.get("directory_mode"), "manifest directory_mode")
     if status_manifest_dir_mode != f"{manifest_dir_mode:04o}":
         raise SystemExit(
             f"status report manifest directory_mode {status_manifest_dir_mode or '<missing>'} "
@@ -2549,7 +2566,7 @@ for unit, expected_target in expected_unit_files.items():
             f"status report {unit} file is owned by uid {unit_stat.st_uid}, expected {os.getuid()}"
         )
     unit_mode = unit_stat.st_mode & 0o777
-    status_mode = str(state.get("mode", "")).strip()
+    status_mode = status_octal_mode_text(state.get("mode"), f"{unit} mode")
     if status_mode != f"{unit_mode:04o}":
         raise SystemExit(
             f"status report {unit} mode {status_mode or '<missing>'} "
@@ -2571,7 +2588,7 @@ for unit, expected_target in expected_unit_files.items():
             f"status report {unit} directory is owned by uid {unit_dir_stat.st_uid}, expected {os.getuid()}"
         )
     unit_dir_mode = unit_dir_stat.st_mode & 0o777
-    status_dir_mode = str(state.get("directory_mode", "")).strip()
+    status_dir_mode = status_octal_mode_text(state.get("directory_mode"), f"{unit} directory_mode")
     if status_dir_mode != f"{unit_dir_mode:04o}":
         raise SystemExit(
             f"status report {unit} directory_mode {status_dir_mode or '<missing>'} "
