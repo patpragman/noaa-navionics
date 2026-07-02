@@ -1985,6 +1985,16 @@ terminate_detached_opencpn_processes() {
       [[ -n "$pid" ]] || continue
       kill -KILL "$pid" 2>/dev/null || true
     done < <(active_opencpn_pids)
+    waited=0
+    while opencpn_running && [[ "$waited" -lt 5 ]]; do
+      sleep 1
+      waited=$((waited + 1))
+    done
+    if opencpn_running; then
+      echo "Detached OpenCPN process(es) still appear active after KILL; releasing launcher lock anyway." >&2
+    else
+      echo "Detached OpenCPN process(es) exited after KILL."
+    fi
   else
     echo "Detached OpenCPN process(es) exited after TERM."
   fi

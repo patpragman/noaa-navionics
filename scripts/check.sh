@@ -459,6 +459,8 @@ grep -q 'Forwarding launcher shutdown to OpenCPN child process' scripts/start_ch
 grep -q 'Forwarding launcher shutdown to detached OpenCPN process(es)' scripts/start_chartplotter.sh
 grep -q 'opencpn_shutdown_grace_seconds=10' scripts/start_chartplotter.sh
 grep -q 'did not exit after ${opencpn_shutdown_grace_seconds}s; sending KILL' scripts/start_chartplotter.sh
+grep -q 'Detached OpenCPN process(es) exited after KILL' scripts/start_chartplotter.sh
+grep -q 'still appear active after KILL' scripts/start_chartplotter.sh
 grep -q 'kill -KILL "$child_pid"' scripts/start_chartplotter.sh
 grep -q 'kill -KILL "$pid"' scripts/start_chartplotter.sh
 grep -q 'trap shutdown_launcher INT TERM' scripts/start_chartplotter.sh
@@ -17938,6 +17940,82 @@ fi
 grep -q 'Forwarding launcher shutdown to detached OpenCPN process(es)' "$launcher_detached_term_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Detached OpenCPN process(es) exited after TERM.' "$launcher_detached_term_home/.cache/noaa-navionics/chartplotter.log"
 test ! -e "$launcher_detached_term_home/.cache/noaa-navionics/chartplotter.launch.lock"
+
+launcher_detached_kill_home="$tmpdir/launcher-detached-kill-home"
+launcher_detached_kill_bin="$tmpdir/launcher-detached-kill-bin"
+mkdir -p "$launcher_detached_kill_home/.local/bin" "$launcher_detached_kill_home/.cache/noaa-navionics" "$launcher_detached_kill_bin"
+write_test_launcher_env "$launcher_detached_kill_home"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_detached_kill_home/.local/bin/noaa-navionics"
+cat >"$launcher_detached_kill_bin/opencpn" <<'EOF'
+#!/usr/bin/env bash
+(
+  trap ':' TERM
+  while :; do
+    /bin/sleep 1
+  done
+) &
+printf '%s\n' "$!" >"$HOME/.cache/noaa-navionics/detached-opencpn-pid"
+exit 0
+EOF
+cat >"$launcher_detached_kill_bin/pgrep" <<'EOF'
+#!/usr/bin/env bash
+pid_file="$HOME/.cache/noaa-navionics/detached-opencpn-pid"
+if [[ -r "$pid_file" ]]; then
+  read -r pid <"$pid_file" || exit 0
+  if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+    printf '%s\n' "$pid"
+  fi
+fi
+exit 0
+EOF
+cat >"$launcher_detached_kill_bin/sleep" <<'EOF'
+#!/usr/bin/env bash
+/bin/sleep 0.02
+EOF
+chmod +x "$launcher_detached_kill_home/.local/bin/noaa-navionics" "$launcher_detached_kill_bin/opencpn" "$launcher_detached_kill_bin/pgrep" "$launcher_detached_kill_bin/sleep"
+HOME="$launcher_detached_kill_home" PATH="$launcher_detached_kill_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null &
+launcher_detached_kill_pid=$!
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if grep -q 'OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits.' "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log" 2>/dev/null; then
+    break
+  fi
+  /bin/sleep 0.1
+done
+if ! grep -q 'OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits.' "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log" 2>/dev/null; then
+  kill "$launcher_detached_kill_pid" 2>/dev/null || true
+  wait "$launcher_detached_kill_pid" 2>/dev/null || true
+  cat "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log" >&2 || true
+  echo "expected chartplotter launcher to supervise detached fake OpenCPN before KILL test" >&2
+  exit 1
+fi
+launcher_detached_kill_opencpn_pid="$(cat "$launcher_detached_kill_home/.cache/noaa-navionics/detached-opencpn-pid")"
+kill -TERM "$launcher_detached_kill_pid"
+set +e
+wait "$launcher_detached_kill_pid"
+launcher_detached_kill_code=$?
+set -e
+if [[ "$launcher_detached_kill_code" -ne 143 ]]; then
+  kill -KILL "$launcher_detached_kill_opencpn_pid" 2>/dev/null || true
+  cat "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to exit 143 after TERM while KILLing detached OpenCPN" >&2
+  exit 1
+fi
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if ! kill -0 "$launcher_detached_kill_opencpn_pid" 2>/dev/null; then
+    break
+  fi
+  /bin/sleep 0.1
+done
+if kill -0 "$launcher_detached_kill_opencpn_pid" 2>/dev/null; then
+  kill -KILL "$launcher_detached_kill_opencpn_pid" 2>/dev/null || true
+  cat "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to KILL a detached fake OpenCPN that ignored TERM" >&2
+  exit 1
+fi
+grep -q 'Forwarding launcher shutdown to detached OpenCPN process(es)' "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Detached OpenCPN process(es) did not exit after 10s; sending KILL.' "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log"
+grep -Eq 'Detached OpenCPN process\(es\) (exited after KILL|still appear active after KILL)' "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.log"
+test ! -e "$launcher_detached_kill_home/.cache/noaa-navionics/chartplotter.launch.lock"
 
 launcher_empty_pgrep_home="$tmpdir/launcher-empty-pgrep-home"
 mkdir -p "$launcher_empty_pgrep_home/.local/bin" "$launcher_empty_pgrep_home/.cache/noaa-navionics"
