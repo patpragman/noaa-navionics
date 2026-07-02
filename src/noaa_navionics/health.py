@@ -63,6 +63,7 @@ TRUSTED_SYSTEM_COMMAND_DIRS = {
 }
 GPS_DEVICE_DISCOVERY_HINT = "run noaa-navionics list-gps-devices on the Pi"
 GPS_WAIT_SECONDS_FAILURE = "GPS wait seconds must be finite and greater than 0"
+GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"
 
 
 @dataclass(frozen=True)
@@ -2138,6 +2139,9 @@ def check_gps_device(
     wait_failure = _gps_wait_seconds_failure(seconds)
     if wait_failure:
         return CheckResult("GPS", False, wait_failure)
+    max_age_failure = _gps_max_fix_age_seconds_failure(max_fix_age_seconds)
+    if max_age_failure:
+        return CheckResult("GPS", False, max_age_failure)
     gps_device_check = check_gps_device_path(device)
     if not gps_device_check.ok:
         return CheckResult("GPS", False, _gps_not_checked_detail(gps_device_check.detail))
@@ -2190,6 +2194,9 @@ def check_gpsd(
     wait_failure = _gps_wait_seconds_failure(seconds)
     if wait_failure:
         return CheckResult("GPSD", False, wait_failure)
+    max_age_failure = _gps_max_fix_age_seconds_failure(max_fix_age_seconds)
+    if max_age_failure:
+        return CheckResult("GPSD", False, max_age_failure)
     deadline = time.monotonic() + seconds
     stale_detail = ""
     quality_detail = ""
@@ -2346,6 +2353,9 @@ def _fix_data(fix: GPSFix) -> dict[str, object]:
 
 
 def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
+    max_age_failure = _gps_max_fix_age_seconds_failure(max_fix_age_seconds)
+    if max_age_failure:
+        return max_age_failure
     if fix.timestamp is None:
         return "fix has no timestamp; cannot verify freshness"
     if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
@@ -2356,6 +2366,18 @@ def _fix_freshness_failure(fix: GPSFix, *, max_fix_age_seconds: float) -> str:
     if age_seconds < 0.0:
         return "fix timestamp is in the future"
     return ""
+
+
+def _gps_max_fix_age_seconds_failure(seconds: float) -> Optional[str]:
+    if isinstance(seconds, bool):
+        return GPS_FIX_MAX_AGE_SECONDS_FAILURE
+    try:
+        max_age_seconds = float(seconds)
+    except (TypeError, ValueError):
+        return GPS_FIX_MAX_AGE_SECONDS_FAILURE
+    if not math.isfinite(max_age_seconds) or max_age_seconds <= 0:
+        return GPS_FIX_MAX_AGE_SECONDS_FAILURE
+    return None
 
 
 def _parse_manifest_time(value: str) -> Optional[datetime]:

@@ -21052,6 +21052,26 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertEqual(result.detail, "GPS wait seconds must be finite and greater than 0")
 
+    def test_check_gps_device_rejects_invalid_max_fix_age_before_path_check(self):
+        original_path_check = health_module.check_gps_device_path
+
+        def unexpected_path_check(device):
+            raise AssertionError("check_gps_device should reject invalid fix age before device checks")
+
+        try:
+            health_module.check_gps_device_path = unexpected_path_check
+            for max_fix_age_seconds in (0, -1, math.inf, math.nan, True, "bad"):
+                with self.subTest(max_fix_age_seconds=max_fix_age_seconds):
+                    result = check_gps_device(
+                        "/dev/serial/by-id/mock-gps",
+                        seconds=1,
+                        max_fix_age_seconds=max_fix_age_seconds,
+                    )
+                    self.assertFalse(result.ok)
+                    self.assertEqual(result.detail, "GPS fix max age seconds must be finite and greater than 0")
+        finally:
+            health_module.check_gps_device_path = original_path_check
+
     def test_check_gps_device_rejects_low_satellite_count(self):
         original = health_module.open_nmea_stream
 
@@ -21257,6 +21277,38 @@ class GpsTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertEqual(result.detail, "GPS wait seconds must be finite and greater than 0")
+
+    def test_check_gpsd_rejects_invalid_max_fix_age_before_polling(self):
+        original = health_module.iter_gpsd_fixes
+
+        def unexpected_iter_gpsd_fixes(**kwargs):
+            raise AssertionError("check_gpsd should reject invalid fix age before GPSD polling")
+
+        try:
+            health_module.iter_gpsd_fixes = unexpected_iter_gpsd_fixes
+            for max_fix_age_seconds in (0, -1, math.inf, math.nan, False, "bad"):
+                with self.subTest(max_fix_age_seconds=max_fix_age_seconds):
+                    result = check_gpsd(seconds=1, max_fix_age_seconds=max_fix_age_seconds)
+                    self.assertFalse(result.ok)
+                    self.assertEqual(result.detail, "GPS fix max age seconds must be finite and greater than 0")
+        finally:
+            health_module.iter_gpsd_fixes = original
+
+    def test_fix_freshness_rejects_invalid_max_age(self):
+        fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=8,
+            hdop=1.2,
+        )
+
+        for max_fix_age_seconds in (0, -1, math.inf, math.nan, True, "bad"):
+            with self.subTest(max_fix_age_seconds=max_fix_age_seconds):
+                self.assertEqual(
+                    health_module._fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds),
+                    "GPS fix max age seconds must be finite and greater than 0",
+                )
 
     def test_check_gpsd_rejects_future_timestamped_fix(self):
         original = health_module.iter_gpsd_fixes

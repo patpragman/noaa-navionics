@@ -3996,7 +3996,12 @@ grep -q 'Fresh navigation-quality GPSD or direct NMEA fix with satellite or HDOP
 ! grep -q 'When the receiver reports satellite count or HDOP' README.md docs/sailboat-pi.md
 grep -q 'no fresh navigation-quality NMEA fix' src/noaa_navionics/health.py
 grep -q 'cannot verify freshness' src/noaa_navionics/health.py
+grep -q 'GPS_FIX_MAX_AGE_SECONDS_FAILURE' src/noaa_navionics/health.py
+grep -q 'def _gps_max_fix_age_seconds_failure' src/noaa_navionics/health.py
 grep -q 'fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None' src/noaa_navionics/health.py
+grep -q 'test_check_gps_device_rejects_invalid_max_fix_age_before_path_check' tests/test_downloader.py
+grep -q 'test_check_gpsd_rejects_invalid_max_fix_age_before_polling' tests/test_downloader.py
+grep -q 'test_fix_freshness_rejects_invalid_max_age' tests/test_downloader.py
 grep -q 'test_check_gpsd_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'weak GPS fix' src/noaa_navionics/gps.py
 grep -q 'non-finite coordinates' src/noaa_navionics/gps.py
