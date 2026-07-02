@@ -364,8 +364,7 @@ def _download_package_unlocked(
             expected_stat=tmp_stat,
         )
         raise RuntimeError(f"chart archive path is a symlink before promotion: {destination}")
-    os.replace(tmp_path, destination)
-    _fsync_directory(output_path)
+    _promote_download_partial(tmp_path, destination, output_path, expected_stat=tmp_stat)
     destination_stat = destination.lstat()
     extracted_to = None
     if extract and destination.suffix.lower() == ".zip":
@@ -475,6 +474,53 @@ def _remove_interrupted_download_partial(
     if expected_stat is not None and not os.path.samestat(stat_result, expected_stat):
         raise RuntimeError(f"partial download path changed before cleanup; leaving it in place: {path}")
     cleanup_private_temp_file(path, label="partial download cleanup", expected_stat=stat_result)
+
+
+def _promote_download_partial(
+    partial: Path,
+    destination: Path,
+    output_path: Path,
+    *,
+    expected_stat: Optional[os.stat_result],
+) -> None:
+    if expected_stat is None:
+        raise RuntimeError(f"partial download was not opened safely before promotion: {partial}")
+    try:
+        partial_stat = partial.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect partial download before promotion {partial}: {exc}") from exc
+    if stat.S_ISLNK(partial_stat.st_mode):
+        raise RuntimeError(f"partial download path is a symlink before promotion: {partial}")
+    if not stat.S_ISREG(partial_stat.st_mode):
+        raise RuntimeError(f"partial download path is not a regular file before promotion: {partial}")
+    if partial_stat.st_uid != os.getuid():
+        raise RuntimeError(
+            f"partial download path {partial} is owned by uid {partial_stat.st_uid}, expected {os.getuid()}"
+        )
+    mode = partial_stat.st_mode & 0o777
+    if mode != 0o600:
+        raise RuntimeError(f"partial download path {partial} has permissions {mode:04o}, expected private 0600")
+    if not os.path.samestat(partial_stat, expected_stat):
+        raise RuntimeError(f"partial download path changed before promotion; leaving it in place: {partial}")
+
+    fd = os.open(partial, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, expected_stat):
+            raise RuntimeError(f"partial download path changed while being opened for promotion: {partial}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"partial download path is not regular when opened for promotion: {partial}")
+        opened_mode = opened.st_mode & 0o777
+        if opened.st_uid != os.getuid() or opened_mode != 0o600:
+            raise RuntimeError(
+                f"partial download path {partial} is not private current-user storage when opened for promotion"
+            )
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+    os.replace(partial, destination)
+    _fsync_directory(output_path)
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:

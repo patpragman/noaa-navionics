@@ -7497,6 +7497,31 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((output / "AK_ENCs.zip.part").exists())
             self.assertFalse((output / MANIFEST_NAME).exists())
 
+    def test_download_revalidates_partial_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            original_validate = downloader_module._validate_downloaded_zip
+
+            def swap_partial(path):
+                original_validate(path)
+                replacement = path.with_name("replacement.part")
+                replacement.write_text("replacement\n", encoding="ascii")
+                replacement.chmod(0o600)
+                os.replace(replacement, path)
+
+            with patch("noaa_navionics.downloader._validate_downloaded_zip", side_effect=swap_partial):
+                with self.assertRaisesRegex(RuntimeError, "partial download path changed before promotion"):
+                    download_package(package, output, extract=True, keep_zip=True, force=True)
+
+            self.assertFalse((output / "AK_ENCs.zip").exists())
+            self.assertFalse((output / MANIFEST_NAME).exists())
+            self.assertEqual((output / "AK_ENCs.zip.part").read_text(encoding="ascii"), "replacement\n")
+
     def test_download_manifest_records_final_response_url(self):
         original = downloader_module.urlopen
 
