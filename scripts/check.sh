@@ -4431,6 +4431,14 @@ grep -q 'def _chart_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _opencpn_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gps_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.py
+grep -q 'status report config gps_device is volatile; use /dev/serial/by-id/' src/noaa_navionics/report.py
+grep -q 'status report config gps_device must be /dev/serial/by-id/' src/noaa_navionics/report.py
+grep -q 'pre-departure status snapshot JSON config gps_device is volatile' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config gps_device is volatile' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON config gps_device is volatile' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/post_trip_collect_pi.sh
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chrony_gps_time_validation_failures' src/noaa_navionics/report.py

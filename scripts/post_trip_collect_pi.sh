@@ -637,6 +637,17 @@ def positive_status_int(value: object):
     return value
 
 
+def stable_snapshot_gps_device_path(path: str) -> bool:
+    by_id_prefix = "/dev/serial/by-id/"
+    if path.startswith(by_id_prefix):
+        suffix = path[len(by_id_prefix) :]
+        allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-"
+        return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+            char in allowed for char in suffix
+        )
+    return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+
+
 def parse_snapshot_timestamp(value: object, field: str, path: Path) -> datetime:
     if not isinstance(value, str) or not value.strip():
         fail(f"status snapshot JSON {field} timestamp is missing: {path}")
@@ -1181,6 +1192,16 @@ def validate_successful_status_snapshot(
     gps_mode = str(config.get("gps_mode", "")).strip().lower()
     if gps_mode not in {"gpsd", "serial"}:
         fail(f"status snapshot JSON has invalid gps_mode: {gps_mode or '<missing>'}: {path}")
+    gps_device = str(config.get("gps_device", "")).strip()
+    if not gps_device:
+        fail(f"status snapshot JSON missing config gps_device: {path}")
+    if not stable_snapshot_gps_device_path(gps_device):
+        if gps_device.startswith("/dev/ttyUSB") or gps_device.startswith("/dev/ttyACM"):
+            fail(
+                "status snapshot JSON config gps_device is volatile; "
+                f"use /dev/serial/by-id/... instead: {path}"
+            )
+        fail(f"status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps: {path}")
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail(f"status snapshot JSON missing config chart_output: {path}")

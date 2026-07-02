@@ -1406,6 +1406,22 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     gps_device = str(config.get("gps_device", "")).strip()
     if not gps_device:
         return [CheckResult("Config", False, "status report config gps_device is empty")]
+    if not _stable_status_gps_device_path(gps_device):
+        if gps_device.startswith("/dev/ttyUSB") or gps_device.startswith("/dev/ttyACM"):
+            return [
+                CheckResult(
+                    "Config",
+                    False,
+                    f"status report config gps_device is volatile; use /dev/serial/by-id/... instead: {gps_device}",
+                )
+            ]
+        return [
+            CheckResult(
+                "Config",
+                False,
+                "status report config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
+            )
+        ]
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         return [CheckResult("Config", False, f"status report config gps_baud is invalid: {gps_baud!r}")]
