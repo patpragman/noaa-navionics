@@ -5787,7 +5787,7 @@ grep -q -- '--expected-boot-id "$after_boot_id"' scripts/dock_test_pi.sh
 grep -q 'Provisioning-only options require deploy/provision' scripts/dock_test_pi.sh
 grep -q -- '--timeout requires reboot' scripts/dock_test_pi.sh
 grep -q 'verify_args+=("--expected-gps-device" "$device")' scripts/dock_test_pi.sh
-grep -q -- '--device is required for the rebooted dock acceptance test' scripts/dock_test_pi.sh
+grep -q -- '--device is required for dock acceptance and pre-reboot smoke checks' scripts/dock_test_pi.sh
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' scripts/dock_test_pi.sh
 grep -q -- '--skip-autologin cannot be used for the dock acceptance test' scripts/dock_test_pi.sh
 grep -q 'use deploy_to_pi.sh --provision --skip-autologin --skip-services' scripts/dock_test_pi.sh
@@ -7249,11 +7249,23 @@ dock_code=$?
 set -e
 if [[ "$dock_code" -ne 2 ]]; then
   cat "$dock_output" >&2
-  echo "expected dock_test_pi.sh to require --device for rebooted --skip-deploy acceptance tests with exit 2" >&2
+  echo "expected dock_test_pi.sh to require --device for --skip-deploy acceptance tests with exit 2" >&2
   exit 1
 fi
-grep -q -- '--device is required for the rebooted dock acceptance test' "$dock_output"
+grep -q -- '--device is required for dock acceptance and pre-reboot smoke checks' "$dock_output"
 grep -q 'noaa-navionics list-gps-devices' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to require --device for no-reboot smoke checks with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--device is required for dock acceptance and pre-reboot smoke checks' "$dock_output"
+grep -q 'intended GPS receiver' "$dock_output"
 
 dock_smoke_ssh_bin="$tmpdir/dock-smoke-ssh-bin"
 dock_smoke_ssh_log="$tmpdir/dock-smoke-ssh-log"
@@ -7262,7 +7274,7 @@ cat >"$dock_smoke_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_SSH_LOG"
 case "$*" in
-  *"command -v reboot"*|*"command -v sudo"*|*"boot_id"*|*--expected-gps-device*)
+  *"command -v reboot"*|*"command -v sudo"*|*"boot_id"*)
     exit 99
     ;;
 esac
@@ -7272,10 +7284,10 @@ chmod +x "$dock_smoke_ssh_bin/ssh"
 NOAA_NAVIONICS_FAKE_SSH_LOG="$dock_smoke_ssh_log" \
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$dock_smoke_ssh_bin:$PATH" \
-  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --allow-dirty >"$dock_output" 2>&1
+  scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --no-reboot --allow-dirty --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
 grep -q 'Pre-reboot verification passed; reboot and chartplotter autostart proof were skipped' "$dock_output"
-grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=' "$dock_smoke_ssh_log"
-! grep -q -- '--expected-gps-device' "$dock_smoke_ssh_log"
+grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=/dev/serial/by-id/mock-gps' "$dock_smoke_ssh_log"
+! grep -q 'NOAA_NAVIONICS_EXPECTED_GPS_DEVICE= ' "$dock_smoke_ssh_log"
 ! grep -q 'command -v reboot' "$dock_smoke_ssh_log"
 ! grep -q 'command -v sudo' "$dock_smoke_ssh_log"
 ! grep -q 'boot_id' "$dock_smoke_ssh_log"

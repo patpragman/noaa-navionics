@@ -452,10 +452,10 @@ if [[ "$no_reboot" -eq 1 && "$saw_timeout_option" -eq 1 ]]; then
   exit 2
 fi
 
-if [[ -z "$device" && ! ( "$skip_deploy" -eq 1 && "$no_reboot" -eq 1 ) ]]; then
-  echo "--device is required for the rebooted dock acceptance test" >&2
+if [[ -z "$device" ]]; then
+  echo "--device is required for dock acceptance and pre-reboot smoke checks" >&2
   echo "Install first, then run on the Pi: noaa-navionics list-gps-devices" >&2
-  echo "Use --skip-deploy --no-reboot only for a weaker smoke check of an already-provisioned Pi." >&2
+  echo "Use a stable /dev/serial/by-id/... path so verification proves the intended GPS receiver." >&2
   exit 2
 fi
 
