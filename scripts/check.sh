@@ -4385,6 +4385,8 @@ grep -q 'test_gui_actions_do_not_start_after_close' tests/test_downloader.py
 grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.py
 grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/status_gui.py
+grep -q 'MAX_GPS_WAIT_SECONDS = 600.0' src/noaa_navionics/status_gui.py
+grep -q 'def _gps_wait_seconds(value: str) -> float' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'CORE_READINESS_CHECKS' src/noaa_navionics/status_gui.py
@@ -4906,6 +4908,7 @@ grep -q 'test_status_gui_start_watch_rejects_disabled_repeating_interval' tests/
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_oversized_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_zero_anchor_watch_seconds' tests/test_downloader.py
+grep -q 'test_status_gui_parser_rejects_oversized_gps_waits' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py

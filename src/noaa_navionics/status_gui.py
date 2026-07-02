@@ -30,6 +30,7 @@ from .report import (
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
 ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0
 MAX_ANCHOR_SAMPLES = 10
+MAX_GPS_WAIT_SECONDS = 600.0
 
 
 @dataclass(frozen=True)
@@ -314,6 +315,13 @@ def _non_negative_float(value: str) -> float:
         raise argparse.ArgumentTypeError("must be a number") from exc
     if not math.isfinite(parsed) or parsed < 0:
         raise argparse.ArgumentTypeError("must be 0 or greater")
+    return parsed
+
+
+def _gps_wait_seconds(value: str) -> float:
+    parsed = _non_negative_float(value)
+    if parsed > MAX_GPS_WAIT_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_GPS_WAIT_SECONDS:g}")
     return parsed
 
 
@@ -885,10 +893,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the refreshed JSON status report to this path",
     )
     parser.add_argument("--no-output", action="store_true", help="do not write a JSON status report")
-    parser.add_argument("--gps-seconds", type=_non_negative_float, default=10.0, help="seconds to wait for a GPS fix")
+    parser.add_argument("--gps-seconds", type=_gps_wait_seconds, default=10.0, help="seconds to wait for a GPS fix")
     parser.add_argument(
         "--action-gps-seconds",
-        type=_non_negative_float,
+        type=_gps_wait_seconds,
         help="seconds to wait for Mark, MOB, and Anchor Check GPS fixes; defaults to --gps-seconds",
     )
     parser.add_argument(

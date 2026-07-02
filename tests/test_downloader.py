@@ -3802,6 +3802,19 @@ class GuiTests(unittest.TestCase):
 
         self.assertIn("must be greater than 0", stderr.getvalue())
 
+    def test_status_gui_parser_rejects_oversized_gps_waits(self):
+        for args in (
+            ["--gps-seconds", str(status_gui_module.MAX_GPS_WAIT_SECONDS + 1)],
+            ["--gps-seconds", "999999999999999999999999999999"],
+            ["--action-gps-seconds", str(status_gui_module.MAX_GPS_WAIT_SECONDS + 1)],
+            ["--action-gps-seconds", "999999999999999999999999999999"],
+        ):
+            with self.subTest(args=args):
+                stderr = StringIO()
+                with redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    status_gui_module.build_parser().parse_args(args)
+                self.assertIn(f"must be at most {status_gui_module.MAX_GPS_WAIT_SECONDS:g}", stderr.getvalue())
+
     def test_status_gui_write_current_position_mark_uses_configured_track_output(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
