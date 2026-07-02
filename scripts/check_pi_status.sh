@@ -451,6 +451,36 @@ def validate_position_summary(
             fail(f"{label} {hdop_field} is weak")
 
 
+def validate_gps_readiness_row(gps_fix, readiness_rows):
+    if gps_fix.get("ok") is not True:
+        return
+    source = status_text(gps_fix.get("source", ""), "gps_fix source")
+    if source not in {"GPS", "GPSD"}:
+        source_label = source or "<missing>"
+        fail(f"gps_fix source is not GPS or GPSD: {source_label}")
+    row = readiness_rows.get(source)
+    if not isinstance(row, dict):
+        fail(f"missing {source} readiness check for gps_fix")
+    if row.get("ok") is not True:
+        fail(f"{source} readiness check is not ok")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        fail(f"{source} readiness check has no structured fix data")
+    for field in (
+        "latitude",
+        "longitude",
+        "timestamp",
+        "speed_knots",
+        "course_degrees",
+        "fix_quality",
+        "satellites",
+        "hdop",
+        "altitude_m",
+    ):
+        if field in gps_fix and data.get(field) != gps_fix.get(field):
+            fail(f"gps_fix data does not match {source} readiness check data for {field}")
+
+
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
@@ -485,6 +515,7 @@ host_boot_id = status_text(host.get("boot_id", ""), "host boot_id")
 if not BOOT_ID_RE.fullmatch(host_boot_id):
     fail("host boot_id is not a Linux boot_id value")
 
+readiness_rows = {}
 for section_name, row_label in (("checks", "readiness check"), ("service_checks", "service check")):
     rows = report.get(section_name)
     if not isinstance(rows, list) or not rows:
@@ -502,6 +533,8 @@ for section_name, row_label in (("checks", "readiness check"), ("service_checks"
         seen.add(normalized)
         if not isinstance(row.get("ok"), bool):
             fail(f"{normalized} ok is not boolean")
+        if section_name == "checks":
+            readiness_rows[normalized] = row
 
 validate_optional_text_fields(
     report.get("config"),
@@ -556,6 +589,7 @@ validate_position_summary(
     hdop_field="latest_hdop",
     generated_at_utc=parsed_generated_at.astimezone(timezone.utc),
 )
+validate_gps_readiness_row(report["gps_fix"], readiness_rows)
 '
 }
 

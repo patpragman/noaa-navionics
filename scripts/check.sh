@@ -11718,7 +11718,7 @@ if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
   printf '{"ok": "yes", "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
   exit 0
 fi
-printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true, "source": "GPSD", "timestamp": "%s", "age_seconds": 0.0, "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}, "track_log": {"ok": true, "track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "track_storage_symlink_component": "", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}\n' "$generated_at" "$generated_at" "$generated_at"
+printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "GPSD", "ok": true, "data": {"timestamp": "%s", "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}}, {"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true, "source": "GPSD", "timestamp": "%s", "age_seconds": 0.0, "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}, "track_log": {"ok": true, "track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "track_storage_symlink_component": "", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}\n' "$generated_at" "$generated_at" "$generated_at" "$generated_at"
 EOF
 chmod +x "$status_fake_ssh_bin/ssh"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -11752,6 +11752,11 @@ grep -q 'def status_number' scripts/check_pi_status.sh
 grep -q 'def status_timestamp' scripts/check_pi_status.sh
 grep -q 'def validate_position_summary' scripts/check_pi_status.sh
 grep -q 'validate_position_summary(' scripts/check_pi_status.sh
+grep -q 'def validate_gps_readiness_row' scripts/check_pi_status.sh
+grep -q 'missing {source} readiness check for gps_fix' scripts/check_pi_status.sh
+grep -q '{source} readiness check has no structured fix data' scripts/check_pi_status.sh
+grep -q 'gps_fix data does not match {source} readiness check data for {field}' scripts/check_pi_status.sh
+grep -q 'validate_gps_readiness_row(report\["gps_fix"\], readiness_rows)' scripts/check_pi_status.sh
 grep -q 'gps_fix latitude is not numeric' tests/test_downloader.py
 grep -q 'track_log latest_latitude is not numeric' tests/test_downloader.py
 grep -q 'missing non-empty {section_name} list' scripts/check_pi_status.sh
@@ -11770,6 +11775,8 @@ grep -q 'malformed Linux `boot_id` host evidence' README.md
 grep -q 'malformed Linux `boot_id` host evidence' docs/sailboat-pi.md
 grep -q 'GPS/track summaries that claim `ok=true` without finite position, timestamp, age, and quality evidence' README.md
 grep -q 'GPS/track summaries that claim `ok=true` without finite position, timestamp, age, and quality evidence' docs/sailboat-pi.md
+grep -q 'GPS/GPSD readiness-row fix data that does not match top-level GPS evidence' README.md
+grep -q 'GPS/GPSD readiness-row fix data that does not match top-level GPS evidence' docs/sailboat-pi.md
 grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh
 grep -q 'json_validation_code=$?' scripts/check_pi_status.sh
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"
