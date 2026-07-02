@@ -31,6 +31,8 @@ Options:
   --skip-pre-departure
                      Skip the live strict pre-departure verification
 
+Options for skipped steps are rejected so refresh, recovery, and
+pre-departure controls cannot be mistaken for checks that still ran.
 This wrapper does not install, enable, reboot, shut down, or download charts
 on the local computer. Chart downloads, if not skipped, run on the Raspberry Pi.
 EOF
@@ -50,22 +52,30 @@ target="$1"
 shift
 device=""
 output_dir="pi-recovery-exports"
+output_dir_set=0
 track_days=30
+track_days_set=0
 max_track_days=3650
 gps_seconds=""
+gps_seconds_set=0
 max_gps_seconds=600
 retries=5
+retries_set=0
 max_retries=20
 retry_delay=30
+retry_delay_set=0
 max_retry_delay=3600
 force_refresh=0
 allow_dirty=0
+allow_dirty_set=0
 skip_refresh=0
 skip_recovery=0
 skip_pre_departure=0
 opencpn_restarts=""
+opencpn_restarts_set=0
 max_opencpn_restarts=20
 opencpn_restart_delay=""
+opencpn_restart_delay_set=0
 max_opencpn_restart_delay=3600
 python3_cmd=""
 
@@ -1909,6 +1919,7 @@ while [[ $# -gt 0 ]]; do
       fi
       validate_output_dir_arg "${2:-}"
       output_dir="${2:-}"
+      output_dir_set=1
       shift 2
       ;;
     --track-days)
@@ -1919,6 +1930,7 @@ while [[ $# -gt 0 ]]; do
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_track_days"
       track_days="${2:-}"
+      track_days_set=1
       shift 2
       ;;
     --gps-seconds)
@@ -1929,6 +1941,7 @@ while [[ $# -gt 0 ]]; do
       require_positive_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
       gps_seconds="${2:-}"
+      gps_seconds_set=1
       shift 2
       ;;
     --retries)
@@ -1939,6 +1952,7 @@ while [[ $# -gt 0 ]]; do
       require_positive_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_retries"
       retries="${2:-}"
+      retries_set=1
       shift 2
       ;;
     --retry-delay)
@@ -1949,6 +1963,7 @@ while [[ $# -gt 0 ]]; do
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_retry_delay"
       retry_delay="${2:-}"
+      retry_delay_set=1
       shift 2
       ;;
     --force-refresh)
@@ -1957,6 +1972,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --allow-dirty)
       allow_dirty=1
+      allow_dirty_set=1
       shift
       ;;
     --opencpn-restarts)
@@ -1967,6 +1983,7 @@ while [[ $# -gt 0 ]]; do
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
       opencpn_restarts="${2:-}"
+      opencpn_restarts_set=1
       shift 2
       ;;
     --opencpn-restart-delay)
@@ -1977,6 +1994,7 @@ while [[ $# -gt 0 ]]; do
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
       opencpn_restart_delay="${2:-}"
+      opencpn_restart_delay_set=1
       shift 2
       ;;
     --skip-refresh)
@@ -2014,6 +2032,26 @@ output_dir="$(strip_trailing_slashes "$output_dir")"
 
 if [[ "$skip_refresh" -eq 1 && "$skip_recovery" -eq 1 && "$skip_pre_departure" -eq 1 ]]; then
   echo "At least one pre-trip preparation step must run" >&2
+  exit 2
+fi
+
+if [[ "$skip_refresh" -eq 1 && ( "$retries_set" -eq 1 || "$retry_delay_set" -eq 1 || "$force_refresh" -eq 1 ) ]]; then
+  echo "Chart-refresh options require the refresh step; remove --skip-refresh or omit --retries, --retry-delay, and --force-refresh" >&2
+  exit 2
+fi
+
+if [[ "$skip_recovery" -eq 1 && ( "$output_dir_set" -eq 1 || "$track_days_set" -eq 1 ) ]]; then
+  echo "Recovery export options require the recovery step; remove --skip-recovery or omit --output-dir and --track-days" >&2
+  exit 2
+fi
+
+if [[ "$skip_pre_departure" -eq 1 && ( "$allow_dirty_set" -eq 1 || "$opencpn_restarts_set" -eq 1 || "$opencpn_restart_delay_set" -eq 1 ) ]]; then
+  echo "Pre-departure verification options require the pre-departure step; remove --skip-pre-departure or omit --allow-dirty, --opencpn-restarts, and --opencpn-restart-delay" >&2
+  exit 2
+fi
+
+if [[ "$skip_refresh" -eq 1 && "$skip_pre_departure" -eq 1 && "$gps_seconds_set" -eq 1 ]]; then
+  echo "--gps-seconds requires a status or pre-departure check; remove --skip-refresh/--skip-pre-departure or omit --gps-seconds" >&2
   exit 2
 fi
 

@@ -22,6 +22,8 @@ Options:
   --shutdown-dry-run   Validate the remote shutdown path without powering off
   --shutdown-confirm   Request a clean Pi poweroff after collection
 
+Options for skipped steps are rejected so status and track controls cannot be
+mistaken for collection steps that still ran.
 This wrapper writes local artifacts into output-dir. It does not install,
 enable, reboot, download charts, or change persistent Pi state. Shutdown is
 opt-in only.
@@ -42,8 +44,10 @@ target="$1"
 shift
 output_dir="pi-post-trip-exports"
 track_days=30
+track_days_set=0
 max_track_days=3650
 gps_seconds=""
+gps_seconds_set=0
 max_gps_seconds=600
 skip_status=0
 skip_tracks=0
@@ -2250,6 +2254,7 @@ while [[ $# -gt 0 ]]; do
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_track_days"
       track_days="${2:-}"
+      track_days_set=1
       shift 2
       ;;
     --gps-seconds)
@@ -2260,6 +2265,7 @@ while [[ $# -gt 0 ]]; do
       require_positive_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
       gps_seconds="${2:-}"
+      gps_seconds_set=1
       shift 2
       ;;
     --skip-status)
@@ -2311,6 +2317,14 @@ if [[ "$skip_status" -eq 1 && "$skip_tracks" -eq 1 && "$skip_support" -eq 1 && -
 fi
 if [[ "$skip_status" -eq 1 && "$skip_tracks" -eq 1 && "$skip_support" -eq 1 && "$shutdown_mode" == "confirm" ]]; then
   echo "Real post-trip shutdown requires collecting at least one artifact first; use --shutdown-dry-run to validate shutdown only" >&2
+  exit 2
+fi
+if [[ "$skip_status" -eq 1 && "$gps_seconds_set" -eq 1 ]]; then
+  echo "--gps-seconds requires the status snapshot step; remove --skip-status or omit --gps-seconds" >&2
+  exit 2
+fi
+if [[ "$skip_tracks" -eq 1 && "$track_days_set" -eq 1 ]]; then
+  echo "--track-days requires the GPX track export step; remove --skip-tracks or omit --track-days" >&2
   exit 2
 fi
 
