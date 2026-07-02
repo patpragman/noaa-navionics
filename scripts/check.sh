@@ -816,8 +816,8 @@ grep -q 'support bundle helper rejects broad/system local output directories, co
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' docs/sailboat-pi.md
-grep -q 'streams each diagnostic command capture through a 2 MiB per-command output cap with a truncation marker' README.md
-grep -q 'streams each diagnostic command capture through a 2 MiB per-command output cap with a truncation marker' docs/sailboat-pi.md
+grep -q 'streams each diagnostic command capture through a 2 MiB per-command output cap with a truncation marker and a 60-second per-command timeout marker' README.md
+grep -q 'streams each diagnostic command capture through a 2 MiB per-command output cap with a truncation marker and a 60-second per-command timeout marker' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" README.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" docs/sailboat-pi.md
 grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' README.md
@@ -1396,8 +1396,12 @@ grep -q 'trusted_system_command_path df' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path find' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path ls' scripts/collect_pi_support_bundle.sh
 grep -Fq 'max_command_output_bytes=$((2 * 1024 * 1024))' scripts/collect_pi_support_bundle.sh
-grep -Fq 'subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)' scripts/collect_pi_support_bundle.sh
+grep -Fq 'max_command_seconds=60' scripts/collect_pi_support_bundle.sh
+grep -Fq 'subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)' scripts/collect_pi_support_bundle.sh
+grep -Fq 'selectors.DefaultSelector()' scripts/collect_pi_support_bundle.sh
+grep -Fq 'os.killpg(process.pid, signal.SIGKILL)' scripts/collect_pi_support_bundle.sh
 grep -Fq 'output truncated after {limit} bytes' scripts/collect_pi_support_bundle.sh
+grep -Fq 'command timed out after {timeout:g} seconds' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command package-versions bash -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$dpkg_query" -W -f="$format"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command df "$df_cmd" -h' scripts/collect_pi_support_bundle.sh

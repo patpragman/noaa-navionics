@@ -728,6 +728,7 @@ bundle_root="$(mktemp -d "${cache_dir}/support-bundle.XXXXXX")"
 files_dir="${bundle_root}/files"
 commands_dir="${bundle_root}/commands"
 max_command_output_bytes=$((2 * 1024 * 1024))
+max_command_seconds=60
 mkdir "$files_dir" "$commands_dir"
 cleanup_remote_bundle() {
   case "$bundle_root" in
@@ -988,17 +989,22 @@ run_command() {
   local name="$1"
   shift
   local output="${commands_dir}/${name}.txt"
-  "$python3_cmd" - "$output" "$max_command_output_bytes" "$@" <<'PY'
+  "$python3_cmd" - "$output" "$max_command_output_bytes" "$max_command_seconds" "$@" <<'PY'
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import selectors
 import shlex
+import signal
 import subprocess
 import sys
+import time
 
 output = Path(sys.argv[1])
 limit = int(sys.argv[2])
-command = sys.argv[3:]
+timeout = float(sys.argv[3])
+command = sys.argv[4:]
 
 if not command:
     print("support bundle command is missing", file=sys.stderr)
@@ -1006,27 +1012,63 @@ if not command:
 
 written = 0
 truncated = False
+timed_out = False
 
 with output.open("wb") as handle:
     header = "$ " + " ".join(shlex.quote(part) for part in command) + "\n\n"
     handle.write(header.encode("utf-8", "replace"))
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)
     assert process.stdout is not None
-    while True:
-        chunk = process.stdout.read(65536)
-        if not chunk:
-            break
-        remaining = limit - written
-        if remaining > 0:
-            accepted = chunk[:remaining]
-            handle.write(accepted)
-            written += len(accepted)
-            if len(chunk) <= remaining:
+    stdout_fd = process.stdout.fileno()
+    os.set_blocking(stdout_fd, False)
+    selector = selectors.DefaultSelector()
+    selector.register(stdout_fd, selectors.EVENT_READ)
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            remaining_time = deadline - time.monotonic()
+            if remaining_time <= 0:
+                timed_out = True
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                break
+            if process.poll() is not None:
+                wait_time = 0.0
+            else:
+                wait_time = min(1.0, remaining_time)
+            events = selector.select(wait_time)
+            if not events:
+                if process.poll() is not None:
+                    break
                 continue
-        if not truncated:
-            handle.write(f"\n(output truncated after {limit} bytes)\n".encode("utf-8"))
-            truncated = True
-    status = process.wait()
+            for _key, _mask in events:
+                while True:
+                    try:
+                        chunk = os.read(stdout_fd, 65536)
+                    except BlockingIOError:
+                        break
+                    if not chunk:
+                        break
+                    remaining_bytes = limit - written
+                    if remaining_bytes > 0:
+                        accepted = chunk[:remaining_bytes]
+                        handle.write(accepted)
+                        written += len(accepted)
+                        if len(chunk) <= remaining_bytes:
+                            continue
+                    if not truncated:
+                        handle.write(f"\n(output truncated after {limit} bytes)\n".encode("utf-8"))
+                        truncated = True
+        status = process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        status = process.returncode
+    finally:
+        selector.close()
+        process.stdout.close()
+    if timed_out:
+        handle.write(f"\n(command timed out after {timeout:g} seconds)\n".encode("utf-8"))
     if status:
         handle.write(f"\n(command exited {status})\n".encode("utf-8"))
 PY
