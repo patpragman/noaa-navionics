@@ -5264,8 +5264,21 @@ grep -q 'status report GPS Device check has no structured data' src/noaa_navioni
 grep -q 'status report GPS Device udev path is not a symlink' src/noaa_navionics/report.py
 grep -q 'status report GPS Device is not a character device' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _gpsd_config_text' src/noaa_navionics/report.py
+grep -q 'f"status report {label} is not text"' src/noaa_navionics/report.py
+grep -q '"GPSD Config path"' src/noaa_navionics/report.py
+grep -q '"GPSD Config directory_symlink_component"' src/noaa_navionics/report.py
+grep -q '"GPSD Config mode"' src/noaa_navionics/report.py
+grep -q '"GPSD Config expected_device"' src/noaa_navionics/report.py
+grep -q 'status report GPSD Config devices contain control characters' src/noaa_navionics/report.py
+grep -q '"GPSD Config start_daemon"' src/noaa_navionics/report.py
+grep -q '"GPSD Config usbauto"' src/noaa_navionics/report.py
+grep -q 'status report GPSD Config options are not a text list' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config devices do not match configured GPS device' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config does not enable immediate polling' src/noaa_navionics/report.py
+grep -q 'path contains control characters' tests/test_downloader.py
+grep -q 'expected_device contains control characters' tests/test_downloader.py
+grep -q 'options contain control characters' tests/test_downloader.py
 grep -q 'status report Chrony Config check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Chrony Config is missing managed GPSD SHM refclock' src/noaa_navionics/report.py
 grep -q 'status report GPS Time Source check has no structured data' src/noaa_navionics/report.py

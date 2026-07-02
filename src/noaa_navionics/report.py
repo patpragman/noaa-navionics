@@ -405,14 +405,20 @@ def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckRes
     if not isinstance(data, dict):
         return [CheckResult("GPSD Config", False, "status report GPSD Config check has no structured data")]
     failures: list[CheckResult] = []
-    path = str(data.get("path", "")).strip()
-    if path != "/etc/default/gpsd":
+    path = _gpsd_config_text(data, "path", "GPSD Config path", failures)
+    if path is not None and path != "/etc/default/gpsd":
         failures.append(CheckResult("GPSD Config", False, f"status report GPSD Config path {path or '<missing>'} is not /etc/default/gpsd"))
     if data.get("exists") is not True:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config path does not exist"))
     if data.get("is_symlink") is not False:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config path is a symlink"))
-    if str(data.get("directory_symlink_component", "")).strip():
+    directory_symlink_component = _gpsd_config_text(
+        data,
+        "directory_symlink_component",
+        "GPSD Config directory_symlink_component",
+        failures,
+    )
+    if directory_symlink_component:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config directory contains a symlink"))
     if data.get("is_regular") is not True:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config path is not a regular file"))
@@ -422,28 +428,67 @@ def _gpsd_config_validation_failures(report: dict[str, object]) -> list[CheckRes
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config owner is not root"))
     if isinstance(expected_uid, bool) or not isinstance(expected_uid, int) or expected_uid != 0:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config expected owner is not root"))
-    mode = str(data.get("mode", "")).strip()
-    try:
-        parsed_mode = int(mode, 8)
-    except ValueError:
-        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config mode is invalid"))
-    else:
-        if parsed_mode & 0o022:
-            failures.append(CheckResult("GPSD Config", False, "status report GPSD Config is group/world writable"))
-    expected_device = str(config.get("gps_device", "")).strip()
-    if str(data.get("expected_device", "")).strip() != expected_device:
+    mode = _gpsd_config_text(data, "mode", "GPSD Config mode", failures)
+    if mode is not None:
+        try:
+            parsed_mode = int(mode, 8)
+        except ValueError:
+            failures.append(CheckResult("GPSD Config", False, "status report GPSD Config mode is invalid"))
+        else:
+            if parsed_mode & 0o022:
+                failures.append(CheckResult("GPSD Config", False, "status report GPSD Config is group/world writable"))
+    expected_device = _gpsd_config_text(config, "gps_device", "config gps_device", failures)
+    reported_expected_device = _gpsd_config_text(
+        data,
+        "expected_device",
+        "GPSD Config expected_device",
+        failures,
+    )
+    if reported_expected_device is not None and reported_expected_device != expected_device:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config expected device does not match config"))
     devices = data.get("devices")
-    if not isinstance(devices, list) or devices != [expected_device]:
+    if (
+        expected_device is None
+        or not isinstance(devices, list)
+        or any(not isinstance(device, str) for device in devices)
+    ):
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config devices do not match configured GPS device"))
-    if str(data.get("start_daemon", "")).strip() != "true":
+    elif any(_status_text_has_control_char(device) for device in devices):
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config devices contain control characters"))
+    elif devices != [expected_device]:
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config devices do not match configured GPS device"))
+    start_daemon = _gpsd_config_text(data, "start_daemon", "GPSD Config start_daemon", failures)
+    if start_daemon is not None and start_daemon != "true":
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config START_DAEMON is not true"))
-    if str(data.get("usbauto", "")).strip() != "false":
+    usbauto = _gpsd_config_text(data, "usbauto", "GPSD Config usbauto", failures)
+    if usbauto is not None and usbauto != "false":
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config USBAUTO is not false"))
     options = data.get("gpsd_options")
-    if not isinstance(options, list) or "-n" not in options or data.get("immediate_polling") is not True:
+    if not isinstance(options, list) or any(not isinstance(option, str) for option in options):
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config options are not a text list"))
+    elif any(_status_text_has_control_char(option) for option in options):
+        failures.append(CheckResult("GPSD Config", False, "status report GPSD Config options contain control characters"))
+    elif "-n" not in options or data.get("immediate_polling") is not True:
         failures.append(CheckResult("GPSD Config", False, "status report GPSD Config does not enable immediate polling"))
     return failures
+
+
+def _gpsd_config_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult("GPSD Config", False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult("GPSD Config", False, control_failure))
+        return None
+    return text
 
 
 def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
