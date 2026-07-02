@@ -15,6 +15,7 @@ Options:
   --dry-run   Validate the remote shutdown path without powering off
   --timeout N Seconds to wait for SSH to stop responding after real shutdown (1-600; default: 90)
 
+--timeout cannot be combined with --dry-run because there is no shutdown wait.
 Nothing is installed, enabled, downloaded, or changed on the local computer.
 EOF
 }
@@ -37,6 +38,7 @@ ssh_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
 shutdown_timeout=90
+timeout_set=0
 max_shutdown_timeout=600
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -65,6 +67,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       shutdown_timeout="$timeout_value"
+      timeout_set=1
       shift 2
       ;;
     -h|--help)
@@ -85,6 +88,10 @@ if [[ "$confirm" -eq 1 && "$dry_run" -eq 1 ]]; then
 fi
 if [[ "$confirm" -eq 0 && "$dry_run" -eq 0 ]]; then
   echo "--confirm is required for a real Pi shutdown; use --dry-run to test the path" >&2
+  exit 2
+fi
+if [[ "$dry_run" -eq 1 && "$timeout_set" -eq 1 ]]; then
+  echo "--timeout requires a real shutdown; remove --dry-run or omit --timeout" >&2
   exit 2
 fi
 

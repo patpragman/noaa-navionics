@@ -1020,11 +1020,14 @@ grep -q 'waits up to the configured timeout for SSH to stop responding before re
 grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' docs/sailboat-pi.md
+grep -q -- '--timeout requires a real shutdown' scripts/shutdown_pi_safely.sh
 grep -Fq '/bin/bash -s' scripts/shutdown_pi_safely.sh
 grep -q 'read-only diagnostic evidence' README.md
 grep -q 'read-only diagnostic evidence' docs/sailboat-pi.md
 grep -q 'Use `--dry-run` to prove that path without powering off' README.md
 grep -q 'Use `--dry-run` to prove that path without powering off' docs/sailboat-pi.md
+grep -q '`--timeout` is rejected with `--dry-run` because there is no shutdown wait to tune' README.md
+grep -q '`--timeout` is rejected with `--dry-run` because there is no shutdown wait to tune' docs/sailboat-pi.md
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
 grep -q 'max_gps_seconds=600' scripts/pre_departure_check_pi.sh
@@ -14413,6 +14416,17 @@ if [[ "$shutdown_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--timeout must be between 1 and 600 seconds' "$verify_output"
+
+set +e
+scripts/shutdown_pi_safely.sh pi@example.invalid --dry-run --timeout 5 >"$verify_output" 2>&1
+shutdown_code=$?
+set -e
+if [[ "$shutdown_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject --timeout with --dry-run with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--timeout requires a real shutdown' "$verify_output"
 
 shutdown_fake_ssh_bin="$tmpdir/shutdown-fake-ssh-bin"
 shutdown_fake_ssh_args="$tmpdir/shutdown-fake-ssh-args"
