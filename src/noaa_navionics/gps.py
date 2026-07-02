@@ -100,6 +100,9 @@ def iter_fixes(
     max_quality_merge_age_seconds: float = 5.0,
     invalid_fix_callback: Optional[Callable[[GPSFix], None]] = None,
 ) -> Iterator[GPSFix]:
+    max_quality_merge_age_seconds = _non_negative_seconds(
+        max_quality_merge_age_seconds, "max_quality_merge_age_seconds"
+    )
     latest: Optional[GPSFix] = None
     latest_position_monotonic: Optional[float] = None
     latest_quality_monotonic: Optional[float] = None

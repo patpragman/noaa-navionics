@@ -4708,6 +4708,8 @@ grep -q 'test_parse_nmea_rejects_bad_checksum' tests/test_downloader.py
 grep -q 'test_parse_nmea_rejects_malformed_checksum_suffix' tests/test_downloader.py
 grep -q 'trailing-garbage checksum suffixes' README.md
 grep -q 'trailing-garbage checksum suffixes' docs/sailboat-pi.md
+grep -q 'max_quality_merge_age_seconds = _non_negative_seconds' src/noaa_navionics/gps.py
+grep -q 'test_iter_fixes_rejects_invalid_quality_merge_age_before_read' tests/test_downloader.py
 grep -q 'sky_max_age_seconds' src/noaa_navionics/gps.py
 grep -q 'max_duration' src/noaa_navionics/gps.py
 grep -q 'idle_timeout' src/noaa_navionics/gps.py

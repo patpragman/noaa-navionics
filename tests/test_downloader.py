@@ -20273,6 +20273,23 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual(fixes, [])
 
+    def test_iter_fixes_rejects_invalid_quality_merge_age_before_read(self):
+        class UnexpectedLines:
+            def __iter__(self):
+                raise AssertionError("NMEA lines should not be consumed")
+
+        cases = [
+            (-0.1, "max_quality_merge_age_seconds must be zero or more seconds"),
+            (math.inf, "max_quality_merge_age_seconds must be a finite number of seconds"),
+            (math.nan, "max_quality_merge_age_seconds must be a finite number of seconds"),
+            (False, "max_quality_merge_age_seconds must be a finite number of seconds"),
+        ]
+
+        for max_age, message in cases:
+            with self.subTest(max_quality_merge_age_seconds=max_age):
+                with self.assertRaisesRegex(ValueError, re.escape(message)):
+                    list(iter_fixes(UnexpectedLines(), max_quality_merge_age_seconds=max_age))
+
     def test_iter_fixes_accepts_fresh_gsa_after_stale_quality_gap(self):
         fix_time = datetime.now(timezone.utc).strftime("%H%M%S")
         fix_date = datetime.now(timezone.utc).strftime("%d%m%y")
