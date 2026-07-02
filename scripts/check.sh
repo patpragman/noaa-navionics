@@ -647,6 +647,29 @@ grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/dock_test_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/verify_pi.sh
+for local_command_trust_script in \
+  scripts/check_pi_status.sh \
+  scripts/collect_pi_support_bundle.sh \
+  scripts/deploy_to_pi.sh \
+  scripts/dock_test_pi.sh \
+  scripts/enroll_pi_host_key.sh \
+  scripts/export_pi_opencpn_data.sh \
+  scripts/export_pi_recovery_bundle.sh \
+  scripts/export_pi_settings.sh \
+  scripts/export_pi_tracks.sh \
+  scripts/post_trip_collect_pi.sh \
+  scripts/pre_departure_check_pi.sh \
+  scripts/pre_trip_prepare_pi.sh \
+  scripts/refresh_pi_charts.sh \
+  scripts/restore_pi_recovery_user_data.sh \
+  scripts/shutdown_pi_safely.sh \
+  scripts/verify_pi.sh \
+  scripts/verify_pi_recovery_exports.sh; do
+  grep -q 'Local ${command_name} command is not a regular file after resolution' "$local_command_trust_script"
+done
+grep -q 'remote ${command_name} command is not a regular file after resolution' scripts/check_pi_status.sh
+grep -q 'Remote ${command_name} command is not a regular file after resolution' scripts/refresh_pi_charts.sh
+grep -q 'Remote ${command_name} command is not a regular file after resolution' scripts/shutdown_pi_safely.sh
 grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=' scripts/verify_pi.sh
 grep -Fq '/bin/bash -s' scripts/verify_pi.sh

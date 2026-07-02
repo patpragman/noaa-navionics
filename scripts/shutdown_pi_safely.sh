@@ -222,6 +222,10 @@ validate_trusted_local_command() {
     echo "Resolved local ${command_name} command is not in a trusted system directory: $resolved_path" >&2
     exit 2
   fi
+  if [[ ! -f "$resolved_path" ]]; then
+    echo "Local ${command_name} command is not a regular file after resolution: $command_path -> $resolved_path" >&2
+    exit 2
+  fi
   if [[ ! -x "$resolved_path" ]]; then
     echo "Local ${command_name} command is not executable after resolution: $resolved_path" >&2
     exit 2
@@ -350,6 +354,10 @@ require_remote_command() {
   fi
   if ! remote_path_in_trusted_system_dir "$resolved_path"; then
     echo "Resolved remote ${command_name} command is not in a trusted system directory: $resolved_path" >&2
+    exit 1
+  fi
+  if [[ ! -f "$resolved_path" ]]; then
+    echo "Remote ${command_name} command is not a regular file after resolution: $command_path -> $resolved_path" >&2
     exit 1
   fi
   if [[ ! -x "$resolved_path" ]]; then
