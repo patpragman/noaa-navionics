@@ -224,6 +224,21 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+CORE_SETTINGS_FILES = [
+    "noaa-navionics/config.ini",
+    "noaa-navionics/launcher.env",
+    "noaa-navionics/source-revision",
+    "desktop/noaa-navionics-chartplotter.desktop",
+    "desktop/noaa-navionics-mob.desktop",
+    "system/etc-default-gpsd",
+    "system/chrony.conf",
+    "system/noaa-navionics-gpsd.conf",
+    "system/50-noaa-navionics-autologin.conf",
+    "systemd/user/noaa-navionics.service",
+    "systemd/user/noaa-navionics.timer",
+    "systemd/user/noaa-navionics-track.service",
+    "systemd/user/noaa-navionics-preflight.service",
+]
 MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024
 MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024
 MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024
@@ -233,6 +248,7 @@ ARCHIVES = [
         "label": "commissioning settings",
         "pattern": "noaa-navionics-pi-settings-*.tgz",
         "manifest_key": "file_count",
+        "required_members": CORE_SETTINGS_FILES,
         "max_member_bytes": MAX_SETTING_ARCHIVE_MEMBER_BYTES,
     },
     {
@@ -449,17 +465,6 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                 if not members_by_name["README.txt"].isfile():
                     fail(f"{archive_path.name} README.txt is not a regular file")
 
-                required_members = list(spec.get("required_members", []))
-                missing_members = [
-                    name for name in required_members
-                    if name not in members_by_name or not members_by_name[name].isfile()
-                ]
-                if missing_members:
-                    fail(
-                        f"{archive_path.name} is missing required support diagnostic file(s): "
-                        f"{', '.join(missing_members)}"
-                    )
-
                 manifest_key = spec["manifest_key"]
                 if manifest_key is not None:
                     if "manifest.json" not in names:
@@ -519,6 +524,17 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                                 f"{archive_path.name} manifest track names do not match data files: "
                                 f"{sorted(manifest_track_names)!r} != {sorted(data_member_names)!r}"
                             )
+
+                required_members = list(spec.get("required_members", []))
+                missing_members = [
+                    name for name in required_members
+                    if name not in members_by_name or not members_by_name[name].isfile()
+                ]
+                if missing_members:
+                    fail(
+                        f"{archive_path.name} is missing required archive member(s): "
+                        f"{', '.join(missing_members)}"
+                    )
 
                 if regular_file_count <= 0:
                     fail(f"{archive_path.name} does not contain any regular files")

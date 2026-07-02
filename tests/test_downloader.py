@@ -811,6 +811,24 @@ def python_string_set_assignment(source: str, name: str) -> set[str]:
     raise AssertionError(f"missing Python set assignment: {name}")
 
 
+def python_string_list_assignment(source: str, name: str) -> list[str]:
+    tree = ast.parse(source)
+    for statement in tree.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == name for target in statement.targets):
+            continue
+        if not isinstance(statement.value, ast.List):
+            raise AssertionError(f"{name} is not assigned a string list")
+        values = []
+        for element in statement.value.elts:
+            if not isinstance(element, ast.Constant) or not isinstance(element.value, str):
+                raise AssertionError(f"{name} contains a non-string value")
+            values.append(element.value)
+        return values
+    raise AssertionError(f"missing Python list assignment: {name}")
+
+
 def trusted_unit_file_lines(unit_name: str) -> list[str]:
     lines_by_unit = {
         "noaa-navionics.service": [
@@ -13422,6 +13440,30 @@ class StatusReportTests(unittest.TestCase):
             python_string_set_assignment(source, "GPSD_SERVICE_CHECKS"),
             set(report_module.GPSD_SERVICE_CHECKS),
         )
+
+    def test_recovery_verifier_requires_core_settings_archive_members(self):
+        source = shell_python_heredoc(Path("scripts/verify_pi_recovery_exports.sh").read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            python_string_list_assignment(source, "CORE_SETTINGS_FILES"),
+            [
+                "noaa-navionics/config.ini",
+                "noaa-navionics/launcher.env",
+                "noaa-navionics/source-revision",
+                "desktop/noaa-navionics-chartplotter.desktop",
+                "desktop/noaa-navionics-mob.desktop",
+                "system/etc-default-gpsd",
+                "system/chrony.conf",
+                "system/noaa-navionics-gpsd.conf",
+                "system/50-noaa-navionics-autologin.conf",
+                "systemd/user/noaa-navionics.service",
+                "systemd/user/noaa-navionics.timer",
+                "systemd/user/noaa-navionics-track.service",
+                "systemd/user/noaa-navionics-preflight.service",
+            ],
+        )
+        self.assertIn('"required_members": CORE_SETTINGS_FILES', source)
+        self.assertIn("is missing required archive member(s)", source)
 
     def test_post_trip_required_status_checks_match_shared_readiness(self):
         source = shell_function_python_heredoc(

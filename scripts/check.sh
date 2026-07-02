@@ -1954,10 +1954,15 @@ grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/df-inodes.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'CORE_SETTINGS_FILES = \[' scripts/verify_pi_recovery_exports.sh
+grep -q 'desktop/noaa-navionics-chartplotter.desktop' scripts/verify_pi_recovery_exports.sh
+grep -q 'desktop/noaa-navionics-mob.desktop' scripts/verify_pi_recovery_exports.sh
+grep -q 'system/50-noaa-navionics-autologin.conf' scripts/verify_pi_recovery_exports.sh
+grep -q '"required_members": CORE_SETTINGS_FILES' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
 grep -q 'GPSD_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SERVICE_CHECKS = {' scripts/verify_pi_recovery_exports.sh
-grep -q 'is missing required support diagnostic file' scripts/verify_pi_recovery_exports.sh
+grep -q 'is missing required archive member' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_checksum_manifest' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_optional_pre_departure_status' scripts/verify_pi_recovery_exports.sh
 grep -q 'def validate_pre_departure_status_checks' scripts/verify_pi_recovery_exports.sh
@@ -13164,6 +13169,21 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+CORE_SETTINGS_FILES = [
+    "noaa-navionics/config.ini",
+    "noaa-navionics/launcher.env",
+    "noaa-navionics/source-revision",
+    "desktop/noaa-navionics-chartplotter.desktop",
+    "desktop/noaa-navionics-mob.desktop",
+    "system/etc-default-gpsd",
+    "system/chrony.conf",
+    "system/noaa-navionics-gpsd.conf",
+    "system/50-noaa-navionics-autologin.conf",
+    "systemd/user/noaa-navionics.service",
+    "systemd/user/noaa-navionics.timer",
+    "systemd/user/noaa-navionics-track.service",
+    "systemd/user/noaa-navionics-preflight.service",
+]
 CORE_READINESS_CHECKS = [
     "Python",
     "Source Revision",
@@ -13222,15 +13242,18 @@ def add_text(archive, name, text):
     archive.addfile(info, io.BytesIO(data))
 
 
-def build_archive(directory, name, manifest, extra_member):
+def build_archive(directory, name, manifest, members):
     path = directory / name
+    if isinstance(members, str):
+        members = {members: "fixture\n"}
     if isinstance(manifest, dict) and "file_count" in manifest and "files" not in manifest:
-        manifest = {**manifest, "files": [{"archive_path": extra_member}]}
+        manifest = {**manifest, "files": [{"archive_path": member_name} for member_name in members]}
     with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         add_text(archive, "README.txt", "recovery fixture\n")
         if manifest is not None:
             add_text(archive, "manifest.json", json.dumps(manifest) + "\n")
-        add_text(archive, extra_member, "fixture\n")
+        for member_name, text in members.items():
+            add_text(archive, member_name, text)
     path.chmod(0o600)
 
 
@@ -13481,8 +13504,8 @@ root = Path(sys.argv[1])
 build_archive(
     root,
     "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
-    {"file_count": 1},
-    "noaa-navionics/config.ini",
+    {"file_count": len(CORE_SETTINGS_FILES)},
+    {name: f"{name}\n" for name in CORE_SETTINGS_FILES},
 )
 build_archive(
     root,
@@ -13536,6 +13559,57 @@ grep -q 'OpenCPN user data:' "$verify_output"
 grep -q 'GPX tracks:' "$verify_output"
 grep -q 'diagnostic support bundle:' "$verify_output"
 grep -q 'pre-departure status: pre-departure-status.json (checksum verified)' "$verify_output"
+
+recovery_verify_thin_settings_dir="$tmpdir/recovery-verify-thin-settings"
+cp -a "$recovery_verify_dir" "$recovery_verify_thin_settings_dir"
+python3 - "$recovery_verify_thin_settings_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "recovery fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "noaa-navionics/config.ini"}]}) + "\n",
+    )
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\n")
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_thin_settings_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a settings archive missing required commissioning files with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required archive member(s): noaa-navionics/launcher.env' "$verify_output"
+grep -q 'desktop/noaa-navionics-mob.desktop' "$verify_output"
 
 recovery_verify_missing_required_status_dir="$tmpdir/recovery-verify-missing-required-status"
 cp -a "$recovery_verify_dir" "$recovery_verify_missing_required_status_dir"
@@ -13804,7 +13878,7 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   echo "expected verify_pi_recovery_exports.sh to reject a support bundle missing required diagnostics with exit 1" >&2
   exit 1
 fi
-grep -q 'is missing required support diagnostic file(s): commands/system-command-integrity.txt' "$verify_output"
+grep -q 'is missing required archive member(s): commands/system-command-integrity.txt' "$verify_output"
 
 recovery_verify_bad_status_checksum_dir="$tmpdir/recovery-verify-bad-status-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_bad_status_checksum_dir"
