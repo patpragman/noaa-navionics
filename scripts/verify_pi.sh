@@ -5667,6 +5667,12 @@ check "chart service private tmp" grep -Fxq 'PrivateTmp=true' "$chart_service"
 check "chart service loaded private tmp" loaded_unit_property_equals noaa-navionics.service PrivateTmp yes
 check "chart service protected system" grep -Fxq 'ProtectSystem=full' "$chart_service"
 check "chart service loaded protected system" loaded_unit_property_equals noaa-navionics.service ProtectSystem full
+check "chart service protects kernel tunables" grep -Fxq 'ProtectKernelTunables=true' "$chart_service"
+check "chart service loaded protects kernel tunables" loaded_unit_property_equals noaa-navionics.service ProtectKernelTunables yes
+check "chart service protects kernel modules" grep -Fxq 'ProtectKernelModules=true' "$chart_service"
+check "chart service loaded protects kernel modules" loaded_unit_property_equals noaa-navionics.service ProtectKernelModules yes
+check "chart service protects control groups" grep -Fxq 'ProtectControlGroups=true' "$chart_service"
+check "chart service loaded protects control groups" loaded_unit_property_equals noaa-navionics.service ProtectControlGroups yes
 check "chart service drops Linux capabilities" grep -Fxq 'CapabilityBoundingSet=' "$chart_service"
 check "chart service loaded drops Linux capabilities" loaded_unit_property_equals noaa-navionics.service CapabilityBoundingSet ""
 check "chart service restricts address families" grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' "$chart_service"
@@ -5723,6 +5729,12 @@ check "track service private tmp" grep -Fxq 'PrivateTmp=true' "$track_service"
 check "track service loaded private tmp" loaded_unit_property_equals noaa-navionics-track.service PrivateTmp yes
 check "track service protected system" grep -Fxq 'ProtectSystem=full' "$track_service"
 check "track service loaded protected system" loaded_unit_property_equals noaa-navionics-track.service ProtectSystem full
+check "track service protects kernel tunables" grep -Fxq 'ProtectKernelTunables=true' "$track_service"
+check "track service loaded protects kernel tunables" loaded_unit_property_equals noaa-navionics-track.service ProtectKernelTunables yes
+check "track service protects kernel modules" grep -Fxq 'ProtectKernelModules=true' "$track_service"
+check "track service loaded protects kernel modules" loaded_unit_property_equals noaa-navionics-track.service ProtectKernelModules yes
+check "track service protects control groups" grep -Fxq 'ProtectControlGroups=true' "$track_service"
+check "track service loaded protects control groups" loaded_unit_property_equals noaa-navionics-track.service ProtectControlGroups yes
 check "track service drops Linux capabilities" grep -Fxq 'CapabilityBoundingSet=' "$track_service"
 check "track service loaded drops Linux capabilities" loaded_unit_property_equals noaa-navionics-track.service CapabilityBoundingSet ""
 check "track service restricts address families" grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' "$track_service"
@@ -5770,6 +5782,12 @@ check "preflight service private tmp" grep -Fxq 'PrivateTmp=true' "$preflight_se
 check "preflight service loaded private tmp" loaded_unit_property_equals noaa-navionics-preflight.service PrivateTmp yes
 check "preflight service protected system" grep -Fxq 'ProtectSystem=full' "$preflight_service"
 check "preflight service loaded protected system" loaded_unit_property_equals noaa-navionics-preflight.service ProtectSystem full
+check "preflight service protects kernel tunables" grep -Fxq 'ProtectKernelTunables=true' "$preflight_service"
+check "preflight service loaded protects kernel tunables" loaded_unit_property_equals noaa-navionics-preflight.service ProtectKernelTunables yes
+check "preflight service protects kernel modules" grep -Fxq 'ProtectKernelModules=true' "$preflight_service"
+check "preflight service loaded protects kernel modules" loaded_unit_property_equals noaa-navionics-preflight.service ProtectKernelModules yes
+check "preflight service protects control groups" grep -Fxq 'ProtectControlGroups=true' "$preflight_service"
+check "preflight service loaded protects control groups" loaded_unit_property_equals noaa-navionics-preflight.service ProtectControlGroups yes
 check "preflight service drops Linux capabilities" grep -Fxq 'CapabilityBoundingSet=' "$preflight_service"
 check "preflight service loaded drops Linux capabilities" loaded_unit_property_equals noaa-navionics-preflight.service CapabilityBoundingSet ""
 check "preflight service restricts address families" grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' "$preflight_service"

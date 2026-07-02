@@ -6498,6 +6498,9 @@ grep -q 'preflight service loaded native syscall architecture' scripts/verify_pi
 grep -q 'LockPersonality' README.md
 grep -q 'CapabilityBoundingSet' README.md
 grep -q 'RestrictAddressFamilies' README.md
+grep -q 'ProtectKernelTunables' README.md
+grep -q 'ProtectKernelModules' README.md
+grep -q 'ProtectControlGroups' README.md
 grep -q 'RestrictSUIDSGID' README.md
 grep -q 'MemoryDenyWriteExecute' README.md
 grep -q 'RestrictRealtime' README.md
@@ -6505,6 +6508,9 @@ grep -q 'SystemCallArchitectures' README.md
 grep -q 'LockPersonality' docs/sailboat-pi.md
 grep -q 'CapabilityBoundingSet' docs/sailboat-pi.md
 grep -q 'RestrictAddressFamilies' docs/sailboat-pi.md
+grep -q 'ProtectKernelTunables' docs/sailboat-pi.md
+grep -q 'ProtectKernelModules' docs/sailboat-pi.md
+grep -q 'ProtectControlGroups' docs/sailboat-pi.md
 grep -q 'RestrictSUIDSGID' docs/sailboat-pi.md
 grep -q 'MemoryDenyWriteExecute' docs/sailboat-pi.md
 grep -q 'RestrictRealtime' docs/sailboat-pi.md
@@ -6521,6 +6527,9 @@ expected_unit_properties = {
     "NoNewPrivileges": "true",
     "PrivateTmp": "true",
     "ProtectSystem": "full",
+    "ProtectKernelTunables": "true",
+    "ProtectKernelModules": "true",
+    "ProtectControlGroups": "true",
     "CapabilityBoundingSet": "",
     "RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6",
     "LockPersonality": "true",
@@ -6552,6 +6561,9 @@ grep -q 'def _with_loaded_fragment_path' src/noaa_navionics/report.py
 grep -q 'loaded no new privileges' scripts/verify_pi.sh
 grep -q 'loaded private tmp' scripts/verify_pi.sh
 grep -q 'loaded protected system' scripts/verify_pi.sh
+grep -q 'loaded protects kernel tunables' scripts/verify_pi.sh
+grep -q 'loaded protects kernel modules' scripts/verify_pi.sh
+grep -q 'loaded protects control groups' scripts/verify_pi.sh
 grep -q 'TimeoutStartUSec.*15min' src/noaa_navionics/report.py
 grep -q 'StartLimitIntervalSec=30min' systemd/noaa-navionics-preflight.service
 grep -q 'Wants=noaa-navionics-track.service' systemd/noaa-navionics-preflight.service
@@ -6753,6 +6765,9 @@ grep -q 'The commissioning settings archive also includes and validates the stat
 grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectKernelTunables yes "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectKernelModules yes "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectControlGroups yes "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service TimeoutStartUSec 15min "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
@@ -6781,6 +6796,9 @@ expected_properties = {
     "NoNewPrivileges": "yes",
     "PrivateTmp": "yes",
     "ProtectSystem": "full",
+    "ProtectKernelTunables": "yes",
+    "ProtectKernelModules": "yes",
+    "ProtectControlGroups": "yes",
     "CapabilityBoundingSet": '""',
     "RestrictAddressFamilies": '"AF_UNIX AF_INET AF_INET6"',
     "LockPersonality": "yes",
@@ -18051,6 +18069,9 @@ HOME="$full_provision_home" scripts/provision_sailboat_pi.sh \
 grep -q 'systemctl --user daemon-reload' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectKernelTunables yes' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectKernelModules yes' "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectControlGroups yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes' "$provision_output"
@@ -18059,7 +18080,7 @@ grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service Memo
 grep -q "require_loaded_user_unit_property noaa-navionics.service CapabilityBoundingSet ''" "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictAddressFamilies AF_UNIX\\ AF_INET\\ AF_INET6' "$provision_output"
 for unit in noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service; do
-  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem CapabilityBoundingSet RestrictAddressFamilies LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime SystemCallArchitectures UMask; do
+  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem ProtectKernelTunables ProtectKernelModules ProtectControlGroups CapabilityBoundingSet RestrictAddressFamilies LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime SystemCallArchitectures UMask; do
     case "$loaded_property" in
       ProtectSystem)
         expected_value=full
