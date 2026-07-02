@@ -611,6 +611,7 @@ if not config_path.exists():
 sys.path.insert(0, str(repo_root / "src"))
 from noaa_navionics.config import read_config
 from noaa_navionics.health import (
+    _same_path,
     check_chart_dir,
     check_chart_manifest,
     check_chart_package,
@@ -640,6 +641,8 @@ try:
         ),
         check_disk_space(app_config.chart_output, min_free_gb=app_config.min_free_gb),
     ]
+    if not _same_path(app_config.chart_output, app_config.track_output):
+        checks.append(check_disk_space(app_config.track_output, name="Track Disk", min_free_gb=app_config.min_free_gb))
 except Exception as exc:
     raise SystemExit(
         "existing complete charts could not be validated when --skip-sync is used with unattended startup: "

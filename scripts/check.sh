@@ -3330,6 +3330,8 @@ grep -q 'malformed or unsafe chart config plus missing, incomplete, symlinked ch
 grep -q 'malformed or unsafe chart config plus missing, incomplete, symlinked chart-directory ancestors' docs/sailboat-pi.md
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
 grep -q 'check_disk_space(app_config.chart_output' scripts/provision_sailboat_pi.sh
+grep -q 'check_disk_space(app_config.track_output, name="Track Disk"' scripts/provision_sailboat_pi.sh
+grep -q 'if not _same_path(app_config.chart_output, app_config.track_output)' scripts/provision_sailboat_pi.sh
 grep -q 'validate_user_install_path' scripts/provision_sailboat_pi.sh
 grep -q 'verify_installed_noaa_navionics_command "$bin" "${venv_dir}/bin/noaa-navionics"' scripts/provision_sailboat_pi.sh
 grep -q 'installed noaa-navionics command must resolve to the private venv command' scripts/provision_sailboat_pi.sh
@@ -15389,6 +15391,85 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' "$provision_output"
+grep -q 'has permissions 0777, expected no group/other write bits' "$provision_output"
+
+skip_sync_bad_track_home="$workspace_tmpdir/skip-sync-bad-track-home"
+skip_sync_bad_track_charts="$skip_sync_bad_track_home/charts/noaa-enc"
+skip_sync_bad_track_output="$skip_sync_bad_track_home/gpx-output"
+mkdir -p \
+  "$skip_sync_bad_track_home/.config/noaa-navionics" \
+  "$skip_sync_bad_track_charts/AK_ENCs/US5AK3CM" \
+  "$skip_sync_bad_track_output"
+cat >"$skip_sync_bad_track_home/.config/noaa-navionics/config.ini" <<EOF
+[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = no
+force = yes
+max_age_days = 30
+min_free_gb = 0.1
+
+[gps]
+mode = gpsd
+device = /dev/serial/by-id/mock-gps
+baud = 4800
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+
+[tracking]
+output = ~/gpx-output
+retention_days = 90
+EOF
+printf 'cell\n' >"$skip_sync_bad_track_charts/AK_ENCs/US5AK3CM/US5AK3CM.000"
+python3 - "$skip_sync_bad_track_charts" <<'PY'
+from datetime import datetime, timezone
+from pathlib import Path
+import json
+import sys
+
+chart_dir = Path(sys.argv[1])
+manifest = {
+    "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "created_at_source": "download",
+    "package": {
+        "label": "State AK",
+        "filename": "AK_ENCs.zip",
+        "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+    },
+    "download": {
+        "path": "",
+        "url": "https://www.charts.noaa.gov/ENCs/AK_ENCs.zip",
+        "bytes": 1,
+        "sha256": "abc",
+    },
+    "extract": {
+        "path": str(chart_dir / "AK_ENCs"),
+        "enc_cell_count": 1,
+    },
+}
+(chart_dir / "noaa-navionics-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+(chart_dir / "noaa-navionics-manifest.json").chmod(0o600)
+PY
+chmod 0700 "$skip_sync_bad_track_charts"
+chmod 0777 "$skip_sync_bad_track_output"
+set +e
+HOME="$skip_sync_bad_track_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-sync \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
+provision_code=$?
+set -e
+chmod 0700 "$skip_sync_bad_track_output"
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-sync with unsafe track storage permissions" >&2
+  exit 1
+fi
+grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' "$provision_output"
+grep -q 'Track Disk:' "$provision_output"
 grep -q 'has permissions 0777, expected no group/other write bits' "$provision_output"
 
 scripts/configure_gps_time.sh --allow-non-pi --dry-run --chrony-conf "$tmpdir/chrony.conf" >"$gpsd_output"
