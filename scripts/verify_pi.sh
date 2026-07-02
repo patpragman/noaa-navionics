@@ -31,6 +31,7 @@ expected_gps_device=""
 expected_boot_id=""
 ssh_cmd=""
 git_cmd=""
+sleep_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -441,6 +442,7 @@ done
 
 validate_ssh_target "$target"
 ssh_cmd="$(require_local_command ssh)"
+sleep_cmd="$(require_local_command sleep)"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 git_cmd="$(require_local_command git)"
@@ -4828,7 +4830,7 @@ check_opencpn_stable() {
     printf 'no active OpenCPN process is supervised by the chartplotter launcher before stability wait\n' >&2
     return 1
   fi
-  sleep "$opencpn_stability_seconds"
+  "$sleep_cmd" "$opencpn_stability_seconds"
   if ! opencpn_supervised_running; then
     printf 'launcher-supervised OpenCPN exited within %ss of startup verification\n' "$opencpn_stability_seconds" >&2
     return 1
@@ -5053,7 +5055,7 @@ wait_for_chartplotter_started() {
       cleanup_private_check_output "$check_output" || true
       return 1
     fi
-    sleep "$chartplotter_start_interval"
+    "$sleep_cmd" "$chartplotter_start_interval"
   done
 }
 
@@ -5071,7 +5073,7 @@ wait_for_chrony_gps_source() {
       printf '%s\n' "${output:-chrony did not report a usable GPS source}" >&2
       return 1
     fi
-    sleep 1
+    "$sleep_cmd" 1
   done
 }
 
@@ -5095,7 +5097,7 @@ check_preflight_service_succeeded() {
       printf '%s\n' "${state:-could not read noaa-navionics-preflight.service state}" >&2
       return 1
     fi
-    sleep 1
+    "$sleep_cmd" 1
   done
 }
 
@@ -5903,7 +5905,7 @@ for attempt in $(seq 1 "$status_attempts"); do
   fi
   if [[ "$attempt" -lt "$status_attempts" ]]; then
     printf 'WARN preflight attempt %s/%s failed; retrying in %ss\n' "$attempt" "$status_attempts" "$status_retry_delay"
-    sleep "$status_retry_delay"
+    "$sleep_cmd" "$status_retry_delay"
   fi
 done
 if [[ "$preflight_ok" -eq 0 ]]; then

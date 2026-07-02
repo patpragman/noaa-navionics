@@ -738,6 +738,8 @@ grep -q -- '-czf - .' scripts/deploy_to_pi.sh
 grep -q 'Could not confirm required remote command on the Pi' scripts/deploy_to_pi.sh
 grep -q 'ssh_cmd="$(require_local_command ssh)"' scripts/dock_test_pi.sh
 grep -q 'ssh_cmd="$(require_local_command ssh)"' scripts/verify_pi.sh
+grep -q 'sleep_cmd="$(require_local_command sleep)"' scripts/dock_test_pi.sh
+grep -q 'sleep_cmd="$(require_local_command sleep)"' scripts/verify_pi.sh
 grep -q 'git_cmd="$(require_local_command git)"' scripts/verify_pi.sh
 grep -q 'validate_trusted_local_command' scripts/dock_test_pi.sh
 grep -q 'validate_trusted_local_command' scripts/verify_pi.sh
@@ -749,6 +751,8 @@ grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH' scripts/verify_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/dock_test_pi.sh
 grep -q 'Local ${command_name} command is not executable after resolution' scripts/verify_pi.sh
+! grep -q '^ *sleep ' scripts/dock_test_pi.sh
+! grep -q '^ *sleep ' scripts/verify_pi.sh
 for local_command_trust_script in \
   scripts/check_pi_status.sh \
   scripts/collect_pi_support_bundle.sh \
@@ -769,6 +773,8 @@ for local_command_trust_script in \
   scripts/verify_pi_recovery_exports.sh; do
   grep -q 'Local ${command_name} command is not a regular file after resolution' "$local_command_trust_script"
 done
+grep -q 'sleep_cmd="$(require_local_command sleep)"' scripts/shutdown_pi_safely.sh
+! grep -q '^ *sleep ' scripts/shutdown_pi_safely.sh
 grep -q 'remote ${command_name} command is not a regular file after resolution' scripts/check_pi_status.sh
 grep -q 'Remote ${command_name} command is not a regular file after resolution' scripts/refresh_pi_charts.sh
 grep -q 'Remote ${command_name} command is not a regular file after resolution' scripts/shutdown_pi_safely.sh
@@ -7216,6 +7222,8 @@ grep -q 'dock test bounds reboot SSH wait time to 1-900 seconds' README.md
 grep -q 'dock test bounds reboot SSH wait time to 1-900 seconds' docs/sailboat-pi.md
 grep -q 'bounds the reboot SSH wait timeout to 1-900 seconds' README.md
 grep -q 'bounds the reboot SSH wait timeout to 1-900 seconds' docs/sailboat-pi.md
+grep -q 'validate the trusted root-owned local `sleep` command before reboot, shutdown, and verification polling waits' README.md
+grep -q 'validate the trusted root-owned local `sleep` command before reboot, shutdown, and verification polling waits' docs/sailboat-pi.md
 grep -q 'Do not run the dock test as root@' scripts/dock_test_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/dock_test_pi.sh
 grep -q 'check_remote_noninteractive_reboot_available' scripts/dock_test_pi.sh

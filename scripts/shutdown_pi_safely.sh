@@ -35,6 +35,7 @@ shift
 confirm=0
 dry_run=0
 ssh_cmd=""
+sleep_cmd=""
 local_python_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
@@ -365,7 +366,7 @@ wait_for_ssh_shutdown() {
       if (( remaining <= 0 )); then
         break
       fi
-      sleep 2
+      "$sleep_cmd" 2
     else
       printf 'SSH stopped responding after shutdown request for %s.\n' "$target"
       return 0
@@ -598,6 +599,7 @@ REMOTE
 
 validate_ssh_target "$target"
 ssh_cmd="$(require_local_command ssh)"
+sleep_cmd="$(require_local_command sleep)"
 local_python_cmd="$(require_local_command python3)"
 dry_run_quoted="$(printf '%q' "$dry_run")"
 validate_remote_bash_entrypoint

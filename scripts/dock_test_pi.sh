@@ -64,6 +64,7 @@ remote_reboot_cmd=""
 remote_sudo_cmd=""
 remote_python_cmd=""
 ssh_cmd=""
+sleep_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -516,6 +517,7 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 ssh_cmd="$(require_local_command ssh)"
+sleep_cmd="$(require_local_command sleep)"
 
 wait_for_ssh_down() {
   local deadline=$((SECONDS + 60))
@@ -523,7 +525,7 @@ wait_for_ssh_down() {
     if ! ssh_available; then
       return 0
     fi
-    sleep 2
+    "$sleep_cmd" 2
   done
   echo "warning: SSH did not drop after reboot request; continuing to wait for availability" >&2
 }
@@ -534,7 +536,7 @@ wait_for_ssh_up() {
     if ssh_available; then
       return 0
     fi
-    sleep 5
+    "$sleep_cmd" 5
   done
   echo "Pi did not return on SSH within ${timeout}s: $target" >&2
   return 1
@@ -767,7 +769,7 @@ request_reboot() {
     if ! ssh_available; then
       return 0
     fi
-    sleep 2
+    "$sleep_cmd" 2
   done
 
   echo "Failed to request reboot with passwordless sudo on $target." >&2
