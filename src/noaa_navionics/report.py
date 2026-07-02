@@ -563,6 +563,11 @@ def _chart_readiness_validation_failures(
             enc_cell_samples = data.get("enc_cell_samples")
             if data.get("has_extracted_enc_cells") is not True:
                 failures.append(CheckResult("Charts", False, "status report Charts found no extracted ENC cells"))
+            if data.get("has_unextracted_zips") is not False:
+                failures.append(CheckResult("Charts", False, "status report Charts found unextracted ZIP chart artifacts"))
+            zip_samples = data.get("zip_samples")
+            if not isinstance(zip_samples, list) or zip_samples:
+                failures.append(CheckResult("Charts", False, "status report Charts ZIP sample list is not empty"))
             if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
                 failures.append(CheckResult("Charts", False, "status report Charts has no ENC cell sample paths"))
             elif any(not _status_absolute_path(str(sample)) for sample in enc_cell_samples):

@@ -1029,6 +1029,11 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
         fail("pre-departure status snapshot JSON Charts path contains a symlink")
     if charts_data.get("has_extracted_enc_cells") is not True:
         fail("pre-departure status snapshot JSON Charts found no extracted ENC cells")
+    if charts_data.get("has_unextracted_zips") is not False:
+        fail("pre-departure status snapshot JSON Charts found unextracted ZIP chart artifacts")
+    zip_samples = charts_data.get("zip_samples")
+    if not isinstance(zip_samples, list) or zip_samples:
+        fail("pre-departure status snapshot JSON Charts ZIP sample list is not empty")
     enc_cell_samples = charts_data.get("enc_cell_samples")
     if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
         fail("pre-departure status snapshot JSON Charts has no ENC cell sample paths")

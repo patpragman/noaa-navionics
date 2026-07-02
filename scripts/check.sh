@@ -5423,6 +5423,8 @@ grep -q 'status report manifest extract path is not absolute' src/noaa_navionics
 grep -q 'status report Manifest download path is outside chart output' src/noaa_navionics/report.py
 grep -q 'status report Manifest extract path is outside chart output' src/noaa_navionics/report.py
 grep -q 'status report Charts ENC cell sample path is outside chart output' src/noaa_navionics/report.py
+grep -q 'status report Charts found unextracted ZIP chart artifacts' src/noaa_navionics/report.py
+grep -q 'status report Charts ZIP sample list is not empty' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0700' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
 grep -q 'pre-departure status snapshot JSON Manifest download path is outside chart_output' scripts/pre_trip_prepare_pi.sh
@@ -5434,6 +5436,12 @@ grep -q 'status snapshot JSON Manifest extract path is outside chart_output' scr
 grep -q 'pre-departure status snapshot JSON Charts ENC cell sample path is outside chart_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Charts ENC cell sample path is outside chart_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'status snapshot JSON Charts ENC cell sample path is outside chart_output' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts found unextracted ZIP chart artifacts' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts found unextracted ZIP chart artifacts' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON Charts found unextracted ZIP chart artifacts' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts ZIP sample list is not empty' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts ZIP sample list is not empty' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON Charts ZIP sample list is not empty' scripts/post_trip_collect_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log latest_path is not under tracks_dir' scripts/pre_trip_prepare_pi.sh
 grep -Fq 'pre-departure status snapshot JSON track_log latest_path is not a track-*.gpx file' scripts/pre_trip_prepare_pi.sh
@@ -7904,6 +7912,8 @@ chart_row_data = {
     "storage_symlink_component": "",
     "enc_cell_samples": ["/charts/AK_ENCs/US5AK00M/US5AK00M.000"],
     "has_extracted_enc_cells": True,
+    "has_unextracted_zips": False,
+    "zip_samples": [],
 }
 debris_row_data = {
     "configured_path": "/charts",
@@ -8776,6 +8786,8 @@ chart_row_data = {
     "storage_symlink_component": "",
     "enc_cell_samples": ["/charts/AK_ENCs/US5AK00M/US5AK00M.000"],
     "has_extracted_enc_cells": True,
+    "has_unextracted_zips": False,
+    "zip_samples": [],
 }
 debris_row_data = {
     "configured_path": "/charts",
@@ -12214,6 +12226,8 @@ def write_pre_departure_status(directory):
         "storage_symlink_component": "",
         "enc_cell_samples": ["/charts/AK_ENCs/US5AK00M/US5AK00M.000"],
         "has_extracted_enc_cells": True,
+        "has_unextracted_zips": False,
+        "zip_samples": [],
     }
     debris_row_data = {
         "configured_path": "/charts",
