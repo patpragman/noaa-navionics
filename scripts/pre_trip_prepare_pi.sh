@@ -1103,6 +1103,37 @@ def stable_snapshot_gps_device_path(path: str) -> bool:
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 
 
+def validate_snapshot_gps_device_row(check_rows: dict[str, dict[str, object]], *, expected_device: str) -> None:
+    row = check_rows.get("GPS Device")
+    if not isinstance(row, dict):
+        fail("pre-departure status snapshot JSON missing GPS Device readiness row")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        fail("pre-departure status snapshot JSON GPS Device row has no structured data")
+    configured_path = snapshot_text(data.get("configured_path", ""), "GPS Device path")
+    if configured_path != expected_device:
+        fail("pre-departure status snapshot JSON GPS Device path does not match config gps_device")
+    if not Path(configured_path).is_absolute():
+        fail("pre-departure status snapshot JSON GPS Device path is not absolute")
+    if not stable_snapshot_gps_device_path(configured_path):
+        fail("pre-departure status snapshot JSON GPS Device path is not stable")
+    if data.get("stable_path") is not True:
+        fail("pre-departure status snapshot JSON GPS Device missing stable path evidence")
+    if data.get("volatile_path") is True:
+        fail("pre-departure status snapshot JSON GPS Device path is volatile")
+    if data.get("exists") is not True:
+        fail("pre-departure status snapshot JSON GPS Device path does not exist")
+    if data.get("is_directory") is True:
+        fail("pre-departure status snapshot JSON GPS Device path is a directory")
+    if configured_path.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/")) and data.get("is_symlink") is not True:
+        fail("pre-departure status snapshot JSON GPS Device udev path is not a symlink")
+    if data.get("is_character_device") is not True:
+        fail("pre-departure status snapshot JSON GPS Device is not a character device")
+    resolved_path = snapshot_text(data.get("resolved_path", ""), "GPS Device resolved path")
+    if not Path(resolved_path).is_absolute():
+        fail("pre-departure status snapshot JSON GPS Device resolved path is not absolute")
+
+
 def parse_snapshot_timestamp(value: object, field: str) -> datetime:
     if not isinstance(value, str) or not value.strip():
         fail(f"pre-departure status snapshot JSON {field} timestamp is missing")
@@ -1948,6 +1979,7 @@ def validate_successful_status_snapshot(
         required_checks.update(SERIAL_READINESS_CHECKS)
     else:
         required_checks.update(GPSD_READINESS_CHECKS)
+        required_checks.add("GPS Device")
         required_service_checks.update(GPSD_SERVICE_CHECKS)
     if track_output != chart_output:
         required_checks.add("Track Disk")
@@ -1972,6 +2004,7 @@ def validate_successful_status_snapshot(
             "pre-departure status snapshot JSON missing structured readiness data for: "
             + ", ".join(missing_structured_data)
         )
+    validate_snapshot_gps_device_row(check_rows, expected_device=gps_device)
     validate_snapshot_autostart(payload)
     validate_snapshot_status_launcher(payload)
     validate_snapshot_mob_launcher(payload)

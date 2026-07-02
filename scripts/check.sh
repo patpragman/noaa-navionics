@@ -927,8 +927,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unsafe desktop autostart, status GUI, or MOB desktop launcher evidence, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unsafe desktop autostart, status GUI, or MOB desktop launcher evidence, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, GPS-device-row-mismatched, chart-context-mismatched, manifest-inconsistent, unsafe desktop autostart, status GUI, or MOB desktop launcher evidence, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, GPS-device-row-mismatched, chart-context-mismatched, manifest-inconsistent, unsafe desktop autostart, status GUI, or MOB desktop launcher evidence, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'Options for skipped pre-trip steps are rejected' README.md
 grep -q 'Options for skipped pre-trip steps are rejected' docs/sailboat-pi.md
 grep -q 'refresh, recovery, GPS-device, and pre-departure controls' README.md
@@ -1055,8 +1055,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names' README.md
 grep -q 'trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names' docs/sailboat-pi.md
 grep -q 'test_status_snapshot_validators_require_status_desktop_launcher_evidence' tests/test_downloader.py
@@ -1127,8 +1127,8 @@ grep -q 'requires each archive and the checksum manifest to be user-owned privat
 grep -q 'requires each archive and the checksum manifest to be user-owned private `0600` files opened relative to that descriptor with no-follow revalidation' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain core command-evidence, NOAA status-report, storage-listing, app config, launcher environment, saved status, and source-revision evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain core command-evidence, NOAA status-report, storage-listing, app config, launcher environment, saved status, and source-revision evidence files' docs/sailboat-pi.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, Track Log service-row data matching top-level latest-track evidence, trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
-grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, Track Log service-row data matching top-level latest-track evidence, trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, Track Log service-row data matching top-level latest-track evidence, trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, Track Log service-row data matching top-level latest-track evidence, trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' README.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' docs/sailboat-pi.md
 grep -q 'pre-departure status snapshot JSON Source Revision row does not match deployed source_revision' scripts/verify_pi_recovery_exports.sh
@@ -5424,6 +5424,22 @@ grep -q 'status snapshot JSON config gps_device is volatile' scripts/post_trip_c
 grep -q 'pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/verify_pi_recovery_exports.sh
 grep -q 'status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/post_trip_collect_pi.sh
+grep -q 'structured GPS Device row evidence matching the configured receiver' README.md
+grep -q 'structured GPS Device row evidence matching the configured receiver' docs/sailboat-pi.md
+grep -q 'GPS-device-row-mismatched' README.md
+grep -q 'GPS-device-row-mismatched' docs/sailboat-pi.md
+grep -q 'def validate_snapshot_gps_device_row' scripts/pre_trip_prepare_pi.sh
+grep -q 'def validate_snapshot_gps_device_row' scripts/verify_pi_recovery_exports.sh
+grep -q 'def validate_snapshot_gps_device_row' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON missing GPS Device readiness row' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON missing GPS Device readiness row' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON missing GPS Device readiness row' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON GPS Device path does not match config gps_device' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON GPS Device path does not match config gps_device' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON GPS Device path does not match config gps_device' scripts/post_trip_collect_pi.sh
+grep -q 'required_checks.add("GPS Device")' scripts/pre_trip_prepare_pi.sh
+grep -q 'required_checks.add("GPS Device")' scripts/verify_pi_recovery_exports.sh
+grep -q 'required_checks.add("GPS Device")' scripts/post_trip_collect_pi.sh
 grep -q 'pre-departure status snapshot JSON config gps_baud is invalid' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config gps_baud is invalid' scripts/verify_pi_recovery_exports.sh
 grep -q 'status snapshot JSON config gps_baud is invalid' scripts/post_trip_collect_pi.sh
@@ -9459,7 +9475,7 @@ gpsd_service_checks = ["GPSD Socket", "GPSD Service", "Chrony Service"]
 
 checks = [
     {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
-    for name in sorted(core_readiness_checks + gpsd_readiness_checks)
+    for name in sorted(core_readiness_checks + gpsd_readiness_checks + ["GPS Device"])
 ]
 source_revision = "fixture123"
 if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_DIRTY_REVISION") == "1":
@@ -9477,6 +9493,17 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_NON_PI_SKIP") == "1":
 for row in checks:
     if row["name"] == "Source Revision":
         row["data"] = {"revision": source_revision}
+    if row["name"] == "GPS Device":
+        row["data"] = {
+            "configured_path": "/dev/serial/by-id/mock-gps",
+            "stable_path": True,
+            "volatile_path": False,
+            "is_symlink": True,
+            "exists": True,
+            "is_directory": False,
+            "resolved_path": "/dev/ttyACM0",
+            "is_character_device": True,
+        }
 if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_MISMATCHED_SOURCE_ROW") == "1":
     for row in checks:
         if row["name"] == "Source Revision":
@@ -10516,7 +10543,7 @@ else:
     source_revision = "fixture123"
 checks = [
     {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
-    for name in sorted(core_readiness_checks + gpsd_readiness_checks)
+    for name in sorted(core_readiness_checks + gpsd_readiness_checks + ["GPS Device"])
 ]
 if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_MISSING_REQUIRED_STATUS") == "1":
     checks = [row for row in checks if row["name"] != "Manifest"]
@@ -10531,6 +10558,17 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_NON_PI_SKIP") == "1":
 for row in checks:
     if row["name"] == "Source Revision":
         row["data"] = {"revision": source_revision}
+    if row["name"] == "GPS Device":
+        row["data"] = {
+            "configured_path": "/dev/serial/by-id/mock-gps",
+            "stable_path": True,
+            "volatile_path": False,
+            "is_symlink": True,
+            "exists": True,
+            "is_directory": False,
+            "resolved_path": "/dev/ttyACM0",
+            "is_character_device": True,
+        }
 if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_MISMATCHED_SOURCE_ROW") == "1":
     for row in checks:
         if row["name"] == "Source Revision":
@@ -14617,11 +14655,22 @@ def write_pre_departure_status(directory):
     generated_at = "2026-06-30T12:00:00Z"
     checks = [
         {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
-        for name in sorted(CORE_READINESS_CHECKS + GPSD_READINESS_CHECKS)
+        for name in sorted(CORE_READINESS_CHECKS + GPSD_READINESS_CHECKS + ["GPS Device"])
     ]
     for row in checks:
         if row["name"] == "Source Revision":
             row["data"] = {"revision": "fixture123"}
+        if row["name"] == "GPS Device":
+            row["data"] = {
+                "configured_path": "/dev/serial/by-id/mock-gps",
+                "stable_path": True,
+                "volatile_path": False,
+                "is_symlink": True,
+                "exists": True,
+                "is_directory": False,
+                "resolved_path": "/dev/ttyACM0",
+                "is_character_device": True,
+            }
         if row["name"] == "GPSD":
             row["data"] = {
                 "latitude": 61.0,
