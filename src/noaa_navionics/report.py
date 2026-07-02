@@ -665,8 +665,12 @@ def _chart_readiness_validation_failures(
             extract_path = str(data.get("extract_path", "")).strip()
             if not _status_absolute_path(download_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest download path is not absolute"))
+            elif not _status_path_under(download_path, expected_path):
+                failures.append(CheckResult("Manifest", False, "status report Manifest download path is outside chart output"))
             if not _status_absolute_path(extract_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest extract path is not absolute"))
+            elif not _status_path_under(extract_path, expected_path):
+                failures.append(CheckResult("Manifest", False, "status report Manifest extract path is outside chart output"))
             download_bytes = _positive_status_int(data.get("download_bytes"))
             summary_download_bytes = _positive_status_int(manifest.get("download_bytes"))
             if download_bytes is None:
@@ -1903,6 +1907,15 @@ def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
     for field in required_text_fields:
         if not str(manifest.get(field, "")).strip():
             return [CheckResult("Chart Manifest", False, f"status report manifest missing {field}")]
+    path = str(manifest.get("path", "")).strip()
+    download_path_text = str(manifest.get("download_path", "")).strip()
+    extract_path_text = str(manifest.get("extract_path", "")).strip()
+    if not _status_absolute_path(path):
+        return [CheckResult("Chart Manifest", False, "status report manifest path is not absolute")]
+    if not _status_absolute_path(download_path_text):
+        return [CheckResult("Chart Manifest", False, "status report manifest download path is not absolute")]
+    if not _status_absolute_path(extract_path_text):
+        return [CheckResult("Chart Manifest", False, "status report manifest extract path is not absolute")]
     created_at_source = str(manifest.get("created_at_source", "")).strip()
     if created_at_source not in {"download", "previous-manifest"}:
         return [

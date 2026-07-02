@@ -11199,6 +11199,22 @@ class StatusReportTests(unittest.TestCase):
                     any(failure.name == row_name and expected in failure.detail for failure in failures)
                 )
 
+        outside_cases = [
+            ("download_path", "/other/AK_ENCs.zip", "Manifest download path is outside chart output"),
+            ("extract_path", "/other/AK_ENCs", "Manifest extract path is outside chart output"),
+        ]
+        for field, value, expected in outside_cases:
+            with self.subTest(field=field, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                report["manifest"][field] = value
+                row = next(check for check in report["checks"] if check["name"] == "Manifest")
+                row["data"][field] = value
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "Manifest" and expected in failure.detail for failure in failures))
+
         stale_created_at = (now - timedelta(days=31)).isoformat().replace("+00:00", "Z")
         stale_report = complete_status_gui_report(generated_at=generated_at)
         stale_report["manifest"]["created_at"] = stale_created_at
@@ -12265,6 +12281,9 @@ class StatusReportTests(unittest.TestCase):
                 "missing manifest_symlink_component",
             ),
             ({"manifest": {**valid_manifest, "error": "manifest path is not a regular file"}}, "manifest error"),
+            ({"manifest": {**valid_manifest, "path": "noaa-navionics-manifest.json"}}, "manifest path is not absolute"),
+            ({"manifest": {**valid_manifest, "download_path": "AK_ENCs.zip"}}, "download path is not absolute"),
+            ({"manifest": {**valid_manifest, "extract_path": "AK_ENCs"}}, "extract path is not absolute"),
             ({"manifest": {**valid_manifest, "created_at_source": "manual"}}, "created_at_source manual is not verified"),
             (
                 {"manifest": {**valid_manifest, "download_path_is_symlink": True}},
@@ -12677,6 +12696,8 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON Manifest row has no top-level manifest summary",
                 "pre-departure status snapshot JSON Manifest path does not match manifest summary",
                 "pre-departure status snapshot JSON Manifest created_at_source is not verified",
+                "pre-departure status snapshot JSON Manifest download path is outside chart_output",
+                "pre-departure status snapshot JSON Manifest extract path is outside chart_output",
                 "pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary",
                 "pre-departure status snapshot JSON track_log missing latest_path",
                 "pre-departure status snapshot JSON track_log latest_path is not absolute",
@@ -12709,6 +12730,8 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON Manifest row has no top-level manifest summary",
                 "pre-departure status snapshot JSON Manifest path does not match manifest summary",
                 "pre-departure status snapshot JSON Manifest created_at_source is not verified",
+                "pre-departure status snapshot JSON Manifest download path is outside chart_output",
+                "pre-departure status snapshot JSON Manifest extract path is outside chart_output",
                 "pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary",
                 "pre-departure status snapshot JSON track_log missing latest_path",
                 "pre-departure status snapshot JSON track_log latest_path is not absolute",
@@ -12741,6 +12764,8 @@ class StatusReportTests(unittest.TestCase):
                 "status snapshot JSON Manifest row has no top-level manifest summary",
                 "status snapshot JSON Manifest path does not match manifest summary",
                 "status snapshot JSON Manifest created_at_source is not verified",
+                "status snapshot JSON Manifest download path is outside chart_output",
+                "status snapshot JSON Manifest extract path is outside chart_output",
                 "status snapshot JSON Manifest actual ENC cell count does not match manifest summary",
                 "status snapshot JSON track_log missing latest_path",
                 "status snapshot JSON track_log latest_path is not absolute",

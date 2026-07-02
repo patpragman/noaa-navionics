@@ -965,6 +965,25 @@ def validate_snapshot_manifest_row(
     created_at_source = str(data.get("created_at_source", "")).strip()
     if created_at_source not in {"download", "previous-manifest"}:
         fail("pre-departure status snapshot JSON Manifest created_at_source is not verified")
+    normalized_chart_output = os.path.normpath(chart_output)
+    for row_field, label in (
+        ("download_path", "download path"),
+        ("extract_path", "extract path"),
+    ):
+        manifest_storage_path = str(data.get(row_field, "")).strip()
+        if not Path(manifest_storage_path).is_absolute():
+            if row_field == "download_path":
+                fail("pre-departure status snapshot JSON Manifest download path is not absolute")
+            fail("pre-departure status snapshot JSON Manifest extract path is not absolute")
+        normalized_storage_path = os.path.normpath(manifest_storage_path)
+        try:
+            storage_common = os.path.commonpath([normalized_storage_path, normalized_chart_output])
+        except ValueError:
+            storage_common = ""
+        if normalized_storage_path == normalized_chart_output or storage_common != normalized_chart_output:
+            if row_field == "download_path":
+                fail("pre-departure status snapshot JSON Manifest download path is outside chart_output")
+            fail("pre-departure status snapshot JSON Manifest extract path is outside chart_output")
     parse_snapshot_timestamp(data.get("created_at"), "Manifest created_at")
     download_bytes = positive_status_int(data.get("download_bytes"))
     summary_download_bytes = positive_status_int(manifest.get("download_bytes"))
