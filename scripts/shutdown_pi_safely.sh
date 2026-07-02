@@ -35,11 +35,13 @@ shift
 confirm=0
 dry_run=0
 ssh_cmd=""
+local_python_cmd=""
 ssh_batch_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=4)
 ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
 shutdown_timeout=90
 timeout_set=0
 max_shutdown_timeout=600
+max_shutdown_output_bytes=$((1024 * 1024))
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 normalize_decimal_integer() {
@@ -374,13 +376,74 @@ wait_for_ssh_shutdown() {
   return 1
 }
 
-validate_ssh_target "$target"
-ssh_cmd="$(require_local_command ssh)"
-dry_run_quoted="$(printf '%q' "$dry_run")"
-validate_remote_bash_entrypoint
+create_private_shutdown_output_capture() {
+  local capture
+  capture="$(mktemp "${TMPDIR:-/tmp}/.noaa-navionics-shutdown-output.XXXXXX")"
+  chmod 0600 "$capture"
+  printf '%s\n' "$capture"
+}
 
-set +e
-ssh_output="$("$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=${dry_run_quoted} /bin/bash -s" 2>&1 <<'REMOTE'
+cleanup_shutdown_output_capture() {
+  local capture="${1:-}"
+  [[ -n "$capture" ]] || return 0
+  rm -f -- "$capture"
+}
+
+capture_shutdown_output() {
+  local capture="$1"
+  "$local_python_cmd" -c '
+import os
+import stat
+import sys
+
+path = sys.argv[1]
+limit = int(sys.argv[2])
+flags = os.O_WRONLY | os.O_TRUNC
+flags |= getattr(os, "O_NOFOLLOW", 0)
+try:
+    fd = os.open(path, flags)
+except OSError as exc:
+    print(f"could not open shutdown output capture {path}: {exc}", file=sys.stderr)
+    raise SystemExit(125)
+try:
+    info = os.fstat(fd)
+    if not stat.S_ISREG(info.st_mode):
+        print(f"shutdown output capture is not a regular file: {path}", file=sys.stderr)
+        raise SystemExit(125)
+    if info.st_uid != os.getuid():
+        print(
+            f"shutdown output capture {path} is owned by uid {info.st_uid}, expected {os.getuid()}",
+            file=sys.stderr,
+        )
+        raise SystemExit(125)
+    mode = stat.S_IMODE(info.st_mode)
+    if mode != 0o600:
+        print(f"shutdown output capture {path} has permissions {mode:04o}, expected 0600", file=sys.stderr)
+        raise SystemExit(125)
+
+    total = 0
+    while True:
+        chunk = sys.stdin.buffer.read(65536)
+        if not chunk:
+            break
+        previous = total
+        total += len(chunk)
+        if total > limit:
+            allowed = max(0, limit - previous)
+            if allowed:
+                os.write(fd, chunk[:allowed])
+            os.fsync(fd)
+            print(f"shutdown output exceeds size limit ({total} > {limit} bytes)", file=sys.stderr)
+            raise SystemExit(124)
+        os.write(fd, chunk)
+    os.fsync(fd)
+finally:
+    os.close(fd)
+' "$capture" "$max_shutdown_output_bytes"
+}
+
+run_remote_shutdown() {
+  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=${dry_run_quoted} /bin/bash -s" <<'REMOTE'
 set -euo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
@@ -531,9 +594,33 @@ printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
 "$sudo_cmd" -n "$systemctl_cmd" poweroff
 printf 'Poweroff request accepted by systemd.\n'
 REMOTE
-)"
-ssh_status=$?
+}
+
+validate_ssh_target "$target"
+ssh_cmd="$(require_local_command ssh)"
+local_python_cmd="$(require_local_command python3)"
+dry_run_quoted="$(printf '%q' "$dry_run")"
+validate_remote_bash_entrypoint
+
+shutdown_output_capture="$(create_private_shutdown_output_capture)"
+cleanup_shutdown_capture() {
+  cleanup_shutdown_output_capture "${shutdown_output_capture:-}" || true
+}
+trap cleanup_shutdown_capture EXIT
+
+set +e
+run_remote_shutdown 2>&1 | capture_shutdown_output "$shutdown_output_capture"
+shutdown_pipe_statuses=("${PIPESTATUS[@]}")
 set -e
+ssh_status="${shutdown_pipe_statuses[0]}"
+capture_status="${shutdown_pipe_statuses[1]}"
+if [[ "$capture_status" -eq 124 ]]; then
+  exit 2
+fi
+if [[ "$capture_status" -ne 0 ]]; then
+  exit "$capture_status"
+fi
+ssh_output="$(<"$shutdown_output_capture")"
 if [[ -n "$ssh_output" ]]; then
   printf '%s\n' "$ssh_output"
 fi

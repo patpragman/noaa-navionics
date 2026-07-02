@@ -1212,14 +1212,18 @@ grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
 grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the shutdown heredoc' README.md
+grep -q 'validates trusted local `python3` before bounded output capture' README.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
+grep -q 'caps that output at 1 MiB before loading it into memory for marker checks' README.md
 grep -q 'proves the user systemd track logger unit is installed during dry-run checks' README.md
 grep -q 'stops `noaa-navionics-track.service` before the final filesystem sync' README.md
 grep -q 'requires the remote command to report that systemd accepted the poweroff request' README.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' README.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the shutdown heredoc' docs/sailboat-pi.md
+grep -q 'validates trusted local `python3` before bounded output capture' docs/sailboat-pi.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
+grep -q 'caps that output at 1 MiB before loading it into memory for marker checks' docs/sailboat-pi.md
 grep -q 'proves the user systemd track logger unit is installed during dry-run checks' docs/sailboat-pi.md
 grep -q 'stops `noaa-navionics-track.service` before the final filesystem sync' docs/sailboat-pi.md
 grep -q 'requires the remote command to report that systemd accepted the poweroff request' docs/sailboat-pi.md
@@ -1286,6 +1290,10 @@ grep -q 'Poweroff request accepted by systemd' scripts/shutdown_pi_safely.sh
 grep -q 'did not report that systemd accepted the poweroff request' scripts/shutdown_pi_safely.sh
 grep -q 'Pi still accepts SSH after %ss; do not cut boat power yet' scripts/shutdown_pi_safely.sh
 grep -q 'max_shutdown_timeout=600' scripts/shutdown_pi_safely.sh
+grep -q 'max_shutdown_output_bytes=$((1024 \* 1024))' scripts/shutdown_pi_safely.sh
+grep -q 'create_private_shutdown_output_capture' scripts/shutdown_pi_safely.sh
+grep -q 'capture_shutdown_output "$shutdown_output_capture"' scripts/shutdown_pi_safely.sh
+grep -q 'shutdown output exceeds size limit' scripts/shutdown_pi_safely.sh
 grep -q 'bounds the shutdown confirmation timeout to 1-600 seconds' README.md
 grep -q 'bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validate_shutdown_controls' scripts/shutdown_pi_safely.sh
@@ -17833,6 +17841,51 @@ grep -Fq '"$sudo_cmd" -n -l "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin
 test "$(grep -Fc '"$sudo_cmd" -n -l "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin")" -ge 2
 grep -q 'Allow passwordless sudo for: $systemctl_cmd poweroff' "$shutdown_fake_ssh_stdin"
 grep -Fq '"$sudo_cmd" -n "$systemctl_cmd" poweroff' "$shutdown_fake_ssh_stdin"
+
+shutdown_oversized_fake_ssh_bin="$tmpdir/shutdown-oversized-fake-ssh-bin"
+shutdown_oversized_fake_ssh_stdin="$tmpdir/shutdown-oversized-fake-ssh-stdin"
+shutdown_output_tmp="$tmpdir/shutdown-output-tmp"
+mkdir -p "$shutdown_oversized_fake_ssh_bin" "$shutdown_output_tmp"
+cat >"$shutdown_oversized_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  *'/bin/sh -s -- /bin/bash bash'*)
+    cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+    exit 0
+    ;;
+  *NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=1*)
+    cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+    python3 - <<'PY'
+import sys
+sys.stdout.buffer.write(b"x" * (1024 * 1024 + 1))
+PY
+    exit 0
+    ;;
+esac
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+exit 1
+EOF
+chmod +x "$shutdown_oversized_fake_ssh_bin/ssh"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$shutdown_oversized_fake_ssh_stdin" \
+  TMPDIR="$shutdown_output_tmp" \
+  PATH="$shutdown_oversized_fake_ssh_bin:$PATH" \
+  scripts/shutdown_pi_safely.sh pi@example.invalid --dry-run >"$verify_output" 2>&1
+shutdown_oversized_code=$?
+set -e
+if [[ "$shutdown_oversized_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject oversized remote shutdown output with exit 2" >&2
+  exit 1
+fi
+grep -q 'shutdown output exceeds size limit' "$verify_output"
+! grep -q '^xxxxxxxxxxxxxxxx' "$verify_output"
+if find "$shutdown_output_tmp" -maxdepth 1 -name '.noaa-navionics-shutdown-output.*' -print -quit | grep -q .; then
+  find "$shutdown_output_tmp" -maxdepth 1 -name '.noaa-navionics-shutdown-output.*' -print >&2
+  echo "expected shutdown_pi_safely.sh to clean up private shutdown output capture after oversized output" >&2
+  exit 1
+fi
 
 shutdown_confirm_fake_ssh_bin="$tmpdir/shutdown-confirm-fake-ssh-bin"
 shutdown_confirm_fake_ssh_log="$tmpdir/shutdown-confirm-fake-ssh-log"
