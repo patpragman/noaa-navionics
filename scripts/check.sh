@@ -5023,13 +5023,16 @@ grep -q 'tracks_dir contains control characters' tests/test_downloader.py
 grep -q 'latest_path contains control characters' tests/test_downloader.py
 grep -q 'readiness-row storage paths, chart sample paths' README.md
 grep -q 'readiness-row storage paths, chart sample paths' docs/sailboat-pi.md
-grep -q 'Pi verification applies the same rejection before using status-artifact paths' README.md
-grep -q 'Pi verification applies the same rejection before using status-artifact paths' docs/sailboat-pi.md
+grep -q 'Pi verification rejects non-string values and control characters before using status-artifact paths or symlink markers' README.md
+grep -q 'Pi verification rejects non-string values and control characters before using status-artifact paths or symlink markers' docs/sailboat-pi.md
 grep -q 'ENC cell sample path contains control characters' tests/test_downloader.py
 grep -q 'resolved path contains control characters' tests/test_downloader.py
 grep -q 'test_verify_pi_rejects_status_artifact_path_control_characters' tests/test_downloader.py
 grep -q 'def status_text' scripts/verify_pi.sh
+grep -q 'status report {label} is not a string' scripts/verify_pi.sh
 grep -q 'contains control characters' scripts/verify_pi.sh
+grep -q 'non-string status-artifact paths or symlink markers' README.md
+grep -q 'non-string status-artifact paths or symlink markers' docs/sailboat-pi.md
 grep -q '"manifest download path"' scripts/verify_pi.sh
 grep -q 'def snapshot_text' scripts/pre_trip_prepare_pi.sh
 grep -q 'def snapshot_text' scripts/verify_pi_recovery_exports.sh

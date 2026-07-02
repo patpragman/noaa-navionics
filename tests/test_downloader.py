@@ -14672,6 +14672,7 @@ class StatusReportTests(unittest.TestCase):
 
         for expected in (
             "def status_text",
+            "is not a string",
             "contains control characters",
             '"config path"',
             '"launcher settings path"',

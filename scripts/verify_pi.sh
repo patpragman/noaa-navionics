@@ -802,6 +802,8 @@ def valid_boot_id(value):
     return bool(re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value))
 
 def status_text(value, label):
+    if not isinstance(value, str):
+        raise SystemExit(f"status report {label} is not a string")
     text = str(value)
     if any(ord(char) < 32 or ord(char) == 127 for char in text):
         raise SystemExit(f"status report {label} contains control characters")
