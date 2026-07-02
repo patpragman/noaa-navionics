@@ -913,8 +913,10 @@ grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/check_pi_status.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'lightweight read-only status snapshot' README.md
 grep -q 'lightweight read-only status snapshot' docs/sailboat-pi.md
-grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, executes that installed command through the validated no-follow descriptor, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" README.md
-grep -q "status helper validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, executes that installed command through the validated no-follow descriptor, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" docs/sailboat-pi.md
+grep -q 'status helper validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the status heredoc' README.md
+grep -q 'status helper validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the status heredoc' docs/sailboat-pi.md
+grep -q "validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, executes that installed command through the validated no-follow descriptor, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" README.md
+grep -q "validates the Pi's trusted root-owned \`python3\`, validates the installed private venv command path through a no-follow descriptor immediately before execution, executes that installed command through the validated no-follow descriptor, validates the onboard config file, and validates the private launcher environment before using its commissioned GPS wait" docs/sailboat-pi.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' README.md
 grep -q 'By default it reads the commissioned GPS wait from the private launcher environment' docs/sailboat-pi.md
 grep -q 'rejects symlinked command-tree or config path components' README.md
@@ -2598,6 +2600,9 @@ grep -q 'check_user_owned_private_file "NOAA Navionics launcher environment" "$l
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env_path"' scripts/check_pi_status.sh
 grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/check_pi_status.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/check_pi_status.sh
+grep -q 'validate_remote_bash_entrypoint' scripts/check_pi_status.sh
+grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/check_pi_status.sh
+grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/check_pi_status.sh
 grep -q 'reject_symlinked_path_components' scripts/check_pi_status.sh
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/check_pi_status.sh
 grep -q '"$python3_cmd" - "$resolved_path" <<'\''PY'\''' scripts/check_pi_status.sh
