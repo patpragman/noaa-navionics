@@ -2361,7 +2361,7 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             stdout = StringIO()
             stderr = StringIO()
-            with redirect_stdout(stdout), redirect_stderr(stderr):
+            with patch.object(Path, "is_char_device", return_value=True), redirect_stdout(stdout), redirect_stderr(stderr):
                 code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
 
             self.assertEqual(code, 0)
@@ -2385,7 +2385,7 @@ class OpenCPNConfigTests(unittest.TestCase):
 
             stdout = StringIO()
             stderr = StringIO()
-            with redirect_stdout(stdout), redirect_stderr(stderr):
+            with patch.object(Path, "is_char_device", return_value=True), redirect_stdout(stdout), redirect_stderr(stderr):
                 code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
 
             self.assertEqual(code, 1)
@@ -2408,6 +2408,27 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("PATH\tTYPE\tDETAIL", stdout.getvalue())
             self.assertIn(
                 "/dev/serial/by-id/usb-GPS_Receiver-if00\tbroken\tbroken by-id symlink to /dev/ttyACM0",
+                stdout.getvalue(),
+            )
+            self.assertIn("No usable stable GPS device paths were found", stderr.getvalue())
+
+    def test_cli_list_gps_devices_rejects_udev_link_to_non_character_target(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            dev_root = Path(tmpdir)
+            by_id = dev_root / "serial/by-id"
+            by_id.mkdir(parents=True)
+            target = dev_root / "ttyACM0"
+            target.write_text("", encoding="ascii")
+            (by_id / "usb-GPS_Receiver-if00").symlink_to("../../ttyACM0")
+
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
+
+            self.assertEqual(code, 1)
+            self.assertIn(
+                "/dev/serial/by-id/usb-GPS_Receiver-if00\tinvalid\tpoints to /dev/ttyACM0; target is not a character device",
                 stdout.getvalue(),
             )
             self.assertIn("No usable stable GPS device paths were found", stderr.getvalue())

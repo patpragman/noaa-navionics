@@ -875,6 +875,17 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
                 seen.add(display_path)
                 continue
             detail = f"points to {target}"
+            if not entry.is_char_device():
+                candidates.append(
+                    GPSDeviceCandidate(
+                        display_path,
+                        "invalid",
+                        f"{detail}; target is not a character device",
+                        False,
+                    )
+                )
+                seen.add(display_path)
+                continue
             candidates.append(GPSDeviceCandidate(display_path, "stable", detail, True))
             seen.add(display_path)
 
@@ -886,6 +897,17 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
         detail = "stable alias"
         if path.is_symlink():
             detail = f"stable alias to {_dev_display_path(path.resolve(strict=False), root)}"
+        if not path.is_char_device():
+            candidates.append(
+                GPSDeviceCandidate(
+                    display_path,
+                    "invalid-alias",
+                    f"{detail}; target is not a character device",
+                    False,
+                )
+            )
+            seen.add(display_path)
+            continue
         candidates.append(GPSDeviceCandidate(display_path, "stable-alias", detail, True))
         seen.add(display_path)
 
@@ -898,6 +920,17 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
     for path in sorted(volatile_paths, key=lambda candidate: candidate.name):
         display_path = _dev_display_path(path, root)
         if display_path in seen or not _volatile_usb_device_path(display_path):
+            continue
+        if not path.is_char_device():
+            candidates.append(
+                GPSDeviceCandidate(
+                    display_path,
+                    "invalid",
+                    "matches a volatile GPS name but is not a character device",
+                    False,
+                )
+            )
+            seen.add(display_path)
             continue
         candidates.append(
             GPSDeviceCandidate(
