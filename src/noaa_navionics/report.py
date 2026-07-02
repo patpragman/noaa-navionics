@@ -2136,10 +2136,13 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
     if not isinstance(lightdm, dict):
         failures.append("status report missing LightDM autologin section")
     else:
-        path = str(lightdm.get("path", "")).strip()
-        if not path:
-            failures.append("status report LightDM autologin config path is empty")
-        elif not _status_absolute_path(path):
+        path = required_text(
+            lightdm,
+            "path",
+            "status report LightDM autologin config path is empty",
+            "LightDM autologin config path",
+        )
+        if path and not _status_absolute_path(path):
             failures.append(f"status report LightDM autologin config path is not absolute: {path}")
         if lightdm.get("exists") is not True:
             failures.append(f"status report LightDM autologin config does not exist: {path or '<missing>'}")
@@ -2149,9 +2152,21 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             failures.append("status report LightDM autologin config directory is a symlink or missing symlink status")
         if "path_symlink_component" not in lightdm:
             failures.append("status report LightDM autologin config missing path_symlink_component")
-        elif str(lightdm.get("path_symlink_component", "")).strip():
-            failures.append("status report LightDM autologin config path contains a symlink")
-        error = str(lightdm.get("error", "")).strip()
+        else:
+            symlink_component = optional_text(
+                lightdm,
+                "path_symlink_component",
+                "status report LightDM autologin config path_symlink_component is not text",
+                "LightDM autologin config path_symlink_component",
+            )
+            if symlink_component:
+                failures.append("status report LightDM autologin config path contains a symlink")
+        error = optional_text(
+            lightdm,
+            "error",
+            "status report LightDM autologin config error is not text",
+            "LightDM autologin config error",
+        )
         if error:
             failures.append(f"status report LightDM autologin config error: {error}")
         failures.extend(

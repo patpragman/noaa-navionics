@@ -14236,6 +14236,51 @@ class StatusReportTests(unittest.TestCase):
                 "LightDM enabled state is disabled",
             ),
             (
+                {"desktop": {**valid_desktop, "lightdm_autologin": {**valid_lightdm, "path": 123}}},
+                "LightDM autologin config path is empty",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics.conf\x00",
+                        },
+                    }
+                },
+                "LightDM autologin config path contains control characters",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_autologin": {**valid_lightdm, "path_symlink_component": 123}}},
+                "LightDM autologin config path_symlink_component is not text",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {**valid_lightdm, "path_symlink_component": "\x00"},
+                    }
+                },
+                "LightDM autologin config path_symlink_component contains control characters",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_autologin": {**valid_lightdm, "error": 123}}},
+                "LightDM autologin config error is not text",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "error": "LightDM autologin config path is not a regular file\x00",
+                        },
+                    }
+                },
+                "LightDM autologin config error contains control characters",
+            ),
+            (
                 {
                     "desktop": {
                         **valid_desktop,

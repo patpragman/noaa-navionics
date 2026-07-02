@@ -5132,6 +5132,8 @@ grep -q 'desktop autostart Hidden=true disables chartplotter startup' src/noaa_n
 grep -q 'status report missing LightDM autologin section' src/noaa_navionics/report.py
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report LightDM autologin config missing path_symlink_component' src/noaa_navionics/report.py
+grep -q 'LightDM autologin config path_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'LightDM autologin config error contains control characters' tests/test_downloader.py
 grep -q 'LightDM autologin-user=.* expected' src/noaa_navionics/report.py
 grep -q 'status report missing manifest section' src/noaa_navionics/report.py
 grep -q 'status report manifest path is a symlink or missing symlink status' src/noaa_navionics/report.py
