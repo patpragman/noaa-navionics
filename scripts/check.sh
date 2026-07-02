@@ -4979,9 +4979,11 @@ grep -q 'def _gps_fix_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _track_log_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report missing valid host boot_id' src/noaa_navionics/report.py
 grep -q 'status report host boot_id is not a Linux boot_id value' src/noaa_navionics/report.py
+grep -q 'host boot_id contains control characters' tests/test_downloader.py
 grep -q 'status report missing app section' src/noaa_navionics/report.py
 grep -q 'status report missing deployed source_revision' src/noaa_navionics/report.py
 grep -q 'status report dirty deployed source_revision is not production-ready' src/noaa_navionics/report.py
+grep -q 'source_revision contains control characters' tests/test_downloader.py
 grep -q 'status report {name} ok is not boolean' src/noaa_navionics/report.py
 grep -q 'status report has duplicate readiness check' src/noaa_navionics/report.py
 grep -q 'status report has duplicate service check' src/noaa_navionics/report.py

@@ -1396,9 +1396,15 @@ def _generated_at_validation_failures(
 def _host_validation_failures(host: object) -> list[CheckResult]:
     if not isinstance(host, dict):
         return [CheckResult("Status Report", False, "status report missing host section")]
-    boot_id = str(host.get("boot_id", "")).strip()
+    boot_id_value = host.get("boot_id", "")
+    if not isinstance(boot_id_value, str):
+        return [CheckResult("Status Report", False, "status report missing valid host boot_id")]
+    boot_id = boot_id_value.strip()
     if not boot_id or boot_id == "unknown":
         return [CheckResult("Status Report", False, "status report missing valid host boot_id")]
+    control_failure = _status_control_character_failure(boot_id, "host boot_id")
+    if control_failure:
+        return [CheckResult("Status Report", False, control_failure)]
     if not BOOT_ID_RE.fullmatch(boot_id):
         return [CheckResult("Status Report", False, f"status report host boot_id is not a Linux boot_id value: {boot_id}")]
     return []
@@ -1413,6 +1419,9 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
     source_revision_text = source_revision.strip()
     if not source_revision_text or source_revision_text == "unknown":
         return [CheckResult("Status Report", False, "status report missing deployed source_revision")]
+    control_failure = _status_control_character_failure(source_revision_text, "source_revision")
+    if control_failure:
+        return [CheckResult("Status Report", False, control_failure)]
     if source_revision_text.endswith("-dirty"):
         return [
             CheckResult(

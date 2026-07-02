@@ -13411,7 +13411,9 @@ class StatusReportTests(unittest.TestCase):
         cases = [
             ({}, "missing host section"),
             ({"host": {}}, "missing valid host boot_id"),
+            ({"host": {"boot_id": 123}}, "missing valid host boot_id"),
             ({"host": {"boot_id": "unknown"}}, "missing valid host boot_id"),
+            ({"host": {"boot_id": "12345678-1234-4234-8234-123456789abc\x00"}}, "host boot_id contains control characters"),
             ({"host": {"boot_id": "not-a-boot-id"}}, "not a Linux boot_id value"),
         ]
         for updates, expected in cases:
@@ -13436,8 +13438,10 @@ class StatusReportTests(unittest.TestCase):
         )["app"]
         cases = [
             ({}, "missing app section"),
+            ({"app": {**valid_app, "source_revision": 123}}, "missing deployed source_revision"),
             ({"app": {**valid_app, "source_revision": ""}}, "missing deployed source_revision"),
             ({"app": {**valid_app, "source_revision": "unknown"}}, "missing deployed source_revision"),
+            ({"app": {**valid_app, "source_revision": "fixture123\x00"}}, "source_revision contains control characters"),
             ({"app": {**valid_app, "source_revision": "fixture123-dirty"}}, "dirty deployed source_revision"),
             ({"app": {**valid_app, "source_revision_path": ""}}, "missing source_revision_path"),
             ({"app": {**valid_app, "source_revision_path_is_symlink": True}}, "path is a symlink"),
