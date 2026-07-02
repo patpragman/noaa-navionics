@@ -13917,6 +13917,27 @@ class StatusReportTests(unittest.TestCase):
             set(report_module.GPSD_SERVICE_CHECKS),
         )
 
+    def test_post_trip_checksum_helpers_use_descriptor_validated_directory(self):
+        script = Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8")
+        sources = {
+            "write": shell_function_python_heredoc(script, "write_post_trip_checksum_manifest"),
+            "verify": shell_function_python_heredoc(script, "verify_post_trip_checksum_manifest"),
+        }
+
+        for label, source in sources.items():
+            with self.subTest(helper=label):
+                for expected in (
+                    "def open_trusted_post_trip_directory",
+                    "checksum directory changed",
+                    "os.listdir(directory_fd)",
+                    "dir_fd=directory_fd",
+                    'fd = os.open(path.name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=directory_fd)',
+                    "post_trip_artifact_names(directory_fd)",
+                ):
+                    self.assertIn(expected, source)
+                self.assertNotIn("directory.glob", source)
+                self.assertNotIn("status_path.exists", source)
+
     def test_pre_trip_required_status_checks_match_shared_readiness(self):
         source = shell_function_python_heredoc(
             Path("scripts/pre_trip_prepare_pi.sh").read_text(encoding="utf-8"),

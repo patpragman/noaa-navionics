@@ -1024,8 +1024,10 @@ grep -q 'trusted track-log symlink-status fields, track-log output context, safe
 grep -q 'trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names' docs/sailboat-pi.md
 grep -q 'test_status_snapshot_validators_require_status_desktop_launcher_evidence' tests/test_downloader.py
 grep -q 'status snapshot JSON Source Revision row does not match deployed source_revision' scripts/post_trip_collect_pi.sh
-grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts and reports the trip folder before any optional shutdown attempt' README.md
-grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts and reports the trip folder before any optional shutdown attempt' docs/sailboat-pi.md
+grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts after opening the trip folder through a no-follow same-file descriptor and selecting artifacts relative to that descriptor' README.md
+grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts after opening the trip folder through a no-follow same-file descriptor and selecting artifacts relative to that descriptor' docs/sailboat-pi.md
+grep -q 'reports the trip folder before any optional shutdown attempt' README.md
+grep -q 'reports the trip folder before any optional shutdown attempt' docs/sailboat-pi.md
 grep -q 'after artifacts are preserved even when the status snapshot reported a failure' README.md
 grep -q 'after artifacts are preserved even when the status snapshot reported a failure' docs/sailboat-pi.md
 grep -q 'runs any requested clean shutdown after collection, then exits non-zero' README.md
@@ -2487,9 +2489,20 @@ if not manifest_index < verify_index < summary_index < status_failure_index < sh
     raise SystemExit("post-trip status failure check must happen after artifact reporting and before optional shutdown")
 PY
 grep -q 'MANIFEST_NAME = "SHA256SUMS.txt"' scripts/post_trip_collect_pi.sh
+grep -q 'def open_trusted_post_trip_directory' scripts/post_trip_collect_pi.sh
+grep -q 'post-trip checksum directory changed' scripts/post_trip_collect_pi.sh
+grep -q 'os.listdir(directory_fd)' scripts/post_trip_collect_pi.sh
+grep -q 'dir_fd=directory_fd' scripts/post_trip_collect_pi.sh
+grep -q 'os.replace(temp_name, MANIFEST_NAME, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)' scripts/post_trip_collect_pi.sh
+grep -q 'post_trip_artifact_names(directory_fd)' scripts/post_trip_collect_pi.sh
+grep -q 'test_post_trip_checksum_helpers_use_descriptor_validated_directory' tests/test_downloader.py
+! sed -n '/^write_post_trip_checksum_manifest()/,/^}/p' scripts/post_trip_collect_pi.sh | grep -q 'directory.glob'
+! sed -n '/^verify_post_trip_checksum_manifest()/,/^}/p' scripts/post_trip_collect_pi.sh | grep -q 'directory.glob'
+! sed -n '/^write_post_trip_checksum_manifest()/,/^}/p' scripts/post_trip_collect_pi.sh | grep -q 'status_path.exists'
+! sed -n '/^verify_post_trip_checksum_manifest()/,/^}/p' scripts/post_trip_collect_pi.sh | grep -q 'status_path.exists'
 grep -q 'def cleanup_private_temp' scripts/post_trip_collect_pi.sh
 grep -q 'post-trip checksum temp changed before cleanup; leaving it in place' scripts/post_trip_collect_pi.sh
-grep -q 'cleanup_private_temp(temp_path, temp_stat)' scripts/post_trip_collect_pi.sh
+grep -q 'cleanup_private_temp(directory_fd, directory / temp_name, temp_stat)' scripts/post_trip_collect_pi.sh
 grep -q 'Wrote post-trip checksum manifest:' scripts/post_trip_collect_pi.sh
 grep -q 'Verified post-trip checksum manifest:' scripts/post_trip_collect_pi.sh
 grep -q 'post-trip checksum mismatch for' scripts/post_trip_collect_pi.sh
