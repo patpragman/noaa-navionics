@@ -4727,8 +4727,10 @@ grep -q 'no GPSD messages within' src/noaa_navionics/gps.py
 grep -q 'no NMEA bytes within' src/noaa_navionics/gps.py
 grep -q 'def _positive_seconds' src/noaa_navionics/gps.py
 grep -q 'def _non_negative_seconds' src/noaa_navionics/gps.py
+grep -q 'def _positive_int' src/noaa_navionics/gps.py
 grep -q 'test_iter_gpsd_fixes_raises_on_idle_timeout' tests/test_downloader.py
 grep -q 'test_iter_gpsd_fixes_rejects_invalid_timing_before_connect' tests/test_downloader.py
+grep -q 'test_iter_gpsd_fixes_rejects_invalid_message_limit_before_connect' tests/test_downloader.py
 grep -q 'test_read_fixes_passes_live_gpsd_idle_timeout' tests/test_downloader.py
 grep -q 'test_read_fixes_retries_empty_gpsd_stream_before_first_fix' tests/test_downloader.py
 grep -q 'ended before any fixes' src/noaa_navionics/cli.py
@@ -4737,6 +4739,7 @@ grep -q 'first connected GPSD stream ends before any fix arrives' docs/sailboat-
 grep -q 'test_read_fixes_passes_live_serial_idle_timeout' tests/test_downloader.py
 grep -q 'test_read_nmea_lines_raises_on_idle_timeout' tests/test_downloader.py
 grep -q 'test_read_nmea_lines_rejects_invalid_idle_timeout_before_read' tests/test_downloader.py
+grep -q 'test_read_nmea_lines_rejects_invalid_line_limit_before_read' tests/test_downloader.py
 grep -q 'def _live_idle_timeout' src/noaa_navionics/cli.py
 grep -q 'test_cli_log_track_zero_gpsd_idle_timeout_disables_live_timeout' tests/test_downloader.py
 grep -q 'test_cli_log_track_zero_serial_idle_timeout_disables_live_timeout' tests/test_downloader.py

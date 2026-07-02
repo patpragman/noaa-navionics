@@ -20628,6 +20628,23 @@ class GpsTests(unittest.TestCase):
         finally:
             gps_module.socket.create_connection = original_socket
 
+    def test_iter_gpsd_fixes_rejects_invalid_message_limit_before_connect(self):
+        original_socket = gps_module.socket.create_connection
+
+        def unexpected_create_connection(address, timeout=10.0):
+            raise AssertionError("socket should not be opened")
+
+        cases = [0, -1, True, 1.5, "16"]
+
+        try:
+            gps_module.socket.create_connection = unexpected_create_connection
+            for max_message_bytes in cases:
+                with self.subTest(max_message_bytes=max_message_bytes):
+                    with self.assertRaisesRegex(ValueError, "max_message_bytes must be a positive integer"):
+                        list(iter_gpsd_fixes(max_message_bytes=max_message_bytes))
+        finally:
+            gps_module.socket.create_connection = original_socket
+
     def test_read_nmea_lines_raises_on_idle_timeout(self):
         original_monotonic = gps_module.time.monotonic
 
@@ -20660,6 +20677,18 @@ class GpsTests(unittest.TestCase):
             with self.subTest(idle_timeout=idle_timeout):
                 with self.assertRaisesRegex(ValueError, re.escape(message)):
                     next(read_nmea_lines(UnexpectedReadStream(), idle_timeout=idle_timeout))
+
+    def test_read_nmea_lines_rejects_invalid_line_limit_before_read(self):
+        class UnexpectedReadStream:
+            def read(self, size=-1):
+                raise AssertionError("stream should not be read")
+
+        cases = [0, -1, False, 4.5, "4"]
+
+        for max_line_bytes in cases:
+            with self.subTest(max_line_bytes=max_line_bytes):
+                with self.assertRaisesRegex(ValueError, "max_line_bytes must be a positive integer"):
+                    next(read_nmea_lines(UnexpectedReadStream(), max_line_bytes=max_line_bytes))
 
     def test_read_nmea_lines_rejects_overlong_unterminated_fragment(self):
         class LongFragmentStream:

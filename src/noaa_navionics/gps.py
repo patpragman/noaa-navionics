@@ -203,6 +203,7 @@ def read_nmea_lines(
     max_line_bytes: int = NMEA_MAX_LINE_BYTES,
 ) -> Iterator[str]:
     idle_timeout = _positive_seconds_or_none(idle_timeout, "idle_timeout")
+    max_line_bytes = _positive_int(max_line_bytes, "max_line_bytes")
     buffer = b""
     last_data_monotonic = time.monotonic()
     while True:
@@ -283,6 +284,7 @@ def iter_gpsd_fixes(
     max_duration = _positive_seconds_or_none(max_duration, "max_duration")
     idle_timeout = _positive_seconds_or_none(idle_timeout, "idle_timeout")
     sky_max_age_seconds = _non_negative_seconds(sky_max_age_seconds, "sky_max_age_seconds")
+    max_message_bytes = _positive_int(max_message_bytes, "max_message_bytes")
     latest_sky: Optional[GPSFix] = None
     latest_sky_monotonic: Optional[float] = None
     deadline = time.monotonic() + max_duration if max_duration is not None else None
@@ -362,6 +364,14 @@ def _non_negative_seconds(value: object, label: str) -> float:
     if seconds < 0:
         raise ValueError(f"{label} must be zero or more seconds")
     return seconds
+
+
+def _positive_int(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{label} must be a positive integer")
+    if value <= 0:
+        raise ValueError(f"{label} must be a positive integer")
+    return value
 
 
 def _finite_float_or_none(value: object) -> Optional[float]:
