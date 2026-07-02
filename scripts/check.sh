@@ -893,8 +893,8 @@ grep -q 'validates the returned track/support archives as private no-follow read
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
 grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' README.md
 grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' docs/sailboat-pi.md
-grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' README.md
-grep -q 'rejects a real shutdown-only run when all artifact collection steps are skipped' docs/sailboat-pi.md
+grep -q 'rejects shutdown-only runs when all artifact collection steps are skipped' README.md
+grep -q 'rejects shutdown-only runs when all artifact collection steps are skipped' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' docs/sailboat-pi.md
 grep -q 'scripts/export_pi_opencpn_data.sh pi@raspberrypi.local' README.md
@@ -2083,7 +2083,8 @@ grep -q 'status snapshot JSON missing structured readiness data for' scripts/pos
 grep -q 'status snapshot JSON records non-Pi diagnostic skip(s)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON has invalid gps_mode' scripts/post_trip_collect_pi.sh
 grep -q 'At least one post-trip collection or shutdown step must run' scripts/post_trip_collect_pi.sh
-grep -q 'Real post-trip shutdown requires collecting at least one artifact first' scripts/post_trip_collect_pi.sh
+grep -q 'Post-trip shutdown options require collecting at least one artifact first' scripts/post_trip_collect_pi.sh
+grep -q 'scripts/shutdown_pi_safely.sh for shutdown-only checks' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'prepare_private_output_dir "Post-trip output directory" "$trip_dir"' scripts/post_trip_collect_pi.sh
 grep -q 'Output directory must not contain control characters' scripts/post_trip_collect_pi.sh
@@ -8809,10 +8810,21 @@ post_trip_code=$?
 set -e
 if [[ "$post_trip_code" -ne 2 ]]; then
   cat "$verify_output" >&2
-  echo "expected post_trip_collect_pi.sh to reject real shutdown without collection with exit 2" >&2
+  echo "expected post_trip_collect_pi.sh to reject shutdown without collection with exit 2" >&2
   exit 1
 fi
-grep -q 'Real post-trip shutdown requires collecting at least one artifact first' "$verify_output"
+grep -q 'Post-trip shutdown options require collecting at least one artifact first' "$verify_output"
+
+set +e
+scripts/post_trip_collect_pi.sh pi@example.invalid --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject shutdown dry run without collection with exit 2" >&2
+  exit 1
+fi
+grep -q 'Post-trip shutdown options require collecting at least one artifact first' "$verify_output"
 
 set +e
 scripts/post_trip_collect_pi.sh pi@example.invalid / --skip-status --skip-tracks --skip-support --shutdown-dry-run >"$verify_output" 2>&1
@@ -10005,10 +10017,8 @@ chmod 0775 "$post_trip_parent_real/scripts/check_pi_status.sh"
 set +e
 "$post_trip_parent_real/scripts/post_trip_collect_pi.sh" \
   pi@example.invalid "$tmpdir/post-trip-helper-writable-output" \
-  --skip-status \
   --skip-tracks \
-  --skip-support \
-  --shutdown-dry-run >"$verify_output" 2>&1
+  --skip-support >"$verify_output" 2>&1
 post_trip_parent_code=$?
 set -e
 if [[ "$post_trip_parent_code" -ne 2 ]]; then
@@ -10022,10 +10032,8 @@ ln -s "$post_trip_parent_real" "$post_trip_parent_link"
 set +e
 "$post_trip_parent_link/scripts/post_trip_collect_pi.sh" \
   pi@example.invalid "$tmpdir/post-trip-helper-parent-output" \
-  --skip-status \
   --skip-tracks \
-  --skip-support \
-  --shutdown-dry-run >"$verify_output" 2>&1
+  --skip-support >"$verify_output" 2>&1
 post_trip_parent_code=$?
 set -e
 if [[ "$post_trip_parent_code" -ne 2 ]]; then
