@@ -11893,7 +11893,7 @@ if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
   printf '{"ok": "yes", "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
   exit 0
 fi
-printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "GPSD", "ok": true, "data": {"timestamp": "%s", "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}}, {"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true, "data": {"track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}], "gps_fix": {"ok": true, "source": "GPSD", "timestamp": "%s", "age_seconds": 0.0, "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}, "track_log": {"ok": true, "track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "track_storage_symlink_component": "", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}\n' "$generated_at" "$generated_at" "$generated_at" "$generated_at" "$generated_at"
+printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "config": {"chart_package": "state", "chart_value": "AK", "chart_output": "/charts", "gps_mode": "gpsd", "gps_device": "/dev/serial/by-id/mock-gps", "gps_baud": 4800, "gpsd_host": "127.0.0.1", "gpsd_port": 2947, "track_output": "/charts", "track_retention_days": 90, "track_fsync_interval_seconds": 30.0, "anchor_radius_meters": 50.0}, "checks": [{"name": "GPSD", "ok": true, "data": {"timestamp": "%s", "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}}, {"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true, "data": {"track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}], "gps_fix": {"ok": true, "source": "GPSD", "timestamp": "%s", "age_seconds": 0.0, "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}, "track_log": {"ok": true, "track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "track_storage_symlink_component": "", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}\n' "$generated_at" "$generated_at" "$generated_at" "$generated_at" "$generated_at"
 EOF
 chmod +x "$status_fake_ssh_bin/ssh"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -11915,6 +11915,7 @@ grep -q 'top-level ok is not boolean' scripts/check_pi_status.sh
 grep -q 'generated_at timestamp must include a timezone' scripts/check_pi_status.sh
 grep -q 'from datetime import datetime, timezone' scripts/check_pi_status.sh
 grep -q 'import math' scripts/check_pi_status.sh
+grep -q 'import posixpath' scripts/check_pi_status.sh
 grep -q 'import re' scripts/check_pi_status.sh
 grep -q 'BOOT_ID_RE = re.compile' scripts/check_pi_status.sh
 grep -q 'status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()' scripts/check_pi_status.sh
@@ -11924,6 +11925,14 @@ grep -q 'missing host summary' scripts/check_pi_status.sh
 grep -q 'status_text(host.get("boot_id", ""), "host boot_id")' scripts/check_pi_status.sh
 grep -q 'host boot_id is not a Linux boot_id value' scripts/check_pi_status.sh
 grep -q 'def status_number' scripts/check_pi_status.sh
+grep -q 'def status_integer' scripts/check_pi_status.sh
+grep -q 'def validate_config_summary' scripts/check_pi_status.sh
+grep -q 'missing config summary' scripts/check_pi_status.sh
+grep -q 'config gps_device is volatile' scripts/check_pi_status.sh
+grep -q 'config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps' scripts/check_pi_status.sh
+grep -q 'config gps_baud is invalid' scripts/check_pi_status.sh
+grep -q '"track_fsync_interval_seconds"' scripts/check_pi_status.sh
+grep -q 'config track_fsync_interval_seconds is negative' tests/test_downloader.py
 grep -q 'def status_timestamp' scripts/check_pi_status.sh
 grep -q 'def validate_position_summary' scripts/check_pi_status.sh
 grep -q 'validate_position_summary(' scripts/check_pi_status.sh
@@ -11948,6 +11957,8 @@ grep -q 'test_check_pi_status_rejects_json_control_characters' tests/test_downlo
 grep -q 'test_check_pi_status_json_validator_executes_text_field_checks' tests/test_downloader.py
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' README.md
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' docs/sailboat-pi.md
+grep -q 'invalid critical config fields including chart/track output, GPS device/baud, GPSD port, track retention/fsync, and anchor radius' README.md
+grep -q 'invalid critical config fields including chart/track output, GPS device/baud, GPSD port, track retention/fsync, and anchor radius' docs/sailboat-pi.md
 grep -q 'stale or future-dated `generated_at`' README.md
 grep -q 'stale or future-dated `generated_at`' docs/sailboat-pi.md
 grep -q 'malformed Linux `boot_id` host evidence' README.md

@@ -15897,6 +15897,7 @@ class StatusReportTests(unittest.TestCase):
             "is not a string",
             "from datetime import datetime, timezone",
             "import math",
+            "import posixpath",
             "import re",
             "BOOT_ID_RE = re.compile",
             "status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()",
@@ -15907,6 +15908,15 @@ class StatusReportTests(unittest.TestCase):
             "host boot_id is not a Linux boot_id value",
             "def status_number",
             'fail(f"{label} {field} is not numeric")',
+            "def status_integer",
+            "def validate_config_summary",
+            "missing config summary",
+            "config gps_device is volatile",
+            "config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps",
+            "config gps_baud is invalid",
+            '"track_fsync_interval_seconds"',
+            '"track_retention_days"',
+            '"anchor_radius_meters"',
             "def status_timestamp",
             'fail(f"{label} must include a timezone")',
             "def validate_position_summary",
@@ -15965,6 +15975,16 @@ class StatusReportTests(unittest.TestCase):
             (("generated_at",), "2999-01-01T00:00:00+00:00", "generated_at timestamp is in the future"),
             (("host", "boot_id"), "not-a-boot-id", "host boot_id is not a Linux boot_id value"),
             (("host", "boot_id"), "12345678-1234-4234-8234-123456789abc\x00", "host boot_id contains control characters"),
+            (("config", "chart_output"), "charts", "config chart_output is not absolute"),
+            (("config", "track_output"), "tracks", "config track_output is not absolute"),
+            (("config", "gps_device"), "/dev/ttyUSB0", "config gps_device is volatile"),
+            (("config", "gps_device"), "/dev/not-stable", "config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps"),
+            (("config", "gps_baud"), 12345, "config gps_baud is invalid"),
+            (("config", "gpsd_port"), 70000, "config gpsd_port is above 65535"),
+            (("config", "track_retention_days"), -1, "config track_retention_days is below 0"),
+            (("config", "track_fsync_interval_seconds"), "30", "config track_fsync_interval_seconds is not numeric"),
+            (("config", "track_fsync_interval_seconds"), -1.0, "config track_fsync_interval_seconds is negative"),
+            (("config", "anchor_radius_meters"), 0.5, "config anchor_radius_meters is below 1.0"),
             (("gps_fix", "latitude"), "61.2181", "gps_fix latitude is not numeric"),
             (("gps_fix", "timestamp"), "2026-07-02T12:00:00", "gps_fix timestamp must include a timezone"),
             (("gps_fix", "satellites"), 3, "gps_fix satellites is weak"),
@@ -15987,6 +16007,31 @@ class StatusReportTests(unittest.TestCase):
                 text=True,
             )
             with self.subTest(path=path):
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(expected_error, result.stderr)
+
+        config_cases = (
+            (
+                lambda report: report.pop("config"),
+                "missing config summary",
+            ),
+            (
+                lambda report: report["config"].pop("track_output"),
+                "missing config track_output",
+            ),
+        )
+        for mutate, expected_error in config_cases:
+            report = copy.deepcopy(valid_report)
+            mutate(report)
+            result = subprocess.run(
+                [sys.executable, "-c", validator],
+                input=json.dumps(report),
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            with self.subTest(expected_error=expected_error):
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn(expected_error, result.stderr)
 

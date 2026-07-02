@@ -353,6 +353,7 @@ validate_status_json_output() {
 from datetime import datetime, timezone
 import json
 import math
+import posixpath
 import re
 import sys
 
@@ -379,6 +380,26 @@ def validate_optional_text_fields(section, label, fields):
             status_text(section.get(field, ""), f"{label} {field}")
 
 
+def status_required_text(section, label, field):
+    if field not in section:
+        fail(f"missing {label} {field}")
+    text = status_text(section.get(field, ""), f"{label} {field}")
+    if not text:
+        fail(f"{label} {field} is empty")
+    return text
+
+
+def status_integer(section, label, field, *, minimum=None, maximum=None):
+    value = section.get(field)
+    if isinstance(value, bool) or not isinstance(value, int):
+        fail(f"{label} {field} is not an integer")
+    if minimum is not None and value < minimum:
+        fail(f"{label} {field} is below {minimum}")
+    if maximum is not None and value > maximum:
+        fail(f"{label} {field} is above {maximum}")
+    return value
+
+
 def status_number(section, label, field):
     value = section.get(field)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -386,6 +407,13 @@ def status_number(section, label, field):
     parsed = float(value)
     if not math.isfinite(parsed):
         fail(f"{label} {field} is not finite")
+    return parsed
+
+
+def status_nonnegative_number(section, label, field):
+    parsed = status_number(section, label, field)
+    if parsed < 0.0:
+        fail(f"{label} {field} is negative")
     return parsed
 
 
@@ -507,6 +535,41 @@ def validate_track_log_service_row(track_log, service_rows):
             fail(f"track_log data does not match Track Log service check data for {field}")
 
 
+def validate_config_summary(config):
+    if not isinstance(config, dict):
+        fail("missing config summary")
+    for field in (
+        "chart_package",
+        "chart_value",
+        "gps_mode",
+        "gps_device",
+        "gpsd_host",
+    ):
+        status_required_text(config, "config", field)
+    for field in ("chart_output", "track_output"):
+        value = status_required_text(config, "config", field)
+        if not posixpath.isabs(value):
+            fail(f"config {field} is not absolute")
+    gps_device = status_required_text(config, "config", "gps_device")
+    if gps_device.startswith(("/dev/tty", "/dev/cu.", "/dev/disk")):
+        fail("config gps_device is volatile")
+    if not (
+        gps_device.startswith("/dev/serial/by-id/")
+        or gps_device.startswith("/dev/serial/by-path/")
+        or gps_device in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+    ):
+        fail("config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    gps_baud = status_integer(config, "config", "gps_baud")
+    if gps_baud not in {4800, 9600, 19200, 38400, 57600, 115200}:
+        fail("config gps_baud is invalid")
+    status_integer(config, "config", "gpsd_port", minimum=1, maximum=65535)
+    status_integer(config, "config", "track_retention_days", minimum=0)
+    status_nonnegative_number(config, "config", "track_fsync_interval_seconds")
+    anchor_radius = status_number(config, "config", "anchor_radius_meters")
+    if anchor_radius < 1.0:
+        fail("config anchor_radius_meters is below 1.0")
+
+
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
@@ -583,6 +646,7 @@ validate_optional_text_fields(
     "manifest",
     ("path", "download_path", "extract_path"),
 )
+validate_config_summary(report.get("config"))
 
 for section_name in ("gps_fix", "track_log"):
     summary = report.get(section_name)
