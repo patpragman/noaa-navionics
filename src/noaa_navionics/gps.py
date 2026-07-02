@@ -534,7 +534,7 @@ class GPXTrackLogger:
     ) -> None:
         self.path = Path(path).expanduser()
         self.name = name
-        self.fsync_interval_seconds = fsync_interval_seconds
+        self.fsync_interval_seconds = _seconds_value(fsync_interval_seconds, "fsync_interval_seconds")
         self.file: Optional[TextIO] = None
         self._last_fsync_monotonic: Optional[float] = None
 

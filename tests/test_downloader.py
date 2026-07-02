@@ -19057,6 +19057,22 @@ class GpsTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(calls), 5)
 
+    def test_gpx_logger_rejects_invalid_fsync_interval_before_file_creation(self):
+        cases = [
+            (math.inf, "fsync_interval_seconds must be a finite number of seconds"),
+            (math.nan, "fsync_interval_seconds must be a finite number of seconds"),
+            (True, "fsync_interval_seconds must be a finite number of seconds"),
+            ("bad", "fsync_interval_seconds must be a finite number of seconds"),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "track.gpx"
+            for fsync_interval_seconds, message in cases:
+                with self.subTest(fsync_interval_seconds=fsync_interval_seconds):
+                    with self.assertRaisesRegex(ValueError, re.escape(message)):
+                        GPXTrackLogger(path, fsync_interval_seconds=fsync_interval_seconds)
+                    self.assertFalse(path.exists())
+
     def test_gpx_logger_directory_sync_uses_no_follow_open(self):
         calls = []
         original_open = gps_module.os.open

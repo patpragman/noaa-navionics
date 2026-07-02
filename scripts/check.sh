@@ -4538,6 +4538,8 @@ grep -q '<sat>{fix.satellites}</sat>' src/noaa_navionics/gps.py
 grep -q '<hdop>{fix.hdop:g}</hdop>' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'TRACK LOGGER GPS LOST' src/noaa_navionics/cli.py
+grep -q 'self.fsync_interval_seconds = _seconds_value' src/noaa_navionics/gps.py
+grep -q 'test_gpx_logger_rejects_invalid_fsync_interval_before_file_creation' tests/test_downloader.py
 grep -q 'test_cli_log_track_live_stream_timeout_after_fix_is_audible_alarm' tests/test_downloader.py
 grep -q 'test_log_single_track_closes_gpx_on_stream_timeout_after_fix' tests/test_downloader.py
 grep -q 'test_log_rotating_tracks_closes_gpx_on_stream_timeout_after_fix' tests/test_downloader.py
