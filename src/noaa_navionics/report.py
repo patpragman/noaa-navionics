@@ -1187,24 +1187,62 @@ def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckR
         failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix HDOP is weak or invalid"))
 
     if isinstance(gps_fix, dict) and gps_fix.get("ok") is True:
-        if str(gps_fix.get("source", "")).strip() != expected_name:
+        summary_source = _gps_readiness_summary_text(gps_fix, "source", "gps_fix source", expected_name, failures)
+        if summary_source is not None and summary_source != expected_name:
             failures.append(CheckResult(expected_name, False, f"status report {expected_name} row does not match gps_fix source"))
         summary_latitude = _finite_gps_fix_float(gps_fix.get("latitude"))
         summary_longitude = _finite_gps_fix_float(gps_fix.get("longitude"))
-        if latitude is not None and summary_latitude is not None and abs(latitude - summary_latitude) > 1e-7:
-            failures.append(CheckResult(expected_name, False, f"status report {expected_name} latitude does not match gps_fix"))
-        if longitude is not None and summary_longitude is not None and abs(longitude - summary_longitude) > 1e-7:
-            failures.append(CheckResult(expected_name, False, f"status report {expected_name} longitude does not match gps_fix"))
+        if latitude is not None:
+            if summary_latitude is None:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} gps_fix latitude is invalid"))
+            elif abs(latitude - summary_latitude) > 1e-7:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} latitude does not match gps_fix"))
+        if longitude is not None:
+            if summary_longitude is None:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} gps_fix longitude is invalid"))
+            elif abs(longitude - summary_longitude) > 1e-7:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} longitude does not match gps_fix"))
         summary_timestamp = _parse_gps_fix_timestamp(gps_fix.get("timestamp"))
-        if timestamp is not None and summary_timestamp is not None and timestamp != summary_timestamp:
-            failures.append(CheckResult(expected_name, False, f"status report {expected_name} timestamp does not match gps_fix"))
-        if satellites is not None and gps_fix.get("satellites") is not None and satellites != gps_fix.get("satellites"):
-            failures.append(CheckResult(expected_name, False, f"status report {expected_name} satellites do not match gps_fix"))
+        if timestamp is not None:
+            if summary_timestamp is None:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} gps_fix timestamp is invalid"))
+            elif timestamp != summary_timestamp:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} timestamp does not match gps_fix"))
+        summary_satellites = gps_fix.get("satellites")
+        if satellites is not None:
+            if (
+                summary_satellites is not None
+                and (isinstance(summary_satellites, bool) or not isinstance(summary_satellites, int))
+            ):
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} gps_fix satellites is invalid"))
+            elif summary_satellites is not None and satellites != summary_satellites:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} satellites do not match gps_fix"))
         if hdop is not None and gps_fix.get("hdop") is not None:
             summary_hdop = _finite_gps_fix_float(gps_fix.get("hdop"))
-            if parsed_hdop is not None and summary_hdop is not None and abs(parsed_hdop - summary_hdop) > 1e-9:
+            if parsed_hdop is not None and summary_hdop is None:
+                failures.append(CheckResult(expected_name, False, f"status report {expected_name} gps_fix HDOP is invalid"))
+            elif parsed_hdop is not None and summary_hdop is not None and abs(parsed_hdop - summary_hdop) > 1e-9:
                 failures.append(CheckResult(expected_name, False, f"status report {expected_name} HDOP does not match gps_fix"))
     return failures
+
+
+def _gps_readiness_summary_text(
+    gps_fix: dict[str, object],
+    field: str,
+    label: str,
+    expected_name: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = gps_fix.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult(expected_name, False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult(expected_name, False, control_failure))
+        return None
+    return text
 
 
 def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[CheckResult]:

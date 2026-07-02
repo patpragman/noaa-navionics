@@ -14851,6 +14851,25 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == row_name and expected in failure.detail for failure in failures))
 
+        summary_cases = [
+            ({"source": 123}, "gps_fix source is not text"),
+            ({"source": "GPSD\x00"}, "gps_fix source contains control characters"),
+            ({"latitude": "north"}, "gps_fix latitude is invalid"),
+            ({"longitude": "west"}, "gps_fix longitude is invalid"),
+            ({"timestamp": "2026-07-01T12:00:00"}, "gps_fix timestamp is invalid"),
+            ({"satellites": "8"}, "gps_fix satellites is invalid"),
+            ({"hdop": "0.9"}, "gps_fix HDOP is invalid"),
+        ]
+        for gps_fix_updates, expected in summary_cases:
+            with self.subTest(summary=sorted(gps_fix_updates), expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                report["gps_fix"].update(gps_fix_updates)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "GPSD" and expected in failure.detail for failure in failures))
+
         report = complete_status_gui_report(generated_at=generated_at)
         report["checks"].append({"name": "GPS", "ok": True, "detail": "legacy serial row"})
 
