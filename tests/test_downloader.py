@@ -12601,6 +12601,21 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_verify_pi_rejects_unsupported_expected_config_gps_baud(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            "GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}",
+            'gps_baud = int(parser.get("gps", "baud", fallback="4800").strip())',
+            "expected config gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200",
+            '"gps_baud": gps_baud',
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_verify_pi_rejects_timezone_less_live_timestamps(self):
         source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
 

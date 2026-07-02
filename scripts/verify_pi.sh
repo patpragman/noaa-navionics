@@ -620,6 +620,8 @@ import re
 import stat
 import sys
 
+GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
+
 def config_bool(parser, section, key, fallback):
     value = parser.get(section, key, fallback=fallback).strip().lower()
     if value in {"1", "yes", "true", "on"}:
@@ -1239,6 +1241,9 @@ if expected_config_path:
         raise SystemExit(f"could not parse expected config {expected_config_path}: {exc}") from exc
     chart_output = Path(parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()).expanduser()
     expected_manifest_path = str(chart_output / "noaa-navionics-manifest.json")
+    gps_baud = int(parser.get("gps", "baud", fallback="4800").strip())
+    if gps_baud not in GPS_BAUD_RATES:
+        raise SystemExit("expected config gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200")
     expected_config = {
         "chart_package": parser.get("charts", "package", fallback="state").strip().lower(),
         "chart_value": parser.get("charts", "value", fallback="AK").strip(),
@@ -1250,7 +1255,7 @@ if expected_config_path:
         "min_free_gb": float(parser.get("charts", "min_free_gb", fallback="2.0").strip()),
         "gps_mode": parser.get("gps", "mode", fallback="gpsd").strip().lower(),
         "gps_device": parser.get("gps", "device", fallback="/dev/serial/by-id/YOUR_GPS_DEVICE").strip(),
-        "gps_baud": int(parser.get("gps", "baud", fallback="4800").strip()),
+        "gps_baud": gps_baud,
         "gpsd_host": parser.get("gps", "gpsd_host", fallback="127.0.0.1").strip(),
         "gpsd_port": int(parser.get("gps", "gpsd_port", fallback="2947").strip()),
         "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
