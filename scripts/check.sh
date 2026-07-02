@@ -841,6 +841,12 @@ grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manife
 grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON missing MOB desktop launcher evidence' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {label} owner is invalid' scripts/pre_trip_prepare_pi.sh
+grep -q 'snapshot_uid(mob_launcher.get("uid"), label="MOB desktop launcher")' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON MOB desktop launcher is not user executable' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON MOB desktop launcher {key} does not match expected value' scripts/pre_trip_prepare_pi.sh
+grep -q 'validate_snapshot_mob_launcher(payload)' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/pre_trip_prepare_pi.sh
@@ -874,8 +880,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unsafe MOB desktop launcher evidence, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unsafe MOB desktop launcher evidence, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'Options for skipped pre-trip steps are rejected' README.md
 grep -q 'Options for skipped pre-trip steps are rejected' docs/sailboat-pi.md
 grep -q 'refresh, recovery, GPS-device, and pre-departure controls' README.md
@@ -989,8 +995,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe executable non-autostart MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe executable non-autostart MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'status snapshot JSON Source Revision row does not match deployed source_revision' scripts/post_trip_collect_pi.sh
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts and reports the trip folder before any optional shutdown attempt' README.md
 grep -q 'writes and verifies a private `0600` `SHA256SUMS.txt` for the collected status and archive artifacts and reports the trip folder before any optional shutdown attempt' docs/sailboat-pi.md
@@ -1985,6 +1991,12 @@ grep -q 'pre-departure status snapshot JSON Manifest row has no top-level manife
 grep -q 'pre-departure status snapshot JSON Manifest path does not match manifest summary' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest created_at_source is not verified' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON missing MOB desktop launcher evidence' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {label} owner is invalid' scripts/verify_pi_recovery_exports.sh
+grep -q 'snapshot_uid(mob_launcher.get("uid"), label="MOB desktop launcher")' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON MOB desktop launcher is not user executable' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON MOB desktop launcher {key} does not match expected value' scripts/verify_pi_recovery_exports.sh
+grep -q 'validate_snapshot_mob_launcher(status)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing track_storage_symlink_component' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON track_log missing latest_path' scripts/verify_pi_recovery_exports.sh
@@ -2298,6 +2310,12 @@ grep -q 'status snapshot JSON Manifest row has no top-level manifest summary' sc
 grep -q 'status snapshot JSON Manifest path does not match manifest summary' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest created_at_source is not verified' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest actual ENC cell count does not match manifest summary' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON missing MOB desktop launcher evidence' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON {label} owner is invalid' scripts/post_trip_collect_pi.sh
+grep -q 'snapshot_uid(mob_launcher.get("uid"), label="MOB desktop launcher", path=path)' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON MOB desktop launcher is not user executable' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot JSON MOB desktop launcher {key} does not match expected value' scripts/post_trip_collect_pi.sh
+grep -q 'validate_snapshot_mob_launcher(payload, path=path)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log track_output is a symlink or missing symlink status' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing track_storage_symlink_component' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON track_log missing latest_path' scripts/post_trip_collect_pi.sh
@@ -4913,6 +4931,7 @@ grep -q 'test_status_snapshot_validators_reject_non_pi_diagnostic_skips' tests/t
 grep -q 'test_status_snapshot_validators_reject_non_boolean_row_ok_values' tests/test_downloader.py
 grep -q 'test_status_snapshot_validators_reject_non_boolean_summary_ok_values' tests/test_downloader.py
 grep -q 'test_status_snapshot_validators_require_structured_gps_and_track_summaries' tests/test_downloader.py
+grep -q 'test_status_snapshot_validators_require_mob_desktop_launcher_evidence' tests/test_downloader.py
 grep -q 'test_status_gui_status_refresh_does_not_hide_incomplete_report_for_anchor_watch_ok' tests/test_downloader.py
 grep -q 'test_gui_status_report_uses_shared_readiness_validation' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_ok_preserves_not_ready_readiness_headline' tests/test_downloader.py
@@ -8720,6 +8739,25 @@ payload = {
         "max_chart_age_days": 30,
     },
     "manifest": manifest_summary,
+    "desktop": {
+        "mob_launcher": {
+            "path": "/home/pi/Desktop/noaa-navionics-mob.desktop",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "path_symlink_component": "",
+            "uid": 1000,
+            "mode": "0755",
+            "directory_uid": 1000,
+            "directory_mode": "0700",
+            "values": {
+                "Type": "Application",
+                "Name": "NOAA Navionics MOB",
+                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
+                "Terminal": "true",
+            },
+        },
+    },
     "gps_fix": {
         "ok": True,
         "detail": "ok",
@@ -9664,6 +9702,25 @@ payload = {
         "max_chart_age_days": 30,
     },
     "manifest": manifest_summary,
+    "desktop": {
+        "mob_launcher": {
+            "path": "/home/pi/Desktop/noaa-navionics-mob.desktop",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "path_symlink_component": "",
+            "uid": 1000,
+            "mode": "0755",
+            "directory_uid": 1000,
+            "directory_mode": "0700",
+            "values": {
+                "Type": "Application",
+                "Name": "NOAA Navionics MOB",
+                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
+                "Terminal": "true",
+            },
+        },
+    },
     "gps_fix": {
         "ok": True,
         "detail": "ok",
@@ -13359,6 +13416,25 @@ def write_pre_departure_status(directory):
                     "max_chart_age_days": 30,
                 },
                 "manifest": manifest_summary,
+                "desktop": {
+                    "mob_launcher": {
+                        "path": "/home/pi/Desktop/noaa-navionics-mob.desktop",
+                        "exists": True,
+                        "is_symlink": False,
+                        "directory_is_symlink": False,
+                        "path_symlink_component": "",
+                        "uid": 1000,
+                        "mode": "0755",
+                        "directory_uid": 1000,
+                        "directory_mode": "0700",
+                        "values": {
+                            "Type": "Application",
+                            "Name": "NOAA Navionics MOB",
+                            "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
+                            "Terminal": "true",
+                        },
+                    },
+                },
                 "gps_fix": {
                     "ok": True,
                     "detail": "ok",

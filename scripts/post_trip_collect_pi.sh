@@ -636,6 +636,12 @@ CORE_SERVICE_CHECKS = {
     "User Linger",
 }
 GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
+EXPECTED_MOB_LAUNCHER_VALUES = {
+    "Type": "Application",
+    "Name": "NOAA Navionics MOB",
+    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+    "Terminal": "true",
+}
 
 
 def fail(message: str) -> None:
@@ -735,6 +741,74 @@ def private_octal_mode(value: object, *, field: str, path: Path) -> int:
     if mode & 0o077:
         fail(f"status snapshot JSON track_log {field} is not private: {path}")
     return mode
+
+
+def snapshot_octal_mode(value: object, *, label: str, path: Path) -> int:
+    text = str(value).strip()
+    if not text:
+        fail(f"status snapshot JSON {label} mode is invalid: {path}")
+    try:
+        mode = int(text, 8)
+    except ValueError:
+        fail(f"status snapshot JSON {label} mode is invalid: {path}")
+    if mode < 0 or mode > 0o7777:
+        fail(f"status snapshot JSON {label} mode is invalid: {path}")
+    return mode
+
+
+def snapshot_uid(value: object, *, label: str, path: Path) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        fail(f"status snapshot JSON {label} owner is invalid: {path}")
+    return value
+
+
+def validate_snapshot_mob_launcher(payload: dict[str, object], *, path: Path) -> None:
+    desktop = payload.get("desktop")
+    if not isinstance(desktop, dict):
+        fail(f"status snapshot JSON missing desktop section: {path}")
+    mob_launcher = desktop.get("mob_launcher")
+    if not isinstance(mob_launcher, dict):
+        fail(f"status snapshot JSON missing MOB desktop launcher evidence: {path}")
+    launcher_path = str(mob_launcher.get("path", "")).strip()
+    if not launcher_path or not Path(launcher_path).is_absolute():
+        fail(f"status snapshot JSON MOB desktop launcher path is not absolute: {path}")
+    if Path(launcher_path).name != "noaa-navionics-mob.desktop":
+        fail(f"status snapshot JSON MOB desktop launcher path has unexpected filename: {path}")
+    if mob_launcher.get("exists") is not True:
+        fail(f"status snapshot JSON MOB desktop launcher does not exist: {path}")
+    if mob_launcher.get("is_symlink") is not False:
+        fail(f"status snapshot JSON MOB desktop launcher path is a symlink or missing symlink status: {path}")
+    if mob_launcher.get("directory_is_symlink") is not False:
+        fail(f"status snapshot JSON MOB desktop launcher directory is a symlink or missing symlink status: {path}")
+    if "path_symlink_component" not in mob_launcher:
+        fail(f"status snapshot JSON MOB desktop launcher missing path_symlink_component: {path}")
+    if str(mob_launcher.get("path_symlink_component", "")).strip():
+        fail(f"status snapshot JSON MOB desktop launcher path contains a symlink: {path}")
+    snapshot_uid(mob_launcher.get("uid"), label="MOB desktop launcher", path=path)
+    snapshot_uid(mob_launcher.get("directory_uid"), label="MOB desktop launcher directory", path=path)
+    mode = snapshot_octal_mode(mob_launcher.get("mode"), label="MOB desktop launcher", path=path)
+    if mode & 0o022:
+        fail(f"status snapshot JSON MOB desktop launcher is group/world writable: {path}")
+    if not mode & 0o100:
+        fail(f"status snapshot JSON MOB desktop launcher is not user executable: {path}")
+    directory_mode = snapshot_octal_mode(
+        mob_launcher.get("directory_mode"),
+        label="MOB desktop launcher directory",
+        path=path,
+    )
+    if directory_mode & 0o022:
+        fail(f"status snapshot JSON MOB desktop launcher directory is group/world writable: {path}")
+    values = mob_launcher.get("values")
+    if not isinstance(values, dict):
+        fail(f"status snapshot JSON MOB desktop launcher values were not parsed: {path}")
+    for key, expected in EXPECTED_MOB_LAUNCHER_VALUES.items():
+        actual = str(values.get(key, "")).strip()
+        if actual != expected:
+            fail(f"status snapshot JSON MOB desktop launcher {key} does not match expected value: {path}")
+    if str(values.get("Hidden", "")).strip().lower() == "true":
+        fail(f"status snapshot JSON MOB desktop launcher is hidden: {path}")
+    if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+        fail(f"status snapshot JSON MOB desktop launcher must not be configured for autostart: {path}")
 
 
 def validate_track_log_paths(track_log: dict[str, object], *, path: Path) -> None:
@@ -1300,6 +1374,7 @@ def validate_successful_status_snapshot(
     )
     if missing_structured_data:
         fail(f"status snapshot JSON missing structured readiness data for: {', '.join(missing_structured_data)}: {path}")
+    validate_snapshot_mob_launcher(payload, path=path)
     validate_snapshot_chart_rows(check_rows, config=config, path=path)
     validate_snapshot_manifest_row(check_rows, config=config, manifest=payload.get("manifest"), path=path)
     validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix, path=path)
