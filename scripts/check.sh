@@ -1055,8 +1055,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' docs/sailboat-pi.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' README.md
-grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, caps the captured status snapshot at 1 MiB, removes incomplete over-limit snapshots, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' README.md
+grep -q 'saves a local private `0600` JSON status snapshot through an exclusive no-follow file create, executes the status helper through the validated no-follow descriptor while writing that snapshot, caps the captured status snapshot at 1 MiB, removes incomplete over-limit snapshots, fsyncs that status snapshot file and its private trip directory before reporting it saved, validates the saved status snapshot as a same-file no-follow private file before preserving it, validates successful snapshots as descriptor-opened readiness JSON with a fresh timezone-stamped `generated_at`, a valid Linux boot ID, a clean deployed source revision without a dirty `-dirty` suffix, matching Source Revision row evidence, a valid GPSD or serial config, structured GPS Device row evidence matching the configured receiver, track-log output context, Track Log service-row data matching top-level latest-track evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, and no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names' README.md
 grep -q 'trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names' docs/sailboat-pi.md
 grep -q 'test_status_snapshot_validators_require_status_desktop_launcher_evidence' tests/test_downloader.py
@@ -2545,14 +2545,19 @@ grep -q 'def descriptor_helper_command(command: list\[str\])' scripts/post_trip_
 grep -q 'status snapshot helper path contains a symlink' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot helper changed before execution' scripts/post_trip_collect_pi.sh
 grep -q 'return \[f"/proc/self/fd/{helper_fd}", \*command\[1:\]\], helper_fd' scripts/post_trip_collect_pi.sh
-grep -q 'subprocess.run(helper_command, stdout=output, pass_fds=(helper_fd,))' scripts/post_trip_collect_pi.sh
+grep -q 'MAX_STATUS_SNAPSHOT_BYTES = 1024 \* 1024' scripts/post_trip_collect_pi.sh
+grep -q 'def run_status_helper_bounded(command: list\[str\], output, helper_fd: int) -> int' scripts/post_trip_collect_pi.sh
+grep -q 'subprocess.Popen(command, stdout=subprocess.PIPE, pass_fds=(helper_fd,))' scripts/post_trip_collect_pi.sh
+grep -q 'status snapshot output exceeds size limit' scripts/post_trip_collect_pi.sh
+grep -q 'result_code = run_status_helper_bounded(helper_command, output, helper_fd)' scripts/post_trip_collect_pi.sh
+grep -q 'os.unlink(path)' scripts/post_trip_collect_pi.sh
 ! grep -q 'subprocess.run(command, stdout=output)' scripts/post_trip_collect_pi.sh
 grep -q 'def sync_private_parent_directory' scripts/post_trip_collect_pi.sh
 grep -q 'os.fsync(output.fileno())' scripts/post_trip_collect_pi.sh
 grep -q 'sync_private_parent_directory(path)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot directory changed before sync' scripts/post_trip_collect_pi.sh
-grep -q 'fsyncs that status snapshot file and its private trip directory before reporting it saved' README.md
-grep -q 'fsyncs that status snapshot file and its private trip directory before reporting it saved' docs/sailboat-pi.md
+grep -q 'caps the captured status snapshot at 1 MiB' README.md
+grep -q 'caps the captured status snapshot at 1 MiB' docs/sailboat-pi.md
 grep -q 'status_args=("$target")' scripts/post_trip_collect_pi.sh
 grep -q 'status_args+=(--gps-seconds "$gps_seconds")' scripts/post_trip_collect_pi.sh
 grep -q 'write_private_status_snapshot "$status_path" "$status_helper" "${status_args\[@\]}"' scripts/post_trip_collect_pi.sh
@@ -10595,6 +10600,14 @@ cp scripts/post_trip_collect_pi.sh "$post_trip_repo/scripts/post_trip_collect_pi
 cat >"$post_trip_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_POST_TRIP_LOG"
+if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_OVERSIZED_STATUS:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import sys
+
+sys.stdout.buffer.write(b"x" * (1024 * 1024 + 1))
+PY
+  exit "${NOAA_NAVIONICS_FAKE_POST_TRIP_STATUS_EXIT:-0}"
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_POST_TRIP_INVALID_JSON:-0}" == "1" ]]; then
   printf 'not json\n'
 else
@@ -11832,6 +11845,31 @@ grep -q '"ok": true' "$post_trip_failure_dir/status.json"
 grep -Eq '^status\|pi@example.invalid --gps-seconds 12 --json$' "$post_trip_failure_log"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 3$' "$post_trip_failure_log"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_failure_log"
+
+post_trip_oversized_status_log="$tmpdir/post-trip-oversized-status-helper-calls"
+post_trip_oversized_status_output_dir="$tmpdir/post-trip-oversized-status-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_oversized_status_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_OVERSIZED_STATUS=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_oversized_status_output_dir" \
+  --track-days 3 >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject oversized status snapshot output with exit 2" >&2
+  exit 1
+fi
+grep -q 'status snapshot output exceeds size limit' "$verify_output"
+grep -Eq '^status\|pi@example.invalid --json$' "$post_trip_oversized_status_log"
+! grep -Eq '^tracks\|' "$post_trip_oversized_status_log"
+! grep -Eq '^support\|' "$post_trip_oversized_status_log"
+if find "$post_trip_oversized_status_output_dir" -name status.json -print -quit | grep -q .; then
+  cat "$verify_output" >&2
+  echo "expected oversized status snapshot rejection to remove incomplete status.json" >&2
+  exit 1
+fi
 
 pre_departure_repo="$tmpdir/pre-departure-repo"
 pre_departure_args="$tmpdir/pre-departure-args"

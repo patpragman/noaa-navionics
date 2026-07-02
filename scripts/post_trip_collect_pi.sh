@@ -391,6 +391,8 @@ from pathlib import Path
 path = Path(sys.argv[1])
 command = sys.argv[2:]
 flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+MAX_STATUS_SNAPSHOT_BYTES = 1024 * 1024
+READ_CHUNK_BYTES = 64 * 1024
 
 
 def descriptor_helper_command(command: list[str]) -> tuple[list[str], int]:
@@ -511,6 +513,49 @@ def sync_private_parent_directory(target: Path) -> None:
         os.close(parent_fd)
 
 
+def terminate_status_helper(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
+def run_status_helper_bounded(command: list[str], output, helper_fd: int) -> int:
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, pass_fds=(helper_fd,))
+    except OSError as exc:
+        print(f"Could not execute status snapshot helper: {exc}", file=sys.stderr)
+        raise SystemExit(124) from exc
+    assert process.stdout is not None
+    written = 0
+    try:
+        with process.stdout:
+            while True:
+                chunk = process.stdout.read(READ_CHUNK_BYTES)
+                if not chunk:
+                    break
+                next_written = written + len(chunk)
+                if next_written > MAX_STATUS_SNAPSHOT_BYTES:
+                    print(
+                        "status snapshot output exceeds size limit "
+                        f"({next_written} > {MAX_STATUS_SNAPSHOT_BYTES} bytes): {path}",
+                        file=sys.stderr,
+                    )
+                    terminate_status_helper(process)
+                    raise SystemExit(124)
+                output.write(chunk)
+                written = next_written
+        return process.wait()
+    except BaseException:
+        terminate_status_helper(process)
+        raise
+
+
+remove_incomplete = True
 try:
     fd = os.open(path, flags, 0o600)
 except OSError as exc:
@@ -536,7 +581,7 @@ try:
         fd = -1
         helper_command, helper_fd = descriptor_helper_command(command)
         try:
-            result = subprocess.run(helper_command, stdout=output, pass_fds=(helper_fd,))
+            result_code = run_status_helper_bounded(helper_command, output, helper_fd)
         finally:
             os.close(helper_fd)
         try:
@@ -546,10 +591,18 @@ try:
             print(f"Could not sync status snapshot file {path}: {exc}", file=sys.stderr)
             raise SystemExit(124) from exc
     sync_private_parent_directory(path)
-    raise SystemExit(result.returncode)
+    remove_incomplete = False
+    raise SystemExit(result_code)
 finally:
     if fd >= 0:
         os.close(fd)
+    if remove_incomplete:
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            print(f"Could not remove incomplete status snapshot {path}: {exc}", file=sys.stderr)
 PY
   local status=$?
   if [[ "$status" -eq 124 ]]; then
