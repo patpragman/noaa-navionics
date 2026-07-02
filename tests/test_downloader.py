@@ -4065,6 +4065,56 @@ class GuiTests(unittest.TestCase):
                     status_gui_module.build_parser().parse_args(args)
                 self.assertIn(f"must be at most {status_gui_module.MAX_GPS_WAIT_SECONDS:g}", stderr.getvalue())
 
+    def test_status_gui_binds_underway_keyboard_shortcuts(self):
+        class FakeApp:
+            def __init__(self):
+                self.bindings = []
+                self._shortcut_refresh = status_gui_module.StatusApp._shortcut_refresh
+                self._shortcut_mark = status_gui_module.StatusApp._shortcut_mark
+                self._shortcut_mob = status_gui_module.StatusApp._shortcut_mob
+
+            def bind(self, sequence, callback):
+                self.bindings.append((sequence, callback.__name__))
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._bind_keyboard_shortcuts(app)
+
+        self.assertEqual(
+            app.bindings,
+            [
+                ("<F5>", "_shortcut_refresh"),
+                ("<F9>", "_shortcut_mark"),
+                ("<F12>", "_shortcut_mob"),
+            ],
+        )
+
+    def test_status_gui_keyboard_shortcuts_use_button_actions(self):
+        class FakeApp:
+            def __init__(self):
+                self.actions = []
+
+            def refresh_now(self):
+                self.actions.append(("refresh", None))
+
+            def mark_position(self, *, mob):
+                self.actions.append(("mark", mob))
+
+        app = FakeApp()
+
+        self.assertEqual(status_gui_module.StatusApp._shortcut_refresh(app), "break")
+        self.assertEqual(status_gui_module.StatusApp._shortcut_mark(app), "break")
+        self.assertEqual(status_gui_module.StatusApp._shortcut_mob(app), "break")
+
+        self.assertEqual(
+            app.actions,
+            [
+                ("refresh", None),
+                ("mark", False),
+                ("mark", True),
+            ],
+        )
+
     def test_status_gui_write_current_position_mark_uses_configured_track_output(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)

@@ -391,9 +391,27 @@ class StatusApp(tk.Tk):
         self.last_report = tk.StringVar(value="")
         self._build()
         self.protocol("WM_DELETE_WINDOW", self.close)
+        self._bind_keyboard_shortcuts()
         self._set_busy(False)
         self.after_id = self.after(100, self.refresh_now)
         self.poll_after_id = self.after(150, self._poll_queue)
+
+    def _bind_keyboard_shortcuts(self) -> None:
+        self.bind("<F5>", self._shortcut_refresh)
+        self.bind("<F9>", self._shortcut_mark)
+        self.bind("<F12>", self._shortcut_mob)
+
+    def _shortcut_refresh(self, event: object = None) -> str:
+        self.refresh_now()
+        return "break"
+
+    def _shortcut_mark(self, event: object = None) -> str:
+        self.mark_position(mob=False)
+        return "break"
+
+    def _shortcut_mob(self, event: object = None) -> str:
+        self.mark_position(mob=True)
+        return "break"
 
     def _build(self) -> None:
         root = ttk.Frame(self, padding=16)

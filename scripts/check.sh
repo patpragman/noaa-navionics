@@ -5061,6 +5061,13 @@ grep -q 'write_available_gpx_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'READY' src/noaa_navionics/status_gui.py
 grep -q 'NOT READY' src/noaa_navionics/status_gui.py
 grep -q 'text="MOB"' src/noaa_navionics/status_gui.py
+grep -q 'self.bind("<F5>", self._shortcut_refresh)' src/noaa_navionics/status_gui.py
+grep -q 'self.bind("<F9>", self._shortcut_mark)' src/noaa_navionics/status_gui.py
+grep -q 'self.bind("<F12>", self._shortcut_mob)' src/noaa_navionics/status_gui.py
+grep -q 'def test_status_gui_binds_underway_keyboard_shortcuts' tests/test_downloader.py
+grep -q 'def test_status_gui_keyboard_shortcuts_use_button_actions' tests/test_downloader.py
+grep -q 'Underway keyboard shortcuts in the status GUI use the same guarded actions as the buttons: F5 refreshes readiness, F9 writes a normal position mark, and F12 queues or saves a MOB mark' README.md
+grep -q 'Underway keyboard shortcuts in the status GUI use the same guarded actions as the buttons: F5 refreshes readiness, F9 writes a normal position mark, and F12 queues or saves a MOB mark' docs/sailboat-pi.md
 grep -q 'text="Anchor Check"' src/noaa_navionics/status_gui.py
 grep -q 'text="Start Watch"' src/noaa_navionics/status_gui.py
 grep -q 'text="Stop Watch"' src/noaa_navionics/status_gui.py
