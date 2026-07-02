@@ -530,6 +530,7 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 flags = os.O_WRONLY | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+MAX_RECOVERY_OUTPUT_CAPTURE_BYTES = 2 * 1024 * 1024
 
 try:
     before = os.stat(path, follow_symlinks=False)
@@ -558,13 +559,23 @@ try:
         raise SystemExit(124)
     with os.fdopen(fd, "wb") as capture:
         fd = -1
+        written = 0
         while True:
             chunk = sys.stdin.buffer.read(65536)
             if not chunk:
                 break
+            next_written = written + len(chunk)
+            if next_written > MAX_RECOVERY_OUTPUT_CAPTURE_BYTES:
+                print(
+                    "Recovery output capture exceeds size limit "
+                    f"({next_written} > {MAX_RECOVERY_OUTPUT_CAPTURE_BYTES} bytes): {path}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(124)
             sys.stdout.buffer.write(chunk)
             sys.stdout.buffer.flush()
             capture.write(chunk)
+            written = next_written
         capture.flush()
         os.fsync(capture.fileno())
 except OSError as exc:

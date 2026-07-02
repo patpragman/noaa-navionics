@@ -816,12 +816,14 @@ grep -q 'pre-trip wrapper validates each local helper script through a no-follow
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'dry-runs the clean shutdown path without powering off the Pi' README.md
 grep -q 'dry-runs the clean shutdown path without powering off the Pi' docs/sailboat-pi.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
-grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, size-capping, and cleaning up the private recovery-output capture' README.md
+grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, size-capping, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'create_private_recovery_output_capture "$output_dir"' scripts/pre_trip_prepare_pi.sh
 grep -q 'capture_recovery_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
+grep -q 'MAX_RECOVERY_OUTPUT_CAPTURE_BYTES = 2 \* 1024 \* 1024' scripts/pre_trip_prepare_pi.sh
+grep -q 'Recovery output capture exceeds size limit' scripts/pre_trip_prepare_pi.sh
 grep -q 'extract_recovery_dir_from_output "$recovery_output"' scripts/pre_trip_prepare_pi.sh
 grep -q 'cleanup_private_recovery_output_capture "${recovery_output:-}" || true' scripts/pre_trip_prepare_pi.sh
 grep -q 'Chart-refresh options require the refresh step' scripts/pre_trip_prepare_pi.sh
@@ -1113,8 +1115,8 @@ grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python
 grep -q 'settings export helper validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' README.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
-grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
-grep -q 'creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
+grep -q 'creating, syncing, writing, parsing, size-capping, and cleaning up the private recovery-output capture' README.md
+grep -q 'creating, syncing, writing, parsing, size-capping, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
@@ -9527,6 +9529,14 @@ EOF
 cat >"$pre_trip_repo/scripts/export_pi_recovery_bundle.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'recovery|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+if [[ "${NOAA_NAVIONICS_FAKE_PRE_TRIP_OVERSIZED_RECOVERY_OUTPUT:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import sys
+
+sys.stdout.buffer.write(b"x" * (2 * 1024 * 1024 + 1))
+PY
+  exit 0
+fi
 mkdir -p "$2/noaa-navionics-pi-recovery-test"
 chmod 0700 "$2/noaa-navionics-pi-recovery-test"
 printf 'Pi recovery exports written to: %s/noaa-navionics-pi-recovery-test\n' "$2"
@@ -10013,6 +10023,29 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
 fi
 grep -q -- '--opencpn-restart-delay must be at most 3600' "$verify_output"
 test ! -e "$pre_trip_bad_controls_output"
+
+pre_trip_oversized_recovery_log="$tmpdir/pre-trip-oversized-recovery-helper-calls"
+pre_trip_oversized_recovery_output_dir="$tmpdir/pre-trip-oversized-recovery-output"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_oversized_recovery_log" \
+  NOAA_NAVIONICS_FAKE_PRE_TRIP_OVERSIZED_RECOVERY_OUTPUT=1 \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_oversized_recovery_output_dir" \
+  --skip-refresh >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized recovery output capture with exit 2" >&2
+  exit 1
+fi
+grep -q 'Recovery output capture exceeds size limit' "$verify_output"
+grep -Fxq "recovery|pi@example.invalid $pre_trip_oversized_recovery_output_dir --track-days 30" "$pre_trip_oversized_recovery_log"
+! grep -Eq '^verify-recovery\|' "$pre_trip_oversized_recovery_log"
+! grep -Eq '^pre-departure\|' "$pre_trip_oversized_recovery_log"
+! find "$pre_trip_oversized_recovery_output_dir" -name '.noaa-navionics-pre-trip-recovery-output-*' -print -quit | grep -q .
 
 mkdir -p "$pre_trip_output_dir"
 chmod 0777 "$pre_trip_output_dir"
