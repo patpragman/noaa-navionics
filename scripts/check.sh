@@ -11713,11 +11713,12 @@ cat >"$status_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+generated_at="$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')"
 if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
-  printf '{"ok": "yes", "generated_at": "2026-07-02T12:00:00+00:00", "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n'
+  printf '{"ok": "yes", "generated_at": "%s", "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
   exit 0
 fi
-printf '{"ok": true, "generated_at": "2026-07-02T12:00:00+00:00", "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n'
+printf '{"ok": true, "generated_at": "%s", "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
 EOF
 chmod +x "$status_fake_ssh_bin/ssh"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -11737,6 +11738,10 @@ grep -q 'validate_status_json_output()' scripts/check_pi_status.sh
 grep -q 'status JSON validation failed: {message}' scripts/check_pi_status.sh
 grep -q 'top-level ok is not boolean' scripts/check_pi_status.sh
 grep -q 'generated_at timestamp must include a timezone' scripts/check_pi_status.sh
+grep -q 'from datetime import datetime, timezone' scripts/check_pi_status.sh
+grep -q 'status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()' scripts/check_pi_status.sh
+grep -q 'generated_at timestamp is in the future' scripts/check_pi_status.sh
+grep -q 'generated_at timestamp is stale' scripts/check_pi_status.sh
 grep -q 'missing non-empty {section_name} list' scripts/check_pi_status.sh
 grep -q 'missing {section_name} summary' scripts/check_pi_status.sh
 grep -q 'def status_text' scripts/check_pi_status.sh
@@ -11747,6 +11752,8 @@ grep -q 'test_check_pi_status_rejects_json_control_characters' tests/test_downlo
 grep -q 'test_check_pi_status_json_validator_executes_text_field_checks' tests/test_downloader.py
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' README.md
 grep -q 'non-string or control-character row names and core config/manifest/GPS/track summary fields' docs/sailboat-pi.md
+grep -q 'stale or future-dated `generated_at`' README.md
+grep -q 'stale or future-dated `generated_at`' docs/sailboat-pi.md
 grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh
 grep -q 'json_validation_code=$?' scripts/check_pi_status.sh
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"

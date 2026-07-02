@@ -350,7 +350,7 @@ validate_status_json_output() {
     return 1
   fi
   printf '%s' "$payload" | "$local_python_cmd" -c '
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import sys
 
@@ -396,6 +396,11 @@ except ValueError as exc:
     fail(f"generated_at timestamp is invalid: {exc}")
 if parsed_generated_at.tzinfo is None or parsed_generated_at.utcoffset() is None:
     fail("generated_at timestamp must include a timezone")
+status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()
+if status_age_seconds < -30.0:
+    fail("generated_at timestamp is in the future")
+if status_age_seconds > 600.0:
+    fail("generated_at timestamp is stale")
 
 for section_name, row_label in (("checks", "readiness check"), ("service_checks", "service check")):
     rows = report.get(section_name)

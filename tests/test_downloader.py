@@ -15657,6 +15657,10 @@ class StatusReportTests(unittest.TestCase):
             "def status_text",
             "contains control characters",
             "is not a string",
+            "from datetime import datetime, timezone",
+            "status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()",
+            "generated_at timestamp is in the future",
+            "generated_at timestamp is stale",
             "def validate_optional_text_fields",
             '(("checks", "readiness check"), ("service_checks", "service check"))',
             'status_text(name, f"{row_label} name")',
@@ -15695,6 +15699,8 @@ class StatusReportTests(unittest.TestCase):
             (("manifest", "download_path"), "/charts/AK\nENCs.zip", "manifest download_path contains control characters"),
             (("gps_fix", "source"), "GPSD\x00", "gps_fix source contains control characters"),
             (("track_log", "latest_path"), "/charts/tracks/track\n.gpx", "track_log latest_path contains control characters"),
+            (("generated_at",), "2000-01-01T00:00:00+00:00", "generated_at timestamp is stale"),
+            (("generated_at",), "2999-01-01T00:00:00+00:00", "generated_at timestamp is in the future"),
         )
         for path, value, expected_error in cases:
             report = copy.deepcopy(valid_report)
