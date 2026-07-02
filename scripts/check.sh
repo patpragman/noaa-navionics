@@ -1015,8 +1015,8 @@ grep -q 'validates the trusted root-owned local `python3` command path before he
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation' docs/sailboat-pi.md
 grep -q 'and verifies the completed local recovery set before reporting success' README.md
 grep -q 'and verifies the completed local recovery set before reporting success' docs/sailboat-pi.md
-grep -q 'writes a private `0600` `SHA256SUMS.txt` for the four recovery archives' README.md
-grep -q 'writes a private `0600` `SHA256SUMS.txt` for the four recovery archives' docs/sailboat-pi.md
+grep -q 'writes and reopens a private `0600` `SHA256SUMS.txt` for the four recovery archives through no-follow descriptor validation' README.md
+grep -q 'writes and reopens a private `0600` `SHA256SUMS.txt` for the four recovery archives through no-follow descriptor validation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' README.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory and timestamped recovery folder to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload' README.md
@@ -1889,6 +1889,12 @@ grep -q 'verify_pi_recovery_exports.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'write_checksum_manifest "$recovery_dir"' scripts/export_pi_recovery_bundle.sh
 grep -q 'SHA256SUMS.txt' scripts/export_pi_recovery_bundle.sh
 grep -q 'def cleanup_private_temp' scripts/export_pi_recovery_bundle.sh
+grep -q 'def validate_promoted_manifest' scripts/export_pi_recovery_bundle.sh
+grep -q 'open_private_directory(directory, directory_stat)' scripts/export_pi_recovery_bundle.sh
+grep -q 'os.replace(temp_path.name, manifest_path.name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)' scripts/export_pi_recovery_bundle.sh
+grep -q 'os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/export_pi_recovery_bundle.sh
+grep -q 'if handle.read() != payload' scripts/export_pi_recovery_bundle.sh
+grep -q 'Recovery checksum manifest content changed after promotion' scripts/export_pi_recovery_bundle.sh
 grep -q 'recovery checksum temp changed before cleanup; leaving it in place' scripts/export_pi_recovery_bundle.sh
 grep -q 'cleanup_private_temp(temp_path, temp_stat)' scripts/export_pi_recovery_bundle.sh
 ! grep -q 'temp_path.unlink()' scripts/export_pi_recovery_bundle.sh

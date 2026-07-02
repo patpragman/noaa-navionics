@@ -585,7 +585,7 @@ def fail(message: str) -> None:
     raise SystemExit(1)
 
 
-def assert_private_directory(path: Path) -> None:
+def assert_private_directory(path: Path) -> os.stat_result:
     try:
         result = path.lstat()
     except OSError as exc:
@@ -597,6 +597,31 @@ def assert_private_directory(path: Path) -> None:
     mode = stat.S_IMODE(result.st_mode)
     if mode != 0o700:
         fail(f"Recovery checksum directory has permissions {mode:04o}, expected private 0700: {path}")
+    return result
+
+
+def open_private_directory(path: Path, expected: os.stat_result) -> int:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        fail(f"Could not open recovery checksum directory through no-follow descriptor: {path}: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(expected, opened):
+            fail(f"Recovery checksum directory changed before manifest promotion: {path}")
+        if not stat.S_ISDIR(opened.st_mode):
+            fail(f"Recovery checksum directory is not a directory when opened: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"Recovery checksum directory is owned by uid {opened.st_uid}, expected {os.getuid()}: {path}")
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode != 0o700:
+            fail(f"Recovery checksum directory has permissions {mode:04o}, expected private 0700: {path}")
+    except Exception:
+        os.close(fd)
+        raise
+    return fd
 
 
 def hash_private_file(path: Path) -> str:
@@ -655,8 +680,45 @@ def cleanup_private_temp(path: Path, expected: os.stat_result | None) -> None:
         print(f"could not remove recovery checksum temp after validation: {path}: {exc}", file=sys.stderr)
 
 
+def validate_promoted_manifest(path: Path, payload: bytes) -> None:
+    try:
+        before = path.lstat()
+    except OSError as exc:
+        fail(f"Could not inspect recovery checksum manifest after writing: {path}: {exc}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"Recovery checksum manifest is not a regular file after writing: {path}")
+    if before.st_uid != os.getuid():
+        fail(f"Recovery checksum manifest is owned by uid {before.st_uid}, expected {os.getuid()}: {path}")
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"Recovery checksum manifest has permissions {mode:04o}, expected private 0600: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        fail(f"Could not open promoted recovery checksum manifest through no-follow descriptor: {path}: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(before, opened):
+            fail(f"Recovery checksum manifest changed before validation: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"Recovery checksum manifest is not regular when opened: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"Recovery checksum manifest is owned by uid {opened.st_uid}, expected {os.getuid()}: {path}")
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode != 0o600:
+            fail(f"Recovery checksum manifest has permissions {mode:04o}, expected private 0600: {path}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            if handle.read() != payload:
+                fail(f"Recovery checksum manifest content changed after promotion: {path}")
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
 directory = Path(sys.argv[1])
-assert_private_directory(directory)
+directory_stat = assert_private_directory(directory)
+directory_fd = open_private_directory(directory, directory_stat)
 archive_paths = []
 for pattern in ARCHIVE_PATTERNS:
     matches = sorted(directory.glob(pattern))
@@ -688,32 +750,20 @@ try:
     os.fsync(temp_fd)
     os.close(temp_fd)
     temp_fd = -1
-    os.replace(temp_path, manifest_path)
+    os.replace(temp_path.name, manifest_path.name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
     temp_path = None
-    dir_fd = os.open(directory, os.O_RDONLY)
-    try:
-        os.fsync(dir_fd)
-    finally:
-        os.close(dir_fd)
+    os.fsync(directory_fd)
 except OSError as exc:
     fail(f"Could not write recovery checksum manifest: {exc}")
 finally:
     if temp_fd >= 0:
         os.close(temp_fd)
+    if directory_fd >= 0:
+        os.close(directory_fd)
     if temp_path is not None:
         cleanup_private_temp(temp_path, temp_stat)
 
-try:
-    final = manifest_path.lstat()
-except OSError as exc:
-    fail(f"Could not inspect recovery checksum manifest after writing: {manifest_path}: {exc}")
-if not stat.S_ISREG(final.st_mode):
-    fail(f"Recovery checksum manifest is not a regular file after writing: {manifest_path}")
-if final.st_uid != os.getuid():
-    fail(f"Recovery checksum manifest is owned by uid {final.st_uid}, expected {os.getuid()}: {manifest_path}")
-mode = stat.S_IMODE(final.st_mode)
-if mode != 0o600:
-    fail(f"Recovery checksum manifest has permissions {mode:04o}, expected private 0600: {manifest_path}")
+validate_promoted_manifest(manifest_path, payload)
 print(f"Wrote recovery checksum manifest: {manifest_path}")
 PY
 }
