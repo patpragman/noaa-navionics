@@ -4713,6 +4713,13 @@ grep -q 'NOAA Navionics config is a symlink' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config is not a regular file' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config .* is owned by uid' src/noaa_navionics/config.py
 grep -q 'NOAA Navionics config .* has permissions' src/noaa_navionics/config.py
+grep -q 'expected_config_stat = _reject_unsafe_config_path(cfg_path)' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config changed while being opened' src/noaa_navionics/config.py
+grep -q 'NOAA Navionics config disappeared while being opened' src/noaa_navionics/config.py
+grep -q 'test_read_config_rejects_replaced_config_before_parsing' tests/test_downloader.py
+grep -q 'test_read_config_rejects_removed_config_before_parsing' tests/test_downloader.py
+grep -q 'Reads compare the no-follow opened config descriptor with the inspected path before parsing' README.md
+grep -q 'compare that opened descriptor with the inspected path before parsing' docs/sailboat-pi.md
 grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/config.py
 grep -q 'test_write_default_config_rejects_symlinked_ancestor' tests/test_downloader.py
 grep -q 'test_write_default_config_rejects_symlinked_config_file_when_overwriting' tests/test_downloader.py

@@ -104,9 +104,9 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     defaults = default_config()
     cfg_path = config_path(path)
     parser = ConfigParser()
-    _reject_unsafe_config_path(cfg_path)
-    if cfg_path.exists():
-        _read_existing_config(parser, cfg_path)
+    expected_config_stat = _reject_unsafe_config_path(cfg_path)
+    if expected_config_stat is not None:
+        _read_existing_config(parser, cfg_path, expected_stat=expected_config_stat)
 
     charts = parser["charts"] if parser.has_section("charts") else {}
     gps = parser["gps"] if parser.has_section("gps") else {}
@@ -446,7 +446,7 @@ def _prepare_config_parent(target: Path) -> None:
         )
 
 
-def _reject_unsafe_config_path(path: Path) -> None:
+def _reject_unsafe_config_path(path: Path) -> Optional[os.stat_result]:
     path = Path(path).expanduser()
     if path.is_symlink():
         raise RuntimeError(f"NOAA Navionics config is a symlink: {path}")
@@ -472,7 +472,7 @@ def _reject_unsafe_config_path(path: Path) -> None:
                 "expected no group/other write bits"
             )
     if not path.exists():
-        return
+        return None
     if not path.is_file():
         raise RuntimeError(f"NOAA Navionics config is not a regular file: {path}")
     try:
@@ -488,13 +488,21 @@ def _reject_unsafe_config_path(path: Path) -> None:
         raise RuntimeError(
             f"NOAA Navionics config {path} has permissions {mode:04o}, expected no group/other write bits"
         )
+    return path_stat
 
 
-def _read_existing_config(parser: ConfigParser, path: Path) -> None:
+def _read_existing_config(
+    parser: ConfigParser,
+    path: Path,
+    *,
+    expected_stat: Optional[os.stat_result] = None,
+) -> None:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
     except FileNotFoundError:
+        if expected_stat is not None:
+            raise RuntimeError(f"NOAA Navionics config disappeared while being opened: {path}") from None
         return
     except OSError as exc:
         if path.is_symlink():
@@ -503,6 +511,8 @@ def _read_existing_config(parser: ConfigParser, path: Path) -> None:
 
     try:
         opened = os.fstat(fd)
+        if expected_stat is not None and not os.path.samestat(opened, expected_stat):
+            raise RuntimeError(f"NOAA Navionics config changed while being opened: {path}")
         if not stat.S_ISREG(opened.st_mode):
             raise RuntimeError(f"NOAA Navionics config is not a regular file when opened: {path}")
         if opened.st_uid != os.getuid():

@@ -1213,6 +1213,59 @@ class ConfigTests(unittest.TestCase):
             finally:
                 config_path.chmod(0o600)
 
+    def test_read_config_rejects_replaced_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(default_config_text(), encoding="utf-8")
+            config_path.chmod(0o600)
+            replacement = root / "replacement.ini"
+            replacement.write_text(
+                "[gps]\n"
+                "mode = serial\n"
+                "device = /dev/serial/by-id/replaced-gps\n",
+                encoding="utf-8",
+            )
+            replacement.chmod(0o600)
+            original_open = config_module.os.open
+            swapped = False
+
+            def swap_before_open(path, flags, mode=0o777, *args, **kwargs):
+                nonlocal swapped
+                if not swapped and Path(path) == config_path:
+                    swapped = True
+                    os.replace(replacement, config_path)
+                return original_open(path, flags, mode, *args, **kwargs)
+
+            config_module.os.open = swap_before_open
+            try:
+                with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config changed while being opened"):
+                    read_config(config_path)
+            finally:
+                config_module.os.open = original_open
+
+    def test_read_config_rejects_removed_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.ini"
+            config_path.write_text(default_config_text(), encoding="utf-8")
+            config_path.chmod(0o600)
+            original_open = config_module.os.open
+            removed = False
+
+            def remove_before_open(path, flags, mode=0o777, *args, **kwargs):
+                nonlocal removed
+                if not removed and Path(path) == config_path:
+                    removed = True
+                    os.unlink(config_path)
+                return original_open(path, flags, mode, *args, **kwargs)
+
+            config_module.os.open = remove_before_open
+            try:
+                with self.assertRaisesRegex(RuntimeError, "NOAA Navionics config disappeared while being opened"):
+                    read_config(config_path)
+            finally:
+                config_module.os.open = original_open
+
     def test_write_default_config_rejects_unsafe_existing_config_when_overwriting(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.ini"
