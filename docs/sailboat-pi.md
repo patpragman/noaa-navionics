@@ -91,6 +91,7 @@ Status-report readiness validation rejects control characters in embedded config
 Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence, and reject missing or invalid critical config fields including chart package/value, GPSD port, track retention/fsync, and anchor radius.
 Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation, leaving changed or untrusted paths in place.
 The chartplotter launcher resolves and revalidates `sleep` through no-follow same-file descriptors before readiness, warning, restart, or shutdown waits, so a changed wait helper cannot keep startup retries or OpenCPN supervision moving.
+Desktop launcher templates pin `/bin/sh` in `Exec=` commands so chartplotter autostart, status, and MOB launchers do not depend on desktop-session PATH lookup.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:

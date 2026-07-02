@@ -1,5 +1,5 @@
 [Desktop Entry]
 Type=Application
 Name=NOAA Navionics MOB
-Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\nPress Enter to close...'; read _"
+Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\nPress Enter to close...'; read _"
 Terminal=true

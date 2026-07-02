@@ -1918,7 +1918,7 @@ if expected_config_path:
     expected_autostart = {
         "Type": "Application",
         "Name": "NOAA Navionics Chartplotter",
-        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
         "Terminal": "false",
         "X-GNOME-Autostart-enabled": "true",
     }
@@ -2004,7 +2004,7 @@ if expected_config_path:
     expected_status_launcher = {
         "Type": "Application",
         "Name": "NOAA Navionics Status",
-        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
         "Terminal": "false",
     }
     for key, expected in expected_status_launcher.items():
@@ -2089,7 +2089,7 @@ if expected_config_path:
     expected_mob_launcher = {
         "Type": "Application",
         "Name": "NOAA Navionics MOB",
-        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
         "Terminal": "true",
     }
     for key, expected in expected_mob_launcher.items():
@@ -5562,7 +5562,7 @@ if [[ -f "$autostart" ]]; then
   check "chartplotter autostart file integrity" check_user_regular_file_integrity "$autostart" "chartplotter autostart file"
   check "chartplotter autostart type" grep -Fxq 'Type=Application' "$autostart"
   check "chartplotter autostart name" grep -Fxq 'Name=NOAA Navionics Chartplotter' "$autostart"
-  check "chartplotter autostart exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' "$autostart"
+  check "chartplotter autostart exec" grep -Fxq 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' "$autostart"
   check "chartplotter autostart terminal" grep -Fxq 'Terminal=false' "$autostart"
   check "chartplotter autostart enabled" grep -Fq 'X-GNOME-Autostart-enabled=true' "$autostart"
   check "chartplotter autostart not disabled" sh -c '! grep -Eq "^(Hidden=true|X-GNOME-Autostart-enabled=false)$" "$1"' sh "$autostart"
@@ -5574,7 +5574,7 @@ if [[ -f "$status_desktop_entry" ]]; then
   check "status GUI desktop launcher executable" test -x "$status_desktop_entry"
   check "status GUI desktop launcher type" grep -Fxq 'Type=Application' "$status_desktop_entry"
   check "status GUI desktop launcher name" grep -Fxq 'Name=NOAA Navionics Status' "$status_desktop_entry"
-  check "status GUI desktop launcher exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' "$status_desktop_entry"
+  check "status GUI desktop launcher exec" grep -Fxq 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' "$status_desktop_entry"
   check "status GUI desktop launcher terminal" grep -Fxq 'Terminal=false' "$status_desktop_entry"
   check "status GUI desktop launcher not autostart" sh -c '! grep -Eq "^X-GNOME-Autostart-enabled=true$" "$1"' sh "$status_desktop_entry"
   check "status GUI desktop launcher not hidden" sh -c '! grep -Eq "^Hidden=true$" "$1"' sh "$status_desktop_entry"
@@ -5585,7 +5585,7 @@ if [[ -f "$mob_desktop_entry" ]]; then
   check "MOB desktop launcher executable" test -x "$mob_desktop_entry"
   check "MOB desktop launcher type" grep -Fxq 'Type=Application' "$mob_desktop_entry"
   check "MOB desktop launcher name" grep -Fxq 'Name=NOAA Navionics MOB' "$mob_desktop_entry"
-  check "MOB desktop launcher exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\''\nPress Enter to close...'\''; read _"' "$mob_desktop_entry"
+  check "MOB desktop launcher exec" grep -Fxq 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\''\nPress Enter to close...'\''; read _"' "$mob_desktop_entry"
   check "MOB desktop launcher terminal" grep -Fxq 'Terminal=true' "$mob_desktop_entry"
   check "MOB desktop launcher not autostart" sh -c '! grep -Eq "^X-GNOME-Autostart-enabled=true$" "$1"' sh "$mob_desktop_entry"
   check "MOB desktop launcher not hidden" sh -c '! grep -Eq "^Hidden=true$" "$1"' sh "$mob_desktop_entry"

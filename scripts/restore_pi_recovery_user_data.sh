@@ -304,13 +304,13 @@ EXPECTED_RESTORE_DESKTOP_LAUNCHERS = {
     "status GUI desktop launcher": {
         "Type": "Application",
         "Name": "NOAA Navionics Status",
-        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
         "Terminal": "false",
     },
     "MOB desktop launcher": {
         "Type": "Application",
         "Name": "NOAA Navionics MOB",
-        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
         "Terminal": "true",
     },
 }

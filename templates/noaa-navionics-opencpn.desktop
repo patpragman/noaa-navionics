@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=NOAA Navionics Preflight
-Exec=sh -c "$HOME/.local/bin/noaa-navionics preflight --config $HOME/.config/noaa-navionics/config.ini; read -p 'Press Enter to close...'"
+Exec=/bin/sh -c "$HOME/.local/bin/noaa-navionics preflight --config $HOME/.config/noaa-navionics/config.ini; read -p 'Press Enter to close...'"
 Terminal=true
 X-GNOME-Autostart-enabled=true

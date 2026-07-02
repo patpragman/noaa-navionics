@@ -3506,7 +3506,7 @@ grep -q 'uncommented NOAA Navionics GPSD SHM 0 time source' scripts/verify_pi.sh
 grep -q 'Chrony usable GPS source' scripts/verify_pi.sh
 grep -q 'chartplotter autostart' scripts/verify_pi.sh
 grep -q 'chartplotter autostart name' scripts/verify_pi.sh
-grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scripts/verify_pi.sh
+grep -q 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' scripts/verify_pi.sh
 grep -q 'chartplotter launcher ENC parse' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness gate' scripts/verify_pi.sh
 grep -q 'chartplotter launcher readiness retries' scripts/verify_pi.sh
@@ -3686,13 +3686,17 @@ grep -q '"GPSD Socket"' src/noaa_navionics/report.py
 grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
 grep -q 'must contain exactly' src/noaa_navionics/health.py
-grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
+grep -q 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
+grep -q 'Exec=/bin/sh -c "$HOME/.local/bin/noaa-navionics preflight' templates/noaa-navionics-opencpn.desktop
 grep -q 'Name=NOAA Navionics Status' templates/noaa-navionics-status.desktop
-grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' templates/noaa-navionics-status.desktop
+grep -q 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' templates/noaa-navionics-status.desktop
 grep -q 'Terminal=false' templates/noaa-navionics-status.desktop
 grep -q 'Name=NOAA Navionics MOB' templates/noaa-navionics-mob.desktop
-grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob' templates/noaa-navionics-mob.desktop
+grep -q 'Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob' templates/noaa-navionics-mob.desktop
 grep -q 'Terminal=true' templates/noaa-navionics-mob.desktop
+! grep -R '^Exec=sh ' templates
+grep -q 'Desktop launcher templates pin `/bin/sh` in `Exec=` commands' README.md
+grep -q 'Desktop launcher templates pin `/bin/sh` in `Exec=` commands' docs/sailboat-pi.md
 grep -q 'autologin-user=' scripts/configure_desktop_autologin.sh
 grep -q 'autologin-session=' scripts/configure_desktop_autologin.sh
 grep -q 'choose_xsession' scripts/configure_desktop_autologin.sh
@@ -9899,7 +9903,7 @@ payload = {
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics Chartplotter",
-                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"",
+                "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"",
                 "Terminal": "false",
                 "X-GNOME-Autostart-enabled": "true",
             },
@@ -9917,7 +9921,7 @@ payload = {
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics Status",
-                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"",
+                "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"",
                 "Terminal": "false",
             },
         },
@@ -9934,7 +9938,7 @@ payload = {
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics MOB",
-                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
+                "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
                 "Terminal": "true",
             },
         },
@@ -10975,7 +10979,7 @@ payload = {
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics Chartplotter",
-                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"",
+                "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"",
                 "Terminal": "false",
                 "X-GNOME-Autostart-enabled": "true",
             },
@@ -10993,7 +10997,7 @@ payload = {
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics Status",
-                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"",
+                "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"",
                 "Terminal": "false",
             },
         },
@@ -11010,7 +11014,7 @@ payload = {
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics MOB",
-                "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
+                "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
                 "Terminal": "true",
             },
         },
@@ -15000,20 +15004,20 @@ SETTINGS_MEMBER_CONTENTS = {
     "desktop/noaa-navionics-chartplotter.desktop": """[Desktop Entry]
 Type=Application
 Name=NOAA Navionics Chartplotter
-Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"
+Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"
 Terminal=false
 X-GNOME-Autostart-enabled=true
 """,
     "desktop/noaa-navionics-status.desktop": """[Desktop Entry]
 Type=Application
 Name=NOAA Navionics Status
-Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"
+Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"
 Terminal=false
 """,
     "desktop/noaa-navionics-mob.desktop": """[Desktop Entry]
 Type=Application
 Name=NOAA Navionics MOB
-Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _"
+Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _"
 Terminal=true
 """,
 }
@@ -15316,7 +15320,7 @@ def write_pre_departure_status(directory):
                         "values": {
                             "Type": "Application",
                             "Name": "NOAA Navionics Chartplotter",
-                            "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"",
+                            "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"",
                             "Terminal": "false",
                             "X-GNOME-Autostart-enabled": "true",
                         },
@@ -15334,7 +15338,7 @@ def write_pre_departure_status(directory):
                         "values": {
                             "Type": "Application",
                             "Name": "NOAA Navionics Status",
-                            "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"",
+                            "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"",
                             "Terminal": "false",
                         },
                     },
@@ -15351,7 +15355,7 @@ def write_pre_departure_status(directory):
                         "values": {
                             "Type": "Application",
                             "Name": "NOAA Navionics MOB",
-                            "Exec": "sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
+                            "Exec": "/bin/sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"",
                             "Terminal": "true",
                         },
                     },
@@ -15546,7 +15550,7 @@ with tarfile.open(settings, "r:gz") as source:
             data = b"""[Desktop Entry]
 Type=Application
 Name=NOAA Navionics Status
-Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui --wrong"
+Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui --wrong"
 Terminal=false
 """
         members.append((member.name, data, member.mode))
@@ -15570,7 +15574,7 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   echo "expected verify_pi_recovery_exports.sh to reject a settings archive with a mispointed status desktop launcher with exit 1" >&2
   exit 1
 fi
-grep -q 'status GUI desktop launcher Exec=.*expected sh -lc "\$HOME/.local/bin/noaa-navionics-status-gui"' "$verify_output"
+grep -q 'status GUI desktop launcher Exec=.*expected /bin/sh -lc "\$HOME/.local/bin/noaa-navionics-status-gui"' "$verify_output"
 ! grep -q 'Verified Pi recovery exports:' "$verify_output"
 
 recovery_verify_missing_required_status_dir="$tmpdir/recovery-verify-missing-required-status"
@@ -16822,14 +16826,14 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
                 "[Desktop Entry]\n"
                 "Type=Application\n"
                 "Name=NOAA Navionics Status\n"
-                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"\n"
+                "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"\n"
                 "Terminal=false\n"
             ),
             "desktop/noaa-navionics-mob.desktop": (
                 "[Desktop Entry]\n"
                 "Type=Application\n"
                 "Name=NOAA Navionics MOB\n"
-                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
+                "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
                 "Terminal=true\n"
             ),
         },
@@ -17303,7 +17307,7 @@ with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
             "[Desktop Entry]\n"
             "Type=Application\n"
             "Name=NOAA Navionics Status\n"
-            "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui --unsafe\"\n"
+            "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui --unsafe\"\n"
             "Terminal=false\n"
         ),
     )
@@ -17314,7 +17318,7 @@ with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
             "[Desktop Entry]\n"
             "Type=Application\n"
             "Name=NOAA Navionics MOB\n"
-            "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
+            "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
             "Terminal=true\n"
         ),
     )
@@ -17335,7 +17339,7 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   echo "expected restore_pi_recovery_user_data.sh to reject a mispointed restored desktop launcher with exit 1" >&2
   exit 1
 fi
-grep -q 'restored status GUI desktop launcher Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui --unsafe" expected sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' "$verify_output"
+grep -q 'restored status GUI desktop launcher Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui --unsafe" expected /bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_manifest_dir="$tmpdir/recovery-restore-mismatched-manifest"

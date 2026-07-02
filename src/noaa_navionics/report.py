@@ -2726,7 +2726,7 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             expected_values = {
                 "Type": "Application",
                 "Name": "NOAA Navionics Chartplotter",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                 "Terminal": "false",
                 "X-GNOME-Autostart-enabled": "true",
             }
@@ -2790,7 +2790,7 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             expected_values = {
                 "Type": "Application",
                 "Name": "NOAA Navionics Status",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
                 "Terminal": "false",
             }
             for key, expected in expected_values.items():
@@ -2943,7 +2943,7 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             expected_values = {
                 "Type": "Application",
                 "Name": "NOAA Navionics MOB",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
                 "Terminal": "true",
             }
             for key, expected in expected_values.items():
@@ -5746,7 +5746,7 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             expected_values = {
                 "Type": "Application",
                 "Name": "NOAA Navionics Chartplotter",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                 "Terminal": "false",
                 "X-GNOME-Autostart-enabled": "true",
             }
@@ -5793,7 +5793,7 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             expected_values = {
                 "Type": "Application",
                 "Name": "NOAA Navionics Status",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
                 "Terminal": "false",
             }
             for key, expected in expected_values.items():
@@ -5900,7 +5900,7 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             expected_values = {
                 "Type": "Application",
                 "Name": "NOAA Navionics MOB",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
                 "Terminal": "true",
             }
             for key, expected in expected_values.items():

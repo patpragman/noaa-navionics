@@ -1035,20 +1035,20 @@ GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
 EXPECTED_DESKTOP_AUTOSTART_VALUES = {
     "Type": "Application",
     "Name": "NOAA Navionics Chartplotter",
-    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+    "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
     "Terminal": "false",
     "X-GNOME-Autostart-enabled": "true",
 }
 EXPECTED_MOB_LAUNCHER_VALUES = {
     "Type": "Application",
     "Name": "NOAA Navionics MOB",
-    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+    "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
     "Terminal": "true",
 }
 EXPECTED_STATUS_LAUNCHER_VALUES = {
     "Type": "Application",
     "Name": "NOAA Navionics Status",
-    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+    "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
     "Terminal": "false",
 }
 

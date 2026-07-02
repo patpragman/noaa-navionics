@@ -1,5 +1,5 @@
 [Desktop Entry]
 Type=Application
 Name=NOAA Navionics Status
-Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"
+Exec=/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"
 Terminal=false

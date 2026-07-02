@@ -312,7 +312,7 @@ def trusted_desktop_summary(**overrides: object) -> dict[str, object]:
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics Chartplotter",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                 "Terminal": "false",
                 "X-GNOME-Autostart-enabled": "true",
             },
@@ -330,7 +330,7 @@ def trusted_desktop_summary(**overrides: object) -> dict[str, object]:
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics Status",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
                 "Terminal": "false",
             },
         },
@@ -347,7 +347,7 @@ def trusted_desktop_summary(**overrides: object) -> dict[str, object]:
             "values": {
                 "Type": "Application",
                 "Name": "NOAA Navionics MOB",
-                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
                 "Terminal": "true",
             },
         },
@@ -12536,7 +12536,7 @@ class StatusReportTests(unittest.TestCase):
                 "[Desktop Entry]\n"
                 "Type=Application\n"
                 "Name=NOAA Navionics Chartplotter\n"
-                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"\n"
+                "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-start-chartplotter\"\n"
                 "Terminal=false\n"
                 "X-GNOME-Autostart-enabled=true\n",
                 encoding="utf-8",
@@ -12547,7 +12547,7 @@ class StatusReportTests(unittest.TestCase):
                 "[Desktop Entry]\n"
                 "Type=Application\n"
                 "Name=NOAA Navionics Status\n"
-                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"\n"
+                "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui\"\n"
                 "Terminal=false\n",
                 encoding="utf-8",
             )
@@ -12557,7 +12557,7 @@ class StatusReportTests(unittest.TestCase):
                 "[Desktop Entry]\n"
                 "Type=Application\n"
                 "Name=NOAA Navionics MOB\n"
-                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
+                "Exec=/bin/sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
                 "Terminal=true\n",
                 encoding="utf-8",
             )
@@ -12672,7 +12672,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["autostart"]["path_symlink_component"], "")
             self.assertEqual(report["desktop"]["autostart"]["uid"], os.getuid())
             self.assertEqual(report["desktop"]["autostart"]["mode"], "0644")
-            self.assertEqual(report["desktop"]["autostart"]["values"]["Exec"], 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"')
+            self.assertEqual(report["desktop"]["autostart"]["values"]["Exec"], '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"')
             self.assertEqual(report["desktop"]["status_launcher"]["path"], str(status_launcher))
             self.assertEqual(report["desktop"]["status_launcher"]["is_symlink"], False)
             self.assertEqual(report["desktop"]["status_launcher"]["directory_is_symlink"], False)
@@ -12682,7 +12682,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["status_launcher"]["values"]["Name"], "NOAA Navionics Status")
             self.assertEqual(
                 report["desktop"]["status_launcher"]["values"]["Exec"],
-                'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+                '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
             )
             self.assertEqual(report["desktop"]["mob_launcher"]["path"], str(mob_launcher))
             self.assertEqual(report["desktop"]["mob_launcher"]["is_symlink"], False)
@@ -12693,7 +12693,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["mob_launcher"]["values"]["Name"], "NOAA Navionics MOB")
             self.assertEqual(
                 report["desktop"]["mob_launcher"]["values"]["Exec"],
-                'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                '/bin/sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
             )
             self.assertEqual(report["desktop"]["lightdm_autologin"]["path"], str(lightdm_autologin))
             self.assertEqual(report["desktop"]["lightdm_autologin"]["is_symlink"], False)
@@ -15761,8 +15761,8 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("is missing required archive member(s)", source)
         self.assertIn("EXPECTED_SETTINGS_DESKTOP_ENTRIES", source)
         self.assertIn("validate_settings_desktop_entries", source)
-        self.assertIn('sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"', source)
-        self.assertIn('sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"', source)
+        self.assertIn('/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"', source)
+        self.assertIn('/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"', source)
         self.assertIn("noaa-navionics mob; printf", source)
         self.assertIn("status GUI desktop launcher must not be configured for autostart", source)
         self.assertIn("MOB desktop launcher must not be configured for autostart", source)
@@ -15797,7 +15797,7 @@ class StatusReportTests(unittest.TestCase):
         )
         self.assertIn("CORE_RESTORE_SETTINGS_FILES", source)
         self.assertIn("EXPECTED_RESTORE_DESKTOP_LAUNCHERS", source)
-        self.assertIn('sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"', source)
+        self.assertIn('/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"', source)
         self.assertIn("noaa-navionics mob; printf", source)
         self.assertIn("Press Enter to close", source)
         self.assertIn("validate_restored_desktop_launcher", source)
@@ -15962,7 +15962,7 @@ class StatusReportTests(unittest.TestCase):
             "status report status GUI desktop launcher has permissions",
             "expected_status_launcher = {",
             '"Name": "NOAA Navionics Status"',
-            '"Exec": \'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"\'',
+            '"Exec": \'/bin/sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"\'',
             "status GUI desktop launcher must not be configured for autostart",
         ):
             with self.subTest(expected=expected):
@@ -19710,7 +19710,7 @@ class StatusReportTests(unittest.TestCase):
                     "values": {
                         "Type": "Application",
                         "Name": "NOAA Navionics Chartplotter",
-                        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                         "Terminal": "false",
                         "X-GNOME-Autostart-enabled": "true",
                     },
@@ -19804,7 +19804,7 @@ class StatusReportTests(unittest.TestCase):
                     "values": {
                         "Type": "Application",
                         "Name": "NOAA Navionics Chartplotter",
-                        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                         "Terminal": "false",
                         "X-GNOME-Autostart-enabled": "true",
                     },
@@ -19859,7 +19859,7 @@ class StatusReportTests(unittest.TestCase):
                     "values": {
                         "Type": "Application",
                         "Name": "NOAA Navionics Chartplotter",
-                        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                         "Terminal": "false",
                         "X-GNOME-Autostart-enabled": "true",
                     },
@@ -19916,7 +19916,7 @@ class StatusReportTests(unittest.TestCase):
                     "values": {
                         "Type": "Application",
                         "Name": "NOAA Navionics Chartplotter",
-                        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+                        "Exec": '/bin/sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
                         "Terminal": "false",
                         "X-GNOME-Autostart-enabled": "true",
                     },
