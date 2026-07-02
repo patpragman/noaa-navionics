@@ -487,11 +487,12 @@ class StatusApp(tk.Tk):
             if mob:
                 self.pending_mob_mark = True
                 message = "MOB mark queued; it will be recorded after the current action finishes."
-                self.summary.set(message)
                 self.last_report.set(message)
-                bell = getattr(self, "bell", None)
-                if callable(bell):
-                    bell()
+                if not self._show_anchor_watch_alarm_if_active():
+                    self.summary.set(message)
+                    bell = getattr(self, "bell", None)
+                    if callable(bell):
+                        bell()
                 self._set_busy(True)
             return
         self._start_mark_worker(mob=mob)

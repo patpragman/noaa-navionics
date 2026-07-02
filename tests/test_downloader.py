@@ -4394,6 +4394,9 @@ class GuiTests(unittest.TestCase):
                 self.anchor_radius_entry = FakeButton()
                 self.anchor_samples_entry = FakeButton()
                 self.anchor_watch_fix = None
+                self.anchor_watch_alarm_active = False
+                self.anchor_watch_alarm_summary = None
+                self.anchor_watch_alarm_detail = None
                 self.bells = 0
 
             def bell(self):
@@ -4401,6 +4404,9 @@ class GuiTests(unittest.TestCase):
 
             def _set_busy(self, busy):
                 status_gui_module.StatusApp._set_busy(self, busy)
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
 
         app = FakeApp()
         worker = app.worker
@@ -4415,6 +4421,80 @@ class GuiTests(unittest.TestCase):
             "MOB mark queued; it will be recorded after the current action finishes.",
         )
         self.assertEqual(app.last_report.value, app.summary.value)
+        self.assertEqual(app.mark_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.mob_button.state, status_gui_module.tk.DISABLED)
+
+    def test_status_gui_queued_mob_does_not_hide_active_anchor_alarm(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeButton:
+            def __init__(self):
+                self.state = None
+
+            def configure(self, *, state):
+                self.state = state
+
+        class BusyWorker:
+            pass
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.worker = BusyWorker()
+                self.pending_mob_mark = False
+                self.summary = FakeVar()
+                self.gps_summary = FakeVar()
+                self.headline = FakeVar()
+                self.last_report = FakeVar()
+                self.refresh_button = FakeButton()
+                self.mark_button = FakeButton()
+                self.mob_button = FakeButton()
+                self.anchor_button = FakeButton()
+                self.anchor_watch_button = FakeButton()
+                self.stop_anchor_watch_button = FakeButton()
+                self.anchor_radius_entry = FakeButton()
+                self.anchor_samples_entry = FakeButton()
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.anchor_watch_alarm_active = True
+                self.anchor_watch_alarm_summary = "Anchor watch: ANCHOR ALARM: 75.0 m from anchor; radius 50 m"
+                self.anchor_watch_alarm_detail = "Anchor 61.000000, -149.000000 | Current 61.000000, -148.990000"
+                self.bells = 0
+
+            def bell(self):
+                self.bells += 1
+
+            def _set_busy(self, busy):
+                status_gui_module.StatusApp._set_busy(self, busy)
+
+            def _show_anchor_watch_alarm_if_active(self):
+                return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+        app = FakeApp()
+        worker = app.worker
+
+        status_gui_module.StatusApp.mark_position(app, mob=True)
+
+        self.assertIs(app.worker, worker)
+        self.assertTrue(app.pending_mob_mark)
+        self.assertEqual(app.headline.value, "NOT READY")
+        self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
+        self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
+        self.assertEqual(
+            app.last_report.value,
+            "MOB mark queued; it will be recorded after the current action finishes.",
+        )
+        self.assertEqual(app.bells, 1)
         self.assertEqual(app.mark_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.mob_button.state, status_gui_module.tk.DISABLED)
 

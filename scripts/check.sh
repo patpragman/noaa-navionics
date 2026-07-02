@@ -5372,6 +5372,7 @@ grep -q 'mean_longitude_degrees(longitudes)' src/noaa_navionics/status_gui.py
 grep -q 'test_status_gui_anchor_watch_averages_longitude_across_date_line' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_longitude_across_date_line' tests/test_downloader.py
 grep -q 'test_status_gui_queues_mob_mark_while_worker_is_busy' tests/test_downloader.py
+grep -q 'test_status_gui_queued_mob_does_not_hide_active_anchor_alarm' tests/test_downloader.py
 grep -q 'test_status_gui_stop_watch_stays_available_while_anchor_watch_check_is_busy' tests/test_downloader.py
 grep -q 'test_status_gui_close_cancels_scheduled_callbacks' tests/test_downloader.py
 grep -q 'test_status_gui_does_not_schedule_callbacks_after_close' tests/test_downloader.py
