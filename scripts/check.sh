@@ -2973,6 +2973,10 @@ grep -q 'status report dirty deployed source revision is not production-ready' s
 grep -q 'status report {name} ok is not boolean' scripts/verify_pi.sh
 grep -q 'status_text(row.get("name", ""), "readiness check name")' scripts/verify_pi.sh
 grep -q 'status_text(row.get("name", ""), "service check name")' scripts/verify_pi.sh
+grep -q 'status_text(summary.get("detail", "systemctl not available"), f"{summary_name} detail")' scripts/verify_pi.sh
+grep -q 'status_text(state.get("enabled", ""), f"{unit} enabled")' scripts/verify_pi.sh
+grep -q 'status_text(state.get("active", ""), f"{unit} active")' scripts/verify_pi.sh
+grep -q 'status_text(properties.get("error", ""), f"{unit} loaded properties error")' scripts/verify_pi.sh
 grep -q 'status report has duplicate readiness check' scripts/verify_pi.sh
 grep -q 'status report has duplicate service check' scripts/verify_pi.sh
 grep -q 'status report Source Revision row does not match deployed source revision' scripts/verify_pi.sh

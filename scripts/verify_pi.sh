@@ -1068,13 +1068,13 @@ def require_status_unit(
     if not isinstance(summary, dict):
         raise SystemExit(f"status report has no {summary_name} section")
     if summary.get("available") is not True:
-        detail = str(summary.get("detail", "systemctl not available")).strip()
+        detail = status_text(summary.get("detail", "systemctl not available"), f"{summary_name} detail")
         raise SystemExit(f"status report {summary_name} unavailable: {detail or 'systemctl not available'}")
     state = summary.get(unit)
     if not isinstance(state, dict):
         raise SystemExit(f"status report has no {summary_name} entry for {unit}")
-    enabled = str(state.get("enabled", "")).strip()
-    active = str(state.get("active", "")).strip()
+    enabled = status_text(state.get("enabled", ""), f"{unit} enabled")
+    active = status_text(state.get("active", ""), f"{unit} active")
     detail = f"status report {unit} enabled={enabled or '<missing>'} active={active or '<missing>'}"
     if unit_query_failed(enabled) or enabled not in expected_enabled:
         raise SystemExit(detail)
@@ -1089,7 +1089,7 @@ def require_status_unit(
         properties = state.get("properties")
         if not isinstance(properties, dict) or not properties:
             raise SystemExit(f"status report {unit} loaded properties missing")
-        error = str(properties.get("error", "")).strip()
+        error = status_text(properties.get("error", ""), f"{unit} loaded properties error")
         if error:
             raise SystemExit(f"status report {unit} loaded properties unavailable: {error}")
     return state
