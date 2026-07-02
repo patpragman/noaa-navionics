@@ -5232,6 +5232,10 @@ grep -q 'Python executable path contains control characters' tests/test_download
 grep -q 'Tkinter module contains control characters' tests/test_downloader.py
 grep -q 'status report Tkinter availability was not proven' src/noaa_navionics/report.py
 grep -q 'status report Source Revision does not match app source revision' src/noaa_navionics/report.py
+grep -q 'Source Revision revision contains control characters' tests/test_downloader.py
+grep -q 'Source Revision path contains control characters' tests/test_downloader.py
+grep -q 'Source Revision directory symlink component contains control characters' tests/test_downloader.py
+grep -q 'Source Revision mode contains control characters' tests/test_downloader.py
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Time Sync did not report SystemClockSynchronized=yes' src/noaa_navionics/report.py
 grep -q 'status report Pi Power check has no structured data' src/noaa_navionics/report.py

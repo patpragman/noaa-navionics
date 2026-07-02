@@ -511,21 +511,54 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
         elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
             pass
         else:
-            revision = str(data.get("revision", "")).strip()
+            revision_value = data.get("revision", "")
+            if not isinstance(revision_value, str):
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision revision is not text"))
+                revision = ""
+            else:
+                revision = revision_value.strip()
+                control_failure = _status_control_character_failure(revision, "Source Revision revision")
+                if control_failure:
+                    failures.append(CheckResult("Source Revision", False, control_failure))
             app = report.get("app")
-            expected_revision = str(app.get("source_revision", "")).strip() if isinstance(app, dict) else ""
+            expected_revision = app.get("source_revision", "") if isinstance(app, dict) else ""
+            if not isinstance(expected_revision, str):
+                expected_revision = ""
+            expected_revision = expected_revision.strip()
             if revision.endswith("-dirty"):
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision records a dirty revision"))
             elif revision != expected_revision:
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision does not match app source revision"))
-            path = str(data.get("path", "")).strip()
+            path_value = data.get("path", "")
+            if not isinstance(path_value, str):
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision path is not text"))
+                path = ""
+            else:
+                path = path_value.strip()
+                control_failure = _status_control_character_failure(path, "Source Revision path")
+                if control_failure:
+                    failures.append(CheckResult("Source Revision", False, control_failure))
             if not _status_absolute_path(path):
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision path is not absolute"))
             if data.get("exists") is not True:
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision path does not exist"))
             if data.get("is_symlink") is not False:
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision path is a symlink"))
-            if str(data.get("directory_symlink_component", "")).strip():
+            symlink_component_value = data.get("directory_symlink_component", "")
+            if not isinstance(symlink_component_value, str):
+                failures.append(
+                    CheckResult("Source Revision", False, "status report Source Revision directory symlink component is not text")
+                )
+                symlink_component = ""
+            else:
+                symlink_component = symlink_component_value.strip()
+                control_failure = _status_control_character_failure(
+                    symlink_component,
+                    "Source Revision directory symlink component",
+                )
+                if control_failure:
+                    failures.append(CheckResult("Source Revision", False, control_failure))
+            if symlink_component:
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision directory contains a symlink"))
             if data.get("is_regular") is not True:
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision path is not a regular file"))
@@ -539,7 +572,15 @@ def _runtime_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                 or uid != expected_uid
             ):
                 failures.append(CheckResult("Source Revision", False, "status report Source Revision owner is invalid"))
-            mode = str(data.get("mode", "")).strip()
+            mode_value = data.get("mode", "")
+            if not isinstance(mode_value, str):
+                failures.append(CheckResult("Source Revision", False, "status report Source Revision mode is not text"))
+                mode = ""
+            else:
+                mode = mode_value.strip()
+                control_failure = _status_control_character_failure(mode, "Source Revision mode")
+                if control_failure:
+                    failures.append(CheckResult("Source Revision", False, control_failure))
             try:
                 parsed_mode = int(mode, 8)
             except ValueError:

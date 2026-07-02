@@ -12667,14 +12667,38 @@ class StatusReportTests(unittest.TestCase):
             ("Tkinter", {"module": "tk", "available": True, "origin": ""}, "Tkinter module is not tkinter"),
             ("Tkinter", {"module": "tkinter", "available": False, "origin": ""}, "Tkinter availability was not proven"),
             ("Source Revision", None, "Source Revision check has no structured data"),
+            ("Source Revision", source_revision_data(revision=123), "Source Revision revision is not text"),
+            (
+                "Source Revision",
+                source_revision_data(revision="fixture123\x00"),
+                "Source Revision revision contains control characters",
+            ),
             ("Source Revision", source_revision_data(revision="fixture123-dirty"), "Source Revision records a dirty revision"),
             ("Source Revision", source_revision_data(revision="stale"), "Source Revision does not match app source revision"),
+            ("Source Revision", source_revision_data(path=123), "Source Revision path is not text"),
+            (
+                "Source Revision",
+                source_revision_data(path="/home/pi/.local/share/noaa-navionics/source-revision\x00"),
+                "Source Revision path contains control characters",
+            ),
             ("Source Revision", source_revision_data(path="source-revision"), "Source Revision path is not absolute"),
             ("Source Revision", source_revision_data(exists=False), "Source Revision path does not exist"),
             ("Source Revision", source_revision_data(is_symlink=True), "Source Revision path is a symlink"),
+            (
+                "Source Revision",
+                source_revision_data(directory_symlink_component=123),
+                "Source Revision directory symlink component is not text",
+            ),
+            (
+                "Source Revision",
+                source_revision_data(directory_symlink_component="\x00"),
+                "Source Revision directory symlink component contains control characters",
+            ),
             ("Source Revision", source_revision_data(directory_symlink_component="/home-link"), "Source Revision directory contains a symlink"),
             ("Source Revision", source_revision_data(is_regular=False), "Source Revision path is not a regular file"),
             ("Source Revision", source_revision_data(uid=1001), "Source Revision owner is invalid"),
+            ("Source Revision", source_revision_data(mode=0o600), "Source Revision mode is not text"),
+            ("Source Revision", source_revision_data(mode="0600\x00"), "Source Revision mode contains control characters"),
             ("Source Revision", source_revision_data(mode="0666"), "Source Revision is group/world writable"),
         ]
         for row_name, data, expected in cases:
