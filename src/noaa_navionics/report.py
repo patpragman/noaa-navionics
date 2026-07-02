@@ -1051,7 +1051,15 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
         if not isinstance(data, dict):
             failures.append(CheckResult(name, False, f"status report {name} check has no structured command data"))
             continue
-        command = str(data.get("command", "")).strip()
+        command, failure = _status_required_text_field(
+            data,
+            "command",
+            f"status report {name} command is missing",
+            f"{name} command",
+            name,
+        )
+        if failure:
+            failures.append(failure)
         if command != expected_command:
             failures.append(
                 CheckResult(
@@ -1060,15 +1068,43 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
                     f"status report {name} command {command or '<missing>'} is not {expected_command}",
                 )
             )
-        path = str(data.get("path", "")).strip()
-        directory = str(data.get("directory", "")).strip()
+        path, failure = _status_required_text_field(
+            data,
+            "path",
+            f"status report {name} command path is not absolute",
+            f"{name} command path",
+            name,
+        )
+        if failure:
+            failures.append(failure)
+        directory, failure = _status_required_text_field(
+            data,
+            "directory",
+            f"status report {name} command directory is not absolute",
+            f"{name} command directory",
+            name,
+        )
+        if failure:
+            failures.append(failure)
         if not _status_absolute_path(path) or data.get("is_absolute") is not True:
             failures.append(CheckResult(name, False, f"status report {name} command path is not absolute"))
         if not _status_absolute_path(directory):
             failures.append(CheckResult(name, False, f"status report {name} command directory is not absolute"))
         if data.get("is_symlink") is not False:
             failures.append(CheckResult(name, False, f"status report {name} command is a symlink"))
-        if str(data.get("path_symlink_component", "")).strip():
+        symlink_component = data.get("path_symlink_component", "")
+        if not isinstance(symlink_component, str):
+            failures.append(CheckResult(name, False, f"status report {name} command path symlink component is not text"))
+            symlink_component_text = ""
+        else:
+            symlink_component_text = symlink_component.strip()
+            control_failure = _status_control_character_failure(
+                symlink_component_text,
+                f"{name} command path symlink component",
+            )
+            if control_failure:
+                failures.append(CheckResult(name, False, control_failure))
+        if symlink_component_text:
             failures.append(CheckResult(name, False, f"status report {name} command path contains a symlink"))
         if data.get("trusted_system_directory") is not True:
             failures.append(CheckResult(name, False, f"status report {name} command is not in a trusted system directory"))
@@ -1081,7 +1117,15 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
             if isinstance(value, bool) or not isinstance(value, int) or value != 0:
                 failures.append(CheckResult(name, False, f"status report {name} {detail} is not root"))
         for field, detail in (("mode", "command"), ("directory_mode", "command directory")):
-            mode = str(data.get(field, "")).strip()
+            mode_value = data.get(field, "")
+            if not isinstance(mode_value, str):
+                failures.append(CheckResult(name, False, f"status report {name} {detail} mode is not text"))
+                continue
+            mode = mode_value.strip()
+            control_failure = _status_control_character_failure(mode, f"{name} {detail} mode")
+            if control_failure:
+                failures.append(CheckResult(name, False, control_failure))
+                continue
             try:
                 parsed_mode = int(mode, 8)
             except ValueError:

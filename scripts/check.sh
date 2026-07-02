@@ -5225,6 +5225,10 @@ grep -q 'pre-departure status snapshot JSON config gps_baud is invalid' scripts/
 grep -q 'status snapshot JSON config gps_baud is invalid' scripts/post_trip_collect_pi.sh
 grep -q 'expected config gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200' scripts/verify_pi.sh
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
+grep -q 'OpenCPN command contains control characters' tests/test_downloader.py
+grep -q 'OpenCPN command path contains control characters' tests/test_downloader.py
+grep -q 'OpenCPN command path symlink component contains control characters' tests/test_downloader.py
+grep -q 'OpenCPN command mode contains control characters' tests/test_downloader.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chrony_gps_time_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report Python check has no structured data' src/noaa_navionics/report.py
