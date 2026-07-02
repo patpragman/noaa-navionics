@@ -1859,13 +1859,15 @@ def _opencpn_config_validation_failures(report: dict[str, object]) -> list[Check
     opencpn_config = report.get("opencpn_config")
     if not isinstance(opencpn_config, dict):
         return [CheckResult("OpenCPN Config", False, "status report missing opencpn_config section")]
-    path_text = str(opencpn_config.get("path", ""))
-    path = path_text.strip()
-    if not path:
-        return [CheckResult("OpenCPN Config", False, "status report OpenCPN config path is empty")]
-    path_failure = _status_control_character_failure(path_text, "OpenCPN config path")
-    if path_failure:
-        return [CheckResult("OpenCPN Config", False, path_failure)]
+    path, failure = _status_required_text_field(
+        opencpn_config,
+        "path",
+        "status report OpenCPN config path is empty",
+        "OpenCPN config path",
+        "OpenCPN Config",
+    )
+    if failure:
+        return [failure]
     if not _status_absolute_path(path):
         return [CheckResult("OpenCPN Config", False, f"status report OpenCPN config path is not absolute: {path}")]
     if opencpn_config.get("exists") is not True:
@@ -1888,9 +1890,25 @@ def _opencpn_config_validation_failures(report: dict[str, object]) -> list[Check
         ]
     if "config_symlink_component" not in opencpn_config:
         return [CheckResult("OpenCPN Config", False, "status report OpenCPN config missing config_symlink_component")]
-    if str(opencpn_config.get("config_symlink_component", "")).strip():
+    config_symlink_component = opencpn_config.get("config_symlink_component", "")
+    if not isinstance(config_symlink_component, str):
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN config config_symlink_component is not text")]
+    config_symlink_component_text = config_symlink_component.strip()
+    control_failure = _status_control_character_failure(
+        config_symlink_component_text,
+        "OpenCPN config config_symlink_component",
+    )
+    if control_failure:
+        return [CheckResult("OpenCPN Config", False, control_failure)]
+    if config_symlink_component_text:
         return [CheckResult("OpenCPN Config", False, "status report OpenCPN config path contains a symlink")]
-    error = str(opencpn_config.get("error", "")).strip()
+    error_value = opencpn_config.get("error", "")
+    if not isinstance(error_value, str):
+        return [CheckResult("OpenCPN Config", False, "status report OpenCPN config error is not text")]
+    error = error_value.strip()
+    control_failure = _status_control_character_failure(error, "OpenCPN config error")
+    if control_failure:
+        return [CheckResult("OpenCPN Config", False, control_failure)]
     if error:
         return [CheckResult("OpenCPN Config", False, f"status report OpenCPN config error: {error}")]
 

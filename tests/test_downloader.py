@@ -13912,6 +13912,7 @@ class StatusReportTests(unittest.TestCase):
         )
         cases = [
             ({}, "missing opencpn_config section"),
+            ({"opencpn_config": {**valid_opencpn_config, "path": 123}}, "path is empty"),
             ({"opencpn_config": {**valid_opencpn_config, "path": ""}}, "path is empty"),
             (
                 {"opencpn_config": {**valid_opencpn_config, "path": "/home/pi/.opencpn/opencpn.conf\x00"}},
@@ -13942,8 +13943,24 @@ class StatusReportTests(unittest.TestCase):
                 "missing config_symlink_component",
             ),
             (
+                {"opencpn_config": {**valid_opencpn_config, "config_symlink_component": 123}},
+                "config_symlink_component is not text",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "config_symlink_component": "\x00"}},
+                "config_symlink_component contains control characters",
+            ),
+            (
                 {"opencpn_config": {**valid_opencpn_config, "config_symlink_component": "/home/pi/.opencpn"}},
                 "path contains a symlink",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "error": 123}},
+                "OpenCPN config error is not text",
+            ),
+            (
+                {"opencpn_config": {**valid_opencpn_config, "error": "OpenCPN config path is not a regular file\x00"}},
+                "OpenCPN config error contains control characters",
             ),
             (
                 {"opencpn_config": {**valid_opencpn_config, "error": "OpenCPN config path is not a regular file"}},

@@ -5114,6 +5114,8 @@ grep -q 'required_nonnegative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' src/no
 grep -q 'status report missing opencpn_config section' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config missing config_symlink_component' src/noaa_navionics/report.py
+grep -q 'config_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'OpenCPN config error contains control characters' tests/test_downloader.py
 grep -q 'status report OpenCPN chart directories were not parsed' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config does not contain enabled GPSD connection' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config contains unexpected enabled GPSD connections' src/noaa_navionics/report.py
