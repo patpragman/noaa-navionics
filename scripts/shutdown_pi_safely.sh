@@ -443,6 +443,8 @@ validate_shutdown_controls() {
   esac
 }
 
+track_unit=noaa-navionics-track.service
+
 require_remote_command() {
   local command_name="$1"
   local command_path
@@ -477,6 +479,26 @@ require_remote_command() {
   printf '%s\n' "$resolved_path"
 }
 
+validate_track_logger_user_service() {
+  local load_state
+
+  if ! load_state="$("$systemctl_cmd" --user show "$track_unit" --property=LoadState --value 2>/dev/null)" || [[ -z "$load_state" ]]; then
+    echo "Remote user systemd cannot inspect ${track_unit}; run provisioning and verify user linger before shutdown checks." >&2
+    exit 1
+  fi
+  if [[ "$load_state" == "not-found" ]]; then
+    echo "Remote track logger unit is not installed for this user: ${track_unit}" >&2
+    exit 1
+  fi
+}
+
+stop_track_logger_for_shutdown() {
+  validate_track_logger_user_service
+  printf 'Stopping track logger before filesystem sync.\n'
+  "$systemctl_cmd" --user stop "$track_unit"
+  printf 'Track logger stop completed.\n'
+}
+
 validate_shutdown_controls
 sync_cmd="$(require_remote_command sync)"
 sudo_cmd="$(require_remote_command sudo)"
@@ -489,7 +511,6 @@ if ! "$sudo_cmd" -n -l "$systemctl_cmd" poweroff >/dev/null 2>&1; then
 fi
 
 sync_cmd="$(require_remote_command sync)"
-"$sync_cmd"
 sudo_cmd="$(require_remote_command sudo)"
 systemctl_cmd="$(require_remote_command systemctl)"
 if ! "$sudo_cmd" -n -l "$systemctl_cmd" poweroff >/dev/null 2>&1; then
@@ -498,10 +519,14 @@ if ! "$sudo_cmd" -n -l "$systemctl_cmd" poweroff >/dev/null 2>&1; then
   exit 1
 fi
 if [[ "${NOAA_NAVIONICS_SHUTDOWN_DRY_RUN:-0}" == "1" ]]; then
-  printf 'Dry run passed; would run: %s -n %s poweroff\n' "$sudo_cmd" "$systemctl_cmd"
+  validate_track_logger_user_service
+  printf 'Dry run passed; would stop %s, sync filesystems, and run: %s -n %s poweroff\n' "$track_unit" "$sudo_cmd" "$systemctl_cmd"
   exit 0
 fi
 
+stop_track_logger_for_shutdown
+sync_cmd="$(require_remote_command sync)"
+"$sync_cmd"
 printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
 "$sudo_cmd" -n "$systemctl_cmd" poweroff
 printf 'Poweroff request accepted by systemd.\n'

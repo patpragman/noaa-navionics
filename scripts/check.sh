@@ -1184,11 +1184,15 @@ grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sail
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
 grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the shutdown heredoc' README.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
+grep -q 'proves the user systemd track logger unit is installed during dry-run checks' README.md
+grep -q 'stops `noaa-navionics-track.service` before the final filesystem sync' README.md
 grep -q 'requires the remote command to report that systemd accepted the poweroff request' README.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' README.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the shutdown heredoc' docs/sailboat-pi.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
+grep -q 'proves the user systemd track logger unit is installed during dry-run checks' docs/sailboat-pi.md
+grep -q 'stops `noaa-navionics-track.service` before the final filesystem sync' docs/sailboat-pi.md
 grep -q 'requires the remote command to report that systemd accepted the poweroff request' docs/sailboat-pi.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' docs/sailboat-pi.md
 grep -q -- '--timeout requires a real shutdown' scripts/shutdown_pi_safely.sh
@@ -2330,6 +2334,12 @@ grep -q 'validate_remote_bash_entrypoint' scripts/shutdown_pi_safely.sh
 grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/shutdown_pi_safely.sh
 grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/shutdown_pi_safely.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/shutdown_pi_safely.sh
+grep -q 'track_unit=noaa-navionics-track.service' scripts/shutdown_pi_safely.sh
+grep -q 'validate_track_logger_user_service' scripts/shutdown_pi_safely.sh
+grep -Fq '"$systemctl_cmd" --user show "$track_unit" --property=LoadState --value' scripts/shutdown_pi_safely.sh
+grep -Fq '"$systemctl_cmd" --user stop "$track_unit"' scripts/shutdown_pi_safely.sh
+grep -q 'Stopping track logger before filesystem sync' scripts/shutdown_pi_safely.sh
+grep -q 'Track logger stop completed' scripts/shutdown_pi_safely.sh
 test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' scripts/shutdown_pi_safely.sh)" -ge 2
 test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' scripts/shutdown_pi_safely.sh)" -ge 2
 test "$(grep -c 'systemctl_cmd="$(require_remote_command systemctl)"' scripts/shutdown_pi_safely.sh)" -ge 2
@@ -17206,6 +17216,12 @@ grep -q 'validate_shutdown_controls' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command sync' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command sudo' "$shutdown_fake_ssh_stdin"
 grep -q 'require_remote_command systemctl' "$shutdown_fake_ssh_stdin"
+grep -q 'track_unit=noaa-navionics-track.service' "$shutdown_fake_ssh_stdin"
+grep -q 'validate_track_logger_user_service' "$shutdown_fake_ssh_stdin"
+grep -Fq '"$systemctl_cmd" --user show "$track_unit" --property=LoadState --value' "$shutdown_fake_ssh_stdin"
+grep -Fq '"$systemctl_cmd" --user stop "$track_unit"' "$shutdown_fake_ssh_stdin"
+grep -q 'Stopping track logger before filesystem sync' "$shutdown_fake_ssh_stdin"
+grep -q 'Track logger stop completed' "$shutdown_fake_ssh_stdin"
 test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' "$shutdown_fake_ssh_stdin")" -ge 2
 test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' "$shutdown_fake_ssh_stdin")" -ge 2
 test "$(grep -c 'systemctl_cmd="$(require_remote_command systemctl)"' "$shutdown_fake_ssh_stdin")" -ge 2
@@ -17254,6 +17270,7 @@ grep -q 'Clean Pi poweroff confirmed by SSH drop for pi@example.invalid.' "$veri
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0' "$shutdown_confirm_fake_ssh_log"
 grep -q 'ConnectTimeout=5' "$shutdown_confirm_fake_ssh_log"
 grep -q 'ServerAliveInterval=10' "$shutdown_confirm_fake_ssh_log"
+grep -Fq '"$systemctl_cmd" --user stop "$track_unit"' "$shutdown_confirm_fake_ssh_stdin"
 grep -Fq '"$sudo_cmd" -n "$systemctl_cmd" poweroff' "$shutdown_confirm_fake_ssh_stdin"
 
 shutdown_missing_accepted_fake_ssh_bin="$tmpdir/shutdown-missing-accepted-fake-ssh-bin"
