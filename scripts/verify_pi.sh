@@ -861,10 +861,15 @@ def read_current_boot_id():
     return value
 
 def parse_manifest_int(value, field, source):
-    try:
-        return int(value)
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}") from exc
+    if isinstance(value, bool):
+        raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if re.fullmatch(r"[0-9]+", text):
+            return int(text)
+    raise SystemExit(f"status report manifest {field} is invalid in {source}: {value!r}")
 
 def sha256_trusted_file(path, label, expected_uid):
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)

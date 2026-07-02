@@ -3105,6 +3105,10 @@ grep -q 'status report manifest download_skipped' scripts/verify_pi.sh
 grep -q 'status report manifest created_at ' scripts/verify_pi.sh
 grep -q 'does not match manifest file bytes' scripts/verify_pi.sh
 grep -q 'does not match manifest file enc_cell_count' scripts/verify_pi.sh
+grep -q 'def parse_manifest_int' scripts/verify_pi.sh
+grep -q 'if isinstance(value, bool):' scripts/verify_pi.sh
+grep -q 'if isinstance(value, int):' scripts/verify_pi.sh
+grep -Fq 're.fullmatch(r"[0-9]+", text)' scripts/verify_pi.sh
 grep -q 'actual_enc_cell_count' src/noaa_navionics/report.py
 grep -q 'status report manifest actual_enc_cell_count' scripts/verify_pi.sh
 grep -q 'actual_enc_cell_count: 1' tests/test_downloader.py
