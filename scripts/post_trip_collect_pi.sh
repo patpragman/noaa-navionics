@@ -794,8 +794,12 @@ def private_octal_mode(value: object, *, field: str, path: Path) -> int:
 
 
 def snapshot_octal_mode(value: object, *, label: str, path: Path) -> int:
-    text = str(value).strip()
+    if not isinstance(value, str):
+        fail(f"status snapshot JSON {label} mode is invalid: {path}")
+    text = value.strip()
     if not text:
+        fail(f"status snapshot JSON {label} mode is invalid: {path}")
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
         fail(f"status snapshot JSON {label} mode is invalid: {path}")
     try:
         mode = int(text, 8)
