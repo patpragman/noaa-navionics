@@ -1598,7 +1598,7 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
         fail("pre-departure status snapshot JSON Charts path does not match config chart_output")
     if charts_data.get("exists") is not True:
         fail("pre-departure status snapshot JSON Charts path does not exist")
-    if str(charts_data.get("storage_symlink_component", "")).strip():
+    if snapshot_text(charts_data.get("storage_symlink_component", ""), "Charts storage_symlink_component"):
         fail("pre-departure status snapshot JSON Charts path contains a symlink")
     if charts_data.get("has_extracted_enc_cells") is not True:
         fail("pre-departure status snapshot JSON Charts found no extracted ENC cells")
@@ -1631,7 +1631,7 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     configured_path = snapshot_absolute_path(debris_data.get("configured_path", ""), "Chart Update Debris path")
     if configured_path != chart_output:
         fail("pre-departure status snapshot JSON Chart Update Debris path does not match config chart_output")
-    if str(debris_data.get("storage_symlink_component", "")).strip():
+    if snapshot_text(debris_data.get("storage_symlink_component", ""), "Chart Update Debris storage_symlink_component"):
         fail("pre-departure status snapshot JSON Chart Update Debris path contains a symlink")
     debris_count = debris_data.get("debris_count")
     if isinstance(debris_count, bool) or not isinstance(debris_count, int) or debris_count != 0:

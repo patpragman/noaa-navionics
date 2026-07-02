@@ -14610,6 +14610,8 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('"Source Revision revision"', source)
                 self.assertIn('"GPSD Config path"', source)
                 self.assertIn('"config gps_device"', source)
+                self.assertIn('"Charts storage_symlink_component"', source)
+                self.assertIn('"Chart Update Debris storage_symlink_component"', source)
                 self.assertIn('"GPSD Config directory_symlink_component"', source)
                 self.assertIn('"Chrony Config path"', source)
                 self.assertIn('"Chrony Config directory_symlink_component"', source)
