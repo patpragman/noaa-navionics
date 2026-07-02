@@ -2646,6 +2646,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("<sym>Man Overboard</sym>", text)
             self.assertIn("<sat>9</sat>", text)
             self.assertIn("<hdop>0.9</hdop>", text)
+            self.assertEqual(text.count("<hdop>0.9</hdop>"), 1)
             self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
             self.assertIn(f"\aMOB position marked: {mark_path}", stdout.getvalue())
@@ -2711,6 +2712,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("<name>MOB</name>", text)
             self.assertIn("<desc>Man overboard position mark</desc>", text)
             self.assertIn("<sym>Man Overboard</sym>", text)
+            self.assertEqual(text.count("<hdop>0.9</hdop>"), 1)
             self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
             self.assertIn(f"\aMOB position marked: {mark_path}", stdout.getvalue())
@@ -20922,6 +20924,7 @@ class GpsTests(unittest.TestCase):
             self.assertIn("<sym>Man &lt;Overboard&gt;</sym>", text)
             self.assertIn("<sat>9</sat>", text)
             self.assertIn("<hdop>0.9</hdop>", text)
+            self.assertEqual(text.count("<hdop>0.9</hdop>"), 1)
             self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
 
