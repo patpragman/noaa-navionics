@@ -3337,6 +3337,10 @@ if not python_resolve < prepare < validate_app < validate_gpsd < sudo_resolve < 
 PY
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' README.md
 grep -q 'revalidate root target paths before temporary-file creation and immediately before promotion' docs/sailboat-pi.md
+grep -q 'promote those temp files by a no-follow opened target-directory descriptor' README.md
+grep -q 'promote those temp files by a no-follow opened target-directory descriptor' docs/sailboat-pi.md
+grep -q 'same validated inode and matches its source before syncing it' README.md
+grep -q 'same validated inode and matches its source before syncing it' docs/sailboat-pi.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' README.md
@@ -3382,6 +3386,7 @@ if not tmp_stat < validate < promote < cleanup:
 PY
 for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
   grep -q 'install_root_file_atomic' "$script"
+  grep -q 'promote_root_temp_file' "$script"
   grep -q 'verify_promoted_root_file' "$script"
   grep -q 'verify_root_temp_file' "$script"
   grep -q 'cleanup_root_temp_file' "$script"
@@ -3393,11 +3398,14 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'verify_root_temp_file "$target_tmp" 0600' "$script"
   grep -q '"$sudo_cmd" install -m "$mode" "$source" "$target_tmp"' "$script"
   grep -q 'verify_root_temp_file "$target_tmp" "$mode"' "$script"
-  grep -q 'sync_path "$target_tmp"' "$script"
+  ! grep -q 'sync_path "$target_tmp"' "$script"
   grep -q 'cleanup_root_temp_file "$target_tmp"' "$script"
-  grep -q '"$sudo_cmd" mv -f "$target_tmp" "$target"' "$script"
+  grep -q 'promote_root_temp_file "$source" "$target_tmp" "$target" "$mode"' "$script"
+  grep -q 'os.replace(temp.name, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)' "$script"
+  grep -q 'promoted root config is not the validated temp file' "$script"
   grep -q 'verify_promoted_root_file "$source" "$target" "$mode"' "$script"
   grep -q 'sync_path "$target"' "$script"
+  ! grep -q '"$sudo_cmd" mv -f "$target_tmp" "$target"' "$script"
   ! grep -q '"$sudo_cmd" rm -f "$target_tmp"' "$script"
   grep -q 'sudo_command()' "$script"
   grep -q 'python3_command()' "$script"
@@ -3416,6 +3424,9 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'promoted root config does not match source' "$script"
   grep -q 'promoted root config.*expected' "$script"
   grep -q 'os.open(path, os.O_RDONLY | nofollow)' "$script"
+  grep -q 'os.open(target.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)' "$script"
+  grep -q 'os.open(temp.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)' "$script"
+  grep -q 'os.path.samestat(temp_stat, promoted)' "$script"
   grep -q 'stat.S_ISREG(opened.st_mode)' "$script"
   ! grep -q 'with path.open("rb") as handle' "$script"
 done

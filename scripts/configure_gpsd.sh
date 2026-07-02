@@ -364,6 +364,106 @@ finally:
 PY
 }
 
+promote_root_temp_file() {
+  local source="$1"
+  local temp="$2"
+  local target="$3"
+  local mode="$4"
+  "$sudo_cmd" "$python3_cmd" - "$source" "$temp" "$target" "$mode" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+source = Path(sys.argv[1])
+temp = Path(sys.argv[2])
+target = Path(sys.argv[3])
+expected_mode = int(sys.argv[4], 8)
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+if temp.parent != target.parent:
+    raise SystemExit(f"root config temp must be in target directory before promotion: {temp}")
+
+def read_fd(fd: int) -> bytes:
+    chunks = []
+    while True:
+        chunk = os.read(fd, 1024 * 1024)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+try:
+    source_fd = os.open(source, os.O_RDONLY | nofollow)
+except OSError as exc:
+    if source.is_symlink():
+        raise SystemExit(f"root config source is a symlink: {source}") from exc
+    raise SystemExit(f"could not open root config source {source}: {exc}") from exc
+try:
+    source_stat = os.fstat(source_fd)
+    if not stat.S_ISREG(source_stat.st_mode):
+        raise SystemExit(f"root config source is not a regular file: {source}")
+    source_bytes = read_fd(source_fd)
+finally:
+    os.close(source_fd)
+
+try:
+    dir_fd = os.open(target.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    if target.parent.is_symlink():
+        raise SystemExit(f"root config target directory is a symlink: {target.parent}") from exc
+    raise SystemExit(f"could not open root config target directory {target.parent}: {exc}") from exc
+try:
+    dir_stat = os.fstat(dir_fd)
+    dir_mode = stat.S_IMODE(dir_stat.st_mode)
+    if not stat.S_ISDIR(dir_stat.st_mode) or dir_stat.st_uid != 0 or dir_mode & 0o022:
+        raise SystemExit(f"root config target directory is not trusted for promotion: {target.parent}")
+    try:
+        target_stat = os.stat(target.name, dir_fd=dir_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+    else:
+        if not stat.S_ISREG(target_stat.st_mode):
+            raise SystemExit(f"root config target is not a regular file before promotion: {target}")
+        if stat.S_IMODE(target_stat.st_mode) & 0o022:
+            raise SystemExit(f"root config target is writable by group/other before promotion: {target}")
+
+    temp_fd = os.open(temp.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    try:
+        temp_stat = os.fstat(temp_fd)
+        temp_mode = stat.S_IMODE(temp_stat.st_mode)
+        if not stat.S_ISREG(temp_stat.st_mode):
+            raise SystemExit(f"root config temp is not a regular file before promotion: {temp}")
+        if temp_stat.st_uid != 0 or temp_mode != expected_mode:
+            raise SystemExit(f"root config temp is not trusted root-owned storage before promotion: {temp}")
+        temp_bytes = read_fd(temp_fd)
+        if temp_bytes != source_bytes:
+            raise SystemExit(f"root config temp does not match source before promotion: {temp}")
+        os.fsync(temp_fd)
+    finally:
+        os.close(temp_fd)
+
+    os.replace(temp.name, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+
+    target_fd = os.open(target.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    try:
+        promoted = os.fstat(target_fd)
+        if not os.path.samestat(temp_stat, promoted):
+            raise SystemExit(f"promoted root config is not the validated temp file: {target}")
+        promoted_mode = stat.S_IMODE(promoted.st_mode)
+        if promoted.st_uid != 0 or promoted_mode != expected_mode:
+            raise SystemExit(f"promoted root config is not trusted root-owned storage: {target}")
+        if read_fd(target_fd) != source_bytes:
+            raise SystemExit(f"promoted root config does not match source: {target}")
+        os.fsync(target_fd)
+    finally:
+        os.close(target_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 backup_root_file_private() {
   local source="$1"
   local backup="$2"
@@ -518,15 +618,11 @@ install_root_file_atomic() {
     cleanup_root_temp_file "$target_tmp"
     return 1
   fi
-  if ! sync_path "$target_tmp"; then
-    cleanup_root_temp_file "$target_tmp"
-    return 1
-  fi
   if ! validate_gpsd_config_path; then
     cleanup_root_temp_file "$target_tmp"
     return 1
   fi
-  if ! "$sudo_cmd" mv -f "$target_tmp" "$target"; then
+  if ! promote_root_temp_file "$source" "$target_tmp" "$target" "$mode"; then
     cleanup_root_temp_file "$target_tmp"
     return 1
   fi
