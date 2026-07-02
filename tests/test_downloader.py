@@ -14836,6 +14836,42 @@ class StatusReportTests(unittest.TestCase):
                     with self.subTest(expected=expected):
                         self.assertIn(expected, source)
 
+    def test_status_snapshot_validators_reject_control_characters(self):
+        labels = (
+            "config_path",
+            "config gps_mode",
+            "config gps_device",
+            "config gpsd_host",
+            "config chart_output",
+            "config track_output",
+            "track_log track_output",
+            "track_log tracks_dir",
+            "track_log latest_path",
+            "Manifest path",
+            "Manifest download path",
+            "Manifest extract path",
+            "Charts path",
+            "Charts ENC cell sample path",
+            "Chart Update Debris path",
+            "OpenCPN Charts chart directory",
+            "OpenCPN Charts config path",
+            "OpenCPN Charts parsed directory",
+            "OpenCPN GPSD config path",
+        )
+        for script in (
+            "scripts/pre_trip_prepare_pi.sh",
+            "scripts/verify_pi_recovery_exports.sh",
+            "scripts/post_trip_collect_pi.sh",
+        ):
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                self.assertIn("def snapshot_text", source)
+                self.assertIn("def snapshot_absolute_path", source)
+                self.assertIn("contains control characters", source)
+                for label in labels:
+                    with self.subTest(label=label):
+                        self.assertIn(f'"{label}"', source)
+
     def test_status_snapshot_validators_require_structured_gps_and_track_summaries(self):
         expectations = {
             "scripts/pre_trip_prepare_pi.sh": (

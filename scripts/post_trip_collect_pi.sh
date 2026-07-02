@@ -675,6 +675,37 @@ def positive_status_int(value: object):
     return value
 
 
+def snapshot_text(value: object, label: str, path: Path) -> str:
+    text = str(value)
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        fail(f"status snapshot JSON {label} contains control characters: {path}")
+    return text.strip()
+
+
+def snapshot_absolute_path(value: object, label: str, path: Path) -> str:
+    text = snapshot_text(value, label, path)
+    if not text or not Path(text).is_absolute():
+        fail(f"status snapshot JSON {label} is not absolute: {path}")
+    return text
+
+
+SNAPSHOT_STATIC_DIAGNOSTICS = (
+    "status snapshot JSON config_path is not absolute",
+    "status snapshot JSON config chart_output is not absolute",
+    "status snapshot JSON config track_output is not absolute",
+    "status snapshot JSON track_log track_output is not absolute",
+    "status snapshot JSON track_log tracks_dir is not absolute",
+    "status snapshot JSON track_log latest_path is not absolute",
+    "status snapshot JSON Manifest path is not absolute",
+    "status snapshot JSON Manifest download path is not absolute",
+    "status snapshot JSON Manifest extract path is not absolute",
+    "status snapshot JSON Charts ENC cell sample path is not absolute",
+    "status snapshot JSON OpenCPN Charts chart directory is not absolute",
+    "status snapshot JSON OpenCPN Charts config path is not absolute",
+    "status snapshot JSON OpenCPN GPSD config path is not absolute",
+)
+
+
 def stable_snapshot_gps_device_path(path: str) -> bool:
     allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-"
     for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
@@ -919,13 +950,9 @@ def validate_snapshot_status_launcher(payload: dict[str, object], *, path: Path)
 
 
 def validate_track_log_paths(track_log: dict[str, object], *, path: Path) -> None:
-    track_output = str(track_log.get("track_output", "")).strip()
-    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
-    latest_path = str(track_log.get("latest_path", "")).strip()
-    if not track_output or not Path(track_output).is_absolute():
-        fail(f"status snapshot JSON track_log track_output is not absolute: {path}")
-    if not tracks_dir or not Path(tracks_dir).is_absolute():
-        fail(f"status snapshot JSON track_log tracks_dir is not absolute: {path}")
+    track_output = snapshot_absolute_path(track_log.get("track_output", ""), "track_log track_output", path)
+    tracks_dir = snapshot_absolute_path(track_log.get("tracks_dir", ""), "track_log tracks_dir", path)
+    latest_path = snapshot_text(track_log.get("latest_path", ""), "track_log latest_path", path)
     if str(Path(track_output) / "tracks") != tracks_dir:
         fail(f"status snapshot JSON track_log tracks_dir does not match track_output: {path}")
     if not latest_path:
@@ -1067,13 +1094,11 @@ def validate_snapshot_manifest_row(
         fail(f"status snapshot JSON Manifest row has no structured data: {path}")
     if not isinstance(manifest, dict):
         fail(f"status snapshot JSON Manifest row has no top-level manifest summary: {path}")
-    chart_output = str(config.get("chart_output", "")).strip()
-    configured_path = str(data.get("configured_path", "")).strip()
+    chart_output = snapshot_absolute_path(config.get("chart_output", ""), "config chart_output", path)
+    configured_path = snapshot_absolute_path(data.get("configured_path", ""), "Manifest configured path", path)
     if configured_path != chart_output:
         fail(f"status snapshot JSON Manifest configured path does not match config chart_output: {path}")
-    manifest_path = str(data.get("path", "")).strip()
-    if not Path(manifest_path).is_absolute():
-        fail(f"status snapshot JSON Manifest path is not absolute: {path}")
+    manifest_path = snapshot_absolute_path(data.get("path", ""), "Manifest path", path)
     if manifest_path != str(Path(chart_output) / "noaa-navionics-manifest.json"):
         fail(f"status snapshot JSON Manifest path does not match config chart_output: {path}")
     if manifest_path != str(manifest.get("path", "")).strip():
@@ -1096,14 +1121,10 @@ def validate_snapshot_manifest_row(
         fail(f"status snapshot JSON Manifest created_at_source is not verified: {path}")
     normalized_chart_output = os.path.normpath(chart_output)
     for row_field, label in (
-        ("download_path", "download path"),
-        ("extract_path", "extract path"),
+        ("download_path", "Manifest download path"),
+        ("extract_path", "Manifest extract path"),
     ):
-        manifest_storage_path = str(data.get(row_field, "")).strip()
-        if not Path(manifest_storage_path).is_absolute():
-            if row_field == "download_path":
-                fail(f"status snapshot JSON Manifest download path is not absolute: {path}")
-            fail(f"status snapshot JSON Manifest extract path is not absolute: {path}")
+        manifest_storage_path = snapshot_absolute_path(data.get(row_field, ""), label, path)
         normalized_storage_path = os.path.normpath(manifest_storage_path)
         try:
             storage_common = os.path.commonpath([normalized_storage_path, normalized_chart_output])
@@ -1141,7 +1162,7 @@ def validate_snapshot_manifest_row(
 
 
 def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object], path: Path) -> None:
-    chart_output = str(config.get("chart_output", "")).strip()
+    chart_output = snapshot_absolute_path(config.get("chart_output", ""), "config chart_output", path)
 
     charts_row = check_rows.get("Charts")
     if not isinstance(charts_row, dict):
@@ -1149,7 +1170,7 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     charts_data = charts_row.get("data")
     if not isinstance(charts_data, dict):
         fail(f"status snapshot JSON Charts row has no structured data: {path}")
-    configured_path = str(charts_data.get("configured_path", "")).strip()
+    configured_path = snapshot_absolute_path(charts_data.get("configured_path", ""), "Charts path", path)
     if configured_path != chart_output:
         fail(f"status snapshot JSON Charts path does not match config chart_output: {path}")
     if charts_data.get("exists") is not True:
@@ -1166,11 +1187,11 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     enc_cell_samples = charts_data.get("enc_cell_samples")
     if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
         fail(f"status snapshot JSON Charts has no ENC cell sample paths: {path}")
-    if any(not Path(str(sample)).is_absolute() for sample in enc_cell_samples):
+    if any(not Path(snapshot_text(sample, "Charts ENC cell sample path", path)).is_absolute() for sample in enc_cell_samples):
         fail(f"status snapshot JSON Charts ENC cell sample path is not absolute: {path}")
     normalized_chart_output = os.path.normpath(chart_output)
     for sample in enc_cell_samples:
-        normalized_sample = os.path.normpath(str(sample))
+        normalized_sample = os.path.normpath(snapshot_text(sample, "Charts ENC cell sample path", path))
         try:
             sample_common = os.path.commonpath([normalized_sample, normalized_chart_output])
         except ValueError:
@@ -1184,7 +1205,7 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     debris_data = debris_row.get("data")
     if not isinstance(debris_data, dict):
         fail(f"status snapshot JSON Chart Update Debris row has no structured data: {path}")
-    configured_path = str(debris_data.get("configured_path", "")).strip()
+    configured_path = snapshot_absolute_path(debris_data.get("configured_path", ""), "Chart Update Debris path", path)
     if configured_path != chart_output:
         fail(f"status snapshot JSON Chart Update Debris path does not match config chart_output: {path}")
     if str(debris_data.get("storage_symlink_component", "")).strip():
@@ -1204,14 +1225,10 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     opencpn_data = opencpn_row.get("data")
     if not isinstance(opencpn_data, dict):
         fail(f"status snapshot JSON OpenCPN Charts row has no structured data: {path}")
-    chart_dir = str(opencpn_data.get("chart_dir", "")).strip()
-    if not Path(chart_dir).is_absolute():
-        fail(f"status snapshot JSON OpenCPN Charts chart directory is not absolute: {path}")
+    chart_dir = snapshot_absolute_path(opencpn_data.get("chart_dir", ""), "OpenCPN Charts chart directory", path)
     if chart_dir != chart_output:
         fail(f"status snapshot JSON OpenCPN Charts chart directory does not match config chart_output: {path}")
-    config_path = str(opencpn_data.get("config_path", "")).strip()
-    if not Path(config_path).is_absolute():
-        fail(f"status snapshot JSON OpenCPN Charts config path is not absolute: {path}")
+    snapshot_absolute_path(opencpn_data.get("config_path", ""), "OpenCPN Charts config path", path)
     if opencpn_data.get("config_exists") is not True:
         fail(f"status snapshot JSON OpenCPN Charts config does not exist: {path}")
     if opencpn_data.get("chart_dir_exists") is not True:
@@ -1221,7 +1238,8 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     chart_directories = opencpn_data.get("chart_directories")
     if not isinstance(chart_directories, list) or not chart_directories:
         fail(f"status snapshot JSON OpenCPN Charts has no parsed chart directories: {path}")
-    if not any(str(directory).strip() == chart_output for directory in chart_directories):
+    parsed_chart_directories = [snapshot_text(directory, "OpenCPN Charts parsed directory", path) for directory in chart_directories]
+    if not any(directory == chart_output for directory in parsed_chart_directories):
         fail(f"status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output: {path}")
 
 
@@ -1239,7 +1257,7 @@ def validate_snapshot_gpsd_rows(
     expected_device = str(config.get("gps_device", "")).strip()
     if not expected_device:
         fail(f"status snapshot JSON missing config gps_device: {path}")
-    expected_host = normalize_snapshot_gpsd_host(config.get("gpsd_host", ""))
+    expected_host = normalize_snapshot_gpsd_host(snapshot_text(config.get("gpsd_host", ""), "config gpsd_host", path))
     if expected_host not in {"127.0.0.1", "0.0.0.0"}:
         fail(f"status snapshot JSON config gpsd_host is not local: {path}")
     expected_port = config.get("gpsd_port")
@@ -1252,8 +1270,7 @@ def validate_snapshot_gpsd_rows(
     opencpn_data = opencpn_row.get("data")
     if not isinstance(opencpn_data, dict):
         fail(f"status snapshot JSON OpenCPN GPSD row has no structured data: {path}")
-    if not Path(str(opencpn_data.get("config_path", "")).strip()).is_absolute():
-        fail(f"status snapshot JSON OpenCPN GPSD config path is not absolute: {path}")
+    snapshot_absolute_path(opencpn_data.get("config_path", ""), "OpenCPN GPSD config path", path)
     if opencpn_data.get("config_exists") is not True:
         fail(f"status snapshot JSON OpenCPN GPSD config does not exist: {path}")
     if normalize_snapshot_gpsd_host(opencpn_data.get("expected_host", "")) != expected_host:
@@ -1386,7 +1403,7 @@ def validate_successful_status_snapshot(
             fail(f"status snapshot JSON has duplicate service check: {name}: {path}")
         service_rows[name] = row
 
-    config_path = str(payload.get("config_path", "")).strip()
+    config_path = snapshot_text(payload.get("config_path", ""), "config_path", path)
     if not config_path:
         fail(f"status snapshot JSON missing config_path: {path}")
     if not Path(config_path).is_absolute():
@@ -1394,10 +1411,10 @@ def validate_successful_status_snapshot(
     config = payload.get("config")
     if not isinstance(config, dict):
         fail(f"status snapshot JSON missing config section: {path}")
-    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    gps_mode = snapshot_text(config.get("gps_mode", ""), "config gps_mode", path).lower()
     if gps_mode not in {"gpsd", "serial"}:
         fail(f"status snapshot JSON has invalid gps_mode: {gps_mode or '<missing>'}: {path}")
-    gps_device = str(config.get("gps_device", "")).strip()
+    gps_device = snapshot_text(config.get("gps_device", ""), "config gps_device", path)
     if not gps_device:
         fail(f"status snapshot JSON missing config gps_device: {path}")
     if not stable_snapshot_gps_device_path(gps_device):
@@ -1410,12 +1427,12 @@ def validate_successful_status_snapshot(
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         fail(f"status snapshot JSON config gps_baud is invalid: {path}")
-    chart_output = str(config.get("chart_output", "")).strip()
+    chart_output = snapshot_text(config.get("chart_output", ""), "config chart_output", path)
     if not chart_output:
         fail(f"status snapshot JSON missing config chart_output: {path}")
     if not Path(chart_output).is_absolute():
         fail(f"status snapshot JSON config chart_output is not absolute: {path}")
-    configured_track_output = str(config.get("track_output", "")).strip()
+    configured_track_output = snapshot_text(config.get("track_output", ""), "config track_output", path)
     if not configured_track_output:
         fail(f"status snapshot JSON missing config track_output: {path}")
     if not Path(configured_track_output).is_absolute():

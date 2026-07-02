@@ -946,6 +946,37 @@ def positive_status_int(value: object):
     return value
 
 
+def snapshot_text(value: object, label: str) -> str:
+    text = str(value)
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        fail(f"pre-departure status snapshot JSON {label} contains control characters")
+    return text.strip()
+
+
+def snapshot_absolute_path(value: object, label: str) -> str:
+    text = snapshot_text(value, label)
+    if not text or not Path(text).is_absolute():
+        fail(f"pre-departure status snapshot JSON {label} is not absolute")
+    return text
+
+
+SNAPSHOT_STATIC_DIAGNOSTICS = (
+    "pre-departure status snapshot JSON config_path is not absolute",
+    "pre-departure status snapshot JSON config chart_output is not absolute",
+    "pre-departure status snapshot JSON config track_output is not absolute",
+    "pre-departure status snapshot JSON track_log track_output is not absolute",
+    "pre-departure status snapshot JSON track_log tracks_dir is not absolute",
+    "pre-departure status snapshot JSON track_log latest_path is not absolute",
+    "pre-departure status snapshot JSON Manifest path is not absolute",
+    "pre-departure status snapshot JSON Manifest download path is not absolute",
+    "pre-departure status snapshot JSON Manifest extract path is not absolute",
+    "pre-departure status snapshot JSON Charts ENC cell sample path is not absolute",
+    "pre-departure status snapshot JSON OpenCPN Charts chart directory is not absolute",
+    "pre-departure status snapshot JSON OpenCPN Charts config path is not absolute",
+    "pre-departure status snapshot JSON OpenCPN GPSD config path is not absolute",
+)
+
+
 def stable_snapshot_gps_device_path(path: str) -> bool:
     allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-"
     for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
@@ -1173,13 +1204,9 @@ def validate_snapshot_status_launcher(status: dict[str, object]) -> None:
 
 
 def validate_track_log_paths(track_log: dict[str, object]) -> None:
-    track_output = str(track_log.get("track_output", "")).strip()
-    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
-    latest_path = str(track_log.get("latest_path", "")).strip()
-    if not track_output or not Path(track_output).is_absolute():
-        fail("pre-departure status snapshot JSON track_log track_output is not absolute")
-    if not tracks_dir or not Path(tracks_dir).is_absolute():
-        fail("pre-departure status snapshot JSON track_log tracks_dir is not absolute")
+    track_output = snapshot_absolute_path(track_log.get("track_output", ""), "track_log track_output")
+    tracks_dir = snapshot_absolute_path(track_log.get("tracks_dir", ""), "track_log tracks_dir")
+    latest_path = snapshot_text(track_log.get("latest_path", ""), "track_log latest_path")
     if str(Path(track_output) / "tracks") != tracks_dir:
         fail("pre-departure status snapshot JSON track_log tracks_dir does not match track_output")
     if not latest_path:
@@ -1314,13 +1341,11 @@ def validate_snapshot_manifest_row(
         fail("pre-departure status snapshot JSON Manifest row has no structured data")
     if not isinstance(manifest, dict):
         fail("pre-departure status snapshot JSON Manifest row has no top-level manifest summary")
-    chart_output = str(config.get("chart_output", "")).strip()
-    configured_path = str(data.get("configured_path", "")).strip()
+    chart_output = snapshot_absolute_path(config.get("chart_output", ""), "config chart_output")
+    configured_path = snapshot_absolute_path(data.get("configured_path", ""), "Manifest configured path")
     if configured_path != chart_output:
         fail("pre-departure status snapshot JSON Manifest configured path does not match config chart_output")
-    manifest_path = str(data.get("path", "")).strip()
-    if not Path(manifest_path).is_absolute():
-        fail("pre-departure status snapshot JSON Manifest path is not absolute")
+    manifest_path = snapshot_absolute_path(data.get("path", ""), "Manifest path")
     if manifest_path != str(Path(chart_output) / "noaa-navionics-manifest.json"):
         fail("pre-departure status snapshot JSON Manifest path does not match config chart_output")
     if manifest_path != str(manifest.get("path", "")).strip():
@@ -1343,14 +1368,10 @@ def validate_snapshot_manifest_row(
         fail("pre-departure status snapshot JSON Manifest created_at_source is not verified")
     normalized_chart_output = os.path.normpath(chart_output)
     for row_field, label in (
-        ("download_path", "download path"),
-        ("extract_path", "extract path"),
+        ("download_path", "Manifest download path"),
+        ("extract_path", "Manifest extract path"),
     ):
-        manifest_storage_path = str(data.get(row_field, "")).strip()
-        if not Path(manifest_storage_path).is_absolute():
-            if row_field == "download_path":
-                fail("pre-departure status snapshot JSON Manifest download path is not absolute")
-            fail("pre-departure status snapshot JSON Manifest extract path is not absolute")
+        manifest_storage_path = snapshot_absolute_path(data.get(row_field, ""), label)
         normalized_storage_path = os.path.normpath(manifest_storage_path)
         try:
             storage_common = os.path.commonpath([normalized_storage_path, normalized_chart_output])
@@ -1455,7 +1476,7 @@ def validate_snapshot_storage_rows(check_rows: dict[str, dict[str, object]], *, 
 
 
 def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object]) -> None:
-    chart_output = str(config.get("chart_output", "")).strip()
+    chart_output = snapshot_absolute_path(config.get("chart_output", ""), "config chart_output")
 
     charts_row = check_rows.get("Charts")
     if not isinstance(charts_row, dict):
@@ -1463,7 +1484,7 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     charts_data = charts_row.get("data")
     if not isinstance(charts_data, dict):
         fail("pre-departure status snapshot JSON Charts row has no structured data")
-    configured_path = str(charts_data.get("configured_path", "")).strip()
+    configured_path = snapshot_absolute_path(charts_data.get("configured_path", ""), "Charts path")
     if configured_path != chart_output:
         fail("pre-departure status snapshot JSON Charts path does not match config chart_output")
     if charts_data.get("exists") is not True:
@@ -1480,11 +1501,11 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     enc_cell_samples = charts_data.get("enc_cell_samples")
     if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
         fail("pre-departure status snapshot JSON Charts has no ENC cell sample paths")
-    if any(not Path(str(sample)).is_absolute() for sample in enc_cell_samples):
+    if any(not Path(snapshot_text(sample, "Charts ENC cell sample path")).is_absolute() for sample in enc_cell_samples):
         fail("pre-departure status snapshot JSON Charts ENC cell sample path is not absolute")
     normalized_chart_output = os.path.normpath(chart_output)
     for sample in enc_cell_samples:
-        normalized_sample = os.path.normpath(str(sample))
+        normalized_sample = os.path.normpath(snapshot_text(sample, "Charts ENC cell sample path"))
         try:
             sample_common = os.path.commonpath([normalized_sample, normalized_chart_output])
         except ValueError:
@@ -1498,7 +1519,7 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     debris_data = debris_row.get("data")
     if not isinstance(debris_data, dict):
         fail("pre-departure status snapshot JSON Chart Update Debris row has no structured data")
-    configured_path = str(debris_data.get("configured_path", "")).strip()
+    configured_path = snapshot_absolute_path(debris_data.get("configured_path", ""), "Chart Update Debris path")
     if configured_path != chart_output:
         fail("pre-departure status snapshot JSON Chart Update Debris path does not match config chart_output")
     if str(debris_data.get("storage_symlink_component", "")).strip():
@@ -1518,14 +1539,10 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     opencpn_data = opencpn_row.get("data")
     if not isinstance(opencpn_data, dict):
         fail("pre-departure status snapshot JSON OpenCPN Charts row has no structured data")
-    chart_dir = str(opencpn_data.get("chart_dir", "")).strip()
-    if not Path(chart_dir).is_absolute():
-        fail("pre-departure status snapshot JSON OpenCPN Charts chart directory is not absolute")
+    chart_dir = snapshot_absolute_path(opencpn_data.get("chart_dir", ""), "OpenCPN Charts chart directory")
     if chart_dir != chart_output:
         fail("pre-departure status snapshot JSON OpenCPN Charts chart directory does not match config chart_output")
-    config_path = str(opencpn_data.get("config_path", "")).strip()
-    if not Path(config_path).is_absolute():
-        fail("pre-departure status snapshot JSON OpenCPN Charts config path is not absolute")
+    snapshot_absolute_path(opencpn_data.get("config_path", ""), "OpenCPN Charts config path")
     if opencpn_data.get("config_exists") is not True:
         fail("pre-departure status snapshot JSON OpenCPN Charts config does not exist")
     if opencpn_data.get("chart_dir_exists") is not True:
@@ -1535,7 +1552,8 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
     chart_directories = opencpn_data.get("chart_directories")
     if not isinstance(chart_directories, list) or not chart_directories:
         fail("pre-departure status snapshot JSON OpenCPN Charts has no parsed chart directories")
-    if not any(str(directory).strip() == chart_output for directory in chart_directories):
+    parsed_chart_directories = [snapshot_text(directory, "OpenCPN Charts parsed directory") for directory in chart_directories]
+    if not any(directory == chart_output for directory in parsed_chart_directories):
         fail("pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output")
 
 
@@ -1548,7 +1566,7 @@ def validate_snapshot_gpsd_rows(check_rows: dict[str, dict[str, object]], *, con
     expected_device = str(config.get("gps_device", "")).strip()
     if not expected_device:
         fail("pre-departure status snapshot JSON missing config gps_device")
-    expected_host = normalize_snapshot_gpsd_host(config.get("gpsd_host", ""))
+    expected_host = normalize_snapshot_gpsd_host(snapshot_text(config.get("gpsd_host", ""), "config gpsd_host"))
     if expected_host not in {"127.0.0.1", "0.0.0.0"}:
         fail("pre-departure status snapshot JSON config gpsd_host is not local")
     expected_port = config.get("gpsd_port")
@@ -1561,8 +1579,7 @@ def validate_snapshot_gpsd_rows(check_rows: dict[str, dict[str, object]], *, con
     opencpn_data = opencpn_row.get("data")
     if not isinstance(opencpn_data, dict):
         fail("pre-departure status snapshot JSON OpenCPN GPSD row has no structured data")
-    if not Path(str(opencpn_data.get("config_path", "")).strip()).is_absolute():
-        fail("pre-departure status snapshot JSON OpenCPN GPSD config path is not absolute")
+    snapshot_absolute_path(opencpn_data.get("config_path", ""), "OpenCPN GPSD config path")
     if opencpn_data.get("config_exists") is not True:
         fail("pre-departure status snapshot JSON OpenCPN GPSD config does not exist")
     if normalize_snapshot_gpsd_host(opencpn_data.get("expected_host", "")) != expected_host:
@@ -1694,7 +1711,7 @@ def validate_pre_departure_status_checks(
             fail(f"pre-departure status snapshot JSON has duplicate service check: {name}")
         service_rows[name] = row
 
-    config_path = str(status.get("config_path", "")).strip()
+    config_path = snapshot_text(status.get("config_path", ""), "config_path")
     if not config_path:
         fail("pre-departure status snapshot JSON missing config_path")
     if not Path(config_path).is_absolute():
@@ -1702,13 +1719,13 @@ def validate_pre_departure_status_checks(
     config = status.get("config")
     if not isinstance(config, dict):
         fail("pre-departure status snapshot JSON missing config section")
-    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    gps_mode = snapshot_text(config.get("gps_mode", ""), "config gps_mode").lower()
     if gps_mode not in {"gpsd", "serial"}:
         fail(
             "pre-departure status snapshot JSON has invalid gps_mode: "
             + (gps_mode or "<missing>")
         )
-    gps_device = str(config.get("gps_device", "")).strip()
+    gps_device = snapshot_text(config.get("gps_device", ""), "config gps_device")
     if not gps_device:
         fail("pre-departure status snapshot JSON missing config gps_device")
     if not stable_snapshot_gps_device_path(gps_device):
@@ -1721,12 +1738,12 @@ def validate_pre_departure_status_checks(
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         fail("pre-departure status snapshot JSON config gps_baud is invalid")
-    chart_output = str(config.get("chart_output", "")).strip()
+    chart_output = snapshot_text(config.get("chart_output", ""), "config chart_output")
     if not chart_output:
         fail("pre-departure status snapshot JSON missing config chart_output")
     if not Path(chart_output).is_absolute():
         fail("pre-departure status snapshot JSON config chart_output is not absolute")
-    configured_track_output = str(config.get("track_output", "")).strip()
+    configured_track_output = snapshot_text(config.get("track_output", ""), "config track_output")
     if not configured_track_output:
         fail("pre-departure status snapshot JSON missing config track_output")
     if not Path(configured_track_output).is_absolute():
