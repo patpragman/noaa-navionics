@@ -4525,10 +4525,16 @@ grep -q 'test_prune_old_track_logs_rejects_timezone_less_current_time' tests/tes
 grep -q 'test_status_gui_position_mark_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_timezone_less_fix' tests/test_downloader.py
 grep -q 'Skipping low-detail track fix' tests/test_downloader.py
+grep -q 'GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"' src/noaa_navionics/cli.py
+grep -q 'GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE = "GPS fix future tolerance seconds must be finite and non-negative"' src/noaa_navionics/cli.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/cli.py
+grep -q 'def _gps_freshness_policy_failure' src/noaa_navionics/cli.py
 grep -q 'fix timestamp has no timezone; cannot write reliable GPX trackpoint' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is stale' src/noaa_navionics/cli.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/cli.py
+grep -q 'test_trackable_fixes_reject_invalid_freshness_limits_before_iterator' tests/test_downloader.py
+grep -q 'test_anchor_watch_fixes_reject_invalid_freshness_limits_before_iterator' tests/test_downloader.py
+grep -q 'test_track_fix_freshness_rejects_invalid_policy_before_timestamp' tests/test_downloader.py
 grep -q 'test_trackable_fixes_skip_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_trackable_fixes_skip_slightly_future_timestamped_fix' tests/test_downloader.py
 grep -q 'test_verify_pi_rejects_timezone_less_live_timestamps' tests/test_downloader.py

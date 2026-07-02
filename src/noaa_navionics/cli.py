@@ -64,6 +64,8 @@ from .report import (
 MAX_GPS_WAIT_SECONDS = 600.0
 MAX_ANCHOR_SAMPLES = 10
 MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0
+GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"
+GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE = "GPS fix future tolerance seconds must be finite and non-negative"
 
 
 @dataclass(frozen=True)
@@ -1141,6 +1143,12 @@ def _quality_checked_fixes(
     skip_subject: str,
     action: str,
 ):
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        raise ValueError(freshness_policy_failure)
     last_skip_detail = ""
     for fix in fixes:
         quality_detail = gps_fix_quality_failure(fix)
@@ -1187,6 +1195,12 @@ def _track_fix_freshness_failure(
     max_fix_age_seconds: float = 300.0,
     future_tolerance_seconds: float = 0.0,
 ) -> str:
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        return freshness_policy_failure
     if fix.timestamp is None:
         return "fix has no timestamp; cannot write reliable GPX trackpoint"
     if fix.timestamp.tzinfo is None or fix.timestamp.utcoffset() is None:
@@ -1196,6 +1210,28 @@ def _track_fix_freshness_failure(
         return f"fix timestamp is stale ({age_seconds:.0f}s old)"
     if age_seconds < -future_tolerance_seconds:
         return f"fix timestamp is in the future by {-age_seconds:.0f}s"
+    return ""
+
+
+def _gps_freshness_policy_failure(
+    *,
+    max_fix_age_seconds: float,
+    future_tolerance_seconds: float,
+) -> str:
+    if (
+        isinstance(max_fix_age_seconds, bool)
+        or not isinstance(max_fix_age_seconds, (int, float))
+        or not math.isfinite(max_fix_age_seconds)
+        or max_fix_age_seconds <= 0
+    ):
+        return GPS_FIX_MAX_AGE_SECONDS_FAILURE
+    if (
+        isinstance(future_tolerance_seconds, bool)
+        or not isinstance(future_tolerance_seconds, (int, float))
+        or not math.isfinite(future_tolerance_seconds)
+        or future_tolerance_seconds < 0
+    ):
+        return GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE
     return ""
 
 

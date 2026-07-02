@@ -19925,6 +19925,59 @@ class GpsTests(unittest.TestCase):
         self.assertIn("Skipping stale track fix", stderr.getvalue())
         self.assertIn("future", stderr.getvalue())
 
+    def test_trackable_fixes_reject_invalid_freshness_limits_before_iterator(self):
+        class ExplodingFixes:
+            def __iter__(self):
+                raise AssertionError("fix iterator should not be consumed")
+
+        for max_fix_age_seconds in (0, -1, math.inf, math.nan, True, "bad"):
+            with self.subTest(max_fix_age_seconds=max_fix_age_seconds):
+                with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+                    list(_trackable_fixes(ExplodingFixes(), max_fix_age_seconds=max_fix_age_seconds))
+        for future_tolerance_seconds in (-1, math.inf, math.nan, False, "bad"):
+            with self.subTest(future_tolerance_seconds=future_tolerance_seconds):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "GPS fix future tolerance seconds must be finite and non-negative",
+                ):
+                    list(_trackable_fixes(ExplodingFixes(), future_tolerance_seconds=future_tolerance_seconds))
+
+    def test_anchor_watch_fixes_reject_invalid_freshness_limits_before_iterator(self):
+        class ExplodingFixes:
+            def __iter__(self):
+                raise AssertionError("fix iterator should not be consumed")
+
+        with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+            list(cli_module._anchor_watch_fixes(ExplodingFixes(), max_fix_age_seconds=False))
+        with self.assertRaisesRegex(ValueError, "GPS fix future tolerance seconds must be finite and non-negative"):
+            list(cli_module._anchor_watch_fixes(ExplodingFixes(), future_tolerance_seconds=math.nan))
+
+    def test_track_fix_freshness_rejects_invalid_policy_before_timestamp(self):
+        fix = GPSFix(
+            timestamp=None,
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        self.assertEqual(
+            cli_module._track_fix_freshness_failure(
+                fix,
+                max_fix_age_seconds=math.nan,
+                future_tolerance_seconds=0.0,
+            ),
+            "GPS fix max age seconds must be finite and greater than 0",
+        )
+        self.assertEqual(
+            cli_module._track_fix_freshness_failure(
+                fix,
+                max_fix_age_seconds=300.0,
+                future_tolerance_seconds=math.inf,
+            ),
+            "GPS fix future tolerance seconds must be finite and non-negative",
+        )
+
     def test_trackable_fixes_skip_position_only_fix(self):
         position_only = GPSFix(
             timestamp=datetime.now(timezone.utc),
