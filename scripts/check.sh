@@ -11718,7 +11718,7 @@ if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
   printf '{"ok": "yes", "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
   exit 0
 fi
-printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
+printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true, "source": "GPSD", "timestamp": "%s", "age_seconds": 0.0, "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}, "track_log": {"ok": true, "track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "track_storage_symlink_component": "", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}\n' "$generated_at" "$generated_at" "$generated_at"
 EOF
 chmod +x "$status_fake_ssh_bin/ssh"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -11739,6 +11739,7 @@ grep -q 'status JSON validation failed: {message}' scripts/check_pi_status.sh
 grep -q 'top-level ok is not boolean' scripts/check_pi_status.sh
 grep -q 'generated_at timestamp must include a timezone' scripts/check_pi_status.sh
 grep -q 'from datetime import datetime, timezone' scripts/check_pi_status.sh
+grep -q 'import math' scripts/check_pi_status.sh
 grep -q 'import re' scripts/check_pi_status.sh
 grep -q 'BOOT_ID_RE = re.compile' scripts/check_pi_status.sh
 grep -q 'status_age_seconds = (datetime.now(timezone.utc) - parsed_generated_at.astimezone(timezone.utc)).total_seconds()' scripts/check_pi_status.sh
@@ -11747,6 +11748,12 @@ grep -q 'generated_at timestamp is stale' scripts/check_pi_status.sh
 grep -q 'missing host summary' scripts/check_pi_status.sh
 grep -q 'status_text(host.get("boot_id", ""), "host boot_id")' scripts/check_pi_status.sh
 grep -q 'host boot_id is not a Linux boot_id value' scripts/check_pi_status.sh
+grep -q 'def status_number' scripts/check_pi_status.sh
+grep -q 'def status_timestamp' scripts/check_pi_status.sh
+grep -q 'def validate_position_summary' scripts/check_pi_status.sh
+grep -q 'validate_position_summary(' scripts/check_pi_status.sh
+grep -q 'gps_fix latitude is not numeric' tests/test_downloader.py
+grep -q 'track_log latest_latitude is not numeric' tests/test_downloader.py
 grep -q 'missing non-empty {section_name} list' scripts/check_pi_status.sh
 grep -q 'missing {section_name} summary' scripts/check_pi_status.sh
 grep -q 'def status_text' scripts/check_pi_status.sh
@@ -11761,6 +11768,8 @@ grep -q 'stale or future-dated `generated_at`' README.md
 grep -q 'stale or future-dated `generated_at`' docs/sailboat-pi.md
 grep -q 'malformed Linux `boot_id` host evidence' README.md
 grep -q 'malformed Linux `boot_id` host evidence' docs/sailboat-pi.md
+grep -q 'GPS/track summaries that claim `ok=true` without finite position, timestamp, age, and quality evidence' README.md
+grep -q 'GPS/track summaries that claim `ok=true` without finite position, timestamp, age, and quality evidence' docs/sailboat-pi.md
 grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh
 grep -q 'json_validation_code=$?' scripts/check_pi_status.sh
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"

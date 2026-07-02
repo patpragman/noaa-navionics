@@ -352,6 +352,7 @@ validate_status_json_output() {
   printf '%s' "$payload" | "$local_python_cmd" -c '
 from datetime import datetime, timezone
 import json
+import math
 import re
 import sys
 
@@ -376,6 +377,78 @@ def validate_optional_text_fields(section, label, fields):
     for field in fields:
         if field in section:
             status_text(section.get(field, ""), f"{label} {field}")
+
+
+def status_number(section, label, field):
+    value = section.get(field)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        fail(f"{label} {field} is not numeric")
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        fail(f"{label} {field} is not finite")
+    return parsed
+
+
+def status_timestamp(value, label):
+    text = status_text(value, label)
+    if not text:
+        fail(f"{label} is missing")
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError as exc:
+        fail(f"{label} is invalid: {exc}")
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        fail(f"{label} must include a timezone")
+    return parsed.astimezone(timezone.utc)
+
+
+def validate_position_summary(
+    summary,
+    label,
+    *,
+    latitude_field,
+    longitude_field,
+    timestamp_field,
+    satellites_field,
+    hdop_field,
+    generated_at_utc,
+):
+    if summary.get("ok") is not True:
+        return
+    latitude = status_number(summary, label, latitude_field)
+    longitude = status_number(summary, label, longitude_field)
+    if not -90.0 <= latitude <= 90.0:
+        fail(f"{label} {latitude_field} is outside -90..90")
+    if not -180.0 <= longitude <= 180.0:
+        fail(f"{label} {longitude_field} is outside -180..180")
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        fail(f"{label} coordinates are invalid 0,0")
+    timestamp = status_timestamp(summary.get(timestamp_field, ""), f"{label} {timestamp_field}")
+    age_seconds = status_number(summary, label, "age_seconds")
+    if age_seconds < 0.0:
+        fail(f"{label} age_seconds is negative")
+    if age_seconds > 600.0:
+        fail(f"{label} age_seconds is stale")
+    timestamp_age = (generated_at_utc - timestamp).total_seconds()
+    if timestamp_age < -30.0:
+        fail(f"{label} {timestamp_field} is after generated_at")
+    if abs(age_seconds - timestamp_age) > 30.0:
+        fail(f"{label} age_seconds is inconsistent with {timestamp_field}")
+    satellites = summary.get(satellites_field)
+    hdop = summary.get(hdop_field)
+    if satellites is None and hdop is None:
+        fail(f"{label} has no satellite or HDOP quality fields")
+    if satellites is not None:
+        if isinstance(satellites, bool) or not isinstance(satellites, int):
+            fail(f"{label} {satellites_field} is not an integer")
+        if satellites < 4:
+            fail(f"{label} {satellites_field} is weak")
+    if hdop is not None:
+        parsed_hdop = status_number(summary, label, hdop_field)
+        if parsed_hdop < 0.0:
+            fail(f"{label} {hdop_field} is negative")
+        if parsed_hdop > 5.0:
+            fail(f"{label} {hdop_field} is weak")
 
 
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
@@ -463,6 +536,26 @@ for section_name in ("gps_fix", "track_log"):
             section_name,
             ("track_output", "tracks_dir", "latest_path", "track_storage_symlink_component"),
         )
+validate_position_summary(
+    report["gps_fix"],
+    "gps_fix",
+    latitude_field="latitude",
+    longitude_field="longitude",
+    timestamp_field="timestamp",
+    satellites_field="satellites",
+    hdop_field="hdop",
+    generated_at_utc=parsed_generated_at.astimezone(timezone.utc),
+)
+validate_position_summary(
+    report["track_log"],
+    "track_log",
+    latitude_field="latest_latitude",
+    longitude_field="latest_longitude",
+    timestamp_field="latest_time",
+    satellites_field="latest_satellites",
+    hdop_field="latest_hdop",
+    generated_at_utc=parsed_generated_at.astimezone(timezone.utc),
+)
 '
 }
 
