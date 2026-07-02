@@ -801,6 +801,12 @@ def download_url_matches_package(download_url, package_url):
 def valid_boot_id(value):
     return bool(re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", value))
 
+def status_text(value, label):
+    text = str(value)
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        raise SystemExit(f"status report {label} contains control characters")
+    return text.strip()
+
 def read_current_boot_id():
     path = Path("/proc/sys/kernel/random/boot_id")
     try:
@@ -1244,7 +1250,7 @@ for row in service_checks:
     if name in service_rows:
         raise SystemExit(f"status report has duplicate service check: {name}")
     service_rows[name] = row
-actual_config_path = str(report.get("config_path", "")).strip()
+actual_config_path = status_text(report.get("config_path", ""), "config path")
 if expected_config_path and actual_config_path != expected_config_path:
     raise SystemExit(f"status report config path {actual_config_path} does not match {expected_config_path}")
 if expected_config_path:
@@ -1262,7 +1268,7 @@ if expected_launcher_env_path:
     launcher_settings = report.get("launcher_settings")
     if not isinstance(launcher_settings, dict):
         raise SystemExit("status report has no launcher_settings section")
-    launcher_env_path = str(launcher_settings.get("path", "")).strip()
+    launcher_env_path = status_text(launcher_settings.get("path", ""), "launcher settings path")
     if launcher_env_path != expected_launcher_env_path:
         raise SystemExit(
             f"status report launcher settings path {launcher_env_path} does not match {expected_launcher_env_path}"
@@ -1425,7 +1431,7 @@ if expected_config_path:
         raise SystemExit("status report has no track_log section")
     expected_track_output = Path(expected_config["track_output"]).expanduser()
     expected_tracks_dir = expected_track_output / "tracks"
-    actual_track_output = str(track_log.get("track_output", "")).strip()
+    actual_track_output = status_text(track_log.get("track_output", ""), "track_log track_output")
     if actual_track_output != str(expected_track_output):
         raise SystemExit(
             f"status report track_log track_output {actual_track_output or '<missing>'} "
@@ -1435,13 +1441,16 @@ if expected_config_path:
         raise SystemExit(
             f"status report track_log track_output is a symlink or missing symlink status: {expected_track_output}"
         )
-    actual_tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    actual_tracks_dir = status_text(track_log.get("tracks_dir", ""), "track_log tracks_dir")
     if actual_tracks_dir != str(expected_tracks_dir):
         raise SystemExit(
             f"status report track_log tracks_dir {actual_tracks_dir} does not match configured {expected_tracks_dir}"
         )
     track_symlink_component = first_symlink_ancestor(expected_tracks_dir)
-    status_track_symlink_component = str(track_log.get("track_storage_symlink_component", "")).strip()
+    status_track_symlink_component = status_text(
+        track_log.get("track_storage_symlink_component", ""),
+        "track_log track_storage_symlink_component",
+    )
     if track_symlink_component is not None:
         raise SystemExit(f"configured GPX track storage path contains a symlink: {track_symlink_component}")
     if status_track_symlink_component:
@@ -1474,7 +1483,7 @@ if expected_config_path:
             f"status report track_log tracks_mode {status_tracks_mode or '<missing>'} "
             f"does not match directory permissions {tracks_dir_mode:04o}"
         )
-    latest_track_path = Path(str(track_log.get("latest_path", "")).strip()).expanduser()
+    latest_track_path = Path(status_text(track_log.get("latest_path", ""), "track_log latest_path")).expanduser()
     if not str(latest_track_path):
         raise SystemExit("status report track_log has no latest_path")
     if latest_track_path.is_symlink():
@@ -1585,7 +1594,7 @@ if expected_config_path:
     opencpn_config = report.get("opencpn_config")
     if not isinstance(opencpn_config, dict):
         raise SystemExit("status report has no opencpn_config section")
-    opencpn_config_path = str(opencpn_config.get("path", "")).strip()
+    opencpn_config_path = status_text(opencpn_config.get("path", ""), "OpenCPN config path")
     if not opencpn_config_path:
         raise SystemExit("status report OpenCPN config path is empty")
     if opencpn_config.get("exists") is not True:
@@ -1603,7 +1612,10 @@ if expected_config_path:
         raise SystemExit(
             f"status report OpenCPN config missing config_symlink_component: {opencpn_config_path}"
         )
-    opencpn_symlink_component = str(opencpn_config.get("config_symlink_component", "")).strip()
+    opencpn_symlink_component = status_text(
+        opencpn_config.get("config_symlink_component", ""),
+        "OpenCPN config symlink component",
+    )
     if opencpn_symlink_component:
         raise SystemExit(f"status report OpenCPN config path contains a symlink: {opencpn_symlink_component}")
     if str(opencpn_config.get("error", "")).strip():
@@ -1730,7 +1742,7 @@ if expected_config_path:
     autostart = desktop.get("autostart")
     if not isinstance(autostart, dict):
         raise SystemExit("status report has no desktop autostart section")
-    autostart_path = str(autostart.get("path", "")).strip()
+    autostart_path = status_text(autostart.get("path", ""), "desktop autostart path")
     if autostart.get("exists") is not True:
         raise SystemExit(f"status report desktop autostart does not exist: {autostart_path}")
     if autostart.get("is_symlink") is not False:
@@ -1749,7 +1761,10 @@ if expected_config_path:
         raise SystemExit(
             f"status report desktop autostart missing path_symlink_component: {autostart_path}"
         )
-    autostart_symlink_component = str(autostart.get("path_symlink_component", "")).strip()
+    autostart_symlink_component = status_text(
+        autostart.get("path_symlink_component", ""),
+        "desktop autostart symlink component",
+    )
     if autostart_symlink_component:
         raise SystemExit(
             f"status report desktop autostart path contains a symlink: {autostart_symlink_component}"
@@ -1797,7 +1812,7 @@ if expected_config_path:
     status_launcher = desktop.get("status_launcher")
     if not isinstance(status_launcher, dict):
         raise SystemExit("status report has no status GUI desktop launcher section")
-    status_launcher_path = str(status_launcher.get("path", "")).strip()
+    status_launcher_path = status_text(status_launcher.get("path", ""), "status GUI desktop launcher path")
     if status_launcher.get("exists") is not True:
         raise SystemExit(f"status report status GUI desktop launcher does not exist: {status_launcher_path}")
     if status_launcher.get("is_symlink") is not False:
@@ -1817,7 +1832,10 @@ if expected_config_path:
         raise SystemExit(
             f"status report status GUI desktop launcher missing path_symlink_component: {status_launcher_path}"
         )
-    status_launcher_symlink_component = str(status_launcher.get("path_symlink_component", "")).strip()
+    status_launcher_symlink_component = status_text(
+        status_launcher.get("path_symlink_component", ""),
+        "status GUI desktop launcher symlink component",
+    )
     if status_launcher_symlink_component:
         raise SystemExit(
             "status report status GUI desktop launcher path contains a symlink: "
@@ -1880,7 +1898,7 @@ if expected_config_path:
     mob_launcher = desktop.get("mob_launcher")
     if not isinstance(mob_launcher, dict):
         raise SystemExit("status report has no MOB desktop launcher section")
-    mob_launcher_path = str(mob_launcher.get("path", "")).strip()
+    mob_launcher_path = status_text(mob_launcher.get("path", ""), "MOB desktop launcher path")
     if mob_launcher.get("exists") is not True:
         raise SystemExit(f"status report MOB desktop launcher does not exist: {mob_launcher_path}")
     if mob_launcher.get("is_symlink") is not False:
@@ -1899,7 +1917,10 @@ if expected_config_path:
         raise SystemExit(
             f"status report MOB desktop launcher missing path_symlink_component: {mob_launcher_path}"
         )
-    mob_launcher_symlink_component = str(mob_launcher.get("path_symlink_component", "")).strip()
+    mob_launcher_symlink_component = status_text(
+        mob_launcher.get("path_symlink_component", ""),
+        "MOB desktop launcher symlink component",
+    )
     if mob_launcher_symlink_component:
         raise SystemExit(
             f"status report MOB desktop launcher path contains a symlink: {mob_launcher_symlink_component}"
@@ -2028,7 +2049,7 @@ if expected_config_path:
     manifest = report.get("manifest")
     if not isinstance(manifest, dict):
         raise SystemExit("status report has no manifest section")
-    actual_manifest_path = str(manifest.get("path", "")).strip()
+    actual_manifest_path = status_text(manifest.get("path", ""), "manifest path")
     if actual_manifest_path != expected_manifest_path:
         raise SystemExit(
             f"status report manifest path {actual_manifest_path} does not match {expected_manifest_path}"
@@ -2045,12 +2066,18 @@ if expected_config_path:
         )
     if "chart_storage_symlink_component" not in manifest:
         raise SystemExit(f"status report manifest missing chart_storage_symlink_component: {expected_manifest_path}")
-    chart_storage_symlink_component = str(manifest.get("chart_storage_symlink_component", "")).strip()
+    chart_storage_symlink_component = status_text(
+        manifest.get("chart_storage_symlink_component", ""),
+        "chart storage symlink component",
+    )
     if chart_storage_symlink_component:
         raise SystemExit(f"status report chart storage path contains a symlink: {chart_storage_symlink_component}")
     if "manifest_symlink_component" not in manifest:
         raise SystemExit(f"status report manifest missing manifest_symlink_component: {expected_manifest_path}")
-    manifest_symlink_component = str(manifest.get("manifest_symlink_component", "")).strip()
+    manifest_symlink_component = status_text(
+        manifest.get("manifest_symlink_component", ""),
+        "manifest symlink component",
+    )
     if manifest_symlink_component:
         raise SystemExit(f"status report manifest path contains a symlink: {manifest_symlink_component}")
     for key in ("created_at", "package", "package_filename", "url", "download_path", "download_url", "sha256", "extract_path"):
@@ -2226,14 +2253,17 @@ if expected_config_path:
             if parent == current:
                 return None
             current = parent
-    download_path = Path(str(manifest.get("download_path", "")).strip()).expanduser()
+    download_path = Path(status_text(manifest.get("download_path", ""), "manifest download path")).expanduser()
     if manifest.get("download_path_is_symlink") is not False or download_path.is_symlink():
         raise SystemExit(
             f"status report manifest download path is a symlink or missing symlink status: {download_path}"
         )
     if "download_path_symlink_component" not in manifest:
         raise SystemExit(f"status report manifest missing download_path_symlink_component: {expected_manifest_path}")
-    download_path_symlink_component = str(manifest.get("download_path_symlink_component", "")).strip()
+    download_path_symlink_component = status_text(
+        manifest.get("download_path_symlink_component", ""),
+        "manifest download path symlink component",
+    )
     if download_path_symlink_component:
         raise SystemExit(
             f"status report manifest download path contains a symlink: {download_path_symlink_component}"
@@ -2287,14 +2317,17 @@ if expected_config_path:
             )
     if status_download_bytes <= 0:
         raise SystemExit(f"status report manifest download byte count is not positive: {expected_manifest_path}")
-    extract_path = Path(str(manifest.get("extract_path", "")).strip()).expanduser()
+    extract_path = Path(status_text(manifest.get("extract_path", ""), "manifest extract path")).expanduser()
     if manifest.get("extract_path_is_symlink") is not False or extract_path.is_symlink():
         raise SystemExit(
             f"status report manifest extract path is a symlink or missing symlink status: {extract_path}"
         )
     if "extract_path_symlink_component" not in manifest:
         raise SystemExit(f"status report manifest missing extract_path_symlink_component: {expected_manifest_path}")
-    extract_path_symlink_component = str(manifest.get("extract_path_symlink_component", "")).strip()
+    extract_path_symlink_component = status_text(
+        manifest.get("extract_path_symlink_component", ""),
+        "manifest extract path symlink component",
+    )
     if extract_path_symlink_component:
         raise SystemExit(
             f"status report manifest extract path contains a symlink: {extract_path_symlink_component}"
@@ -2574,7 +2607,7 @@ expected_revision = os.environ.get("NOAA_NAVIONICS_EXPECTED_REVISION", "unknown"
 app = report.get("app")
 if not isinstance(app, dict):
     raise SystemExit("status report has no app section")
-source_revision_path = str(app.get("source_revision_path", "")).strip()
+source_revision_path = status_text(app.get("source_revision_path", ""), "source revision path")
 if source_revision_path != str(Path("~/.local/share/noaa-navionics/source-revision").expanduser()):
     raise SystemExit(
         "status report source revision path "
@@ -2754,14 +2787,17 @@ if track_log.get("track_output_is_symlink") is not False:
     )
 if "track_storage_symlink_component" not in track_log:
     raise SystemExit("status report track_log missing track_storage_symlink_component")
-track_symlink_component = str(track_log.get("track_storage_symlink_component", "")).strip()
+track_symlink_component = status_text(
+    track_log.get("track_storage_symlink_component", ""),
+    "track_log track_storage_symlink_component",
+)
 if track_symlink_component:
     raise SystemExit(f"status report track_log storage path contains a symlink: {track_symlink_component}")
 if not isinstance(track_log.get("ok"), bool):
     raise SystemExit("status report track_log ok is not boolean")
 if track_log.get("ok") is not True:
     raise SystemExit(f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")
-latest_track_path = str(track_log.get("latest_path", "")).strip()
+latest_track_path = status_text(track_log.get("latest_path", ""), "track_log latest_path")
 if not latest_track_path:
     raise SystemExit("status report track_log has no latest_path")
 def numeric_track_log_field(field):

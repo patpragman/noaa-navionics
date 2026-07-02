@@ -14653,6 +14653,32 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_verify_pi_rejects_status_artifact_path_control_characters(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            "def status_text",
+            "contains control characters",
+            '"config path"',
+            '"launcher settings path"',
+            '"track_log track_output"',
+            '"track_log tracks_dir"',
+            '"track_log latest_path"',
+            '"OpenCPN config path"',
+            '"desktop autostart path"',
+            '"status GUI desktop launcher path"',
+            '"MOB desktop launcher path"',
+            '"manifest path"',
+            '"manifest download path"',
+            '"manifest extract path"',
+            '"source revision path"',
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_verify_pi_rejects_unsupported_expected_config_gps_baud(self):
         source = shell_function_python_heredoc(
             Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
