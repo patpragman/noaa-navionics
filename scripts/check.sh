@@ -5105,8 +5105,12 @@ grep -q 'READY reports also require structured Chart Package, Charts, Chart Upda
 grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' README.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured GPS or GPSD row evidence' README.md
-grep -q 'READY reports also require structured GPS or GPSD row evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range coordinates matching the top-level `gps_fix`' README.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range coordinates matching the top-level `gps_fix`' docs/sailboat-pi.md
+grep -q 'status report {expected_name} fix latitude is outside -90..90' src/noaa_navionics/report.py
+grep -q 'status report {expected_name} fix longitude is outside -180..180' src/noaa_navionics/report.py
+grep -q 'fix latitude is outside -90..90' tests/test_downloader.py
+grep -q 'fix longitude is outside -180..180' tests/test_downloader.py
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' README.md
 grep -q 'Serial-mode READY reports also require structured GPS Device evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured OpenCPN GPSD evidence' README.md

@@ -811,6 +811,10 @@ def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckR
     longitude = _finite_gps_fix_float(data.get("longitude"))
     if latitude is None or longitude is None:
         failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix has non-numeric coordinates"))
+    elif not (-90.0 <= latitude <= 90.0):
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix latitude is outside -90..90"))
+    elif not (-180.0 <= longitude <= 180.0):
+        failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix longitude is outside -180..180"))
     elif abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
         failures.append(CheckResult(expected_name, False, f"status report {expected_name} fix coordinates are invalid 0,0"))
     timestamp = _parse_gps_fix_timestamp(data.get("timestamp"))

@@ -13448,6 +13448,8 @@ class StatusReportTests(unittest.TestCase):
         cases = [
             ("gpsd", "GPSD", None, "GPSD check has no structured fix data"),
             ("gpsd", "GPSD", fix_data(latitude="north"), "fix has non-numeric coordinates"),
+            ("gpsd", "GPSD", fix_data(latitude=91.0), "fix latitude is outside -90..90"),
+            ("gpsd", "GPSD", fix_data(longitude=-181.0), "fix longitude is outside -180..180"),
             ("gpsd", "GPSD", fix_data(latitude=0.0, longitude=0.0), "fix coordinates are invalid 0,0"),
             ("gpsd", "GPSD", fix_data(timestamp="not-a-time"), "fix has no valid timestamp"),
             ("gpsd", "GPSD", fix_data(timestamp="2026-07-01T12:00:00"), "fix has no valid timestamp"),
