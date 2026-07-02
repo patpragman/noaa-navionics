@@ -650,19 +650,31 @@ def _prepare_private_gpx_parent(parent: Path) -> None:
     symlink_component = first_symlink_ancestor(parent)
     if symlink_component is not None:
         raise RuntimeError(f"{symlink_component} is a symlink, expected real GPX track storage")
-    parent_stat = parent.stat()
-    if parent_stat.st_uid != os.getuid():
-        raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
-    os.chmod(parent, 0o700)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(parent, flags)
+    except OSError as exc:
+        raise RuntimeError(f"{parent} could not be opened safely for GPX track storage: {exc}") from exc
+    try:
+        parent_stat = os.fstat(fd)
+        if not stat.S_ISDIR(parent_stat.st_mode):
+            raise RuntimeError(f"{parent} is not a directory")
+        if parent_stat.st_uid != os.getuid():
+            raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
+        os.fchmod(fd, 0o700)
+        parent_stat = os.fstat(fd)
+        if not stat.S_ISDIR(parent_stat.st_mode):
+            raise RuntimeError(f"{parent} changed away from a directory after permission tightening")
+        if parent_stat.st_uid != os.getuid():
+            raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
+        parent_mode = parent_stat.st_mode & 0o777
+        if parent_mode & 0o077:
+            raise RuntimeError(f"{parent} has permissions {parent_mode:04o}, expected private 0700")
+    finally:
+        os.close(fd)
     symlink_component = first_symlink_ancestor(parent)
     if symlink_component is not None:
         raise RuntimeError(f"{symlink_component} became a symlink after permission tightening")
-    parent_stat = parent.stat()
-    if parent_stat.st_uid != os.getuid():
-        raise RuntimeError(f"{parent} is owned by uid {parent_stat.st_uid}, expected {os.getuid()}")
-    parent_mode = parent_stat.st_mode & 0o777
-    if parent_mode & 0o077:
-        raise RuntimeError(f"{parent} has permissions {parent_mode:04o}, expected private 0700")
 
 
 def _fsync_directory(path: Path) -> None:

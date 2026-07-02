@@ -4454,14 +4454,19 @@ grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or 
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py
-grep -q 'os.chmod(parent, 0o700)' src/noaa_navionics/gps.py
+grep -q 'os.open(parent, flags)' src/noaa_navionics/gps.py
+grep -q 'os.fchmod(fd, 0o700)' src/noaa_navionics/gps.py
+grep -q 'stat.S_ISDIR(parent_stat.st_mode)' src/noaa_navionics/gps.py
 grep -q 'became a symlink after permission tightening' src/noaa_navionics/gps.py
 grep -q 'has permissions .* expected private 0700' src/noaa_navionics/gps.py
 grep -q 'test_gpx_logger_tightens_public_track_parent' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_track_parent_when_tightening_fails' tests/test_downloader.py
+grep -q 'test_gpx_logger_parent_tightening_uses_no_follow_directory_open' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_misowned_track_parent' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_symlinked_track_parent' tests/test_downloader.py
 grep -q 'test_gpx_logger_rejects_symlinked_track_file' tests/test_downloader.py
+grep -q 'GPX track directory permission tightening opens the tracks directory through a no-follow directory descriptor' README.md
+grep -q 'GPX track directory permission tightening opens the tracks directory through a no-follow directory descriptor' docs/sailboat-pi.md
 grep -q 'def _prepare_private_tracks_dir' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/cli.py
 grep -q 'is a symlink, expected a private tracks directory' src/noaa_navionics/cli.py
@@ -4472,8 +4477,8 @@ grep -q 'test_prepare_private_tracks_dir_rejects_directory_when_tightening_fails
 grep -q 'test_log_rotating_tracks_rejects_symlinked_base_directory' tests/test_downloader.py
 grep -q 'GPX logging rejects symlinked track-output parent components' README.md
 grep -q 'GPX logger also refuses symlinked track-output parent components' docs/sailboat-pi.md
-grep -q 'GPX track directory permission tightening is revalidated before track files are created' README.md
-grep -q 'GPX track directory permission tightening is revalidated before track files are created' docs/sailboat-pi.md
+grep -q 'applies `0700` through that descriptor, and revalidates the descriptor before track files or position marks are created' README.md
+grep -q 'applies `0700` through that descriptor, and revalidates the descriptor before track files or position marks are created' docs/sailboat-pi.md
 grep -q 'symlinked GPX output files' README.md
 grep -q 'symlinked GPX output files' docs/sailboat-pi.md
 grep -q 'os.chmod(path, 0o700)' src/noaa_navionics/cli.py

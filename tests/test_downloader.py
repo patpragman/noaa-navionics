@@ -18256,7 +18256,7 @@ class GpsTests(unittest.TestCase):
 
     def test_gpx_logger_rejects_track_parent_when_tightening_fails(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
-        original_chmod = gps_module.os.chmod
+        original_fchmod = gps_module.os.fchmod
 
         with tempfile.TemporaryDirectory() as tmpdir:
             parent = Path(tmpdir) / "tracks"
@@ -18264,21 +18264,40 @@ class GpsTests(unittest.TestCase):
             parent.chmod(0o755)
             path = parent / "track.gpx"
 
-            def no_op_chmod(path_arg, mode):
-                if Path(path_arg) == parent:
-                    return None
-                return original_chmod(path_arg, mode)
-
             try:
-                gps_module.os.chmod = no_op_chmod
+                gps_module.os.fchmod = lambda fd, mode: None
                 with self.assertRaisesRegex(RuntimeError, "has permissions 0755, expected private 0700"):
                     with GPXTrackLogger(path, name="Test") as logger:
                         logger.append(fix)
             finally:
-                gps_module.os.chmod = original_chmod
+                gps_module.os.fchmod = original_fchmod
                 parent.chmod(0o700)
 
             self.assertFalse(path.exists())
+
+    def test_gpx_logger_parent_tightening_uses_no_follow_directory_open(self):
+        calls = []
+        original_open = gps_module.os.open
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            parent = Path(tmpdir) / "tracks"
+            parent.mkdir()
+
+            def fake_open(path, flags, *args, **kwargs):
+                calls.append((Path(path), flags))
+                raise OSError("stop before opening")
+
+            try:
+                gps_module.os.open = fake_open
+                with self.assertRaisesRegex(RuntimeError, "could not be opened safely"):
+                    gps_module._prepare_private_gpx_parent(parent)
+            finally:
+                gps_module.os.open = original_open
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], parent)
+        self.assertTrue(calls[0][1] & getattr(os, "O_NOFOLLOW", 0))
+        self.assertTrue(calls[0][1] & getattr(os, "O_DIRECTORY", 0))
 
     def test_gpx_logger_rejects_misowned_track_parent(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
