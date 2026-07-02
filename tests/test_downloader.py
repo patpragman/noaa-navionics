@@ -13564,9 +13564,29 @@ class StatusReportTests(unittest.TestCase):
 
         for expected in (
             "GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}",
-            'gps_baud = int(parser.get("gps", "baud", fallback="4800").strip())',
+            'gps_baud = config_int(parser, "gps", "baud", "4800")',
             "expected config gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200",
             '"gps_baud": gps_baud',
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
+    def test_verify_pi_expected_config_rejects_non_finite_or_out_of_range_numbers(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            "def config_int",
+            "def config_float",
+            "math.isfinite(parsed)",
+            "must be finite",
+            '"max_chart_age_days": config_int(parser, "charts", "max_age_days", "30", minimum=1)',
+            '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)',
+            '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)',
+            '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)',
+            '"anchor_radius_meters": config_float(parser, "anchor", "radius_meters", "50", minimum=1.0)',
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)

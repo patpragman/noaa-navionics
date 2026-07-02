@@ -990,6 +990,8 @@ grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' README.md
 grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' docs/sailboat-pi.md
+grep -q 'reject non-finite or non-positive values' README.md
+grep -q 'reject non-finite or non-positive values' docs/sailboat-pi.md
 grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' README.md
 grep -q 'post-trip helper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each post-trip helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'bounds post-trip GPS waits to 1-600 seconds and track export lookback to 0-3650 days before preparing local output or starting SSH work' README.md
@@ -2885,7 +2887,9 @@ grep -q 'GPSD config file integrity' scripts/verify_pi.sh
 grep -q 'status report config values do not match current config' scripts/verify_pi.sh
 grep -q 'status report track_log tracks_dir' scripts/verify_pi.sh
 grep -q 'status report track_log track_output is a symlink' scripts/verify_pi.sh
-grep -q '"anchor_radius_meters": float' scripts/verify_pi.sh
+grep -q 'def config_float' scripts/verify_pi.sh
+grep -q '"anchor_radius_meters": config_float(parser, "anchor", "radius_meters", "50", minimum=1.0)' scripts/verify_pi.sh
+grep -q 'test_verify_pi_expected_config_rejects_non_finite_or_out_of_range_numbers' tests/test_downloader.py
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh
 grep -q 'is outside {expected_tracks_dir}' scripts/verify_pi.sh
 grep -q 'is owned by uid' scripts/verify_pi.sh
@@ -2896,7 +2900,11 @@ grep -q 'status report track_log latest_path changed before it could be verified
 grep -q 'latest_track_fd = os.open(latest_track_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi.sh
 grep -q 'expected private 0600' scripts/verify_pi.sh
 grep -q 'status report track_log latest_mode' scripts/verify_pi.sh
-grep -q '"min_free_gb": float' scripts/verify_pi.sh
+grep -q '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)' scripts/verify_pi.sh
+grep -q '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)' scripts/verify_pi.sh
+grep -q '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)' scripts/verify_pi.sh
+grep -q '`charts.min_free_gb` must be finite and at least `0.1`' docs/sailboat-pi.md
+grep -q '`anchor.radius_meters` must be finite and at least `1.0`' docs/sailboat-pi.md
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
 grep -q 'status report manifest path' scripts/verify_pi.sh

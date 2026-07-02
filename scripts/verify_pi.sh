@@ -672,6 +672,32 @@ def config_bool(parser, section, key, fallback):
         return False
     raise SystemExit(f"{section}.{key} is not a boolean value: {value}")
 
+def config_int(parser, section, key, fallback, *, minimum=None, maximum=None):
+    value = parser.get(section, key, fallback=fallback).strip()
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise SystemExit(f"{section}.{key} must be an integer: {value}") from exc
+    if minimum is not None and parsed < minimum:
+        raise SystemExit(f"{section}.{key} must be at least {minimum}: {parsed}")
+    if maximum is not None and parsed > maximum:
+        raise SystemExit(f"{section}.{key} must be at most {maximum}: {parsed}")
+    return parsed
+
+def config_float(parser, section, key, fallback, *, minimum=None, maximum=None):
+    value = parser.get(section, key, fallback=fallback).strip()
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise SystemExit(f"{section}.{key} must be a number: {value}") from exc
+    if not math.isfinite(parsed):
+        raise SystemExit(f"{section}.{key} must be finite: {value}")
+    if minimum is not None and parsed < minimum:
+        raise SystemExit(f"{section}.{key} must be at least {minimum:g}: {parsed:g}")
+    if maximum is not None and parsed > maximum:
+        raise SystemExit(f"{section}.{key} must be at most {maximum:g}: {parsed:g}")
+    return parsed
+
 def expected_package_filename(package, value):
     package = package.strip().lower()
     value = value.strip()
@@ -1283,7 +1309,7 @@ if expected_config_path:
         raise SystemExit(f"could not parse expected config {expected_config_path}: {exc}") from exc
     chart_output = Path(parser.get("charts", "output", fallback="~/charts/noaa-enc").strip()).expanduser()
     expected_manifest_path = str(chart_output / "noaa-navionics-manifest.json")
-    gps_baud = int(parser.get("gps", "baud", fallback="4800").strip())
+    gps_baud = config_int(parser, "gps", "baud", "4800")
     if gps_baud not in GPS_BAUD_RATES:
         raise SystemExit("expected config gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200")
     expected_config = {
@@ -1293,16 +1319,16 @@ if expected_config_path:
         "extract": config_bool(parser, "charts", "extract", "yes"),
         "keep_zip": config_bool(parser, "charts", "keep_zip", "yes"),
         "force": config_bool(parser, "charts", "force", "yes"),
-        "max_chart_age_days": int(parser.get("charts", "max_age_days", fallback="30").strip()),
-        "min_free_gb": float(parser.get("charts", "min_free_gb", fallback="2.0").strip()),
+        "max_chart_age_days": config_int(parser, "charts", "max_age_days", "30", minimum=1),
+        "min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1),
         "gps_mode": parser.get("gps", "mode", fallback="gpsd").strip().lower(),
         "gps_device": parser.get("gps", "device", fallback="/dev/serial/by-id/YOUR_GPS_DEVICE").strip(),
         "gps_baud": gps_baud,
         "gpsd_host": parser.get("gps", "gpsd_host", fallback="127.0.0.1").strip(),
-        "gpsd_port": int(parser.get("gps", "gpsd_port", fallback="2947").strip()),
+        "gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535),
         "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
-        "track_retention_days": int(parser.get("tracking", "retention_days", fallback="90").strip()),
-        "anchor_radius_meters": float(parser.get("anchor", "radius_meters", fallback="50").strip()),
+        "track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0),
+        "anchor_radius_meters": config_float(parser, "anchor", "radius_meters", "50", minimum=1.0),
     }
     expected_package_zip = expected_package_filename(
         expected_config["chart_package"],
