@@ -81,6 +81,8 @@ def _duplicates_failed_readiness_row(rows: list[StatusRow], failure: object) -> 
         f"status report {name} readiness check is not ok: ",
         f"status report {name} service check is not ok: ",
     )
+    if name == "Track Log":
+        prefixes = (*prefixes, "status report track_log is not ok: ")
     if not detail.startswith(prefixes):
         return False
     return any(row.name == name and not row.ok for row in rows)

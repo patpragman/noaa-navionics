@@ -4268,6 +4268,27 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(status_gui_module.count_failures(rows), 2)
         self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
 
+    def test_status_gui_deduplicates_failed_track_log_projection(self):
+        report = complete_status_gui_report(ok=False)
+        report["track_log"]["ok"] = False
+        report["track_log"]["detail"] = "no recent track point"
+        track_row = next(row for row in report["service_checks"] if row["name"] == "Track Log")
+        track_row["ok"] = False
+        track_row["detail"] = "no recent track point"
+
+        rows = status_gui_module.status_rows(report)
+        failures = status_report_validation_failures(report)
+
+        self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
+        self.assertEqual(status_gui_module.count_failures(rows), 2)
+        self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
+        self.assertEqual(
+            [row for row in rows if row.name == "Track Log" and not row.ok],
+            [status_gui_module.StatusRow("Track Log", False, "no recent track point")],
+        )
+        self.assertTrue(any("status report track_log is not ok: no recent track point" in failure.detail for failure in failures))
+        self.assertTrue(any(failure.name == "Track Log" for failure in failures))
+
     def test_status_gui_renders_truthy_non_boolean_ok_values_as_failures(self):
         report = complete_status_gui_report()
         report["ok"] = "yes"
