@@ -6265,6 +6265,14 @@ grep -q 'status_octal_mode_text(manifest.get("directory_mode"), "manifest direct
 grep -q 'manifest_text_values = {}' scripts/verify_pi.sh
 grep -q 'status_text(manifest.get(key, ""), f"manifest {key}")' scripts/verify_pi.sh
 grep -q 'status_text(manifest.get("created_at_source", ""), "manifest created_at_source")' scripts/verify_pi.sh
+grep -q 'manifest_file_created_at_source = status_text(' scripts/verify_pi.sh
+grep -q 'manifest_file.get("created_at_source", "")' scripts/verify_pi.sh
+grep -q 'manifest file created_at_source' scripts/verify_pi.sh
+grep -q 'status_text(manifest_file.get("created_at", ""), "manifest file created_at")' scripts/verify_pi.sh
+grep -q 'status report manifest download_skipped is not boolean' scripts/verify_pi.sh
+grep -q 'manifest file download skipped is not boolean' scripts/verify_pi.sh
+grep -q 'status_text(source_section.get(source_key, ""), f"manifest file {source_key}")' scripts/verify_pi.sh
+grep -q 'status_text(download_section.get("sha256", ""), "manifest file sha256").lower()' scripts/verify_pi.sh
 grep -q 'download_path_error = status_text(manifest.get("download_path_error", ""), "manifest download_path_error")' scripts/verify_pi.sh
 grep -q 'status report manifest path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report manifest missing chart_storage_symlink_component' scripts/verify_pi.sh

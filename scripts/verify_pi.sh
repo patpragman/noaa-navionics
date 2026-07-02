@@ -2217,8 +2217,11 @@ if expected_config_path:
         raise SystemExit(f"manifest file has no download section: {expected_manifest_path}")
     if not isinstance(extract_section, dict):
         raise SystemExit(f"manifest file has no extract section: {expected_manifest_path}")
-    manifest_file_created_at_source = str(manifest_file.get("created_at_source", "")).strip()
-    manifest_file_created_at = str(manifest_file.get("created_at", "")).strip()
+    manifest_file_created_at_source = status_text(
+        manifest_file.get("created_at_source", ""),
+        "manifest file created_at_source",
+    )
+    manifest_file_created_at = status_text(manifest_file.get("created_at", ""), "manifest file created_at")
     if manifest_text_values["created_at"] != manifest_file_created_at:
         raise SystemExit(
             "status report manifest created_at "
@@ -2229,8 +2232,16 @@ if expected_config_path:
             f"status report manifest created_at_source {manifest_created_at_source} "
             f"does not match manifest file {manifest_file_created_at_source}"
         )
-    manifest_download_skipped = bool(manifest.get("download_skipped", False))
-    manifest_file_download_skipped = bool(download_section.get("skipped", False)) if isinstance(download_section, dict) else False
+    manifest_download_skipped = manifest.get("download_skipped", False)
+    if not isinstance(manifest_download_skipped, bool):
+        raise SystemExit(
+            f"status report manifest download_skipped is not boolean: {manifest_download_skipped!r}"
+        )
+    manifest_file_download_skipped = download_section.get("skipped", False)
+    if not isinstance(manifest_file_download_skipped, bool):
+        raise SystemExit(
+            f"manifest file download skipped is not boolean: {manifest_file_download_skipped!r}"
+        )
     if manifest_download_skipped != manifest_file_download_skipped:
         raise SystemExit(
             f"status report manifest download_skipped {manifest_download_skipped} "
@@ -2247,7 +2258,7 @@ if expected_config_path:
     ]
     for status_key, source_section, source_key in manifest_field_pairs:
         status_value = manifest_text_values[status_key]
-        file_value = str(source_section.get(source_key, "")).strip()
+        file_value = status_text(source_section.get(source_key, ""), f"manifest file {source_key}")
         if status_value != file_value:
             raise SystemExit(
                 f"status report manifest {status_key} {status_value} "
@@ -2258,7 +2269,7 @@ if expected_config_path:
         "download bytes",
         expected_manifest_path,
     )
-    manifest_file_sha256 = str(download_section.get("sha256", "")).strip().lower()
+    manifest_file_sha256 = status_text(download_section.get("sha256", ""), "manifest file sha256").lower()
     manifest_file_enc_cell_count = parse_manifest_int(
         extract_section.get("enc_cell_count", 0),
         "ENC cell count",
