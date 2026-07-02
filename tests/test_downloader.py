@@ -16016,6 +16016,59 @@ class StatusReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "current time must include a timezone"):
                 _track_log_summary(Path(tmpdir), now=datetime(2026, 7, 1, 12, 0, 0), boot_epoch=None)
 
+    def test_track_log_summary_rejects_invalid_timing_before_scan(self):
+        original_once = report_module._track_log_summary_once
+
+        def unexpected_summary_once(*args, **kwargs):
+            raise AssertionError("track summary should not scan files")
+
+        cases = [
+            ({"max_age_seconds": -1}, "max_age_seconds must be finite and non-negative"),
+            ({"max_age_seconds": math.inf}, "max_age_seconds must be finite"),
+            ({"max_age_seconds": math.nan}, "max_age_seconds must be finite"),
+            ({"wait_seconds": -1}, "wait_seconds must be finite and non-negative"),
+            ({"wait_seconds": math.inf}, "wait_seconds must be finite"),
+            ({"wait_seconds": math.nan}, "wait_seconds must be finite"),
+            ({"poll_seconds": 0}, "poll_seconds must be finite and greater than 0"),
+            ({"poll_seconds": -1}, "poll_seconds must be finite and greater than 0"),
+            ({"poll_seconds": math.inf}, "poll_seconds must be finite"),
+            ({"poll_seconds": False}, "poll_seconds must be finite"),
+            ({"boot_epoch": -1}, "boot_epoch must be finite and non-negative"),
+            ({"boot_epoch": math.nan}, "boot_epoch must be finite"),
+        ]
+
+        try:
+            report_module._track_log_summary_once = unexpected_summary_once
+            for kwargs, message in cases:
+                with self.subTest(kwargs=kwargs):
+                    with self.assertRaisesRegex(ValueError, re.escape(message)):
+                        _track_log_summary(Path("/tmp/noaa-navionics-no-scan"), **kwargs)
+        finally:
+            report_module._track_log_summary_once = original_once
+
+    def test_track_log_summary_once_rejects_invalid_timing_before_scan(self):
+        original_first_symlink = report_module._first_symlink_ancestor
+
+        def unexpected_first_symlink(path):
+            raise AssertionError("track summary should not inspect paths")
+
+        cases = [
+            ({"max_age_seconds": -1}, "max_age_seconds must be finite and non-negative"),
+            ({"max_age_seconds": math.nan}, "max_age_seconds must be finite"),
+            ({"boot_epoch": -1}, "boot_epoch must be finite and non-negative"),
+            ({"boot_epoch": math.inf}, "boot_epoch must be finite"),
+            ({"boot_epoch": True}, "boot_epoch must be finite"),
+        ]
+
+        try:
+            report_module._first_symlink_ancestor = unexpected_first_symlink
+            for kwargs, message in cases:
+                with self.subTest(kwargs=kwargs):
+                    with self.assertRaisesRegex(ValueError, re.escape(message)):
+                        report_module._track_log_summary_once(Path("/tmp/noaa-navionics-no-scan"), **kwargs)
+        finally:
+            report_module._first_symlink_ancestor = original_first_symlink
+
     def test_track_log_summary_rejects_missing_trackpoint_quality(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

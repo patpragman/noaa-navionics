@@ -5660,6 +5660,10 @@ grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downl
 grep -q 'test_track_log_summary_rejects_symlinked_track_output_ancestor' tests/test_downloader.py
 grep -q 'Status reports and Pi verification open the GPX tracks directory through a no-follow same-file descriptor' README.md
 grep -q 'Status reports and Pi verification open the GPX tracks directory through a no-follow same-file descriptor' docs/sailboat-pi.md
+grep -q 'def _finite_non_negative_seconds' src/noaa_navionics/report.py
+grep -q 'def _finite_positive_seconds' src/noaa_navionics/report.py
+grep -q 'test_track_log_summary_rejects_invalid_timing_before_scan' tests/test_downloader.py
+grep -q 'test_track_log_summary_once_rejects_invalid_timing_before_scan' tests/test_downloader.py
 grep -q 'def _status_track_wait_seconds' src/noaa_navionics/report.py
 grep -q 'test_status_track_wait_seconds_rejects_non_finite_values' tests/test_downloader.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py

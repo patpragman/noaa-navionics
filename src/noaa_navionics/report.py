@@ -3114,6 +3114,41 @@ def _parse_proc_uptime_seconds(value: str) -> float:
     return uptime_seconds
 
 
+def _finite_non_negative_seconds(value: object, label: str) -> float:
+    seconds = _finite_seconds(value, label)
+    if seconds < 0.0:
+        raise ValueError(f"{label} must be finite and non-negative")
+    return seconds
+
+
+def _finite_positive_seconds(value: object, label: str) -> float:
+    seconds = _finite_seconds(value, label)
+    if seconds <= 0.0:
+        raise ValueError(f"{label} must be finite and greater than 0")
+    return seconds
+
+
+def _finite_seconds(value: object, label: str) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be finite")
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be finite") from exc
+    if not math.isfinite(seconds):
+        raise ValueError(f"{label} must be finite")
+    return seconds
+
+
+def _finite_optional_epoch(value: Optional[object], label: str) -> Optional[float]:
+    if value is None:
+        return None
+    epoch = _finite_seconds(value, label)
+    if epoch < 0.0:
+        raise ValueError(f"{label} must be finite and non-negative")
+    return epoch
+
+
 def _track_log_summary(
     track_output: Path,
     *,
@@ -3124,7 +3159,11 @@ def _track_log_summary(
     wait_seconds: float = 0.0,
     poll_seconds: float = 1.0,
 ) -> dict[str, object]:
-    deadline = time.monotonic() + max(0.0, wait_seconds)
+    max_age_seconds = _finite_non_negative_seconds(max_age_seconds, "max_age_seconds")
+    wait_seconds = _finite_non_negative_seconds(wait_seconds, "wait_seconds")
+    poll_seconds = _finite_positive_seconds(poll_seconds, "poll_seconds")
+    boot_epoch = _finite_optional_epoch(boot_epoch, "boot_epoch")
+    deadline = time.monotonic() + wait_seconds
     poll_interval = max(0.1, poll_seconds)
     while True:
         summary = _track_log_summary_once(
@@ -3147,6 +3186,8 @@ def _track_log_summary_once(
     boot_epoch: Optional[float] = None,
     expected_uid: Optional[int] = None,
 ) -> dict[str, object]:
+    max_age_seconds = _finite_non_negative_seconds(max_age_seconds, "max_age_seconds")
+    boot_epoch = _finite_optional_epoch(boot_epoch, "boot_epoch")
     current = now or datetime.now(timezone.utc)
     if current.tzinfo is None or current.utcoffset() is None:
         raise ValueError("track log summary current time must include a timezone")
