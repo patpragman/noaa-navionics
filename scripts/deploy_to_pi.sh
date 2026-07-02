@@ -38,6 +38,7 @@ skip_gpsd=0
 skip_sync=0
 skip_services=0
 skip_autologin=0
+no_device_check=0
 sync_retry_option_args=()
 max_gps_seconds=600
 max_sync_retries=20
@@ -575,8 +576,14 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1")
       shift
       ;;
-    --skip-gps-time|--no-device-check)
+    --skip-gps-time)
       saw_provision_option=1
+      provision_args+=("$1")
+      shift
+      ;;
+    --no-device-check)
+      saw_provision_option=1
+      no_device_check=1
       provision_args+=("$1")
       shift
       ;;
@@ -606,6 +613,14 @@ if [[ "$skip_autologin" -eq 1 && "$skip_services" -eq 0 ]]; then
   cat >&2 <<'EOF'
 --skip-autologin requires --skip-services.
 Readiness verifies desktop startup, so services and chartplotter autostart must be deployed together for unattended startup.
+EOF
+  exit 2
+fi
+
+if [[ "$no_device_check" -eq 1 && ( "$skip_services" -eq 0 || "$skip_autologin" -eq 0 ) ]]; then
+  cat >&2 <<'EOF'
+--no-device-check cannot be used while unattended startup is enabled.
+Plug in the GPS receiver and use a stable device path, or pass both --skip-services and --skip-autologin for manual testing.
 EOF
   exit 2
 fi

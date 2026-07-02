@@ -1171,6 +1171,7 @@ grep -q 'install_args+=("--no-services")' scripts/deploy_to_pi.sh
 grep -q 'install_args+=("$1")' scripts/deploy_to_pi.sh
 grep -q -- '--skip-services requires --skip-autologin' scripts/deploy_to_pi.sh
 grep -q -- '--skip-autologin requires --skip-services' scripts/deploy_to_pi.sh
+grep -q -- '--no-device-check cannot be used while unattended startup is enabled' scripts/deploy_to_pi.sh
 grep -Fq 'run_remote_repo_helper scripts/install_raspberry_pi.sh "${install_args[@]}"' scripts/deploy_to_pi.sh
 grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
@@ -6644,6 +6645,17 @@ if [[ "$deploy_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--skip-autologin requires --skip-services' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --device /dev/serial/by-id/mock-gps --no-device-check >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject --no-device-check with unattended autostart enabled" >&2
+  exit 1
+fi
+grep -q -- '--no-device-check cannot be used while unattended startup is enabled' "$deploy_output"
 
 set +e
 scripts/provision_sailboat_pi.sh --device /dev/ttyUSB0 >"$provision_output" 2>&1
