@@ -439,6 +439,8 @@ def complete_status_gui_report(
                 "mode": "0755",
                 "min_free_gb": 2.0,
                 "free_gb": 12.5,
+                "total_inodes": 1000,
+                "free_inodes": 500,
                 "writable": True,
             }
         elif row["name"] == "Chart Package":
@@ -11331,6 +11333,8 @@ class StatusReportTests(unittest.TestCase):
                 "mode": "0755",
                 "min_free_gb": 2.0,
                 "free_gb": 12.5,
+                "total_inodes": 1000,
+                "free_inodes": 500,
                 "writable": True,
             }
             data.update(overrides)
@@ -11345,6 +11349,9 @@ class StatusReportTests(unittest.TestCase):
             (storage_data(missing_removable_mount=True), "removable storage is not mounted"),
             (storage_data(uid=1001), "storage owner is invalid"),
             (storage_data(configured_path="relative/charts"), "configured path is not absolute"),
+            (storage_data(total_inodes=None), "missing inode capacity measurement"),
+            (storage_data(free_inodes=None), "missing free inode measurement"),
+            (storage_data(free_inodes=0), "has no free inodes"),
         ]
         for data, expected in cases:
             with self.subTest(expected=expected):
@@ -19831,6 +19838,30 @@ class GpsTests(unittest.TestCase):
             self.assertIn("minimum", result.detail)
             self.assertIsNotNone(result.data)
             self.assertLess(result.data.get("free_gb"), result.data.get("min_free_gb"))
+
+    def test_disk_check_rejects_storage_with_no_free_inodes(self):
+        original_statvfs = health_module.os.statvfs
+
+        class FakeStatvfs:
+            f_blocks = 20 * 1024 * 1024
+            f_bfree = 10 * 1024 * 1024
+            f_bavail = 10 * 1024 * 1024
+            f_frsize = 1024
+            f_files = 1000
+            f_favail = 0
+
+        try:
+            health_module.os.statvfs = lambda path: FakeStatvfs()
+            with tempfile.TemporaryDirectory() as tmpdir:
+                result = check_disk_space(Path(tmpdir))
+
+            self.assertFalse(result.ok)
+            self.assertIn("no free inodes", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("total_inodes"), 1000)
+            self.assertEqual(result.data.get("free_inodes"), 0)
+        finally:
+            health_module.os.statvfs = original_statvfs
 
     def test_disk_check_rejects_unmounted_removable_storage_path(self):
         original_roots = health_module.REMOVABLE_STORAGE_ROOTS

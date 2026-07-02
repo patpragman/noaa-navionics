@@ -4895,6 +4895,8 @@ grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence'
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Disk and Track Disk storage evidence' README.md
 grep -q 'READY reports also require structured Disk and Track Disk storage evidence' docs/sailboat-pi.md
+grep -q 'available inode evidence' README.md
+grep -q 'available inode evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' README.md
 grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' README.md

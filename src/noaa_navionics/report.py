@@ -1093,6 +1093,14 @@ def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]
                     f"status report {name} free space {free_gb:.1f} GB is below {min_free_gb:.1f} GB",
                 )
             )
+        total_inodes = data.get("total_inodes")
+        free_inodes = data.get("free_inodes")
+        if isinstance(total_inodes, bool) or not isinstance(total_inodes, int) or total_inodes < 0:
+            failures.append(CheckResult(name, False, f"status report {name} missing inode capacity measurement"))
+        if isinstance(free_inodes, bool) or not isinstance(free_inodes, int) or free_inodes < 0:
+            failures.append(CheckResult(name, False, f"status report {name} missing free inode measurement"))
+        elif isinstance(total_inodes, int) and total_inodes > 0 and free_inodes <= 0:
+            failures.append(CheckResult(name, False, f"status report {name} has no free inodes"))
         if data.get("writable") is not True:
             failures.append(CheckResult(name, False, f"status report {name} storage is not writable"))
     return failures

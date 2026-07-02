@@ -1566,12 +1566,20 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
             data,
         )
     usage = shutil.disk_usage(existing)
+    inode_usage = os.statvfs(existing)
     free_gb = usage.free / (1024 ** 3)
+    total_inodes = int(inode_usage.f_files)
+    free_inodes = int(inode_usage.f_favail)
     writable = _directory_writable(existing)
     data["free_gb"] = free_gb
+    data["total_inodes"] = total_inodes
+    data["free_inodes"] = free_inodes
     data["writable"] = writable
-    ok = free_gb >= min_free_gb and writable
+    inodes_available = total_inodes <= 0 or free_inodes > 0
+    ok = free_gb >= min_free_gb and writable and inodes_available
     detail = f"{free_gb:.1f} GB free at {existing}; minimum {min_free_gb:.1f} GB"
+    if not inodes_available:
+        detail += "; no free inodes"
     if not writable:
         detail += "; not writable"
     return CheckResult(name, ok, detail, data)
