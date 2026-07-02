@@ -1129,6 +1129,104 @@ process_lookup_command_path() {
   printf '%s\n' "$path_candidate"
 }
 
+validate_noaa_navionics_command() {
+  if ! is_raspberry_pi; then
+    if [[ ! -x "$bin" ]]; then
+      echo "noaa-navionics is not installed at $bin" >&2
+      return 127
+    fi
+    return 0
+  fi
+
+  "$python3_bin" - "$bin" "$HOME/.local/share/noaa-navionics/venv/bin/noaa-navionics" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+command = Path(sys.argv[1]).expanduser()
+expected = Path(sys.argv[2]).expanduser()
+expected_uid = os.getuid()
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(127)
+
+
+if not command.is_absolute():
+    fail(f"NOAA Navionics CLI command path is not absolute: {command}")
+if command != Path.home() / ".local/bin/noaa-navionics":
+    fail(f"NOAA Navionics CLI command is not installed at the expected path: {command}")
+
+for directory, label in ((command.parent, "command directory"), (expected.parent, "private venv command directory")):
+    try:
+        directory_stat = os.stat(directory, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"Could not inspect NOAA Navionics {label}: {directory}: {exc}")
+    if stat.S_ISLNK(directory_stat.st_mode):
+        fail(f"NOAA Navionics {label} is a symlink: {directory}")
+    if not stat.S_ISDIR(directory_stat.st_mode):
+        fail(f"NOAA Navionics {label} is not a directory: {directory}")
+    if directory_stat.st_uid != expected_uid:
+        fail(
+            f"NOAA Navionics {label} is owned by uid {directory_stat.st_uid}, "
+            f"expected {expected_uid}: {directory}"
+        )
+    directory_mode = stat.S_IMODE(directory_stat.st_mode)
+    if directory_mode & 0o022:
+        fail(
+            f"NOAA Navionics {label} has permissions {directory_mode:04o}, "
+            f"expected no group/other write bits: {directory}"
+        )
+
+try:
+    command_stat = os.stat(command, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect NOAA Navionics CLI command symlink: {command}: {exc}")
+if not stat.S_ISLNK(command_stat.st_mode):
+    fail(f"NOAA Navionics CLI command is not the installed private symlink: {command}")
+if command_stat.st_uid != expected_uid:
+    fail(
+        f"NOAA Navionics CLI command symlink is owned by uid {command_stat.st_uid}, "
+        f"expected {expected_uid}: {command}"
+    )
+
+try:
+    resolved_command = command.resolve(strict=True)
+    resolved_expected = expected.resolve(strict=True)
+except OSError as exc:
+    fail(f"Could not resolve NOAA Navionics CLI command symlink: {command}: {exc}")
+if resolved_command != resolved_expected:
+    fail(
+        "NOAA Navionics CLI command symlink does not resolve to the private venv command: "
+        f"{command} -> {resolved_command}, expected {resolved_expected}"
+    )
+
+try:
+    target_stat = os.stat(resolved_command, follow_symlinks=False)
+except OSError as exc:
+    fail(f"Could not inspect NOAA Navionics CLI command target: {resolved_command}: {exc}")
+if stat.S_ISLNK(target_stat.st_mode):
+    fail(f"NOAA Navionics CLI command target is a symlink: {resolved_command}")
+if not stat.S_ISREG(target_stat.st_mode):
+    fail(f"NOAA Navionics CLI command target is not a regular file: {resolved_command}")
+if target_stat.st_uid != expected_uid:
+    fail(
+        f"NOAA Navionics CLI command target is owned by uid {target_stat.st_uid}, "
+        f"expected {expected_uid}: {resolved_command}"
+    )
+target_mode = stat.S_IMODE(target_stat.st_mode)
+if not target_mode & stat.S_IXUSR:
+    fail(f"NOAA Navionics CLI command target is not executable by the deployed user: {resolved_command}")
+if target_mode & 0o022:
+    fail(
+        f"NOAA Navionics CLI command target has permissions {target_mode:04o}, "
+        f"expected no group/other write bits: {resolved_command}"
+    )
+PY
+}
+
 revalidate_trusted_utility_command() {
   local candidate="$1"
   local label="$2"
@@ -2015,6 +2113,7 @@ PY
 run_readiness_report() {
   local attempt=1
   while [[ "$attempt" -le "$readiness_attempts" ]]; do
+    validate_noaa_navionics_command || return 127
     if "$bin" status-report --config "$config" --gps-seconds "$gps_seconds" --output "$status_report"; then
       if [[ "$attempt" -eq 1 ]]; then
         echo "NOAA Navionics preflight passed."
@@ -2287,11 +2386,6 @@ run_opencpn_supervised() {
 }
 
 reexec_without_ambient_launcher_settings "$@"
-
-if [[ ! -x "$bin" ]]; then
-  echo "noaa-navionics is not installed at $bin" >&2
-  exit 127
-fi
 
 python3_bin="$(python3_command_path)" || exit 127
 

@@ -4908,6 +4908,8 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher resolved Python trust check" grep -Fq 'Python command resolves outside trusted system directories' "$launcher"
   check "chartplotter launcher Python resolution command" grep -Fq 'readlink -f -- "$candidate"' "$launcher"
   check "chartplotter launcher resolved Python execution" grep -Fq '"$python3_bin" - "$@"' "$launcher"
+  check "chartplotter launcher installed command validation" grep -Fq 'validate_noaa_navionics_command' "$launcher"
+  check "chartplotter launcher private venv command validation" grep -Fq 'NOAA Navionics CLI command symlink does not resolve to the private venv command' "$launcher"
   check "chartplotter launcher ambient environment scrub" grep -Fq 'reexec_without_ambient_launcher_settings' "$launcher"
   check "chartplotter launcher ambient environment re-exec" grep -Fq 'exec env "${env_args[@]}" "$0" "$@"' "$launcher"
   check "chartplotter launcher environment directory symlink guard" grep -Fq 'launcher environment directory is a symlink' "$launcher"

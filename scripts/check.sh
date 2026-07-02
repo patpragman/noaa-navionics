@@ -340,11 +340,16 @@ grep -q 'Python command is not a regular file after resolution' scripts/start_ch
 grep -q 'Python command directory is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -q 'Python command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -Fq 'python3_bin="$(python3_command_path)" || exit 127' scripts/start_chartplotter.sh
+grep -q 'validate_noaa_navionics_command' scripts/start_chartplotter.sh
+grep -q 'NOAA Navionics CLI command symlink does not resolve to the private venv command' scripts/start_chartplotter.sh
+grep -q 'validate_noaa_navionics_command || return 127' scripts/start_chartplotter.sh
 grep -Fq '"$python3_bin" - "$@"' scripts/start_chartplotter.sh
 grep -Fq 'if "$python3_bin" - "$status_report"' scripts/start_chartplotter.sh
 ! grep -Eq '(^|[[:space:]])python3[[:space:]]+-' scripts/start_chartplotter.sh
 grep -q 'resolves Python to a trusted executable path before running descriptor-safe helper snippets' README.md
 grep -q 'resolves Python to a trusted executable path before running descriptor-safe helper snippets' docs/sailboat-pi.md
+grep -q 'validates the installed `~/.local/bin/noaa-navionics` command symlink resolves to the private venv before each startup readiness attempt' README.md
+grep -q 'validates the installed `~/.local/bin/noaa-navionics` command symlink resolves to the private venv before each startup readiness attempt' docs/sailboat-pi.md
 grep -q 'Using OpenCPN binary' scripts/start_chartplotter.sh
 grep -q 'OpenCPN command integrity' scripts/verify_pi.sh
 grep -q 'chartplotter launcher Pi OpenCPN root owner' scripts/verify_pi.sh
