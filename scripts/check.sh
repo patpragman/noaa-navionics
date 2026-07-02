@@ -5249,6 +5249,13 @@ grep -q 'status report {name} check has no structured data' src/noaa_navionics/r
 grep -q 'Track Disk check has no structured data' tests/test_downloader.py
 grep -q 'status report {name} free space' src/noaa_navionics/report.py
 grep -q 'status report Chart Package check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _chart_package_text' src/noaa_navionics/report.py
+grep -q '"Chart Package package"' src/noaa_navionics/report.py
+grep -q '"Chart Package value"' src/noaa_navionics/report.py
+grep -q '"Chart Package expected_filename"' src/noaa_navionics/report.py
+grep -q '"Chart Package expected_url"' src/noaa_navionics/report.py
+grep -q 'expected_filename contains control characters' tests/test_downloader.py
+grep -q 'expected_url contains control characters' tests/test_downloader.py
 grep -q 'status report Charts found no extracted ENC cells' src/noaa_navionics/report.py
 grep -q 'status report Chart Update Debris found stale update debris' src/noaa_navionics/report.py
 grep -q 'status report Manifest check has no structured data' src/noaa_navionics/report.py

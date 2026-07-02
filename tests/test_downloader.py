@@ -12999,10 +12999,18 @@ class StatusReportTests(unittest.TestCase):
 
         cases = [
             ("Chart Package", None, "Chart Package check has no structured data"),
+            ("Chart Package", chart_package_data(package=123), "package is not text"),
+            ("Chart Package", chart_package_data(package="state\x00"), "package contains control characters"),
             ("Chart Package", chart_package_data(package="all"), "does not match configured package"),
+            ("Chart Package", chart_package_data(value=123), "value is not text"),
+            ("Chart Package", chart_package_data(value="AK\x00"), "value contains control characters"),
             ("Chart Package", chart_package_data(value="WA"), "does not match configured value"),
             ("Chart Package", chart_package_data(complete_chart_set=False), "is not a complete NOAA ENC package"),
+            ("Chart Package", chart_package_data(expected_filename=123), "expected_filename is not text"),
+            ("Chart Package", chart_package_data(expected_filename="AK_ENCs.zip\x00"), "expected_filename contains control characters"),
             ("Chart Package", chart_package_data(expected_filename="US5WA.zip"), "filename does not match NOAA package"),
+            ("Chart Package", chart_package_data(expected_url=123), "expected_url is not text"),
+            ("Chart Package", chart_package_data(expected_url="https://www.charts.noaa.gov/ENCs/AK_ENCs.zip\x00"), "expected_url contains control characters"),
             ("Chart Package", chart_package_data(expected_url="https://example.invalid/AK_ENCs.zip"), "URL does not match NOAA package"),
             ("Charts", None, "Charts check has no structured data"),
             ("Charts", charts_data(configured_path="/charts\x00"), "Charts path contains control characters"),

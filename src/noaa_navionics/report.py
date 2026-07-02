@@ -654,18 +654,29 @@ def _chart_readiness_validation_failures(
         if not isinstance(data, dict):
             failures.append(CheckResult("Chart Package", False, "status report Chart Package check has no structured data"))
         else:
-            expected_package = str(config.get("chart_package", "")).strip().lower()
-            expected_value = str(config.get("chart_value", "")).strip()
-            if str(data.get("package", "")).strip().lower() != expected_package:
+            expected_package = _chart_package_text(config, "chart_package", "config chart_package", failures)
+            if expected_package is not None:
+                expected_package = expected_package.lower()
+            expected_value = _chart_package_text(config, "chart_value", "config chart_value", failures)
+            package = _chart_package_text(data, "package", "Chart Package package", failures)
+            value = _chart_package_text(data, "value", "Chart Package value", failures)
+            if package is not None and expected_package is not None and package.lower() != expected_package:
                 failures.append(CheckResult("Chart Package", False, "status report Chart Package does not match configured package"))
-            if str(data.get("value", "")).strip() != expected_value:
+            if value is not None and expected_value is not None and value != expected_value:
                 failures.append(CheckResult("Chart Package", False, "status report Chart Package does not match configured value"))
             if expected_package and data.get("complete_chart_set") is not True:
                 failures.append(CheckResult("Chart Package", False, "status report Chart Package is not a complete NOAA ENC package"))
-            expected_filename, expected_url = _expected_manifest_package(expected_package, expected_value)
-            if expected_filename and str(data.get("expected_filename", "")).strip() != expected_filename:
+            expected_filename, expected_url = _expected_manifest_package(expected_package or "", expected_value or "")
+            reported_filename = _chart_package_text(
+                data,
+                "expected_filename",
+                "Chart Package expected_filename",
+                failures,
+            )
+            reported_url = _chart_package_text(data, "expected_url", "Chart Package expected_url", failures)
+            if expected_filename and reported_filename is not None and reported_filename != expected_filename:
                 failures.append(CheckResult("Chart Package", False, "status report Chart Package filename does not match NOAA package"))
-            if expected_url and str(data.get("expected_url", "")).strip() != expected_url:
+            if expected_url and reported_url is not None and reported_url != expected_url:
                 failures.append(CheckResult("Chart Package", False, "status report Chart Package URL does not match NOAA package"))
 
     charts_row = check_rows.get("Charts")
@@ -853,6 +864,24 @@ def _chart_readiness_validation_failures(
             ):
                 failures.append(CheckResult("Manifest", False, "status report Manifest actual ENC cell count does not match manifest summary"))
     return failures
+
+
+def _chart_package_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult("Chart Package", False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult("Chart Package", False, control_failure))
+        return None
+    return text
 
 
 def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
