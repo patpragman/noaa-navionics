@@ -438,6 +438,7 @@ fi
 
 printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
 "$sudo_cmd" -n "$systemctl_cmd" poweroff
+printf 'Poweroff request accepted by systemd.\n'
 REMOTE
 )"
 ssh_status=$?
@@ -457,6 +458,13 @@ fi
 if [[ "$ssh_output" != *"Filesystem sync completed; requesting clean Pi poweroff."* ]]; then
   printf 'Remote shutdown command did not reach the poweroff request for %s.\n' "$target" >&2
   if [[ "$ssh_status" -ne 0 ]]; then
+    exit "$ssh_status"
+  fi
+  exit 1
+fi
+if [[ "$ssh_output" != *"Poweroff request accepted by systemd."* ]]; then
+  printf 'Remote shutdown command did not report that systemd accepted the poweroff request for %s.\n' "$target" >&2
+  if [[ "$ssh_status" -ne 0 && "$ssh_status" -ne 255 ]]; then
     exit "$ssh_status"
   fi
   exit 1

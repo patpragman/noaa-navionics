@@ -1139,9 +1139,11 @@ grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
+grep -q 'requires the remote command to report that systemd accepted the poweroff request' README.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' README.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
+grep -q 'requires the remote command to report that systemd accepted the poweroff request' docs/sailboat-pi.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' docs/sailboat-pi.md
 grep -q -- '--timeout requires a real shutdown' scripts/shutdown_pi_safely.sh
 grep -Fq '/bin/bash -s' scripts/shutdown_pi_safely.sh
@@ -1201,6 +1203,8 @@ grep -q 'validate_ssh_target' scripts/shutdown_pi_safely.sh
 grep -q 'ssh_probe_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=5 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)' scripts/shutdown_pi_safely.sh
 grep -q 'wait_for_ssh_shutdown' scripts/shutdown_pi_safely.sh
 grep -q 'Clean Pi poweroff confirmed by SSH drop' scripts/shutdown_pi_safely.sh
+grep -q 'Poweroff request accepted by systemd' scripts/shutdown_pi_safely.sh
+grep -q 'did not report that systemd accepted the poweroff request' scripts/shutdown_pi_safely.sh
 grep -q 'Pi still accepts SSH after %ss; do not cut boat power yet' scripts/shutdown_pi_safely.sh
 grep -q 'max_shutdown_timeout=600' scripts/shutdown_pi_safely.sh
 grep -q 'bounds the shutdown confirmation timeout to 1-600 seconds' README.md
@@ -15995,6 +15999,7 @@ case "$*" in
   *NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0*)
     cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
     printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
+    printf 'Poweroff request accepted by systemd.\n'
     exit 0
     ;;
   *'&& true')
@@ -16011,12 +16016,52 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   PATH="$shutdown_confirm_fake_ssh_bin:$PATH" \
   scripts/shutdown_pi_safely.sh pi@example.invalid --confirm --timeout 3 >"$verify_output" 2>&1
 grep -q 'Filesystem sync completed; requesting clean Pi poweroff.' "$verify_output"
+grep -q 'Poweroff request accepted by systemd.' "$verify_output"
 grep -q 'SSH stopped responding after shutdown request for pi@example.invalid.' "$verify_output"
 grep -q 'Clean Pi poweroff confirmed by SSH drop for pi@example.invalid.' "$verify_output"
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0' "$shutdown_confirm_fake_ssh_log"
 grep -q 'ConnectTimeout=5' "$shutdown_confirm_fake_ssh_log"
 grep -q 'ServerAliveInterval=10' "$shutdown_confirm_fake_ssh_log"
 grep -Fq '"$sudo_cmd" -n "$systemctl_cmd" poweroff' "$shutdown_confirm_fake_ssh_stdin"
+
+shutdown_missing_accepted_fake_ssh_bin="$tmpdir/shutdown-missing-accepted-fake-ssh-bin"
+shutdown_missing_accepted_fake_ssh_log="$tmpdir/shutdown-missing-accepted-fake-ssh-log"
+shutdown_missing_accepted_fake_ssh_stdin="$tmpdir/shutdown-missing-accepted-fake-ssh-stdin"
+mkdir -p "$shutdown_missing_accepted_fake_ssh_bin"
+cat >"$shutdown_missing_accepted_fake_ssh_bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_SSH_LOG"
+case "$*" in
+  *NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0*)
+    cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+    printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
+    exit 255
+    ;;
+  *'&& true')
+    exit 255
+    ;;
+esac
+cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+exit 1
+EOF
+chmod +x "$shutdown_missing_accepted_fake_ssh_bin/ssh"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_SSH_LOG="$shutdown_missing_accepted_fake_ssh_log" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$shutdown_missing_accepted_fake_ssh_stdin" \
+  PATH="$shutdown_missing_accepted_fake_ssh_bin:$PATH" \
+  scripts/shutdown_pi_safely.sh pi@example.invalid --confirm --timeout 3 >"$verify_output" 2>&1
+shutdown_missing_accepted_code=$?
+set -e
+if [[ "$shutdown_missing_accepted_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected shutdown_pi_safely.sh to reject shutdown output without accepted poweroff marker with exit 1" >&2
+  exit 1
+fi
+grep -q 'Filesystem sync completed; requesting clean Pi poweroff.' "$verify_output"
+grep -q 'Remote shutdown command did not report that systemd accepted the poweroff request for pi@example.invalid.' "$verify_output"
+! grep -q 'Clean Pi poweroff confirmed by SSH drop for pi@example.invalid.' "$verify_output"
+grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0' "$shutdown_missing_accepted_fake_ssh_log"
 
 set +e
 scripts/verify_pi.sh --expected-boot-id >"$verify_output" 2>&1
