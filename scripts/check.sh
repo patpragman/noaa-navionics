@@ -1714,8 +1714,15 @@ grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/e
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_tracks.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_tracks.sh
 grep -q 'Output directory must not contain control characters' scripts/export_pi_tracks.sh
-grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_tracks.sh
-grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_tracks.sh
+grep -q 'partial_identity="$(capture_private_partial_file_identity "$partial_path" "export archive partial")"' scripts/export_pi_tracks.sh
+grep -q 'cleanup_private_partial_file "$partial_path" "$partial_identity" || true' scripts/export_pi_tracks.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "$partial_identity" "export archive"' scripts/export_pi_tracks.sh
+grep -q 'Partial export archive changed before cleanup; leaving it in place' scripts/export_pi_tracks.sh
+grep -q 'Partial {label} changed before promotion' scripts/export_pi_tracks.sh
+grep -q 'captures the local partial archive identity at creation' README.md
+grep -q 'captures the local partial archive identity at creation' docs/sailboat-pi.md
+grep -q 'cleans failed partial archives only when the original partial identity is still present' README.md
+grep -q 'cleans failed partial archives only when the original partial identity is still present' docs/sailboat-pi.md
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_tracks.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_tracks.sh
 grep -q 'validate_private_archive "$archive_path" "track_count"' scripts/export_pi_tracks.sh
@@ -11481,6 +11488,16 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+if [[ -n "${NOAA_NAVIONICS_FAKE_REPLACE_TRACK_PARTIAL_DIR:-}" ]]; then
+  partial="$(find "$NOAA_NAVIONICS_FAKE_REPLACE_TRACK_PARTIAL_DIR" -maxdepth 1 -type f -name '.*.track-export.*' -print | head -n 1)"
+  if [[ -z "$partial" ]]; then
+    printf 'fake ssh could not find track export partial\n' >&2
+    exit 90
+  fi
+  rm -f -- "$partial"
+  printf 'replacement archive\n' >"$partial"
+  chmod 0600 "$partial"
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_BAD_TRACK_ARCHIVE:-0}" == "1" ]]; then
   printf 'not a gzip tar\n'
   exit 0
@@ -11683,6 +11700,30 @@ grep -q 'tracks/{path.name}' "$track_export_fake_ssh_stdin"
 grep -q 'info.size = current_stat.st_size' "$track_export_fake_ssh_stdin"
 grep -q 'opened GPX track has permissions' "$track_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$track_export_fake_ssh_stdin"
+
+set +e
+track_export_replaced_partial_output_dir="$tmpdir/track-exports-replaced-partial"
+mkdir -p "$track_export_replaced_partial_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_REPLACE_TRACK_PARTIAL_DIR="$track_export_replaced_partial_output_dir" \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$track_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$track_export_fake_ssh_stdin" \
+  PATH="$track_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_tracks.sh pi@example.invalid "$track_export_replaced_partial_output_dir" --days 7 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject a replaced partial archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'Partial export archive changed before promotion' "$verify_output"
+grep -q 'Partial export archive changed before cleanup; leaving it in place' "$verify_output"
+! grep -q 'Exported Pi GPX tracks:' "$verify_output"
+if compgen -G "$track_export_replaced_partial_output_dir/noaa-navionics-pi-tracks-*.tgz" >/dev/null; then
+  echo "expected export_pi_tracks.sh not to promote a replaced partial archive" >&2
+  exit 1
+fi
 
 set +e
 track_export_bad_output_dir="$tmpdir/track-exports-bad-archive"
