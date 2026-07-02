@@ -1700,6 +1700,80 @@ if expected_config_path:
             raise SystemExit(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
     if str(autostart_values.get("Hidden", "")).strip().lower() == "true":
         raise SystemExit("desktop autostart is hidden")
+    mob_launcher = desktop.get("mob_launcher")
+    if not isinstance(mob_launcher, dict):
+        raise SystemExit("status report has no MOB desktop launcher section")
+    mob_launcher_path = str(mob_launcher.get("path", "")).strip()
+    if mob_launcher.get("exists") is not True:
+        raise SystemExit(f"status report MOB desktop launcher does not exist: {mob_launcher_path}")
+    if mob_launcher.get("is_symlink") is not False:
+        raise SystemExit(
+            f"status report MOB desktop launcher path is a symlink or missing symlink status: {mob_launcher_path}"
+        )
+    mob_launcher_file = Path(mob_launcher_path).expanduser()
+    if mob_launcher_file.is_symlink():
+        raise SystemExit(f"status report MOB desktop launcher path is a symlink: {mob_launcher_file}")
+    if mob_launcher.get("directory_is_symlink") is not False:
+        raise SystemExit(
+            "status report MOB desktop launcher directory is a symlink or missing symlink status: "
+            f"{mob_launcher_file.parent}"
+        )
+    if "path_symlink_component" not in mob_launcher:
+        raise SystemExit(
+            f"status report MOB desktop launcher missing path_symlink_component: {mob_launcher_path}"
+        )
+    mob_launcher_symlink_component = str(mob_launcher.get("path_symlink_component", "")).strip()
+    if mob_launcher_symlink_component:
+        raise SystemExit(
+            f"status report MOB desktop launcher path contains a symlink: {mob_launcher_symlink_component}"
+        )
+    if mob_launcher_file.parent.is_symlink():
+        raise SystemExit(f"status report MOB desktop launcher directory is a symlink: {mob_launcher_file.parent}")
+    live_mob_launcher_symlink_component = first_symlink_ancestor(mob_launcher_file.parent)
+    if live_mob_launcher_symlink_component is not None:
+        raise SystemExit(
+            f"status report MOB desktop launcher path contains a symlink: {live_mob_launcher_symlink_component}"
+        )
+    if not mob_launcher_file.is_file():
+        raise SystemExit(f"status report MOB desktop launcher is not a regular file: {mob_launcher_file}")
+    mob_launcher_text, mob_launcher_stat = read_trusted_text_file(
+        mob_launcher_file,
+        "MOB desktop launcher",
+        os.getuid(),
+    )
+    verify_status_file_owner_and_mode(
+        mob_launcher,
+        mob_launcher_file,
+        mob_launcher_stat,
+        "MOB desktop launcher",
+        os.getuid(),
+    )
+    mob_launcher_mode = mob_launcher_stat.st_mode & 0o777
+    if not mob_launcher_mode & stat.S_IXUSR:
+        raise SystemExit(
+            f"status report MOB desktop launcher has permissions {mob_launcher_mode:04o}, "
+            "expected user executable bit"
+        )
+    mob_launcher_values = mob_launcher.get("values")
+    if not isinstance(mob_launcher_values, dict):
+        raise SystemExit(f"status report MOB desktop launcher values were not parsed: {mob_launcher_path}")
+    _mob_launcher_sections, live_mob_launcher_values = parse_key_value_text(mob_launcher_text, ("#",))
+    if mob_launcher_values != live_mob_launcher_values:
+        raise SystemExit("status report MOB desktop launcher values do not match live desktop file")
+    expected_mob_launcher = {
+        "Type": "Application",
+        "Name": "NOAA Navionics MOB",
+        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+        "Terminal": "true",
+    }
+    for key, expected in expected_mob_launcher.items():
+        actual = str(mob_launcher_values.get(key, "")).strip()
+        if actual != expected:
+            raise SystemExit(f"MOB desktop launcher {key}={actual or '<missing>'} expected {expected}")
+    if str(mob_launcher_values.get("Hidden", "")).strip().lower() == "true":
+        raise SystemExit("MOB desktop launcher is hidden")
+    if str(mob_launcher_values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+        raise SystemExit("MOB desktop launcher must not be configured for autostart")
     lightdm = desktop.get("lightdm_autologin")
     if not isinstance(lightdm, dict):
         raise SystemExit("status report has no LightDM autologin section")

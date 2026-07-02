@@ -303,6 +303,23 @@ def trusted_desktop_summary(**overrides: object) -> dict[str, object]:
                 "X-GNOME-Autostart-enabled": "true",
             },
         },
+        "mob_launcher": {
+            "path": "/home/pi/Desktop/noaa-navionics-mob.desktop",
+            "exists": True,
+            "is_symlink": False,
+            "directory_is_symlink": False,
+            "path_symlink_component": "",
+            "uid": os.getuid(),
+            "mode": "0755",
+            "directory_uid": os.getuid(),
+            "directory_mode": "0700",
+            "values": {
+                "Type": "Application",
+                "Name": "NOAA Navionics MOB",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                "Terminal": "true",
+            },
+        },
         "lightdm_autologin": {
             "path": "/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf",
             "exists": True,
@@ -11151,6 +11168,16 @@ class StatusReportTests(unittest.TestCase):
                 encoding="utf-8",
             )
             autostart.chmod(0o644)
+            mob_launcher = root / "noaa-navionics-mob.desktop"
+            mob_launcher.write_text(
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                "Name=NOAA Navionics MOB\n"
+                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
+                "Terminal=true\n",
+                encoding="utf-8",
+            )
+            mob_launcher.chmod(0o755)
             lightdm_autologin = root / "50-noaa-navionics-autologin.conf"
             lightdm_autologin.write_text(
                 "[Seat:*]\n"
@@ -11166,12 +11193,14 @@ class StatusReportTests(unittest.TestCase):
             original_opencpn_config_path = opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH
             original_flatpak_opencpn_config_path = opencpn_module.FLATPAK_OPENCPN_CONFIG_PATH
             original_autostart_path = report_module.DEFAULT_AUTOSTART_PATH
+            original_mob_desktop_path = report_module.DEFAULT_MOB_DESKTOP_PATH
             original_lightdm_autologin_path = report_module.DEFAULT_LIGHTDM_AUTOLOGIN_PATH
             original_systemctl_system = report_module._systemctl_system
             os.environ["NOAA_NAVIONICS_SOURCE_REVISION_PATH"] = str(revision)
             report_module.BOOT_ID_PATH = boot_id
             report_module.DEFAULT_LAUNCHER_ENV_PATH = launcher_env
             report_module.DEFAULT_AUTOSTART_PATH = autostart
+            report_module.DEFAULT_MOB_DESKTOP_PATH = mob_launcher
             report_module.DEFAULT_LIGHTDM_AUTOLOGIN_PATH = lightdm_autologin
             report_module._systemctl_system = lambda args: {
                 ("get-default",): "graphical.target",
@@ -11186,6 +11215,7 @@ class StatusReportTests(unittest.TestCase):
                 report_module.BOOT_ID_PATH = original_boot_id_path
                 report_module.DEFAULT_LAUNCHER_ENV_PATH = original_launcher_env_path
                 report_module.DEFAULT_AUTOSTART_PATH = original_autostart_path
+                report_module.DEFAULT_MOB_DESKTOP_PATH = original_mob_desktop_path
                 report_module.DEFAULT_LIGHTDM_AUTOLOGIN_PATH = original_lightdm_autologin_path
                 report_module._systemctl_system = original_systemctl_system
                 opencpn_module.DEFAULT_OPENCPN_CONFIG_PATH = original_opencpn_config_path
@@ -11256,6 +11286,17 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(report["desktop"]["autostart"]["uid"], os.getuid())
             self.assertEqual(report["desktop"]["autostart"]["mode"], "0644")
             self.assertEqual(report["desktop"]["autostart"]["values"]["Exec"], 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"')
+            self.assertEqual(report["desktop"]["mob_launcher"]["path"], str(mob_launcher))
+            self.assertEqual(report["desktop"]["mob_launcher"]["is_symlink"], False)
+            self.assertEqual(report["desktop"]["mob_launcher"]["directory_is_symlink"], False)
+            self.assertEqual(report["desktop"]["mob_launcher"]["path_symlink_component"], "")
+            self.assertEqual(report["desktop"]["mob_launcher"]["uid"], os.getuid())
+            self.assertEqual(report["desktop"]["mob_launcher"]["mode"], "0755")
+            self.assertEqual(report["desktop"]["mob_launcher"]["values"]["Name"], "NOAA Navionics MOB")
+            self.assertEqual(
+                report["desktop"]["mob_launcher"]["values"]["Exec"],
+                'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+            )
             self.assertEqual(report["desktop"]["lightdm_autologin"]["path"], str(lightdm_autologin))
             self.assertEqual(report["desktop"]["lightdm_autologin"]["is_symlink"], False)
             self.assertEqual(report["desktop"]["lightdm_autologin"]["directory_is_symlink"], False)
@@ -11318,6 +11359,7 @@ class StatusReportTests(unittest.TestCase):
             self.assertIn(f"uid={os.getuid()} mode=0600", text)
             self.assertIn("Desktop Startup:", text)
             self.assertIn(f"autostart={autostart}", text)
+            self.assertIn(f"mob_launcher={mob_launcher}", text)
             self.assertIn("is_symlink=False", text)
             self.assertIn("path_symlink_component=", text)
             self.assertIn(f"uid={os.getuid()} mode=0644", text)
@@ -12930,6 +12972,7 @@ class StatusReportTests(unittest.TestCase):
             generated_at=now.isoformat().replace("+00:00", "Z"),
         )["desktop"]
         valid_autostart = valid_desktop["autostart"]
+        valid_mob_launcher = valid_desktop["mob_launcher"]
         valid_lightdm = valid_desktop["lightdm_autologin"]
         cases = [
             ({}, "missing desktop section"),
@@ -12992,6 +13035,54 @@ class StatusReportTests(unittest.TestCase):
                     }
                 },
                 "desktop autostart Exec=/tmp/start-chartplotter",
+            ),
+            (
+                {"desktop": {key: value for key, value in valid_desktop.items() if key != "mob_launcher"}},
+                "missing MOB desktop launcher section",
+            ),
+            (
+                {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "exists": False}}},
+                "MOB desktop launcher does not exist",
+            ),
+            (
+                {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "mode": "0644"}}},
+                "MOB desktop launcher has permissions 0644, expected user executable bit",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "mob_launcher": {
+                            **valid_mob_launcher,
+                            "values": {**valid_mob_launcher["values"], "Exec": "noaa-navionics mark-position"},
+                        },
+                    }
+                },
+                "MOB desktop launcher Exec=noaa-navionics mark-position",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "mob_launcher": {
+                            **valid_mob_launcher,
+                            "values": {**valid_mob_launcher["values"], "Hidden": "true"},
+                        },
+                    }
+                },
+                "MOB desktop launcher Hidden=true",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "mob_launcher": {
+                            **valid_mob_launcher,
+                            "values": {**valid_mob_launcher["values"], "X-GNOME-Autostart-enabled": "true"},
+                        },
+                    }
+                },
+                "MOB desktop launcher must not be configured for autostart",
             ),
             (
                 {"desktop": {**valid_desktop, "graphical_target": "multi-user.target"}},

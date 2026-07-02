@@ -46,6 +46,7 @@ from . import __version__
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
 DEFAULT_AUTOSTART_PATH = Path("~/.config/autostart/noaa-navionics-chartplotter.desktop")
+DEFAULT_MOB_DESKTOP_PATH = Path("~/Desktop/noaa-navionics-mob.desktop")
 DEFAULT_LIGHTDM_AUTOLOGIN_PATH = Path("/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 PROC_UPTIME_PATH = Path("/proc/uptime")
@@ -1887,6 +1888,54 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
                 failures.append("LightDM autologin-session is missing")
             elif not _safe_xsession_name(session):
                 failures.append(f"LightDM autologin-session is unsafe: {session}")
+    mob_launcher = desktop.get("mob_launcher")
+    if not isinstance(mob_launcher, dict):
+        failures.append("status report missing MOB desktop launcher section")
+    else:
+        path = str(mob_launcher.get("path", "")).strip()
+        if not path:
+            failures.append("status report MOB desktop launcher path is empty")
+        elif not _status_absolute_path(path):
+            failures.append(f"status report MOB desktop launcher path is not absolute: {path}")
+        if mob_launcher.get("exists") is not True:
+            failures.append(f"status report MOB desktop launcher does not exist: {path or '<missing>'}")
+        if mob_launcher.get("is_symlink") is not False:
+            failures.append("status report MOB desktop launcher path is a symlink or missing symlink status")
+        if mob_launcher.get("directory_is_symlink") is not False:
+            failures.append("status report MOB desktop launcher directory is a symlink or missing symlink status")
+        if "path_symlink_component" not in mob_launcher:
+            failures.append("status report MOB desktop launcher missing path_symlink_component")
+        elif str(mob_launcher.get("path_symlink_component", "")).strip():
+            failures.append("status report MOB desktop launcher path contains a symlink")
+        error = str(mob_launcher.get("error", "")).strip()
+        if error:
+            failures.append(f"status report MOB desktop launcher error: {error}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                mob_launcher,
+                label="MOB desktop launcher",
+                expected_uid=os.getuid(),
+            )
+        )
+        failures.extend(_user_executable_mode_failures(mob_launcher, label="MOB desktop launcher"))
+        values = mob_launcher.get("values")
+        if not isinstance(values, dict):
+            failures.append("status report MOB desktop launcher values were not parsed")
+        else:
+            expected_values = {
+                "Type": "Application",
+                "Name": "NOAA Navionics MOB",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                "Terminal": "true",
+            }
+            for key, expected in expected_values.items():
+                actual = str(values.get(key, "")).strip()
+                if actual != expected:
+                    failures.append(f"MOB desktop launcher {key}={actual or '<missing>'} expected {expected}")
+            if str(values.get("Hidden", "")).strip().lower() == "true":
+                failures.append("MOB desktop launcher Hidden=true hides the emergency launcher")
+            if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+                failures.append("MOB desktop launcher must not be configured for autostart")
     if failures:
         return [
             CheckResult(
@@ -2658,6 +2707,7 @@ def format_status_text(report: dict[str, object]) -> str:
     if isinstance(desktop, dict) and desktop:
         lines.extend(["", "Desktop Startup:"])
         autostart = desktop.get("autostart", {})
+        mob_launcher = desktop.get("mob_launcher", {})
         lightdm = desktop.get("lightdm_autologin", {})
         if isinstance(autostart, dict):
             lines.append(
@@ -2667,6 +2717,15 @@ def format_status_text(report: dict[str, object]) -> str:
                 f"directory_is_symlink={autostart.get('directory_is_symlink', '')} "
                 f"path_symlink_component={autostart.get('path_symlink_component', '')} "
                 f"uid={autostart.get('uid', '')} mode={autostart.get('mode', '')}".rstrip()
+            )
+        if isinstance(mob_launcher, dict):
+            lines.append(
+                f"mob_launcher={mob_launcher.get('path', '')} "
+                f"exists={mob_launcher.get('exists', '')} "
+                f"is_symlink={mob_launcher.get('is_symlink', '')} "
+                f"directory_is_symlink={mob_launcher.get('directory_is_symlink', '')} "
+                f"path_symlink_component={mob_launcher.get('path_symlink_component', '')} "
+                f"uid={mob_launcher.get('uid', '')} mode={mob_launcher.get('mode', '')}".rstrip()
             )
         if isinstance(lightdm, dict):
             lines.append(
@@ -3725,10 +3784,15 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
 def _desktop_summary(
     *,
     autostart_path: Optional[Path] = None,
+    mob_desktop_path: Optional[Path] = None,
     lightdm_autologin_path: Optional[Path] = None,
 ) -> dict[str, object]:
     autostart = _key_value_file_summary(
         Path(autostart_path or DEFAULT_AUTOSTART_PATH).expanduser(),
+        comment_prefixes=("#",),
+    )
+    mob_launcher = _key_value_file_summary(
+        Path(mob_desktop_path or DEFAULT_MOB_DESKTOP_PATH).expanduser(),
         comment_prefixes=("#",),
     )
     lightdm_autologin = _key_value_file_summary(
@@ -3737,6 +3801,7 @@ def _desktop_summary(
     )
     return {
         "autostart": autostart,
+        "mob_launcher": mob_launcher,
         "lightdm_autologin": lightdm_autologin,
         "graphical_target": _systemctl_system(["get-default"]),
         "lightdm_enabled": _systemctl_system(["is-enabled", "lightdm.service"]),
@@ -4426,10 +4491,63 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             elif not (Path("/usr/share/xsessions") / f"{session}.desktop").is_file():
                 failures.append(f"LightDM autologin-session is not installed: {session}")
 
+    mob_launcher = summary.get("mob_launcher")
+    if not isinstance(mob_launcher, dict):
+        failures.append("MOB desktop launcher summary missing")
+    else:
+        path = str(mob_launcher.get("path", DEFAULT_MOB_DESKTOP_PATH.expanduser()))
+        if mob_launcher.get("exists") is not True:
+            failures.append(f"MOB desktop launcher missing at {path}")
+        if mob_launcher.get("is_symlink") is not False:
+            failures.append(f"MOB desktop launcher path is a symlink or missing symlink status: {path}")
+        if mob_launcher.get("directory_is_symlink") is not False:
+            failures.append(
+                f"MOB desktop launcher directory is a symlink or missing symlink status: {Path(path).parent}"
+            )
+        if "path_symlink_component" not in mob_launcher:
+            failures.append(f"MOB desktop launcher missing path_symlink_component: {path}")
+        mob_symlink_component = str(mob_launcher.get("path_symlink_component", "")).strip()
+        if mob_symlink_component:
+            failures.append(f"MOB desktop launcher path contains a symlink: {mob_symlink_component}")
+        if str(mob_launcher.get("error", "")):
+            failures.append(f"MOB desktop launcher unreadable at {path}: {mob_launcher.get('error')}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                mob_launcher,
+                label="MOB desktop launcher",
+                expected_uid=os.getuid(),
+            )
+        )
+        failures.extend(_user_executable_mode_failures(mob_launcher, label="MOB desktop launcher"))
+        values = mob_launcher.get("values")
+        if not isinstance(values, dict):
+            failures.append(f"MOB desktop launcher values were not parsed at {path}")
+        else:
+            expected_values = {
+                "Type": "Application",
+                "Name": "NOAA Navionics MOB",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+                "Terminal": "true",
+            }
+            for key, expected in expected_values.items():
+                actual = str(values.get(key, "")).strip()
+                if actual != expected:
+                    failures.append(f"MOB desktop launcher {key}={actual or '<missing>'} expected {expected}")
+            hidden = str(values.get("Hidden", "")).strip().lower()
+            if hidden == "true":
+                failures.append("MOB desktop launcher Hidden=true hides the emergency launcher")
+            autostart_enabled = str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower()
+            if autostart_enabled == "true":
+                failures.append("MOB desktop launcher must not be configured for autostart")
+
     if failures:
         return CheckResult("Desktop Startup", False, "; ".join(failures))
     active = str(summary.get("lightdm_active", "")).strip() or "<unknown>"
-    return CheckResult("Desktop Startup", True, f"desktop autostart and LightDM autologin are configured; lightdm active={active}")
+    return CheckResult(
+        "Desktop Startup",
+        True,
+        f"desktop autostart, MOB launcher, and LightDM autologin are configured; lightdm active={active}",
+    )
 
 
 def _key_value_file_integrity_failures(
@@ -4459,6 +4577,20 @@ def _key_value_file_integrity_failures(
             if parsed_mode & 0o022:
                 failures.append(f"{label} has permissions {mode}, expected no group/other write bits: {path}")
     return failures
+
+
+def _user_executable_mode_failures(summary: dict[str, object], *, label: str) -> list[str]:
+    path = str(summary.get("path", "<unknown>"))
+    mode = str(summary.get("mode", "")).strip()
+    if not mode:
+        return [f"{label} permissions were not parsed at {path}"]
+    try:
+        parsed_mode = int(mode, 8)
+    except ValueError:
+        return [f"{label} permissions were not parsed at {path}: {mode}"]
+    if not parsed_mode & stat.S_IXUSR:
+        return [f"{label} has permissions {mode}, expected user executable bit: {path}"]
+    return []
 
 
 def _safe_xsession_name(value: str) -> bool:

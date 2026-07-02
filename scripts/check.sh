@@ -954,6 +954,10 @@ grep -q 'mob` is the shorter equivalent intended for a desktop launcher, keyboar
 grep -q '~/Desktop/noaa-navionics-mob.desktop' README.md
 grep -q '~/Desktop/noaa-navionics-mob.desktop' docs/sailboat-pi.md
 grep -q 'requires the MOB desktop launcher to be present, private, visible, executable, non-autostarting, and pointed at `noaa-navionics mob`' docs/sailboat-pi.md
+grep -q 'desktop autostart, MOB desktop launcher, LightDM autologin, and manifest files' README.md
+grep -q 'desktop autostart, MOB desktop launcher, LightDM autologin, and manifest files' docs/sailboat-pi.md
+grep -q 'non-executable, autostarting, or malformed desktop autostart, MOB launcher, and LightDM evidence' README.md
+grep -q 'non-executable, autostarting, or malformed desktop autostart, MOB launcher, and LightDM evidence' docs/sailboat-pi.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" README.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" docs/sailboat-pi.md
 grep -q 'default Mark/MOB filenames advance to a suffixed name if the same timestamped mark already exists or appears during creation' README.md
@@ -2800,6 +2804,9 @@ grep -q 'status report launcher settings path is a symlink or missing symlink st
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report desktop autostart missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'status report has no MOB desktop launcher section' scripts/verify_pi.sh
+grep -q 'status report MOB desktop launcher values do not match live desktop file' scripts/verify_pi.sh
+grep -q 'MOB desktop launcher must not be configured for autostart' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config missing path_symlink_component' scripts/verify_pi.sh
 grep -q 'path is a symlink or missing symlink status' scripts/verify_pi.sh
@@ -4919,8 +4926,8 @@ grep -q 'report_error' src/noaa_navionics/status_gui.py
 grep -q 'complete_status_gui_report' tests/test_downloader.py
 grep -q 'disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence' README.md
 grep -q 'disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence' docs/sailboat-pi.md
-grep -q 'disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence' README.md
-grep -q 'disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence' docs/sailboat-pi.md
+grep -q 'disabled, symlinked, hidden, wrong-user, non-executable, autostarting, or malformed desktop autostart, MOB launcher, and LightDM evidence' README.md
+grep -q 'disabled, symlinked, hidden, wrong-user, non-executable, autostarting, or malformed desktop autostart, MOB launcher, and LightDM evidence' docs/sailboat-pi.md
 grep -q 'fail-open, or timing-invalid launcher policy evidence' README.md
 grep -q 'fail-open, or timing-invalid launcher policy evidence' docs/sailboat-pi.md
 grep -q 'chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence' README.md
@@ -5054,8 +5061,10 @@ grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' READ
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
 grep -q 'rings the display bell once when a refreshed report falls from READY to NOT READY or a status refresh fails after READY' README.md
 grep -q 'rings the display bell once when a refreshed report falls from READY to NOT READY or a status refresh fails after READY' docs/sailboat-pi.md
-grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, non-boolean, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, non-boolean, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
-grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, non-boolean, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, non-boolean, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' docs/sailboat-pi.md
+grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps' README.md
+grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps' docs/sailboat-pi.md
+grep -q 'non-executable, autostarting, or malformed desktop autostart, MOB launcher, and LightDM evidence' README.md
+grep -q 'non-executable, autostarting, or malformed desktop autostart, MOB launcher, and LightDM evidence' docs/sailboat-pi.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' README.md
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
@@ -5317,6 +5326,10 @@ grep -q 'private `%h/.local/share/noaa-navionics/venv/bin/noaa-navionics` comman
 grep -q 'test_service_readiness_checks_fail_loaded_command_wrong_path' tests/test_downloader.py
 grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
+grep -q 'DEFAULT_MOB_DESKTOP_PATH' src/noaa_navionics/report.py
+grep -q '"mob_launcher": mob_launcher' src/noaa_navionics/report.py
+grep -q 'MOB desktop launcher must not be configured for autostart' src/noaa_navionics/report.py
+grep -q '_user_executable_mode_failures(mob_launcher' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
 grep -q 'LAUNCHER_ENV_KEYS' src/noaa_navionics/report.py
@@ -5334,6 +5347,8 @@ grep -q 'test_opencpn_config_summary_rejects_nonregular_config' tests/test_downl
 grep -q 'test_opencpn_config_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_public_directory_mode' tests/test_downloader.py
 grep -q 'test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config' tests/test_downloader.py
+grep -q 'MOB desktop launcher has permissions 0644, expected user executable bit' tests/test_downloader.py
+grep -q 'MOB desktop launcher must not be configured for autostart' tests/test_downloader.py
 grep -q 'status-report --gps-sample.*still checks OpenCPN' README.md
 grep -q 'Sample-based status reports substitute only the live GPS fix read' docs/sailboat-pi.md
 grep -q 'summary\["age_seconds"\] = (current - timestamp).total_seconds()' src/noaa_navionics/report.py
@@ -5477,8 +5492,8 @@ grep -q 'missing or disabled chart-refresh service still fails readiness' docs/s
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
 grep -q 'unit-directory owner/mode checks' docs/sailboat-pi.md
-grep -q 'status-reported user and system service summaries, user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' README.md
-grep -q 'status-reported user and system service summaries, user unit, OpenCPN config, desktop autostart, and LightDM autologin owner/mode' docs/sailboat-pi.md
+grep -q 'status-reported user and system service summaries, user unit, OpenCPN config, desktop autostart, MOB desktop launcher, and LightDM autologin owner/mode' README.md
+grep -q 'status-reported user and system service summaries, user unit, OpenCPN config, desktop autostart, MOB desktop launcher, and LightDM autologin owner/mode' docs/sailboat-pi.md
 grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' README.md
 grep -q 'pins command lookup to trusted system directories on Raspberry Pi hardware' docs/sailboat-pi.md
 grep -q 'requires a root-owned OpenCPN executable and executable directory on Raspberry Pi hardware, revalidates the resolved OpenCPN executable through no-follow same-file descriptors immediately before each launch or restart' README.md
@@ -5597,8 +5612,8 @@ grep -q 'test_manifest_summary_marks_recorded_path_symlink_ancestors' tests/test
 grep -q 'test_manifest_summary_marks_nonregular_download_path' tests/test_downloader.py
 grep -q 'test_manifest_extract_path_under_symlinked_parent_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_downloader.py
-grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' README.md
-grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' docs/sailboat-pi.md
+grep -q 'desktop autostart, MOB desktop launcher, LightDM autologin, and manifest files through same-file no-follow descriptor reads' README.md
+grep -q 'desktop autostart, MOB desktop launcher, LightDM autologin, and manifest files through same-file no-follow descriptor reads' docs/sailboat-pi.md
 grep -q 'readiness report fails if the persisted launcher environment directory is owned by the wrong account or group/world-writable' README.md
 grep -q 'Missing, invalid, or oversized launcher timing and fail-open values stop launcher startup' README.md
 grep -q 'GPS and warning waits are capped at 600 seconds, readiness attempts at 20, retry/restart delays at 3600 seconds, and OpenCPN restarts at 20' README.md
@@ -5617,22 +5632,22 @@ grep -q 'launcher.env` through a no-follow descriptor only after rejecting a mis
 grep -q 'launcher.env` through a no-follow descriptor only after rejecting a missing launcher environment' docs/sailboat-pi.md
 grep -q 'requires explicit `NOAA_NAVIONICS_GPS_SECONDS`, `NOAA_NAVIONICS_WARNING_SECONDS`, `NOAA_NAVIONICS_READINESS_ATTEMPTS`, `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, `NOAA_NAVIONICS_OPENCPN_RESTARTS`, `NOAA_NAVIONICS_OPENCPN_RESTART_DELAY`, and `NOAA_NAVIONICS_START_ON_FAILED_READINESS` values' README.md
 grep -q 'requires explicit `NOAA_NAVIONICS_GPS_SECONDS`, `NOAA_NAVIONICS_WARNING_SECONDS`, `NOAA_NAVIONICS_READINESS_ATTEMPTS`, `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, `NOAA_NAVIONICS_OPENCPN_RESTARTS`, `NOAA_NAVIONICS_OPENCPN_RESTART_DELAY`, and `NOAA_NAVIONICS_START_ON_FAILED_READINESS` values' docs/sailboat-pi.md
-grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
+grep -q 'Status reports and Pi verification parse desktop autostart, MOB desktop launcher, and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
 grep -q 'rejects missing, invalid, or oversized launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'GPS and warning waits are capped at 600 seconds, readiness attempts at 20, retry/restart delays at 3600 seconds, and OpenCPN restarts at 20' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
-grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification parse desktop autostart, MOB desktop launcher, and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' docs/sailboat-pi.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
-grep -q 'desktop autostart and LightDM autologin path-component integrity' README.md
-grep -q 'desktop autostart and LightDM autologin path-component integrity' docs/sailboat-pi.md
+grep -q 'desktop autostart, MOB desktop launcher, and LightDM autologin path-component integrity' README.md
+grep -q 'desktop autostart, MOB desktop launcher, and LightDM autologin path-component integrity' docs/sailboat-pi.md
 grep -q 'user unit path-component integrity' README.md
 grep -q 'user unit path-component integrity' docs/sailboat-pi.md
-grep -q 'Status reports and Pi verification also reject symlinked, non-regular, writable, or misowned desktop autostart' README.md
-grep -q 'Status reports and Pi verification also reject symlinked, non-regular, writable, or misowned desktop autostart' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification also reject symlinked, non-regular, writable, misowned, hidden, or mispointed desktop autostart, MOB desktop launcher, LightDM autologin, and manifest files' README.md
+grep -q 'Status reports and Pi verification also reject symlinked, non-regular, writable, misowned, hidden, or mispointed desktop autostart, MOB desktop launcher, LightDM autologin, and manifest files' docs/sailboat-pi.md
 grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
