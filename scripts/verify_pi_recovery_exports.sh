@@ -218,27 +218,35 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024
+MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024
+MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024
+MAX_SUPPORT_ARCHIVE_MEMBER_BYTES = 10 * 1024 * 1024
 ARCHIVES = [
     {
         "label": "commissioning settings",
         "pattern": "noaa-navionics-pi-settings-*.tgz",
         "manifest_key": "file_count",
+        "max_member_bytes": MAX_SETTING_ARCHIVE_MEMBER_BYTES,
     },
     {
         "label": "OpenCPN user data",
         "pattern": "noaa-navionics-pi-opencpn-*.tgz",
         "manifest_key": "file_count",
+        "max_member_bytes": MAX_OPENCPN_ARCHIVE_MEMBER_BYTES,
     },
     {
         "label": "GPX tracks",
         "pattern": "noaa-navionics-pi-tracks-*.tgz",
         "manifest_key": "track_count",
+        "max_member_bytes": MAX_TRACK_ARCHIVE_MEMBER_BYTES,
     },
     {
         "label": "diagnostic support bundle",
         "pattern": "noaa-navionics-pi-support-*.tgz",
         "manifest_key": None,
         "required_members": CORE_SUPPORT_COMMAND_FILES,
+        "max_member_bytes": MAX_SUPPORT_ARCHIVE_MEMBER_BYTES,
     },
 ]
 CORE_READINESS_CHECKS = {
@@ -391,6 +399,7 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                 regular_file_count = 0
                 data_file_count = 0
                 data_member_names = []
+                max_member_bytes = int(spec["max_member_bytes"])
                 for member in members:
                     normalized = validate_member_name(member.name, archive_path)
                     if normalized:
@@ -401,6 +410,13 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                     if member.issym() or member.islnk() or member.isdev():
                         fail(f"{archive_path.name} contains unsupported non-regular member: {member.name}")
                     if member.isfile():
+                        if member.size < 0:
+                            fail(f"{archive_path.name} contains negative-size member: {member.name}")
+                        if member.size > max_member_bytes:
+                            fail(
+                                f"{archive_path.name} member is too large to verify safely: "
+                                f"{member.name} ({member.size} bytes > {max_member_bytes})"
+                            )
                         regular_file_count += 1
                         if normalized not in {"README.txt", "manifest.json"}:
                             if spec["manifest_key"] == "track_count":

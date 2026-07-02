@@ -1660,6 +1660,20 @@ grep -q 'bounds recovery track export lookback to 0-3650 days before preparing l
 grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' docs/sailboat-pi.md
 grep -q "with the exporters' per-file size caps" README.md
 grep -q "with the exporters' per-file size caps" docs/sailboat-pi.md
+grep -Fq 'MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024' scripts/verify_pi_recovery_exports.sh
+grep -Fq 'MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024' scripts/verify_pi_recovery_exports.sh
+grep -Fq 'MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024' scripts/verify_pi_recovery_exports.sh
+grep -Fq 'MAX_SUPPORT_ARCHIVE_MEMBER_BYTES = 10 * 1024 * 1024' scripts/verify_pi_recovery_exports.sh
+grep -q 'member is too large to verify safely' scripts/verify_pi_recovery_exports.sh
+grep -Fq 'MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024' scripts/restore_pi_recovery_user_data.sh
+grep -Fq 'MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024' scripts/restore_pi_recovery_user_data.sh
+grep -Fq 'MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024' scripts/restore_pi_recovery_user_data.sh
+grep -Fq 'MAX_SUPPORT_ARCHIVE_MEMBER_BYTES = 10 * 1024 * 1024' scripts/restore_pi_recovery_user_data.sh
+grep -q 'member is too large to restore safely' scripts/restore_pi_recovery_user_data.sh
+grep -q 'rejects archive members above the recovery per-member size caps' README.md
+grep -q 'rejects archive members above the recovery per-member size caps' docs/sailboat-pi.md
+grep -q 'per-member size caps' README.md
+grep -q 'per-member size caps' docs/sailboat-pi.md
 grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/export_pi_recovery_bundle.sh
 grep -q 'shut down, or downloaded, and no persistent Pi state is changed' scripts/export_pi_recovery_bundle.sh
 for artifact_script in \
@@ -12853,6 +12867,55 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
 fi
 grep -q 'checksum mismatch for' "$verify_output"
 
+recovery_verify_oversized_member_dir="$tmpdir/recovery-verify-oversized-member"
+cp -a "$recovery_verify_dir" "$recovery_verify_oversized_member_dir"
+python3 - "$recovery_verify_oversized_member_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_bytes(archive, name, data):
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_bytes(archive, "README.txt", b"recovery fixture\n")
+    add_bytes(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "noaa-navionics/config.ini"}]}).encode("utf-8") + b"\n",
+    )
+    add_bytes(archive, "noaa-navionics/config.ini", b"x" * (4 * 1024 * 1024 + 1))
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_oversized_member_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject oversized archive members with exit 1" >&2
+  exit 1
+fi
+grep -q 'member is too large to verify safely' "$verify_output"
+
 recovery_verify_duplicate_dir="$tmpdir/recovery-verify-duplicate"
 mkdir -p "$recovery_verify_duplicate_dir"
 python3 - "$recovery_verify_duplicate_dir" <<'PY'
@@ -13800,6 +13863,55 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'archive has permissions 0644, expected private 0600' "$verify_output"
+
+recovery_restore_oversized_member_dir="$tmpdir/recovery-restore-oversized-member"
+cp -a "$recovery_restore_dir" "$recovery_restore_oversized_member_dir"
+python3 - "$recovery_restore_oversized_member_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_bytes(archive, name, data):
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_bytes(archive, "README.txt", b"restore fixture\n")
+    add_bytes(
+        archive,
+        "manifest.json",
+        json.dumps({"file_count": 1, "files": [{"archive_path": "noaa-navionics/config.ini"}]}).encode("utf-8") + b"\n",
+    )
+    add_bytes(archive, "noaa-navionics/config.ini", b"x" * (4 * 1024 * 1024 + 1))
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_oversized_member_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject oversized archive members with exit 1" >&2
+  exit 1
+fi
+grep -q 'member is too large to restore safely' "$verify_output"
 
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" >"$verify_output" 2>&1
 grep -q 'Dry run only. Re-run with --apply to write files.' "$verify_output"

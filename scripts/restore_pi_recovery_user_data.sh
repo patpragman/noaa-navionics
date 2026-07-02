@@ -258,11 +258,15 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024
+MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024
+MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024
+MAX_SUPPORT_ARCHIVE_MEMBER_BYTES = 10 * 1024 * 1024
 ARCHIVES = [
-    ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count", []),
-    ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count", []),
-    ("tracks", "noaa-navionics-pi-tracks-*.tgz", "track_count", []),
-    ("support", "noaa-navionics-pi-support-*.tgz", None, CORE_SUPPORT_COMMAND_FILES),
+    ("settings", "noaa-navionics-pi-settings-*.tgz", "file_count", [], MAX_SETTING_ARCHIVE_MEMBER_BYTES),
+    ("opencpn", "noaa-navionics-pi-opencpn-*.tgz", "file_count", [], MAX_OPENCPN_ARCHIVE_MEMBER_BYTES),
+    ("tracks", "noaa-navionics-pi-tracks-*.tgz", "track_count", [], MAX_TRACK_ARCHIVE_MEMBER_BYTES),
+    ("support", "noaa-navionics-pi-support-*.tgz", None, CORE_SUPPORT_COMMAND_FILES, MAX_SUPPORT_ARCHIVE_MEMBER_BYTES),
 ]
 
 
@@ -311,6 +315,7 @@ def inspect_archive(
     archive_path: Path,
     required_count_key: Optional[str],
     required_members: list[str],
+    max_member_bytes: int,
     *,
     load_contents: bool = True,
 ) -> dict[str, bytes]:
@@ -354,6 +359,13 @@ def inspect_archive(
                         fail(f"{archive_path.name} contains unsupported member type: {member.name}")
                     if not normalized:
                         fail(f"{archive_path.name} contains blank file member name")
+                    if member.size < 0:
+                        fail(f"{archive_path.name} contains negative-size member: {member.name}")
+                    if member.size > max_member_bytes:
+                        fail(
+                            f"{archive_path.name} member is too large to restore safely: "
+                            f"{member.name} ({member.size} bytes > {max_member_bytes})"
+                        )
                     regular_file_count += 1
                     if normalized not in {"README.txt", "manifest.json"}:
                         if required_count_key == "track_count":
@@ -571,7 +583,7 @@ def assert_private_recovery_directory(path: Path) -> None:
 def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
     assert_private_recovery_directory(recovery_dir)
     archive_paths = {}
-    for label, pattern, _required_count_key, _required_members in ARCHIVES:
+    for label, pattern, _required_count_key, _required_members, _max_member_bytes in ARCHIVES:
         matches = sorted(recovery_dir.glob(pattern))
         if not matches:
             fail(f"missing {label} archive matching {pattern}")
@@ -581,11 +593,12 @@ def find_archives(recovery_dir: Path) -> dict[str, dict[str, bytes]]:
     verify_checksum_manifest(recovery_dir, archive_paths)
 
     result = {}
-    for label, pattern, required_count_key, required_members in ARCHIVES:
+    for label, pattern, required_count_key, required_members, max_member_bytes in ARCHIVES:
         result[label] = inspect_archive(
             archive_paths[label],
             required_count_key,
             required_members,
+            max_member_bytes,
             load_contents=(label != "support"),
         )
     return result
