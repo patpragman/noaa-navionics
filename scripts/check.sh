@@ -2763,8 +2763,14 @@ grep -q 'GPX trackpoint is malformed XML' scripts/verify_pi.sh
 grep -q 'def gpx_child_text' scripts/verify_pi.sh
 grep -q 'trackpoint_position' scripts/verify_pi.sh
 grep -q 'trackpoint_quality' scripts/verify_pi.sh
+grep -q 'def open_trusted_tracks_dir' scripts/verify_pi.sh
+grep -q 'GPX tracks directory changed before it could be read' scripts/verify_pi.sh
+grep -q 'os.listdir(tracks_fd)' scripts/verify_pi.sh
+grep -q 'dir_fd=tracks_fd' scripts/verify_pi.sh
 grep -q 'read_trusted_track_file' scripts/verify_pi.sh
 grep -q 'changed before it could be read' scripts/verify_pi.sh
+grep -q 'test_verify_pi_recent_track_check_uses_descriptor_validated_directory' tests/test_downloader.py
+grep -q 'test_verify_pi_recent_track_check_accepts_valid_gpx_track' tests/test_downloader.py
 grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' scripts/verify_pi.sh
 grep -q 'GPX trackpoint has non-finite coordinates' scripts/verify_pi.sh
 grep -q 'GPX trackpoint latitude is outside -90..90' scripts/verify_pi.sh
@@ -2791,7 +2797,6 @@ grep -q 'required track-log symlink-status fields' docs/sailboat-pi.md
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh
 grep -q 'expected real GPX track storage' scripts/verify_pi.sh
 grep -q 'expected a regular GPX track file' scripts/verify_pi.sh
-grep -q 'resolves outside GPX tracks directory' scripts/verify_pi.sh
 grep -q 'expected {os.getuid()}' scripts/verify_pi.sh
 grep -q 'tracking.output' scripts/verify_pi.sh
 grep -q '<trkpt\\b' scripts/verify_pi.sh

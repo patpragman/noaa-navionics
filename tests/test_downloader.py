@@ -11,6 +11,7 @@ import math
 import re
 import shutil
 import stat
+import subprocess
 import sys
 import signal
 import tempfile
@@ -14016,6 +14017,63 @@ class StatusReportTests(unittest.TestCase):
         ]:
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
+
+    def test_verify_pi_recent_track_check_uses_descriptor_validated_directory(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_recent_track_log",
+        )
+
+        for expected in (
+            "import xml.etree.ElementTree as ET",
+            "def open_trusted_tracks_dir",
+            "GPX tracks directory changed before it could be read",
+            "os.listdir(tracks_fd)",
+            "dir_fd=tracks_fd",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
+    def test_verify_pi_recent_track_check_accepts_valid_gpx_track(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_recent_track_log",
+        )
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config = root / "config.ini"
+            config.write_text(
+                "[charts]\n"
+                f"output = {root}\n"
+                "[tracking]\n"
+                f"output = {root}\n",
+                encoding="utf-8",
+            )
+            track_path = root / "tracks" / "track-20260702.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(
+                    GPSFix(
+                        latitude=61.2181,
+                        longitude=-149.9003,
+                        timestamp=timestamp,
+                        satellites=8,
+                        hdop=1.2,
+                    )
+                )
+
+            result = subprocess.run(
+                [sys.executable, "-c", source, str(config), "10"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(str(track_path), result.stdout)
+            self.assertIn("61.218100", result.stdout)
+            self.assertIn("8 satellites", result.stdout)
 
     def test_verify_pi_validates_lightdm_x11_session_file_integrity(self):
         source = shell_function_python_heredoc(
