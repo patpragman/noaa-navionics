@@ -14064,6 +14064,36 @@ class StatusReportTests(unittest.TestCase):
                     with self.subTest(expected=expected):
                         self.assertIn(expected, source)
 
+    def test_status_snapshot_validators_require_desktop_autostart_evidence(self):
+        expectations = {
+            "scripts/pre_trip_prepare_pi.sh": "pre-departure status snapshot JSON",
+            "scripts/verify_pi_recovery_exports.sh": "pre-departure status snapshot JSON",
+            "scripts/post_trip_collect_pi.sh": "status snapshot JSON",
+        }
+        for script, prefix in expectations.items():
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                for expected in (
+                    "desktop autostart",
+                    f"{prefix} missing desktop section",
+                    f"{prefix} missing desktop autostart evidence",
+                    f"{prefix} desktop autostart path is not absolute",
+                    f"{prefix} desktop autostart path is a symlink or missing symlink status",
+                    f"{prefix} desktop autostart missing path_symlink_component",
+                    f"{prefix} desktop autostart path contains a symlink",
+                    f"{prefix} {{label}} owner is invalid",
+                    'snapshot_uid(autostart.get("uid"), label="desktop autostart"',
+                    f"{prefix} desktop autostart is group/world writable",
+                    f"{prefix} desktop autostart values were not parsed",
+                    f"{prefix} desktop autostart {{key}} does not match expected value",
+                    "noaa-navionics-start-chartplotter",
+                    "X-GNOME-Autostart-enabled",
+                    f"{prefix} desktop autostart is hidden",
+                    "validate_snapshot_autostart(",
+                ):
+                    with self.subTest(expected=expected):
+                        self.assertIn(expected, source)
+
     def test_status_snapshot_validators_reject_source_revision_row_mismatches(self):
         for script in (
             "scripts/pre_trip_prepare_pi.sh",

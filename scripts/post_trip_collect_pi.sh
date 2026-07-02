@@ -636,6 +636,13 @@ CORE_SERVICE_CHECKS = {
     "User Linger",
 }
 GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
+EXPECTED_DESKTOP_AUTOSTART_VALUES = {
+    "Type": "Application",
+    "Name": "NOAA Navionics Chartplotter",
+    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+    "Terminal": "false",
+    "X-GNOME-Autostart-enabled": "true",
+}
 EXPECTED_MOB_LAUNCHER_VALUES = {
     "Type": "Application",
     "Name": "NOAA Navionics MOB",
@@ -766,6 +773,51 @@ def snapshot_uid(value: object, *, label: str, path: Path) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         fail(f"status snapshot JSON {label} owner is invalid: {path}")
     return value
+
+
+def validate_snapshot_autostart(payload: dict[str, object], *, path: Path) -> None:
+    desktop = payload.get("desktop")
+    if not isinstance(desktop, dict):
+        fail(f"status snapshot JSON missing desktop section: {path}")
+    autostart = desktop.get("autostart")
+    if not isinstance(autostart, dict):
+        fail(f"status snapshot JSON missing desktop autostart evidence: {path}")
+    autostart_path = str(autostart.get("path", "")).strip()
+    if not autostart_path or not Path(autostart_path).is_absolute():
+        fail(f"status snapshot JSON desktop autostart path is not absolute: {path}")
+    if Path(autostart_path).name != "noaa-navionics-chartplotter.desktop":
+        fail(f"status snapshot JSON desktop autostart path has unexpected filename: {path}")
+    if autostart.get("exists") is not True:
+        fail(f"status snapshot JSON desktop autostart does not exist: {path}")
+    if autostart.get("is_symlink") is not False:
+        fail(f"status snapshot JSON desktop autostart path is a symlink or missing symlink status: {path}")
+    if autostart.get("directory_is_symlink") is not False:
+        fail(f"status snapshot JSON desktop autostart directory is a symlink or missing symlink status: {path}")
+    if "path_symlink_component" not in autostart:
+        fail(f"status snapshot JSON desktop autostart missing path_symlink_component: {path}")
+    if str(autostart.get("path_symlink_component", "")).strip():
+        fail(f"status snapshot JSON desktop autostart path contains a symlink: {path}")
+    snapshot_uid(autostart.get("uid"), label="desktop autostart", path=path)
+    snapshot_uid(autostart.get("directory_uid"), label="desktop autostart directory", path=path)
+    mode = snapshot_octal_mode(autostart.get("mode"), label="desktop autostart", path=path)
+    if mode & 0o022:
+        fail(f"status snapshot JSON desktop autostart is group/world writable: {path}")
+    directory_mode = snapshot_octal_mode(
+        autostart.get("directory_mode"),
+        label="desktop autostart directory",
+        path=path,
+    )
+    if directory_mode & 0o022:
+        fail(f"status snapshot JSON desktop autostart directory is group/world writable: {path}")
+    values = autostart.get("values")
+    if not isinstance(values, dict):
+        fail(f"status snapshot JSON desktop autostart values were not parsed: {path}")
+    for key, expected in EXPECTED_DESKTOP_AUTOSTART_VALUES.items():
+        actual = str(values.get(key, "")).strip()
+        if actual != expected:
+            fail(f"status snapshot JSON desktop autostart {key} does not match expected value: {path}")
+    if str(values.get("Hidden", "")).strip().lower() == "true":
+        fail(f"status snapshot JSON desktop autostart is hidden: {path}")
 
 
 def validate_snapshot_mob_launcher(payload: dict[str, object], *, path: Path) -> None:
@@ -1429,6 +1481,7 @@ def validate_successful_status_snapshot(
     )
     if missing_structured_data:
         fail(f"status snapshot JSON missing structured readiness data for: {', '.join(missing_structured_data)}: {path}")
+    validate_snapshot_autostart(payload, path=path)
     validate_snapshot_status_launcher(payload, path=path)
     validate_snapshot_mob_launcher(payload, path=path)
     validate_snapshot_chart_rows(check_rows, config=config, path=path)
