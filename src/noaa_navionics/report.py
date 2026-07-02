@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+import xml.etree.ElementTree as ET
 import json
 import math
 import os
@@ -3233,19 +3234,22 @@ def _track_log_summary_once(
         newest_position = None
         newest_quality = None
         for trackpoint in trackpoints:
-            position, position_error = _gpx_trackpoint_position(trackpoint)
+            element, element_error = _gpx_trackpoint_element(trackpoint)
+            if element is None:
+                last_detail = f"{path} {element_error}"
+                continue
+            position, position_error = _gpx_trackpoint_position(element)
             if position is None:
                 last_detail = f"{path} {position_error}"
                 continue
-            quality, quality_error = _gpx_trackpoint_quality(trackpoint)
+            quality, quality_error = _gpx_trackpoint_quality(element)
             if quality is None:
                 last_detail = f"{path} {quality_error}"
                 continue
-            match = re.search(r"<time>([^<]+)</time>", trackpoint)
-            if not match:
+            timestamp_text = _gpx_child_text(element, "time")
+            if timestamp_text is None:
                 last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
                 continue
-            timestamp_text = match.group(1).strip()
             track_time, timestamp_error = _parse_gpx_trackpoint_timestamp(timestamp_text)
             if track_time is None:
                 last_detail = f"{path} {timestamp_error}"
@@ -3349,22 +3353,41 @@ def _first_symlink_ancestor(path: Path) -> Optional[Path]:
     return None
 
 
-def _gpx_trackpoint_position(trackpoint: str) -> tuple[Optional[tuple[float, float]], str]:
-    tag_match = re.search(r"<trkpt\b([^>]*)>", trackpoint)
-    if not tag_match:
+def _gpx_trackpoint_element(trackpoint: str) -> tuple[Optional[ET.Element], str]:
+    try:
+        element = ET.fromstring(trackpoint)
+    except ET.ParseError as exc:
+        return None, f"GPX trackpoint is malformed XML: {exc}"
+    if _gpx_local_name(element.tag) != "trkpt":
         return None, "GPX trackpoint has no opening trkpt tag"
-    attrs = tag_match.group(1)
-    lat_match = re.search(r'\blat="([^"]+)"', attrs)
-    lon_match = re.search(r'\blon="([^"]+)"', attrs)
-    if not lat_match or not lon_match:
+    return element, ""
+
+
+def _gpx_local_name(tag: str) -> str:
+    if "}" in tag:
+        return tag.rsplit("}", 1)[1]
+    return tag
+
+
+def _gpx_child_text(element: ET.Element, child_name: str) -> Optional[str]:
+    for child in element:
+        if _gpx_local_name(child.tag) == child_name and child.text is not None:
+            return child.text.strip()
+    return None
+
+
+def _gpx_trackpoint_position(element: ET.Element) -> tuple[Optional[tuple[float, float]], str]:
+    latitude_text = element.get("lat")
+    longitude_text = element.get("lon")
+    if latitude_text is None or longitude_text is None:
         return None, "GPX trackpoint is missing latitude or longitude"
     try:
-        latitude = float(lat_match.group(1))
-        longitude = float(lon_match.group(1))
+        latitude = float(latitude_text)
+        longitude = float(longitude_text)
     except ValueError:
-        return None, f"GPX trackpoint has non-numeric coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+        return None, f"GPX trackpoint has non-numeric coordinates: {latitude_text}, {longitude_text}"
     if not math.isfinite(latitude) or not math.isfinite(longitude):
-        return None, f"GPX trackpoint has non-finite coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+        return None, f"GPX trackpoint has non-finite coordinates: {latitude_text}, {longitude_text}"
     if not (-90.0 <= latitude <= 90.0):
         return None, f"GPX trackpoint latitude is outside -90..90: {latitude}"
     if not (-180.0 <= longitude <= 180.0):
@@ -3374,14 +3397,13 @@ def _gpx_trackpoint_position(trackpoint: str) -> tuple[Optional[tuple[float, flo
     return (latitude, longitude), ""
 
 
-def _gpx_trackpoint_quality(trackpoint: str) -> tuple[Optional[dict[str, object]], str]:
-    sat_match = re.search(r"<sat>([^<]+)</sat>", trackpoint)
-    hdop_match = re.search(r"<hdop>([^<]+)</hdop>", trackpoint)
-    if not sat_match and not hdop_match:
+def _gpx_trackpoint_quality(element: ET.Element) -> tuple[Optional[dict[str, object]], str]:
+    sat_text = _gpx_child_text(element, "sat")
+    hdop_text = _gpx_child_text(element, "hdop")
+    if sat_text is None and hdop_text is None:
         return None, "GPX trackpoint is missing satellite or HDOP quality fields"
     quality: dict[str, object] = {"satellites": None, "hdop": None}
-    if sat_match:
-        sat_text = sat_match.group(1).strip()
+    if sat_text is not None:
         try:
             satellites = int(sat_text)
         except ValueError:
@@ -3389,8 +3411,7 @@ def _gpx_trackpoint_quality(trackpoint: str) -> tuple[Optional[dict[str, object]
         if satellites < 4:
             return None, f"GPX trackpoint has weak satellite count: {satellites}"
         quality["satellites"] = satellites
-    if hdop_match:
-        hdop_text = hdop_match.group(1).strip()
+    if hdop_text is not None:
         try:
             hdop = float(hdop_text)
         except ValueError:

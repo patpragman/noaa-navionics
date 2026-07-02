@@ -15242,6 +15242,69 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(check.ok)
             self.assertIn("missing satellite or HDOP quality fields", check.detail)
 
+    def test_track_log_summary_accepts_single_quoted_trackpoint_attributes(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            track_path = tracks / "track-20260629.gpx"
+            track_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f"  <trk><trkseg><trkpt lat='61.2181' lon='-149.9003'>"
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}</time>"
+                "<sat>8</sat><hdop>1.2</hdop>"
+                "</trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            track_path.chmod(0o600)
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertTrue(summary["ok"])
+            self.assertTrue(check.ok)
+            self.assertAlmostEqual(summary["latest_latitude"], 61.2181)
+            self.assertAlmostEqual(summary["latest_longitude"], -149.9003)
+
+    def test_track_log_summary_rejects_malformed_trackpoint_xml(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            tracks.mkdir()
+            tracks.chmod(0o700)
+            track_path = tracks / "track-20260629.gpx"
+            track_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gpx version="1.1" creator="test">\n'
+                f'  <trk><trkseg><trkpt lat="61.2181" lon="-149.9003">'
+                f"<time>{timestamp.isoformat().replace('+00:00', 'Z')}"
+                "</sat>"
+                "</trkpt></trkseg></trk>\n"
+                "</gpx>\n",
+                encoding="utf-8",
+            )
+            track_path.chmod(0o600)
+
+            summary = _track_log_summary(
+                root,
+                now=timestamp + timedelta(seconds=5),
+                boot_epoch=timestamp.timestamp() - 10,
+            )
+            check = _track_log_readiness_check(summary)
+
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("malformed XML", check.detail)
+
     def test_track_log_summary_rejects_negative_hdop(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

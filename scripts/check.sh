@@ -2754,6 +2754,11 @@ grep -q 'recent GPX trackpoint' scripts/verify_pi.sh
 grep -q 'max_trackpoint_age = 600.0' scripts/verify_pi.sh
 grep -q 'newest GPX trackpoint is stale' scripts/verify_pi.sh
 grep -q 'timestamped trackpoint' scripts/verify_pi.sh
+grep -q 'import xml.etree.ElementTree as ET' scripts/verify_pi.sh
+grep -q 'def trackpoint_element' scripts/verify_pi.sh
+grep -q 'ET.fromstring(trackpoint)' scripts/verify_pi.sh
+grep -q 'GPX trackpoint is malformed XML' scripts/verify_pi.sh
+grep -q 'def gpx_child_text' scripts/verify_pi.sh
 grep -q 'trackpoint_position' scripts/verify_pi.sh
 grep -q 'trackpoint_quality' scripts/verify_pi.sh
 grep -q 'read_trusted_track_file' scripts/verify_pi.sh
@@ -5463,6 +5468,11 @@ grep -q 'expected real GPX track storage' src/noaa_navionics/report.py
 grep -q 'is a symlink, expected a regular GPX track file' src/noaa_navionics/report.py
 grep -q 'permissions are .*expected private 0600' src/noaa_navionics/report.py
 grep -q 'def _gpx_trackpoint_quality' src/noaa_navionics/report.py
+grep -q 'import xml.etree.ElementTree as ET' src/noaa_navionics/report.py
+grep -q 'def _gpx_trackpoint_element' src/noaa_navionics/report.py
+grep -q 'ET.fromstring(trackpoint)' src/noaa_navionics/report.py
+grep -q 'GPX trackpoint is malformed XML' src/noaa_navionics/report.py
+grep -q 'def _gpx_child_text' src/noaa_navionics/report.py
 grep -q 'latest_satellites' src/noaa_navionics/report.py
 grep -q 'latest_hdop' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint is missing satellite or HDOP quality fields' src/noaa_navionics/report.py
@@ -5470,8 +5480,12 @@ grep -q 'GPX trackpoint has non-finite coordinates' src/noaa_navionics/report.py
 grep -q 'newest GPX trackpoint timestamp is in the future' src/noaa_navionics/report.py
 grep -q 'GPX trackpoint has invalid negative HDOP' src/noaa_navionics/report.py
 grep -q 'test_track_log_summary_rejects_non_finite_trackpoint_coordinates' tests/test_downloader.py
+grep -q 'test_track_log_summary_accepts_single_quoted_trackpoint_attributes' tests/test_downloader.py
+grep -q 'test_track_log_summary_rejects_malformed_trackpoint_xml' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_future_trackpoint' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_negative_hdop' tests/test_downloader.py
+grep -q 'malformed GPX trackpoint XML' README.md
+grep -q 'malformed GPX trackpoint XML' docs/sailboat-pi.md
 grep -q 'future-dated GPX trackpoint timestamps' README.md
 grep -q 'future-dated GPX trackpoint timestamps' docs/sailboat-pi.md
 grep -q 'negative GPX HDOP' README.md

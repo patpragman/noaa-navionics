@@ -662,6 +662,7 @@ import os
 import re
 import stat
 import sys
+import xml.etree.ElementTree as ET
 
 GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 
@@ -4934,22 +4935,38 @@ def first_symlink_ancestor(path):
             return candidate
     return None
 
-def trackpoint_position(trackpoint):
-    tag_match = re.search(r"<trkpt\b([^>]*)>", trackpoint)
-    if not tag_match:
+def trackpoint_element(trackpoint):
+    try:
+        element = ET.fromstring(trackpoint)
+    except ET.ParseError as exc:
+        return None, f"GPX trackpoint is malformed XML: {exc}"
+    if gpx_local_name(element.tag) != "trkpt":
         return None, "GPX trackpoint has no opening trkpt tag"
-    attrs = tag_match.group(1)
-    lat_match = re.search(r'\blat="([^"]+)"', attrs)
-    lon_match = re.search(r'\blon="([^"]+)"', attrs)
-    if not lat_match or not lon_match:
+    return element, ""
+
+def gpx_local_name(tag):
+    if "}" in tag:
+        return tag.rsplit("}", 1)[1]
+    return tag
+
+def gpx_child_text(element, child_name):
+    for child in element:
+        if gpx_local_name(child.tag) == child_name and child.text is not None:
+            return child.text.strip()
+    return None
+
+def trackpoint_position(element):
+    latitude_text = element.get("lat")
+    longitude_text = element.get("lon")
+    if latitude_text is None or longitude_text is None:
         return None, "GPX trackpoint is missing latitude or longitude"
     try:
-        latitude = float(lat_match.group(1))
-        longitude = float(lon_match.group(1))
+        latitude = float(latitude_text)
+        longitude = float(longitude_text)
     except ValueError:
-        return None, f"GPX trackpoint has non-numeric coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+        return None, f"GPX trackpoint has non-numeric coordinates: {latitude_text}, {longitude_text}"
     if not math.isfinite(latitude) or not math.isfinite(longitude):
-        return None, f"GPX trackpoint has non-finite coordinates: {lat_match.group(1)}, {lon_match.group(1)}"
+        return None, f"GPX trackpoint has non-finite coordinates: {latitude_text}, {longitude_text}"
     if not (-90.0 <= latitude <= 90.0):
         return None, f"GPX trackpoint latitude is outside -90..90: {latitude}"
     if not (-180.0 <= longitude <= 180.0):
@@ -4958,14 +4975,13 @@ def trackpoint_position(trackpoint):
         return None, "GPX trackpoint has invalid 0,0 coordinates"
     return (latitude, longitude), ""
 
-def trackpoint_quality(trackpoint):
-    sat_match = re.search(r"<sat>([^<]+)</sat>", trackpoint)
-    hdop_match = re.search(r"<hdop>([^<]+)</hdop>", trackpoint)
-    if not sat_match and not hdop_match:
+def trackpoint_quality(element):
+    sat_text = gpx_child_text(element, "sat")
+    hdop_text = gpx_child_text(element, "hdop")
+    if sat_text is None and hdop_text is None:
         return None, "GPX trackpoint is missing satellite or HDOP quality fields"
     quality = {"satellites": None, "hdop": None}
-    if sat_match:
-        sat_text = sat_match.group(1).strip()
+    if sat_text is not None:
         try:
             satellites = int(sat_text)
         except ValueError:
@@ -4973,8 +4989,7 @@ def trackpoint_quality(trackpoint):
         if satellites < 4:
             return None, f"GPX trackpoint has weak satellite count: {satellites}"
         quality["satellites"] = satellites
-    if hdop_match:
-        hdop_text = hdop_match.group(1).strip()
+    if hdop_text is not None:
         try:
             hdop = float(hdop_text)
         except ValueError:
@@ -5087,19 +5102,22 @@ while True:
             newest_track_position = None
             newest_track_quality = None
             for trackpoint in trackpoint_times:
-                position, position_error = trackpoint_position(trackpoint)
+                element, element_error = trackpoint_element(trackpoint)
+                if element is None:
+                    last_detail = f"{path} {element_error}"
+                    continue
+                position, position_error = trackpoint_position(element)
                 if position is None:
                     last_detail = f"{path} {position_error}"
                     continue
-                quality, quality_error = trackpoint_quality(trackpoint)
+                quality, quality_error = trackpoint_quality(element)
                 if quality is None:
                     last_detail = f"{path} {quality_error}"
                     continue
-                match = re.search(r"<time>([^<]+)</time>", trackpoint)
-                if not match:
+                timestamp_text = gpx_child_text(element, "time")
+                if timestamp_text is None:
                     last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
                     continue
-                timestamp_text = match.group(1).strip()
                 track_time, timestamp_error = parse_gpx_trackpoint_timestamp(timestamp_text)
                 if track_time is None:
                     last_detail = f"{path} {timestamp_error}"
