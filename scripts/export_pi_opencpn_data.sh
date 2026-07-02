@@ -468,16 +468,56 @@ finalize_private_archive() {
   fi
 }
 
-cleanup_private_partial_file() {
+capture_private_partial_file_identity() {
   local path="$1"
-  "$python3_cmd" - "$path" <<'PY'
+  local label="$2"
+  "$python3_cmd" - "$path" "$label" <<'PY'
 from pathlib import Path
 import os
 import stat
 import sys
 
 path = Path(sys.argv[1])
+label = sys.argv[2]
+
+try:
+    result = os.stat(path, follow_symlinks=False)
+except OSError as exc:
+    print(f"Could not inspect {label}: {path}: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+if not stat.S_ISREG(result.st_mode):
+    print(f"{label} must be a regular file: {path}", file=sys.stderr)
+    raise SystemExit(1)
+if result.st_uid != os.getuid():
+    print(f"{label} is owned by uid {result.st_uid}, expected {os.getuid()}: {path}", file=sys.stderr)
+    raise SystemExit(1)
+mode = stat.S_IMODE(result.st_mode)
+if mode & 0o077:
+    print(f"{label} has permissions {mode:04o}, expected private 0600: {path}", file=sys.stderr)
+    raise SystemExit(1)
+print(f"{result.st_dev}:{result.st_ino}")
+PY
+}
+
+cleanup_private_partial_file() {
+  local path="$1"
+  local expected_identity="$2"
+  "$python3_cmd" - "$path" "$expected_identity" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+path = Path(sys.argv[1])
+expected_identity = sys.argv[2]
 nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+try:
+    expected_dev_text, expected_ino_text = expected_identity.split(":", 1)
+    expected_identity_tuple = (int(expected_dev_text), int(expected_ino_text))
+except ValueError:
+    print(f"Could not parse partial export archive identity for cleanup; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
 
 try:
     before = os.stat(path, follow_symlinks=False)
@@ -487,6 +527,9 @@ except OSError as exc:
     print(f"Could not inspect partial export archive for cleanup; leaving it in place: {path}: {exc}", file=sys.stderr)
     raise SystemExit(0)
 
+if (before.st_dev, before.st_ino) != expected_identity_tuple:
+    print(f"Partial export archive changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+    raise SystemExit(0)
 if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) & 0o022:
     print(f"Partial export archive is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
     raise SystemExit(0)
@@ -518,8 +561,9 @@ PY
 promote_private_partial_archive() {
   local partial="$1"
   local final="$2"
-  local label="$3"
-  "$python3_cmd" - "$partial" "$final" "$label" <<'PY'
+  local expected_identity="$3"
+  local label="$4"
+  "$python3_cmd" - "$partial" "$final" "$expected_identity" "$label" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -527,7 +571,8 @@ import sys
 
 partial = Path(sys.argv[1])
 final = Path(sys.argv[2])
-label = sys.argv[3]
+expected_identity = sys.argv[3]
+label = sys.argv[4]
 nofollow = getattr(os, "O_NOFOLLOW", 0)
 
 def fail(message: str) -> None:
@@ -536,6 +581,12 @@ def fail(message: str) -> None:
 
 if partial.parent != final.parent:
     fail(f"{label} partial and final paths must be in the same directory")
+
+try:
+    expected_dev_text, expected_ino_text = expected_identity.split(":", 1)
+    expected_identity_tuple = (int(expected_dev_text), int(expected_ino_text))
+except ValueError:
+    fail(f"Could not parse partial {label} identity: {expected_identity!r}")
 
 try:
     dir_fd = os.open(partial.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
@@ -547,6 +598,8 @@ try:
         partial_before = os.stat(partial.name, dir_fd=dir_fd, follow_symlinks=False)
     except OSError as exc:
         fail(f"Could not inspect partial {label} before promotion: {partial}: {exc}")
+    if (partial_before.st_dev, partial_before.st_ino) != expected_identity_tuple:
+        fail(f"Partial {label} changed before promotion: {partial}")
     if not stat.S_ISREG(partial_before.st_mode):
         fail(f"Partial {label} must be a regular file: {partial}")
     if partial_before.st_uid != os.getuid():
@@ -720,8 +773,9 @@ if [[ -e "$archive_path" ]]; then
   exit 2
 fi
 partial_path="$(mktemp "${output_dir}/.${timestamp}.opencpn-export.XXXXXX")"
+partial_identity="$(capture_private_partial_file_identity "$partial_path" "export archive partial")"
 cleanup_partial() {
-  cleanup_private_partial_file "$partial_path" || true
+  cleanup_private_partial_file "$partial_path" "$partial_identity" || true
 }
 trap cleanup_partial EXIT
 
@@ -897,7 +951,7 @@ if [[ ! -s "$partial_path" ]]; then
   echo "OpenCPN export archive is empty" >&2
   exit 1
 fi
-promote_private_partial_archive "$partial_path" "$archive_path" "export archive"
+promote_private_partial_archive "$partial_path" "$archive_path" "$partial_identity" "export archive"
 finalize_private_archive "$archive_path"
 validate_private_archive "$archive_path" "file_count"
 trap - EXIT

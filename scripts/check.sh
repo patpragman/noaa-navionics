@@ -915,8 +915,8 @@ grep -q 'archives the Pi-side bundle through that validated Python helper after 
 grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked, non-regular, or oversized bundle entries and revalidating opened file descriptors' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
-grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' README.md
-grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
+grep -q 'promotes the local bundle from the same descriptor-validated private partial file without overwriting an existing final archive' README.md
+grep -q 'promotes the local bundle from the same descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
 grep -q 'requires a regular `README.txt` and at least one diagnostic file plus the core command-evidence files, and rejects duplicate or unsupported archive members before reporting success' README.md
 grep -q 'requires a regular `README.txt` and at least one diagnostic file plus the core command-evidence files, and rejects duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
 grep -q 'Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`' README.md
@@ -927,8 +927,8 @@ grep -q 'track export helper validates the SSH target, validates the Pi'\''s tru
 grep -q 'track export helper validates the SSH target, validates the Pi'\''s trusted root-owned `python3` command path before running the read-only export payload, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`' docs/sailboat-pi.md
 grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus a positive manifest count and manifest track names that match the regular GPX data files while rejecting duplicate or unsupported archive members before reporting success' README.md
 grep -q 'validates the final local archive through a no-follow descriptor, requiring README plus a positive manifest count and manifest track names that match the regular GPX data files while rejecting duplicate or unsupported archive members before reporting success' docs/sailboat-pi.md
-grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' README.md
-grep -q 'promotes it from a descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
+grep -q 'promotes it from the same descriptor-validated private partial file without overwriting an existing final archive' README.md
+grep -q 'promotes it from the same descriptor-validated private partial file without overwriting an existing final archive' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' README.md
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
@@ -1644,8 +1644,15 @@ grep -q 'or downloaded, and no persistent Pi state is changed' scripts/collect_p
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/collect_pi_support_bundle.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/collect_pi_support_bundle.sh
 grep -q 'Output directory must not contain control characters' scripts/collect_pi_support_bundle.sh
-grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/collect_pi_support_bundle.sh
-grep -q 'promote_private_partial_archive "$partial_path" "$bundle_path" "support bundle"' scripts/collect_pi_support_bundle.sh
+grep -q 'partial_identity="$(capture_private_partial_file_identity "$partial_path" "support bundle partial")"' scripts/collect_pi_support_bundle.sh
+grep -q 'cleanup_private_partial_file "$partial_path" "$partial_identity" || true' scripts/collect_pi_support_bundle.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$bundle_path" "$partial_identity" "support bundle"' scripts/collect_pi_support_bundle.sh
+grep -q 'Partial support bundle changed before cleanup; leaving it in place' scripts/collect_pi_support_bundle.sh
+grep -q 'Partial {label} changed before promotion' scripts/collect_pi_support_bundle.sh
+grep -q 'captures the local partial bundle identity at creation' README.md
+grep -q 'captures the local partial bundle identity at creation' docs/sailboat-pi.md
+grep -q 'cleans failed partial bundles only when the original partial identity is still present' README.md
+grep -q 'cleans failed partial bundles only when the original partial identity is still present' docs/sailboat-pi.md
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/collect_pi_support_bundle.sh
 grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bundle.sh
 grep -q 'validate_private_support_bundle "$bundle_path"' scripts/collect_pi_support_bundle.sh
@@ -1767,8 +1774,11 @@ grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/e
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_opencpn_data.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_opencpn_data.sh
 grep -q 'Output directory must not contain control characters' scripts/export_pi_opencpn_data.sh
-grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_opencpn_data.sh
-grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_opencpn_data.sh
+grep -q 'partial_identity="$(capture_private_partial_file_identity "$partial_path" "export archive partial")"' scripts/export_pi_opencpn_data.sh
+grep -q 'cleanup_private_partial_file "$partial_path" "$partial_identity" || true' scripts/export_pi_opencpn_data.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "$partial_identity" "export archive"' scripts/export_pi_opencpn_data.sh
+grep -q 'Partial export archive changed before cleanup; leaving it in place' scripts/export_pi_opencpn_data.sh
+grep -q 'Partial {label} changed before promotion' scripts/export_pi_opencpn_data.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_opencpn_data.sh
 grep -q 'finalize_private_archive "$archive_path"' scripts/export_pi_opencpn_data.sh
 grep -q 'validate_private_archive "$archive_path" "file_count"' scripts/export_pi_opencpn_data.sh
@@ -1819,8 +1829,11 @@ grep -q 'shut down, or downloaded, and no persistent Pi state is changed' script
 grep -q 'prepare_private_output_dir "Output directory" "$output_dir"' scripts/export_pi_settings.sh
 grep -q 'output_dir="$(strip_trailing_slashes "$output_dir")"' scripts/export_pi_settings.sh
 grep -q 'Output directory must not contain control characters' scripts/export_pi_settings.sh
-grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi_settings.sh
-grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_settings.sh
+grep -q 'partial_identity="$(capture_private_partial_file_identity "$partial_path" "export archive partial")"' scripts/export_pi_settings.sh
+grep -q 'cleanup_private_partial_file "$partial_path" "$partial_identity" || true' scripts/export_pi_settings.sh
+grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "$partial_identity" "export archive"' scripts/export_pi_settings.sh
+grep -q 'Partial export archive changed before cleanup; leaving it in place' scripts/export_pi_settings.sh
+grep -q 'Partial {label} changed before promotion' scripts/export_pi_settings.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_settings.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_settings.sh
 grep -q 'rejects individual settings files larger than 4 MiB' README.md
@@ -10975,6 +10988,16 @@ if [[ "$args" == *"&& /bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$args" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+if [[ -n "${NOAA_NAVIONICS_FAKE_REPLACE_SUPPORT_PARTIAL_DIR:-}" ]]; then
+  partial="$(find "$NOAA_NAVIONICS_FAKE_REPLACE_SUPPORT_PARTIAL_DIR" -maxdepth 1 -type f -name '.*.support-bundle.*' -print | head -n 1)"
+  if [[ -z "$partial" ]]; then
+    printf 'fake ssh could not find support bundle partial\n' >&2
+    exit 90
+  fi
+  rm -f -- "$partial"
+  printf 'replacement support bundle\n' >"$partial"
+  chmod 0600 "$partial"
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_BAD_SUPPORT_BUNDLE:-0}" == "1" ]]; then
   printf 'not a gzip tar\n'
   exit 0
@@ -11259,6 +11282,30 @@ grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
 grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'configured-track-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'Support bundle README.txt must be a regular file' scripts/collect_pi_support_bundle.sh
+
+set +e
+support_replaced_partial_output_dir="$tmpdir/support-bundles-replaced-partial"
+mkdir -p "$support_replaced_partial_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_REPLACE_SUPPORT_PARTIAL_DIR="$support_replaced_partial_output_dir" \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_replaced_partial_output_dir" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject a replaced partial bundle with exit 1" >&2
+  exit 1
+fi
+grep -q 'Partial support bundle changed before promotion' "$verify_output"
+grep -q 'Partial support bundle changed before cleanup; leaving it in place' "$verify_output"
+! grep -q 'Collected Pi support bundle:' "$verify_output"
+if compgen -G "$support_replaced_partial_output_dir/noaa-navionics-pi-support-*.tgz" >/dev/null; then
+  echo "expected collect_pi_support_bundle.sh not to promote a replaced partial bundle" >&2
+  exit 1
+fi
 
 support_oversized_output_dir="$tmpdir/support-bundles-oversized"
 mkdir -p "$support_oversized_output_dir"
@@ -11930,6 +11977,16 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+if [[ -n "${NOAA_NAVIONICS_FAKE_REPLACE_OPENCPN_PARTIAL_DIR:-}" ]]; then
+  partial="$(find "$NOAA_NAVIONICS_FAKE_REPLACE_OPENCPN_PARTIAL_DIR" -maxdepth 1 -type f -name '.*.opencpn-export.*' -print | head -n 1)"
+  if [[ -z "$partial" ]]; then
+    printf 'fake ssh could not find OpenCPN export partial\n' >&2
+    exit 90
+  fi
+  rm -f -- "$partial"
+  printf 'replacement OpenCPN archive\n' >"$partial"
+  chmod 0600 "$partial"
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_EMPTY_OPENCPN_MANIFEST:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -12113,6 +12170,30 @@ grep -q 'info.size = current_stat.st_size' "$opencpn_export_fake_ssh_stdin"
 grep -q 'opened OpenCPN file has permissions' "$opencpn_export_fake_ssh_stdin"
 grep -q 'OpenCPN user config, routes, waypoints' "$opencpn_export_fake_ssh_stdin"
 grep -q 'NOAA chart archives and extracted ENC cells are not included' "$opencpn_export_fake_ssh_stdin"
+
+set +e
+opencpn_export_replaced_partial_output_dir="$tmpdir/opencpn-exports-replaced-partial"
+mkdir -p "$opencpn_export_replaced_partial_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_REPLACE_OPENCPN_PARTIAL_DIR="$opencpn_export_replaced_partial_output_dir" \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$opencpn_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$opencpn_export_fake_ssh_stdin" \
+  PATH="$opencpn_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_opencpn_data.sh pi@example.invalid "$opencpn_export_replaced_partial_output_dir" >"$verify_output" 2>&1
+opencpn_export_code=$?
+set -e
+if [[ "$opencpn_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_opencpn_data.sh to reject a replaced partial archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'Partial export archive changed before promotion' "$verify_output"
+grep -q 'Partial export archive changed before cleanup; leaving it in place' "$verify_output"
+! grep -q 'Exported Pi OpenCPN user data:' "$verify_output"
+if compgen -G "$opencpn_export_replaced_partial_output_dir/noaa-navionics-pi-opencpn-*.tgz" >/dev/null; then
+  echo "expected export_pi_opencpn_data.sh not to promote a replaced partial archive" >&2
+  exit 1
+fi
 
 set +e
 opencpn_export_empty_manifest_output_dir="$tmpdir/opencpn-exports-empty-manifest"
@@ -12300,6 +12381,16 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3"* ]]; then
 fi
 printf '%s\n' "$*" >"$NOAA_NAVIONICS_FAKE_SSH_ARGS"
 cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+if [[ -n "${NOAA_NAVIONICS_FAKE_REPLACE_SETTINGS_PARTIAL_DIR:-}" ]]; then
+  partial="$(find "$NOAA_NAVIONICS_FAKE_REPLACE_SETTINGS_PARTIAL_DIR" -maxdepth 1 -type f -name '.*.settings-export.*' -print | head -n 1)"
+  if [[ -z "$partial" ]]; then
+    printf 'fake ssh could not find settings export partial\n' >&2
+    exit 90
+  fi
+  rm -f -- "$partial"
+  printf 'replacement settings archive\n' >"$partial"
+  chmod 0600 "$partial"
+fi
 if [[ "${NOAA_NAVIONICS_FAKE_EMPTY_SETTINGS_MANIFEST:-0}" == "1" ]]; then
   python3 - <<'PY'
 import io
@@ -12488,6 +12579,30 @@ grep -q '50-noaa-navionics-autologin.conf' "$settings_export_fake_ssh_stdin"
 grep -q 'info.size = current_stat.st_size' "$settings_export_fake_ssh_stdin"
 grep -q 'opened setting has permissions' "$settings_export_fake_ssh_stdin"
 grep -q 'It does not include logs, GPX tracks, NOAA chart archives, or extracted ENC cells' "$settings_export_fake_ssh_stdin"
+
+set +e
+settings_export_replaced_partial_output_dir="$tmpdir/settings-exports-replaced-partial"
+mkdir -p "$settings_export_replaced_partial_output_dir"
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_REPLACE_SETTINGS_PARTIAL_DIR="$settings_export_replaced_partial_output_dir" \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$settings_export_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$settings_export_fake_ssh_stdin" \
+  PATH="$settings_export_fake_ssh_bin:$PATH" \
+  scripts/export_pi_settings.sh pi@example.invalid "$settings_export_replaced_partial_output_dir" >"$verify_output" 2>&1
+settings_export_code=$?
+set -e
+if [[ "$settings_export_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_settings.sh to reject a replaced partial archive with exit 1" >&2
+  exit 1
+fi
+grep -q 'Partial export archive changed before promotion' "$verify_output"
+grep -q 'Partial export archive changed before cleanup; leaving it in place' "$verify_output"
+! grep -q 'Exported Pi commissioning settings:' "$verify_output"
+if compgen -G "$settings_export_replaced_partial_output_dir/noaa-navionics-pi-settings-*.tgz" >/dev/null; then
+  echo "expected export_pi_settings.sh not to promote a replaced partial archive" >&2
+  exit 1
+fi
 
 set +e
 settings_export_empty_manifest_output_dir="$tmpdir/settings-exports-empty-manifest"
