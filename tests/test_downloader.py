@@ -14607,6 +14607,7 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('f"Manifest {row_field}"', source)
                 self.assertIn('f"manifest summary {summary_field}"', source)
                 self.assertIn('"Manifest created_at_source"', source)
+                self.assertIn('"Source Revision revision"', source)
                 self.assertIn('"GPSD Config path"', source)
                 self.assertIn('"GPSD Config directory_symlink_component"', source)
                 self.assertIn('"Chrony Config path"', source)

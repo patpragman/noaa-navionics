@@ -1937,7 +1937,7 @@ def validate_successful_status_snapshot(
             + ", ".join(non_pi_skips)
         )
     source_data = check_rows["Source Revision"].get("data")
-    row_revision = str(source_data.get("revision", "")).strip()
+    row_revision = snapshot_text(source_data.get("revision", ""), "Source Revision revision")
     if not row_revision or row_revision == "unknown":
         fail("pre-departure status snapshot JSON Source Revision row missing revision")
     if row_revision.endswith("-dirty"):

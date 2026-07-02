@@ -1519,7 +1519,7 @@ def validate_successful_status_snapshot(
     if non_pi_skips:
         fail(f"status snapshot JSON records non-Pi diagnostic skip(s): {', '.join(non_pi_skips)}: {path}")
     source_data = check_rows["Source Revision"].get("data")
-    row_revision = str(source_data.get("revision", "")).strip()
+    row_revision = snapshot_text(source_data.get("revision", ""), "Source Revision revision", path)
     if not row_revision or row_revision == "unknown":
         fail(f"status snapshot JSON Source Revision row missing revision: {path}")
     if row_revision.endswith("-dirty"):
