@@ -15750,6 +15750,10 @@ class StatusReportTests(unittest.TestCase):
             "{source} readiness check has no structured fix data",
             "gps_fix data does not match {source} readiness check data for {field}",
             'validate_gps_readiness_row(report["gps_fix"], readiness_rows)',
+            "def validate_track_log_service_row",
+            "Track Log service check has no structured track data",
+            "track_log data does not match Track Log service check data for {field}",
+            'validate_track_log_service_row(report["track_log"], service_rows)',
             "def validate_optional_text_fields",
             '(("checks", "readiness check"), ("service_checks", "service check"))',
             'status_text(name, f"{row_label} name")',
@@ -15839,6 +15843,42 @@ class StatusReportTests(unittest.TestCase):
             ),
         )
         for mutate, expected_error in gps_row_cases:
+            report = copy.deepcopy(valid_report)
+            mutate(report)
+            result = subprocess.run(
+                [sys.executable, "-c", validator],
+                input=json.dumps(report),
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            with self.subTest(expected_error=expected_error):
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(expected_error, result.stderr)
+
+        track_log_row_cases = (
+            (
+                lambda report: report.__setitem__(
+                    "service_checks",
+                    [row for row in report["service_checks"] if row["name"] != "Track Log"],
+                ),
+                "missing Track Log service check for track_log",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["service_checks"] if row["name"] == "Track Log"
+                ).__setitem__("data", None),
+                "Track Log service check has no structured track data",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["service_checks"] if row["name"] == "Track Log"
+                )["data"].__setitem__("latest_latitude", 1.0),
+                "track_log data does not match Track Log service check data for latest_latitude",
+            ),
+        )
+        for mutate, expected_error in track_log_row_cases:
             report = copy.deepcopy(valid_report)
             mutate(report)
             result = subprocess.run(

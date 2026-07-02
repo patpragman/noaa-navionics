@@ -481,6 +481,32 @@ def validate_gps_readiness_row(gps_fix, readiness_rows):
             fail(f"gps_fix data does not match {source} readiness check data for {field}")
 
 
+def validate_track_log_service_row(track_log, service_rows):
+    if track_log.get("ok") is not True:
+        return
+    row = service_rows.get("Track Log")
+    if not isinstance(row, dict):
+        fail("missing Track Log service check for track_log")
+    if row.get("ok") is not True:
+        fail("Track Log service check is not ok")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        fail("Track Log service check has no structured track data")
+    for field in (
+        "track_output",
+        "tracks_dir",
+        "latest_path",
+        "latest_time",
+        "latest_latitude",
+        "latest_longitude",
+        "age_seconds",
+        "latest_satellites",
+        "latest_hdop",
+    ):
+        if field in track_log and data.get(field) != track_log.get(field):
+            fail(f"track_log data does not match Track Log service check data for {field}")
+
+
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
@@ -516,6 +542,7 @@ if not BOOT_ID_RE.fullmatch(host_boot_id):
     fail("host boot_id is not a Linux boot_id value")
 
 readiness_rows = {}
+service_rows = {}
 for section_name, row_label in (("checks", "readiness check"), ("service_checks", "service check")):
     rows = report.get(section_name)
     if not isinstance(rows, list) or not rows:
@@ -535,6 +562,8 @@ for section_name, row_label in (("checks", "readiness check"), ("service_checks"
             fail(f"{normalized} ok is not boolean")
         if section_name == "checks":
             readiness_rows[normalized] = row
+        else:
+            service_rows[normalized] = row
 
 validate_optional_text_fields(
     report.get("config"),
@@ -590,6 +619,7 @@ validate_position_summary(
     generated_at_utc=parsed_generated_at.astimezone(timezone.utc),
 )
 validate_gps_readiness_row(report["gps_fix"], readiness_rows)
+validate_track_log_service_row(report["track_log"], service_rows)
 '
 }
 
