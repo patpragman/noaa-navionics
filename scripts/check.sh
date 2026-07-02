@@ -1170,10 +1170,12 @@ grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' docs
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the shutdown heredoc' README.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
 grep -q 'requires the remote command to report that systemd accepted the poweroff request' README.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' README.md
 grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the shutdown heredoc' docs/sailboat-pi.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
 grep -q 'requires the remote command to report that systemd accepted the poweroff request' docs/sailboat-pi.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' docs/sailboat-pi.md
@@ -2292,6 +2294,9 @@ grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN' scripts/shutdown_pi_safely.sh
 grep -q 'validate_shutdown_controls' scripts/shutdown_pi_safely.sh
 grep -q 'NOAA_NAVIONICS_SHUTDOWN_DRY_RUN must be 0 or 1' scripts/shutdown_pi_safely.sh
 grep -q 'max_shutdown_timeout=600' scripts/shutdown_pi_safely.sh
+grep -q 'validate_remote_bash_entrypoint' scripts/shutdown_pi_safely.sh
+grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/shutdown_pi_safely.sh
+grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/shutdown_pi_safely.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/shutdown_pi_safely.sh
 test "$(grep -c 'sync_cmd="$(require_remote_command sync)"' scripts/shutdown_pi_safely.sh)" -ge 2
 test "$(grep -c 'sudo_cmd="$(require_remote_command sudo)"' scripts/shutdown_pi_safely.sh)" -ge 2
@@ -16630,6 +16635,10 @@ cat >"$shutdown_confirm_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_SSH_LOG"
 case "$*" in
+  *'/bin/sh -s -- /bin/bash bash'*)
+    cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+    exit 0
+    ;;
   *NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0*)
     cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
     printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
@@ -16666,6 +16675,10 @@ cat >"$shutdown_missing_accepted_fake_ssh_bin/ssh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_SSH_LOG"
 case "$*" in
+  *'/bin/sh -s -- /bin/bash bash'*)
+    cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
+    exit 0
+    ;;
   *NOAA_NAVIONICS_SHUTDOWN_DRY_RUN=0*)
     cat >"$NOAA_NAVIONICS_FAKE_SSH_STDIN"
     printf 'Filesystem sync completed; requesting clean Pi poweroff.\n'
