@@ -1158,6 +1158,22 @@ grep -q 'cleanup_private_temp_file(tmp_path)' scripts/install_raspberry_pi.sh
 grep -q 'source revision temp changed before cleanup; leaving it in place' scripts/install_raspberry_pi.sh
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'install_root_text_atomic' scripts/install_raspberry_pi.sh
+grep -q 'validate_skip_apt_runtime_dependencies' scripts/install_raspberry_pi.sh
+grep -q 'elif \[\[ "$allow_non_pi" -eq 0 \]\]; then' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command opencpn "OpenCPN command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command gpsd "GPSD command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command cgps "GPSD client command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command chronyc "Chrony command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command lightdm "LightDM command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command xset "display power command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command pgrep "process lookup command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command vcgencmd "Pi power command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_python_module venv "Python venv support"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_python_module tkinter "Tkinter support"' scripts/install_raspberry_pi.sh
+grep -q -- '--skip-apt requires trusted' scripts/install_raspberry_pi.sh
+grep -q -- '--skip-apt requires .* install system packages or omit --skip-apt' scripts/install_raspberry_pi.sh
+grep -q 'If `--skip-apt` is used on a Raspberry Pi after a manual package install, the installer still verifies trusted runtime commands and Python venv/Tkinter support' README.md
+grep -q 'If `--skip-apt` is used on a Raspberry Pi after a manual package install, the installer still verifies trusted runtime commands and Python venv/Tkinter support' docs/sailboat-pi.md
 grep -q 'sudo_cmd="$(trusted_root_command_path sudo "Sudo command")"' scripts/install_raspberry_pi.sh
 grep -q 'python3_cmd="$(trusted_root_command_path python3 "Python command")"' scripts/install_raspberry_pi.sh
 grep -q 'python3_cmd="$(python3_command)" || exit 2' scripts/install_raspberry_pi.sh

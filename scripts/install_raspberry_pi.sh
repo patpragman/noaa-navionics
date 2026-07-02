@@ -42,7 +42,8 @@ usage() {
 Usage: scripts/install_raspberry_pi.sh [options]
 
 Options:
-  --skip-apt        Do not install system packages
+  --skip-apt        Do not install system packages; on a Raspberry Pi, verify
+                    the required runtime commands are already installed
   --allow-non-pi   Allow development smoke tests on non-Raspberry Pi hosts
   --no-services    Accepted for deploy-script compatibility
   --skip-autologin Accepted for deploy-script compatibility
@@ -990,6 +991,52 @@ ensure_vcgencmd() {
   return 1
 }
 
+require_existing_runtime_command() {
+  local command_name="$1"
+  local label="$2"
+  if check_root_command_integrity "$command_name" "$label"; then
+    return 0
+  fi
+  echo "--skip-apt requires trusted ${label}; install system packages or omit --skip-apt." >&2
+  return 1
+}
+
+require_existing_python_module() {
+  local module_name="$1"
+  local label="$2"
+  "$python3_cmd" - "$module_name" "$label" <<'PY'
+import importlib
+import sys
+
+module_name = sys.argv[1]
+label = sys.argv[2]
+try:
+    importlib.import_module(module_name)
+except Exception as exc:
+    raise SystemExit(f"--skip-apt requires {label}; install system packages or omit --skip-apt: {exc}") from exc
+PY
+}
+
+validate_skip_apt_runtime_dependencies() {
+  local status=0
+
+  require_existing_runtime_command rsync "rsync command" || status=1
+  require_existing_runtime_command opencpn "OpenCPN command" || status=1
+  require_existing_runtime_command gpsd "GPSD command" || status=1
+  require_existing_runtime_command cgps "GPSD client command" || status=1
+  require_existing_runtime_command chronyc "Chrony command" || status=1
+  require_existing_runtime_command lightdm "LightDM command" || status=1
+  require_existing_runtime_command xset "display power command" || status=1
+  require_existing_runtime_command pgrep "process lookup command" || status=1
+  require_existing_runtime_command vcgencmd "Pi power command" || status=1
+  require_existing_python_module venv "Python venv support" || status=1
+  require_existing_python_module tkinter "Tkinter support" || status=1
+
+  if [[ "$status" -ne 0 ]]; then
+    exit 2
+  fi
+}
+
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
@@ -1060,6 +1107,8 @@ if [[ "$skip_apt" -eq 0 ]]; then
   apt_install python3 python3-venv python3-tk rsync opencpn gpsd chrony lightdm x11-xserver-utils python3-setuptools procps
   ensure_gpsd_client_tools
   ensure_vcgencmd
+elif [[ "$allow_non_pi" -eq 0 ]]; then
+  validate_skip_apt_runtime_dependencies
 fi
 
 ensure_private_directory "${HOME}/.local/bin" "user command directory"
