@@ -4557,8 +4557,15 @@ grep -q 'self.last_report.set(f"Error: {message}")' src/noaa_navionics/status_gu
 grep -q 'state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
+grep -q 'MAX_GPS_WAIT_SECONDS = 600.0' src/noaa_navionics/cli.py
+grep -q 'def _gps_wait_seconds(value: str) -> float' src/noaa_navionics/cli.py
+grep -q 'if parsed > MAX_GPS_WAIT_SECONDS' src/noaa_navionics/cli.py
+grep -q 'test_direct_readiness_gps_waits_reject_oversized_seconds' tests/test_downloader.py
 grep -q 'anchor-watch-seconds' src/noaa_navionics/cli.py
 grep -q 'action-gps-seconds' src/noaa_navionics/cli.py
+grep -q 'status_gui.add_argument("--gps-seconds", type=_gps_wait_seconds' src/noaa_navionics/cli.py
+grep -q 'preflight.add_argument("--gps-seconds", type=_gps_wait_seconds' src/noaa_navionics/cli.py
+grep -q 'status.add_argument("--gps-seconds", type=_gps_wait_seconds' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--anchor-watch-seconds", str(args.anchor_watch_seconds)])' src/noaa_navionics/cli.py
 grep -q 'write_available_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
@@ -4584,6 +4591,8 @@ grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change 
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
+grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' README.md
+grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
 grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, rechecks drift at `--anchor-watch-seconds N`' README.md

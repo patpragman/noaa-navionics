@@ -6739,6 +6739,20 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["status-gui", "--anchor-radius-meters", "0"])
         self.assert_parse_error(["status-gui", "--anchor-samples", "0"])
 
+    def test_direct_readiness_gps_waits_reject_oversized_seconds(self):
+        for args in (
+            ["preflight", "--gps-seconds", "601"],
+            ["preflight", "--gps-seconds", "999999999999999999999999999999"],
+            ["status-report", "--gps-seconds", "601"],
+            ["status-report", "--gps-seconds", "999999999999999999999999999999"],
+            ["status-gui", "--gps-seconds", "601"],
+            ["status-gui", "--gps-seconds", "999999999999999999999999999999"],
+            ["status-gui", "--action-gps-seconds", "601"],
+            ["status-gui", "--action-gps-seconds", "999999999999999999999999999999"],
+        ):
+            with self.subTest(args=args):
+                self.assert_parse_error(args)
+
     def test_status_report_reads_gps_wait_from_trusted_launcher_environment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

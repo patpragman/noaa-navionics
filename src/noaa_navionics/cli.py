@@ -61,6 +61,9 @@ from .report import (
 )
 
 
+MAX_GPS_WAIT_SECONDS = 600.0
+
+
 @dataclass(frozen=True)
 class GPSDeviceCandidate:
     path: str
@@ -144,6 +147,13 @@ def _non_negative_float(value: str) -> float:
     return parsed
 
 
+def _gps_wait_seconds(value: str) -> float:
+    parsed = _non_negative_float(value)
+    if parsed > MAX_GPS_WAIT_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_GPS_WAIT_SECONDS:g}")
+    return parsed
+
+
 def _live_idle_timeout(value: float, *, live: bool) -> Optional[float]:
     if live and value > 0:
         return value
@@ -203,10 +213,10 @@ def build_parser() -> argparse.ArgumentParser:
     status_gui.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     status_gui.add_argument("--output", default="~/.cache/noaa-navionics/status.json", help="JSON status report path")
     status_gui.add_argument("--no-output", action="store_true", help="do not write a JSON status report")
-    status_gui.add_argument("--gps-seconds", type=_non_negative_float, default=10.0, help="seconds to wait for a GPS fix")
+    status_gui.add_argument("--gps-seconds", type=_gps_wait_seconds, default=10.0, help="seconds to wait for a GPS fix")
     status_gui.add_argument(
         "--action-gps-seconds",
-        type=_non_negative_float,
+        type=_gps_wait_seconds,
         help="seconds to wait for Mark, MOB, and Anchor Check GPS fixes; defaults to --gps-seconds",
     )
     status_gui.add_argument(
@@ -257,12 +267,12 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--gps-device", help="NMEA serial device, e.g. /dev/serial/by-id/YOUR_GPS_DEVICE")
     preflight.add_argument("--gps-baud", type=int, help="NMEA serial baud rate")
     preflight.add_argument("--gps-sample", help="NMEA sample file for testing")
-    preflight.add_argument("--gps-seconds", type=_non_negative_float, default=5.0, help="seconds to wait for a GPS fix")
+    preflight.add_argument("--gps-seconds", type=_gps_wait_seconds, default=5.0, help="seconds to wait for a GPS fix")
 
     status = subparsers.add_parser("status-report", help="write an onboard readiness status report")
     status.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     status.add_argument("--gps-sample", help="NMEA sample file for testing")
-    status.add_argument("--gps-seconds", type=_non_negative_float, default=5.0, help="seconds to wait for a GPS fix")
+    status.add_argument("--gps-seconds", type=_gps_wait_seconds, default=5.0, help="seconds to wait for a GPS fix")
     status.add_argument(
         "--gps-seconds-from-launcher-env",
         nargs="?",
