@@ -1025,14 +1025,20 @@ def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[Chec
         elif data.get("is_raspberry_pi") is False and data.get("skipped") is True:
             pass
         else:
-            path = str(data.get("path", "")).strip()
-            if path != "/etc/chrony/chrony.conf":
+            path = _chrony_config_text(data, "path", "Chrony Config path", failures)
+            if path is not None and path != "/etc/chrony/chrony.conf":
                 failures.append(CheckResult("Chrony Config", False, f"status report Chrony Config path {path or '<missing>'} is not /etc/chrony/chrony.conf"))
             if data.get("exists") is not True:
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config path does not exist"))
             if data.get("is_symlink") is not False:
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config path is a symlink"))
-            if str(data.get("directory_symlink_component", "")).strip():
+            directory_symlink_component = _chrony_config_text(
+                data,
+                "directory_symlink_component",
+                "Chrony Config directory_symlink_component",
+                failures,
+            )
+            if directory_symlink_component:
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config directory contains a symlink"))
             if data.get("is_regular") is not True:
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config path is not a regular file"))
@@ -1042,17 +1048,19 @@ def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[Chec
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config owner is not root"))
             if isinstance(expected_uid, bool) or not isinstance(expected_uid, int) or expected_uid != 0:
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config expected owner is not root"))
-            mode = str(data.get("mode", "")).strip()
-            try:
-                parsed_mode = int(mode, 8)
-            except ValueError:
-                failures.append(CheckResult("Chrony Config", False, "status report Chrony Config mode is invalid"))
-            else:
-                if parsed_mode & 0o022:
-                    failures.append(CheckResult("Chrony Config", False, "status report Chrony Config is group/world writable"))
+            mode = _chrony_config_text(data, "mode", "Chrony Config mode", failures)
+            if mode is not None:
+                try:
+                    parsed_mode = int(mode, 8)
+                except ValueError:
+                    failures.append(CheckResult("Chrony Config", False, "status report Chrony Config mode is invalid"))
+                else:
+                    if parsed_mode & 0o022:
+                        failures.append(CheckResult("Chrony Config", False, "status report Chrony Config is group/world writable"))
             if data.get("managed_refclock_present") is not True:
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config is missing managed GPSD SHM refclock"))
-            if str(data.get("refclock_line", "")).strip() != "refclock SHM 0 offset 0.5 delay 0.1 refid GPS":
+            refclock_line = _chrony_config_text(data, "refclock_line", "Chrony Config refclock_line", failures)
+            if refclock_line is not None and refclock_line != "refclock SHM 0 offset 0.5 delay 0.1 refid GPS":
                 failures.append(CheckResult("Chrony Config", False, "status report Chrony Config refclock line is not the managed GPSD SHM source"))
 
     source_row = check_rows.get("GPS Time Source")
@@ -1068,14 +1076,40 @@ def _chrony_gps_time_validation_failures(report: dict[str, object]) -> list[Chec
             if data.get("chronyc_available") is not True:
                 failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source did not validate chronyc availability"))
             gps_lines = data.get("gps_lines")
-            if not isinstance(gps_lines, list) or not gps_lines:
+            if not isinstance(gps_lines, list) or any(not isinstance(line, str) for line in gps_lines):
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source GPS lines are not a text list"))
+            elif any(_status_text_has_control_char(line) for line in gps_lines):
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source GPS lines contain control characters"))
+            elif not gps_lines:
                 failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source has no GPS refclock lines"))
             usable_lines = data.get("usable_lines")
-            if not isinstance(usable_lines, list) or not usable_lines:
+            if not isinstance(usable_lines, list) or any(not isinstance(line, str) for line in usable_lines):
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source usable lines are not a text list"))
+            elif any(_status_text_has_control_char(line) for line in usable_lines):
+                failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source usable lines contain control characters"))
+            elif not usable_lines:
                 failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source has no selected or combined GPS refclock"))
             if data.get("selected_or_combined") is not True:
                 failures.append(CheckResult("GPS Time Source", False, "status report GPS Time Source did not prove selected or combined GPS time"))
     return failures
+
+
+def _chrony_config_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult("Chrony Config", False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult("Chrony Config", False, control_failure))
+        return None
+    return text
 
 
 def _command_evidence_validation_failures(report: dict[str, object]) -> list[CheckResult]:

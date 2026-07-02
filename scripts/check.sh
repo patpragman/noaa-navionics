@@ -5280,8 +5280,17 @@ grep -q 'path contains control characters' tests/test_downloader.py
 grep -q 'expected_device contains control characters' tests/test_downloader.py
 grep -q 'options contain control characters' tests/test_downloader.py
 grep -q 'status report Chrony Config check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _chrony_config_text' src/noaa_navionics/report.py
+grep -q '"Chrony Config path"' src/noaa_navionics/report.py
+grep -q '"Chrony Config directory_symlink_component"' src/noaa_navionics/report.py
+grep -q '"Chrony Config mode"' src/noaa_navionics/report.py
+grep -q '"Chrony Config refclock_line"' src/noaa_navionics/report.py
 grep -q 'status report Chrony Config is missing managed GPSD SHM refclock' src/noaa_navionics/report.py
 grep -q 'status report GPS Time Source check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report GPS Time Source GPS lines are not a text list' src/noaa_navionics/report.py
+grep -q 'status report GPS Time Source GPS lines contain control characters' src/noaa_navionics/report.py
+grep -q 'status report GPS Time Source usable lines are not a text list' src/noaa_navionics/report.py
+grep -q 'status report GPS Time Source usable lines contain control characters' src/noaa_navionics/report.py
 grep -q 'status report GPS Time Source did not prove selected or combined GPS time' src/noaa_navionics/report.py
 grep -q 'status report {name} check has no structured command data' src/noaa_navionics/report.py
 grep -q 'status report {name} command is not in a trusted system directory' src/noaa_navionics/report.py
