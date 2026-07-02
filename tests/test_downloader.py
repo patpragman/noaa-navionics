@@ -8322,12 +8322,20 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["download", "--state", "AK", "--timeout", "0"])
         self.assert_parse_error(["download", "--state", "AK", "--timeout", "nan"])
         self.assert_parse_error(["download", "--state", "AK", "--retries", "0"])
+        self.assert_parse_error(["download", "--state", "AK", "--retries", "21"])
+        self.assert_parse_error(["download", "--state", "AK", "--retries", "999999999999999999999999999999"])
         self.assert_parse_error(["download", "--state", "AK", "--retry-delay", "inf"])
         self.assert_parse_error(["download", "--state", "AK", "--retry-delay", "-1"])
+        self.assert_parse_error(["download", "--state", "AK", "--retry-delay", "3601"])
+        self.assert_parse_error(["download", "--state", "AK", "--retry-delay", "999999999999999999999999999999"])
 
     def test_sync_rejects_invalid_retry_values(self):
         self.assert_parse_error(["sync-charts", "--retries", "0"])
+        self.assert_parse_error(["sync-charts", "--retries", "21"])
+        self.assert_parse_error(["sync-charts", "--retries", "999999999999999999999999999999"])
         self.assert_parse_error(["sync-charts", "--retry-delay", "-1"])
+        self.assert_parse_error(["sync-charts", "--retry-delay", "3601"])
+        self.assert_parse_error(["sync-charts", "--retry-delay", "999999999999999999999999999999"])
 
     def test_wait_network_rejects_invalid_values(self):
         self.assert_parse_error(["wait-network", "--host", ""])

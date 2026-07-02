@@ -2396,7 +2396,7 @@ grep -q 'NOAA_NAVIONICS_REFRESH_GPS_SECONDS' scripts/refresh_pi_charts.sh
 grep -q 'max_retries=20' scripts/refresh_pi_charts.sh
 grep -q 'max_retry_delay=3600' scripts/refresh_pi_charts.sh
 grep -q 'max_gps_seconds=600' scripts/refresh_pi_charts.sh
-grep -q 'The Pi chart-refresh wrapper bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits' README.md
+grep -q 'The Pi chart-refresh wrapper uses the same retry bounds for manual refresh controls, plus 1-600 seconds for optional post-refresh GPS waits' README.md
 grep -q 'bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits' docs/sailboat-pi.md
 grep -q 'validate_refresh_controls' scripts/refresh_pi_charts.sh
 grep -q 'require_boolean_control "NOAA_NAVIONICS_REFRESH_FORCE" "$force"' scripts/refresh_pi_charts.sh
@@ -5884,8 +5884,14 @@ grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB
 grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB path rings the terminal bell after saving' docs/sailboat-pi.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' README.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' docs/sailboat-pi.md
+grep -q 'MAX_CHART_RETRIES = 20' src/noaa_navionics/cli.py
+grep -q 'MAX_CHART_RETRY_DELAY_SECONDS = 3600.0' src/noaa_navionics/cli.py
+grep -q 'def _chart_retries' src/noaa_navionics/cli.py
+grep -q 'def _chart_retry_delay_seconds' src/noaa_navionics/cli.py
 grep -q 'Direct `preflight`, `status-report`, status GUI, Mark, and MOB GPS-fix waits must be finite and positive, and are bounded to 600 seconds' README.md
 grep -q 'Direct `preflight`, `status-report`, status GUI, Mark, and MOB GPS-fix waits must be finite and positive, and are bounded to 600 seconds' docs/sailboat-pi.md
+grep -q 'Direct `download` and `sync-charts` retry controls are bounded to 1-20 attempts and 0-3600 seconds between attempts' README.md
+grep -q 'Direct `download` and `sync-charts` retry controls are bounded to 1-20 attempts and 0-3600 seconds between attempts' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
 grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires `--anchor-watch-seconds N` to be at least 1 second, rechecks drift at that interval' README.md

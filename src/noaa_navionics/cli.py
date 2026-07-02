@@ -62,6 +62,8 @@ from .report import (
 
 
 MAX_GPS_WAIT_SECONDS = 600.0
+MAX_CHART_RETRIES = 20
+MAX_CHART_RETRY_DELAY_SECONDS = 3600.0
 MAX_ANCHOR_SAMPLES = 10
 MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0
 GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"
@@ -158,6 +160,20 @@ def _non_negative_float(value: str) -> float:
     return parsed
 
 
+def _chart_retries(value: str) -> int:
+    parsed = _positive_int(value)
+    if parsed > MAX_CHART_RETRIES:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_CHART_RETRIES}")
+    return parsed
+
+
+def _chart_retry_delay_seconds(value: str) -> float:
+    parsed = _non_negative_float(value)
+    if parsed > MAX_CHART_RETRY_DELAY_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_CHART_RETRY_DELAY_SECONDS:g}")
+    return parsed
+
+
 def _gps_wait_seconds(value: str) -> float:
     parsed = _positive_float(value)
     if parsed > MAX_GPS_WAIT_SECONDS:
@@ -192,15 +208,15 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--no-keep-zip", action="store_true", help="remove ZIP after successful extraction")
     download.add_argument("--force", action="store_true", help="overwrite an existing local file")
     download.add_argument("--timeout", type=_positive_float, default=60.0, help="network timeout in seconds")
-    download.add_argument("--retries", type=_positive_int, default=1, help="download attempts before failing")
-    download.add_argument("--retry-delay", type=_non_negative_float, default=2.0, help="seconds between retryable failures")
+    download.add_argument("--retries", type=_chart_retries, default=1, help="download attempts before failing")
+    download.add_argument("--retry-delay", type=_chart_retry_delay_seconds, default=2.0, help="seconds between retryable failures")
     download.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)
 
     sync = subparsers.add_parser("sync-charts", help="download the chart package from the config file")
     sync.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     sync.add_argument("--force", action="store_true", help="override config and force redownload")
-    sync.add_argument("--retries", type=_positive_int, default=3, help="download attempts before failing")
-    sync.add_argument("--retry-delay", type=_non_negative_float, default=10.0, help="seconds between retryable failures")
+    sync.add_argument("--retries", type=_chart_retries, default=3, help="download attempts before failing")
+    sync.add_argument("--retry-delay", type=_chart_retry_delay_seconds, default=10.0, help="seconds between retryable failures")
 
     wait_network = subparsers.add_parser("wait-network", help="wait for bounded TCP connectivity")
     wait_network.add_argument("--host", type=_network_host, default="www.charts.noaa.gov", help="host to probe")
