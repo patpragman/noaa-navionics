@@ -196,6 +196,7 @@ CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"
 PRE_DEPARTURE_STATUS_NAME = "pre-departure-status.json"
 PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"
 STATUS_FUTURE_TOLERANCE_SECONDS = 300
+GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 CORE_SUPPORT_COMMAND_FILES = [
@@ -1286,6 +1287,9 @@ def validate_pre_departure_status_checks(
                 "use /dev/serial/by-id/... instead"
             )
         fail("pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    gps_baud = config.get("gps_baud")
+    if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
+        fail("pre-departure status snapshot JSON config gps_baud is invalid")
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail("pre-departure status snapshot JSON missing config chart_output")

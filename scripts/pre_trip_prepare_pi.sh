@@ -912,6 +912,7 @@ nofollow = getattr(os, "O_NOFOLLOW", 0)
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 STATUS_MAX_AGE_SECONDS = 15 * 60
 STATUS_FUTURE_TOLERANCE_SECONDS = 5 * 60
+GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 CORE_READINESS_CHECKS = {
     "Python",
     "Source Revision",
@@ -1531,6 +1532,9 @@ def validate_successful_status_snapshot(
                 "use /dev/serial/by-id/... instead"
             )
         fail("pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps")
+    gps_baud = config.get("gps_baud")
+    if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
+        fail("pre-departure status snapshot JSON config gps_baud is invalid")
     chart_output = str(config.get("chart_output", "")).strip()
     if not chart_output:
         fail("pre-departure status snapshot JSON missing config chart_output")

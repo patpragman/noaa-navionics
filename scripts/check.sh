@@ -4443,6 +4443,9 @@ grep -q 'status snapshot JSON config gps_device is volatile' scripts/post_trip_c
 grep -q 'pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/verify_pi_recovery_exports.sh
 grep -q 'status snapshot JSON config gps_device must be /dev/serial/by-id/' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON config gps_baud is invalid' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config gps_baud is invalid' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON config gps_baud is invalid' scripts/post_trip_collect_pi.sh
 grep -q 'def _command_evidence_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gpsd_config_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chrony_gps_time_validation_failures' src/noaa_navionics/report.py
@@ -8008,6 +8011,7 @@ payload = {
     "config": {
         "gps_mode": "gpsd",
         "gps_device": "/dev/serial/by-id/mock-gps",
+        "gps_baud": 4800,
         "gpsd_host": "127.0.0.1",
         "gpsd_port": 2947,
         "chart_output": "/charts",
@@ -8883,6 +8887,7 @@ payload = {
     "config": {
         "gps_mode": "gpsd",
         "gps_device": "/dev/serial/by-id/mock-gps",
+        "gps_baud": 4800,
         "gpsd_host": "127.0.0.1",
         "gpsd_port": 2947,
         "chart_output": "/charts",
@@ -12328,6 +12333,7 @@ def write_pre_departure_status(directory):
                 "config": {
                     "gps_mode": "gpsd",
                     "gps_device": "/dev/serial/by-id/mock-gps",
+                    "gps_baud": 4800,
                     "gpsd_host": "127.0.0.1",
                     "gpsd_port": 2947,
                     "chart_output": "/charts",
