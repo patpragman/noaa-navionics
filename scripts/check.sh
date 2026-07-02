@@ -5243,6 +5243,11 @@ grep -q 'Source Revision mode contains control characters' tests/test_downloader
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Time Sync did not report SystemClockSynchronized=yes' src/noaa_navionics/report.py
 grep -q 'status report Pi Power check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _pi_health_text' src/noaa_navionics/report.py
+grep -q 'status report Pi Power throttled_output does not match throttled value' src/noaa_navionics/report.py
+grep -q 'status report Pi Thermal missing finite fail threshold' src/noaa_navionics/report.py
+grep -q 'throttled_output is not text' tests/test_downloader.py
+grep -q 'warn threshold is not below fail threshold' tests/test_downloader.py
 grep -q 'status report Pi Power reported throttling flags' src/noaa_navionics/report.py
 grep -q 'status report Pi Thermal missing finite temperature' src/noaa_navionics/report.py
 grep -q 'status report {name} check has no structured data' src/noaa_navionics/report.py

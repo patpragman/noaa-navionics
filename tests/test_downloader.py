@@ -12779,53 +12779,102 @@ class StatusReportTests(unittest.TestCase):
     def test_status_report_ready_requires_structured_pi_health_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         generated_at = now.isoformat().replace("+00:00", "Z")
+
+        def pi_power_data(**overrides):
+            data = {
+                "is_raspberry_pi": True,
+                "vcgencmd_available": True,
+                "throttled_output": "throttled=0x0",
+                "throttled_value": 0,
+                "reported_flags": [],
+            }
+            data.update(overrides)
+            return data
+
+        def pi_thermal_data(**overrides):
+            data = {
+                "is_raspberry_pi": True,
+                "temperature_available": True,
+                "temperature_c": 42.5,
+                "warn_c": 70.0,
+                "fail_c": 80.0,
+            }
+            data.update(overrides)
+            return data
+
         cases = [
             ("Pi Power", None, "Pi Power check has no structured data", "Pi Power"),
             (
                 "Pi Power",
-                {
-                    "is_raspberry_pi": True,
-                    "vcgencmd_available": True,
-                    "throttled_output": "throttled=0x1",
-                    "throttled_value": 1,
-                    "reported_flags": ["under-voltage"],
-                },
+                pi_power_data(
+                    throttled_output="throttled=0x1",
+                    throttled_value=1,
+                    reported_flags=["under-voltage"],
+                ),
                 "reported throttling flags: under-voltage",
+                "Pi Power",
+            ),
+            ("Pi Power", pi_power_data(vcgencmd_available=False), "missing vcgencmd evidence", "Pi Power"),
+            ("Pi Power", pi_power_data(throttled_output=123), "throttled_output is not text", "Pi Power"),
+            (
+                "Pi Power",
+                pi_power_data(throttled_output="throttled=0x0\x00"),
+                "throttled_output contains control characters",
+                "Pi Power",
+            ),
+            ("Pi Power", pi_power_data(throttled_output="not-throttled"), "throttled_output is invalid", "Pi Power"),
+            (
+                "Pi Power",
+                pi_power_data(throttled_output="throttled=0x1"),
+                "throttled_output does not match throttled value",
                 "Pi Power",
             ),
             (
                 "Pi Power",
-                {
-                    "is_raspberry_pi": True,
-                    "vcgencmd_available": True,
-                    "throttled_output": "throttled=0x0",
-                    "reported_flags": [],
-                },
+                pi_power_data(throttled_value=None),
                 "missing throttled value",
+                "Pi Power",
+            ),
+            (
+                "Pi Power",
+                pi_power_data(reported_flags=["under-voltage\x00"]),
+                "throttling flag contains control characters",
                 "Pi Power",
             ),
             ("Pi Thermal", None, "Pi Thermal check has no structured data", "Pi Thermal"),
             (
                 "Pi Thermal",
-                {
-                    "is_raspberry_pi": True,
-                    "temperature_available": True,
-                    "temperature_c": "42.5",
-                    "warn_c": 70.0,
-                    "fail_c": 80.0,
-                },
+                pi_thermal_data(temperature_available=False),
+                "missing temperature sensor evidence",
+                "Pi Thermal",
+            ),
+            (
+                "Pi Thermal",
+                pi_thermal_data(temperature_c="42.5"),
                 "missing finite temperature",
                 "Pi Thermal",
             ),
             (
                 "Pi Thermal",
-                {
-                    "is_raspberry_pi": True,
-                    "temperature_available": True,
-                    "temperature_c": 81.0,
-                    "warn_c": 70.0,
-                    "fail_c": 80.0,
-                },
+                pi_thermal_data(warn_c="70.0"),
+                "missing finite warn threshold",
+                "Pi Thermal",
+            ),
+            (
+                "Pi Thermal",
+                pi_thermal_data(fail_c=float("nan")),
+                "missing finite fail threshold",
+                "Pi Thermal",
+            ),
+            (
+                "Pi Thermal",
+                pi_thermal_data(warn_c=80.0, fail_c=80.0),
+                "warn threshold is not below fail threshold",
+                "Pi Thermal",
+            ),
+            (
+                "Pi Thermal",
+                pi_thermal_data(temperature_c=81.0),
                 "temperature 81.0 C is above 80 C limit",
                 "Pi Thermal",
             ),

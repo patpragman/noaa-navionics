@@ -30,6 +30,7 @@ from .health import (
     check_opencpn_gpsd_config,
     run_preflight,
     _expected_manifest_package,
+    _parse_throttled_value,
     _trusted_enc_cell_tree_count,
     _trusted_system_command,
 )
@@ -1644,6 +1645,25 @@ def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]
     return failures
 
 
+def _pi_health_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    check_name: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult(check_name, False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult(check_name, False, control_failure))
+        return None
+    return text
+
+
 def _pi_health_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     checks = report.get("checks")
     if not isinstance(checks, list):
@@ -1660,12 +1680,37 @@ def _pi_health_validation_failures(report: dict[str, object]) -> list[CheckResul
         elif data.get("is_raspberry_pi") is not True:
             failures.append(CheckResult("Pi Power", False, "status report Pi Power missing Raspberry Pi evidence"))
         else:
+            if data.get("vcgencmd_available") is not True:
+                failures.append(CheckResult("Pi Power", False, "status report Pi Power missing vcgencmd evidence"))
+            throttled_output = _pi_health_text(
+                data,
+                "throttled_output",
+                "Pi Power throttled_output",
+                "Pi Power",
+                failures,
+            )
             throttled_value = data.get("throttled_value")
             if isinstance(throttled_value, bool) or not isinstance(throttled_value, int):
                 failures.append(CheckResult("Pi Power", False, "status report Pi Power missing throttled value"))
+            elif throttled_output is not None:
+                parsed_throttled_value = _parse_throttled_value(throttled_output)
+                if parsed_throttled_value is None:
+                    failures.append(CheckResult("Pi Power", False, "status report Pi Power throttled_output is invalid"))
+                elif parsed_throttled_value != throttled_value:
+                    failures.append(
+                        CheckResult(
+                            "Pi Power",
+                            False,
+                            "status report Pi Power throttled_output does not match throttled value",
+                        )
+                    )
             reported_flags = data.get("reported_flags")
             if not isinstance(reported_flags, list) or any(not isinstance(flag, str) for flag in reported_flags):
                 failures.append(CheckResult("Pi Power", False, "status report Pi Power missing throttling flag list"))
+            elif any(_status_text_has_control_char(flag) for flag in reported_flags):
+                failures.append(
+                    CheckResult("Pi Power", False, "status report Pi Power throttling flag contains control characters")
+                )
             elif reported_flags:
                 failures.append(
                     CheckResult(
@@ -1685,16 +1730,25 @@ def _pi_health_validation_failures(report: dict[str, object]) -> list[CheckResul
         elif data.get("is_raspberry_pi") is not True:
             failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal missing Raspberry Pi evidence"))
         else:
+            if data.get("temperature_available") is not True:
+                failures.append(
+                    CheckResult("Pi Thermal", False, "status report Pi Thermal missing temperature sensor evidence")
+                )
             temperature = data.get("temperature_c")
             if isinstance(temperature, bool) or not isinstance(temperature, (int, float)) or not math.isfinite(temperature):
                 failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal missing finite temperature"))
             else:
-                fail_c = data.get("fail_c", 80.0)
-                try:
-                    parsed_fail_c = float(fail_c)
-                except (TypeError, ValueError):
-                    parsed_fail_c = 80.0
-                if temperature >= parsed_fail_c:
+                parsed_warn_c = _positive_status_float(data.get("warn_c"))
+                parsed_fail_c = _positive_status_float(data.get("fail_c"))
+                if parsed_warn_c is None:
+                    failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal missing finite warn threshold"))
+                if parsed_fail_c is None:
+                    failures.append(CheckResult("Pi Thermal", False, "status report Pi Thermal missing finite fail threshold"))
+                elif parsed_warn_c is not None and parsed_warn_c >= parsed_fail_c:
+                    failures.append(
+                        CheckResult("Pi Thermal", False, "status report Pi Thermal warn threshold is not below fail threshold")
+                    )
+                if parsed_fail_c is not None and temperature >= parsed_fail_c:
                     failures.append(
                         CheckResult(
                             "Pi Thermal",
