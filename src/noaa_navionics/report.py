@@ -357,7 +357,7 @@ def status_report_validation_failures(
         failures.extend(_chart_readiness_validation_failures(report, now=now))
         failures.extend(_opencpn_readiness_validation_failures(report))
         failures.extend(_gps_readiness_validation_failures(report))
-        failures.extend(_serial_gps_device_validation_failures(report))
+        failures.extend(_local_gps_device_validation_failures(report))
         failures.extend(_gpsd_config_validation_failures(report))
         failures.extend(_chrony_gps_time_validation_failures(report))
         failures.extend(_opencpn_config_validation_failures(report))
@@ -1479,16 +1479,27 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
     return failures
 
 
-def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+def _local_gps_device_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     config = report.get("config")
-    if not isinstance(config, dict) or str(config.get("gps_mode", "")).strip().lower() != "serial":
+    if not isinstance(config, dict):
+        return []
+    gps_mode = str(config.get("gps_mode", "")).strip().lower()
+    if gps_mode == "serial":
+        requires_device_evidence = True
+    elif gps_mode == "gpsd":
+        requires_device_evidence = _gpsd_config_uses_local_device(config)
+    else:
+        requires_device_evidence = False
+    if not requires_device_evidence:
         return []
     checks = report.get("checks")
     if not isinstance(checks, list):
         return []
     check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
     row = check_rows.get("GPS Device")
-    if not isinstance(row, dict) or row.get("ok") is not True:
+    if not isinstance(row, dict):
+        return [CheckResult("GPS Device", False, "status report GPS Device check is missing for configured local GPS device")]
+    if row.get("ok") is not True:
         return []
     data = row.get("data")
     if not isinstance(data, dict):
@@ -1528,6 +1539,12 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
     if resolved_path is not None and not _status_absolute_path(resolved_path):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device resolved path is not absolute"))
     return failures
+
+
+def _gpsd_config_uses_local_device(config: dict[str, object]) -> bool:
+    gpsd_host = normalize_gpsd_host(str(config.get("gpsd_host", "")).strip())
+    gps_device = str(config.get("gps_device", "")).strip()
+    return bool(gps_device) and gpsd_host in {"127.0.0.1", "::1"}
 
 
 def _serial_gps_device_text(
@@ -3463,6 +3480,8 @@ def missing_required_readiness_checks(report: dict[str, object]) -> tuple[list[s
         required_checks.update(SERIAL_READINESS_CHECKS)
     else:
         required_checks.update(GPSD_READINESS_CHECKS)
+        if isinstance(config, dict) and _gpsd_config_uses_local_device(config):
+            required_checks.add("GPS Device")
         required_service_checks.update(GPSD_SERVICE_CHECKS)
     track_log = report.get("track_log")
     if isinstance(track_log, dict):

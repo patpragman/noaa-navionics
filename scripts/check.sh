@@ -5411,7 +5411,7 @@ grep -q 'def _storage_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _chart_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _opencpn_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gps_readiness_validation_failures' src/noaa_navionics/report.py
-grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.py
+grep -q 'def _local_gps_device_validation_failures' src/noaa_navionics/report.py
 grep -q 'status report config_path is not absolute' src/noaa_navionics/report.py
 grep -q 'pre-departure status snapshot JSON config_path is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config_path is not absolute' scripts/verify_pi_recovery_exports.sh
@@ -5516,6 +5516,10 @@ grep -q 'course_degrees does not match gps_fix' tests/test_downloader.py
 grep -q 'fix_quality does not match gps_fix' tests/test_downloader.py
 grep -q 'altitude_m does not match gps_fix' tests/test_downloader.py
 grep -q 'status report GPS Device check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report GPS Device check is missing for configured local GPS device' src/noaa_navionics/report.py
+grep -q 'def _gpsd_config_uses_local_device' src/noaa_navionics/report.py
+grep -q 'status report missing GPS Device readiness row for configured local GPSD device' scripts/verify_pi.sh
+grep -q 'def validate_status_gps_device_row' scripts/verify_pi.sh
 grep -q 'def _serial_gps_device_text' src/noaa_navionics/report.py
 grep -q 'resolved path is not text' tests/test_downloader.py
 grep -q 'status report GPS Device udev path is not a symlink' src/noaa_navionics/report.py
@@ -5613,7 +5617,7 @@ grep -q 'Manifest summary actual ENC cell count is not positive' tests/test_down
 grep -q 'Manifest actual ENC cell count does not match recorded count' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_opencpn_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gps_readiness_evidence' tests/test_downloader.py
-grep -q 'test_status_report_ready_requires_structured_serial_gps_device_evidence' tests/test_downloader.py
+grep -q 'test_status_report_ready_requires_structured_local_gps_device_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gpsd_config_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_chrony_gps_time_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_command_evidence' tests/test_downloader.py
@@ -5693,8 +5697,8 @@ grep -q 'status report {expected_name} fix latitude is outside -90..90' src/noaa
 grep -q 'status report {expected_name} fix longitude is outside -180..180' src/noaa_navionics/report.py
 grep -q 'fix latitude is outside -90..90' tests/test_downloader.py
 grep -q 'fix longitude is outside -180..180' tests/test_downloader.py
-grep -q 'Serial-mode READY reports also require structured GPS Device evidence' README.md
-grep -q 'Serial-mode READY reports also require structured GPS Device evidence' docs/sailboat-pi.md
+grep -q 'Serial-mode and local-GPSD READY reports also require structured GPS Device evidence' README.md
+grep -q 'Serial-mode and local-GPSD READY reports also require structured GPS Device evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured OpenCPN GPSD evidence' README.md
 grep -q 'GPSD-mode READY reports also require structured OpenCPN GPSD evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' README.md

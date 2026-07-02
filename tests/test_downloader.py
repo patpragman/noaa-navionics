@@ -393,6 +393,7 @@ def complete_status_gui_report(
         gps_source = "GPS"
     else:
         checks.update(status_gui_module.GPSD_READINESS_CHECKS)
+        checks.add("GPS Device")
         service_checks.update(status_gui_module.GPSD_SERVICE_CHECKS)
         gps_source = "GPSD"
     check_rows = [{"name": name, "ok": True, "detail": "ok"} for name in sorted(checks)]
@@ -13721,7 +13722,7 @@ class StatusReportTests(unittest.TestCase):
         self.assertTrue(status_report_is_ready(serial_report, now=now))
         self.assertFalse(status_report_validation_failures(serial_report, now=now))
 
-    def test_status_report_ready_requires_structured_serial_gps_device_evidence(self):
+    def test_status_report_ready_requires_structured_local_gps_device_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
         generated_at = now.isoformat().replace("+00:00", "Z")
 
@@ -13756,27 +13757,36 @@ class StatusReportTests(unittest.TestCase):
             (device_data(resolved_path="/dev/ttyACM0\x00"), "resolved path contains control characters"),
             (device_data(resolved_path="ttyACM0"), "resolved path is not absolute"),
         ]
-        for data, expected in cases:
-            with self.subTest(expected=expected):
-                report = complete_status_gui_report(gps_mode="serial", generated_at=generated_at)
-                row = next(check for check in report["checks"] if check["name"] == "GPS Device")
-                if data is None:
-                    row.pop("data", None)
-                else:
-                    row["data"] = data
+        for gps_mode in ("serial", "gpsd"):
+            for data, expected in cases:
+                with self.subTest(gps_mode=gps_mode, expected=expected):
+                    report = complete_status_gui_report(gps_mode=gps_mode, generated_at=generated_at)
+                    row = next(check for check in report["checks"] if check["name"] == "GPS Device")
+                    if data is None:
+                        row.pop("data", None)
+                    else:
+                        row["data"] = data
 
-                failures = status_report_validation_failures(report, now=now)
+                    failures = status_report_validation_failures(report, now=now)
 
-                self.assertFalse(status_report_is_ready(report, now=now))
-                self.assertTrue(
-                    any(failure.name == "GPS Device" and expected in failure.detail for failure in failures)
-                )
+                    self.assertFalse(status_report_is_ready(report, now=now))
+                    self.assertTrue(
+                        any(failure.name == "GPS Device" and expected in failure.detail for failure in failures)
+                    )
 
-        gpsd_report = complete_status_gui_report(generated_at=generated_at)
-        gpsd_report["checks"].append({"name": "GPS Device", "ok": True, "detail": "legacy row"})
+        missing_report = complete_status_gui_report(generated_at=generated_at)
+        missing_report["checks"] = [row for row in missing_report["checks"] if row["name"] != "GPS Device"]
 
-        self.assertTrue(status_report_is_ready(gpsd_report, now=now))
-        self.assertFalse(status_report_validation_failures(gpsd_report, now=now))
+        missing_failures = status_report_validation_failures(missing_report, now=now)
+
+        self.assertFalse(status_report_is_ready(missing_report, now=now))
+        self.assertTrue(
+            any(
+                failure.name == "GPS Device"
+                and "GPS Device check is missing for configured local GPS device" in failure.detail
+                for failure in missing_failures
+            )
+        )
 
     def test_status_report_ready_requires_structured_gpsd_config_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)

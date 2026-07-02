@@ -959,6 +959,51 @@ def normalize_host(value):
     value = value.strip().lower()
     return "127.0.0.1" if value == "localhost" else value
 
+def stable_status_gps_device_path(path):
+    for prefix in ("/dev/serial/by-id/", "/dev/serial/by-path/"):
+        if path.startswith(prefix):
+            suffix = path[len(prefix):]
+            return bool(suffix) and "/" not in suffix and suffix not in {".", ".."} and all(
+                char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-" for char in suffix
+            )
+    return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+
+def validate_status_gps_device_row(check_rows, expected_device):
+    row = check_rows.get("GPS Device")
+    if not isinstance(row, dict):
+        raise SystemExit("status report missing GPS Device readiness row for configured local GPSD device")
+    if row.get("ok") is not True:
+        detail = status_text(row.get("detail", ""), "GPS Device check detail")
+        raise SystemExit(f"status report GPS Device check is not ok: {detail or '<missing detail>'}")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        raise SystemExit("status report GPS Device check has no structured data")
+    configured_path = status_text(data.get("configured_path", ""), "GPS Device path")
+    if configured_path != expected_device:
+        raise SystemExit(
+            f"status report GPS Device path {configured_path or '<missing>'} "
+            f"does not match configured {expected_device}"
+        )
+    if not Path(configured_path).is_absolute():
+        raise SystemExit(f"status report GPS Device path is not absolute: {configured_path}")
+    if not stable_status_gps_device_path(configured_path):
+        raise SystemExit(f"status report GPS Device path is not stable: {configured_path}")
+    if data.get("stable_path") is not True:
+        raise SystemExit("status report GPS Device missing stable path evidence")
+    if data.get("volatile_path") is True:
+        raise SystemExit(f"status report GPS Device path is volatile: {configured_path}")
+    if data.get("exists") is not True:
+        raise SystemExit(f"status report GPS Device path does not exist: {configured_path}")
+    if data.get("is_directory") is True:
+        raise SystemExit(f"status report GPS Device path is a directory: {configured_path}")
+    if configured_path.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/")) and data.get("is_symlink") is not True:
+        raise SystemExit(f"status report GPS Device udev path is not a symlink: {configured_path}")
+    if data.get("is_character_device") is not True:
+        raise SystemExit(f"status report GPS Device is not a character device: {configured_path}")
+    resolved_path = status_text(data.get("resolved_path", ""), "GPS Device resolved path")
+    if not Path(resolved_path).is_absolute():
+        raise SystemExit(f"status report GPS Device resolved path is not absolute: {resolved_path}")
+
 def parse_opencpn_config_text(text):
     section = ""
     chart_directories = []
@@ -1470,6 +1515,12 @@ if expected_config_path:
             mismatches.append(f"{key}={actual!r}, expected {expected!r}")
     if mismatches:
         raise SystemExit("status report config values do not match current config: " + "; ".join(mismatches))
+    if (
+        expected_config["gps_mode"] == "gpsd"
+        and normalize_host(expected_config["gpsd_host"]) in {"127.0.0.1", "::1"}
+        and expected_config["gps_device"]
+    ):
+        validate_status_gps_device_row(check_rows, expected_config["gps_device"])
     track_log = report.get("track_log")
     if not isinstance(track_log, dict):
         raise SystemExit("status report has no track_log section")
@@ -2486,6 +2537,12 @@ required_checks = {
     "GPSD",
     "GPS Time Source",
 }
+if (
+    expected_config.get("gps_mode") == "gpsd"
+    and normalize_host(expected_config.get("gpsd_host", "")) in {"127.0.0.1", "::1"}
+    and expected_config.get("gps_device")
+):
+    required_checks.add("GPS Device")
 if require_track_disk_check:
     required_checks.add("Track Disk")
 required_service_checks = {
