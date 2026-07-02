@@ -719,8 +719,8 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' README.md
-grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' docs/sailboat-pi.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/current-hostname targets, bounds one-off GPS wait overrides to 1-600 seconds, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' README.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/current-hostname targets, bounds one-off GPS wait overrides to 1-600 seconds, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' docs/sailboat-pi.md
 grep -q 'validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' README.md
 grep -q 'validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
@@ -839,8 +839,8 @@ grep -q 'It does not deploy, reboot, download charts, or write the Pi status art
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
-grep -q "refresh helper validates the SSH target, the Pi's trusted root-owned \`python3\`, and the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" README.md
-grep -q "refresh helper validates the SSH target, bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits" docs/sailboat-pi.md
+grep -q "refresh helper validates the SSH target, rejects loopback/current-hostname targets, validates the Pi's trusted root-owned \`python3\`, and validates the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" README.md
+grep -q "refresh helper validates the SSH target, rejects loopback/current-hostname targets, bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits" docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\`, and validates the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
@@ -1047,10 +1047,10 @@ grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' READ
 grep -q 'read one fresh timestamped quality-checked GPSD or serial GPS fix' docs/sailboat-pi.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' README.md
 grep -q 'scripts/shutdown_pi_safely.sh pi@raspberrypi.local --confirm' docs/sailboat-pi.md
-grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' README.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' README.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' README.md
-grep -q 'shutdown helper validates the SSH target, rejects loopback/local-host targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
+grep -q 'shutdown helper validates the SSH target, rejects loopback/current-hostname targets, bounds the shutdown confirmation timeout to 1-600 seconds' docs/sailboat-pi.md
 grep -q 'validates trusted remote `sync`, `sudo`, and `systemctl` command paths and parent directories, revalidates `sync` immediately before flushing filesystems, verifies noninteractive sudo can run the exact `systemctl poweroff` command, and revalidates `sudo` and `systemctl` immediately before the dry-run report or real poweroff request' docs/sailboat-pi.md
 grep -q 'waits up to the configured timeout for SSH to stop responding before reporting shutdown confirmation' docs/sailboat-pi.md
 grep -q -- '--timeout requires a real shutdown' scripts/shutdown_pi_safely.sh
@@ -1161,6 +1161,8 @@ for pi_ssh_script in \
 do
   grep -q 'SSH target must not point at this computer or loopback' "$pi_ssh_script"
   grep -q 'localhost|localhost.localdomain|\*.localhost|ip6-localhost|ip6-loopback|loopback|127.\*|0|0.0.0.0' "$pi_ssh_script"
+  grep -q 'for local_hostname_file in /proc/sys/kernel/hostname /etc/hostname' "$pi_ssh_script"
+  grep -q '"$local_hostname_lower"|"$local_hostname_short"|"$local_hostname_short.local")' "$pi_ssh_script"
 done
 grep -q 'plain user@host without paths or ports' scripts/deploy_to_pi.sh
 grep -q 'plain user@host without paths or ports' scripts/dock_test_pi.sh
@@ -5931,6 +5933,15 @@ verify_output="$(mktemp)"
 tmpdir="$(mktemp -d)"
 workspace_tmpdir="$(mktemp -d "$repo_root/.check-tmp.XXXXXX")"
 trap 'rm -rf "${tmpdir:-}" "${workspace_tmpdir:-}" "$install_output" "$provision_output" "$gpsd_output" "$deploy_output" "$dock_output" "$verify_output"' EXIT
+local_hostname_candidate=""
+local_hostname_candidate_is_valid=0
+if [[ -r /proc/sys/kernel/hostname ]]; then
+  IFS= read -r local_hostname_candidate </proc/sys/kernel/hostname || local_hostname_candidate=""
+  local_hostname_candidate="${local_hostname_candidate%%.*}"
+fi
+if [[ "$local_hostname_candidate" =~ ^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)$ ]]; then
+  local_hostname_candidate_is_valid=1
+fi
 
 support_remote_heredoc="$tmpdir/support-remote-heredoc.sh"
 awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh >"$support_remote_heredoc"
@@ -6138,6 +6149,19 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+if [[ "$local_hostname_candidate_is_valid" -eq 1 ]]; then
+  set +e
+  scripts/verify_pi.sh "pi@${local_hostname_candidate}" >"$verify_output" 2>&1
+  verify_code=$?
+  set -e
+  if [[ "$verify_code" -ne 2 ]]; then
+    cat "$verify_output" >&2
+    echo "expected verify_pi.sh to reject current-hostname SSH targets with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+fi
 
 set +e
 scripts/configure_desktop_autologin.sh --allow-non-pi --user "bad user" >"$install_output" 2>&1
@@ -6489,6 +6513,19 @@ if [[ "$deploy_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$deploy_output"
+
+if [[ "$local_hostname_candidate_is_valid" -eq 1 ]]; then
+  set +e
+  scripts/deploy_to_pi.sh "pi@${local_hostname_candidate}" --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+  deploy_code=$?
+  set -e
+  if [[ "$deploy_code" -ne 2 ]]; then
+    cat "$deploy_output" >&2
+    echo "expected deploy_to_pi.sh to reject current-hostname SSH targets with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'SSH target must not point at this computer or loopback' "$deploy_output"
+fi
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid / --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
@@ -7768,6 +7805,19 @@ if [[ "$pre_departure_code" -ne 2 ]]; then
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
 
+if [[ "$local_hostname_candidate_is_valid" -eq 1 ]]; then
+  set +e
+  scripts/pre_departure_check_pi.sh "pi@${local_hostname_candidate}" --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+  pre_departure_code=$?
+  set -e
+  if [[ "$pre_departure_code" -ne 2 ]]; then
+    cat "$verify_output" >&2
+    echo "expected pre_departure_check_pi.sh to reject current-hostname SSH targets with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+fi
+
 set +e
 scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds nope >"$verify_output" 2>&1
 pre_departure_code=$?
@@ -7834,6 +7884,19 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+if [[ "$local_hostname_candidate_is_valid" -eq 1 ]]; then
+  set +e
+  scripts/pre_trip_prepare_pi.sh "pi@${local_hostname_candidate}" --device /dev/serial/by-id/mock-gps >"$verify_output" 2>&1
+  pre_trip_code=$?
+  set -e
+  if [[ "$pre_trip_code" -ne 2 ]]; then
+    cat "$verify_output" >&2
+    echo "expected pre_trip_prepare_pi.sh to reject current-hostname SSH targets with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+fi
 
 set +e
 scripts/pre_trip_prepare_pi.sh pi@example.invalid --device /dev/ttyUSB0 >"$verify_output" 2>&1
@@ -10379,6 +10442,19 @@ if [[ "$refresh_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+
+if [[ "$local_hostname_candidate_is_valid" -eq 1 ]]; then
+  set +e
+  scripts/refresh_pi_charts.sh "pi@${local_hostname_candidate}" >"$verify_output" 2>&1
+  refresh_code=$?
+  set -e
+  if [[ "$refresh_code" -ne 2 ]]; then
+    cat "$verify_output" >&2
+    echo "expected refresh_pi_charts.sh to reject current-hostname SSH targets with exit 2" >&2
+    exit 1
+  fi
+  grep -q 'SSH target must not point at this computer or loopback' "$verify_output"
+fi
 
 set +e
 scripts/refresh_pi_charts.sh pi@example.invalid --retries 0 >"$verify_output" 2>&1

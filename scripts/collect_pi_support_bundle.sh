@@ -48,6 +48,10 @@ validate_ssh_target() {
   local user_part
   local host_part
   local host_lower
+  local local_hostname_file
+  local local_hostname
+  local local_hostname_lower
+  local local_hostname_short
 
   if [[ -z "$value" ]]; then
     echo "SSH target is required" >&2
@@ -90,6 +94,24 @@ validate_ssh_target() {
       exit 2
       ;;
   esac
+  for local_hostname_file in /proc/sys/kernel/hostname /etc/hostname; do
+    if [[ ! -r "$local_hostname_file" ]]; then
+      continue
+    fi
+    IFS= read -r local_hostname <"$local_hostname_file" || local_hostname=""
+    local_hostname="${local_hostname%%[[:space:]]*}"
+    if [[ -z "$local_hostname" ]]; then
+      continue
+    fi
+    local_hostname_lower="${local_hostname,,}"
+    local_hostname_short="${local_hostname_lower%%.*}"
+    case "$host_lower" in
+      "$local_hostname_lower"|"$local_hostname_short"|"$local_hostname_short.local")
+        echo "SSH target must not point at this computer or loopback: $host_part" >&2
+        exit 2
+        ;;
+    esac
+  done
   if [[ "$user_part" == "root" ]]; then
     cat >&2 <<'EOF'
 Do not collect support bundles as root@.
