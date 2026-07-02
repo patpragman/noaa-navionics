@@ -2602,6 +2602,18 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             return ""
         return text
 
+    def parsed_value(values: dict[str, object], key: str, label: str) -> str:
+        value = values.get(key, "")
+        if not isinstance(value, str):
+            failures.append(f"{label} {key} is not text")
+            return ""
+        text = value.strip()
+        control_failure = _status_control_character_failure(text, f"{label} {key}")
+        if control_failure:
+            failures.append(control_failure)
+            return ""
+        return text
+
     autostart = desktop.get("autostart")
     if not isinstance(autostart, dict):
         failures.append("status report missing desktop autostart section")
@@ -2658,10 +2670,11 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
                 "X-GNOME-Autostart-enabled": "true",
             }
             for key, expected in expected_values.items():
-                actual = str(values.get(key, "")).strip()
+                actual = parsed_value(values, key, "desktop autostart")
                 if actual != expected:
                     failures.append(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
-            if str(values.get("Hidden", "")).strip().lower() == "true":
+            hidden = parsed_value(values, "Hidden", "desktop autostart")
+            if hidden.lower() == "true":
                 failures.append("desktop autostart Hidden=true disables chartplotter startup")
 
     status_launcher = desktop.get("status_launcher")
@@ -2720,18 +2733,30 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
                 "Terminal": "false",
             }
             for key, expected in expected_values.items():
-                actual = str(values.get(key, "")).strip()
+                actual = parsed_value(values, key, "status GUI desktop launcher")
                 if actual != expected:
                     failures.append(f"status GUI desktop launcher {key}={actual or '<missing>'} expected {expected}")
-            if str(values.get("Hidden", "")).strip().lower() == "true":
+            hidden = parsed_value(values, "Hidden", "status GUI desktop launcher")
+            if hidden.lower() == "true":
                 failures.append("status GUI desktop launcher Hidden=true hides the readiness panel")
-            if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+            autostart_enabled = parsed_value(values, "X-GNOME-Autostart-enabled", "status GUI desktop launcher")
+            if autostart_enabled.lower() == "true":
                 failures.append("status GUI desktop launcher must not be configured for autostart")
 
-    graphical_target = str(desktop.get("graphical_target", "")).strip()
+    graphical_target = optional_text(
+        desktop,
+        "graphical_target",
+        "status report graphical target is not text",
+        "graphical target",
+    )
     if graphical_target != "graphical.target":
         failures.append(f"status report graphical target is {graphical_target or '<missing>'}")
-    lightdm_enabled = str(desktop.get("lightdm_enabled", "")).strip()
+    lightdm_enabled = optional_text(
+        desktop,
+        "lightdm_enabled",
+        "status report LightDM enabled state is not text",
+        "LightDM enabled state",
+    )
     if lightdm_enabled != "enabled":
         failures.append(f"status report LightDM enabled state is {lightdm_enabled or '<missing>'}")
 
@@ -2782,7 +2807,11 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
         sections = lightdm.get("sections")
         if not isinstance(sections, list):
             failures.append("status report LightDM autologin sections were not parsed")
-        elif "Seat:*" not in {str(section) for section in sections}:
+        elif any(not isinstance(section, str) for section in sections):
+            failures.append("status report LightDM autologin sections are not text")
+        elif any(_status_text_has_control_char(section) for section in sections):
+            failures.append("status report LightDM autologin section contains control characters")
+        elif "Seat:*" not in {section.strip() for section in sections}:
             failures.append("LightDM autologin config missing [Seat:*] section")
         values = lightdm.get("values")
         if not isinstance(values, dict):
@@ -2790,13 +2819,13 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
         else:
             user = report.get("user")
             expected_user = str(user.get("name", "")).strip() if isinstance(user, dict) else ""
-            actual_user = str(values.get("autologin-user", "")).strip()
+            actual_user = parsed_value(values, "autologin-user", "LightDM")
             if expected_user and actual_user != expected_user:
                 failures.append(f"LightDM autologin-user={actual_user or '<missing>'} expected {expected_user}")
-            timeout = str(values.get("autologin-user-timeout", "")).strip()
+            timeout = parsed_value(values, "autologin-user-timeout", "LightDM")
             if timeout != "0":
                 failures.append(f"LightDM autologin-user-timeout={timeout or '<missing>'} expected 0")
-            session = str(values.get("autologin-session", "")).strip()
+            session = parsed_value(values, "autologin-session", "LightDM")
             if not session:
                 failures.append("LightDM autologin-session is missing")
             elif not _safe_xsession_name(session):
@@ -2857,12 +2886,14 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
                 "Terminal": "true",
             }
             for key, expected in expected_values.items():
-                actual = str(values.get(key, "")).strip()
+                actual = parsed_value(values, key, "MOB desktop launcher")
                 if actual != expected:
                     failures.append(f"MOB desktop launcher {key}={actual or '<missing>'} expected {expected}")
-            if str(values.get("Hidden", "")).strip().lower() == "true":
+            hidden = parsed_value(values, "Hidden", "MOB desktop launcher")
+            if hidden.lower() == "true":
                 failures.append("MOB desktop launcher Hidden=true hides the emergency launcher")
-            if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+            autostart_enabled = parsed_value(values, "X-GNOME-Autostart-enabled", "MOB desktop launcher")
+            if autostart_enabled.lower() == "true":
                 failures.append("MOB desktop launcher must not be configured for autostart")
     if failures:
         return [

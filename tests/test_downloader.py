@@ -14511,6 +14511,30 @@ class StatusReportTests(unittest.TestCase):
                 "desktop autostart Exec=/tmp/start-chartplotter",
             ),
             (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "autostart": {
+                            **valid_autostart,
+                            "values": {**valid_autostart["values"], "Exec": 123},
+                        },
+                    }
+                },
+                "desktop autostart Exec is not text",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "autostart": {
+                            **valid_autostart,
+                            "values": {**valid_autostart["values"], "Hidden": "false\x00"},
+                        },
+                    }
+                },
+                "desktop autostart Hidden contains control characters",
+            ),
+            (
                 {"desktop": {key: value for key, value in valid_desktop.items() if key != "status_launcher"}},
                 "missing status GUI desktop launcher section",
             ),
@@ -14569,6 +14593,18 @@ class StatusReportTests(unittest.TestCase):
                     }
                 },
                 "status GUI desktop launcher must not be configured for autostart",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "status_launcher": {
+                            **valid_status_launcher,
+                            "values": {**valid_status_launcher["values"], "X-GNOME-Autostart-enabled": True},
+                        },
+                    }
+                },
+                "status GUI desktop launcher X-GNOME-Autostart-enabled is not text",
             ),
             (
                 {"desktop": {key: value for key, value in valid_desktop.items() if key != "mob_launcher"}},
@@ -14631,8 +14667,36 @@ class StatusReportTests(unittest.TestCase):
                 "MOB desktop launcher must not be configured for autostart",
             ),
             (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "mob_launcher": {
+                            **valid_mob_launcher,
+                            "values": {**valid_mob_launcher["values"], "Terminal": "true\x00"},
+                        },
+                    }
+                },
+                "MOB desktop launcher Terminal contains control characters",
+            ),
+            (
+                {"desktop": {**valid_desktop, "graphical_target": 123}},
+                "graphical target is not text",
+            ),
+            (
+                {"desktop": {**valid_desktop, "graphical_target": "graphical.target\x00"}},
+                "graphical target contains control characters",
+            ),
+            (
                 {"desktop": {**valid_desktop, "graphical_target": "multi-user.target"}},
                 "graphical target is multi-user.target",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_enabled": 123}},
+                "LightDM enabled state is not text",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_enabled": "enabled\x00"}},
+                "LightDM enabled state contains control characters",
             ),
             (
                 {"desktop": {**valid_desktop, "lightdm_enabled": "disabled"}},
@@ -14697,6 +14761,14 @@ class StatusReportTests(unittest.TestCase):
                 "LightDM autologin config missing [Seat:*] section",
             ),
             (
+                {"desktop": {**valid_desktop, "lightdm_autologin": {**valid_lightdm, "sections": [123]}}},
+                "LightDM autologin sections are not text",
+            ),
+            (
+                {"desktop": {**valid_desktop, "lightdm_autologin": {**valid_lightdm, "sections": ["Seat:*\x00"]}}},
+                "LightDM autologin section contains control characters",
+            ),
+            (
                 {
                     "desktop": {
                         **valid_desktop,
@@ -14716,6 +14788,30 @@ class StatusReportTests(unittest.TestCase):
                     }
                 },
                 "LightDM autologin-user=other expected pi",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "values": {**valid_lightdm["values"], "autologin-user": 123},
+                        },
+                    }
+                },
+                "LightDM autologin-user is not text",
+            ),
+            (
+                {
+                    "desktop": {
+                        **valid_desktop,
+                        "lightdm_autologin": {
+                            **valid_lightdm,
+                            "values": {**valid_lightdm["values"], "autologin-user-timeout": "0\x00"},
+                        },
+                    }
+                },
+                "LightDM autologin-user-timeout contains control characters",
             ),
             (
                 {

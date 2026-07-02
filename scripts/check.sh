@@ -5141,6 +5141,13 @@ grep -q 'MOB desktop launcher path_symlink_component contains control characters
 grep -q 'desktop autostart error contains control characters' tests/test_downloader.py
 grep -q 'status GUI desktop launcher error contains control characters' tests/test_downloader.py
 grep -q 'MOB desktop launcher error contains control characters' tests/test_downloader.py
+grep -q 'def parsed_value' src/noaa_navionics/report.py
+grep -q 'desktop autostart Exec is not text' tests/test_downloader.py
+grep -q 'status GUI desktop launcher X-GNOME-Autostart-enabled is not text' tests/test_downloader.py
+grep -q 'MOB desktop launcher Terminal contains control characters' tests/test_downloader.py
+grep -q 'graphical target is not text' tests/test_downloader.py
+grep -q 'LightDM autologin sections are not text' tests/test_downloader.py
+grep -q 'LightDM autologin-user is not text' tests/test_downloader.py
 grep -q 'desktop autostart Hidden=true disables chartplotter startup' src/noaa_navionics/report.py
 grep -q 'status report missing LightDM autologin section' src/noaa_navionics/report.py
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' src/noaa_navionics/report.py
