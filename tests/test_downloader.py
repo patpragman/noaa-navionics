@@ -13701,6 +13701,25 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_verify_pi_validates_status_report_status_launcher_evidence(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            'status_launcher = desktop.get("status_launcher")',
+            "status report has no status GUI desktop launcher section",
+            "status report status GUI desktop launcher values do not match live desktop file",
+            "status report status GUI desktop launcher has permissions",
+            "expected_status_launcher = {",
+            '"Name": "NOAA Navionics Status"',
+            '"Exec": \'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"\'',
+            "status GUI desktop launcher must not be configured for autostart",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_verify_pi_rejects_unsupported_expected_config_gps_baud(self):
         source = shell_function_python_heredoc(
             Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),

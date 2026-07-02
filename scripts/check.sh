@@ -2867,8 +2867,12 @@ grep -q 'status report launcher settings path is a symlink or missing symlink st
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report desktop autostart missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'status report has no status GUI desktop launcher section' scripts/verify_pi.sh
+grep -q 'status report status GUI desktop launcher values do not match live desktop file' scripts/verify_pi.sh
+grep -q 'status report status GUI desktop launcher has permissions' scripts/verify_pi.sh
 grep -q 'status report has no MOB desktop launcher section' scripts/verify_pi.sh
 grep -q 'status report MOB desktop launcher values do not match live desktop file' scripts/verify_pi.sh
+grep -q 'status GUI desktop launcher must not be configured for autostart' scripts/verify_pi.sh
 grep -q 'MOB desktop launcher must not be configured for autostart' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config missing path_symlink_component' scripts/verify_pi.sh
@@ -3268,6 +3272,8 @@ grep -q 'do not match live OpenCPN config' scripts/verify_pi.sh
 grep -q 'does not contain enabled GPSD connection' scripts/verify_pi.sh
 grep -q 'status report has no desktop section' scripts/verify_pi.sh
 grep -q 'status report desktop autostart values do not match live desktop file' scripts/verify_pi.sh
+grep -q 'status report status GUI desktop launcher values do not match live desktop file' scripts/verify_pi.sh
+grep -q 'test_verify_pi_validates_status_report_status_launcher_evidence' tests/test_downloader.py
 grep -q 'status report LightDM autologin values do not match live LightDM config' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display failure logging' scripts/verify_pi.sh
 grep -q 'chartplotter autostart terminal' scripts/verify_pi.sh
@@ -5453,6 +5459,8 @@ grep -q 'MOB desktop launcher has permissions 0644, expected user executable bit
 grep -q 'MOB desktop launcher must not be configured for autostart' tests/test_downloader.py
 grep -q 'Status reports also include and validate the non-autostart status GUI desktop launcher' README.md
 grep -q 'Status reports also include and validate the non-autostart status GUI desktop launcher' docs/sailboat-pi.md
+grep -q 'Pi verification also compares the status-reported status GUI launcher against the live desktop file' README.md
+grep -q 'Pi verification also compares the status-reported status GUI launcher against the live desktop file' docs/sailboat-pi.md
 grep -q 'status-report --gps-sample.*still checks OpenCPN' README.md
 grep -q 'Sample-based status reports substitute only the live GPS fix read' docs/sailboat-pi.md
 grep -q 'summary\["age_seconds"\] = (current - timestamp).total_seconds()' src/noaa_navionics/report.py

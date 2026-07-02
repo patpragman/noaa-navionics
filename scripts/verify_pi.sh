@@ -1727,6 +1727,89 @@ if expected_config_path:
             raise SystemExit(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
     if str(autostart_values.get("Hidden", "")).strip().lower() == "true":
         raise SystemExit("desktop autostart is hidden")
+    status_launcher = desktop.get("status_launcher")
+    if not isinstance(status_launcher, dict):
+        raise SystemExit("status report has no status GUI desktop launcher section")
+    status_launcher_path = str(status_launcher.get("path", "")).strip()
+    if status_launcher.get("exists") is not True:
+        raise SystemExit(f"status report status GUI desktop launcher does not exist: {status_launcher_path}")
+    if status_launcher.get("is_symlink") is not False:
+        raise SystemExit(
+            "status report status GUI desktop launcher path is a symlink or missing symlink status: "
+            f"{status_launcher_path}"
+        )
+    status_launcher_file = Path(status_launcher_path).expanduser()
+    if status_launcher_file.is_symlink():
+        raise SystemExit(f"status report status GUI desktop launcher path is a symlink: {status_launcher_file}")
+    if status_launcher.get("directory_is_symlink") is not False:
+        raise SystemExit(
+            "status report status GUI desktop launcher directory is a symlink or missing symlink status: "
+            f"{status_launcher_file.parent}"
+        )
+    if "path_symlink_component" not in status_launcher:
+        raise SystemExit(
+            f"status report status GUI desktop launcher missing path_symlink_component: {status_launcher_path}"
+        )
+    status_launcher_symlink_component = str(status_launcher.get("path_symlink_component", "")).strip()
+    if status_launcher_symlink_component:
+        raise SystemExit(
+            "status report status GUI desktop launcher path contains a symlink: "
+            f"{status_launcher_symlink_component}"
+        )
+    if status_launcher_file.parent.is_symlink():
+        raise SystemExit(
+            f"status report status GUI desktop launcher directory is a symlink: {status_launcher_file.parent}"
+        )
+    live_status_launcher_symlink_component = first_symlink_ancestor(status_launcher_file.parent)
+    if live_status_launcher_symlink_component is not None:
+        raise SystemExit(
+            "status report status GUI desktop launcher path contains a symlink: "
+            f"{live_status_launcher_symlink_component}"
+        )
+    if not status_launcher_file.is_file():
+        raise SystemExit(
+            f"status report status GUI desktop launcher is not a regular file: {status_launcher_file}"
+        )
+    status_launcher_text, status_launcher_stat = read_trusted_text_file(
+        status_launcher_file,
+        "status GUI desktop launcher",
+        os.getuid(),
+    )
+    verify_status_file_owner_and_mode(
+        status_launcher,
+        status_launcher_file,
+        status_launcher_stat,
+        "status GUI desktop launcher",
+        os.getuid(),
+    )
+    status_launcher_mode = status_launcher_stat.st_mode & 0o777
+    if not status_launcher_mode & stat.S_IXUSR:
+        raise SystemExit(
+            f"status report status GUI desktop launcher has permissions {status_launcher_mode:04o}, "
+            "expected user executable bit"
+        )
+    status_launcher_values = status_launcher.get("values")
+    if not isinstance(status_launcher_values, dict):
+        raise SystemExit(
+            f"status report status GUI desktop launcher values were not parsed: {status_launcher_path}"
+        )
+    _status_launcher_sections, live_status_launcher_values = parse_key_value_text(status_launcher_text, ("#",))
+    if status_launcher_values != live_status_launcher_values:
+        raise SystemExit("status report status GUI desktop launcher values do not match live desktop file")
+    expected_status_launcher = {
+        "Type": "Application",
+        "Name": "NOAA Navionics Status",
+        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+        "Terminal": "false",
+    }
+    for key, expected in expected_status_launcher.items():
+        actual = str(status_launcher_values.get(key, "")).strip()
+        if actual != expected:
+            raise SystemExit(f"status GUI desktop launcher {key}={actual or '<missing>'} expected {expected}")
+    if str(status_launcher_values.get("Hidden", "")).strip().lower() == "true":
+        raise SystemExit("status GUI desktop launcher is hidden")
+    if str(status_launcher_values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+        raise SystemExit("status GUI desktop launcher must not be configured for autostart")
     mob_launcher = desktop.get("mob_launcher")
     if not isinstance(mob_launcher, dict):
         raise SystemExit("status report has no MOB desktop launcher section")
