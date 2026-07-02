@@ -140,6 +140,14 @@ LAUNCHER_ENV_KEYS = {
     "NOAA_NAVIONICS_OPENCPN_RESTARTS",
     "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY",
 }
+LAUNCHER_ENV_INTEGER_LIMITS = {
+    "NOAA_NAVIONICS_GPS_SECONDS": 600,
+    "NOAA_NAVIONICS_WARNING_SECONDS": 600,
+    "NOAA_NAVIONICS_READINESS_ATTEMPTS": 20,
+    "NOAA_NAVIONICS_READINESS_RETRY_DELAY": 3600,
+    "NOAA_NAVIONICS_OPENCPN_RESTARTS": 20,
+    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": 3600,
+}
 CORE_READINESS_CHECKS = frozenset(
     {
         "Python",
@@ -1598,11 +1606,19 @@ def _launcher_settings_validation_failures(launcher_settings: object) -> list[Ch
         value = str(values.get(key, "")).strip()
         if not value.isdigit() or int(value) <= 0:
             failures.append(f"{key}={value or '<missing>'} expected positive integer")
+            return
+        maximum = LAUNCHER_ENV_INTEGER_LIMITS[key]
+        if int(value) > maximum:
+            failures.append(f"{key}={value} expected at most {maximum}")
 
     def required_nonnegative_integer(key: str) -> None:
         value = str(values.get(key, "")).strip()
         if not value.isdigit() or int(value) < 0:
             failures.append(f"{key}={value or '<missing>'} expected non-negative integer")
+            return
+        maximum = LAUNCHER_ENV_INTEGER_LIMITS[key]
+        if int(value) > maximum:
+            failures.append(f"{key}={value} expected at most {maximum}")
 
     required_positive_integer("NOAA_NAVIONICS_GPS_SECONDS")
     required_positive_integer("NOAA_NAVIONICS_READINESS_ATTEMPTS")
@@ -4094,22 +4110,54 @@ def _launcher_settings_check(summary: dict[str, object]) -> CheckResult:
     gps_seconds = str(values.get("NOAA_NAVIONICS_GPS_SECONDS", "")).strip()
     if not gps_seconds.isdigit() or int(gps_seconds) <= 0:
         failures.append(f"NOAA_NAVIONICS_GPS_SECONDS={gps_seconds or '<missing>'} expected positive integer")
+    elif int(gps_seconds) > LAUNCHER_ENV_INTEGER_LIMITS["NOAA_NAVIONICS_GPS_SECONDS"]:
+        failures.append(
+            f"NOAA_NAVIONICS_GPS_SECONDS={gps_seconds} expected at most "
+            f"{LAUNCHER_ENV_INTEGER_LIMITS['NOAA_NAVIONICS_GPS_SECONDS']}"
+        )
     attempts = str(values.get("NOAA_NAVIONICS_READINESS_ATTEMPTS", "")).strip()
     if attempts and (not attempts.isdigit() or int(attempts) <= 0):
         failures.append(f"NOAA_NAVIONICS_READINESS_ATTEMPTS={attempts} expected positive integer")
+    elif attempts and int(attempts) > LAUNCHER_ENV_INTEGER_LIMITS["NOAA_NAVIONICS_READINESS_ATTEMPTS"]:
+        failures.append(
+            f"NOAA_NAVIONICS_READINESS_ATTEMPTS={attempts} expected at most "
+            f"{LAUNCHER_ENV_INTEGER_LIMITS['NOAA_NAVIONICS_READINESS_ATTEMPTS']}"
+        )
     retry_delay = str(values.get("NOAA_NAVIONICS_READINESS_RETRY_DELAY", "")).strip()
     if retry_delay and (not retry_delay.isdigit() or int(retry_delay) < 0):
         failures.append(f"NOAA_NAVIONICS_READINESS_RETRY_DELAY={retry_delay} expected non-negative integer")
+    elif retry_delay and int(retry_delay) > LAUNCHER_ENV_INTEGER_LIMITS["NOAA_NAVIONICS_READINESS_RETRY_DELAY"]:
+        failures.append(
+            f"NOAA_NAVIONICS_READINESS_RETRY_DELAY={retry_delay} expected at most "
+            f"{LAUNCHER_ENV_INTEGER_LIMITS['NOAA_NAVIONICS_READINESS_RETRY_DELAY']}"
+        )
     warning_seconds = str(values.get("NOAA_NAVIONICS_WARNING_SECONDS", "")).strip()
     if warning_seconds and (not warning_seconds.isdigit() or int(warning_seconds) < 0):
         failures.append(f"NOAA_NAVIONICS_WARNING_SECONDS={warning_seconds} expected non-negative integer")
+    elif warning_seconds and int(warning_seconds) > LAUNCHER_ENV_INTEGER_LIMITS["NOAA_NAVIONICS_WARNING_SECONDS"]:
+        failures.append(
+            f"NOAA_NAVIONICS_WARNING_SECONDS={warning_seconds} expected at most "
+            f"{LAUNCHER_ENV_INTEGER_LIMITS['NOAA_NAVIONICS_WARNING_SECONDS']}"
+        )
     opencpn_restarts = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTARTS", "")).strip()
     if opencpn_restarts and (not opencpn_restarts.isdigit() or int(opencpn_restarts) < 0):
         failures.append(f"NOAA_NAVIONICS_OPENCPN_RESTARTS={opencpn_restarts} expected non-negative integer")
+    elif opencpn_restarts and int(opencpn_restarts) > LAUNCHER_ENV_INTEGER_LIMITS["NOAA_NAVIONICS_OPENCPN_RESTARTS"]:
+        failures.append(
+            f"NOAA_NAVIONICS_OPENCPN_RESTARTS={opencpn_restarts} expected at most "
+            f"{LAUNCHER_ENV_INTEGER_LIMITS['NOAA_NAVIONICS_OPENCPN_RESTARTS']}"
+        )
     opencpn_restart_delay = str(values.get("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY", "")).strip()
     if opencpn_restart_delay and (not opencpn_restart_delay.isdigit() or int(opencpn_restart_delay) < 0):
         failures.append(
             f"NOAA_NAVIONICS_OPENCPN_RESTART_DELAY={opencpn_restart_delay} expected non-negative integer"
+        )
+    elif opencpn_restart_delay and int(opencpn_restart_delay) > LAUNCHER_ENV_INTEGER_LIMITS[
+        "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY"
+    ]:
+        failures.append(
+            f"NOAA_NAVIONICS_OPENCPN_RESTART_DELAY={opencpn_restart_delay} expected at most "
+            f"{LAUNCHER_ENV_INTEGER_LIMITS['NOAA_NAVIONICS_OPENCPN_RESTART_DELAY']}"
         )
     fail_open = str(values.get("NOAA_NAVIONICS_START_ON_FAILED_READINESS", "")).strip().lower()
     if fail_open in {"1", "yes", "true", "on"}:

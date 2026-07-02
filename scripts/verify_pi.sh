@@ -24,7 +24,9 @@ require_chartplotter_started=0
 gps_seconds=60
 max_gps_seconds=600
 opencpn_restarts=3
+max_opencpn_restarts=20
 opencpn_restart_delay=5
+max_opencpn_restart_delay=3600
 expected_gps_device=""
 expected_boot_id=""
 ssh_cmd=""
@@ -288,6 +290,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
       opencpn_restarts="${2:-}"
       shift 2
       ;;
@@ -297,6 +300,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
       opencpn_restart_delay="${2:-}"
       shift 2
       ;;
@@ -400,6 +404,8 @@ status_retry_delay=30
 require_chartplotter_started="${NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED:-0}"
 gps_seconds="${NOAA_NAVIONICS_GPS_SECONDS:-60}"
 max_gps_seconds=600
+max_opencpn_restarts=20
+max_opencpn_restart_delay=3600
 chartplotter_start_timeout=120
 chartplotter_start_timeout_floor=120
 chartplotter_start_interval=5
@@ -493,7 +499,9 @@ validate_verifier_controls() {
   require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"
   require_remote_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"
   require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS" "${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}"
+  require_remote_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTARTS" "${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$max_opencpn_restarts"
   require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}"
+  require_remote_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$max_opencpn_restart_delay"
   if [[ -z "$expected_revision" || ! "$expected_revision" =~ ^(unknown|[A-Za-z0-9._-]+)$ ]]; then
     fatal "NOAA_NAVIONICS_EXPECTED_REVISION contains unsafe characters: ${expected_revision:-<empty>}"
   fi

@@ -39,13 +39,20 @@ skip_gps_time=0
 gps_seconds=60
 max_gps_seconds=600
 warning_seconds=8
+max_warning_seconds=600
 readiness_attempts=3
+max_readiness_attempts=20
 readiness_retry_delay=10
+max_readiness_retry_delay=3600
 start_on_failed_readiness=no
 opencpn_restarts=3
+max_opencpn_restarts=20
 opencpn_restart_delay=5
+max_opencpn_restart_delay=3600
 sync_retries=5
+max_sync_retries=20
 sync_retry_delay=30
+max_sync_retry_delay=3600
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 bin="${HOME}/.local/bin/noaa-navionics"
 systemctl_cmd=""
@@ -732,9 +739,13 @@ done
 require_positive_integer "--gps-seconds" "$gps_seconds"
 require_integer_at_most "--gps-seconds" "$gps_seconds" "$max_gps_seconds"
 require_positive_integer "--sync-retries" "$sync_retries"
+require_integer_at_most "--sync-retries" "$sync_retries" "$max_sync_retries"
 require_non_negative_integer "--opencpn-restarts" "$opencpn_restarts"
+require_integer_at_most "--opencpn-restarts" "$opencpn_restarts" "$max_opencpn_restarts"
 require_non_negative_integer "--opencpn-restart-delay" "$opencpn_restart_delay"
+require_integer_at_most "--opencpn-restart-delay" "$opencpn_restart_delay" "$max_opencpn_restart_delay"
 require_non_negative_integer "--sync-retry-delay" "$sync_retry_delay"
+require_integer_at_most "--sync-retry-delay" "$sync_retry_delay" "$max_sync_retry_delay"
 
 if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
   cat >&2 <<'EOF'

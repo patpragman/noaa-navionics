@@ -248,6 +248,14 @@ grep -q 'NOAA Navionics launcher environment directory has permissions' scripts/
 grep -q 'NOAA Navionics launcher environment has permissions' scripts/start_chartplotter.sh
 grep -q 'Missing NOAA_NAVIONICS_GPS_SECONDS' scripts/start_chartplotter.sh
 grep -q 'Invalid NOAA_NAVIONICS_GPS_SECONDS=.*expected positive integer' scripts/start_chartplotter.sh
+grep -q 'max_gps_seconds=600' scripts/start_chartplotter.sh
+grep -q 'max_warning_seconds=600' scripts/start_chartplotter.sh
+grep -q 'max_readiness_attempts=20' scripts/start_chartplotter.sh
+grep -q 'max_readiness_retry_delay=3600' scripts/start_chartplotter.sh
+grep -q 'max_opencpn_restarts=20' scripts/start_chartplotter.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/start_chartplotter.sh
+grep -q 'require_launcher_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' scripts/start_chartplotter.sh
+grep -q 'require_launcher_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTARTS" "$opencpn_restarts" "$max_opencpn_restarts"' scripts/start_chartplotter.sh
 grep -q 'Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=.*expected positive integer' scripts/start_chartplotter.sh
 grep -q 'Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=.*expected non-negative integer' scripts/start_chartplotter.sh
 grep -q 'expected private 0600' scripts/start_chartplotter.sh
@@ -646,8 +654,12 @@ grep -q 'validate_verifier_controls' scripts/verify_pi.sh
 grep -q 'require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"' scripts/verify_pi.sh
 grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"' scripts/verify_pi.sh
 grep -q 'max_gps_seconds=600' scripts/verify_pi.sh
+grep -q 'max_opencpn_restarts=20' scripts/verify_pi.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/verify_pi.sh
 grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' scripts/verify_pi.sh
 grep -q 'require_remote_non_negative_integer "NOAA_NAVIONICS_OPENCPN_RESTARTS"' scripts/verify_pi.sh
+grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTARTS" "${NOAA_NAVIONICS_OPENCPN_RESTARTS:-3}" "$max_opencpn_restarts"' scripts/verify_pi.sh
+grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "${NOAA_NAVIONICS_OPENCPN_RESTART_DELAY:-5}" "$max_opencpn_restart_delay"' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value' scripts/verify_pi.sh
 grep -q 'validate_remote_gps_device_control "$expected_gps_device"' scripts/verify_pi.sh
 ! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
@@ -4258,6 +4270,12 @@ grep -q 'status report launcher settings path is a symlink or missing symlink st
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' src/noaa_navionics/report.py
 grep -q 'status report launcher settings values were not parsed' src/noaa_navionics/report.py
 grep -q 'status report launcher settings enable NOAA_NAVIONICS_START_ON_FAILED_READINESS' src/noaa_navionics/report.py
+grep -q 'LAUNCHER_ENV_INTEGER_LIMITS = {' src/noaa_navionics/report.py
+grep -q '"NOAA_NAVIONICS_GPS_SECONDS": 600' src/noaa_navionics/report.py
+grep -q '"NOAA_NAVIONICS_READINESS_ATTEMPTS": 20' src/noaa_navionics/report.py
+grep -q '"NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": 3600' src/noaa_navionics/report.py
+grep -q 'expected at most {maximum}' src/noaa_navionics/report.py
+grep -q 'test_launcher_settings_check_fails_oversized_timing_values' tests/test_downloader.py
 grep -q 'required_nonnegative_integer("NOAA_NAVIONICS_OPENCPN_RESTARTS")' src/noaa_navionics/report.py
 grep -q 'status report missing opencpn_config section' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN config is a symlink or missing symlink status' src/noaa_navionics/report.py
@@ -5111,7 +5129,8 @@ grep -q 'test_manifest_archive_path_under_symlinked_parent_fails' tests/test_dow
 grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' README.md
 grep -q 'desktop autostart, LightDM autologin, and manifest files through same-file no-follow descriptor reads' docs/sailboat-pi.md
 grep -q 'readiness report fails if the persisted launcher environment directory is owned by the wrong account or group/world-writable' README.md
-grep -q 'Missing or invalid launcher timing and fail-open values stop launcher startup' README.md
+grep -q 'Missing, invalid, or oversized launcher timing and fail-open values stop launcher startup' README.md
+grep -q 'GPS and warning waits are capped at 600 seconds, readiness attempts at 20, retry/restart delays at 3600 seconds, and OpenCPN restarts at 20' README.md
 grep -q 'Status reports parse launcher settings only after checking the launcher environment directory ownership and permissions' README.md
 grep -q 'Pi verification compares status-reported launcher settings only after a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'def _read_existing_config' src/noaa_navionics/config.py
@@ -5128,7 +5147,8 @@ grep -q 'launcher.env` through a no-follow descriptor only after rejecting a mis
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
-grep -q 'rejects missing or invalid launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
+grep -q 'rejects missing, invalid, or oversized launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
+grep -q 'GPS and warning waits are capped at 600 seconds, readiness attempts at 20, retry/restart delays at 3600 seconds, and OpenCPN restarts at 20' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' docs/sailboat-pi.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
@@ -5475,7 +5495,13 @@ grep -q 'run "$systemctl_cmd" --user enable noaa-navionics-preflight.service' sc
 grep -q 'run "$systemctl_cmd" --user restart noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'must be a positive integer' scripts/provision_sailboat_pi.sh
 grep -q 'max_gps_seconds=600' scripts/provision_sailboat_pi.sh
+grep -q 'max_opencpn_restarts=20' scripts/provision_sailboat_pi.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/provision_sailboat_pi.sh
+grep -q 'max_sync_retries=20' scripts/provision_sailboat_pi.sh
+grep -q 'max_sync_retry_delay=3600' scripts/provision_sailboat_pi.sh
 grep -q 'require_integer_at_most "--gps-seconds" "$gps_seconds" "$max_gps_seconds"' scripts/provision_sailboat_pi.sh
+grep -q 'require_integer_at_most "--opencpn-restarts" "$opencpn_restarts" "$max_opencpn_restarts"' scripts/provision_sailboat_pi.sh
+grep -q 'require_integer_at_most "--sync-retries" "$sync_retries" "$max_sync_retries"' scripts/provision_sailboat_pi.sh
 grep -q 'use `--gps-seconds N`, up to 600 seconds' README.md
 grep -q 'add `--gps-seconds N`, up to 600 seconds' docs/sailboat-pi.md
 grep -q 'max_gps_seconds=600' scripts/pre_trip_prepare_pi.sh
@@ -6454,6 +6480,28 @@ fi
 grep -q -- '--opencpn-restarts must be a non-negative integer' "$provision_output"
 
 set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --opencpn-restarts 21 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject oversized --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be at most 20' "$provision_output"
+
+set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --sync-retries 21 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject oversized --sync-retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--sync-retries must be at most 20' "$provision_output"
+
+set +e
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
@@ -7220,6 +7268,28 @@ if [[ "$verify_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--opencpn-restart-delay must be a non-negative integer' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --opencpn-restarts 21 pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject oversized --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be at most 20' "$verify_output"
+
+set +e
+scripts/verify_pi.sh --opencpn-restart-delay 3601 pi@example.invalid >"$verify_output" 2>&1
+verify_code=$?
+set -e
+if [[ "$verify_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi.sh to reject oversized --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be at most 3600' "$verify_output"
 
 set +e
 scripts/verify_pi.sh --expected-gps-device >"$verify_output" 2>&1
@@ -15116,6 +15186,44 @@ if [[ "$launcher_invalid_timing_code" -eq 0 ]]; then
 fi
 grep -q 'Invalid NOAA_NAVIONICS_GPS_SECONDS=soon; expected positive integer' "$launcher_invalid_timing_home/.cache/noaa-navionics/chartplotter.log"
 ! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_invalid_timing_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_oversized_gps_home="$tmpdir/launcher-oversized-gps-home"
+mkdir -p "$launcher_oversized_gps_home/.local/bin" "$launcher_oversized_gps_home/.cache/noaa-navionics" "$launcher_oversized_gps_home/.config/noaa-navionics"
+chmod 0700 "$launcher_oversized_gps_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=601\n' >"$launcher_oversized_gps_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_oversized_gps_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_oversized_gps_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_oversized_gps_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_oversized_gps_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_oversized_gps_code=$?
+set -e
+if [[ "$launcher_oversized_gps_code" -eq 0 ]]; then
+  cat "$launcher_oversized_gps_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject oversized GPS seconds" >&2
+  exit 1
+fi
+grep -q 'Invalid NOAA_NAVIONICS_GPS_SECONDS=601; expected at most 600' "$launcher_oversized_gps_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_oversized_gps_home/.cache/noaa-navionics/chartplotter.log"
+
+launcher_oversized_policy_home="$tmpdir/launcher-oversized-policy-home"
+mkdir -p "$launcher_oversized_policy_home/.local/bin" "$launcher_oversized_policy_home/.cache/noaa-navionics" "$launcher_oversized_policy_home/.config/noaa-navionics"
+chmod 0700 "$launcher_oversized_policy_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_OPENCPN_RESTARTS=21\n' >"$launcher_oversized_policy_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_oversized_policy_home/.config/noaa-navionics/launcher.env"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_oversized_policy_home/.local/bin/noaa-navionics"
+chmod +x "$launcher_oversized_policy_home/.local/bin/noaa-navionics"
+set +e
+HOME="$launcher_oversized_policy_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_oversized_policy_code=$?
+set -e
+if [[ "$launcher_oversized_policy_code" -eq 0 ]]; then
+  cat "$launcher_oversized_policy_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to reject oversized OpenCPN restart policy" >&2
+  exit 1
+fi
+grep -q 'Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=21; expected at most 20' "$launcher_oversized_policy_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_oversized_policy_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_preflight_fail_home="$tmpdir/launcher-preflight-fail-home"
 mkdir -p "$launcher_preflight_fail_home/.local/bin" "$launcher_preflight_fail_home/.cache/noaa-navionics" "$launcher_preflight_fail_home/.config/noaa-navionics"

@@ -11,12 +11,18 @@ cache_dir="$(dirname "$status_report")"
 max_log_bytes=$((1024 * 1024))
 bin="${HOME}/.local/bin/noaa-navionics"
 gps_seconds=60
+max_gps_seconds=600
 warning_seconds=8
+max_warning_seconds=600
 readiness_attempts=3
+max_readiness_attempts=20
 readiness_retry_delay=10
+max_readiness_retry_delay=3600
 start_on_failed_readiness=0
 opencpn_restarts=3
+max_opencpn_restarts=20
 opencpn_restart_delay=5
+max_opencpn_restart_delay=3600
 opencpn_shutdown_grace_seconds=10
 lock_acquired=0
 opencpn_bin=""
@@ -93,6 +99,28 @@ reexec_without_ambient_launcher_settings() {
   done < <(env)
   if [[ "$removed" -gt 0 ]]; then
     exec env "${env_args[@]}" "$0" "$@"
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_launcher_integer_at_most() {
+  local key="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "Invalid ${key}=${value}; expected at most ${maximum}." >&2
+    return 1
   fi
 }
 
@@ -763,26 +791,32 @@ load_launcher_settings() {
     echo "Invalid NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds}; expected positive integer." >&2
     return 1
   fi
+  require_launcher_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds" || return 1
   if [[ ! "$warning_seconds" =~ ^[0-9]+$ ]]; then
     echo "Invalid NOAA_NAVIONICS_WARNING_SECONDS=${warning_seconds}; expected non-negative integer." >&2
     return 1
   fi
+  require_launcher_integer_at_most "NOAA_NAVIONICS_WARNING_SECONDS" "$warning_seconds" "$max_warning_seconds" || return 1
   if [[ ! "$readiness_attempts" =~ ^[1-9][0-9]*$ ]]; then
     echo "Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=${readiness_attempts}; expected positive integer." >&2
     return 1
   fi
+  require_launcher_integer_at_most "NOAA_NAVIONICS_READINESS_ATTEMPTS" "$readiness_attempts" "$max_readiness_attempts" || return 1
   if [[ ! "$readiness_retry_delay" =~ ^[0-9]+$ ]]; then
     echo "Invalid NOAA_NAVIONICS_READINESS_RETRY_DELAY=${readiness_retry_delay}; expected non-negative integer." >&2
     return 1
   fi
+  require_launcher_integer_at_most "NOAA_NAVIONICS_READINESS_RETRY_DELAY" "$readiness_retry_delay" "$max_readiness_retry_delay" || return 1
   if [[ ! "$opencpn_restarts" =~ ^[0-9]+$ ]]; then
     echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts}; expected non-negative integer." >&2
     return 1
   fi
+  require_launcher_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTARTS" "$opencpn_restarts" "$max_opencpn_restarts" || return 1
   if [[ ! "$opencpn_restart_delay" =~ ^[0-9]+$ ]]; then
     echo "Invalid NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay}; expected non-negative integer." >&2
     return 1
   fi
+  require_launcher_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "$opencpn_restart_delay" "$max_opencpn_restart_delay" || return 1
   case "${start_on_failed_text,,}" in
     1|yes|true|on)
       start_on_failed_readiness=1

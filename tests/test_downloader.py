@@ -11861,6 +11861,15 @@ class StatusReportTests(unittest.TestCase):
                 {
                     "launcher_settings": {
                         **valid_launcher_settings,
+                        "values": {**valid_values, "NOAA_NAVIONICS_OPENCPN_RESTARTS": "21"},
+                    }
+                },
+                "NOAA_NAVIONICS_OPENCPN_RESTARTS=21 expected at most 20",
+            ),
+            (
+                {
+                    "launcher_settings": {
+                        **valid_launcher_settings,
                         "values": {**valid_values, "NOAA_NAVIONICS_START_ON_FAILED_READINESS": "yes"},
                     }
                 },
@@ -14977,6 +14986,28 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("NOAA_NAVIONICS_WARNING_SECONDS=soon expected non-negative integer", check.detail)
         self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTARTS=-1 expected non-negative integer", check.detail)
         self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=soon expected non-negative integer", check.detail)
+
+    def test_launcher_settings_check_fails_oversized_timing_values(self):
+        check = _launcher_settings_check(
+            trusted_launcher_settings(
+                values={
+                    "NOAA_NAVIONICS_GPS_SECONDS": "601",
+                    "NOAA_NAVIONICS_READINESS_ATTEMPTS": "21",
+                    "NOAA_NAVIONICS_READINESS_RETRY_DELAY": "3601",
+                    "NOAA_NAVIONICS_WARNING_SECONDS": "601",
+                    "NOAA_NAVIONICS_OPENCPN_RESTARTS": "21",
+                    "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY": "3601",
+                },
+            )
+        )
+
+        self.assertFalse(check.ok)
+        self.assertIn("NOAA_NAVIONICS_GPS_SECONDS=601 expected at most 600", check.detail)
+        self.assertIn("NOAA_NAVIONICS_READINESS_ATTEMPTS=21 expected at most 20", check.detail)
+        self.assertIn("NOAA_NAVIONICS_READINESS_RETRY_DELAY=3601 expected at most 3600", check.detail)
+        self.assertIn("NOAA_NAVIONICS_WARNING_SECONDS=601 expected at most 600", check.detail)
+        self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTARTS=21 expected at most 20", check.detail)
+        self.assertIn("NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=3601 expected at most 3600", check.detail)
 
     def test_launcher_settings_check_fails_missing_gps_wait(self):
         check = _launcher_settings_check(trusted_launcher_settings(values={}))
