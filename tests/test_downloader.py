@@ -13850,6 +13850,22 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("status GUI desktop launcher must not be configured for autostart", source)
         self.assertIn("MOB desktop launcher must not be configured for autostart", source)
 
+    def test_recovery_verifier_uses_descriptor_validated_directory(self):
+        source = shell_python_heredoc(Path("scripts/verify_pi_recovery_exports.sh").read_text(encoding="utf-8"))
+
+        for expected in (
+            "import fnmatch",
+            "def open_trusted_recovery_directory",
+            "recovery directory changed before it could be verified",
+            "os.listdir(recovery_fd)",
+            "dir_fd=recovery_fd",
+            "verify_checksum_manifest(recovery_dir, recovery_fd, archive_paths)",
+            "verify_optional_pre_departure_status(recovery_dir, recovery_fd)",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+        self.assertNotIn("recovery_dir.glob", source)
+
     def test_recovery_restore_requires_config_and_launcher_policy(self):
         source = shell_python_heredoc(Path("scripts/restore_pi_recovery_user_data.sh").read_text(encoding="utf-8"))
 

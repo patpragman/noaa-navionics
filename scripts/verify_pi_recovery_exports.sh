@@ -186,6 +186,7 @@ python3_cmd="$(require_local_command python3)"
 "$python3_cmd" - "$recovery_dir" <<'PY'
 import configparser
 from datetime import datetime, timezone
+import fnmatch
 from pathlib import Path, PurePosixPath
 import json
 import hashlib
@@ -499,13 +500,63 @@ def assert_private_recovery_directory(path: Path) -> None:
         fail(f"recovery directory has permissions {mode:04o}, expected private 0700: {path}")
 
 
-def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
-    if archive_path.is_symlink():
-        fail(f"archive must not be a symlink: {archive_path}")
+def open_trusted_recovery_directory(path: Path) -> int:
+    symlink = first_symlink_ancestor(path.parent)
+    if symlink is not None:
+        fail(f"recovery directory parent path contains a symlink: {symlink}")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
-        result = archive_path.lstat()
+        before = os.stat(path, follow_symlinks=False)
     except OSError as exc:
-        fail(f"could not inspect archive {archive_path}: {exc}")
+        fail(f"could not inspect recovery directory {path}: {exc}")
+    if stat.S_ISLNK(before.st_mode):
+        fail(f"recovery directory is a symlink: {path}")
+    if not stat.S_ISDIR(before.st_mode):
+        fail(f"recovery directory must be a real directory: {path}")
+    try:
+        directory_fd = os.open(path, flags)
+    except OSError as exc:
+        fail(f"could not open recovery directory {path}: {exc}")
+    try:
+        opened = os.fstat(directory_fd)
+        if not os.path.samestat(before, opened):
+            fail(f"recovery directory changed before it could be verified: {path}")
+        if not stat.S_ISDIR(opened.st_mode):
+            fail(f"recovery directory must be a real directory when opened: {path}")
+        if opened.st_uid != os.getuid():
+            fail(f"recovery directory is owned by uid {opened.st_uid}, expected {os.getuid()}: {path}")
+        mode = stat.S_IMODE(opened.st_mode)
+        if mode != 0o700:
+            fail(f"recovery directory has permissions {mode:04o}, expected private 0700: {path}")
+        return directory_fd
+    except BaseException:
+        os.close(directory_fd)
+        raise
+
+
+def stat_recovery_child(recovery_fd: int, file_name: str, label: str, path: Path) -> os.stat_result:
+    if "/" in file_name or file_name in {"", ".", ".."}:
+        fail(f"{label} has unsafe recovery-directory file name: {file_name}")
+    try:
+        return os.stat(file_name, dir_fd=recovery_fd, follow_symlinks=False)
+    except FileNotFoundError as exc:
+        fail(f"missing {label}: {path}: {exc}")
+    except OSError as exc:
+        fail(f"could not inspect {label} {path}: {exc}")
+
+
+def recovery_child_exists(recovery_fd: int, file_name: str) -> bool:
+    try:
+        os.stat(file_name, dir_fd=recovery_fd, follow_symlinks=False)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def inspect_archive(archive_path: Path, spec: dict[str, object], recovery_fd: int) -> int:
+    result = stat_recovery_child(recovery_fd, archive_path.name, "archive", archive_path)
+    if stat.S_ISLNK(result.st_mode):
+        fail(f"archive must not be a symlink: {archive_path}")
     if not stat.S_ISREG(result.st_mode):
         fail(f"archive must be a regular file: {archive_path}")
     if result.st_uid != os.getuid():
@@ -520,7 +571,7 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
 
     fd = -1
     try:
-        fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(archive_path.name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=recovery_fd)
         opened = os.fstat(fd)
         if not stat.S_ISREG(opened.st_mode):
             fail(f"archive must be a regular file after opening: {archive_path}")
@@ -672,11 +723,8 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
             os.close(fd)
 
 
-def hash_private_archive(archive_path: Path) -> str:
-    try:
-        before = archive_path.lstat()
-    except OSError as exc:
-        fail(f"could not inspect archive before checksum verification {archive_path}: {exc}")
+def hash_private_archive(archive_path: Path, recovery_fd: int) -> str:
+    before = stat_recovery_child(recovery_fd, archive_path.name, "archive before checksum verification", archive_path)
     if not stat.S_ISREG(before.st_mode):
         fail(f"archive must be a regular file before checksum verification: {archive_path}")
     if before.st_uid != os.getuid():
@@ -686,7 +734,7 @@ def hash_private_archive(archive_path: Path) -> str:
         fail(f"archive has permissions {mode:04o}, expected private 0600 before checksum verification: {archive_path}")
     fd = -1
     try:
-        fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(archive_path.name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=recovery_fd)
         opened = os.fstat(fd)
         if not os.path.samestat(before, opened):
             fail(f"archive changed before checksum verification: {archive_path}")
@@ -710,14 +758,16 @@ def hash_private_archive(archive_path: Path) -> str:
             os.close(fd)
 
 
-def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
+def read_checksum_manifest(recovery_dir: Path, recovery_fd: int) -> dict[str, str]:
     manifest_path = recovery_dir / CHECKSUM_MANIFEST_NAME
-    if manifest_path.is_symlink():
+    before = stat_recovery_child(
+        recovery_fd,
+        CHECKSUM_MANIFEST_NAME,
+        f"checksum manifest {CHECKSUM_MANIFEST_NAME}",
+        manifest_path,
+    )
+    if stat.S_ISLNK(before.st_mode):
         fail(f"checksum manifest must not be a symlink: {manifest_path}")
-    try:
-        before = manifest_path.lstat()
-    except OSError as exc:
-        fail(f"missing checksum manifest {CHECKSUM_MANIFEST_NAME}: {exc}")
     if not stat.S_ISREG(before.st_mode):
         fail(f"checksum manifest must be a regular file: {manifest_path}")
     if before.st_uid != os.getuid():
@@ -727,7 +777,7 @@ def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
         fail(f"checksum manifest has permissions {mode:04o}, expected private 0600: {manifest_path}")
     fd = -1
     try:
-        fd = os.open(manifest_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(CHECKSUM_MANIFEST_NAME, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=recovery_fd)
         opened = os.fstat(fd)
         if not os.path.samestat(before, opened):
             fail(f"checksum manifest changed while being opened: {manifest_path}")
@@ -772,13 +822,10 @@ def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
     return entries
 
 
-def read_private_file(file_path: Path, label: str) -> bytes:
-    if file_path.is_symlink():
+def read_private_file(file_path: Path, label: str, recovery_fd: int) -> bytes:
+    before = stat_recovery_child(recovery_fd, file_path.name, label, file_path)
+    if stat.S_ISLNK(before.st_mode):
         fail(f"{label} must not be a symlink: {file_path}")
-    try:
-        before = file_path.lstat()
-    except OSError as exc:
-        fail(f"missing {label}: {file_path}: {exc}")
     if not stat.S_ISREG(before.st_mode):
         fail(f"{label} must be a regular file: {file_path}")
     if before.st_uid != os.getuid():
@@ -788,7 +835,7 @@ def read_private_file(file_path: Path, label: str) -> bytes:
         fail(f"{label} has permissions {mode:04o}, expected private 0600: {file_path}")
     fd = -1
     try:
-        fd = os.open(file_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(file_path.name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=recovery_fd)
         opened = os.fstat(fd)
         if not os.path.samestat(before, opened):
             fail(f"{label} changed while being opened: {file_path}")
@@ -809,11 +856,11 @@ def read_private_file(file_path: Path, label: str) -> bytes:
             os.close(fd)
 
 
-def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
+def verify_optional_pre_departure_status(recovery_dir: Path, recovery_fd: int) -> bool:
     status_path = recovery_dir / PRE_DEPARTURE_STATUS_NAME
     checksum_path = recovery_dir / PRE_DEPARTURE_STATUS_CHECKSUM_NAME
-    status_present = status_path.exists() or status_path.is_symlink()
-    checksum_present = checksum_path.exists() or checksum_path.is_symlink()
+    status_present = recovery_child_exists(recovery_fd, PRE_DEPARTURE_STATUS_NAME)
+    checksum_present = recovery_child_exists(recovery_fd, PRE_DEPARTURE_STATUS_CHECKSUM_NAME)
     if not status_present and not checksum_present:
         return False
     if not status_present:
@@ -821,8 +868,8 @@ def verify_optional_pre_departure_status(recovery_dir: Path) -> bool:
     if not checksum_present:
         fail(f"missing optional pre-departure status checksum {PRE_DEPARTURE_STATUS_CHECKSUM_NAME}")
 
-    status_payload = read_private_file(status_path, "pre-departure status snapshot")
-    checksum_payload = read_private_file(checksum_path, "pre-departure status checksum")
+    status_payload = read_private_file(status_path, "pre-departure status snapshot", recovery_fd)
+    checksum_payload = read_private_file(checksum_path, "pre-departure status checksum", recovery_fd)
     try:
         checksum_text = checksum_payload.decode("ascii")
     except UnicodeDecodeError as exc:
@@ -1788,8 +1835,8 @@ def validate_pre_departure_status_checks(
         fail("pre-departure status snapshot JSON Source Revision row does not match deployed source_revision")
 
 
-def verify_checksum_manifest(recovery_dir: Path, archive_paths: list[Path]) -> None:
-    entries = read_checksum_manifest(recovery_dir)
+def verify_checksum_manifest(recovery_dir: Path, recovery_fd: int, archive_paths: list[Path]) -> None:
+    entries = read_checksum_manifest(recovery_dir, recovery_fd)
     expected_names = {path.name for path in archive_paths}
     actual_names = set(entries)
     missing = sorted(expected_names - actual_names)
@@ -1799,16 +1846,25 @@ def verify_checksum_manifest(recovery_dir: Path, archive_paths: list[Path]) -> N
     if extra:
         fail(f"checksum manifest lists unexpected archive(s): {', '.join(extra)}")
     for archive_path in archive_paths:
-        actual_digest = hash_private_archive(archive_path)
+        actual_digest = hash_private_archive(archive_path, recovery_fd)
         expected_digest = entries[archive_path.name]
         if actual_digest != expected_digest:
             fail(f"checksum mismatch for {archive_path.name}: expected {expected_digest}, got {actual_digest}")
 
 
-def find_archive(recovery_dir: Path, spec: dict[str, object]) -> Path:
-    matches = sorted(recovery_dir.glob(str(spec["pattern"])))
+def find_archive(recovery_dir: Path, recovery_fd: int, spec: dict[str, object]) -> Path:
+    pattern = str(spec["pattern"])
+    try:
+        names = os.listdir(recovery_fd)
+    except OSError as exc:
+        fail(f"could not list recovery directory {recovery_dir}: {exc}")
+    matches = sorted(
+        recovery_dir / name
+        for name in names
+        if "/" not in name and fnmatch.fnmatchcase(name, pattern)
+    )
     if not matches:
-        fail(f"missing {spec['label']} archive matching {spec['pattern']}")
+        fail(f"missing {spec['label']} archive matching {pattern}")
     if len(matches) > 1:
         fail(f"expected one {spec['label']} archive, found {len(matches)}")
     return matches[0]
@@ -1816,16 +1872,19 @@ def find_archive(recovery_dir: Path, spec: dict[str, object]) -> Path:
 
 def main() -> None:
     recovery_dir = Path(sys.argv[1])
-    assert_private_recovery_directory(recovery_dir)
-    summaries = []
-    archive_paths = []
-    for spec in ARCHIVES:
-        archive_path = find_archive(recovery_dir, spec)
-        file_count = inspect_archive(archive_path, spec)
-        summaries.append((str(spec["label"]), archive_path.name, file_count))
-        archive_paths.append(archive_path)
-    verify_checksum_manifest(recovery_dir, archive_paths)
-    verified_pre_departure_status = verify_optional_pre_departure_status(recovery_dir)
+    recovery_fd = open_trusted_recovery_directory(recovery_dir)
+    try:
+        summaries = []
+        archive_paths = []
+        for spec in ARCHIVES:
+            archive_path = find_archive(recovery_dir, recovery_fd, spec)
+            file_count = inspect_archive(archive_path, spec, recovery_fd)
+            summaries.append((str(spec["label"]), archive_path.name, file_count))
+            archive_paths.append(archive_path)
+        verify_checksum_manifest(recovery_dir, recovery_fd, archive_paths)
+        verified_pre_departure_status = verify_optional_pre_departure_status(recovery_dir, recovery_fd)
+    finally:
+        os.close(recovery_fd)
 
     print(f"Verified Pi recovery exports: {recovery_dir}")
     for label, name, file_count in summaries:

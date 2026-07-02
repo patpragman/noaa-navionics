@@ -1082,8 +1082,10 @@ grep -q 'support bundle helper rejects broad/system local output directories, co
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' docs/sailboat-pi.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' README.md
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
-grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, opens the timestamped recovery directory through a no-follow same-file descriptor before listing artifacts' README.md
+grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, opens the timestamped recovery directory through a no-follow same-file descriptor before listing artifacts' docs/sailboat-pi.md
+grep -q 'requires each archive and the checksum manifest to be user-owned private `0600` files opened relative to that descriptor with no-follow revalidation' README.md
+grep -q 'requires each archive and the checksum manifest to be user-owned private `0600` files opened relative to that descriptor with no-follow revalidation' docs/sailboat-pi.md
 grep -q 'requires the diagnostic support bundle to contain core command-evidence, NOAA status-report, storage-listing, app config, launcher environment, saved status, and source-revision evidence files' README.md
 grep -q 'requires the diagnostic support bundle to contain core command-evidence, NOAA status-report, storage-listing, app config, launcher environment, saved status, and source-revision evidence files' docs/sailboat-pi.md
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, trusted track-log symlink-status fields, track-log output context, safe chartplotter desktop autostart plus executable non-autostart status GUI and MOB desktop launcher evidence, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
@@ -2020,7 +2022,13 @@ grep -q 'is missing required archive member' scripts/verify_pi_recovery_exports.
 grep -q 'def verify_checksum_manifest' scripts/verify_pi_recovery_exports.sh
 grep -q 'def verify_optional_pre_departure_status' scripts/verify_pi_recovery_exports.sh
 grep -q 'def validate_pre_departure_status_checks' scripts/verify_pi_recovery_exports.sh
-grep -q 'verify_optional_pre_departure_status(recovery_dir)' scripts/verify_pi_recovery_exports.sh
+grep -q 'def open_trusted_recovery_directory' scripts/verify_pi_recovery_exports.sh
+grep -q 'recovery directory changed before it could be verified' scripts/verify_pi_recovery_exports.sh
+grep -q 'os.listdir(recovery_fd)' scripts/verify_pi_recovery_exports.sh
+grep -q 'dir_fd=recovery_fd' scripts/verify_pi_recovery_exports.sh
+grep -q 'verify_checksum_manifest(recovery_dir, recovery_fd, archive_paths)' scripts/verify_pi_recovery_exports.sh
+grep -q 'verify_optional_pre_departure_status(recovery_dir, recovery_fd)' scripts/verify_pi_recovery_exports.sh
+grep -q 'test_recovery_verifier_uses_descriptor_validated_directory' tests/test_downloader.py
 grep -q 'checksum mismatch for' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status checksum mismatch' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON does not report ok=true' scripts/verify_pi_recovery_exports.sh
@@ -2112,7 +2120,7 @@ grep -q 'manifest file names do not match data files' scripts/restore_pi_recover
 grep -q 'contains non-GPX track data member' scripts/restore_pi_recovery_user_data.sh
 grep -q 'manifest tracks must be a list' scripts/restore_pi_recovery_user_data.sh
 grep -q 'manifest track names do not match data files' scripts/restore_pi_recovery_user_data.sh
-grep -q 'fd = os.open(archive_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi_recovery_exports.sh
+grep -q 'fd = os.open(archive_path.name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=recovery_fd)' scripts/verify_pi_recovery_exports.sh
 grep -q 'archive changed while being opened' scripts/verify_pi_recovery_exports.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/verify_pi_recovery_exports.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/verify_pi_recovery_exports.sh
