@@ -2050,6 +2050,16 @@ def _app_validation_failures(app: object) -> list[CheckResult]:
     return []
 
 
+def _config_summary_text(config: dict[str, object], field: str, label: str) -> tuple[str, Optional[CheckResult]]:
+    value = config.get(field, "")
+    if not isinstance(value, str):
+        return "", CheckResult("Config", False, f"status report {label} is not text")
+    control_failure = _status_control_character_failure(value, label)
+    if control_failure:
+        return "", CheckResult("Config", False, control_failure)
+    return value.strip(), None
+
+
 def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     config_path = report.get("config_path")
     if not isinstance(config_path, str) or not config_path.strip():
@@ -2063,30 +2073,23 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     config = report.get("config")
     if not isinstance(config, dict):
         return [CheckResult("Config", False, "status report missing config section")]
-    chart_package_text = str(config.get("chart_package", ""))
-    control_failure = _status_control_character_failure(chart_package_text, "config chart_package")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    chart_package = chart_package_text.strip().lower()
+    chart_package, failure = _config_summary_text(config, "chart_package", "config chart_package")
+    if failure:
+        return [failure]
+    chart_package = chart_package.lower()
     if chart_package not in CHART_PACKAGES:
         return [CheckResult("Config", False, f"status report config chart_package is invalid: {chart_package or '<missing>'}")]
-    chart_value_text = str(config.get("chart_value", ""))
-    control_failure = _status_control_character_failure(chart_value_text, "config chart_value")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    chart_value = chart_value_text.strip()
+    chart_value, failure = _config_summary_text(config, "chart_value", "config chart_value")
+    if failure:
+        return [failure]
     if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
         return [CheckResult("Config", False, f"status report config chart_value is required for {chart_package}")]
-    chart_output_text = str(config.get("chart_output", ""))
-    track_output_text = str(config.get("track_output", ""))
-    control_failure = _status_control_character_failure(chart_output_text, "config chart_output")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    control_failure = _status_control_character_failure(track_output_text, "config track_output")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    chart_output = chart_output_text.strip()
-    track_output = track_output_text.strip()
+    chart_output, failure = _config_summary_text(config, "chart_output", "config chart_output")
+    if failure:
+        return [failure]
+    track_output, failure = _config_summary_text(config, "track_output", "config track_output")
+    if failure:
+        return [failure]
     if not _status_absolute_path(chart_output):
         return [CheckResult("Config", False, f"status report config chart_output is not absolute: {chart_output or '<missing>'}")]
     if not _status_absolute_path(track_output):
@@ -2100,18 +2103,15 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     min_free_gb = _positive_status_float(config.get("min_free_gb"))
     if min_free_gb is None:
         return [CheckResult("Config", False, "status report config min_free_gb is not positive")]
-    gps_mode_text = str(config.get("gps_mode", ""))
-    control_failure = _status_control_character_failure(gps_mode_text, "config gps_mode")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    gps_mode = gps_mode_text.strip().lower()
+    gps_mode, failure = _config_summary_text(config, "gps_mode", "config gps_mode")
+    if failure:
+        return [failure]
+    gps_mode = gps_mode.lower()
     if gps_mode not in {"gpsd", "serial"}:
         return [CheckResult("Config", False, f"status report config gps_mode is invalid: {gps_mode or '<missing>'}")]
-    gps_device_text = str(config.get("gps_device", ""))
-    control_failure = _status_control_character_failure(gps_device_text, "config gps_device")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    gps_device = gps_device_text.strip()
+    gps_device, failure = _config_summary_text(config, "gps_device", "config gps_device")
+    if failure:
+        return [failure]
     if not gps_device:
         return [CheckResult("Config", False, "status report config gps_device is empty")]
     if not _stable_status_gps_device_path(gps_device):
@@ -2133,11 +2133,9 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     gps_baud = config.get("gps_baud")
     if isinstance(gps_baud, bool) or not isinstance(gps_baud, int) or gps_baud not in GPS_BAUD_RATES:
         return [CheckResult("Config", False, f"status report config gps_baud is invalid: {gps_baud!r}")]
-    gpsd_host_text = str(config.get("gpsd_host", ""))
-    control_failure = _status_control_character_failure(gpsd_host_text, "config gpsd_host")
-    if control_failure:
-        return [CheckResult("Config", False, control_failure)]
-    gpsd_host = gpsd_host_text.strip()
+    gpsd_host, failure = _config_summary_text(config, "gpsd_host", "config gpsd_host")
+    if failure:
+        return [failure]
     if not gpsd_host:
         return [CheckResult("Config", False, "status report config gpsd_host is empty")]
     if gps_mode == "gpsd" and gpsd_host.lower() not in GPSD_LOCAL_HOSTS:

@@ -5000,15 +5000,20 @@ grep -q 'status report missing config_path' src/noaa_navionics/report.py
 grep -q 'status report missing config section' src/noaa_navionics/report.py
 grep -q 'config_failures = _config_validation_failures(report)' src/noaa_navionics/report.py
 grep -q 'if not config_failures:' src/noaa_navionics/report.py
+grep -q 'def _config_summary_text' src/noaa_navionics/report.py
 grep -q 'status report config chart_package is invalid' src/noaa_navionics/report.py
 grep -q 'status report config chart_value is required' src/noaa_navionics/report.py
 grep -q 'def _status_control_character_failure' src/noaa_navionics/report.py
 grep -q 'def _status_text_has_control_char' src/noaa_navionics/report.py
 grep -q 'contains control characters' src/noaa_navionics/report.py
 grep -q 'config_path contains control characters' tests/test_downloader.py
+grep -q 'chart_package is not text' tests/test_downloader.py
 grep -q 'chart_package contains control characters' tests/test_downloader.py
+grep -q 'chart_value is not text' tests/test_downloader.py
 grep -q 'chart_value contains control characters' tests/test_downloader.py
+grep -q 'chart_output is not text' tests/test_downloader.py
 grep -q 'chart_output contains control characters' tests/test_downloader.py
+grep -q 'track_output is not text' tests/test_downloader.py
 grep -q 'track_output contains control characters' tests/test_downloader.py
 grep -q 'gps_mode contains control characters' tests/test_downloader.py
 grep -q 'gps_device contains control characters' tests/test_downloader.py
@@ -5077,7 +5082,10 @@ grep -q 'f"{row_name} configured path"' tests/test_downloader.py
 grep -q 'f"{row_name} checked path"' tests/test_downloader.py
 grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence' README.md
 grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence' docs/sailboat-pi.md
+grep -q 'gps_mode is not text' tests/test_downloader.py
 grep -q 'status report config gps_mode is invalid' src/noaa_navionics/report.py
+grep -q 'gps_device is not text' tests/test_downloader.py
+grep -q 'gpsd_host is not text' tests/test_downloader.py
 grep -q 'status report config gpsd_host is not local' src/noaa_navionics/report.py
 grep -q 'status report manifest path .* does not match configured' src/noaa_navionics/report.py
 grep -q 'status report track_log track_output .* does not match configured' src/noaa_navionics/report.py
