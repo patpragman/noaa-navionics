@@ -1034,6 +1034,15 @@ def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, co
         fail("pre-departure status snapshot JSON Charts has no ENC cell sample paths")
     if any(not Path(str(sample)).is_absolute() for sample in enc_cell_samples):
         fail("pre-departure status snapshot JSON Charts ENC cell sample path is not absolute")
+    normalized_chart_output = os.path.normpath(chart_output)
+    for sample in enc_cell_samples:
+        normalized_sample = os.path.normpath(str(sample))
+        try:
+            sample_common = os.path.commonpath([normalized_sample, normalized_chart_output])
+        except ValueError:
+            sample_common = ""
+        if normalized_sample == normalized_chart_output or sample_common != normalized_chart_output:
+            fail("pre-departure status snapshot JSON Charts ENC cell sample path is outside chart_output")
 
     debris_row = check_rows.get("Chart Update Debris")
     if not isinstance(debris_row, dict):

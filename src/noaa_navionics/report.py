@@ -567,6 +567,8 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Charts", False, "status report Charts has no ENC cell sample paths"))
             elif any(not _status_absolute_path(str(sample)) for sample in enc_cell_samples):
                 failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is not absolute"))
+            elif any(not _status_path_under(str(sample), expected_path) for sample in enc_cell_samples):
+                failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is outside chart output"))
 
     debris_row = check_rows.get("Chart Update Debris")
     if isinstance(debris_row, dict) and debris_row.get("ok") is True:

@@ -5422,6 +5422,7 @@ grep -q 'status report manifest download path is not absolute' src/noaa_navionic
 grep -q 'status report manifest extract path is not absolute' src/noaa_navionics/report.py
 grep -q 'status report Manifest download path is outside chart output' src/noaa_navionics/report.py
 grep -q 'status report Manifest extract path is outside chart output' src/noaa_navionics/report.py
+grep -q 'status report Charts ENC cell sample path is outside chart output' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0700' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
 grep -q 'pre-departure status snapshot JSON Manifest download path is outside chart_output' scripts/pre_trip_prepare_pi.sh
@@ -5430,6 +5431,9 @@ grep -q 'pre-departure status snapshot JSON Manifest download path is outside ch
 grep -q 'pre-departure status snapshot JSON Manifest extract path is outside chart_output' scripts/verify_pi_recovery_exports.sh
 grep -q 'status snapshot JSON Manifest download path is outside chart_output' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON Manifest extract path is outside chart_output' scripts/post_trip_collect_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts ENC cell sample path is outside chart_output' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON Charts ENC cell sample path is outside chart_output' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON Charts ENC cell sample path is outside chart_output' scripts/post_trip_collect_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log track_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log latest_path is not under tracks_dir' scripts/pre_trip_prepare_pi.sh
 grep -Fq 'pre-departure status snapshot JSON track_log latest_path is not a track-*.gpx file' scripts/pre_trip_prepare_pi.sh
@@ -5448,6 +5452,8 @@ grep -Fq 'track-log snapshots require absolute paths, a latest `track-*.gpx` fil
 grep -Fq 'track-log snapshots require absolute paths, a latest `track-*.gpx` file under the configured tracks directory, and private mode evidence' docs/sailboat-pi.md
 grep -q 'manifest download and extract paths under the configured chart output' README.md
 grep -q 'manifest download and extract paths under the configured chart output' docs/sailboat-pi.md
+grep -q 'extracted ENC cells with sample paths under that chart output' README.md
+grep -q 'extracted ENC cells with sample paths under that chart output' docs/sailboat-pi.md
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
