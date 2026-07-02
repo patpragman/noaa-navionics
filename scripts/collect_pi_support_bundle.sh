@@ -815,6 +815,7 @@ required_members = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
     "commands/configured-storage-paths.txt",
     "commands/configured-chart-storage-tree.txt",
@@ -1800,9 +1801,11 @@ else
 fi
 if [[ -n "$journalctl_cmd" ]]; then
   run_command recent-user-journal "$journalctl_cmd" --user --no-pager --since "-2 days" -u noaa-navionics.service -u noaa-navionics.timer -u noaa-navionics-track.service -u noaa-navionics-preflight.service
+  run_command recent-track-journal "$journalctl_cmd" --user --no-pager --since "-2 days" -u noaa-navionics-track.service
   run_command recent-system-journal "$journalctl_cmd" --no-pager --since "-2 days" -u gpsd.socket -u gpsd.service -u chrony.service -u lightdm.service
 else
   skip_command recent-user-journal "skipped journal capture: trusted journalctl command is unavailable"
+  skip_command recent-track-journal "skipped journal capture: trusted journalctl command is unavailable"
   skip_command recent-system-journal "skipped journal capture: trusted journalctl command is unavailable"
 fi
 

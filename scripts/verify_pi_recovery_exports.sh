@@ -224,6 +224,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 CORE_SUPPORT_NOAA_COMMAND_FILES = [

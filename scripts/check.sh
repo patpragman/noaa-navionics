@@ -1619,6 +1619,7 @@ grep -q 'check_status_report_json' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/verify_pi.sh
 grep -q -- '--require-chartplotter-started' scripts/pre_departure_check_pi.sh
 grep -q 'recent-user-journal' scripts/collect_pi_support_bundle.sh
+grep -q 'recent-track-journal' scripts/collect_pi_support_bundle.sh
 grep -q 'recent-system-journal' scripts/collect_pi_support_bundle.sh
 grep -q 'chartplotter.log' scripts/collect_pi_support_bundle.sh
 grep -q 'status.json' scripts/collect_pi_support_bundle.sh
@@ -1689,6 +1690,7 @@ grep -q 'trusted_system_command_path journalctl' scripts/collect_pi_support_bund
 grep -q 'trusted_system_command_path chronyc' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command user-units "$systemctl_cmd"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command recent-user-journal "$journalctl_cmd"' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command recent-track-journal "$journalctl_cmd"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command chrony-sources "$chronyc_cmd"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command mount-findmnt "$findmnt_cmd"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command timedatectl "$timedatectl_cmd"' scripts/collect_pi_support_bundle.sh
@@ -1775,6 +1777,7 @@ grep -q 'NOAA Navionics saved status copy' scripts/collect_pi_support_bundle.sh
 grep -q 'Support bundle is missing required diagnostic evidence file' scripts/collect_pi_support_bundle.sh
 grep -q 'commands/system-command-integrity.txt' scripts/collect_pi_support_bundle.sh
 grep -q 'commands/df-inodes.txt' scripts/collect_pi_support_bundle.sh
+grep -q 'commands/recent-track-journal.txt' scripts/collect_pi_support_bundle.sh
 grep -q 'commands/recent-system-journal.txt' scripts/collect_pi_support_bundle.sh
 grep -q 'fd = os.open(bundle_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
@@ -2025,6 +2028,7 @@ grep -q 'STATUS_FUTURE_TOLERANCE_SECONDS = 300' scripts/verify_pi_recovery_expor
 grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/df-inodes.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'commands/recent-track-journal.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SUPPORT_NOAA_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/noaa-status-report-commissioned-json.txt' scripts/verify_pi_recovery_exports.sh
@@ -2176,6 +2180,7 @@ grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/restore_pi_recovery_
 grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/system-command-integrity.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/df-inodes.txt' scripts/restore_pi_recovery_user_data.sh
+grep -q 'commands/recent-track-journal.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/recent-system-journal.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'NOAA_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/noaa-status-report-commissioned-json.txt' scripts/restore_pi_recovery_user_data.sh
@@ -2555,6 +2560,7 @@ grep -q 'NOAA Navionics saved status copy' scripts/post_trip_collect_pi.sh
 grep -q 'is missing required diagnostic evidence file' scripts/post_trip_collect_pi.sh
 grep -q 'commands/system-command-integrity.txt' scripts/post_trip_collect_pi.sh
 grep -q 'commands/df-inodes.txt' scripts/post_trip_collect_pi.sh
+grep -q 'commands/recent-track-journal.txt' scripts/post_trip_collect_pi.sh
 grep -q 'commands/recent-system-journal.txt' scripts/post_trip_collect_pi.sh
 grep -q 'must be an immediate child of the post-trip output directory' scripts/post_trip_collect_pi.sh
 grep -q 'is not a readable gzip tar archive' scripts/post_trip_collect_pi.sh
@@ -10768,6 +10774,7 @@ CORE_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 NOAA_COMMAND_FILES = [
@@ -10902,6 +10909,7 @@ core_command_files = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 noaa_command_files = [
@@ -12372,6 +12380,7 @@ CORE_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 
@@ -12420,6 +12429,7 @@ CORE_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 NOAA_COMMAND_FILES = [
@@ -12492,6 +12502,7 @@ grep -q '"$python3_cmd" - "$src" "$dest"' "$support_fake_ssh_stdin"
 grep -q '"$python3_cmd" - "$config"' "$support_fake_ssh_stdin"
 grep -q 'support-bundle' "$support_fake_ssh_stdin"
 grep -q 'recent-user-journal' "$support_fake_ssh_stdin"
+grep -q 'recent-track-journal' "$support_fake_ssh_stdin"
 grep -q 'copy_regular_if_readable /etc/os-release' "$support_fake_ssh_stdin"
 grep -q 'package-versions' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path date' "$support_fake_ssh_stdin"
@@ -12542,6 +12553,7 @@ grep -q 'trusted_system_command_path journalctl' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path chronyc' "$support_fake_ssh_stdin"
 grep -Fq 'run_command user-units "$systemctl_cmd"' "$support_fake_ssh_stdin"
 grep -Fq 'run_command recent-user-journal "$journalctl_cmd"' "$support_fake_ssh_stdin"
+grep -Fq 'run_command recent-track-journal "$journalctl_cmd"' "$support_fake_ssh_stdin"
 grep -Fq 'run_command chrony-sources "$chronyc_cmd"' "$support_fake_ssh_stdin"
 grep -Fq 'run_command mount-findmnt "$findmnt_cmd"' "$support_fake_ssh_stdin"
 grep -Fq 'run_command timedatectl "$timedatectl_cmd"' "$support_fake_ssh_stdin"
@@ -14270,6 +14282,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 CORE_SUPPORT_NOAA_COMMAND_FILES = [
@@ -15163,6 +15176,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 def add_text(archive, name, text):
@@ -16031,6 +16045,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 NOAA_SUPPORT_COMMAND_FILES = [
@@ -16374,6 +16389,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 
@@ -16443,6 +16459,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/timedatectl.txt",
     "commands/pi-throttling.txt",
     "commands/recent-user-journal.txt",
+    "commands/recent-track-journal.txt",
     "commands/recent-system-journal.txt",
 ]
 NOAA_SUPPORT_COMMAND_FILES = [

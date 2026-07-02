@@ -1942,6 +1942,7 @@ elif label == "support bundle archive":
         "commands/timedatectl.txt",
         "commands/pi-throttling.txt",
         "commands/recent-user-journal.txt",
+        "commands/recent-track-journal.txt",
         "commands/recent-system-journal.txt",
         "commands/configured-storage-paths.txt",
         "commands/configured-chart-storage-tree.txt",
