@@ -250,6 +250,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",

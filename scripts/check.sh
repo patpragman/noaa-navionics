@@ -917,6 +917,8 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'disk and inode space' README.md
+grep -q 'disk and inode space' docs/sailboat-pi.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' docs/sailboat-pi.md
 grep -q 'streams each diagnostic command capture through a 2 MiB per-command output cap with a truncation marker and a 60-second per-command timeout marker' README.md
@@ -1574,6 +1576,8 @@ grep -Fq 'command timed out after {timeout:g} seconds' scripts/collect_pi_suppor
 grep -Fq 'run_command package-versions bash -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$dpkg_query" -W -f="$format"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command df "$df_cmd" -h' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command df-inodes "$df_cmd" -ih' scripts/collect_pi_support_bundle.sh
+grep -Fq 'skip_command df-inodes "skipped inode-space capture: trusted df command is unavailable"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command serial-devices bash -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$ls_cmd" -l /dev/serial /dev/serial/by-id /dev/serial/by-path' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command configured-chart-storage-tree bash -lc' scripts/collect_pi_support_bundle.sh
@@ -1593,6 +1597,7 @@ grep -Fq 'run_command uptime "$uptime_cmd"' scripts/collect_pi_support_bundle.sh
 ! grep -q 'run_command uptime uptime' scripts/collect_pi_support_bundle.sh
 ! grep -q 'run_command package-versions .*dpkg-query -W' scripts/collect_pi_support_bundle.sh
 ! grep -q 'run_command df df -h' scripts/collect_pi_support_bundle.sh
+! grep -q 'run_command df-inodes df -ih' scripts/collect_pi_support_bundle.sh
 ! grep -Fq "run_command serial-devices bash -lc 'ls -l" scripts/collect_pi_support_bundle.sh
 ! grep -Fq "run_command noaa-cache-tree bash -lc 'find " scripts/collect_pi_support_bundle.sh
 ! grep -Fq "run_command configured-chart-storage-tree bash -lc 'find " scripts/collect_pi_support_bundle.sh
@@ -1680,6 +1685,7 @@ grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/collect_pi_supp
 grep -q 'Support bundle contains no diagnostic files' scripts/collect_pi_support_bundle.sh
 grep -q 'Support bundle is missing required diagnostic file' scripts/collect_pi_support_bundle.sh
 grep -q 'commands/system-command-integrity.txt' scripts/collect_pi_support_bundle.sh
+grep -q 'commands/df-inodes.txt' scripts/collect_pi_support_bundle.sh
 grep -q 'commands/recent-system-journal.txt' scripts/collect_pi_support_bundle.sh
 grep -q 'fd = os.open(bundle_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
 grep -q 'expected current user ${current_uid}' scripts/collect_pi_support_bundle.sh
@@ -1928,6 +1934,7 @@ grep -q 'PRE_DEPARTURE_STATUS_CHECKSUM_NAME = "pre-departure-status.sha256"' scr
 grep -q 'STATUS_FUTURE_TOLERANCE_SECONDS = 300' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'commands/df-inodes.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
 grep -q 'GPSD_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
@@ -2039,6 +2046,7 @@ grep -q 'def assert_private_recovery_directory' scripts/restore_pi_recovery_user
 grep -q 'CHECKSUM_MANIFEST_NAME = "SHA256SUMS.txt"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/system-command-integrity.txt' scripts/restore_pi_recovery_user_data.sh
+grep -q 'commands/df-inodes.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'commands/recent-system-journal.txt' scripts/restore_pi_recovery_user_data.sh
 grep -q 'is missing required support diagnostic file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def verify_checksum_manifest' scripts/restore_pi_recovery_user_data.sh
@@ -2364,6 +2372,7 @@ grep -q 'track export archive' scripts/post_trip_collect_pi.sh
 grep -q 'support bundle archive' scripts/post_trip_collect_pi.sh
 grep -q 'is missing required diagnostic file' scripts/post_trip_collect_pi.sh
 grep -q 'commands/system-command-integrity.txt' scripts/post_trip_collect_pi.sh
+grep -q 'commands/df-inodes.txt' scripts/post_trip_collect_pi.sh
 grep -q 'commands/recent-system-journal.txt' scripts/post_trip_collect_pi.sh
 grep -q 'must be an immediate child of the post-trip output directory' scripts/post_trip_collect_pi.sh
 grep -q 'is not a readable gzip tar archive' scripts/post_trip_collect_pi.sh
@@ -9775,6 +9784,7 @@ CORE_COMMAND_FILES = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",
@@ -9886,6 +9896,7 @@ core_command_files = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",
@@ -11193,6 +11204,7 @@ CORE_COMMAND_FILES = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",
@@ -11239,6 +11251,7 @@ CORE_COMMAND_FILES = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",
@@ -11311,6 +11324,7 @@ grep -q 'trusted_system_command_path ls' "$support_fake_ssh_stdin"
 grep -Fq 'run_command package-versions bash -lc' "$support_fake_ssh_stdin"
 grep -Fq '"$dpkg_query" -W -f="$format"' "$support_fake_ssh_stdin"
 grep -Fq 'run_command df "$df_cmd" -h' "$support_fake_ssh_stdin"
+grep -Fq 'run_command df-inodes "$df_cmd" -ih' "$support_fake_ssh_stdin"
 grep -Fq 'run_command serial-devices bash -lc' "$support_fake_ssh_stdin"
 grep -Fq '"$ls_cmd" -l /dev/serial /dev/serial/by-id' "$support_fake_ssh_stdin"
 grep -Fq 'run_command configured-chart-storage-tree bash -lc' "$support_fake_ssh_stdin"
@@ -11330,6 +11344,7 @@ grep -Fq 'run_command uptime "$uptime_cmd"' "$support_fake_ssh_stdin"
 ! grep -q 'run_command uptime uptime' "$support_fake_ssh_stdin"
 ! grep -q 'run_command package-versions .*dpkg-query -W' "$support_fake_ssh_stdin"
 ! grep -q 'run_command df df -h' "$support_fake_ssh_stdin"
+! grep -q 'run_command df-inodes df -ih' "$support_fake_ssh_stdin"
 ! grep -Fq "run_command serial-devices bash -lc 'ls -l" "$support_fake_ssh_stdin"
 ! grep -Fq "run_command noaa-cache-tree bash -lc 'find " "$support_fake_ssh_stdin"
 ! grep -Fq "run_command configured-chart-storage-tree bash -lc 'find " "$support_fake_ssh_stdin"
@@ -13019,6 +13034,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",
@@ -14475,6 +14491,7 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",

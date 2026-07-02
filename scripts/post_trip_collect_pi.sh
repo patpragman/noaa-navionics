@@ -1667,6 +1667,7 @@ elif label == "support bundle archive":
         "commands/uptime.txt",
         "commands/package-versions.txt",
         "commands/df.txt",
+        "commands/df-inodes.txt",
         "commands/mount-findmnt.txt",
         "commands/serial-devices.txt",
         "commands/user-units.txt",

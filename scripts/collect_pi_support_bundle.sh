@@ -9,7 +9,8 @@ Collects a read-only diagnostic bundle from an already commissioned
 Raspberry Pi over SSH. The bundle includes NOAA Navionics config,
 status reports, launcher logs, installed user units, selected OpenCPN/GPSD/
 chrony/LightDM config files when readable, recent relevant journal output,
-service state, device listings, disk space, and Pi health command output.
+service state, device listings, disk and inode space, and Pi health command
+output.
 
 The script writes a .tgz bundle into output-dir, or ./pi-support-bundles
 by default.
@@ -737,6 +738,7 @@ required_members = [
     "commands/uptime.txt",
     "commands/package-versions.txt",
     "commands/df.txt",
+    "commands/df-inodes.txt",
     "commands/mount-findmnt.txt",
     "commands/serial-devices.txt",
     "commands/user-units.txt",
@@ -1634,8 +1636,10 @@ else
 fi
 if [[ -n "$df_cmd" ]]; then
   run_command df "$df_cmd" -h
+  run_command df-inodes "$df_cmd" -ih
 else
   skip_command df "skipped disk-space capture: trusted df command is unavailable"
+  skip_command df-inodes "skipped inode-space capture: trusted df command is unavailable"
 fi
 if [[ -n "$findmnt_cmd" ]]; then
   run_command mount-findmnt "$findmnt_cmd"
