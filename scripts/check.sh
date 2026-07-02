@@ -5272,10 +5272,18 @@ grep -q 'status report track_log ok is not boolean' src/noaa_navionics/report.py
 grep -q 'track_log detail contains control characters' tests/test_downloader.py
 grep -q 'track_storage_symlink_component contains control characters' tests/test_downloader.py
 grep -q '_track_log_validation_failures(report.get("track_log"), now=now)' src/noaa_navionics/report.py
+grep -q '_track_log_readiness_row_validation_failures(report)' src/noaa_navionics/report.py
 grep -q 'status report track_log has no valid latest_time' src/noaa_navionics/report.py
 grep -q 'status report track_log age_seconds {age_seconds:g} is inconsistent with latest_time age' src/noaa_navionics/report.py
 grep -q 'status report track_log age_seconds is stale' src/noaa_navionics/report.py
 grep -q 'status report track_log has no latest satellite or HDOP quality fields' src/noaa_navionics/report.py
+grep -q 'def _track_log_readiness_row_validation_failures' src/noaa_navionics/report.py
+grep -q 'status report Track Log service check has no structured data' src/noaa_navionics/report.py
+grep -q 'status report Track Log service check {field} does not match track_log' src/noaa_navionics/report.py
+grep -q '_TRACK_LOG_READINESS_DATA_FIELDS' src/noaa_navionics/report.py
+grep -q 'return CheckResult("Track Log", True, str(track_log.get("detail", "recent GPX trackpoint found")), data)' src/noaa_navionics/report.py
+grep -q 'Track Log service check latest_latitude does not match track_log' tests/test_downloader.py
+grep -q 'self.assertEqual(check.data\["latest_path"\], str(track_path))' tests/test_downloader.py
 grep -q 'status report generated_at timestamp is stale' src/noaa_navionics/report.py
 grep -q 'status report generated_at timestamp is in the future' src/noaa_navionics/report.py
 grep -q 'parsed.tzinfo is None or parsed.utcoffset() is None' src/noaa_navionics/report.py
@@ -5557,6 +5565,8 @@ grep -q 'READY reports also require structured Python, Tkinter, and Source Revis
 grep -q 'READY reports also require structured Python, Tkinter, and Source Revision evidence' docs/sailboat-pi.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean' README.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean' docs/sailboat-pi.md
+grep -q 'The Track Log service row must also carry structured latest-track evidence that matches the top-level `track_log` summary' README.md
+grep -q 'The Track Log service row must also carry structured latest-track evidence that matches the top-level `track_log` summary' docs/sailboat-pi.md
 grep -q 'only rows with boolean `true` are trusted as structured readiness evidence' README.md
 grep -q 'only rows with boolean `true` are trusted as structured readiness evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Clock and Time Sync evidence' README.md

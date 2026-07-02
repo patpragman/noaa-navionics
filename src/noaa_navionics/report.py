@@ -354,6 +354,7 @@ def status_report_validation_failures(
         failures.extend(_gps_fix_validation_failures(report, now=now))
     failures.extend(_manifest_validation_failures(report.get("manifest")))
     failures.extend(_track_log_validation_failures(report.get("track_log"), now=now))
+    failures.extend(_track_log_readiness_row_validation_failures(report))
     for section_name in ("checks", "service_checks"):
         section = report.get(section_name)
         if not isinstance(section, list):
@@ -3312,6 +3313,32 @@ def _track_log_validation_failures(track_log: object, *, now: Optional[datetime]
     return []
 
 
+def _track_log_readiness_row_validation_failures(report: dict[str, object]) -> list[CheckResult]:
+    track_log = report.get("track_log")
+    service_checks = report.get("service_checks")
+    if not isinstance(track_log, dict) or track_log.get("ok") is not True or not isinstance(service_checks, list):
+        return []
+    row = next(
+        (check for check in service_checks if isinstance(check, dict) and check.get("name") == "Track Log"),
+        None,
+    )
+    if not isinstance(row, dict) or row.get("ok") is not True:
+        return []
+    data = row.get("data")
+    if not isinstance(data, dict):
+        return [CheckResult("Track Log", False, "status report Track Log service check has no structured data")]
+    for field in _TRACK_LOG_READINESS_DATA_FIELDS:
+        if field in track_log and data.get(field) != track_log.get(field):
+            return [
+                CheckResult(
+                    "Track Log",
+                    False,
+                    f"status report Track Log service check {field} does not match track_log",
+                )
+            ]
+    return []
+
+
 def _positive_status_int(value: object) -> Optional[int]:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         return None
@@ -4527,10 +4554,24 @@ def _format_trackpoint_quality(quality: dict[str, object]) -> str:
     return "; ".join(pieces)
 
 
+_TRACK_LOG_READINESS_DATA_FIELDS = (
+    "track_output",
+    "tracks_dir",
+    "latest_path",
+    "latest_time",
+    "latest_latitude",
+    "latest_longitude",
+    "age_seconds",
+    "latest_satellites",
+    "latest_hdop",
+)
+
+
 def _track_log_readiness_check(track_log: dict[str, object]) -> CheckResult:
+    data = {field: track_log[field] for field in _TRACK_LOG_READINESS_DATA_FIELDS if field in track_log}
     if track_log.get("ok") is True:
-        return CheckResult("Track Log", True, str(track_log.get("detail", "recent GPX trackpoint found")))
-    return CheckResult("Track Log", False, str(track_log.get("detail", "no recent GPX trackpoint found")))
+        return CheckResult("Track Log", True, str(track_log.get("detail", "recent GPX trackpoint found")), data)
+    return CheckResult("Track Log", False, str(track_log.get("detail", "no recent GPX trackpoint found")), data)
 
 
 def _manifest_summary(chart_output: Path) -> dict[str, object]:

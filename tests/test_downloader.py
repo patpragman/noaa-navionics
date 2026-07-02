@@ -791,7 +791,31 @@ def complete_status_gui_report(
             "altitude_m": 12.3,
         },
         "checks": check_rows,
-        "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(service_checks)],
+        "service_checks": [
+            {
+                "name": name,
+                "ok": True,
+                "detail": "ok",
+                **(
+                    {
+                        "data": {
+                            "track_output": "/charts",
+                            "tracks_dir": "/charts/tracks",
+                            "latest_path": "/charts/tracks/track-20260701.gpx",
+                            "latest_time": generated_at,
+                            "latest_latitude": 61.2181,
+                            "latest_longitude": -149.9003,
+                            "age_seconds": 0.0,
+                            "latest_satellites": 8,
+                            "latest_hdop": 0.9,
+                        }
+                    }
+                    if name == "Track Log"
+                    else {}
+                ),
+            }
+            for name in sorted(service_checks)
+        ],
     }
 
 
@@ -13032,6 +13056,10 @@ class StatusReportTests(unittest.TestCase):
         track_report["track_log"]["track_output"] = "/tracks"
         track_report["track_log"]["tracks_dir"] = "/tracks/tracks"
         track_report["track_log"]["latest_path"] = "/tracks/tracks/track-20260701.gpx"
+        track_log_row = next(check for check in track_report["service_checks"] if check["name"] == "Track Log")
+        track_log_row["data"]["track_output"] = "/tracks"
+        track_log_row["data"]["tracks_dir"] = "/tracks/tracks"
+        track_log_row["data"]["latest_path"] = "/tracks/tracks/track-20260701.gpx"
         track_report["checks"].append({"name": "Track Disk", "ok": True, "detail": "12.5 GB free"})
 
         failures = status_report_validation_failures(track_report, now=now)
@@ -15188,6 +15216,31 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == "Track Log" and expected in failure.detail for failure in failures))
 
+        service_row_cases = [
+            (lambda row: row.pop("data", None), "Track Log service check has no structured data"),
+            (
+                lambda row: row["data"].__setitem__("latest_latitude", 62.0),
+                "Track Log service check latest_latitude does not match track_log",
+            ),
+            (
+                lambda row: row["data"].__setitem__(
+                    "latest_time",
+                    (now - timedelta(seconds=1)).isoformat().replace("+00:00", "Z"),
+                ),
+                "Track Log service check latest_time does not match track_log",
+            ),
+        ]
+        for mutate_row, expected in service_row_cases:
+            with self.subTest(service_row=expected):
+                report = complete_status_gui_report(generated_at=now.isoformat().replace("+00:00", "Z"))
+                row = next(check for check in report["service_checks"] if check["name"] == "Track Log")
+                mutate_row(row)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "Track Log" and expected in failure.detail for failure in failures))
+
     def test_verify_pi_required_status_checks_match_shared_gpsd_readiness(self):
         source = Path("scripts/verify_pi.sh").read_text(encoding="utf-8")
 
@@ -17331,6 +17384,12 @@ class StatusReportTests(unittest.TestCase):
             self.assertTrue(check.ok)
             self.assertIn("61.218100", check.detail)
             self.assertIn("8 satellites", check.detail)
+            self.assertEqual(check.data["latest_path"], str(track_path))
+            self.assertEqual(check.data["latest_time"], timestamp.isoformat().replace("+00:00", "Z"))
+            self.assertEqual(check.data["latest_latitude"], 61.2181)
+            self.assertEqual(check.data["latest_longitude"], -149.9003)
+            self.assertEqual(check.data["latest_satellites"], 8)
+            self.assertEqual(check.data["latest_hdop"], 1.2)
 
     def test_track_log_summary_rejects_future_trackpoint(self):
         timestamp = datetime.now(timezone.utc)
