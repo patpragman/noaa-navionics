@@ -1220,9 +1220,25 @@ grep -q 'dirty worktree' scripts/deploy_to_pi.sh
 grep -q 'source-revision' scripts/install_raspberry_pi.sh
 grep -q 'write_source_revision' scripts/install_raspberry_pi.sh
 grep -q 'tempfile.NamedTemporaryFile' scripts/install_raspberry_pi.sh
+grep -q 'validate_temp_for_promotion(tmp_path, tmp_stat)' scripts/install_raspberry_pi.sh
+grep -q 'tmp_stat = os.fstat(handle.fileno())' scripts/install_raspberry_pi.sh
+grep -q 'os.fchmod(handle.fileno(), 0o600)' scripts/install_raspberry_pi.sh
 grep -q 'os.replace(tmp_path, target)' scripts/install_raspberry_pi.sh
-grep -q 'cleanup_private_temp_file(tmp_path)' scripts/install_raspberry_pi.sh
+grep -q 'cleanup_private_temp_file(tmp_path, tmp_stat)' scripts/install_raspberry_pi.sh
+grep -q 'source revision temp changed before promotion; leaving it in place' scripts/install_raspberry_pi.sh
 grep -q 'source revision temp changed before cleanup; leaving it in place' scripts/install_raspberry_pi.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/install_raspberry_pi.sh").read_text()
+start = text.index("write_source_revision() {")
+tmp_stat = text.index("tmp_stat = os.fstat(handle.fileno())", start)
+validate = text.index("validate_temp_for_promotion(tmp_path, tmp_stat)", tmp_stat)
+promote = text.index("os.replace(tmp_path, target)", validate)
+cleanup = text.index("cleanup_private_temp_file(tmp_path, tmp_stat)", promote)
+if not tmp_stat < validate < promote < cleanup:
+    raise SystemExit("source revision temp must be same-file validated before promotion and cleanup")
+PY
 grep -q 'VERSION_CODENAME' scripts/install_raspberry_pi.sh
 grep -q 'install_root_text_atomic' scripts/install_raspberry_pi.sh
 grep -q 'validate_skip_apt_runtime_dependencies' scripts/install_raspberry_pi.sh
@@ -1452,7 +1468,7 @@ grep -q 'install_user_file_atomic "${repo_root}/systemd/noaa-navionics-preflight
 grep -q '"${HOME}/.local/bin/noaa-navionics-gui"' scripts/install_raspberry_pi.sh
 grep -q '"${HOME}/.local/bin/noaa-navionics-status-gui"' scripts/install_raspberry_pi.sh
 grep -q 'sync_paths "$revision_file"' scripts/install_raspberry_pi.sh
-grep -q 'os.chmod(tmp_path, 0o600)' scripts/install_raspberry_pi.sh
+grep -q 'os.fchmod(handle.fileno(), 0o600)' scripts/install_raspberry_pi.sh
 grep -q 'Do not run the Raspberry Pi installer as root' scripts/install_raspberry_pi.sh
 ! grep -q 'noaa-navionics-chartplotter.desktop' scripts/install_raspberry_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/install_raspberry_pi.sh
@@ -3293,6 +3309,8 @@ grep -q 'Failed root temporary config cleanup is also no-follow and same-file va
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'Installer source-revision temp files are same-file validated before promotion' README.md
+grep -q 'Installer source-revision temp files are same-file validated before promotion' docs/sailboat-pi.md
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root backup cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' README.md
