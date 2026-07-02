@@ -649,9 +649,14 @@ def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
             if len(members) > MAX_ZIP_MEMBERS:
                 raise RuntimeError(f"{label} has too many members: {len(members)} > {MAX_ZIP_MEMBERS}")
             total_uncompressed = 0
+            normalized_members: set[str] = set()
             for member in members:
                 if _zip_member_path_is_unsafe(member.filename):
                     raise RuntimeError(f"{label} has unsafe member path: {member.filename}")
+                normalized_name = _normalized_zip_member_name(member.filename)
+                if normalized_name in normalized_members:
+                    raise RuntimeError(f"{label} contains duplicate member path: {member.filename}")
+                normalized_members.add(normalized_name)
                 if not member.is_dir():
                     if member.file_size > MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES:
                         raise RuntimeError(
@@ -675,6 +680,10 @@ def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
     except zipfile.BadZipFile as exc:
         raise RuntimeError(f"{label} is not a valid archive: {zip_path}") from exc
     return enc_cell_count
+
+
+def _normalized_zip_member_name(filename: str) -> str:
+    return filename.rstrip("/")
 
 
 def _harden_extracted_chart_tree(root: Path) -> None:

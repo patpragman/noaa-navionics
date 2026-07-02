@@ -4279,20 +4279,24 @@ grep -q 'os.chmod(path, mode)' src/noaa_navionics/downloader.py
 grep -q 'test_download_tightens_extracted_chart_tree' tests/test_downloader.py
 grep -q 'def _zip_member_path_is_unsafe' src/noaa_navionics/downloader.py
 grep -q '{label} has unsafe member path' src/noaa_navionics/downloader.py
+grep -q '{label} contains duplicate member path' src/noaa_navionics/downloader.py
 grep -q 'chart ZIP has a failed CRC member' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_crc_failure_before_staging' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_too_many_members_before_staging' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_duplicate_member_before_staging' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_total_uncompressed_size_before_staging' tests/test_downloader.py
 grep -q '{label} is not a valid archive' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'def _validate_retained_enc_archive' src/noaa_navionics/health.py
 grep -q 'retained chart archive contains no ENC .000 cells' src/noaa_navionics/health.py
 grep -q 'retained chart archive has too many members' src/noaa_navionics/health.py
+grep -q 'retained chart archive contains duplicate member path' src/noaa_navionics/health.py
 grep -q 'retained chart archive member is too large' src/noaa_navionics/health.py
 grep -q 'retained chart archive uncompressed size is too large' src/noaa_navionics/health.py
 grep -q 'test_manifest_archive_rejects_retained_file_that_is_not_zip' tests/test_downloader.py
 grep -q 'test_manifest_archive_rejects_retained_zip_without_enc_cells' tests/test_downloader.py
 grep -q 'test_manifest_archive_rejects_retained_zip_with_unsafe_member' tests/test_downloader.py
+grep -q 'test_manifest_archive_rejects_retained_zip_with_duplicate_member' tests/test_downloader.py
 grep -q 'test_manifest_archive_rejects_retained_zip_with_oversized_member' tests/test_downloader.py
 grep -q 'def _validate_downloaded_catalog' src/noaa_navionics/downloader.py
 grep -q 'downloaded catalog XML contains no NOAA ENC chart metadata' src/noaa_navionics/downloader.py
@@ -4305,6 +4309,8 @@ grep -q 'pass CRC checks' README.md
 grep -q 'pass CRC checks' docs/sailboat-pi.md
 grep -q 'member-count and uncompressed-size caps' README.md
 grep -q 'member-count and uncompressed-size caps' docs/sailboat-pi.md
+grep -q 'duplicate member names' README.md
+grep -q 'duplicate member names' docs/sailboat-pi.md
 grep -q 'ZIP member paths, member-count and uncompressed-size caps, CRCs, and ENC cell presence' README.md
 grep -q 'ZIP member paths, member-count and uncompressed-size caps, CRCs, and ENC cell presence' docs/sailboat-pi.md
 grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' README.md

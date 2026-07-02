@@ -1386,9 +1386,14 @@ def _validate_retained_enc_archive(path: Path, *, expected_stat: Optional[os.sta
                     if len(members) > MAX_ZIP_MEMBERS:
                         return f"retained chart archive has too many members: {len(members)} > {MAX_ZIP_MEMBERS}"
                     total_uncompressed = 0
+                    normalized_members: set[str] = set()
                     for member in members:
                         if _zip_member_path_is_unsafe(member.filename):
                             return f"retained chart archive has unsafe member path: {member.filename}"
+                        normalized_name = _normalized_zip_member_name(member.filename)
+                        if normalized_name in normalized_members:
+                            return f"retained chart archive contains duplicate member path: {member.filename}"
+                        normalized_members.add(normalized_name)
                         if not member.is_dir():
                             if member.file_size > MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES:
                                 return (
@@ -1435,6 +1440,10 @@ def _zip_member_path_is_unsafe(filename: str) -> bool:
     if ":" in parts[0]:
         return True
     return False
+
+
+def _normalized_zip_member_name(filename: str) -> str:
+    return filename.rstrip("/")
 
 
 def _sha256_trusted_file(
