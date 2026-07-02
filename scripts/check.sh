@@ -1639,6 +1639,7 @@ grep -q 'trusted_system_command_path dpkg-query' scripts/collect_pi_support_bund
 grep -q 'trusted_system_command_path df' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path find' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path ls' scripts/collect_pi_support_bundle.sh
+grep -q 'trusted_system_command_path bash' scripts/collect_pi_support_bundle.sh
 grep -Fq 'max_command_output_bytes=$((2 * 1024 * 1024))' scripts/collect_pi_support_bundle.sh
 grep -Fq 'max_command_seconds=60' scripts/collect_pi_support_bundle.sh
 grep -Fq 'subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)' scripts/collect_pi_support_bundle.sh
@@ -1646,17 +1647,21 @@ grep -Fq 'selectors.DefaultSelector()' scripts/collect_pi_support_bundle.sh
 grep -Fq 'os.killpg(process.pid, signal.SIGKILL)' scripts/collect_pi_support_bundle.sh
 grep -Fq 'output truncated after {limit} bytes' scripts/collect_pi_support_bundle.sh
 grep -Fq 'command timed out after {timeout:g} seconds' scripts/collect_pi_support_bundle.sh
-grep -Fq 'run_command package-versions bash -lc' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command package-versions "$bash_cmd" -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$dpkg_query" -W -f="$format"' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command df "$df_cmd" -h' scripts/collect_pi_support_bundle.sh
 grep -Fq 'run_command df-inodes "$df_cmd" -ih' scripts/collect_pi_support_bundle.sh
 grep -Fq 'skip_command df-inodes "skipped inode-space capture: trusted df command is unavailable"' scripts/collect_pi_support_bundle.sh
-grep -Fq 'run_command serial-devices bash -lc' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command serial-devices "$bash_cmd" -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$ls_cmd" -l /dev/serial /dev/serial/by-id /dev/serial/by-path' scripts/collect_pi_support_bundle.sh
-grep -Fq 'run_command configured-chart-storage-tree bash -lc' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command configured-chart-storage-tree "$bash_cmd" -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$find_cmd" "$target" -maxdepth 2 -mindepth 1 -ls' scripts/collect_pi_support_bundle.sh
-grep -Fq 'run_command noaa-cache-tree bash -lc' scripts/collect_pi_support_bundle.sh
+grep -Fq 'run_command noaa-cache-tree "$bash_cmd" -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq '"$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command package-versions bash -lc' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command serial-devices bash -lc' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command configured-chart-storage-tree bash -lc' scripts/collect_pi_support_bundle.sh
+! grep -Fq 'run_command noaa-cache-tree bash -lc' scripts/collect_pi_support_bundle.sh
 grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" scripts/collect_pi_support_bundle.sh
 grep -Fq -- '-f="$format"' scripts/collect_pi_support_bundle.sh
 ! grep -Fq -- '-f="${binary:Package}' scripts/collect_pi_support_bundle.sh
@@ -1676,6 +1681,7 @@ grep -Fq 'run_command uptime "$uptime_cmd"' scripts/collect_pi_support_bundle.sh
 ! grep -Fq "run_command configured-chart-storage-tree bash -lc 'find " scripts/collect_pi_support_bundle.sh
 grep -q 'collect_system_command_integrity' scripts/collect_pi_support_bundle.sh
 grep -q 'system-command-integrity.txt' scripts/collect_pi_support_bundle.sh
+grep -q 'for command_name in bash date uname hostname uptime' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path systemctl' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path journalctl' scripts/collect_pi_support_bundle.sh
 grep -q 'trusted_system_command_path chronyc' scripts/collect_pi_support_bundle.sh
@@ -1717,6 +1723,8 @@ grep -q 'stable/volatile GPS classification' README.md
 grep -q 'stable/volatile GPS classification' docs/sailboat-pi.md
 grep -q 'system command-integrity evidence' README.md
 grep -q 'system command-integrity evidence' docs/sailboat-pi.md
+grep -q 'system command-integrity evidence for the shell, host-identity' README.md
+grep -q 'system command-integrity evidence for the shell, host-identity' docs/sailboat-pi.md
 grep -q 'host-identity' README.md
 grep -q 'host-identity' docs/sailboat-pi.md
 grep -q 'storage-listing and serial-listing commands' README.md
@@ -11978,16 +11986,21 @@ grep -q 'trusted_system_command_path dpkg-query' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path df' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path find' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path ls' "$support_fake_ssh_stdin"
-grep -Fq 'run_command package-versions bash -lc' "$support_fake_ssh_stdin"
+grep -q 'trusted_system_command_path bash' "$support_fake_ssh_stdin"
+grep -Fq 'run_command package-versions "$bash_cmd" -lc' "$support_fake_ssh_stdin"
 grep -Fq '"$dpkg_query" -W -f="$format"' "$support_fake_ssh_stdin"
 grep -Fq 'run_command df "$df_cmd" -h' "$support_fake_ssh_stdin"
 grep -Fq 'run_command df-inodes "$df_cmd" -ih' "$support_fake_ssh_stdin"
-grep -Fq 'run_command serial-devices bash -lc' "$support_fake_ssh_stdin"
+grep -Fq 'run_command serial-devices "$bash_cmd" -lc' "$support_fake_ssh_stdin"
 grep -Fq '"$ls_cmd" -l /dev/serial /dev/serial/by-id' "$support_fake_ssh_stdin"
-grep -Fq 'run_command configured-chart-storage-tree bash -lc' "$support_fake_ssh_stdin"
+grep -Fq 'run_command configured-chart-storage-tree "$bash_cmd" -lc' "$support_fake_ssh_stdin"
 grep -Fq '"$find_cmd" "$target" -maxdepth 2 -mindepth 1 -ls' "$support_fake_ssh_stdin"
-grep -Fq 'run_command noaa-cache-tree bash -lc' "$support_fake_ssh_stdin"
+grep -Fq 'run_command noaa-cache-tree "$bash_cmd" -lc' "$support_fake_ssh_stdin"
 grep -Fq '"$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command package-versions bash -lc' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command serial-devices bash -lc' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command configured-chart-storage-tree bash -lc' "$support_fake_ssh_stdin"
+! grep -Fq 'run_command noaa-cache-tree bash -lc' "$support_fake_ssh_stdin"
 grep -Fq "format='\\''\${binary:Package}\\t\${Version}\\t\${db:Status-Abbrev}\\n'\\''" "$support_fake_ssh_stdin"
 grep -Fq -- '-f="$format"' "$support_fake_ssh_stdin"
 ! grep -Fq -- '-f="${binary:Package}' "$support_fake_ssh_stdin"
@@ -12007,6 +12020,7 @@ grep -Fq 'run_command uptime "$uptime_cmd"' "$support_fake_ssh_stdin"
 ! grep -Fq "run_command configured-chart-storage-tree bash -lc 'find " "$support_fake_ssh_stdin"
 grep -q 'collect_system_command_integrity' "$support_fake_ssh_stdin"
 grep -q 'system-command-integrity.txt' "$support_fake_ssh_stdin"
+grep -q 'for command_name in bash date uname hostname uptime' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path systemctl' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path journalctl' "$support_fake_ssh_stdin"
 grep -q 'trusted_system_command_path chronyc' "$support_fake_ssh_stdin"

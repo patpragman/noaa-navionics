@@ -1371,7 +1371,7 @@ collect_system_command_integrity() {
   local output="${commands_dir}/system-command-integrity.txt"
 
   : >"$output"
-  for command_name in date uname hostname uptime systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df find ls; do
+  for command_name in bash date uname hostname uptime systemctl journalctl chronyc findmnt timedatectl vcgencmd dpkg-query df find ls; do
     {
       printf '[%s]\n' "$command_name"
       if ! command_path="$(command -v "$command_name" 2>/dev/null)" || [[ -z "$command_path" ]]; then
@@ -1663,17 +1663,17 @@ PY
         copy_regular_if_readable "$value"
         ;;
       chart_output)
-        if [[ -n "${find_cmd:-}" ]]; then
-          run_command configured-chart-storage-tree bash -lc 'find_cmd="$1"; target="$2"; "$find_cmd" "$target" -maxdepth 2 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd" "$value"
+        if [[ -n "${find_cmd:-}" && -n "${bash_cmd:-}" ]]; then
+          run_command configured-chart-storage-tree "$bash_cmd" -lc 'find_cmd="$1"; target="$2"; "$find_cmd" "$target" -maxdepth 2 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd" "$value"
         else
-          skip_command configured-chart-storage-tree "skipped configured chart storage tree: trusted find command is unavailable"
+          skip_command configured-chart-storage-tree "skipped configured chart storage tree: trusted bash or find command is unavailable"
         fi
         ;;
       track_output)
-        if [[ -n "${find_cmd:-}" ]]; then
-          run_command configured-track-storage-tree bash -lc 'find_cmd="$1"; target="$2"; "$find_cmd" "$target" -maxdepth 2 -mindepth 1 \( -type d -o -name "*.gpx" \) -ls 2>&1 || true' _ "$find_cmd" "$value"
+        if [[ -n "${find_cmd:-}" && -n "${bash_cmd:-}" ]]; then
+          run_command configured-track-storage-tree "$bash_cmd" -lc 'find_cmd="$1"; target="$2"; "$find_cmd" "$target" -maxdepth 2 -mindepth 1 \( -type d -o -name "*.gpx" \) -ls 2>&1 || true' _ "$find_cmd" "$value"
         else
-          skip_command configured-track-storage-tree "skipped configured track storage tree: trusted find command is unavailable"
+          skip_command configured-track-storage-tree "skipped configured track storage tree: trusted bash or find command is unavailable"
         fi
         ;;
     esac
@@ -1705,6 +1705,7 @@ findmnt_cmd="$(trusted_system_command_path findmnt 2>/dev/null || true)"
 timedatectl_cmd="$(trusted_system_command_path timedatectl 2>/dev/null || true)"
 vcgencmd_cmd="$(trusted_system_command_path vcgencmd 2>/dev/null || true)"
 dpkg_query_cmd="$(trusted_system_command_path dpkg-query 2>/dev/null || true)"
+bash_cmd="$(trusted_system_command_path bash 2>/dev/null || true)"
 df_cmd="$(trusted_system_command_path df 2>/dev/null || true)"
 find_cmd="$(trusted_system_command_path find 2>/dev/null || true)"
 ls_cmd="$(trusted_system_command_path ls 2>/dev/null || true)"
@@ -1735,10 +1736,10 @@ if [[ -n "$uptime_cmd" ]]; then
 else
   skip_command uptime "skipped uptime capture: trusted uptime command is unavailable"
 fi
-if [[ -n "$dpkg_query_cmd" ]]; then
-  run_command package-versions bash -lc 'dpkg_query="$1"; format='\''${binary:Package}\t${Version}\t${db:Status-Abbrev}\n'\''; for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if "$dpkg_query" -W -f="$format" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done' _ "$dpkg_query_cmd"
+if [[ -n "$dpkg_query_cmd" && -n "$bash_cmd" ]]; then
+  run_command package-versions "$bash_cmd" -lc 'dpkg_query="$1"; format='\''${binary:Package}\t${Version}\t${db:Status-Abbrev}\n'\''; for pkg in python3 python3-venv python3-tk rsync opencpn gpsd gpsd-clients gpsd-tools chrony lightdm x11-xserver-utils python3-setuptools procps raspi-utils libraspberrypi-bin; do if "$dpkg_query" -W -f="$format" "$pkg" 2>/dev/null; then :; else printf "%s\tmissing\n" "$pkg"; fi; done' _ "$dpkg_query_cmd"
 else
-  skip_command package-versions "skipped package-version capture: trusted dpkg-query command is unavailable"
+  skip_command package-versions "skipped package-version capture: trusted bash or dpkg-query command is unavailable"
 fi
 if [[ -n "$df_cmd" ]]; then
   run_command df "$df_cmd" -h
@@ -1752,20 +1753,20 @@ if [[ -n "$findmnt_cmd" ]]; then
 else
   skip_command mount-findmnt "skipped findmnt capture: trusted findmnt command is unavailable"
 fi
-if [[ -n "$ls_cmd" ]]; then
-  run_command serial-devices bash -lc 'ls_cmd="$1"; "$ls_cmd" -l /dev/serial /dev/serial/by-id /dev/serial/by-path 2>&1 || true' _ "$ls_cmd"
+if [[ -n "$ls_cmd" && -n "$bash_cmd" ]]; then
+  run_command serial-devices "$bash_cmd" -lc 'ls_cmd="$1"; "$ls_cmd" -l /dev/serial /dev/serial/by-id /dev/serial/by-path 2>&1 || true' _ "$ls_cmd"
 else
-  skip_command serial-devices "skipped serial device listing: trusted ls command is unavailable"
+  skip_command serial-devices "skipped serial device listing: trusted bash or ls command is unavailable"
 fi
 collect_noaa_command_reports
-if [[ -n "$find_cmd" ]]; then
-  run_command noaa-cache-tree bash -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
-  run_command noaa-config-tree bash -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
-  run_command noaa-data-tree bash -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
+if [[ -n "$find_cmd" && -n "$bash_cmd" ]]; then
+  run_command noaa-cache-tree "$bash_cmd" -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.cache/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
+  run_command noaa-config-tree "$bash_cmd" -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.config/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
+  run_command noaa-data-tree "$bash_cmd" -lc 'find_cmd="$1"; "$find_cmd" "$HOME/.local/share/noaa-navionics" -maxdepth 3 -mindepth 1 -ls 2>&1 || true' _ "$find_cmd"
 else
-  skip_command noaa-cache-tree "skipped NOAA cache tree: trusted find command is unavailable"
-  skip_command noaa-config-tree "skipped NOAA config tree: trusted find command is unavailable"
-  skip_command noaa-data-tree "skipped NOAA data tree: trusted find command is unavailable"
+  skip_command noaa-cache-tree "skipped NOAA cache tree: trusted bash or find command is unavailable"
+  skip_command noaa-config-tree "skipped NOAA config tree: trusted bash or find command is unavailable"
+  skip_command noaa-data-tree "skipped NOAA data tree: trusted bash or find command is unavailable"
 fi
 if [[ -n "$systemctl_cmd" ]]; then
   run_command user-units "$systemctl_cmd" --user --no-pager status noaa-navionics.timer noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service
@@ -1792,10 +1793,10 @@ if [[ -n "$timedatectl_cmd" ]]; then
 else
   skip_command timedatectl "skipped timedatectl capture: trusted timedatectl command is unavailable"
 fi
-if [[ -n "$vcgencmd_cmd" ]]; then
-  run_command pi-throttling bash -lc '"$1" get_throttled && "$1" measure_temp' _ "$vcgencmd_cmd"
+if [[ -n "$vcgencmd_cmd" && -n "$bash_cmd" ]]; then
+  run_command pi-throttling "$bash_cmd" -lc '"$1" get_throttled && "$1" measure_temp' _ "$vcgencmd_cmd"
 else
-  skip_command pi-throttling "skipped Pi throttling capture: trusted vcgencmd command is unavailable"
+  skip_command pi-throttling "skipped Pi throttling capture: trusted bash or vcgencmd command is unavailable"
 fi
 if [[ -n "$journalctl_cmd" ]]; then
   run_command recent-user-journal "$journalctl_cmd" --user --no-pager --since "-2 days" -u noaa-navionics.service -u noaa-navionics.timer -u noaa-navionics-track.service -u noaa-navionics-preflight.service
