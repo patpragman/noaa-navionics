@@ -46,6 +46,7 @@ from . import __version__
 DEFAULT_SOURCE_REVISION_PATH = Path("~/.local/share/noaa-navionics/source-revision")
 DEFAULT_LAUNCHER_ENV_PATH = Path("~/.config/noaa-navionics/launcher.env")
 DEFAULT_AUTOSTART_PATH = Path("~/.config/autostart/noaa-navionics-chartplotter.desktop")
+DEFAULT_STATUS_DESKTOP_PATH = Path("~/Desktop/noaa-navionics-status.desktop")
 DEFAULT_MOB_DESKTOP_PATH = Path("~/Desktop/noaa-navionics-mob.desktop")
 DEFAULT_LIGHTDM_AUTOLOGIN_PATH = Path("/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf")
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
@@ -1830,6 +1831,55 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             if str(values.get("Hidden", "")).strip().lower() == "true":
                 failures.append("desktop autostart Hidden=true disables chartplotter startup")
 
+    status_launcher = desktop.get("status_launcher")
+    if not isinstance(status_launcher, dict):
+        failures.append("status report missing status GUI desktop launcher section")
+    else:
+        path = str(status_launcher.get("path", "")).strip()
+        if not path:
+            failures.append("status report status GUI desktop launcher path is empty")
+        elif not _status_absolute_path(path):
+            failures.append(f"status report status GUI desktop launcher path is not absolute: {path}")
+        if status_launcher.get("exists") is not True:
+            failures.append(f"status report status GUI desktop launcher does not exist: {path or '<missing>'}")
+        if status_launcher.get("is_symlink") is not False:
+            failures.append("status report status GUI desktop launcher path is a symlink or missing symlink status")
+        if status_launcher.get("directory_is_symlink") is not False:
+            failures.append("status report status GUI desktop launcher directory is a symlink or missing symlink status")
+        if "path_symlink_component" not in status_launcher:
+            failures.append("status report status GUI desktop launcher missing path_symlink_component")
+        elif str(status_launcher.get("path_symlink_component", "")).strip():
+            failures.append("status report status GUI desktop launcher path contains a symlink")
+        error = str(status_launcher.get("error", "")).strip()
+        if error:
+            failures.append(f"status report status GUI desktop launcher error: {error}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                status_launcher,
+                label="status GUI desktop launcher",
+                expected_uid=os.getuid(),
+            )
+        )
+        failures.extend(_user_executable_mode_failures(status_launcher, label="status GUI desktop launcher"))
+        values = status_launcher.get("values")
+        if not isinstance(values, dict):
+            failures.append("status report status GUI desktop launcher values were not parsed")
+        else:
+            expected_values = {
+                "Type": "Application",
+                "Name": "NOAA Navionics Status",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+                "Terminal": "false",
+            }
+            for key, expected in expected_values.items():
+                actual = str(values.get(key, "")).strip()
+                if actual != expected:
+                    failures.append(f"status GUI desktop launcher {key}={actual or '<missing>'} expected {expected}")
+            if str(values.get("Hidden", "")).strip().lower() == "true":
+                failures.append("status GUI desktop launcher Hidden=true hides the readiness panel")
+            if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+                failures.append("status GUI desktop launcher must not be configured for autostart")
+
     graphical_target = str(desktop.get("graphical_target", "")).strip()
     if graphical_target != "graphical.target":
         failures.append(f"status report graphical target is {graphical_target or '<missing>'}")
@@ -2707,6 +2757,7 @@ def format_status_text(report: dict[str, object]) -> str:
     if isinstance(desktop, dict) and desktop:
         lines.extend(["", "Desktop Startup:"])
         autostart = desktop.get("autostart", {})
+        status_launcher = desktop.get("status_launcher", {})
         mob_launcher = desktop.get("mob_launcher", {})
         lightdm = desktop.get("lightdm_autologin", {})
         if isinstance(autostart, dict):
@@ -2717,6 +2768,15 @@ def format_status_text(report: dict[str, object]) -> str:
                 f"directory_is_symlink={autostart.get('directory_is_symlink', '')} "
                 f"path_symlink_component={autostart.get('path_symlink_component', '')} "
                 f"uid={autostart.get('uid', '')} mode={autostart.get('mode', '')}".rstrip()
+            )
+        if isinstance(status_launcher, dict):
+            lines.append(
+                f"status_launcher={status_launcher.get('path', '')} "
+                f"exists={status_launcher.get('exists', '')} "
+                f"is_symlink={status_launcher.get('is_symlink', '')} "
+                f"directory_is_symlink={status_launcher.get('directory_is_symlink', '')} "
+                f"path_symlink_component={status_launcher.get('path_symlink_component', '')} "
+                f"uid={status_launcher.get('uid', '')} mode={status_launcher.get('mode', '')}".rstrip()
             )
         if isinstance(mob_launcher, dict):
             lines.append(
@@ -3784,11 +3844,16 @@ def _opencpn_config_summary(path: Optional[Path] = None) -> dict[str, object]:
 def _desktop_summary(
     *,
     autostart_path: Optional[Path] = None,
+    status_desktop_path: Optional[Path] = None,
     mob_desktop_path: Optional[Path] = None,
     lightdm_autologin_path: Optional[Path] = None,
 ) -> dict[str, object]:
     autostart = _key_value_file_summary(
         Path(autostart_path or DEFAULT_AUTOSTART_PATH).expanduser(),
+        comment_prefixes=("#",),
+    )
+    status_launcher = _key_value_file_summary(
+        Path(status_desktop_path or DEFAULT_STATUS_DESKTOP_PATH).expanduser(),
         comment_prefixes=("#",),
     )
     mob_launcher = _key_value_file_summary(
@@ -3801,6 +3866,7 @@ def _desktop_summary(
     )
     return {
         "autostart": autostart,
+        "status_launcher": status_launcher,
         "mob_launcher": mob_launcher,
         "lightdm_autologin": lightdm_autologin,
         "graphical_target": _systemctl_system(["get-default"]),
@@ -4433,6 +4499,55 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
             if hidden == "true":
                 failures.append("desktop autostart Hidden=true disables chartplotter startup")
 
+    status_launcher = summary.get("status_launcher")
+    if not isinstance(status_launcher, dict):
+        failures.append("status GUI desktop launcher summary missing")
+    else:
+        path = str(status_launcher.get("path", DEFAULT_STATUS_DESKTOP_PATH.expanduser()))
+        if status_launcher.get("exists") is not True:
+            failures.append(f"status GUI desktop launcher missing at {path}")
+        if status_launcher.get("is_symlink") is not False:
+            failures.append(f"status GUI desktop launcher path is a symlink or missing symlink status: {path}")
+        if status_launcher.get("directory_is_symlink") is not False:
+            failures.append(
+                f"status GUI desktop launcher directory is a symlink or missing symlink status: {Path(path).parent}"
+            )
+        if "path_symlink_component" not in status_launcher:
+            failures.append(f"status GUI desktop launcher missing path_symlink_component: {path}")
+        status_symlink_component = str(status_launcher.get("path_symlink_component", "")).strip()
+        if status_symlink_component:
+            failures.append(f"status GUI desktop launcher path contains a symlink: {status_symlink_component}")
+        if str(status_launcher.get("error", "")):
+            failures.append(f"status GUI desktop launcher unreadable at {path}: {status_launcher.get('error')}")
+        failures.extend(
+            _key_value_file_integrity_failures(
+                status_launcher,
+                label="status GUI desktop launcher",
+                expected_uid=os.getuid(),
+            )
+        )
+        failures.extend(_user_executable_mode_failures(status_launcher, label="status GUI desktop launcher"))
+        values = status_launcher.get("values")
+        if not isinstance(values, dict):
+            failures.append(f"status GUI desktop launcher values were not parsed at {path}")
+        else:
+            expected_values = {
+                "Type": "Application",
+                "Name": "NOAA Navionics Status",
+                "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+                "Terminal": "false",
+            }
+            for key, expected in expected_values.items():
+                actual = str(values.get(key, "")).strip()
+                if actual != expected:
+                    failures.append(f"status GUI desktop launcher {key}={actual or '<missing>'} expected {expected}")
+            hidden = str(values.get("Hidden", "")).strip().lower()
+            if hidden == "true":
+                failures.append("status GUI desktop launcher Hidden=true hides the readiness panel")
+            autostart_enabled = str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower()
+            if autostart_enabled == "true":
+                failures.append("status GUI desktop launcher must not be configured for autostart")
+
     graphical_target = str(summary.get("graphical_target", "")).strip()
     if graphical_target != "graphical.target":
         failures.append(f"systemd default target is {graphical_target or '<missing>'}, expected graphical.target")
@@ -4546,7 +4661,7 @@ def _desktop_startup_check(summary: dict[str, object]) -> CheckResult:
     return CheckResult(
         "Desktop Startup",
         True,
-        f"desktop autostart, MOB launcher, and LightDM autologin are configured; lightdm active={active}",
+        f"desktop autostart, status GUI launcher, MOB launcher, and LightDM autologin are configured; lightdm active={active}",
     )
 
 

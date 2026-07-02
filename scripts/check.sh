@@ -5421,10 +5421,15 @@ grep -q 'private `%h/.local/share/noaa-navionics/venv/bin/noaa-navionics` comman
 grep -q 'test_service_readiness_checks_fail_loaded_command_wrong_path' tests/test_downloader.py
 grep -q 'Desktop Startup' src/noaa_navionics/report.py
 grep -q 'DEFAULT_AUTOSTART_PATH' src/noaa_navionics/report.py
+grep -q 'DEFAULT_STATUS_DESKTOP_PATH' src/noaa_navionics/report.py
 grep -q 'DEFAULT_MOB_DESKTOP_PATH' src/noaa_navionics/report.py
+grep -q '"status_launcher": status_launcher' src/noaa_navionics/report.py
 grep -q '"mob_launcher": mob_launcher' src/noaa_navionics/report.py
+grep -q 'status GUI desktop launcher must not be configured for autostart' src/noaa_navionics/report.py
 grep -q 'MOB desktop launcher must not be configured for autostart' src/noaa_navionics/report.py
+grep -q '_user_executable_mode_failures(status_launcher' src/noaa_navionics/report.py
 grep -q '_user_executable_mode_failures(mob_launcher' src/noaa_navionics/report.py
+grep -q 'status_launcher=' src/noaa_navionics/report.py
 grep -q 'DEFAULT_LIGHTDM_AUTOLOGIN_PATH' src/noaa_navionics/report.py
 grep -q 'Launcher Settings' src/noaa_navionics/report.py
 grep -q 'LAUNCHER_ENV_KEYS' src/noaa_navionics/report.py
@@ -5442,8 +5447,12 @@ grep -q 'test_opencpn_config_summary_rejects_nonregular_config' tests/test_downl
 grep -q 'test_opencpn_config_summary_records_owner_and_mode' tests/test_downloader.py
 grep -q 'test_opencpn_config_summary_records_public_directory_mode' tests/test_downloader.py
 grep -q 'test_status_report_with_gps_sample_still_checks_opencpn_gpsd_config' tests/test_downloader.py
+grep -q 'status GUI desktop launcher has permissions 0644, expected user executable bit' tests/test_downloader.py
+grep -q 'status GUI desktop launcher must not be configured for autostart' tests/test_downloader.py
 grep -q 'MOB desktop launcher has permissions 0644, expected user executable bit' tests/test_downloader.py
 grep -q 'MOB desktop launcher must not be configured for autostart' tests/test_downloader.py
+grep -q 'Status reports also include and validate the non-autostart status GUI desktop launcher' README.md
+grep -q 'Status reports also include and validate the non-autostart status GUI desktop launcher' docs/sailboat-pi.md
 grep -q 'status-report --gps-sample.*still checks OpenCPN' README.md
 grep -q 'Sample-based status reports substitute only the live GPS fix read' docs/sailboat-pi.md
 grep -q 'summary\["age_seconds"\] = (current - timestamp).total_seconds()' src/noaa_navionics/report.py
