@@ -1742,6 +1742,30 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertTrue(promoted_opens)
             self.assertTrue(promoted_opens[-1][1] & getattr(os, "O_NOFOLLOW", 0))
 
+    def test_configure_chart_directory_revalidates_temp_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            charts = root / "charts"
+            charts.mkdir()
+            original_validate = opencpn_module._validate_opencpn_temp_for_promotion
+
+            def swap_opencpn_temp(temp_path, *, expected_stat):
+                replacement = root / "replacement-opencpn.part"
+                replacement.write_text("replacement\n", encoding="utf-8")
+                replacement.chmod(0o600)
+                os.replace(replacement, temp_path)
+                original_validate(temp_path, expected_stat=expected_stat)
+
+            with patch("noaa_navionics.opencpn._validate_opencpn_temp_for_promotion", side_effect=swap_opencpn_temp):
+                with self.assertRaisesRegex(RuntimeError, "OpenCPN config temp changed before promotion"):
+                    configure_chart_directory(charts, config_path=config)
+
+            self.assertFalse(config.exists())
+            parts = list(root.glob(".opencpn.conf.*.part"))
+            self.assertEqual(len(parts), 1)
+            self.assertEqual(parts[0].read_text(encoding="utf-8"), "replacement\n")
+
     def test_configure_chart_directory_rejects_corrupt_promoted_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

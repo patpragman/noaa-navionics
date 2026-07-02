@@ -4970,7 +4970,7 @@ grep -q 'min_free_gb=app_config.min_free_gb' src/noaa_navionics/gui.py
 grep -q 'track_output=app_config.track_output' src/noaa_navionics/gui.py
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/opencpn.py
 grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/opencpn.py
-grep -q 'cleanup_private_temp_file(tmp_path, label="OpenCPN config temp")' src/noaa_navionics/opencpn.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="OpenCPN config temp", expected_stat=tmp_stat)' src/noaa_navionics/opencpn.py
 ! grep -q 'tmp_path.unlink()' src/noaa_navionics/opencpn.py
 grep -q 'class OpenCPNGPSDConnection' src/noaa_navionics/opencpn.py
 grep -q 'def enabled_gpsd_connections' src/noaa_navionics/opencpn.py
@@ -4986,6 +4986,7 @@ grep -q 'os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW",
 grep -q 'test_opencpn_backup_uses_no_follow_private_open' tests/test_downloader.py
 grep -q 'test_opencpn_directory_sync_uses_no_follow_open' tests/test_downloader.py
 grep -q 'test_configure_chart_directory_validates_promoted_file_with_no_follow_open' tests/test_downloader.py
+grep -q 'test_configure_chart_directory_revalidates_temp_before_promotion' tests/test_downloader.py
 grep -q 'test_configure_chart_directory_rejects_corrupt_promoted_file' tests/test_downloader.py
 grep -q 'OpenCPN backup and directory sync use no-follow opens' README.md
 grep -q 'OpenCPN backup and directory sync use no-follow opens' docs/sailboat-pi.md
@@ -5034,7 +5035,7 @@ grep -q 'refuses to register missing, non-directory, or symlinked chart director
 grep -q 'refuses to register missing, non-directory, or symlinked chart directories' docs/sailboat-pi.md
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
 grep -q 'os.open(backup_path, backup_flags, 0o600)' src/noaa_navionics/opencpn.py
-grep -q 'os.chmod(tmp_path, 0o600)' src/noaa_navionics/opencpn.py
+grep -q 'def _validate_opencpn_temp_for_promotion' src/noaa_navionics/opencpn.py
 grep -q 'if active == "failed"' src/noaa_navionics/report.py
 grep -q 'Chart Sync Settings' src/noaa_navionics/report.py
 grep -q 'Chart Sync Unit File' src/noaa_navionics/report.py
