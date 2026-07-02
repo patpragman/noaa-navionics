@@ -4531,8 +4531,11 @@ grep -q '<sat>{fix.satellites}</sat>' src/noaa_navionics/gps.py
 grep -q '<hdop>{fix.hdop:g}</hdop>' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'TRACK LOGGER GPS LOST' src/noaa_navionics/cli.py
-grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly' README.md
-grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly' docs/sailboat-pi.md
+grep -q 'test_cli_log_track_live_stream_timeout_after_fix_is_audible_alarm' tests/test_downloader.py
+grep -q 'test_log_single_track_closes_gpx_on_stream_timeout_after_fix' tests/test_downloader.py
+grep -q 'test_log_rotating_tracks_closes_gpx_on_stream_timeout_after_fix' tests/test_downloader.py
+grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly or goes idle' README.md
+grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly or goes idle' docs/sailboat-pi.md
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' README.md
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' docs/sailboat-pi.md
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py

@@ -796,6 +796,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                 if deadline is None and not args.sample:
                     _print_track_logger_gps_lost()
                     return 1
+            except _TrackGPSStreamLost:
+                if live_stream:
+                    _print_track_logger_gps_lost()
+                    return 1
+                raise
             except _TrackLoggerStop as exc:
                 print(f"Stopped track logger: {exc}")
             finally:
@@ -1204,6 +1209,10 @@ class _TrackLoggerStop(Exception):
     pass
 
 
+class _TrackGPSStreamLost(Exception):
+    pass
+
+
 def _install_track_stop_handlers():
     previous = {}
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -1376,8 +1385,17 @@ def _print_track_logger_gps_lost() -> None:
 def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:
     count = 0
     logger: Optional[GPXTrackLogger] = None
+    iterator = iter(fixes)
     try:
-        for fix in fixes:
+        while True:
+            try:
+                fix = next(iterator)
+            except StopIteration:
+                break
+            except OSError as exc:
+                if count > 0:
+                    raise _TrackGPSStreamLost() from exc
+                raise
             if logger is None:
                 logger = GPXTrackLogger(output)
                 logger.__enter__()
@@ -1407,8 +1425,17 @@ def _log_rotating_tracks(
     current_path: Optional[Path] = None
     logger: Optional[GPXTrackLogger] = None
     outputs: list[Path] = []
+    iterator = iter(fixes)
     try:
-        for fix in fixes:
+        while True:
+            try:
+                fix = next(iterator)
+            except StopIteration:
+                break
+            except OSError as exc:
+                if count > 0:
+                    raise _TrackGPSStreamLost() from exc
+                raise
             day = _track_day(fix)
             if day != current_day:
                 if logger is not None:
