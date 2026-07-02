@@ -544,6 +544,7 @@ def _promote_download_partial(
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:
+    zip_path = Path(zip_path).expanduser()
     destination = Path(destination).expanduser()
     parent = destination.parent
     _prepare_output_dir(parent)
@@ -551,12 +552,12 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
         raise RuntimeError(f"chart extraction destination is a symlink: {destination}")
     if destination.exists() and not destination.is_dir():
         raise RuntimeError(f"chart extraction destination is not a directory: {destination}")
-    _validate_zip_members_and_crc(zip_path, label="chart ZIP")
-    staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", suffix=".extracting", dir=parent))
-    previous = parent / f".{destination.name}.previous"
+    staging = None
     try:
-        staging_root = staging.resolve()
-        with zipfile.ZipFile(zip_path) as archive:
+        with _open_zip_archive_for_read(zip_path, label="chart ZIP") as archive:
+            _validate_open_zip_members_and_crc(archive, label="chart ZIP")
+            staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", suffix=".extracting", dir=parent))
+            staging_root = staging.resolve()
             for member in archive.infolist():
                 if _zip_member_path_is_unsafe(member.filename):
                     raise RuntimeError(f"unsafe ZIP member path: {member.filename}")
@@ -571,9 +572,11 @@ def extract_zip(zip_path: Path, destination: Path) -> Path:
             raise RuntimeError(f"extracted ZIP contains no ENC .000 cells: {zip_path}")
         _fsync_tree(staging)
     except Exception:
-        _remove_path(staging, missing_ok=True, label="chart extraction staging")
+        if staging is not None:
+            _remove_path(staging, missing_ok=True, label="chart extraction staging")
         raise
 
+    previous = parent / f".{destination.name}.previous"
     moved_existing_to_previous = False
     installed_staging = False
     try:
@@ -643,43 +646,70 @@ def _catalog_entry_name_looks_like_enc(name: str) -> bool:
 
 
 def _validate_zip_members_and_crc(zip_path: Path, *, label: str) -> int:
+    with _open_zip_archive_for_read(zip_path, label=label) as archive:
+        return _validate_open_zip_members_and_crc(archive, label=label)
+
+
+@contextmanager
+def _open_zip_archive_for_read(zip_path: Path, *, label: str):
+    path = Path(zip_path).expanduser()
+    fd = -1
     try:
-        with zipfile.ZipFile(zip_path) as archive:
-            members = archive.infolist()
-            if len(members) > MAX_ZIP_MEMBERS:
-                raise RuntimeError(f"{label} has too many members: {len(members)} > {MAX_ZIP_MEMBERS}")
-            total_uncompressed = 0
-            normalized_members: set[str] = set()
-            for member in members:
-                if _zip_member_path_is_unsafe(member.filename):
-                    raise RuntimeError(f"{label} has unsafe member path: {member.filename}")
-                normalized_name = _normalized_zip_member_name(member.filename)
-                if normalized_name in normalized_members:
-                    raise RuntimeError(f"{label} contains duplicate member path: {member.filename}")
-                normalized_members.add(normalized_name)
-                if not member.is_dir():
-                    if member.file_size > MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES:
-                        raise RuntimeError(
-                            f"{label} member is too large: "
-                            f"{member.filename} ({member.file_size} bytes > {MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES})"
-                        )
-                    total_uncompressed += member.file_size
-                    if total_uncompressed > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
-                        raise RuntimeError(
-                            f"{label} uncompressed size is too large: "
-                            f"{total_uncompressed} bytes > {MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES}"
-                        )
-            bad_member = archive.testzip()
-            if bad_member is not None:
-                raise RuntimeError(f"{label} has a failed CRC member: {bad_member}")
-            enc_cell_count = sum(
-                1
-                for member in members
-                if not member.is_dir() and member.filename.lower().endswith(".000")
-            )
-    except zipfile.BadZipFile as exc:
-        raise RuntimeError(f"{label} is not a valid archive: {zip_path}") from exc
-    return enc_cell_count
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        if path.is_symlink():
+            raise RuntimeError(f"{label} path is a symlink: {path}") from exc
+        raise RuntimeError(f"could not open {label}: {path}: {exc}") from exc
+
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"{label} path is not a regular file: {path}")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1
+            try:
+                with zipfile.ZipFile(handle) as archive:
+                    yield archive
+            except zipfile.BadZipFile as exc:
+                raise RuntimeError(f"{label} is not a valid archive: {path}") from exc
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def _validate_open_zip_members_and_crc(archive: zipfile.ZipFile, *, label: str) -> int:
+    members = archive.infolist()
+    if len(members) > MAX_ZIP_MEMBERS:
+        raise RuntimeError(f"{label} has too many members: {len(members)} > {MAX_ZIP_MEMBERS}")
+    total_uncompressed = 0
+    normalized_members: set[str] = set()
+    for member in members:
+        if _zip_member_path_is_unsafe(member.filename):
+            raise RuntimeError(f"{label} has unsafe member path: {member.filename}")
+        normalized_name = _normalized_zip_member_name(member.filename)
+        if normalized_name in normalized_members:
+            raise RuntimeError(f"{label} contains duplicate member path: {member.filename}")
+        normalized_members.add(normalized_name)
+        if not member.is_dir():
+            if member.file_size > MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES:
+                raise RuntimeError(
+                    f"{label} member is too large: "
+                    f"{member.filename} ({member.file_size} bytes > {MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES})"
+                )
+            total_uncompressed += member.file_size
+            if total_uncompressed > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+                raise RuntimeError(
+                    f"{label} uncompressed size is too large: "
+                    f"{total_uncompressed} bytes > {MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES}"
+                )
+    bad_member = archive.testzip()
+    if bad_member is not None:
+        raise RuntimeError(f"{label} has a failed CRC member: {bad_member}")
+    return sum(
+        1
+        for member in members
+        if not member.is_dir() and member.filename.lower().endswith(".000")
+    )
 
 
 def _normalized_zip_member_name(filename: str) -> str:

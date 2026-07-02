@@ -4284,8 +4284,13 @@ grep -q 'chart ZIP has a failed CRC member' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_crc_failure_before_staging' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_too_many_members_before_staging' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_duplicate_member_before_staging' tests/test_downloader.py
+grep -q 'test_extract_zip_rejects_symlinked_archive_before_staging' tests/test_downloader.py
+grep -q 'test_extract_zip_validates_and_extracts_from_single_no_follow_archive_descriptor' tests/test_downloader.py
 grep -q 'test_extract_zip_rejects_total_uncompressed_size_before_staging' tests/test_downloader.py
 grep -q '{label} is not a valid archive' src/noaa_navionics/downloader.py
+grep -q 'def _open_zip_archive_for_read' src/noaa_navionics/downloader.py
+grep -q 'O_NOFOLLOW' src/noaa_navionics/downloader.py
+grep -q 'def _validate_open_zip_members_and_crc' src/noaa_navionics/downloader.py
 grep -q 'downloaded ZIP contains no ENC .000 cells' src/noaa_navionics/downloader.py
 grep -q 'def _validate_retained_enc_archive' src/noaa_navionics/health.py
 grep -q 'retained chart archive contains no ENC .000 cells' src/noaa_navionics/health.py
@@ -4311,6 +4316,8 @@ grep -q 'member-count and uncompressed-size caps' README.md
 grep -q 'member-count and uncompressed-size caps' docs/sailboat-pi.md
 grep -q 'duplicate member names' README.md
 grep -q 'duplicate member names' docs/sailboat-pi.md
+grep -q 'validated and extracted from one no-follow descriptor' README.md
+grep -q 'validated and extracted from one no-follow descriptor' docs/sailboat-pi.md
 grep -q 'ZIP member paths, member-count and uncompressed-size caps, CRCs, and ENC cell presence' README.md
 grep -q 'ZIP member paths, member-count and uncompressed-size caps, CRCs, and ENC cell presence' docs/sailboat-pi.md
 grep -q 'Catalog downloads and cached catalog reuse are parsed as XML and must contain NOAA ENC chart metadata before replacing or trusting the product catalog' README.md

@@ -11790,6 +11790,47 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse(destination.exists())
             self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
 
+    def test_extract_zip_rejects_symlinked_archive_before_staging(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_archive = root / "real-charts.zip"
+            with zipfile.ZipFile(real_archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            archive = root / "charts.zip"
+            try:
+                archive.symlink_to(real_archive)
+            except OSError as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            destination = root / "AK_ENCs"
+
+            with self.assertRaisesRegex(RuntimeError, "chart ZIP path is a symlink"):
+                extract_zip(archive, destination)
+
+            self.assertFalse(destination.exists())
+            self.assertFalse(list(root.glob(".AK_ENCs.*.extracting")))
+
+    def test_extract_zip_validates_and_extracts_from_single_no_follow_archive_descriptor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "charts.zip"
+            with zipfile.ZipFile(archive, "w") as zip_file:
+                zip_file.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            destination = root / "AK_ENCs"
+            original_open = downloader_module.os.open
+            opened_archive_flags: list[int] = []
+
+            def recording_open(path, flags, *args, **kwargs):
+                if Path(path) == archive:
+                    opened_archive_flags.append(flags)
+                return original_open(path, flags, *args, **kwargs)
+
+            with patch("noaa_navionics.downloader.os.open", side_effect=recording_open):
+                extract_zip(archive, destination)
+
+            self.assertEqual(len(opened_archive_flags), 1)
+            self.assertTrue(opened_archive_flags[0] & getattr(os, "O_NOFOLLOW", 0))
+            self.assertEqual((destination / "US5AK3CM" / "US5AK3CM.000").read_text(encoding="ascii"), "cell")
+
     def test_extract_zip_rejects_total_uncompressed_size_before_staging(self):
         original_limit = downloader_module.MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES
         try:
