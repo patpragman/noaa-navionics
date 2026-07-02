@@ -1638,6 +1638,23 @@ def _status_control_character_failure(text: str, label: str) -> str:
     return ""
 
 
+def _status_required_text_field(
+    summary: dict[str, object],
+    field: str,
+    missing_detail: str,
+    label: str,
+    check_name: str,
+) -> tuple[str, Optional[CheckResult]]:
+    value = summary.get(field, "")
+    if not isinstance(value, str) or not value.strip():
+        return "", CheckResult(check_name, False, missing_detail)
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        return "", CheckResult(check_name, False, control_failure)
+    return text, None
+
+
 def _status_text_has_control_char(text: str) -> bool:
     return any(ord(char) < 32 or ord(char) == 127 for char in text)
 
@@ -2161,8 +2178,15 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
 def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
     if not isinstance(manifest, dict):
         return [CheckResult("Chart Manifest", False, "status report missing manifest section")]
-    if not str(manifest.get("path", "")).strip():
-        return [CheckResult("Chart Manifest", False, "status report manifest path is empty")]
+    path, failure = _status_required_text_field(
+        manifest,
+        "path",
+        "status report manifest path is empty",
+        "manifest path",
+        "Chart Manifest",
+    )
+    if failure:
+        return [failure]
     if manifest.get("exists") is not True:
         return [CheckResult("Chart Manifest", False, "status report manifest does not exist")]
     if manifest.get("is_symlink") is not False:
@@ -2187,43 +2211,56 @@ def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
     ):
         if field not in manifest:
             return [CheckResult("Chart Manifest", False, detail)]
-        if str(manifest.get(field, "")).strip():
-            return [CheckResult("Chart Manifest", False, "status report manifest path contains a symlink")]
-    manifest_error = str(manifest.get("error", "")).strip()
-    if manifest_error:
-        return [CheckResult("Chart Manifest", False, f"status report manifest error: {manifest_error}")]
-    required_text_fields = (
-        "created_at",
-        "created_at_source",
-        "package",
-        "package_filename",
-        "url",
-        "download_path",
-        "download_url",
-        "sha256",
-        "extract_path",
-    )
-    for field in required_text_fields:
-        if not str(manifest.get(field, "")).strip():
-            return [CheckResult("Chart Manifest", False, f"status report manifest missing {field}")]
-    path = str(manifest.get("path", "")).strip()
-    download_path_text = str(manifest.get("download_path", "")).strip()
-    extract_path_text = str(manifest.get("extract_path", "")).strip()
-    for value, label in (
-        (str(manifest.get("path", "")), "manifest path"),
-        (str(manifest.get("download_path", "")), "manifest download path"),
-        (str(manifest.get("extract_path", "")), "manifest extract path"),
-    ):
-        control_failure = _status_control_character_failure(value, label)
+        value = manifest.get(field, "")
+        if not isinstance(value, str):
+            return [CheckResult("Chart Manifest", False, f"status report manifest {field} is not text")]
+        value_text = value.strip()
+        control_failure = _status_control_character_failure(value_text, f"manifest {field}")
         if control_failure:
             return [CheckResult("Chart Manifest", False, control_failure)]
+        if value_text:
+            return [CheckResult("Chart Manifest", False, "status report manifest path contains a symlink")]
+    manifest_error_value = manifest.get("error", "")
+    if not isinstance(manifest_error_value, str):
+        return [CheckResult("Chart Manifest", False, "status report manifest error is not text")]
+    manifest_error = manifest_error_value.strip()
+    control_failure = _status_control_character_failure(manifest_error, "manifest error")
+    if control_failure:
+        return [CheckResult("Chart Manifest", False, control_failure)]
+    if manifest_error:
+        return [CheckResult("Chart Manifest", False, f"status report manifest error: {manifest_error}")]
+    required_text_fields = {
+        "created_at": "manifest created_at",
+        "created_at_source": "manifest created_at_source",
+        "package": "manifest package",
+        "package_filename": "manifest package_filename",
+        "url": "manifest url",
+        "download_path": "manifest download path",
+        "download_url": "manifest download_url",
+        "sha256": "manifest sha256",
+        "extract_path": "manifest extract path",
+    }
+    required_text: dict[str, str] = {}
+    for field, label in required_text_fields.items():
+        value, failure = _status_required_text_field(
+            manifest,
+            field,
+            f"status report manifest missing {field}",
+            label,
+            "Chart Manifest",
+        )
+        if failure:
+            return [failure]
+        required_text[field] = value
+    download_path_text = required_text["download_path"]
+    extract_path_text = required_text["extract_path"]
     if not _status_absolute_path(path):
         return [CheckResult("Chart Manifest", False, "status report manifest path is not absolute")]
     if not _status_absolute_path(download_path_text):
         return [CheckResult("Chart Manifest", False, "status report manifest download path is not absolute")]
     if not _status_absolute_path(extract_path_text):
         return [CheckResult("Chart Manifest", False, "status report manifest extract path is not absolute")]
-    created_at_source = str(manifest.get("created_at_source", "")).strip()
+    created_at_source = required_text["created_at_source"]
     if created_at_source not in {"download", "previous-manifest"}:
         return [
             CheckResult(
@@ -2242,7 +2279,17 @@ def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
         ]
     if "download_path_symlink_component" not in manifest:
         return [CheckResult("Chart Manifest", False, "status report manifest missing download_path_symlink_component")]
-    if str(manifest.get("download_path_symlink_component", "")).strip():
+    download_path_symlink_component = manifest.get("download_path_symlink_component", "")
+    if not isinstance(download_path_symlink_component, str):
+        return [CheckResult("Chart Manifest", False, "status report manifest download_path_symlink_component is not text")]
+    download_path_symlink_component_text = download_path_symlink_component.strip()
+    control_failure = _status_control_character_failure(
+        download_path_symlink_component_text,
+        "manifest download_path_symlink_component",
+    )
+    if control_failure:
+        return [CheckResult("Chart Manifest", False, control_failure)]
+    if download_path_symlink_component_text:
         return [CheckResult("Chart Manifest", False, "status report manifest download path contains a symlink")]
     if manifest.get("extract_path_is_symlink") is not False:
         return [
@@ -2254,12 +2301,34 @@ def _manifest_validation_failures(manifest: object) -> list[CheckResult]:
         ]
     if "extract_path_symlink_component" not in manifest:
         return [CheckResult("Chart Manifest", False, "status report manifest missing extract_path_symlink_component")]
-    if str(manifest.get("extract_path_symlink_component", "")).strip():
+    extract_path_symlink_component = manifest.get("extract_path_symlink_component", "")
+    if not isinstance(extract_path_symlink_component, str):
+        return [CheckResult("Chart Manifest", False, "status report manifest extract_path_symlink_component is not text")]
+    extract_path_symlink_component_text = extract_path_symlink_component.strip()
+    control_failure = _status_control_character_failure(
+        extract_path_symlink_component_text,
+        "manifest extract_path_symlink_component",
+    )
+    if control_failure:
+        return [CheckResult("Chart Manifest", False, control_failure)]
+    if extract_path_symlink_component_text:
         return [CheckResult("Chart Manifest", False, "status report manifest extract path contains a symlink")]
-    download_path_error = str(manifest.get("download_path_error", "")).strip()
+    download_path_error_value = manifest.get("download_path_error", "")
+    if not isinstance(download_path_error_value, str):
+        return [CheckResult("Chart Manifest", False, "status report manifest download_path_error is not text")]
+    download_path_error = download_path_error_value.strip()
+    control_failure = _status_control_character_failure(download_path_error, "manifest download_path_error")
+    if control_failure:
+        return [CheckResult("Chart Manifest", False, control_failure)]
     if download_path_error:
         return [CheckResult("Chart Manifest", False, f"status report manifest download path error: {download_path_error}")]
-    extract_path_error = str(manifest.get("extract_path_error", "")).strip()
+    extract_path_error_value = manifest.get("extract_path_error", "")
+    if not isinstance(extract_path_error_value, str):
+        return [CheckResult("Chart Manifest", False, "status report manifest extract_path_error is not text")]
+    extract_path_error = extract_path_error_value.strip()
+    control_failure = _status_control_character_failure(extract_path_error, "manifest extract_path_error")
+    if control_failure:
+        return [CheckResult("Chart Manifest", False, control_failure)]
     if extract_path_error:
         return [CheckResult("Chart Manifest", False, f"status report manifest extract path error: {extract_path_error}")]
     download_bytes = _positive_status_int(manifest.get("download_bytes"))

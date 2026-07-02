@@ -14260,6 +14260,14 @@ class StatusReportTests(unittest.TestCase):
                 "missing chart_storage_symlink_component",
             ),
             (
+                {"manifest": {**valid_manifest, "chart_storage_symlink_component": 123}},
+                "chart_storage_symlink_component is not text",
+            ),
+            (
+                {"manifest": {**valid_manifest, "chart_storage_symlink_component": "\x00"}},
+                "chart_storage_symlink_component contains control characters",
+            ),
+            (
                 {"manifest": {**valid_manifest, "chart_storage_symlink_component": "/charts"}},
                 "path contains a symlink",
             ),
@@ -14267,9 +14275,19 @@ class StatusReportTests(unittest.TestCase):
                 {"manifest": {key: value for key, value in valid_manifest.items() if key != "manifest_symlink_component"}},
                 "missing manifest_symlink_component",
             ),
+            (
+                {"manifest": {**valid_manifest, "manifest_symlink_component": "\x00"}},
+                "manifest_symlink_component contains control characters",
+            ),
+            ({"manifest": {**valid_manifest, "error": 123}}, "manifest error is not text"),
+            ({"manifest": {**valid_manifest, "error": "manifest path is not a regular file\x00"}}, "manifest error contains control characters"),
             ({"manifest": {**valid_manifest, "error": "manifest path is not a regular file"}}, "manifest error"),
+            ({"manifest": {**valid_manifest, "path": 123}}, "manifest path is empty"),
             ({"manifest": {**valid_manifest, "path": "/charts/noaa-navionics-manifest.json\x00"}}, "manifest path contains control characters"),
             ({"manifest": {**valid_manifest, "path": "noaa-navionics-manifest.json"}}, "manifest path is not absolute"),
+            ({"manifest": {**valid_manifest, "package": 123}}, "manifest missing package"),
+            ({"manifest": {**valid_manifest, "package": "Alaska\x00"}}, "manifest package contains control characters"),
+            ({"manifest": {**valid_manifest, "download_url": 123}}, "manifest missing download_url"),
             ({"manifest": {**valid_manifest, "download_path": "/charts/AK_ENCs.zip\x00"}}, "download path contains control characters"),
             ({"manifest": {**valid_manifest, "download_path": "AK_ENCs.zip"}}, "download path is not absolute"),
             ({"manifest": {**valid_manifest, "extract_path": "/charts/AK_ENCs\x00"}}, "extract path contains control characters"),
@@ -14284,6 +14302,14 @@ class StatusReportTests(unittest.TestCase):
                 "missing download_path_symlink_component",
             ),
             (
+                {"manifest": {**valid_manifest, "download_path_symlink_component": 123}},
+                "download_path_symlink_component is not text",
+            ),
+            (
+                {"manifest": {**valid_manifest, "download_path_symlink_component": "\x00"}},
+                "download_path_symlink_component contains control characters",
+            ),
+            (
                 {"manifest": {**valid_manifest, "extract_path_is_symlink": True}},
                 "extract path is a symlink",
             ),
@@ -14292,8 +14318,32 @@ class StatusReportTests(unittest.TestCase):
                 "missing extract_path_symlink_component",
             ),
             (
+                {"manifest": {**valid_manifest, "extract_path_symlink_component": 123}},
+                "extract_path_symlink_component is not text",
+            ),
+            (
+                {"manifest": {**valid_manifest, "extract_path_symlink_component": "\x00"}},
+                "extract_path_symlink_component contains control characters",
+            ),
+            (
+                {"manifest": {**valid_manifest, "download_path_error": 123}},
+                "download_path_error is not text",
+            ),
+            (
+                {"manifest": {**valid_manifest, "download_path_error": "manifest download path is not a regular file\x00"}},
+                "download_path_error contains control characters",
+            ),
+            (
                 {"manifest": {**valid_manifest, "download_path_error": "manifest download path is not a regular file"}},
                 "download path error",
+            ),
+            (
+                {"manifest": {**valid_manifest, "extract_path_error": 123}},
+                "extract_path_error is not text",
+            ),
+            (
+                {"manifest": {**valid_manifest, "extract_path_error": "manifest extract path is not a regular file\x00"}},
+                "extract_path_error contains control characters",
             ),
             ({"manifest": {**valid_manifest, "download_bytes": 0}}, "download byte count is not positive"),
             ({"manifest": {**valid_manifest, "enc_cell_count": 0}}, "has no ENC cells"),

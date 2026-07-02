@@ -5129,10 +5129,18 @@ grep -q 'status report missing manifest section' src/noaa_navionics/report.py
 grep -q 'status report manifest path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report manifest missing chart_storage_symlink_component' src/noaa_navionics/report.py
 grep -q 'status report manifest missing manifest_symlink_component' src/noaa_navionics/report.py
+grep -q 'chart_storage_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'manifest_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'manifest error contains control characters' tests/test_downloader.py
+grep -q 'manifest package contains control characters' tests/test_downloader.py
 grep -q 'status report manifest download path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report manifest missing download_path_symlink_component' src/noaa_navionics/report.py
+grep -q 'download_path_symlink_component contains control characters' tests/test_downloader.py
 grep -q 'status report manifest extract path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report manifest missing extract_path_symlink_component' src/noaa_navionics/report.py
+grep -q 'extract_path_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'download_path_error contains control characters' tests/test_downloader.py
+grep -q 'extract_path_error contains control characters' tests/test_downloader.py
 grep -q 'status report manifest download byte count is not positive' src/noaa_navionics/report.py
 grep -q 'status report manifest has no ENC cells' src/noaa_navionics/report.py
 grep -q 'status report missing gps_fix section' src/noaa_navionics/report.py
