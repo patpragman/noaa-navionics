@@ -15509,6 +15509,9 @@ class StatusReportTests(unittest.TestCase):
 
         for expected in (
             "def status_text_list",
+            'status_text(report.get("generated_at", ""), "generated_at")',
+            'status_text(row.get("name", ""), "readiness check name")',
+            'status_text(row.get("name", ""), "service check name")',
             'status_text(user.get("name", ""), "user name")',
             'status_text(user.get("linger", ""), "user linger")',
             'status_text(track_log.get("latest_time", ""), "track_log latest_time")',
@@ -15536,6 +15539,8 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn(expected, source)
 
         for rejected in (
+            'generated_at = str(report.get("generated_at", ""))',
+            'name = str(row.get("name", "")).strip()',
             'status_user = str(user.get("name", "")).strip()',
             'status_linger = str(user.get("linger", "")).strip()',
             'latest_time_text = str(track_log.get("latest_time", "")).strip()',

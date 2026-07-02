@@ -1234,7 +1234,7 @@ finally:
         os.close(fd)
 if report.get("ok") is not True:
     raise SystemExit("status report ok is not true")
-generated_at = str(report.get("generated_at", ""))
+generated_at = status_text(report.get("generated_at", ""), "generated_at")
 if not generated_at:
     raise SystemExit("status report has no generated_at")
 generated = parse_timezone_aware_timestamp(generated_at, "status report generated_at")
@@ -1251,7 +1251,7 @@ check_rows = {}
 for row in checks:
     if not isinstance(row, dict):
         raise SystemExit("status report has malformed checks row")
-    name = str(row.get("name", "")).strip()
+    name = status_text(row.get("name", ""), "readiness check name")
     if not name:
         raise SystemExit("status report has unnamed readiness check")
     if not isinstance(row.get("ok"), bool):
@@ -1263,7 +1263,7 @@ service_rows = {}
 for row in service_checks:
     if not isinstance(row, dict):
         raise SystemExit("status report has malformed service_checks row")
-    name = str(row.get("name", "")).strip()
+    name = status_text(row.get("name", ""), "service check name")
     if not name:
         raise SystemExit("status report has unnamed service check")
     if not isinstance(row.get("ok"), bool):

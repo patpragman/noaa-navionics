@@ -2971,6 +2971,8 @@ grep -q 'status report source revision' scripts/verify_pi.sh
 grep -q 'status report missing deployed source revision' scripts/verify_pi.sh
 grep -q 'status report dirty deployed source revision is not production-ready' scripts/verify_pi.sh
 grep -q 'status report {name} ok is not boolean' scripts/verify_pi.sh
+grep -q 'status_text(row.get("name", ""), "readiness check name")' scripts/verify_pi.sh
+grep -q 'status_text(row.get("name", ""), "service check name")' scripts/verify_pi.sh
 grep -q 'status report has duplicate readiness check' scripts/verify_pi.sh
 grep -q 'status report has duplicate service check' scripts/verify_pi.sh
 grep -q 'status report Source Revision row does not match deployed source revision' scripts/verify_pi.sh
@@ -4567,6 +4569,7 @@ grep -q 'test_track_fix_freshness_rejects_invalid_policy_before_timestamp' tests
 grep -q 'test_trackable_fixes_skip_timezone_less_fix' tests/test_downloader.py
 grep -q 'test_trackable_fixes_skip_slightly_future_timestamped_fix' tests/test_downloader.py
 grep -q 'test_verify_pi_rejects_timezone_less_live_timestamps' tests/test_downloader.py
+grep -q 'status_text(report.get("generated_at", ""), "generated_at")' scripts/verify_pi.sh
 grep -q 'parse_timezone_aware_timestamp(generated_at, "status report generated_at")' scripts/verify_pi.sh
 grep -q 'parse_timezone_aware_timestamp(gps_timestamp, "status report gps_fix")' scripts/verify_pi.sh
 grep -q 'parse_timezone_aware_timestamp(timestamp_text, "launcher startup")' scripts/verify_pi.sh
