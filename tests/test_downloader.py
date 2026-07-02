@@ -16411,6 +16411,8 @@ class StatusReportTests(unittest.TestCase):
             "status report has duplicate service check",
             "missing_checks = sorted(required_checks - set(check_rows))",
             "missing_service_checks = sorted(required_service_checks - set(service_rows))",
+            "status report Track Log service row has no structured track_log data",
+            "status report Track Log service row {field} does not match track_log",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, verify_source)

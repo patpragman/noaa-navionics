@@ -2853,8 +2853,8 @@ grep -q 'track_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'status report track_log track_output is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report track_log missing track_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'status report track_log ok is not boolean' scripts/verify_pi.sh
-grep -q 'required track-log symlink-status fields' README.md
-grep -q 'required track-log symlink-status fields' docs/sailboat-pi.md
+grep -q 'Track Log service-row data matching top-level latest-track evidence, required track-log symlink-status fields' README.md
+grep -q 'Track Log service-row data matching top-level latest-track evidence, required track-log symlink-status fields' docs/sailboat-pi.md
 grep -q 'configured GPX track storage path contains a symlink' scripts/verify_pi.sh
 grep -q 'expected real GPX track storage' scripts/verify_pi.sh
 grep -q 'expected a regular GPX track file' scripts/verify_pi.sh
@@ -3258,6 +3258,8 @@ grep -q 'well-formed finite `vcgencmd measure_temp` value' README.md
 grep -q 'well-formed finite `vcgencmd measure_temp` value' docs/sailboat-pi.md
 grep -q '"GPSD Config"' scripts/verify_pi.sh
 grep -q 'status report missing service checks' scripts/verify_pi.sh
+grep -q 'status report Track Log service row has no structured track_log data' scripts/verify_pi.sh
+grep -q 'status report Track Log service row {field} does not match track_log' scripts/verify_pi.sh
 grep -q '"Chart Sync Settings"' scripts/verify_pi.sh
 grep -q '"Chart Sync Unit File"' scripts/verify_pi.sh
 grep -q '"Chart Timer Settings"' scripts/verify_pi.sh

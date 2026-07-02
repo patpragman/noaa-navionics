@@ -1472,6 +1472,25 @@ if expected_config_path:
     track_log = report.get("track_log")
     if not isinstance(track_log, dict):
         raise SystemExit("status report has no track_log section")
+    track_log_row = service_rows.get("Track Log")
+    if not isinstance(track_log_row, dict):
+        raise SystemExit("status report missing Track Log service row for track_log")
+    track_log_row_data = track_log_row.get("data")
+    if not isinstance(track_log_row_data, dict):
+        raise SystemExit("status report Track Log service row has no structured track_log data")
+    for field in (
+        "track_output",
+        "tracks_dir",
+        "latest_path",
+        "latest_time",
+        "latest_latitude",
+        "latest_longitude",
+        "age_seconds",
+        "latest_satellites",
+        "latest_hdop",
+    ):
+        if field in track_log and track_log_row_data.get(field) != track_log.get(field):
+            raise SystemExit(f"status report Track Log service row {field} does not match track_log")
     expected_track_output = Path(expected_config["track_output"]).expanduser()
     expected_tracks_dir = expected_track_output / "tracks"
     actual_track_output = status_text(track_log.get("track_output", ""), "track_log track_output")
@@ -2884,6 +2903,25 @@ if not isinstance(track_log.get("ok"), bool):
     raise SystemExit("status report track_log ok is not boolean")
 if track_log.get("ok") is not True:
     raise SystemExit(f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")
+track_log_row = service_rows.get("Track Log")
+if not isinstance(track_log_row, dict):
+    raise SystemExit("status report missing Track Log service row for track_log")
+track_log_row_data = track_log_row.get("data")
+if not isinstance(track_log_row_data, dict):
+    raise SystemExit("status report Track Log service row has no structured track_log data")
+for field in (
+    "track_output",
+    "tracks_dir",
+    "latest_path",
+    "latest_time",
+    "latest_latitude",
+    "latest_longitude",
+    "age_seconds",
+    "latest_satellites",
+    "latest_hdop",
+):
+    if field in track_log and track_log_row_data.get(field) != track_log.get(field):
+        raise SystemExit(f"status report Track Log service row {field} does not match track_log")
 latest_track_path = status_text(track_log.get("latest_path", ""), "track_log latest_path")
 if not latest_track_path:
     raise SystemExit("status report track_log has no latest_path")
