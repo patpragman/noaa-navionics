@@ -14374,7 +14374,11 @@ class StatusReportTests(unittest.TestCase):
         cases = [
             ({}, "missing gps_fix section"),
             ({"gps_fix": {"ok": "yes", "detail": "truthy"}}, "ok is not boolean"),
+            ({"gps_fix": {"ok": False, "detail": 123}}, "detail is not text"),
+            ({"gps_fix": {"ok": False, "detail": "no fix\x00"}}, "gps_fix detail contains control characters"),
             ({"gps_fix": {"ok": False, "detail": "no fix"}}, "not ok"),
+            ({"gps_fix": {"ok": True, "source": 123}}, "source is missing"),
+            ({"gps_fix": {"ok": True, "source": "GPSD\x00"}}, "gps_fix source contains control characters"),
             ({"gps_fix": {"ok": True, "source": "GPS"}}, "source GPS is not GPSD"),
             ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 0.0, "longitude": 0.0, "timestamp": now.isoformat().replace("+00:00", "Z"), "age_seconds": 0.0, "satellites": 8, "hdop": 0.9}}, "coordinates are invalid"),
             ({"gps_fix": {"ok": True, "source": "GPSD", "latitude": 61.0, "longitude": -149.0, "timestamp": "2026-07-01T12:00:00", "age_seconds": 0.0, "satellites": 8, "hdop": 0.9}}, "has no valid timestamp"),

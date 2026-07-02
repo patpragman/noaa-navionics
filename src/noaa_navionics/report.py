@@ -2362,8 +2362,23 @@ def _gps_fix_validation_failures(
     if not isinstance(gps_fix.get("ok"), bool):
         return [CheckResult("GPS Fix", False, "status report gps_fix ok is not boolean")]
     if gps_fix.get("ok") is not True:
-        return [CheckResult("GPS Fix", False, f"status report gps_fix is not ok: {gps_fix.get('detail', '<missing detail>')}")]
-    source = str(gps_fix.get("source", "")).strip()
+        detail_value = gps_fix.get("detail", "<missing detail>")
+        if not isinstance(detail_value, str):
+            return [CheckResult("GPS Fix", False, "status report gps_fix detail is not text")]
+        detail = detail_value.strip() or "<missing detail>"
+        control_failure = _status_control_character_failure(detail, "gps_fix detail")
+        if control_failure:
+            return [CheckResult("GPS Fix", False, control_failure)]
+        return [CheckResult("GPS Fix", False, f"status report gps_fix is not ok: {detail}")]
+    source, failure = _status_required_text_field(
+        gps_fix,
+        "source",
+        "status report gps_fix source is missing",
+        "gps_fix source",
+        "GPS Fix",
+    )
+    if failure:
+        return [failure]
     config = report.get("config")
     gps_mode = str(config.get("gps_mode", "")).strip().lower() if isinstance(config, dict) else ""
     expected_source = "GPS" if gps_mode == "serial" else "GPSD"

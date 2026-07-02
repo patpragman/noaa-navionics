@@ -5145,6 +5145,8 @@ grep -q 'status report manifest download byte count is not positive' src/noaa_na
 grep -q 'status report manifest has no ENC cells' src/noaa_navionics/report.py
 grep -q 'status report missing gps_fix section' src/noaa_navionics/report.py
 grep -q 'status report gps_fix source' src/noaa_navionics/report.py
+grep -q 'gps_fix source contains control characters' tests/test_downloader.py
+grep -q 'gps_fix detail contains control characters' tests/test_downloader.py
 grep -q 'status report gps_fix ok is not boolean' src/noaa_navionics/report.py
 grep -q 'timestamp.tzinfo is None or timestamp.utcoffset() is None' src/noaa_navionics/report.py
 grep -q 'status report gps_fix timestamp is stale' src/noaa_navionics/report.py
