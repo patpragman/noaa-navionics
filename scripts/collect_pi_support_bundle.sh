@@ -216,6 +216,71 @@ require_local_command() {
   printf '%s\n' "$command_path"
 }
 
+validate_remote_bash_entrypoint() {
+  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && /bin/sh -s -- /bin/bash bash" <<'BASH_ENTRYPOINT_TRUST' >/dev/null
+set -eu
+
+command_path="$1"
+command_label="$2"
+
+check_trusted_system_path() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  echo "Remote ${command_label} command is not in a trusted system directory: $1" >&2
+  exit 1
+}
+
+check_owner_and_mode() {
+  item_kind="$1"
+  item_path="$2"
+  stat_output="$(stat -Lc '%u %a' -- "$item_path")" || {
+    echo "Could not inspect remote ${command_label} ${item_kind}: ${item_path}" >&2
+    exit 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [ "$owner_uid" != "0" ]; then
+    echo "Remote ${command_label} ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Remote ${command_label} ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+check_directory_chain() {
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_owner_and_mode directory "$directory"
+    [ "$directory" = "/" ] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+check_trusted_system_path "$command_path"
+resolved_cmd="$(readlink -f -- "$command_path")"
+check_trusted_system_path "$resolved_cmd"
+if [ ! -f "$resolved_cmd" ]; then
+  echo "Remote ${command_label} command is not a regular file after resolution: ${command_path} -> ${resolved_cmd}" >&2
+  exit 1
+fi
+if [ ! -x "$resolved_cmd" ]; then
+  echo "Remote ${command_label} command is not executable after resolution: ${resolved_cmd}" >&2
+  exit 1
+fi
+check_directory_chain "$command_path"
+check_directory_chain "$resolved_cmd"
+check_owner_and_mode file "$resolved_cmd"
+BASH_ENTRYPOINT_TRUST
+}
+
 remote_path_in_trusted_system_dir() {
   case "$1" in
     /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
@@ -807,6 +872,7 @@ ssh_cmd="$(require_local_command ssh)"
 python3_cmd="$(require_local_command python3)"
 remote_python_cmd="$(remote_python_command)"
 remote_python_cmd_quoted="$(printf '%q' "$remote_python_cmd")"
+validate_remote_bash_entrypoint
 
 timestamp="$(utc_timestamp)"
 safe_target="$(printf '%s' "$target" | tr '@.' '___')"

@@ -950,6 +950,8 @@ grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/collect_pi_support_bundle.sh pi@raspberrypi.local' docs/sailboat-pi.md
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' README.md
 grep -q 'support bundle helper rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local output root, tightens the local output directory to user-owned private `0700`, creates the Pi-side temporary collection directory only under a private user-owned support cache with `mktemp -d`, cleans that temporary directory only through symlink-attack-resistant Python `shutil.rmtree`, reads configured storage metadata and copies selected Pi files through no-follow descriptor revalidation' docs/sailboat-pi.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before streaming the Pi-side collector' README.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before streaming the Pi-side collector' docs/sailboat-pi.md
 grep -q 'disk and inode space' README.md
 grep -q 'disk and inode space' docs/sailboat-pi.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
@@ -1701,6 +1703,9 @@ grep -Fq 'run_noaa_command_report noaa-status-report-commissioned-json "$app_exe
 ! grep -Fq 'run_command noaa-gps-device-candidates "$app_exec" list-gps-devices' scripts/collect_pi_support_bundle.sh
 ! grep -Fq 'run_command noaa-status-report-json "$app_exec" status-report --config "$config" --gps-seconds 10 --json' scripts/collect_pi_support_bundle.sh
 ! grep -Fq 'run_command noaa-status-report-commissioned-json "$app_exec" status-report --config "$config" --gps-seconds-from-launcher-env "$launcher_env" --json' scripts/collect_pi_support_bundle.sh
+grep -q 'validate_remote_bash_entrypoint' scripts/collect_pi_support_bundle.sh
+grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/collect_pi_support_bundle.sh
+grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics list-gps-devices' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics status-report' scripts/collect_pi_support_bundle.sh
 grep -q 'skipped noaa-navionics commissioned status-report' scripts/collect_pi_support_bundle.sh
@@ -2210,6 +2215,8 @@ for remote_python_export_wrapper in \
   grep -Fq '/bin/sh -s -- ${command_path_quoted}' "$remote_python_export_wrapper"
   ! grep -q '${remote_system_path} && export PATH && python3 -s' "$remote_python_export_wrapper"
 done
+grep -q 'validate_remote_bash_entrypoint' scripts/collect_pi_support_bundle.sh
+grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/collect_pi_support_bundle.sh
 grep -Fq '${remote_system_path} && export PATH && /bin/bash -s -- ${remote_python_cmd_quoted}' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$src" "$dest"' scripts/collect_pi_support_bundle.sh
@@ -11710,6 +11717,10 @@ if [[ "$args" == *"command -v python3"* ]]; then
   exit 0
 fi
 if [[ "$args" == *"&& /bin/sh -s -- /usr/bin/python3"* ]]; then
+  cat >/dev/null
+  exit 0
+fi
+if [[ "$args" == *"&& /bin/sh -s -- /bin/bash bash"* ]]; then
   cat >/dev/null
   exit 0
 fi
