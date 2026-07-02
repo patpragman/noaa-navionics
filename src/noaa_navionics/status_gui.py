@@ -188,7 +188,9 @@ def check_anchor_drift(
     if anchor_samples > MAX_ANCHOR_SAMPLES:
         raise ValueError(f"anchor samples must be at most {MAX_ANCHOR_SAMPLES}")
     app_config = read_config(config_path)
-    fixes = read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)
+    expected_fixes = anchor_samples + 1
+    fixes = read_configured_gps_fixes(app_config, count=expected_fixes, gps_seconds=gps_seconds)
+    _require_gps_fix_count(fixes, expected_fixes, "anchor check")
     for index, fix in enumerate(fixes, start=1):
         freshness_failure = _gps_fix_freshness_failure(
             fix,
@@ -218,6 +220,7 @@ def capture_anchor_watch_fix(
         raise ValueError(f"anchor samples must be at most {MAX_ANCHOR_SAMPLES}")
     app_config = read_config(config_path)
     fixes = read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)
+    _require_gps_fix_count(fixes, anchor_samples, "anchor watch")
     for index, fix in enumerate(fixes, start=1):
         freshness_failure = _gps_fix_freshness_failure(
             fix,
@@ -253,6 +256,11 @@ def check_anchor_watch_drift(
         raise ValueError(f"anchor watch requires fresh current GPS fix: {freshness_failure}")
     distance = distance_meters(anchor_fix.latitude, anchor_fix.longitude, current_fix.latitude, current_fix.longitude)
     return distance, radius_meters, anchor_fix, current_fix
+
+
+def _require_gps_fix_count(fixes: list[GPSFix], expected_count: int, subject: str) -> None:
+    if len(fixes) < expected_count:
+        raise ValueError(f"{subject} requires {expected_count} usable GPS fix(es); got {len(fixes)}")
 
 
 def _average_anchor_fix(fixes: list[GPSFix]) -> GPSFix:

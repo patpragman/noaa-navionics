@@ -5250,6 +5250,9 @@ grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'anchor check requires fresh GPS fix' src/noaa_navionics/status_gui.py
 grep -q 'def capture_anchor_watch_fix' src/noaa_navionics/status_gui.py
 grep -q 'def check_anchor_watch_drift' src/noaa_navionics/status_gui.py
+grep -q 'def _require_gps_fix_count' src/noaa_navionics/status_gui.py
+grep -q '_require_gps_fix_count(fixes, expected_fixes, "anchor check")' src/noaa_navionics/status_gui.py
+grep -q '_require_gps_fix_count(fixes, anchor_samples, "anchor watch")' src/noaa_navionics/status_gui.py
 grep -q 'anchor watch requires fresh GPS fix' src/noaa_navionics/status_gui.py
 grep -q 'anchor watch requires fresh current GPS fix' src/noaa_navionics/status_gui.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/status_gui.py
@@ -5326,7 +5329,7 @@ grep -q 'status.add_argument("--gps-seconds", type=_gps_wait_seconds' src/noaa_n
 grep -Fq 'status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--anchor-watch-seconds", str(args.anchor_watch_seconds)])' src/noaa_navionics/cli.py
 grep -q 'write_available_gpx_position_mark(path, fix, name=name, description=description, symbol=symbol)' src/noaa_navionics/status_gui.py
-grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
+grep -q 'read_configured_gps_fixes(app_config, count=expected_fixes, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_current_position_mark(self.config_path, gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'pending_mob_mark' src/noaa_navionics/status_gui.py
@@ -5474,6 +5477,8 @@ grep -q 'test_status_gui_anchor_watch_interval_has_minimum_timer_delay' tests/te
 grep -q 'test_status_gui_parser_rejects_oversized_gps_waits' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_rejects_short_fix_list_before_using_current_fix' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_watch_rejects_short_anchor_sample_list_before_averaging' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py
 grep -q 'test_status_gui_reads_configured_anchor_radius' tests/test_downloader.py
 grep -q 'test_cli_mark_position_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py

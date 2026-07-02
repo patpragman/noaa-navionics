@@ -4844,12 +4844,63 @@ class GuiTests(unittest.TestCase):
                 anchor_samples=status_gui_module.MAX_ANCHOR_SAMPLES + 1,
             )
 
+    def test_status_gui_anchor_check_rejects_short_fix_list_before_using_current_fix(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            now = datetime.now(timezone.utc) - timedelta(seconds=2)
+            fixes = [
+                GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.9),
+                GPSFix(
+                    timestamp=now + timedelta(seconds=1),
+                    latitude=61.00002,
+                    longitude=-149.00002,
+                    satellites=9,
+                    hdop=0.9,
+                ),
+            ]
+            original = status_gui_module.read_configured_gps_fixes
+
+            try:
+                status_gui_module.read_configured_gps_fixes = lambda app_config, **kwargs: fixes
+                with self.assertRaisesRegex(ValueError, r"anchor check requires 3 usable GPS fix\(es\); got 2"):
+                    status_gui_module.check_anchor_drift(config_path, anchor_samples=2)
+            finally:
+                status_gui_module.read_configured_gps_fixes = original
+
     def test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read(self):
         with self.assertRaisesRegex(ValueError, f"at most {status_gui_module.MAX_ANCHOR_SAMPLES}"):
             status_gui_module.capture_anchor_watch_fix(
                 Path("/missing-config.ini"),
                 anchor_samples=status_gui_module.MAX_ANCHOR_SAMPLES + 1,
             )
+
+    def test_status_gui_anchor_watch_rejects_short_anchor_sample_list_before_averaging(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            config_path = root / "config.ini"
+            config_path.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n",
+                encoding="utf-8",
+            )
+            now = datetime.now(timezone.utc) - timedelta(seconds=2)
+            fixes = [GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.9)]
+            original = status_gui_module.read_configured_gps_fixes
+
+            try:
+                status_gui_module.read_configured_gps_fixes = lambda app_config, **kwargs: fixes
+                with self.assertRaisesRegex(ValueError, r"anchor watch requires 2 usable GPS fix\(es\); got 1"):
+                    status_gui_module.capture_anchor_watch_fix(config_path, anchor_samples=2)
+            finally:
+                status_gui_module.read_configured_gps_fixes = original
 
     def test_status_gui_anchor_watch_captures_average_anchor_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
