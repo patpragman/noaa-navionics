@@ -14679,6 +14679,26 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_check_pi_status_rejects_json_control_characters(self):
+        source = Path("scripts/check_pi_status.sh").read_text(encoding="utf-8")
+
+        for expected in (
+            "def status_text",
+            "contains control characters",
+            "def validate_optional_text_fields",
+            '(("checks", "readiness check"), ("service_checks", "service check"))',
+            'status_text(name, f"{row_label} name")',
+            '"chart_output"',
+            '"track_output"',
+            '"gps_device"',
+            '"gpsd_host"',
+            '"download_path"',
+            '"extract_path"',
+            '"track_storage_symlink_component"',
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_verify_pi_rejects_unsupported_expected_config_gps_baud(self):
         source = shell_function_python_heredoc(
             Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),

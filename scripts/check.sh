@@ -11468,6 +11468,12 @@ grep -q 'top-level ok is not boolean' scripts/check_pi_status.sh
 grep -q 'generated_at timestamp must include a timezone' scripts/check_pi_status.sh
 grep -q 'missing non-empty {section_name} list' scripts/check_pi_status.sh
 grep -q 'missing {section_name} summary' scripts/check_pi_status.sh
+grep -q 'def status_text' scripts/check_pi_status.sh
+grep -q 'contains control characters' scripts/check_pi_status.sh
+grep -q 'validate_optional_text_fields' scripts/check_pi_status.sh
+grep -q 'test_check_pi_status_rejects_json_control_characters' tests/test_downloader.py
+grep -q 'control characters in row names and core config/manifest/GPS/track summary fields' README.md
+grep -q 'control characters in row names and core config/manifest/GPS/track summary fields' docs/sailboat-pi.md
 grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh
 grep -q 'json_validation_code=$?' scripts/check_pi_status.sh
 grep -q 'expected_resolved="${HOME}/.local/share/noaa-navionics/venv/bin/noaa-navionics"' "$status_fake_ssh_stdin"

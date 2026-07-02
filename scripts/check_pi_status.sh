@@ -360,6 +360,21 @@ def fail(message):
     raise SystemExit(1)
 
 
+def status_text(value, label):
+    text = str(value)
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        fail(f"{label} contains control characters")
+    return text.strip()
+
+
+def validate_optional_text_fields(section, label, fields):
+    if not isinstance(section, dict):
+        return
+    for field in fields:
+        if field in section:
+            status_text(section.get(field, ""), f"{label} {field}")
+
+
 try:
     report = json.load(sys.stdin)
 except json.JSONDecodeError as exc:
@@ -391,12 +406,31 @@ for section_name, row_label in (("checks", "readiness check"), ("service_checks"
         name = row.get("name")
         if not isinstance(name, str) or not name.strip():
             fail(f"unnamed {row_label}")
-        normalized = name.strip()
+        normalized = status_text(name, f"{row_label} name")
         if normalized in seen:
             fail(f"duplicate {row_label}: {normalized}")
         seen.add(normalized)
         if not isinstance(row.get("ok"), bool):
             fail(f"{normalized} ok is not boolean")
+
+validate_optional_text_fields(
+    report.get("config"),
+    "config",
+    (
+        "chart_package",
+        "chart_value",
+        "chart_output",
+        "track_output",
+        "gps_mode",
+        "gps_device",
+        "gpsd_host",
+    ),
+)
+validate_optional_text_fields(
+    report.get("manifest"),
+    "manifest",
+    ("path", "download_path", "extract_path"),
+)
 
 for section_name in ("gps_fix", "track_log"):
     summary = report.get(section_name)
@@ -404,6 +438,14 @@ for section_name in ("gps_fix", "track_log"):
         fail(f"missing {section_name} summary")
     if not isinstance(summary.get("ok"), bool):
         fail(f"{section_name} ok is not boolean")
+    if section_name == "gps_fix":
+        validate_optional_text_fields(summary, section_name, ("source",))
+    else:
+        validate_optional_text_fields(
+            summary,
+            section_name,
+            ("track_output", "tracks_dir", "latest_path", "track_storage_symlink_component"),
+        )
 '
 }
 
