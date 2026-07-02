@@ -26,6 +26,7 @@ from .config import (
 from .downloader import (
     BASE_URL,
     CATALOG_NAME,
+    MAX_DOWNLOAD_TIMEOUT_SECONDS,
     download_package,
     ensure_catalog,
     package_for,
@@ -178,6 +179,13 @@ def _chart_retry_delay_seconds(value: str) -> float:
     return parsed
 
 
+def _download_timeout_seconds(value: str) -> float:
+    parsed = _positive_float(value)
+    if parsed > MAX_DOWNLOAD_TIMEOUT_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_DOWNLOAD_TIMEOUT_SECONDS:g}")
+    return parsed
+
+
 def _wait_network_seconds(value: str) -> float:
     parsed = _non_negative_float(value)
     if parsed > MAX_WAIT_NETWORK_SECONDS:
@@ -239,7 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--extract", action="store_true", help="extract ZIP after download")
     download.add_argument("--no-keep-zip", action="store_true", help="remove ZIP after successful extraction")
     download.add_argument("--force", action="store_true", help="overwrite an existing local file")
-    download.add_argument("--timeout", type=_positive_float, default=60.0, help="network timeout in seconds")
+    download.add_argument("--timeout", type=_download_timeout_seconds, default=60.0, help="network timeout in seconds")
     download.add_argument("--retries", type=_chart_retries, default=1, help="download attempts before failing")
     download.add_argument("--retry-delay", type=_chart_retry_delay_seconds, default=2.0, help="seconds between retryable failures")
     download.add_argument("--base-url", default=BASE_URL, help=argparse.SUPPRESS)

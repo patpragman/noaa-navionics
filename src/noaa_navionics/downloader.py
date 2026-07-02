@@ -29,6 +29,7 @@ CATALOG_NAME = "ENCProdCat_19115.xml"
 MANIFEST_NAME = "noaa-navionics-manifest.json"
 DOWNLOAD_LOCK_NAME = ".noaa-navionics-download.lock"
 DOWNLOAD_LOCK_STALE_SECONDS = 6 * 60 * 60
+MAX_DOWNLOAD_TIMEOUT_SECONDS = 3600.0
 USER_AGENT = "noaa-navionics/0.1 (+https://www.charts.noaa.gov/ENCs/ENCs.shtml)"
 BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
 BOOT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
@@ -262,6 +263,8 @@ def _validate_download_timing(timeout: float, retries: int, retry_delay: float) 
         raise ValueError("timeout must be finite and greater than 0") from exc
     if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
         raise ValueError("timeout must be finite and greater than 0")
+    if timeout_seconds > MAX_DOWNLOAD_TIMEOUT_SECONDS:
+        raise ValueError(f"timeout must be at most {MAX_DOWNLOAD_TIMEOUT_SECONDS:g}")
     if not isinstance(retries, int) or isinstance(retries, bool):
         raise ValueError("retries must be an integer")
     if retries < 1:

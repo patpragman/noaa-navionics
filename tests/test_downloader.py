@@ -8322,6 +8322,8 @@ class CLIValidationTests(unittest.TestCase):
     def test_download_rejects_invalid_timing_values(self):
         self.assert_parse_error(["download", "--state", "AK", "--timeout", "0"])
         self.assert_parse_error(["download", "--state", "AK", "--timeout", "nan"])
+        self.assert_parse_error(["download", "--state", "AK", "--timeout", "3601"])
+        self.assert_parse_error(["download", "--state", "AK", "--timeout", "999999999999999999999999999999"])
         self.assert_parse_error(["download", "--state", "AK", "--retries", "0"])
         self.assert_parse_error(["download", "--state", "AK", "--retries", "21"])
         self.assert_parse_error(["download", "--state", "AK", "--retries", "999999999999999999999999999999"])
@@ -8851,6 +8853,7 @@ class ManifestTests(unittest.TestCase):
             ({"timeout": 0}, "timeout must be finite and greater than 0"),
             ({"timeout": float("nan")}, "timeout must be finite and greater than 0"),
             ({"timeout": float("inf")}, "timeout must be finite and greater than 0"),
+            ({"timeout": 3601}, "timeout must be at most 3600"),
             ({"retries": 0}, "retries must be at least 1"),
             ({"retries": 1.5}, "retries must be an integer"),
             ({"retries": True}, "retries must be an integer"),

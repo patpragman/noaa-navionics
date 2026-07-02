@@ -6549,9 +6549,18 @@ grep -q '"download_bytes"' src/noaa_navionics/report.py
 grep -q '"download_path_is_symlink"' src/noaa_navionics/report.py
 grep -q '"extract_path_is_symlink"' src/noaa_navionics/report.py
 grep -q 'def _validate_download_timing' src/noaa_navionics/downloader.py
+grep -q 'MAX_DOWNLOAD_TIMEOUT_SECONDS = 3600.0' src/noaa_navionics/downloader.py
+grep -q 'timeout_seconds > MAX_DOWNLOAD_TIMEOUT_SECONDS' src/noaa_navionics/downloader.py
 grep -q 'timeout must be finite and greater than 0' src/noaa_navionics/downloader.py
+grep -q 'timeout must be at most {MAX_DOWNLOAD_TIMEOUT_SECONDS:g}' src/noaa_navionics/downloader.py
 grep -q 'retry_delay must be finite and non-negative' src/noaa_navionics/downloader.py
 grep -q 'test_download_rejects_invalid_timing_before_storage_or_network' tests/test_downloader.py
+grep -q 'download", "--state", "AK", "--timeout", "3601"' tests/test_downloader.py
+grep -q 'timeout must be at most 3600' tests/test_downloader.py
+grep -q 'def _download_timeout_seconds' src/noaa_navionics/cli.py
+grep -q 'download.add_argument("--timeout", type=_download_timeout_seconds' src/noaa_navionics/cli.py
+grep -q 'Direct `download --timeout` is bounded to 1-3600 seconds per NOAA request' README.md
+grep -q 'Direct `download --timeout` is bounded to 1-3600 seconds per NOAA request' docs/sailboat-pi.md
 grep -q 'def _prepare_output_dir' src/noaa_navionics/downloader.py
 grep -q 'chart output path contains a symlink' src/noaa_navionics/downloader.py
 grep -q 'chart output directory .* expected private 0700' src/noaa_navionics/downloader.py
