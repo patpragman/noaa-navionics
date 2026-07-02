@@ -14029,6 +14029,14 @@ class StatusReportTests(unittest.TestCase):
                 "desktop autostart path is empty",
             ),
             (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path": 123}}},
+                "desktop autostart path is empty",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path": "/home/pi/.config/autostart/noaa-navionics.desktop\x00"}}},
+                "desktop autostart path contains control characters",
+            ),
+            (
                 {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "exists": False}}},
                 "desktop autostart does not exist",
             ),
@@ -14052,8 +14060,24 @@ class StatusReportTests(unittest.TestCase):
                 "desktop autostart missing path_symlink_component",
             ),
             (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path_symlink_component": 123}}},
+                "desktop autostart path_symlink_component is not text",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path_symlink_component": "\x00"}}},
+                "desktop autostart path_symlink_component contains control characters",
+            ),
+            (
                 {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "path_symlink_component": "/home/pi"}}},
                 "desktop autostart path contains a symlink",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "error": 123}}},
+                "desktop autostart error is not text",
+            ),
+            (
+                {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "error": "desktop autostart path is not a regular file\x00"}}},
+                "desktop autostart error contains control characters",
             ),
             (
                 {"desktop": {**valid_desktop, "autostart": {**valid_autostart, "mode": "0666"}}},
@@ -14090,6 +14114,18 @@ class StatusReportTests(unittest.TestCase):
             (
                 {"desktop": {**valid_desktop, "status_launcher": {**valid_status_launcher, "exists": False}}},
                 "status GUI desktop launcher does not exist",
+            ),
+            (
+                {"desktop": {**valid_desktop, "status_launcher": {**valid_status_launcher, "path": 123}}},
+                "status GUI desktop launcher path is empty",
+            ),
+            (
+                {"desktop": {**valid_desktop, "status_launcher": {**valid_status_launcher, "path_symlink_component": "\x00"}}},
+                "status GUI desktop launcher path_symlink_component contains control characters",
+            ),
+            (
+                {"desktop": {**valid_desktop, "status_launcher": {**valid_status_launcher, "error": "status GUI desktop launcher path is not a regular file\x00"}}},
+                "status GUI desktop launcher error contains control characters",
             ),
             (
                 {"desktop": {**valid_desktop, "status_launcher": {**valid_status_launcher, "mode": "0644"}}},
@@ -14138,6 +14174,18 @@ class StatusReportTests(unittest.TestCase):
             (
                 {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "exists": False}}},
                 "MOB desktop launcher does not exist",
+            ),
+            (
+                {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "path": 123}}},
+                "MOB desktop launcher path is empty",
+            ),
+            (
+                {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "path_symlink_component": "\x00"}}},
+                "MOB desktop launcher path_symlink_component contains control characters",
+            ),
+            (
+                {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "error": "MOB desktop launcher path is not a regular file\x00"}}},
+                "MOB desktop launcher error contains control characters",
             ),
             (
                 {"desktop": {**valid_desktop, "mob_launcher": {**valid_mob_launcher, "mode": "0644"}}},

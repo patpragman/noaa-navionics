@@ -5122,6 +5122,12 @@ grep -q 'status report OpenCPN config contains unexpected enabled GPSD connectio
 grep -q 'status report missing desktop section' src/noaa_navionics/report.py
 grep -q 'status report desktop autostart path is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report desktop autostart missing path_symlink_component' src/noaa_navionics/report.py
+grep -q 'desktop autostart path_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'status GUI desktop launcher path_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'MOB desktop launcher path_symlink_component contains control characters' tests/test_downloader.py
+grep -q 'desktop autostart error contains control characters' tests/test_downloader.py
+grep -q 'status GUI desktop launcher error contains control characters' tests/test_downloader.py
+grep -q 'MOB desktop launcher error contains control characters' tests/test_downloader.py
 grep -q 'desktop autostart Hidden=true disables chartplotter startup' src/noaa_navionics/report.py
 grep -q 'status report missing LightDM autologin section' src/noaa_navionics/report.py
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' src/noaa_navionics/report.py

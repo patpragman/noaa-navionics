@@ -1980,14 +1980,36 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
     if not isinstance(desktop, dict):
         return [CheckResult("Desktop Startup", False, "status report missing desktop section")]
     failures = []
+
+    def required_text(summary: dict[str, object], field: str, missing_detail: str, label: str) -> str:
+        value, failure = _status_required_text_field(summary, field, missing_detail, label, "Desktop Startup")
+        if failure:
+            failures.append(failure.detail)
+        return value
+
+    def optional_text(summary: dict[str, object], field: str, not_text_detail: str, label: str) -> str:
+        value = summary.get(field, "")
+        if not isinstance(value, str):
+            failures.append(not_text_detail)
+            return ""
+        text = value.strip()
+        control_failure = _status_control_character_failure(text, label)
+        if control_failure:
+            failures.append(control_failure)
+            return ""
+        return text
+
     autostart = desktop.get("autostart")
     if not isinstance(autostart, dict):
         failures.append("status report missing desktop autostart section")
     else:
-        path = str(autostart.get("path", "")).strip()
-        if not path:
-            failures.append("status report desktop autostart path is empty")
-        elif not _status_absolute_path(path):
+        path = required_text(
+            autostart,
+            "path",
+            "status report desktop autostart path is empty",
+            "desktop autostart path",
+        )
+        if path and not _status_absolute_path(path):
             failures.append(f"status report desktop autostart path is not absolute: {path}")
         if autostart.get("exists") is not True:
             failures.append(f"status report desktop autostart does not exist: {path or '<missing>'}")
@@ -1997,9 +2019,21 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             failures.append("status report desktop autostart directory is a symlink or missing symlink status")
         if "path_symlink_component" not in autostart:
             failures.append("status report desktop autostart missing path_symlink_component")
-        elif str(autostart.get("path_symlink_component", "")).strip():
-            failures.append("status report desktop autostart path contains a symlink")
-        error = str(autostart.get("error", "")).strip()
+        else:
+            symlink_component = optional_text(
+                autostart,
+                "path_symlink_component",
+                "status report desktop autostart path_symlink_component is not text",
+                "desktop autostart path_symlink_component",
+            )
+            if symlink_component:
+                failures.append("status report desktop autostart path contains a symlink")
+        error = optional_text(
+            autostart,
+            "error",
+            "status report desktop autostart error is not text",
+            "desktop autostart error",
+        )
         if error:
             failures.append(f"status report desktop autostart error: {error}")
         failures.extend(
@@ -2031,10 +2065,13 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
     if not isinstance(status_launcher, dict):
         failures.append("status report missing status GUI desktop launcher section")
     else:
-        path = str(status_launcher.get("path", "")).strip()
-        if not path:
-            failures.append("status report status GUI desktop launcher path is empty")
-        elif not _status_absolute_path(path):
+        path = required_text(
+            status_launcher,
+            "path",
+            "status report status GUI desktop launcher path is empty",
+            "status GUI desktop launcher path",
+        )
+        if path and not _status_absolute_path(path):
             failures.append(f"status report status GUI desktop launcher path is not absolute: {path}")
         if status_launcher.get("exists") is not True:
             failures.append(f"status report status GUI desktop launcher does not exist: {path or '<missing>'}")
@@ -2044,9 +2081,21 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             failures.append("status report status GUI desktop launcher directory is a symlink or missing symlink status")
         if "path_symlink_component" not in status_launcher:
             failures.append("status report status GUI desktop launcher missing path_symlink_component")
-        elif str(status_launcher.get("path_symlink_component", "")).strip():
-            failures.append("status report status GUI desktop launcher path contains a symlink")
-        error = str(status_launcher.get("error", "")).strip()
+        else:
+            symlink_component = optional_text(
+                status_launcher,
+                "path_symlink_component",
+                "status report status GUI desktop launcher path_symlink_component is not text",
+                "status GUI desktop launcher path_symlink_component",
+            )
+            if symlink_component:
+                failures.append("status report status GUI desktop launcher path contains a symlink")
+        error = optional_text(
+            status_launcher,
+            "error",
+            "status report status GUI desktop launcher error is not text",
+            "status GUI desktop launcher error",
+        )
         if error:
             failures.append(f"status report status GUI desktop launcher error: {error}")
         failures.extend(
@@ -2138,10 +2187,13 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
     if not isinstance(mob_launcher, dict):
         failures.append("status report missing MOB desktop launcher section")
     else:
-        path = str(mob_launcher.get("path", "")).strip()
-        if not path:
-            failures.append("status report MOB desktop launcher path is empty")
-        elif not _status_absolute_path(path):
+        path = required_text(
+            mob_launcher,
+            "path",
+            "status report MOB desktop launcher path is empty",
+            "MOB desktop launcher path",
+        )
+        if path and not _status_absolute_path(path):
             failures.append(f"status report MOB desktop launcher path is not absolute: {path}")
         if mob_launcher.get("exists") is not True:
             failures.append(f"status report MOB desktop launcher does not exist: {path or '<missing>'}")
@@ -2151,9 +2203,21 @@ def _desktop_validation_failures(report: dict[str, object]) -> list[CheckResult]
             failures.append("status report MOB desktop launcher directory is a symlink or missing symlink status")
         if "path_symlink_component" not in mob_launcher:
             failures.append("status report MOB desktop launcher missing path_symlink_component")
-        elif str(mob_launcher.get("path_symlink_component", "")).strip():
-            failures.append("status report MOB desktop launcher path contains a symlink")
-        error = str(mob_launcher.get("error", "")).strip()
+        else:
+            symlink_component = optional_text(
+                mob_launcher,
+                "path_symlink_component",
+                "status report MOB desktop launcher path_symlink_component is not text",
+                "MOB desktop launcher path_symlink_component",
+            )
+            if symlink_component:
+                failures.append("status report MOB desktop launcher path contains a symlink")
+        error = optional_text(
+            mob_launcher,
+            "error",
+            "status report MOB desktop launcher error is not text",
+            "MOB desktop launcher error",
+        )
         if error:
             failures.append(f"status report MOB desktop launcher error: {error}")
         failures.extend(
