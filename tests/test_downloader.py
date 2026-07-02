@@ -14601,6 +14601,7 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('"MOB desktop launcher path_symlink_component"', source)
                 self.assertIn('"status GUI desktop launcher path"', source)
                 self.assertIn('"status GUI desktop launcher path_symlink_component"', source)
+                self.assertIn('"host boot_id"', source)
                 self.assertIn('"gps_fix source"', source)
                 self.assertIn('"track_log track_storage_symlink_component"', source)
                 self.assertIn('"manifest summary path"', source)

@@ -918,7 +918,10 @@ def verify_optional_pre_departure_status(recovery_dir: Path, recovery_fd: int) -
             f"({-age_seconds:.0f}s ahead; maximum {STATUS_FUTURE_TOLERANCE_SECONDS}s)"
         )
     host = status.get("host")
-    if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
+    if not isinstance(host, dict):
+        fail("pre-departure status snapshot JSON missing valid host boot_id")
+    host_boot_id = snapshot_text(host.get("boot_id", ""), "host boot_id")
+    if not BOOT_ID_RE.fullmatch(host_boot_id):
         fail("pre-departure status snapshot JSON missing valid host boot_id")
     app = status.get("app")
     source_revision = app.get("source_revision") if isinstance(app, dict) else None

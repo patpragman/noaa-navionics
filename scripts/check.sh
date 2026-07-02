@@ -5044,6 +5044,7 @@ grep -q 'test_trip_snapshot_validators_reject_non_string_text' tests/test_downlo
 grep -q '"desktop autostart path_symlink_component"' tests/test_downloader.py
 grep -q '"MOB desktop launcher path_symlink_component"' tests/test_downloader.py
 grep -q '"status GUI desktop launcher path_symlink_component"' tests/test_downloader.py
+grep -q '"host boot_id"' tests/test_downloader.py
 grep -q '"gps_fix source"' tests/test_downloader.py
 grep -q '"track_log track_storage_symlink_component"' tests/test_downloader.py
 grep -q '"manifest summary path"' tests/test_downloader.py

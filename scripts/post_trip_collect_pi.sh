@@ -1601,7 +1601,11 @@ if age_seconds < -STATUS_FUTURE_TOLERANCE_SECONDS:
     )
     raise SystemExit(124)
 host = payload.get("host")
-if not isinstance(host, dict) or not BOOT_ID_RE.fullmatch(str(host.get("boot_id", ""))):
+if not isinstance(host, dict):
+    print(f"status snapshot JSON missing valid host boot_id: {path}", file=sys.stderr)
+    raise SystemExit(124)
+host_boot_id = snapshot_text(host.get("boot_id", ""), "host boot_id", path)
+if not BOOT_ID_RE.fullmatch(host_boot_id):
     print(f"status snapshot JSON missing valid host boot_id: {path}", file=sys.stderr)
     raise SystemExit(124)
 app = payload.get("app")
