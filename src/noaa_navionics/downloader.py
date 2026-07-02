@@ -1054,6 +1054,7 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
     target = output_path / MANIFEST_NAME
     _validate_manifest_replace_target(target)
     tmp_path = None
+    tmp_stat = None
     try:
         with tempfile.NamedTemporaryFile(
             "w",
@@ -1064,17 +1065,54 @@ def write_manifest(output_dir: Union[Path, str], package: Package, result: Downl
             delete=False,
         ) as handle:
             tmp_path = Path(handle.name)
+            os.fchmod(handle.fileno(), 0o600)
             handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
+            tmp_stat = os.fstat(handle.fileno())
         _prepare_output_dir(output_path)
         _validate_manifest_replace_target(target)
+        _validate_manifest_temp_for_promotion(tmp_path, expected_stat=tmp_stat)
         os.replace(tmp_path, target)
         _fsync_directory(output_path)
     finally:
         if tmp_path is not None:
-            cleanup_private_temp_file(tmp_path, label="chart manifest temp")
+            cleanup_private_temp_file(tmp_path, label="chart manifest temp", expected_stat=tmp_stat)
     return target
+
+
+def _validate_manifest_temp_for_promotion(path: Path, *, expected_stat: Optional[os.stat_result]) -> None:
+    if expected_stat is None:
+        raise RuntimeError(f"chart manifest temp was not opened safely before promotion: {path}")
+    try:
+        current = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(f"could not inspect chart manifest temp before promotion {path}: {exc}") from exc
+    if stat.S_ISLNK(current.st_mode):
+        raise RuntimeError(f"chart manifest temp is a symlink before promotion: {path}")
+    if not stat.S_ISREG(current.st_mode):
+        raise RuntimeError(f"chart manifest temp is not a regular file before promotion: {path}")
+    if current.st_uid != os.getuid():
+        raise RuntimeError(f"chart manifest temp {path} is owned by uid {current.st_uid}, expected {os.getuid()}")
+    mode = current.st_mode & 0o777
+    if mode != 0o600:
+        raise RuntimeError(f"chart manifest temp {path} has permissions {mode:04o}, expected private 0600")
+    if not os.path.samestat(current, expected_stat):
+        raise RuntimeError(f"chart manifest temp changed before promotion; leaving it in place: {path}")
+
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, expected_stat):
+            raise RuntimeError(f"chart manifest temp changed while being opened for promotion: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"chart manifest temp is not regular when opened for promotion: {path}")
+        opened_mode = opened.st_mode & 0o777
+        if opened.st_uid != os.getuid() or opened_mode != 0o600:
+            raise RuntimeError(f"chart manifest temp {path} is not private current-user storage before promotion")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def _validate_manifest_replace_target(target: Path) -> None:

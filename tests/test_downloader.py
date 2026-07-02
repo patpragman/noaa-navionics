@@ -8054,6 +8054,35 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue((output / MANIFEST_NAME).is_symlink())
             self.assertFalse(list(output.glob(".noaa-navionics-manifest.json.*.part")))
 
+    def test_write_manifest_revalidates_temp_before_promotion(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir)
+            package = Package("Test package", "file:///AK_ENCs.zip", "AK_ENCs.zip")
+            result = downloader_module.DownloadResult(output / "AK_ENCs.zip", package.url, 0, sha256="abc")
+            original_validate = downloader_module._validate_manifest_replace_target
+            calls = 0
+
+            def swap_manifest_temp(path):
+                nonlocal calls
+                calls += 1
+                original_validate(path)
+                if calls == 2:
+                    parts = list(output.glob(".noaa-navionics-manifest.json.*.part"))
+                    self.assertEqual(len(parts), 1)
+                    replacement = output / "replacement-manifest.part"
+                    replacement.write_text("replacement\n", encoding="utf-8")
+                    replacement.chmod(0o600)
+                    os.replace(replacement, parts[0])
+
+            with patch("noaa_navionics.downloader._validate_manifest_replace_target", side_effect=swap_manifest_temp):
+                with self.assertRaisesRegex(RuntimeError, "chart manifest temp changed before promotion"):
+                    downloader_module.write_manifest(output, package, result)
+
+            self.assertFalse((output / MANIFEST_NAME).exists())
+            parts = list(output.glob(".noaa-navionics-manifest.json.*.part"))
+            self.assertEqual(len(parts), 1)
+            self.assertEqual(parts[0].read_text(encoding="utf-8"), "replacement\n")
+
     def test_write_manifest_syncs_file_and_directory(self):
         calls = []
         original_fsync = downloader_module.os.fsync

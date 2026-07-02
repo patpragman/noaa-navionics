@@ -3912,7 +3912,9 @@ grep -q 'ZIP is revalidated as a regular trusted archive and same-file validated
 grep -q 'ZIP is revalidated as a regular trusted archive and same-file validated immediately before removal' docs/sailboat-pi.md
 grep -q 'tempfile.NamedTemporaryFile' src/noaa_navionics/downloader.py
 grep -q 'from ._safeio import cleanup_private_temp_file' src/noaa_navionics/downloader.py
-grep -q 'cleanup_private_temp_file(tmp_path, label="chart manifest temp")' src/noaa_navionics/downloader.py
+grep -q 'cleanup_private_temp_file(tmp_path, label="chart manifest temp", expected_stat=tmp_stat)' src/noaa_navionics/downloader.py
+grep -q 'def _validate_manifest_temp_for_promotion' src/noaa_navionics/downloader.py
+grep -q 'test_write_manifest_revalidates_temp_before_promotion' tests/test_downloader.py
 ! grep -q 'tmp_path.unlink()' src/noaa_navionics/downloader.py
 grep -q 'os.fsync(handle.fileno())' src/noaa_navionics/downloader.py
 grep -q 'def _fsync_directory' src/noaa_navionics/downloader.py
