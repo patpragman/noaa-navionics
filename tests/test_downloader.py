@@ -14020,6 +14020,36 @@ class StatusReportTests(unittest.TestCase):
                     with self.subTest(expected=expected):
                         self.assertIn(expected, source)
 
+    def test_status_snapshot_validators_require_status_desktop_launcher_evidence(self):
+        expectations = {
+            "scripts/pre_trip_prepare_pi.sh": "pre-departure status snapshot JSON",
+            "scripts/verify_pi_recovery_exports.sh": "pre-departure status snapshot JSON",
+            "scripts/post_trip_collect_pi.sh": "status snapshot JSON",
+        }
+        for script, prefix in expectations.items():
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                for expected in (
+                    "EXPECTED_STATUS_LAUNCHER_VALUES",
+                    f"{prefix} missing desktop section",
+                    f"{prefix} missing status GUI desktop launcher evidence",
+                    f"{prefix} status GUI desktop launcher path is not absolute",
+                    f"{prefix} status GUI desktop launcher path is a symlink or missing symlink status",
+                    f"{prefix} status GUI desktop launcher missing path_symlink_component",
+                    f"{prefix} status GUI desktop launcher path contains a symlink",
+                    f"{prefix} {{label}} owner is invalid",
+                    'snapshot_uid(status_launcher.get("uid"), label="status GUI desktop launcher"',
+                    f"{prefix} status GUI desktop launcher is group/world writable",
+                    f"{prefix} status GUI desktop launcher is not user executable",
+                    f"{prefix} status GUI desktop launcher values were not parsed",
+                    f"{prefix} status GUI desktop launcher {{key}} does not match expected value",
+                    "noaa-navionics-status-gui",
+                    f"{prefix} status GUI desktop launcher must not be configured for autostart",
+                    'validate_snapshot_status_launcher(',
+                ):
+                    with self.subTest(expected=expected):
+                        self.assertIn(expected, source)
+
     def test_status_snapshot_validators_reject_source_revision_row_mismatches(self):
         for script in (
             "scripts/pre_trip_prepare_pi.sh",

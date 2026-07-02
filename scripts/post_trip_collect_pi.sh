@@ -642,6 +642,12 @@ EXPECTED_MOB_LAUNCHER_VALUES = {
     "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
     "Terminal": "true",
 }
+EXPECTED_STATUS_LAUNCHER_VALUES = {
+    "Type": "Application",
+    "Name": "NOAA Navionics Status",
+    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+    "Terminal": "false",
+}
 
 
 def fail(message: str) -> None:
@@ -809,6 +815,55 @@ def validate_snapshot_mob_launcher(payload: dict[str, object], *, path: Path) ->
         fail(f"status snapshot JSON MOB desktop launcher is hidden: {path}")
     if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
         fail(f"status snapshot JSON MOB desktop launcher must not be configured for autostart: {path}")
+
+
+def validate_snapshot_status_launcher(payload: dict[str, object], *, path: Path) -> None:
+    desktop = payload.get("desktop")
+    if not isinstance(desktop, dict):
+        fail(f"status snapshot JSON missing desktop section: {path}")
+    status_launcher = desktop.get("status_launcher")
+    if not isinstance(status_launcher, dict):
+        fail(f"status snapshot JSON missing status GUI desktop launcher evidence: {path}")
+    launcher_path = str(status_launcher.get("path", "")).strip()
+    if not launcher_path or not Path(launcher_path).is_absolute():
+        fail(f"status snapshot JSON status GUI desktop launcher path is not absolute: {path}")
+    if Path(launcher_path).name != "noaa-navionics-status.desktop":
+        fail(f"status snapshot JSON status GUI desktop launcher path has unexpected filename: {path}")
+    if status_launcher.get("exists") is not True:
+        fail(f"status snapshot JSON status GUI desktop launcher does not exist: {path}")
+    if status_launcher.get("is_symlink") is not False:
+        fail(f"status snapshot JSON status GUI desktop launcher path is a symlink or missing symlink status: {path}")
+    if status_launcher.get("directory_is_symlink") is not False:
+        fail(f"status snapshot JSON status GUI desktop launcher directory is a symlink or missing symlink status: {path}")
+    if "path_symlink_component" not in status_launcher:
+        fail(f"status snapshot JSON status GUI desktop launcher missing path_symlink_component: {path}")
+    if str(status_launcher.get("path_symlink_component", "")).strip():
+        fail(f"status snapshot JSON status GUI desktop launcher path contains a symlink: {path}")
+    snapshot_uid(status_launcher.get("uid"), label="status GUI desktop launcher", path=path)
+    snapshot_uid(status_launcher.get("directory_uid"), label="status GUI desktop launcher directory", path=path)
+    mode = snapshot_octal_mode(status_launcher.get("mode"), label="status GUI desktop launcher", path=path)
+    if mode & 0o022:
+        fail(f"status snapshot JSON status GUI desktop launcher is group/world writable: {path}")
+    if not mode & 0o100:
+        fail(f"status snapshot JSON status GUI desktop launcher is not user executable: {path}")
+    directory_mode = snapshot_octal_mode(
+        status_launcher.get("directory_mode"),
+        label="status GUI desktop launcher directory",
+        path=path,
+    )
+    if directory_mode & 0o022:
+        fail(f"status snapshot JSON status GUI desktop launcher directory is group/world writable: {path}")
+    values = status_launcher.get("values")
+    if not isinstance(values, dict):
+        fail(f"status snapshot JSON status GUI desktop launcher values were not parsed: {path}")
+    for key, expected in EXPECTED_STATUS_LAUNCHER_VALUES.items():
+        actual = str(values.get(key, "")).strip()
+        if actual != expected:
+            fail(f"status snapshot JSON status GUI desktop launcher {key} does not match expected value: {path}")
+    if str(values.get("Hidden", "")).strip().lower() == "true":
+        fail(f"status snapshot JSON status GUI desktop launcher is hidden: {path}")
+    if str(values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+        fail(f"status snapshot JSON status GUI desktop launcher must not be configured for autostart: {path}")
 
 
 def validate_track_log_paths(track_log: dict[str, object], *, path: Path) -> None:
@@ -1374,6 +1429,7 @@ def validate_successful_status_snapshot(
     )
     if missing_structured_data:
         fail(f"status snapshot JSON missing structured readiness data for: {', '.join(missing_structured_data)}: {path}")
+    validate_snapshot_status_launcher(payload, path=path)
     validate_snapshot_mob_launcher(payload, path=path)
     validate_snapshot_chart_rows(check_rows, config=config, path=path)
     validate_snapshot_manifest_row(check_rows, config=config, manifest=payload.get("manifest"), path=path)
