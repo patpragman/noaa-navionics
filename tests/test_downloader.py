@@ -3749,7 +3749,7 @@ class GuiTests(unittest.TestCase):
                     "--action-gps-seconds",
                     "4",
                     "--refresh-seconds",
-                    "0",
+                    "30",
                     "--anchor-watch-seconds",
                     "15",
                     "--anchor-radius-meters",
@@ -3771,7 +3771,7 @@ class GuiTests(unittest.TestCase):
                     "--gps-seconds",
                     "12.0",
                     "--refresh-seconds",
-                    "0.0",
+                    "30.0",
                     "--action-gps-seconds",
                     "4.0",
                     "--anchor-watch-seconds",
@@ -3799,6 +3799,13 @@ class GuiTests(unittest.TestCase):
         stderr = StringIO()
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
             status_gui_module.build_parser().parse_args(["--anchor-watch-seconds", "0"])
+
+        self.assertIn("must be greater than 0", stderr.getvalue())
+
+    def test_status_gui_parser_rejects_zero_refresh_seconds(self):
+        stderr = StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            status_gui_module.build_parser().parse_args(["--refresh-seconds", "0"])
 
         self.assertIn("must be greater than 0", stderr.getvalue())
 
@@ -6837,6 +6844,7 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])
         self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
         self.assert_parse_error(["status-gui", "--action-gps-seconds", "-1"])
+        self.assert_parse_error(["status-gui", "--refresh-seconds", "0"])
         self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "-1"])
         self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "0"])
         self.assert_parse_error(["status-gui", "--anchor-radius-meters", "0"])

@@ -4802,6 +4802,8 @@ grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' README.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
+grep -q 'requires a positive automatic refresh interval' README.md
+grep -q 'requires a positive automatic refresh interval' docs/sailboat-pi.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, non-boolean, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, non-boolean, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
@@ -4908,6 +4910,7 @@ grep -q 'test_status_gui_start_watch_rejects_disabled_repeating_interval' tests/
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_oversized_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_zero_anchor_watch_seconds' tests/test_downloader.py
+grep -q 'test_status_gui_parser_rejects_zero_refresh_seconds' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_oversized_gps_waits' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py

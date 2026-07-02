@@ -901,9 +901,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--refresh-seconds",
-        type=_non_negative_float,
+        type=_positive_float,
         default=60.0,
-        help="seconds between automatic refreshes; 0 disables",
+        help="seconds between automatic refreshes",
     )
     parser.add_argument(
         "--anchor-watch-seconds",
