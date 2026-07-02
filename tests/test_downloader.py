@@ -2246,6 +2246,7 @@ class OpenCPNConfigTests(unittest.TestCase):
             )
             expected_name = f"track-{fix.timestamp.strftime('%Y%m%d')}.gpx"
             self.assertTrue((track_output / "tracks" / expected_name).exists())
+            self.assertIn("\aTRACK LOGGER GPS LOST", stderr.getvalue())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 
     def test_cli_mark_position_writes_mob_waypoint_to_configured_track_output(self):

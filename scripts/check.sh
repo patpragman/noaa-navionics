@@ -4261,6 +4261,9 @@ grep -q 'gps_fix_has_quality_fields(fix)' src/noaa_navionics/gps.py
 grep -q '<sat>{fix.satellites}</sat>' src/noaa_navionics/gps.py
 grep -q '<hdop>{fix.hdop:g}</hdop>' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
+grep -q 'TRACK LOGGER GPS LOST' src/noaa_navionics/cli.py
+grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly' README.md
+grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly' docs/sailboat-pi.md
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends after the anchor is established' README.md
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends after the anchor is established' docs/sailboat-pi.md
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py

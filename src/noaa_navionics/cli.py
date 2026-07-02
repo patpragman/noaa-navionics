@@ -781,10 +781,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     print("No usable GPS fixes were written to the GPX track.", file=sys.stderr)
                     return 1
                 if deadline is None and not args.sample:
-                    print(
-                        "Live GPS stream ended unexpectedly; restart the track logger to resume GPX logging.",
-                        file=sys.stderr,
-                    )
+                    _print_track_logger_gps_lost()
                     return 1
             except _TrackLoggerStop as exc:
                 print(f"Stopped track logger: {exc}")
@@ -1310,6 +1307,13 @@ def _run_anchor_watch(
 def _print_anchor_watch_gps_lost() -> None:
     print(
         "\aANCHOR WATCH GPS LOST: Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.",
+        file=sys.stderr,
+    )
+
+
+def _print_track_logger_gps_lost() -> None:
+    print(
+        "\aTRACK LOGGER GPS LOST: Live GPS stream ended unexpectedly; restart the track logger to resume GPX logging.",
         file=sys.stderr,
     )
 
