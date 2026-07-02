@@ -914,7 +914,9 @@ def _chart_readiness_validation_failures(
             summary_download_bytes = _positive_status_int(manifest.get("download_bytes"))
             if download_bytes is None:
                 failures.append(CheckResult("Manifest", False, "status report Manifest download byte count is not positive"))
-            elif summary_download_bytes is not None and download_bytes != summary_download_bytes:
+            if summary_download_bytes is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest summary download byte count is not positive"))
+            elif download_bytes is not None and download_bytes != summary_download_bytes:
                 failures.append(CheckResult("Manifest", False, "status report Manifest download byte count does not match manifest summary"))
             enc_cell_count = _positive_status_int(data.get("enc_cell_count"))
             actual_enc_cell_count = _positive_status_int(data.get("actual_enc_cell_count"))
@@ -924,6 +926,10 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Manifest", False, "status report Manifest has no ENC cells"))
             if actual_enc_cell_count is None:
                 failures.append(CheckResult("Manifest", False, "status report Manifest actual ENC cell count is not positive"))
+            if summary_enc_cell_count is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest summary has no ENC cells"))
+            if summary_actual_enc_cell_count is None:
+                failures.append(CheckResult("Manifest", False, "status report Manifest summary actual ENC cell count is not positive"))
             if enc_cell_count is not None and actual_enc_cell_count is not None and enc_cell_count != actual_enc_cell_count:
                 failures.append(CheckResult("Manifest", False, "status report Manifest actual ENC cell count does not match recorded count"))
             if enc_cell_count is not None and summary_enc_cell_count is not None and enc_cell_count != summary_enc_cell_count:

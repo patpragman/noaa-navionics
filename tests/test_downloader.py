@@ -13112,6 +13112,21 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == "Manifest" and expected in failure.detail for failure in failures))
 
+        summary_numeric_cases = [
+            ("download_bytes", 0, "Manifest summary download byte count is not positive"),
+            ("enc_cell_count", 0, "Manifest summary has no ENC cells"),
+            ("actual_enc_cell_count", 0, "Manifest summary actual ENC cell count is not positive"),
+        ]
+        for field, value, expected in summary_numeric_cases:
+            with self.subTest(field=field, expected=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                report["manifest"][field] = value
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "Manifest" and expected in failure.detail for failure in failures))
+
         stale_created_at = (now - timedelta(days=31)).isoformat().replace("+00:00", "Z")
         stale_report = complete_status_gui_report(generated_at=generated_at)
         stale_report["manifest"]["created_at"] = stale_created_at

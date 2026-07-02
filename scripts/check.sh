@@ -5370,6 +5370,9 @@ grep -q 'test_status_report_ready_requires_structured_pi_health_evidence' tests/
 grep -q 'test_status_report_ready_requires_structured_storage_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_chart_readiness_evidence' tests/test_downloader.py
 grep -q 'Manifest check has no structured data' tests/test_downloader.py
+grep -q 'Manifest summary download byte count is not positive' tests/test_downloader.py
+grep -q 'Manifest summary has no ENC cells' tests/test_downloader.py
+grep -q 'Manifest summary actual ENC cell count is not positive' tests/test_downloader.py
 grep -q 'Manifest actual ENC cell count does not match recorded count' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_opencpn_readiness_evidence' tests/test_downloader.py
 grep -q 'test_status_report_ready_requires_structured_gps_readiness_evidence' tests/test_downloader.py
