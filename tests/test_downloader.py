@@ -21988,6 +21988,33 @@ class PiHealthTests(unittest.TestCase):
                     expected_stat=expected_stat,
                 )
 
+    def test_read_trusted_config_lines_rejects_removed_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "chrony.conf"
+            config.write_text("refclock SHM 0 offset 0.5 delay 0.1 refid GPS\n", encoding="utf-8")
+            expected_stat = config.stat()
+            original_open = health_module.os.open
+            removed = False
+
+            def remove_before_open(path, flags, mode=0o777, *args, **kwargs):
+                nonlocal removed
+                if not removed and Path(path) == config:
+                    removed = True
+                    os.unlink(config)
+                return original_open(path, flags, mode, *args, **kwargs)
+
+            health_module.os.open = remove_before_open
+            try:
+                with self.assertRaisesRegex(RuntimeError, "Chrony config disappeared before it could be read"):
+                    _read_trusted_config_lines(
+                        config,
+                        label="Chrony config",
+                        expected_uid=os.getuid(),
+                        expected_stat=expected_stat,
+                    )
+            finally:
+                health_module.os.open = original_open
+
     def test_check_chrony_gps_time_source_skips_non_pi(self):
         original_is_pi = health_module._is_raspberry_pi
         try:

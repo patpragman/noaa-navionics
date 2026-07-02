@@ -3857,13 +3857,15 @@ grep -q 'def _read_trusted_config_lines' src/noaa_navionics/health.py
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/health.py
 grep -q 'expected_stat: Optional\[os.stat_result\] = None' src/noaa_navionics/health.py
 grep -q 'Chrony config changed before it could be read' tests/test_downloader.py
+grep -q 'Chrony config disappeared before it could be read' tests/test_downloader.py
+grep -q 'test_read_trusted_config_lines_rejects_removed_config_before_parsing' tests/test_downloader.py
 grep -q 'test_check_chrony_gps_time_config_rejects_replaced_config_before_parsing' tests/test_downloader.py
 grep -q 'test_read_trusted_config_lines_rejects_replaced_config_before_parsing' tests/test_downloader.py
 grep -q 'test_check_chrony_gps_time_config_accepts_managed_refclock' tests/test_downloader.py
 grep -q 'test_check_chrony_gps_time_config_rejects_writable_config' tests/test_downloader.py
 grep -q 'test_read_trusted_config_lines_rejects_writable_config_before_parsing' tests/test_downloader.py
-grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against the inspected file' README.md
-grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against the inspected file' docs/sailboat-pi.md
+grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against the inspected file before parsing startup or GPS time settings, and rejects those configs if they change or disappear before opening' README.md
+grep -q 'Readiness compares GPSD and chrony config no-follow descriptors against the inspected file before parsing startup or GPS time settings, and rejects those configs if they change or disappear before opening' docs/sailboat-pi.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' README.md
 grep -q 'GPS time setup reads existing chrony config, and readiness and production skip checks read GPSD and chrony config files, only after a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'GPSD setup, GPS time setup, and desktop autologin revalidate root target paths before temporary-file creation and immediately before promotion' README.md

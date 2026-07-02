@@ -2015,6 +2015,10 @@ def _read_trusted_config_lines(
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
+    except FileNotFoundError:
+        if expected_stat is not None:
+            raise RuntimeError(f"{label} disappeared before it could be read: {path}") from None
+        raise
     except OSError:
         if path.is_symlink():
             raise RuntimeError(f"{label} is a symlink: {path}")

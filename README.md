@@ -337,7 +337,7 @@ Python atomic-write temp cleanup for app config, OpenCPN config, status reports,
 The onboard app config writer also same-file validates its private temp file before promotion, so swapped config temp files cannot become the live `config.ini`.
 GPSD app-config validation and promotion temp cleanup uses the same no-follow same-file validation.
 
-Readiness compares GPSD and chrony config no-follow descriptors against the inspected file before parsing startup or GPS time settings.
+Readiness compares GPSD and chrony config no-follow descriptors against the inspected file before parsing startup or GPS time settings, and rejects those configs if they change or disappear before opening.
 
 On the Pi, `status-report` writes a JSON readiness artifact:
 
