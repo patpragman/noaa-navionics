@@ -1602,6 +1602,8 @@ require_loaded_user_units() {
   require_loaded_user_unit_property noaa-navionics-preflight.service FragmentPath "$preflight_service" "boot readiness service"
   require_loaded_user_unit_property noaa-navionics.service Type oneshot "chart refresh service"
   require_loaded_user_unit_property noaa-navionics-track.service Type simple "track logger service"
+  require_loaded_user_unit_property noaa-navionics-track.service StandardOutput null "track logger service"
+  require_loaded_user_unit_property noaa-navionics-track.service StandardError journal "track logger service"
   require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s "track logger service"
   require_loaded_user_unit_property noaa-navionics-preflight.service Type oneshot "boot readiness service"
   require_loaded_user_unit_property noaa-navionics-preflight.service TimeoutStartUSec 15min "boot readiness service"

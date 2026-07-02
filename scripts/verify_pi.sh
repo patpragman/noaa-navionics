@@ -5709,6 +5709,8 @@ check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/share/noaa-navi
 check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily"
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
 check "track service loaded quiet stdout" loaded_unit_property_equals noaa-navionics-track.service StandardOutput null
+check "track service journals stderr" grep -Fxq 'StandardError=journal' "$track_service"
+check "track service loaded journals stderr" loaded_unit_property_equals noaa-navionics-track.service StandardError journal
 check "track service restart" grep -Fxq 'Restart=on-failure' "$track_service"
 check "track service loaded restart" loaded_unit_property_equals noaa-navionics-track.service Restart on-failure
 check "track service restart delay" grep -Fxq 'RestartSec=10' "$track_service"

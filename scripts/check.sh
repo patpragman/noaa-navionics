@@ -6544,6 +6544,10 @@ grep -q 'RestartSec=30min' systemd/noaa-navionics.service
 grep -q 'RestartSec=10' systemd/noaa-navionics-track.service
 grep -q 'TimeoutStopSec=30s' systemd/noaa-navionics-track.service
 grep -q 'StandardOutput=null' systemd/noaa-navionics-track.service
+grep -q 'StandardError=journal' systemd/noaa-navionics-track.service
+grep -q 'track service loaded journals stderr' scripts/verify_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service StandardError journal "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q '"StandardError": "journal"' src/noaa_navionics/report.py
 grep -q 'UMask=0077' systemd/noaa-navionics-track.service
 grep -q 'chart service private files' scripts/verify_pi.sh
 grep -q 'chart service loaded private files' scripts/verify_pi.sh

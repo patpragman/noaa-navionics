@@ -192,6 +192,7 @@ def trusted_user_services_summary(**overrides: object) -> dict[str, object]:
             "properties": {
                 "Type": "simple",
                 "StandardOutput": "null",
+                "StandardError": "journal",
                 "Restart": "on-failure",
                 "RestartUSec": "10s",
                 "TimeoutStopUSec": "30s",
@@ -921,6 +922,7 @@ def trusted_unit_file_lines(unit_name: str) -> list[str]:
             "Type=simple",
             "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
             "StandardOutput=null",
+            "StandardError=journal",
             "Restart=on-failure",
             "RestartSec=10",
             "TimeoutStopSec=30s",
@@ -18538,6 +18540,7 @@ class StatusReportTests(unittest.TestCase):
                     "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
+                    "StandardError": "journal",
                     "Restart": "on-failure",
                     "RestartUSec": "10s",
                     "TimeoutStopUSec": "30s",
@@ -19550,6 +19553,7 @@ class StatusReportTests(unittest.TestCase):
                     "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
+                    "StandardError": "journal",
                     "Restart": "on-failure",
                     "RestartUSec": "10s",
                     "TimeoutStopUSec": "30s",
@@ -19615,6 +19619,7 @@ class StatusReportTests(unittest.TestCase):
                 "properties": {
                     "Type": "oneshot",
                     "StandardOutput": "journal",
+                    "StandardError": "inherit",
                     "Restart": "no",
                     "RestartUSec": "100ms",
                     "StartLimitIntervalUSec": "10min",
@@ -19636,6 +19641,7 @@ class StatusReportTests(unittest.TestCase):
         self.assertFalse(track_settings.ok)
         self.assertIn("Type=oneshot", track_settings.detail)
         self.assertIn("StandardOutput=journal", track_settings.detail)
+        self.assertIn("StandardError=inherit", track_settings.detail)
         self.assertIn("Restart=no", track_settings.detail)
 
     def test_service_readiness_checks_fail_stale_loaded_boot_readiness_restart(self):
@@ -19944,6 +19950,7 @@ class StatusReportTests(unittest.TestCase):
                     "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
+                    "StandardError": "journal",
                     "Restart": "on-failure",
                     "RestartUSec": "10s",
                     "TimeoutStopUSec": "30s",
