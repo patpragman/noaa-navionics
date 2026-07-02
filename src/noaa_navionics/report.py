@@ -249,7 +249,7 @@ def build_status_report(
     desktop = _desktop_summary()
     track_log = _track_log_summary(
         app_config.track_output,
-        wait_seconds=min(max(float(gps_seconds), 10.0), 60.0),
+        wait_seconds=_status_track_wait_seconds(gps_seconds),
     )
     service_checks = _service_readiness_checks(
         services,
@@ -289,6 +289,16 @@ def build_status_report(
         "service_checks": [_check_result_dict(check) for check in service_checks],
         "checks": check_rows,
     }
+
+
+def _status_track_wait_seconds(gps_seconds: float) -> float:
+    try:
+        seconds = float(gps_seconds)
+    except (TypeError, ValueError):
+        return 10.0
+    if not math.isfinite(seconds) or seconds <= 0:
+        return 10.0
+    return min(max(seconds, 10.0), 60.0)
 
 
 def _check_result_dict(check: CheckResult) -> dict[str, object]:

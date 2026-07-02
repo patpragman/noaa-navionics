@@ -3906,7 +3906,9 @@ grep -q 'test_check_time_synchronization_rejects_user_owned_timedatectl_on_pi' t
 grep -q 'GPS Time Source' src/noaa_navionics/health.py
 grep -q 'def check_chrony_gps_time_config' src/noaa_navionics/health.py
 grep -q 'check_chrony_gps_time_config()' src/noaa_navionics/health.py
-grep -q 'check_chrony_gps_time_source(seconds=gps_seconds)' src/noaa_navionics/health.py
+grep -q 'GPS_WAIT_SECONDS_FAILURE = "GPS wait seconds must be finite and greater than 0"' src/noaa_navionics/health.py
+grep -q 'test_preflight_rejects_non_finite_gpsd_wait_before_live_checks' tests/test_downloader.py
+grep -q 'test_preflight_rejects_non_finite_serial_wait_before_opening' tests/test_downloader.py
 grep -q '_trusted_system_command("chronyc", "Chrony command")' src/noaa_navionics/health.py
 grep -q 'test_check_chrony_gps_time_source_rejects_user_owned_chronyc_on_pi' tests/test_downloader.py
 grep -q 'CHRONY_GPSD_REFCLOCK' src/noaa_navionics/health.py
@@ -5637,7 +5639,8 @@ grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downl
 grep -q 'test_track_log_summary_rejects_symlinked_track_output_ancestor' tests/test_downloader.py
 grep -q 'Status reports and Pi verification open the GPX tracks directory through a no-follow same-file descriptor' README.md
 grep -q 'Status reports and Pi verification open the GPX tracks directory through a no-follow same-file descriptor' docs/sailboat-pi.md
-grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
+grep -q 'def _status_track_wait_seconds' src/noaa_navionics/report.py
+grep -q 'test_status_track_wait_seconds_rejects_non_finite_values' tests/test_downloader.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Run' src/noaa_navionics/report.py

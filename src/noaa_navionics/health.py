@@ -62,6 +62,7 @@ TRUSTED_SYSTEM_COMMAND_DIRS = {
     Path("/bin"),
 }
 GPS_DEVICE_DISCOVERY_HINT = "run noaa-navionics list-gps-devices on the Pi"
+GPS_WAIT_SECONDS_FAILURE = "GPS wait seconds must be finite and greater than 0"
 
 
 @dataclass(frozen=True)
@@ -114,21 +115,29 @@ def run_preflight(
     ]
     if track_output is not None and not _same_path(chart_dir, track_output):
         results.append(check_disk_space(track_output, name="Track Disk", min_free_gb=min_free_gb))
+    gps_wait_failure = _gps_wait_seconds_failure(gps_seconds)
     if gpsd:
         if gps_device and gpsd_host in {"127.0.0.1", "localhost", "::1"}:
             results.append(check_gps_device_path(gps_device))
             results.append(check_gpsd_startup_config(gps_device))
         results.append(check_opencpn_gpsd_config(host=gpsd_host, port=gpsd_port))
         results.append(check_chrony_gps_time_config())
-        results.append(check_chrony_gps_time_source(seconds=gps_seconds))
-        results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
+        if gps_wait_failure:
+            results.append(CheckResult("GPS Time Source", False, gps_wait_failure))
+            results.append(CheckResult("GPSD", False, gps_wait_failure))
+        else:
+            results.append(check_chrony_gps_time_source(seconds=gps_seconds))
+            results.append(check_gpsd(host=gpsd_host, port=gpsd_port, seconds=gps_seconds))
     elif gps_sample:
         results.append(check_gps_sample(gps_sample))
     elif gps_device:
         gps_device_check = check_gps_device_path(gps_device)
         results.append(gps_device_check)
         if gps_device_check.ok:
-            results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
+            if gps_wait_failure:
+                results.append(CheckResult("GPS", False, gps_wait_failure))
+            else:
+                results.append(check_gps_device(gps_device, baud=gps_baud, seconds=gps_seconds))
         else:
             results.append(
                 CheckResult(
@@ -2104,6 +2113,16 @@ def _volatile_usb_device_path(path: str) -> bool:
 
 def _gps_not_checked_detail(reason: str) -> str:
     return f"not checked because {reason}; {GPS_DEVICE_DISCOVERY_HINT}"
+
+
+def _gps_wait_seconds_failure(seconds: float) -> Optional[str]:
+    try:
+        gps_seconds = float(seconds)
+    except (TypeError, ValueError):
+        return GPS_WAIT_SECONDS_FAILURE
+    if not math.isfinite(gps_seconds) or gps_seconds <= 0:
+        return GPS_WAIT_SECONDS_FAILURE
+    return None
 
 
 def check_gps_device(

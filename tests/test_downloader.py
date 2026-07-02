@@ -121,6 +121,7 @@ from noaa_navionics.report import (
     _parse_proc_uptime_seconds,
     _read_trusted_gpx_track_file,
     _service_readiness_checks,
+    _status_track_wait_seconds,
     _track_log_readiness_check,
     _track_log_summary,
     _user_unit_file_summary,
@@ -15864,6 +15865,14 @@ class StatusReportTests(unittest.TestCase):
             self.assertEqual(summary["extract_path_is_symlink"], False)
             self.assertEqual(summary["extract_path_symlink_component"], str(artifact_link))
 
+    def test_status_track_wait_seconds_rejects_non_finite_values(self):
+        self.assertEqual(_status_track_wait_seconds(float("nan")), 10.0)
+        self.assertEqual(_status_track_wait_seconds(float("inf")), 10.0)
+        self.assertEqual(_status_track_wait_seconds(0), 10.0)
+        self.assertEqual(_status_track_wait_seconds(5), 10.0)
+        self.assertEqual(_status_track_wait_seconds(30), 30.0)
+        self.assertEqual(_status_track_wait_seconds(90), 60.0)
+
     def test_track_log_summary_accepts_recent_valid_trackpoint(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -22033,6 +22042,57 @@ class GpsTests(unittest.TestCase):
         self.assertFalse(gps_check.ok)
         self.assertIn("not checked because", gps_check.detail)
         self.assertIn("noaa-navionics list-gps-devices", gps_check.detail)
+
+    def test_preflight_rejects_non_finite_gpsd_wait_before_live_checks(self):
+        original_time_source = health_module.check_chrony_gps_time_source
+        original_gpsd = health_module.check_gpsd
+
+        def unexpected_time_source(**kwargs):
+            raise AssertionError("preflight should reject invalid GPS wait before chrony polling")
+
+        def unexpected_gpsd(**kwargs):
+            raise AssertionError("preflight should reject invalid GPS wait before GPSD polling")
+
+        try:
+            health_module.check_chrony_gps_time_source = unexpected_time_source
+            health_module.check_gpsd = unexpected_gpsd
+            with tempfile.TemporaryDirectory() as tmpdir:
+                results = health_module.run_preflight(
+                    chart_dir=Path(tmpdir) / "charts",
+                    gpsd=True,
+                    gps_seconds=float("nan"),
+                )
+        finally:
+            health_module.check_chrony_gps_time_source = original_time_source
+            health_module.check_gpsd = original_gpsd
+
+        time_check = next(check for check in results if check.name == "GPS Time Source")
+        gpsd_check = next(check for check in results if check.name == "GPSD")
+        self.assertFalse(time_check.ok)
+        self.assertFalse(gpsd_check.ok)
+        self.assertEqual(time_check.detail, "GPS wait seconds must be finite and greater than 0")
+        self.assertEqual(gpsd_check.detail, "GPS wait seconds must be finite and greater than 0")
+
+    def test_preflight_rejects_non_finite_serial_wait_before_opening(self):
+        original_check_device = health_module.check_gps_device
+
+        def unexpected_check_device(*args, **kwargs):
+            raise AssertionError("preflight should reject invalid GPS wait before opening serial GPS")
+
+        try:
+            health_module.check_gps_device = unexpected_check_device
+            with tempfile.TemporaryDirectory() as tmpdir, self._trusted_gps_device_patch():
+                results = health_module.run_preflight(
+                    chart_dir=Path(tmpdir) / "charts",
+                    gps_device="/dev/serial/by-id/mock-gps",
+                    gps_seconds=float("inf"),
+                )
+        finally:
+            health_module.check_gps_device = original_check_device
+
+        gps_check = next(check for check in results if check.name == "GPS")
+        self.assertFalse(gps_check.ok)
+        self.assertEqual(gps_check.detail, "GPS wait seconds must be finite and greater than 0")
 
     def test_preflight_missing_gps_points_to_device_discovery(self):
         with tempfile.TemporaryDirectory() as tmpdir:
