@@ -2453,6 +2453,23 @@ class OpenCPNConfigTests(unittest.TestCase):
             )
             self.assertIn("No usable stable GPS device paths were found", stderr.getvalue())
 
+    def test_cli_list_gps_devices_reports_broken_stable_alias(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            dev_root = Path(tmpdir)
+            (dev_root / "gps").symlink_to("ttyACM0")
+
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
+
+            self.assertEqual(code, 1)
+            self.assertIn(
+                "/dev/gps\tbroken-alias\tbroken stable alias to /dev/ttyACM0",
+                stdout.getvalue(),
+            )
+            self.assertIn("No usable stable GPS device paths were found", stderr.getvalue())
+
     def test_cli_list_gps_devices_warns_when_no_candidates_exist(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             stdout = StringIO()

@@ -901,7 +901,19 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
     for alias in ("gps", "serial0", "serial1"):
         path = root / alias
         display_path = _dev_display_path(path, root)
-        if display_path in seen or not path.exists():
+        if display_path in seen:
+            continue
+        if not path.exists():
+            if path.is_symlink():
+                candidates.append(
+                    GPSDeviceCandidate(
+                        display_path,
+                        "broken-alias",
+                        f"broken stable alias to {_dev_display_path(path.resolve(strict=False), root)}; plug in the receiver or fix the alias",
+                        False,
+                    )
+                )
+                seen.add(display_path)
             continue
         detail = "stable alias"
         if path.is_symlink():

@@ -94,8 +94,10 @@ grep -q 'test_cli_list_gps_devices_reports_stable_udev_and_volatile_names' tests
 grep -q 'test_cli_list_gps_devices_reports_broken_by_id_without_success' tests/test_downloader.py
 grep -q 'test_cli_list_gps_devices_rejects_udev_link_to_non_character_target' tests/test_downloader.py
 grep -q 'test_cli_list_gps_devices_reports_non_symlink_udev_entries' tests/test_downloader.py
+grep -q 'test_cli_list_gps_devices_reports_broken_stable_alias' tests/test_downloader.py
 grep -q 'target is not a character device' src/noaa_navionics/cli.py
 grep -q 'not a udev {udev_kind} symlink; stable GPS entries must point to the receiver device' src/noaa_navionics/cli.py
+grep -q 'broken stable alias to' src/noaa_navionics/cli.py
 grep -q 'broken {udev_kind} symlink' src/noaa_navionics/cli.py
 grep -q 'broken {udev_kind} symlink' src/noaa_navionics/health.py
 grep -q 'test_check_gps_device_path_reports_broken_by_id_symlink' tests/test_downloader.py
@@ -103,6 +105,8 @@ grep -q 'test_check_gps_device_path_rejects_unsafe_by_path_name_before_existence
 grep -q 'No usable stable GPS device paths were found' src/noaa_navionics/cli.py
 grep -q 'broken `/dev/serial/by-id/...` or `/dev/serial/by-path/...` symlink' README.md
 grep -q 'broken `/dev/serial/by-id/...` or `/dev/serial/by-path/...` symlinks' docs/sailboat-pi.md
+grep -q 'broken `/dev/gps`, `/dev/serial0`, or `/dev/serial1` stable alias' README.md
+grep -q 'broken `/dev/gps`, `/dev/serial0`, or `/dev/serial1` stable aliases' docs/sailboat-pi.md
 grep -q 'non-symlink by-id/by-path entry' README.md
 grep -q 'non-symlink by-id/by-path entries' docs/sailboat-pi.md
 grep -q 'stable-looking link that does not resolve to a character device' README.md
