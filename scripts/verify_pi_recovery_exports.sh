@@ -584,6 +584,11 @@ def read_checksum_manifest(recovery_dir: Path) -> dict[str, str]:
             fail(f"checksum manifest changed while being opened: {manifest_path}")
         if not stat.S_ISREG(opened.st_mode):
             fail(f"checksum manifest must be regular when opened: {manifest_path}")
+        if opened.st_uid != os.getuid():
+            fail(f"checksum manifest is owned by uid {opened.st_uid}, expected {os.getuid()} when opened: {manifest_path}")
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(f"checksum manifest has permissions {opened_mode:04o}, expected private 0600 when opened: {manifest_path}")
         with os.fdopen(fd, "rb") as manifest_file:
             fd = -1
             try:

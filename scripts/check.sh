@@ -13880,6 +13880,19 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
 fi
 grep -q 'archive has permissions 0700, expected private 0600' "$verify_output"
 
+chmod 0700 "$recovery_verify_dir/SHA256SUMS.txt"
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+chmod 0600 "$recovery_verify_dir/SHA256SUMS.txt"
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject owner-executable checksum manifest with exit 1" >&2
+  exit 1
+fi
+grep -q 'checksum manifest has permissions 0700, expected private 0600' "$verify_output"
+
 rm -f "$recovery_verify_dir"/noaa-navionics-pi-support-*.tgz
 set +e
 scripts/verify_pi_recovery_exports.sh "$recovery_verify_dir" >"$verify_output" 2>&1
