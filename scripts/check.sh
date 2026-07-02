@@ -4866,6 +4866,9 @@ grep -q 'def run_configured_preflight' src/noaa_navionics/gui.py
 grep -q 'def sync_configured_charts' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def read_configured_gps_fixes' src/noaa_navionics/gui.py
+grep -q 'import math' src/noaa_navionics/gui.py
+grep -q 'not math.isfinite(gps_seconds) or gps_seconds <= 0' src/noaa_navionics/gui.py
+grep -q 'gps_seconds must be finite and greater than 0' src/noaa_navionics/gui.py
 grep -q 'def _validate_serial_gps_device' src/noaa_navionics/gui.py
 grep -q 'GPS device path is a broken {udev_kind} symlink' src/noaa_navionics/gui.py
 grep -q 'GPS device path is not a udev {udev_kind} symlink' src/noaa_navionics/gui.py
@@ -5362,8 +5365,8 @@ grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB
 grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB path rings the terminal bell after saving' docs/sailboat-pi.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' README.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' docs/sailboat-pi.md
-grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' README.md
-grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' docs/sailboat-pi.md
+grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits must be finite and positive, and are bounded to 600 seconds' README.md
+grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits must be finite and positive, and are bounded to 600 seconds' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
 grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires `--anchor-watch-seconds N` to be at least 1 second, rechecks drift at that interval' README.md
@@ -5431,6 +5434,8 @@ PY
 grep -q 'test_gui_download_rejects_low_disk_before_download' tests/test_downloader.py
 grep -q 'test_gui_download_rejects_missing_storage_before_creating_directory' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_reads_configured_gpsd_and_formats_position' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_non_finite_gps_wait_before_gpsd' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_non_finite_gps_wait_before_serial_open' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_skips_stale_before_fresh_fix' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_stale_timestamped_fix' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_future_timestamped_fix' tests/test_downloader.py

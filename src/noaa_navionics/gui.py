@@ -5,6 +5,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from threading import Thread
 from typing import Optional
+import math
 import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -121,8 +122,8 @@ def read_configured_gps_fixes(
     use_gpsd = app_config.gps_mode == "gpsd" if gpsd_enabled is None else gpsd_enabled
     if count < 1:
         raise ValueError("count must be at least 1")
-    if gps_seconds <= 0:
-        raise ValueError("gps_seconds must be greater than 0")
+    if not math.isfinite(gps_seconds) or gps_seconds <= 0:
+        raise ValueError("gps_seconds must be finite and greater than 0")
     if use_gpsd:
         fixes = iter_gpsd_fixes(
             host=app_config.gpsd_host,

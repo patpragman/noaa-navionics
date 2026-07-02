@@ -7365,6 +7365,70 @@ class GuiTests(unittest.TestCase):
         self.assertIn("Speed: 4.2 kt", lines)
         self.assertIn("Course: 181.5 deg", lines)
 
+    def test_gui_gps_fix_rejects_non_finite_gps_wait_before_gpsd(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="gpsd",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+            anchor_radius_meters=75.0,
+        )
+        original = gui_module.iter_gpsd_fixes
+
+        def fake_iter_gpsd_fixes(**kwargs):
+            raise AssertionError("iter_gpsd_fixes should not be called")
+
+        try:
+            gui_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            for gps_seconds in (float("nan"), float("inf")):
+                with self.subTest(gps_seconds=gps_seconds):
+                    with self.assertRaisesRegex(ValueError, "gps_seconds must be finite and greater than 0"):
+                        gui_module.read_configured_gps_fix(app_config, gps_seconds=gps_seconds)
+        finally:
+            gui_module.iter_gpsd_fixes = original
+
+    def test_gui_gps_fix_rejects_non_finite_gps_wait_before_serial_open(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="serial",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+            anchor_radius_meters=75.0,
+        )
+        original = gui_module.open_nmea_stream
+
+        def fake_open_nmea_stream(*args, **kwargs):
+            raise AssertionError("open_nmea_stream should not be called")
+
+        try:
+            gui_module.open_nmea_stream = fake_open_nmea_stream
+            with self.assertRaisesRegex(ValueError, "gps_seconds must be finite and greater than 0"):
+                gui_module.read_configured_gps_fix(app_config, gps_seconds=float("inf"))
+        finally:
+            gui_module.open_nmea_stream = original
+
     def test_gui_gps_fix_skips_stale_before_fresh_fix(self):
         stale = GPSFix(
             timestamp=datetime.now(timezone.utc) - timedelta(seconds=600),
