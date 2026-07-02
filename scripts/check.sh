@@ -409,6 +409,10 @@ grep -q 'opencpn_process_active' scripts/start_chartplotter.sh
 grep -q 'validate_process_lookup_command_candidate' scripts/start_chartplotter.sh
 grep -q 'process_lookup_command_path' scripts/start_chartplotter.sh
 grep -q 'revalidate_process_lookup_command' scripts/start_chartplotter.sh
+grep -q 'validate_sleep_command_candidate' scripts/start_chartplotter.sh
+grep -q 'sleep_command_path' scripts/start_chartplotter.sh
+grep -q 'revalidate_sleep_command' scripts/start_chartplotter.sh
+grep -q 'trusted_sleep' scripts/start_chartplotter.sh
 grep -q 'revalidate_trusted_utility_command' scripts/start_chartplotter.sh
 grep -q 'wait_for_existing_opencpn_to_exit' scripts/start_chartplotter.sh
 grep -q 'expected no group/other write bits before {phase}' scripts/start_chartplotter.sh
@@ -417,10 +421,18 @@ grep -q 'Process lookup command path is not absolute' scripts/start_chartplotter
 grep -q 'Process lookup command is a symlink' scripts/start_chartplotter.sh
 grep -q 'Process lookup command directory is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -q 'Process lookup command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q 'Sleep command sleep was not found on PATH' scripts/start_chartplotter.sh
+grep -q 'Sleep command path is not absolute' scripts/start_chartplotter.sh
+grep -q 'Sleep command is a symlink' scripts/start_chartplotter.sh
+grep -q 'Sleep command directory is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
+grep -q 'Sleep command is owned by uid .* expected root on Raspberry Pi' scripts/start_chartplotter.sh
 grep -q '"$pgrep_bin" -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
 ! grep -q 'pgrep -u "$(id -u)" -x opencpn' scripts/start_chartplotter.sh
+! grep -q '^    sleep ' scripts/start_chartplotter.sh
 grep -q 'resolves and revalidates `pgrep` through no-follow same-file descriptors before the duplicate check' README.md
 grep -q 'resolves and revalidates `pgrep` through no-follow same-file descriptors before duplicate OpenCPN checks' docs/sailboat-pi.md
+grep -q 'resolves and revalidates `sleep` through no-follow same-file descriptors before readiness, warning, restart, or shutdown waits' README.md
+grep -q 'resolves and revalidates `sleep` through no-follow same-file descriptors before readiness, warning, restart, or shutdown waits' docs/sailboat-pi.md
 grep -q 'stat_fd = os.open("stat", os.O_RDONLY | nofollow, dir_fd=proc_fd)' scripts/start_chartplotter.sh
 grep -q 'stat_text.rsplit(") ", 1)' scripts/start_chartplotter.sh
 grep -q 'raise SystemExit(0 if fields\[0\] != "Z" else 1)' scripts/start_chartplotter.sh
@@ -19719,6 +19731,47 @@ grep -q 'Retrying readiness in 0s' "$launcher_retry_home/.cache/noaa-navionics/c
 grep -q 'NOAA Navionics preflight passed on attempt 2/2' "$launcher_retry_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Launching OpenCPN with ENC processing.' "$launcher_retry_home/.cache/noaa-navionics/chartplotter.log"
 test "$(cat "$launcher_retry_home/.cache/noaa-navionics/readiness-count")" -eq 2
+
+launcher_mutated_sleep_home="$tmpdir/launcher-mutated-sleep-home"
+launcher_mutated_sleep_bin="$tmpdir/launcher-mutated-sleep-bin"
+mkdir -p "$launcher_mutated_sleep_home/.local/bin" "$launcher_mutated_sleep_home/.cache/noaa-navionics" "$launcher_mutated_sleep_home/.config/noaa-navionics" "$launcher_mutated_sleep_bin"
+chmod 0700 "$launcher_mutated_sleep_home/.config/noaa-navionics"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=0\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=1\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=3\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=5\n' >"$launcher_mutated_sleep_home/.config/noaa-navionics/launcher.env"
+chmod 0600 "$launcher_mutated_sleep_home/.config/noaa-navionics/launcher.env"
+cat >"$launcher_mutated_sleep_home/.local/bin/noaa-navionics" <<'EOF'
+#!/usr/bin/env bash
+count_file="$HOME/.cache/noaa-navionics/readiness-count"
+count=0
+if [[ -r "$count_file" ]]; then
+  read -r count <"$count_file" || count=0
+fi
+count=$((count + 1))
+printf '%s\n' "$count" >"$count_file"
+exit 1
+EOF
+cat >"$launcher_mutated_sleep_bin/sleep" <<'EOF'
+#!/usr/bin/env bash
+chmod 0775 "$0"
+exit 0
+EOF
+printf '#!/usr/bin/env bash\nexit 1\n' >"$launcher_mutated_sleep_bin/pgrep"
+printf '#!/usr/bin/env bash\nprintf "opencpn should not launch\\n" >"$HOME/.cache/noaa-navionics/opencpn-started"\nexit 0\n' >"$launcher_mutated_sleep_bin/opencpn"
+chmod +x "$launcher_mutated_sleep_home/.local/bin/noaa-navionics" "$launcher_mutated_sleep_bin/sleep" "$launcher_mutated_sleep_bin/pgrep" "$launcher_mutated_sleep_bin/opencpn"
+set +e
+HOME="$launcher_mutated_sleep_home" PATH="$launcher_mutated_sleep_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_mutated_sleep_code=$?
+set -e
+if [[ "$launcher_mutated_sleep_code" -eq 0 ]]; then
+  cat "$launcher_mutated_sleep_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to fail closed when sleep becomes unsafe before a readiness retry" >&2
+  exit 1
+fi
+test "$(cat "$launcher_mutated_sleep_home/.cache/noaa-navionics/readiness-count")" -eq 2
+test ! -e "$launcher_mutated_sleep_home/.cache/noaa-navionics/opencpn-started"
+grep -q 'Retrying readiness in 1s.' "$launcher_mutated_sleep_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Sleep command has permissions 0775, expected no group/other write bits before use' "$launcher_mutated_sleep_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'NOAA Navionics preflight failed on attempt 3/3' "$launcher_mutated_sleep_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_mutated_sleep_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_opencpn_restart_home="$tmpdir/launcher-opencpn-restart-home"
 mkdir -p "$launcher_opencpn_restart_home/.local/bin" "$launcher_opencpn_restart_home/.cache/noaa-navionics" "$launcher_opencpn_restart_home/.config/noaa-navionics"

@@ -29,6 +29,7 @@ opencpn_bin=""
 opencpn_child_pid=""
 opencpn_detached_supervision=0
 python3_bin=""
+sleep_bin=""
 trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 device_tree_model_path="/proc/device-tree/model"
 
@@ -1130,6 +1131,97 @@ process_lookup_command_path() {
   printf '%s\n' "$path_candidate"
 }
 
+validate_sleep_command_candidate() {
+  local candidate="$1"
+  local stat_output
+  local owner_uid
+  local mode_text
+  local mode
+  local parent_dir
+  local parent_stat
+  local parent_owner_uid
+  local parent_mode_text
+  local parent_mode
+  local symlink_component
+
+  if [[ -z "$candidate" ]]; then
+    echo "Sleep command sleep was not found on PATH" >&2
+    return 1
+  fi
+  case "$candidate" in
+    /*)
+      ;;
+    *)
+      echo "Sleep command path is not absolute: $candidate" >&2
+      return 1
+      ;;
+  esac
+  if [[ -L "$candidate" ]]; then
+    echo "Sleep command is a symlink: $candidate" >&2
+    return 1
+  fi
+  parent_dir="$(dirname "$candidate")"
+  if symlink_component="$(first_symlink_ancestor "$parent_dir")"; then
+    echo "Sleep command path contains a symlink: $symlink_component" >&2
+    return 1
+  fi
+  if [[ ! -f "$candidate" ]]; then
+    echo "Sleep command is not a regular file: $candidate" >&2
+    return 1
+  fi
+  if [[ ! -x "$candidate" ]]; then
+    echo "Sleep command is not executable: $candidate" >&2
+    return 1
+  fi
+  stat_output="$(stat -c '%u %a' "$candidate" 2>/dev/null)" || {
+    echo "Could not inspect sleep command: $candidate" >&2
+    return 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode_text="${stat_output#* }"
+  mode=$((8#$mode_text))
+  if (( mode & 022 )); then
+    echo "Sleep command has permissions ${mode_text}, expected no group/other write bits: $candidate" >&2
+    return 1
+  fi
+  parent_stat="$(stat -c '%u %a' "$parent_dir" 2>/dev/null)" || {
+    echo "Could not inspect sleep command directory: $parent_dir" >&2
+    return 1
+  }
+  parent_owner_uid="${parent_stat%% *}"
+  parent_mode_text="${parent_stat#* }"
+  parent_mode=$((8#$parent_mode_text))
+  if (( parent_mode & 022 )); then
+    echo "Sleep command directory has permissions ${parent_mode_text}, expected no group/other write bits: $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$parent_owner_uid" != "0" ]]; then
+    echo "Sleep command directory is owned by uid ${parent_owner_uid}, expected root on Raspberry Pi: $parent_dir" >&2
+    return 1
+  fi
+  if [[ "$parent_owner_uid" != "0" && "$parent_owner_uid" != "$(id -u)" ]]; then
+    echo "Sleep command directory is owned by uid ${parent_owner_uid}, expected root or $(id -u): $parent_dir" >&2
+    return 1
+  fi
+  if is_raspberry_pi && [[ "$owner_uid" != "0" ]]; then
+    echo "Sleep command is owned by uid ${owner_uid}, expected root on Raspberry Pi: $candidate" >&2
+    return 1
+  fi
+  if [[ "$owner_uid" != "0" && "$owner_uid" != "$(id -u)" ]]; then
+    echo "Sleep command is owned by uid ${owner_uid}, expected root or $(id -u): $candidate" >&2
+    return 1
+  fi
+  return 0
+}
+
+sleep_command_path() {
+  local path_candidate
+
+  path_candidate="$(command -v sleep 2>/dev/null || true)"
+  validate_sleep_command_candidate "$path_candidate" || return 1
+  printf '%s\n' "$path_candidate"
+}
+
 validate_noaa_navionics_command() {
   if ! is_raspberry_pi; then
     if [[ ! -x "$bin" ]]; then
@@ -1343,6 +1435,19 @@ revalidate_display_power_command() {
 
 revalidate_process_lookup_command() {
   revalidate_trusted_utility_command "$1" "Process lookup command" "use"
+}
+
+revalidate_sleep_command() {
+  revalidate_trusted_utility_command "$1" "Sleep command" "use"
+}
+
+trusted_sleep() {
+  local seconds="$1"
+  if [[ -z "$sleep_bin" ]]; then
+    sleep_bin="$(sleep_command_path)" || return 1
+  fi
+  revalidate_sleep_command "$sleep_bin" || return 1
+  "$sleep_bin" "$seconds"
 }
 
 keep_display_awake() {
@@ -1944,7 +2049,7 @@ terminate_opencpn_child() {
     echo "Forwarding launcher shutdown to OpenCPN child process ${child_pid}."
     kill -TERM "$child_pid" 2>/dev/null || true
     while opencpn_process_active "$child_pid" && [[ "$waited" -lt "$opencpn_shutdown_grace_seconds" ]]; do
-      sleep 1
+      trusted_sleep 1 || break
       waited=$((waited + 1))
     done
     if opencpn_process_active "$child_pid"; then
@@ -1976,7 +2081,7 @@ terminate_detached_opencpn_processes() {
     kill -TERM "$pid" 2>/dev/null || true
   done
   while opencpn_running && [[ "$waited" -lt "$opencpn_shutdown_grace_seconds" ]]; do
-    sleep 1
+    trusted_sleep 1 || break
     waited=$((waited + 1))
   done
   if opencpn_running; then
@@ -1987,7 +2092,7 @@ terminate_detached_opencpn_processes() {
     done < <(active_opencpn_pids)
     waited=0
     while opencpn_running && [[ "$waited" -lt 5 ]]; do
-      sleep 1
+      trusted_sleep 1 || break
       waited=$((waited + 1))
     done
     if opencpn_running; then
@@ -2005,7 +2110,7 @@ wait_for_existing_opencpn_to_exit() {
   opencpn_detached_supervision=1
   echo "OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits."
   while opencpn_running; do
-    sleep 1
+    trusted_sleep 1 || return 1
   done
   opencpn_detached_supervision=0
   echo "OpenCPN detached process exited; not restarting."
@@ -2078,7 +2183,7 @@ show_preflight_warning() {
   fi
   if [[ -z "${DISPLAY:-}" ]]; then
     echo "No display session found for readiness warning; waiting ${warning_seconds}s before continuing."
-    sleep "$warning_seconds"
+    trusted_sleep "$warning_seconds" || return 1
     return 0
   fi
   if "$python3_bin" - "$status_report" "$warning_seconds" "$action_text" "$button_text" <<'PY'
@@ -2171,7 +2276,7 @@ PY
     echo "Readiness warning displayed for ${warning_seconds}s."
   else
     echo "Readiness warning dialog unavailable; waiting ${warning_seconds}s before continuing." >&2
-    sleep "$warning_seconds"
+    trusted_sleep "$warning_seconds" || return 1
   fi
 }
 
@@ -2190,7 +2295,7 @@ run_readiness_report() {
     echo "NOAA Navionics preflight failed on attempt ${attempt}/${readiness_attempts}. Status report: $status_report" >&2
     if [[ "$attempt" -lt "$readiness_attempts" ]]; then
       echo "Retrying readiness in ${readiness_retry_delay}s." >&2
-      sleep "$readiness_retry_delay"
+      trusted_sleep "$readiness_retry_delay" || return 127
     fi
     attempt=$((attempt + 1))
   done
@@ -2429,10 +2534,10 @@ run_opencpn_supervised() {
       if ! kill -0 "$opencpn_pid" 2>/dev/null; then
         break
       fi
-      sleep 1
+      trusted_sleep 1 || return 127
     done
     while opencpn_process_active "$opencpn_pid"; do
-      sleep 1
+      trusted_sleep 1 || return 127
     done
     set +e
     wait "$opencpn_pid"
@@ -2455,7 +2560,7 @@ run_opencpn_supervised() {
     fi
     restart_count=$((restart_count + 1))
     echo "Restarting OpenCPN after nonzero exit status ${opencpn_status} (restart ${restart_count}/${opencpn_restarts}) in ${opencpn_restart_delay}s." >&2
-    sleep "$opencpn_restart_delay"
+    trusted_sleep "$opencpn_restart_delay" || return 127
   done
 }
 

@@ -90,6 +90,7 @@ Pi verification also rejects generated status artifacts without top-level user s
 Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, readiness-row storage paths, chart sample paths, OpenCPN chart/config paths, manifest paths, and track storage paths before trusting a generated JSON artifact. Pi verification rejects non-string values and control characters before using status-artifact paths or symlink markers for live config, launcher, OpenCPN, desktop launcher, manifest, source-revision, and GPX track checks.
 Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence, and reject missing or invalid critical config fields including chart package/value, GPSD port, track retention/fsync, and anchor radius.
 Strict chartplotter verification cleans temporary startup-check captures through no-follow same-file validation, leaving changed or untrusted paths in place.
+The chartplotter launcher resolves and revalidates `sleep` through no-follow same-file descriptors before readiness, warning, restart, or shutdown waits, so a changed wait helper cannot keep startup retries or OpenCPN supervision moving.
 It also writes a JSON status report on the Pi at `~/.cache/noaa-navionics/status.json`.
 
 Run the dock acceptance test before relying on the Pi underway:
