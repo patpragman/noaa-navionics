@@ -1526,6 +1526,9 @@ grep -q 'parser.read_file(config_handle)' scripts/collect_pi_support_bundle.sh
 ! grep -q 'parser.read(config_path)' scripts/collect_pi_support_bundle.sh
 grep -q '"$cache_dir"/support-bundle.\*)' scripts/collect_pi_support_bundle.sh
 grep -q 'tarfile.open' scripts/export_pi_tracks.sh
+grep -Fq 'MAX_TRACK_FILE_BYTES = 100 * 1024 * 1024' scripts/export_pi_tracks.sh
+grep -q 'GPX track is too large to export safely' scripts/export_pi_tracks.sh
+grep -q 'opened GPX track is too large to export safely' scripts/export_pi_tracks.sh
 grep -q 'info = tarfile.TarInfo(f"tracks/{path.name}")' scripts/export_pi_tracks.sh
 grep -q 'info.size = current_stat.st_size' scripts/export_pi_tracks.sh
 grep -q 'opened GPX track has permissions' scripts/export_pi_tracks.sh
@@ -1535,6 +1538,8 @@ grep -q 'max_days=3650' scripts/export_pi_tracks.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_days"' scripts/export_pi_tracks.sh
 grep -q 'bounds direct track export lookback to 0-3650 days before preparing local output or starting SSH work' README.md
 grep -q 'bounds direct track export lookback to 0-3650 days before preparing local output or starting SSH work' docs/sailboat-pi.md
+grep -q 'rejects individual GPX files larger than 100 MiB' README.md
+grep -q 'rejects individual GPX files larger than 100 MiB' docs/sailboat-pi.md
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
@@ -1576,6 +1581,9 @@ grep -q 'Man overboard position mark' src/noaa_navionics/cli.py
 grep -q 'navobj.xml' scripts/export_pi_opencpn_data.sh
 grep -q 'OpenCPN user config, routes, waypoints' scripts/export_pi_opencpn_data.sh
 grep -q 'refusing to export symlinked OpenCPN file' scripts/export_pi_opencpn_data.sh
+grep -Fq 'MAX_OPENCPN_FILE_BYTES = 50 * 1024 * 1024' scripts/export_pi_opencpn_data.sh
+grep -q 'OpenCPN file is too large to export safely' scripts/export_pi_opencpn_data.sh
+grep -q 'opened OpenCPN file is too large to export safely' scripts/export_pi_opencpn_data.sh
 grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_opencpn_data.sh
 grep -q 'info.size = current_stat.st_size' scripts/export_pi_opencpn_data.sh
 grep -q 'opened OpenCPN file has permissions' scripts/export_pi_opencpn_data.sh
@@ -1601,6 +1609,8 @@ grep -q 'Export archive manifest {count_field} does not match data file count' s
 grep -q 'Export archive manifest files must be a list' scripts/export_pi_opencpn_data.sh
 grep -q 'Export archive manifest file names do not match data files' scripts/export_pi_opencpn_data.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_opencpn_data.sh
+grep -q 'rejects individual OpenCPN user-data files larger than 50 MiB' README.md
+grep -q 'rejects individual OpenCPN user-data files larger than 50 MiB' docs/sailboat-pi.md
 grep -q 'commissioning-settings snapshot' scripts/export_pi_settings.sh
 grep -q 'launcher.env' scripts/export_pi_settings.sh
 grep -q 'source-revision' scripts/export_pi_settings.sh
@@ -1622,6 +1632,9 @@ grep -q 'Export archive manifest files must be a list' scripts/export_pi_setting
 grep -q 'Export archive manifest file names do not match data files' scripts/export_pi_settings.sh
 grep -q 'noaa-navionics-preflight.service' scripts/export_pi_settings.sh
 grep -q 'info = tarfile.TarInfo(arcname)' scripts/export_pi_settings.sh
+grep -Fq 'MAX_SETTING_FILE_BYTES = 4 * 1024 * 1024' scripts/export_pi_settings.sh
+grep -q 'setting is too large to export safely' scripts/export_pi_settings.sh
+grep -q 'opened setting is too large to export safely' scripts/export_pi_settings.sh
 grep -q 'info.size = current_stat.st_size' scripts/export_pi_settings.sh
 grep -q 'opened setting has permissions' scripts/export_pi_settings.sh
 ! grep -q 'archive.gettarinfo(str(path)' scripts/export_pi_settings.sh
@@ -1635,6 +1648,8 @@ grep -q 'cleanup_private_partial_file "$partial_path" || true' scripts/export_pi
 grep -q 'promote_private_partial_archive "$partial_path" "$archive_path" "export archive"' scripts/export_pi_settings.sh
 grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd, follow_symlinks=False)' scripts/export_pi_settings.sh
 grep -q 'expected current user ${current_uid}' scripts/export_pi_settings.sh
+grep -q 'rejects individual settings files larger than 4 MiB' README.md
+grep -q 'rejects individual settings files larger than 4 MiB' docs/sailboat-pi.md
 grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
@@ -1643,6 +1658,8 @@ grep -q 'max_track_days=3650' scripts/export_pi_recovery_bundle.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/export_pi_recovery_bundle.sh
 grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' README.md
 grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' docs/sailboat-pi.md
+grep -q "with the exporters' per-file size caps" README.md
+grep -q "with the exporters' per-file size caps" docs/sailboat-pi.md
 grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/export_pi_recovery_bundle.sh
 grep -q 'shut down, or downloaded, and no persistent Pi state is changed' scripts/export_pi_recovery_bundle.sh
 for artifact_script in \

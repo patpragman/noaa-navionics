@@ -709,6 +709,8 @@ import sys
 import tarfile
 import time
 
+MAX_OPENCPN_FILE_BYTES = 50 * 1024 * 1024
+
 
 def fail(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
@@ -761,6 +763,8 @@ def trusted_regular_file(path: Path):
     mode = stat.S_IMODE(result.st_mode)
     if mode & 0o022:
         fail(f"OpenCPN file has permissions {mode:04o}, expected no group/other write bits: {path}")
+    if result.st_size > MAX_OPENCPN_FILE_BYTES:
+        fail(f"OpenCPN file is too large to export safely: {path} ({result.st_size} bytes > {MAX_OPENCPN_FILE_BYTES})")
     return result
 
 
@@ -780,6 +784,9 @@ def add_trusted_file(archive: tarfile.TarFile, path: Path, stat_result: os.stat_
     if mode & 0o022:
         os.close(fd)
         fail(f"opened OpenCPN file has permissions {mode:04o}, expected no group/other write bits: {path}")
+    if current_stat.st_size > MAX_OPENCPN_FILE_BYTES:
+        os.close(fd)
+        fail(f"opened OpenCPN file is too large to export safely: {path} ({current_stat.st_size} bytes > {MAX_OPENCPN_FILE_BYTES})")
     info = tarfile.TarInfo(arcname)
     info.size = current_stat.st_size
     info.mode = mode & 0o755

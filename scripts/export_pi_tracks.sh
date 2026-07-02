@@ -775,6 +775,8 @@ import sys
 import tarfile
 import time
 
+MAX_TRACK_FILE_BYTES = 100 * 1024 * 1024
+
 
 def fail(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
@@ -825,6 +827,8 @@ def assert_private_track(path: Path):
     mode = stat.S_IMODE(result.st_mode)
     if mode & 0o077:
         fail(f"GPX track has permissions {mode:04o}, expected private 0600: {path}")
+    if result.st_size > MAX_TRACK_FILE_BYTES:
+        fail(f"GPX track is too large to export safely: {path} ({result.st_size} bytes > {MAX_TRACK_FILE_BYTES})")
     return result
 
 
@@ -932,6 +936,9 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
         if stat.S_IMODE(current_stat.st_mode) & 0o077:
             os.close(fd)
             fail(f"opened GPX track has permissions {stat.S_IMODE(current_stat.st_mode):04o}, expected private 0600: {path}")
+        if current_stat.st_size > MAX_TRACK_FILE_BYTES:
+            os.close(fd)
+            fail(f"opened GPX track is too large to export safely: {path} ({current_stat.st_size} bytes > {MAX_TRACK_FILE_BYTES})")
         info = tarfile.TarInfo(f"tracks/{path.name}")
         info.size = current_stat.st_size
         info.mode = 0o600
