@@ -1622,6 +1622,7 @@ copy_regular_if_readable "${HOME}/.cache/noaa-navionics/chartplotter.log.1"
 copy_regular_if_readable "${HOME}/.local/share/noaa-navionics/source-revision"
 copy_regular_if_readable "${HOME}/.opencpn/opencpn.conf"
 copy_regular_if_readable "${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
+copy_regular_if_readable "${HOME}/Desktop/noaa-navionics-status.desktop"
 copy_regular_if_readable "${HOME}/Desktop/noaa-navionics-mob.desktop"
 copy_glob "${HOME}"/.config/systemd/user/noaa-navionics*.service "${HOME}"/.config/systemd/user/noaa-navionics*.timer
 copy_regular_if_readable /etc/os-release

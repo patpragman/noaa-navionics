@@ -258,6 +258,7 @@ CORE_SETTINGS_FILES = [
     "noaa-navionics/launcher.env",
     "noaa-navionics/source-revision",
     "desktop/noaa-navionics-chartplotter.desktop",
+    "desktop/noaa-navionics-status.desktop",
     "desktop/noaa-navionics-mob.desktop",
     "system/etc-default-gpsd",
     "system/chrony.conf",

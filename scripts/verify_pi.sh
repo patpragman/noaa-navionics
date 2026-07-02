@@ -423,6 +423,7 @@ launcher="${HOME}/.local/bin/noaa-navionics-start-chartplotter"
 desktop_autologin="${HOME}/.local/bin/noaa-navionics-configure-desktop-autologin"
 gps_time_helper="${HOME}/.local/bin/noaa-navionics-configure-gps-time"
 autostart="${HOME}/.config/autostart/noaa-navionics-chartplotter.desktop"
+status_desktop_entry="${HOME}/Desktop/noaa-navionics-status.desktop"
 mob_desktop_entry="${HOME}/Desktop/noaa-navionics-mob.desktop"
 lightdm_autologin="/etc/lightdm/lightdm.conf.d/50-noaa-navionics-autologin.conf"
 status_report="${HOME}/.cache/noaa-navionics/status.json"
@@ -5161,6 +5162,17 @@ if [[ -f "$autostart" ]]; then
   check "chartplotter autostart not disabled" sh -c '! grep -Eq "^(Hidden=true|X-GNOME-Autostart-enabled=false)$" "$1"' sh "$autostart"
 fi
 check "desktop launcher directory integrity" check_user_private_directory_integrity "$desktop_dir" "desktop launcher directory"
+check "status GUI desktop launcher" test -f "$status_desktop_entry"
+if [[ -f "$status_desktop_entry" ]]; then
+  check "status GUI desktop launcher file integrity" check_user_regular_file_integrity "$status_desktop_entry" "status GUI desktop launcher file"
+  check "status GUI desktop launcher executable" test -x "$status_desktop_entry"
+  check "status GUI desktop launcher type" grep -Fxq 'Type=Application' "$status_desktop_entry"
+  check "status GUI desktop launcher name" grep -Fxq 'Name=NOAA Navionics Status' "$status_desktop_entry"
+  check "status GUI desktop launcher exec" grep -Fxq 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' "$status_desktop_entry"
+  check "status GUI desktop launcher terminal" grep -Fxq 'Terminal=false' "$status_desktop_entry"
+  check "status GUI desktop launcher not autostart" sh -c '! grep -Eq "^X-GNOME-Autostart-enabled=true$" "$1"' sh "$status_desktop_entry"
+  check "status GUI desktop launcher not hidden" sh -c '! grep -Eq "^Hidden=true$" "$1"' sh "$status_desktop_entry"
+fi
 check "MOB desktop launcher" test -f "$mob_desktop_entry"
 if [[ -f "$mob_desktop_entry" ]]; then
   check "MOB desktop launcher file integrity" check_user_regular_file_integrity "$mob_desktop_entry" "MOB desktop launcher file"

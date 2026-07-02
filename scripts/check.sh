@@ -1977,6 +1977,7 @@ grep -q 'CORE_SUPPORT_HOME_FILE_PATTERNS = \[' scripts/verify_pi_recovery_export
 grep -q 'NOAA Navionics saved status copy' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SETTINGS_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-chartplotter.desktop' scripts/verify_pi_recovery_exports.sh
+grep -q 'desktop/noaa-navionics-status.desktop' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-mob.desktop' scripts/verify_pi_recovery_exports.sh
 grep -q 'system/50-noaa-navionics-autologin.conf' scripts/verify_pi_recovery_exports.sh
 grep -q '"required_members": CORE_SETTINGS_FILES' scripts/verify_pi_recovery_exports.sh
@@ -3169,6 +3170,9 @@ grep -q 'desktop launcher directory integrity' scripts/verify_pi.sh
 grep -q 'MOB desktop launcher executable' scripts/verify_pi.sh
 grep -q 'MOB desktop launcher exec' scripts/verify_pi.sh
 grep -q 'MOB desktop launcher not autostart' scripts/verify_pi.sh
+grep -q 'status GUI desktop launcher executable' scripts/verify_pi.sh
+grep -q 'status GUI desktop launcher exec' scripts/verify_pi.sh
+grep -q 'status GUI desktop launcher not autostart' scripts/verify_pi.sh
 grep -q 'systemd user directory integrity' scripts/verify_pi.sh
 grep -q 'resolves outside private venv' scripts/verify_pi.sh
 grep -q 'GPSD service enabled' scripts/verify_pi.sh
@@ -3360,6 +3364,9 @@ grep -q 'START_DAEMON is not true' src/noaa_navionics/health.py
 grep -q 'USBAUTO is not false' src/noaa_navionics/health.py
 grep -q 'must contain exactly' src/noaa_navionics/health.py
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"' templates/noaa-navionics-chartplotter.desktop
+grep -q 'Name=NOAA Navionics Status' templates/noaa-navionics-status.desktop
+grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' templates/noaa-navionics-status.desktop
+grep -q 'Terminal=false' templates/noaa-navionics-status.desktop
 grep -q 'Name=NOAA Navionics MOB' templates/noaa-navionics-mob.desktop
 grep -q 'Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob' templates/noaa-navionics-mob.desktop
 grep -q 'Terminal=true' templates/noaa-navionics-mob.desktop
@@ -6055,9 +6062,16 @@ grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics.timer" "$chart
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-track.service" "$track_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/systemd/noaa-navionics-preflight.service" "$preflight_service" 0644' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-chartplotter.desktop" "$autostart_entry" 0644' scripts/provision_sailboat_pi.sh
+grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-status.desktop" "$status_desktop_entry" 0755' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic "${repo_root}/templates/noaa-navionics-mob.desktop" "$mob_desktop_entry" 0755' scripts/provision_sailboat_pi.sh
+grep -q 'Desktop/noaa-navionics-status.desktop' scripts/collect_pi_support_bundle.sh
+grep -q 'desktop/noaa-navionics-status.desktop' scripts/export_pi_settings.sh
 grep -q 'Desktop/noaa-navionics-mob.desktop' scripts/collect_pi_support_bundle.sh
 grep -q 'desktop/noaa-navionics-mob.desktop' scripts/export_pi_settings.sh
+grep -q 'Provisioning also installs an executable non-autostart `~/Desktop/noaa-navionics-status.desktop` launcher for the readiness, anchor-watch, Mark, and MOB panel, and Pi verification requires it to point at `noaa-navionics-status-gui`' README.md
+grep -q 'Provisioning also installs an executable non-autostart `~/Desktop/noaa-navionics-status.desktop` launcher for the readiness, anchor-watch, Mark, and MOB panel, and Pi verification requires it to point at `noaa-navionics-status-gui`' docs/sailboat-pi.md
+grep -q 'The commissioning settings archive also includes the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' README.md
+grep -q 'The commissioning settings archive also includes the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' docs/sailboat-pi.md
 grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
@@ -13435,6 +13449,7 @@ CORE_SETTINGS_FILES = [
     "noaa-navionics/launcher.env",
     "noaa-navionics/source-revision",
     "desktop/noaa-navionics-chartplotter.desktop",
+    "desktop/noaa-navionics-status.desktop",
     "desktop/noaa-navionics-mob.desktop",
     "system/etc-default-gpsd",
     "system/chrony.conf",
@@ -13872,6 +13887,7 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'is missing required archive member(s): noaa-navionics/launcher.env' "$verify_output"
+grep -q 'desktop/noaa-navionics-status.desktop' "$verify_output"
 grep -q 'desktop/noaa-navionics-mob.desktop' "$verify_output"
 
 recovery_verify_missing_required_status_dir="$tmpdir/recovery-verify-missing-required-status"
