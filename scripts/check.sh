@@ -4985,6 +4985,8 @@ grep -q 'settings_state = tk.DISABLED if busy or self.anchor_watch_fix is not No
 grep -q 'state=tk.DISABLED if self.anchor_watch_fix is None else tk.NORMAL' src/noaa_navionics/status_gui.py
 grep -q 'radius_meters = self.anchor_watch_radius_meters' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_alarm_if_active' src/noaa_navionics/status_gui.py
+grep -q 'bell = getattr(self, "bell", None)' src/noaa_navionics/status_gui.py
+grep -q 'if callable(bell):' src/noaa_navionics/status_gui.py
 grep -q 'def _show_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'def _cancel_anchor_watch_stop_confirmation' src/noaa_navionics/status_gui.py
 grep -q 'self._show_anchor_watch_alarm_if_active()' src/noaa_navionics/status_gui.py
@@ -5061,6 +5063,8 @@ grep -q 'cancels scheduled refresh, queue-poll, stop-confirmation, and anchor-wa
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' docs/sailboat-pi.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' README.md
 grep -q 'keeps active anchor-watch alarms visible over action feedback or transient errors' docs/sailboat-pi.md
+grep -q 'repeats the display bell whenever an active anchor-watch alarm is re-shown' README.md
+grep -q 'repeats the display bell whenever an active anchor-watch alarm is re-shown' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 

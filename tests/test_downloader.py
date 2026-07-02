@@ -4331,6 +4331,7 @@ class GuiTests(unittest.TestCase):
                 self.busy_calls = []
                 self.watch_scheduled = 0
                 self.refresh_scheduled = 0
+                self.bells = 0
 
             def _set_busy(self, busy):
                 self.busy_calls.append((busy, self.anchor_watch_fix))
@@ -4397,6 +4398,7 @@ class GuiTests(unittest.TestCase):
                 self.output_path = Path("/tmp/status.json")
                 self.busy_calls = []
                 self.refresh_scheduled = 0
+                self.bells = 0
 
             def _set_busy(self, busy):
                 self.busy_calls.append(busy)
@@ -4406,6 +4408,9 @@ class GuiTests(unittest.TestCase):
 
             def _show_anchor_watch_alarm_if_active(self):
                 return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def bell(self):
+                self.bells += 1
 
         app = FakeApp()
         report = complete_status_gui_report()
@@ -4417,6 +4422,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
+        self.assertEqual(app.bells, 1)
 
     def test_status_gui_status_refresh_preserves_active_anchor_watch_ok_status(self):
         class FakeVar:
@@ -4820,6 +4826,7 @@ class GuiTests(unittest.TestCase):
                 self.last_report = FakeVar()
                 self.busy_calls = []
                 self.refresh_scheduled = 0
+                self.bells = 0
 
             def _set_busy(self, busy):
                 self.busy_calls.append(busy)
@@ -4829,6 +4836,9 @@ class GuiTests(unittest.TestCase):
 
             def _show_anchor_watch_alarm_if_active(self):
                 return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
+
+            def bell(self):
+                self.bells += 1
 
         app = FakeApp()
 
@@ -4840,6 +4850,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.last_report.value, "61.0, -149.0")
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
+        self.assertEqual(app.bells, 1)
 
     def test_status_gui_anchor_check_does_not_hide_active_anchor_watch_alarm(self):
         class FakeVar:
@@ -4896,7 +4907,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
         self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
         self.assertIn("Current 61.000010", app.last_report.value)
-        self.assertEqual(app.bells, 0)
+        self.assertEqual(app.bells, 1)
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
 
@@ -4978,6 +4989,7 @@ class GuiTests(unittest.TestCase):
                 self.busy_calls = []
                 self.watch_scheduled = 0
                 self.refresh_scheduled = 0
+                self.bells = 0
 
             def _set_busy(self, busy):
                 self.busy_calls.append(busy)
@@ -5089,6 +5101,7 @@ class GuiTests(unittest.TestCase):
                 self.busy_calls = []
                 self.watch_scheduled = 0
                 self.refresh_scheduled = 0
+                self.bells = 0
 
             def _set_busy(self, busy):
                 self.busy_calls.append(busy)
@@ -5102,6 +5115,9 @@ class GuiTests(unittest.TestCase):
             def _show_anchor_watch_alarm_if_active(self):
                 return status_gui_module.StatusApp._show_anchor_watch_alarm_if_active(self)
 
+            def bell(self):
+                self.bells += 1
+
         app = FakeApp()
 
         status_gui_module.StatusApp._show_error(app, "temporary GPS read failed")
@@ -5113,6 +5129,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.watch_scheduled, 1)
         self.assertEqual(app.refresh_scheduled, 1)
+        self.assertEqual(app.bells, 1)
 
     def test_status_gui_stale_anchor_watch_result_does_not_restart_stopped_watch(self):
         class FakeVar:
@@ -5672,6 +5689,7 @@ class GuiTests(unittest.TestCase):
                 self.last_report = FakeVar()
                 self.after_calls = []
                 self.cancelled = []
+                self.bells = 0
 
             def after(self, delay_ms, callback):
                 self.after_calls.append((delay_ms, callback.__name__))
@@ -5692,6 +5710,9 @@ class GuiTests(unittest.TestCase):
             def _cancel_anchor_watch_stop_confirmation(self):
                 return status_gui_module.StatusApp._cancel_anchor_watch_stop_confirmation(self)
 
+            def bell(self):
+                self.bells += 1
+
         app = FakeApp()
 
         status_gui_module.StatusApp.stop_anchor_watch(app)
@@ -5707,6 +5728,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.summary.value, app.anchor_watch_alarm_summary)
         self.assertEqual(app.gps_summary.value, app.anchor_watch_alarm_detail)
         self.assertIn("Press Stop Watch again", app.last_report.value)
+        self.assertEqual(app.bells, 1)
 
     def test_status_gui_enables_start_watch_after_anchor_watch_stops(self):
         class FakeButton:

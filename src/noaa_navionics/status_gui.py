@@ -779,6 +779,9 @@ class StatusApp(tk.Tk):
         self.summary.set(self.anchor_watch_alarm_summary)
         if self.anchor_watch_alarm_detail is not None:
             self.gps_summary.set(self.anchor_watch_alarm_detail)
+        bell = getattr(self, "bell", None)
+        if callable(bell):
+            bell()
         return True
 
     def _action_headline(self, *, alarm: bool = False) -> str:
