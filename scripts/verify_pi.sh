@@ -2523,6 +2523,7 @@ required_checks = {
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Sleep",
     "Chart Package",
     "Charts",
     "Chart Update Debris",
@@ -5637,6 +5638,7 @@ check "OpenCPN command integrity" check_opencpn_command_integrity
 check "display power command integrity" check_display_power_command_integrity
 check "Tkinter readiness warning support" check_tkinter_available
 check "process lookup command integrity" check_root_command_integrity pgrep "process lookup command"
+check "sleep command integrity" check_root_command_integrity sleep "sleep command"
 check "Pi power command integrity" check_root_command_integrity vcgencmd "Pi power command"
 check "Pi power state" check_raspberry_pi_throttling_state
 check "Chrony command integrity" chronyc_command

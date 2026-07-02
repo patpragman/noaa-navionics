@@ -178,6 +178,7 @@ CORE_READINESS_CHECKS = frozenset(
         "Tkinter",
         "OpenCPN",
         "Display Power",
+        "Sleep",
         "Chart Package",
         "Charts",
         "Chart Update Debris",
@@ -1385,6 +1386,7 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
     expected_commands = {
         "OpenCPN": "opencpn",
         "Display Power": "xset",
+        "Sleep": "sleep",
     }
     failures: list[CheckResult] = []
     for name, expected_command in expected_commands.items():

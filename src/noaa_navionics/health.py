@@ -99,6 +99,7 @@ def run_preflight(
         check_tkinter(),
         check_opencpn(),
         check_display_power_tool(),
+        check_sleep_tool(),
         check_chart_package(chart_package, chart_value),
         check_chart_dir(chart_dir),
         check_chart_update_debris(chart_dir),
@@ -528,6 +529,18 @@ def check_display_power_tool() -> CheckResult:
         )
     assert path is not None
     return CheckResult("Display Power", True, f"trusted executable at {path}", _trusted_command_evidence("xset", path))
+
+
+def check_sleep_tool() -> CheckResult:
+    path, error = _trusted_system_command("sleep", "Sleep command")
+    if error:
+        return CheckResult(
+            "Sleep",
+            False,
+            f"{error}; install coreutils so the launcher can perform bounded readiness, warning, restart, and shutdown waits",
+        )
+    assert path is not None
+    return CheckResult("Sleep", True, f"trusted executable at {path}", _trusted_command_evidence("sleep", path))
 
 
 def _trusted_command_evidence(

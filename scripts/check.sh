@@ -1410,6 +1410,7 @@ grep -q 'require_existing_runtime_command chronyc "Chrony command"' scripts/inst
 grep -q 'require_existing_runtime_command lightdm "LightDM command"' scripts/install_raspberry_pi.sh
 grep -q 'require_existing_runtime_command xset "display power command"' scripts/install_raspberry_pi.sh
 grep -q 'require_existing_runtime_command pgrep "process lookup command"' scripts/install_raspberry_pi.sh
+grep -q 'require_existing_runtime_command sleep "sleep command"' scripts/install_raspberry_pi.sh
 grep -q 'require_existing_runtime_command vcgencmd "Pi power command"' scripts/install_raspberry_pi.sh
 grep -q 'require_existing_python_module venv "Python venv support"' scripts/install_raspberry_pi.sh
 grep -q 'require_existing_python_module tkinter "Tkinter support"' scripts/install_raspberry_pi.sh
@@ -1569,7 +1570,7 @@ grep -q 'noaa-navionics-status-gui=noaa_navionics.status_gui:main' setup.py
 grep -q 'noaa-navionics-status-gui = "noaa_navionics.status_gui:main"' pyproject.toml
 ! grep -q '^build-backend' pyproject.toml
 grep -q 'trusted vcgencmd is not available' scripts/install_raspberry_pi.sh
-grep -q 'python3-setuptools procps' scripts/install_raspberry_pi.sh
+grep -q 'python3-setuptools procps coreutils' scripts/install_raspberry_pi.sh
 grep -q 'install_user_file_atomic' scripts/install_raspberry_pi.sh
 grep -q 'link_user_atomic' scripts/install_raspberry_pi.sh
 grep -q 'promote_user_temp_path' scripts/install_raspberry_pi.sh
@@ -2966,12 +2967,19 @@ grep -q 'check_root_executable_file_integrity "$path" "display power command"' s
 grep -q 'xset_path="$(display_power_command_path)"' scripts/verify_pi.sh
 grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" "$xset_path" q' scripts/verify_pi.sh
 grep -q 'DISPLAY="$display" "$xset_path" q' scripts/verify_pi.sh
+grep -q 'check "sleep command integrity" check_root_command_integrity sleep "sleep command"' scripts/verify_pi.sh
 grep -q 'def _trusted_system_command' src/noaa_navionics/health.py
 grep -q 'TRUSTED_SYSTEM_COMMAND_DIRS' src/noaa_navionics/health.py
 grep -q '_trusted_system_command("xset", "Display Power command")' src/noaa_navionics/health.py
+grep -q 'def check_sleep_tool' src/noaa_navionics/health.py
+grep -q '_trusted_system_command("sleep", "Sleep command")' src/noaa_navionics/health.py
 grep -q 'test_check_display_power_tool_rejects_user_owned_xset_on_pi' tests/test_downloader.py
+grep -q 'test_check_sleep_tool_rejects_user_owned_sleep_on_pi' tests/test_downloader.py
 grep -q 'trusted root-owned `xset` from `x11-xserver-utils`' README.md
 grep -q 'trusted root-owned `xset`' docs/sailboat-pi.md
+grep -q 'wait helpers from `coreutils`' README.md
+grep -q 'wait helpers from `coreutils`' docs/sailboat-pi.md
+grep -q 'trusted root-owned `pgrep` from `procps` and `sleep` from `coreutils`' docs/sailboat-pi.md
 grep -q 'display screen saver timeout is not disabled' scripts/verify_pi.sh
 grep -q 'display DPMS is not disabled' scripts/verify_pi.sh
 grep -q 'launcher log shows OpenCPN exited after current-boot startup' scripts/verify_pi.sh
@@ -3316,6 +3324,7 @@ grep -q 'status report missing readiness checks' scripts/verify_pi.sh
 grep -q '"Source Revision"' scripts/verify_pi.sh
 grep -q '"Time Sync"' scripts/verify_pi.sh
 grep -q '"Display Power"' scripts/verify_pi.sh
+grep -q '"Sleep"' scripts/verify_pi.sh
 grep -q '"Chart Package"' scripts/verify_pi.sh
 grep -q '"Chart Update Debris"' scripts/verify_pi.sh
 grep -q '"Pi Power"' scripts/verify_pi.sh
@@ -3444,7 +3453,7 @@ grep -q '"$python3_cmd" - "$launcher_env" "$key" "$default"' scripts/verify_pi.s
 ! grep -q 'check "Chrony command" command -v chronyc' scripts/verify_pi.sh
 ! grep -q 'check "GPSD command" command -v gpsd' scripts/verify_pi.sh
 ! grep -q 'check "GPSD client command" command -v cgps' scripts/verify_pi.sh
-grep -q 'trusted root-owned `python3`, `systemctl`, `loginctl`, `pgrep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
+grep -q 'trusted root-owned `python3`, `systemctl`, `loginctl`, `pgrep`, `sleep`, `vcgencmd`, `chronyc`, `gpsd`, and `cgps` commands' README.md
 grep -q 'installed root-owned command dependencies' docs/sailboat-pi.md
 grep -q 'resolves `python3`, `systemctl`, `loginctl`, and `chronyc` through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'check_raspberry_pi_throttling_state' scripts/verify_pi.sh
@@ -5771,8 +5780,8 @@ grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' R
 grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' README.md
 grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured OpenCPN and Display Power command evidence' README.md
-grep -q 'READY reports also require structured OpenCPN and Display Power command evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured OpenCPN, Display Power, and Sleep command evidence' README.md
+grep -q 'READY reports also require structured OpenCPN, Display Power, and Sleep command evidence' docs/sailboat-pi.md
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
@@ -9622,6 +9631,7 @@ core_readiness_checks = [
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Sleep",
     "Chart Package",
     "Charts",
     "Chart Update Debris",
@@ -10712,6 +10722,7 @@ core_readiness_checks = [
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Sleep",
     "Chart Package",
     "Charts",
     "Chart Update Debris",
@@ -12272,6 +12283,7 @@ checks = {
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Sleep",
     "Chart Package",
     "Charts",
     "Chart Update Debris",
@@ -15001,6 +15013,7 @@ CORE_READINESS_CHECKS = [
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Sleep",
     "Chart Package",
     "Charts",
     "Chart Update Debris",

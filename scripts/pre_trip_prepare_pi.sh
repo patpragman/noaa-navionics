@@ -983,6 +983,7 @@ CORE_READINESS_CHECKS = {
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Sleep",
     "Chart Package",
     "Charts",
     "Chart Update Debris",

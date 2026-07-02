@@ -1197,6 +1197,7 @@ validate_skip_apt_runtime_dependencies() {
   require_existing_runtime_command lightdm "LightDM command" || status=1
   require_existing_runtime_command xset "display power command" || status=1
   require_existing_runtime_command pgrep "process lookup command" || status=1
+  require_existing_runtime_command sleep "sleep command" || status=1
   require_existing_runtime_command vcgencmd "Pi power command" || status=1
   require_existing_python_module venv "Python venv support" || status=1
   require_existing_python_module tkinter "Tkinter support" || status=1
@@ -1273,7 +1274,7 @@ if [[ "$skip_apt" -eq 0 ]]; then
   elif [[ "$os_codename" != "bookworm" ]]; then
     echo "Skipping bookworm-backports on OS codename '${os_codename:-unknown}'."
   fi
-  apt_install python3 python3-venv python3-tk rsync opencpn gpsd chrony lightdm x11-xserver-utils python3-setuptools procps
+  apt_install python3 python3-venv python3-tk rsync opencpn gpsd chrony lightdm x11-xserver-utils python3-setuptools procps coreutils
   ensure_gpsd_client_tools
   ensure_vcgencmd
 elif [[ "$allow_non_pi" -eq 0 ]]; then

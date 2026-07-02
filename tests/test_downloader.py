@@ -83,6 +83,7 @@ from noaa_navionics.health import (
     check_gpsd_startup_config,
     check_gps_sample,
     check_display_power_tool,
+    check_sleep_tool,
     check_chrony_gps_time_config,
     check_chrony_gps_time_source,
     check_opencpn,
@@ -453,6 +454,24 @@ def complete_status_gui_report(
             row["data"] = {
                 "command": "xset",
                 "path": "/usr/bin/xset",
+                "directory": "/usr/bin",
+                "is_absolute": True,
+                "is_symlink": False,
+                "path_symlink_component": "",
+                "trusted_system_directory": True,
+                "is_regular": True,
+                "executable": True,
+                "uid": 0,
+                "directory_uid": 0,
+                "expected_uids": [0],
+                "mode": "0755",
+                "directory_mode": "0755",
+            }
+        elif row["name"] == "Sleep":
+            row["detail"] = "trusted executable at /usr/bin/sleep"
+            row["data"] = {
+                "command": "sleep",
+                "path": "/usr/bin/sleep",
                 "directory": "/usr/bin",
                 "is_absolute": True,
                 "is_symlink": False,
@@ -14076,6 +14095,11 @@ class StatusReportTests(unittest.TestCase):
                 command_data(command="other", path="/usr/bin/xset"),
                 "command other is not xset",
             ),
+            (
+                "Sleep",
+                command_data(command="other", path="/usr/bin/sleep"),
+                "command other is not sleep",
+            ),
         ]
         for row_name, data, expected in cases:
             with self.subTest(row=row_name, expected=expected):
@@ -25570,6 +25594,63 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("Display Power command directory is not a trusted system directory", result.detail)
+
+    def test_check_sleep_tool_reports_missing_sleep(self):
+        original_path = os.environ.get("PATH", "")
+        try:
+            os.environ["PATH"] = "/nonexistent"
+            result = check_sleep_tool()
+        finally:
+            os.environ["PATH"] = original_path
+        self.assertFalse(result.ok)
+        self.assertIn("coreutils", result.detail)
+
+    def test_check_sleep_tool_accepts_trusted_local_command_off_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "sleep"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: False
+                result = check_sleep_tool()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertTrue(result.ok)
+        self.assertIn("trusted executable", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("command"), "sleep")
+        self.assertEqual(result.data.get("path"), str(fake))
+        self.assertEqual(result.data.get("directory"), str(bin_dir))
+        self.assertEqual(result.data.get("is_symlink"), False)
+        self.assertEqual(result.data.get("is_regular"), True)
+        self.assertEqual(result.data.get("executable"), True)
+
+    def test_check_sleep_tool_rejects_user_owned_sleep_on_pi(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir(mode=0o700)
+            fake = bin_dir / "sleep"
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            fake.chmod(0o755)
+            original_path = os.environ.get("PATH", "")
+            original_is_pi = health_module._is_raspberry_pi
+            try:
+                os.environ["PATH"] = str(bin_dir)
+                health_module._is_raspberry_pi = lambda: True
+                result = check_sleep_tool()
+            finally:
+                os.environ["PATH"] = original_path
+                health_module._is_raspberry_pi = original_is_pi
+
+        self.assertFalse(result.ok)
+        self.assertIn("Sleep command directory is not a trusted system directory", result.detail)
 
     def test_check_opencpn_accepts_trusted_local_command(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
