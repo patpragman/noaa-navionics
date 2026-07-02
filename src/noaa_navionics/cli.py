@@ -63,6 +63,7 @@ from .report import (
 
 MAX_GPS_WAIT_SECONDS = 600.0
 MAX_ANCHOR_SAMPLES = 10
+MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -162,6 +163,13 @@ def _gps_wait_seconds(value: str) -> float:
     return parsed
 
 
+def _status_gui_interval_seconds(value: str) -> float:
+    parsed = _positive_float(value)
+    if parsed < MIN_STATUS_GUI_INTERVAL_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at least {MIN_STATUS_GUI_INTERVAL_SECONDS:g}")
+    return parsed
+
+
 def _live_idle_timeout(value: float, *, live: bool) -> Optional[float]:
     if live and value > 0:
         return value
@@ -229,15 +237,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     status_gui.add_argument(
         "--refresh-seconds",
-        type=_positive_float,
+        type=_status_gui_interval_seconds,
         default=60.0,
-        help="seconds between automatic refreshes",
+        help=f"seconds between automatic refreshes; min {MIN_STATUS_GUI_INTERVAL_SECONDS:g}",
     )
     status_gui.add_argument(
         "--anchor-watch-seconds",
-        type=_positive_float,
+        type=_status_gui_interval_seconds,
         default=30.0,
-        help="seconds between automatic status GUI anchor-watch checks",
+        help=f"seconds between automatic status GUI anchor-watch checks; min {MIN_STATUS_GUI_INTERVAL_SECONDS:g}",
     )
     status_gui.add_argument(
         "--anchor-radius-meters",

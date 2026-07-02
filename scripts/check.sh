@@ -4251,6 +4251,8 @@ grep -q -- '--gpsd-idle-timeout' src/noaa_navionics/cli.py
 grep -q -- '--serial-idle-timeout' src/noaa_navionics/cli.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
 grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/cli.py
+grep -q 'MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0' src/noaa_navionics/cli.py
+grep -q 'def _status_gui_interval_seconds(value: str) -> float' src/noaa_navionics/cli.py
 grep -q 'def _anchor_samples(value: str) -> int' src/noaa_navionics/cli.py
 grep -q 'if anchor_samples > MAX_ANCHOR_SAMPLES' src/noaa_navionics/cli.py
 grep -q 'gps.add_argument("--seconds", type=_positive_float' src/noaa_navionics/cli.py
@@ -4386,7 +4388,10 @@ grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.py
 grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/status_gui.py
 grep -q 'MAX_GPS_WAIT_SECONDS = 600.0' src/noaa_navionics/status_gui.py
+grep -q 'MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0' src/noaa_navionics/status_gui.py
 grep -q 'def _gps_wait_seconds(value: str) -> float' src/noaa_navionics/status_gui.py
+grep -q 'def _status_gui_interval_seconds(value: str) -> float' src/noaa_navionics/status_gui.py
+grep -q 'def _timer_delay_ms(seconds: float) -> int' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'CORE_READINESS_CHECKS' src/noaa_navionics/status_gui.py
@@ -4742,7 +4747,7 @@ grep -q 'action-gps-seconds' src/noaa_navionics/status_gui.py
 grep -q 'action_gps_seconds=args.action_gps_seconds' src/noaa_navionics/status_gui.py
 grep -q 'anchor_watch_seconds=args.anchor_watch_seconds' src/noaa_navionics/status_gui.py
 grep -q 'self.action_gps_seconds = gps_seconds if action_gps_seconds is None else action_gps_seconds' src/noaa_navionics/status_gui.py
-grep -q 'Anchor watch interval must be greater than 0' src/noaa_navionics/status_gui.py
+grep -q 'Anchor watch interval must be at least 1 second' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_radius_meters: Optional\[float\] = None' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_active = False' src/noaa_navionics/status_gui.py
 grep -q 'self.anchor_watch_alarm_summary: Optional\[str\] = None' src/noaa_navionics/status_gui.py
@@ -4802,8 +4807,8 @@ grep -q 'noaa-navionics-status-gui' README.md
 grep -q 'noaa-navionics-status-gui' docs/sailboat-pi.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' README.md
 grep -q 'large READY/NOT READY headline, a dedicated live GPS fix summary' docs/sailboat-pi.md
-grep -q 'requires a positive automatic refresh interval' README.md
-grep -q 'requires a positive automatic refresh interval' docs/sailboat-pi.md
+grep -q 'requires an automatic refresh interval of at least 1 second' README.md
+grep -q 'requires an automatic refresh interval of at least 1 second' docs/sailboat-pi.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' README.md
 grep -q 'The status GUI marks incomplete or stale status JSON as NOT READY' docs/sailboat-pi.md
 grep -q 'Shared readiness validation requires top-level `ok` readiness evidence to be boolean and rejects missing, malformed, timezone-less, stale, or far-future `generated_at` timestamps; missing, unknown, or malformed host `boot_id` evidence; missing, unknown, dirty, symlinked, or error-marked deployed source-revision evidence; missing, invalid, or cross-section-mismatched onboard config evidence; missing, disabled, symlinked, unsafe, stale, or malformed user service and unit-file evidence; missing, disabled, symlinked, hidden, wrong-user, or malformed desktop autostart and LightDM evidence; missing, symlinked, error-marked, fail-open, or timing-invalid launcher policy evidence; missing, symlinked, error-marked, chart-missing, GPSD-missing, or stale-endpoint OpenCPN config evidence; missing, incomplete, symlinked, error-marked, or ENC-empty chart manifest evidence; missing, failed, non-boolean, stale, source-mismatched, coordinate-invalid, or low-quality top-level `gps_fix` evidence; and missing, failed, non-boolean, symlinked, stale, coordinate-invalid, or low-quality top-level `track_log` evidence before a report can read as ready' README.md
@@ -4816,8 +4821,8 @@ grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are b
 grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
-grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires a positive `--anchor-watch-seconds N`, rechecks drift at that interval' README.md
-grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires a positive `--anchor-watch-seconds N`, rechecks drift at that interval' docs/sailboat-pi.md
+grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires `--anchor-watch-seconds N` to be at least 1 second, rechecks drift at that interval' README.md
+grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires `--anchor-watch-seconds N` to be at least 1 second, rechecks drift at that interval' docs/sailboat-pi.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' README.md
 grep -q 'Stop Watch requires a second press within 8 seconds before it cancels repeated anchor checks' docs/sailboat-pi.md
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' README.md
@@ -4911,6 +4916,10 @@ grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downlo
 grep -q 'test_status_gui_parser_rejects_oversized_anchor_samples' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_zero_anchor_watch_seconds' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_zero_refresh_seconds' tests/test_downloader.py
+grep -q 'test_status_gui_parser_rejects_subsecond_refresh_seconds' tests/test_downloader.py
+grep -q 'test_status_gui_parser_rejects_subsecond_anchor_watch_seconds' tests/test_downloader.py
+grep -q 'test_status_gui_refresh_interval_has_minimum_timer_delay' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_watch_interval_has_minimum_timer_delay' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_oversized_gps_waits' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py

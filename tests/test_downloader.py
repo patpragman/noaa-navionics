@@ -3802,12 +3802,26 @@ class GuiTests(unittest.TestCase):
 
         self.assertIn("must be greater than 0", stderr.getvalue())
 
+    def test_status_gui_parser_rejects_subsecond_anchor_watch_seconds(self):
+        stderr = StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            status_gui_module.build_parser().parse_args(["--anchor-watch-seconds", "0.5"])
+
+        self.assertIn("must be at least 1", stderr.getvalue())
+
     def test_status_gui_parser_rejects_zero_refresh_seconds(self):
         stderr = StringIO()
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
             status_gui_module.build_parser().parse_args(["--refresh-seconds", "0"])
 
         self.assertIn("must be greater than 0", stderr.getvalue())
+
+    def test_status_gui_parser_rejects_subsecond_refresh_seconds(self):
+        stderr = StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            status_gui_module.build_parser().parse_args(["--refresh-seconds", "0.5"])
+
+        self.assertIn("must be at least 1", stderr.getvalue())
 
     def test_status_gui_parser_rejects_oversized_gps_waits(self):
         for args in (
@@ -5335,6 +5349,63 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.after_id, "refresh-after")
         self.assertEqual(app.anchor_watch_after_id, "watch-after")
 
+    def test_status_gui_refresh_interval_has_minimum_timer_delay(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.after_id = None
+                self.refresh_seconds = 0.001
+                self.calls = []
+
+            def after_cancel(self, after_id):
+                raise AssertionError("no pending refresh callback should be cancelled")
+
+            def refresh_now(self):
+                raise AssertionError("refresh callback should not run in the scheduler test")
+
+            def after(self, delay_ms, callback):
+                self.calls.append((delay_ms, callback))
+                return "refresh-after"
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._schedule_refresh(app)
+
+        self.assertEqual(app.after_id, "refresh-after")
+        self.assertEqual(app.calls, [(1000, app.refresh_now)])
+
+    def test_status_gui_anchor_watch_interval_has_minimum_timer_delay(self):
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.anchor_watch_after_id = None
+                self.anchor_watch_seconds = 0.001
+                self.anchor_watch_fix = GPSFix(
+                    timestamp=datetime.now(timezone.utc),
+                    latitude=61.0,
+                    longitude=-149.0,
+                    satellites=9,
+                    hdop=0.9,
+                )
+                self.calls = []
+
+            def after_cancel(self, after_id):
+                raise AssertionError("no pending anchor-watch callback should be cancelled")
+
+            def _run_anchor_watch(self):
+                raise AssertionError("anchor-watch callback should not run in the scheduler test")
+
+            def after(self, delay_ms, callback):
+                self.calls.append((delay_ms, callback))
+                return "watch-after"
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp._schedule_anchor_watch(app)
+
+        self.assertEqual(app.anchor_watch_after_id, "watch-after")
+        self.assertEqual(app.calls, [(1000, app._run_anchor_watch)])
+
     def test_status_gui_refresh_cancels_pending_refresh_callback_before_starting_worker(self):
         class FakeVar:
             def __init__(self):
@@ -5663,7 +5734,7 @@ class GuiTests(unittest.TestCase):
 
         status_gui_module.StatusApp.start_anchor_watch(app)
 
-        self.assertEqual(app.errors, ["Anchor watch interval must be greater than 0"])
+        self.assertEqual(app.errors, ["Anchor watch interval must be at least 1 second"])
         self.assertEqual(app.busy_calls, [])
         self.assertIsNone(app.worker)
         self.assertIsNone(app.anchor_watch_fix)
@@ -6845,8 +6916,10 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
         self.assert_parse_error(["status-gui", "--action-gps-seconds", "-1"])
         self.assert_parse_error(["status-gui", "--refresh-seconds", "0"])
+        self.assert_parse_error(["status-gui", "--refresh-seconds", "0.5"])
         self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "-1"])
         self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "0"])
+        self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "0.5"])
         self.assert_parse_error(["status-gui", "--anchor-radius-meters", "0"])
         self.assert_parse_error(["status-gui", "--anchor-samples", "0"])
 

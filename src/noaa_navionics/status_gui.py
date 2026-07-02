@@ -31,6 +31,7 @@ DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
 ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0
 MAX_ANCHOR_SAMPLES = 10
 MAX_GPS_WAIT_SECONDS = 600.0
+MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -325,6 +326,19 @@ def _gps_wait_seconds(value: str) -> float:
     return parsed
 
 
+def _status_gui_interval_seconds(value: str) -> float:
+    parsed = _positive_float(value)
+    if parsed < MIN_STATUS_GUI_INTERVAL_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at least {MIN_STATUS_GUI_INTERVAL_SECONDS:g}")
+    return parsed
+
+
+def _timer_delay_ms(seconds: float) -> int:
+    if not math.isfinite(seconds) or seconds < MIN_STATUS_GUI_INTERVAL_SECONDS:
+        return int(MIN_STATUS_GUI_INTERVAL_SECONDS * 1000)
+    return int(seconds * 1000)
+
+
 class StatusApp(tk.Tk):
     def __init__(
         self,
@@ -488,8 +502,11 @@ class StatusApp(tk.Tk):
         if self.anchor_watch_fix is not None:
             self._show_anchor_watch_already_active()
             return
-        if not math.isfinite(self.anchor_watch_seconds) or self.anchor_watch_seconds <= 0:
-            self._show_error("Anchor watch interval must be greater than 0")
+        if (
+            not math.isfinite(self.anchor_watch_seconds)
+            or self.anchor_watch_seconds < MIN_STATUS_GUI_INTERVAL_SECONDS
+        ):
+            self._show_error("Anchor watch interval must be at least 1 second")
             return
         try:
             radius_meters = _positive_float(self.anchor_radius.get())
@@ -828,7 +845,7 @@ class StatusApp(tk.Tk):
             self.after_cancel(self.after_id)
             self.after_id = None
         if self.refresh_seconds > 0:
-            self.after_id = self.after(int(self.refresh_seconds * 1000), self.refresh_now)
+            self.after_id = self.after(_timer_delay_ms(self.refresh_seconds), self.refresh_now)
 
     def _schedule_anchor_watch(self) -> None:
         if getattr(self, "_closed", False):
@@ -838,7 +855,7 @@ class StatusApp(tk.Tk):
             self.anchor_watch_after_id = None
         if self.anchor_watch_fix is None or self.anchor_watch_seconds <= 0:
             return
-        self.anchor_watch_after_id = self.after(int(self.anchor_watch_seconds * 1000), self._run_anchor_watch)
+        self.anchor_watch_after_id = self.after(_timer_delay_ms(self.anchor_watch_seconds), self._run_anchor_watch)
 
     def _run_anchor_watch(self) -> None:
         self.anchor_watch_after_id = None
@@ -901,15 +918,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--refresh-seconds",
-        type=_positive_float,
+        type=_status_gui_interval_seconds,
         default=60.0,
-        help="seconds between automatic refreshes",
+        help=f"seconds between automatic refreshes; min {MIN_STATUS_GUI_INTERVAL_SECONDS:g}",
     )
     parser.add_argument(
         "--anchor-watch-seconds",
-        type=_positive_float,
+        type=_status_gui_interval_seconds,
         default=30.0,
-        help="seconds between automatic anchor-watch checks",
+        help=f"seconds between automatic anchor-watch checks; min {MIN_STATUS_GUI_INTERVAL_SECONDS:g}",
     )
     parser.add_argument(
         "--anchor-radius-meters",
