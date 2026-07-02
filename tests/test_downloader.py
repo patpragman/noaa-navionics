@@ -15508,6 +15508,7 @@ class StatusReportTests(unittest.TestCase):
         )
 
         for expected in (
+            "def status_text_list",
             'status_text(user.get("name", ""), "user name")',
             'status_text(user.get("linger", ""), "user linger")',
             'status_text(track_log.get("latest_time", ""), "track_log latest_time")',
@@ -15519,8 +15520,11 @@ class StatusReportTests(unittest.TestCase):
             '"LightDM autologin config path_symlink_component"',
             'status_text(desktop.get("graphical_target", ""), "desktop graphical_target")',
             'status_text(desktop.get("lightdm_enabled", ""), "desktop lightdm_enabled")',
+            'status_text_list(lightdm_sections, "LightDM autologin sections")',
             'status_text(state.get("path", ""), f"{unit} path")',
             'status_text(state.get("path_symlink_component", ""), f"{unit} path_symlink_component")',
+            'status_text_list(wanted_by, f"{unit} wanted_by")',
+            'status_text_list(status_lines, f"{unit} lines")',
             'source_revision_symlink_component = status_text(',
             'status_text(app.get("source_revision", "unknown"), "source revision source_revision")',
             'status_text(source_revision_data.get("revision", ""), "Source Revision row revision")',
@@ -15541,6 +15545,9 @@ class StatusReportTests(unittest.TestCase):
             'lightdm_symlink_component = str(lightdm.get("path_symlink_component", "")).strip()',
             'unit_path = str(state.get("path", "")).strip()',
             'unit_symlink_component = str(state.get("path_symlink_component", "")).strip()',
+            "[str(value) for value in lightdm_sections]",
+            "[str(value) for value in wanted_by]",
+            "[str(line) for line in status_lines]",
             'source_revision_symlink_component = str(app.get("source_revision_symlink_component", "")).strip()',
             'actual_revision = str(app.get("source_revision", "unknown")).strip()',
             'row_revision = str(source_revision_data.get("revision", "")).strip()',

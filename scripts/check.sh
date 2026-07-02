@@ -3014,8 +3014,10 @@ grep -q 'lightdm_symlink_component = status_text(' scripts/verify_pi.sh
 grep -q 'LightDM autologin config path_symlink_component' scripts/verify_pi.sh
 grep -q 'status_text(desktop.get("graphical_target", ""), "desktop graphical_target")' scripts/verify_pi.sh
 grep -q 'status_text(desktop.get("lightdm_enabled", ""), "desktop lightdm_enabled")' scripts/verify_pi.sh
+grep -q 'status_text_list(lightdm_sections, "LightDM autologin sections")' scripts/verify_pi.sh
 grep -q 'path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'def status_text_list' scripts/verify_pi.sh
 grep -q 'def status_octal_mode_text' scripts/verify_pi.sh
 grep -q 'text != f"{parsed:04o}"' scripts/verify_pi.sh
 grep -q 'def verify_status_file_owner_and_mode' scripts/verify_pi.sh
@@ -3231,6 +3233,8 @@ grep -q 'status report {unit} mode' scripts/verify_pi.sh
 grep -q 'status report {unit} directory_mode' scripts/verify_pi.sh
 grep -q 'status_text(state.get("path", ""), f"{unit} path")' scripts/verify_pi.sh
 grep -q 'status_text(state.get("path_symlink_component", ""), f"{unit} path_symlink_component")' scripts/verify_pi.sh
+grep -q 'status_text_list(wanted_by, f"{unit} wanted_by")' scripts/verify_pi.sh
+grep -q 'status_text_list(status_lines, f"{unit} lines")' scripts/verify_pi.sh
 grep -q 'status_octal_mode_text(state.get("mode"), f"{unit} mode")' scripts/verify_pi.sh
 grep -q 'status_octal_mode_text(state.get("directory_mode"), f"{unit} directory_mode")' scripts/verify_pi.sh
 grep -q 'status report {unit} has no parsed unit file lines' scripts/verify_pi.sh

@@ -809,6 +809,11 @@ def status_text(value, label):
         raise SystemExit(f"status report {label} contains control characters")
     return text.strip()
 
+def status_text_list(value, label):
+    if not isinstance(value, list):
+        raise SystemExit(f"status report {label} is not a list")
+    return [status_text(item, f"{label} item") for item in value]
+
 def status_octal_mode_text(value, label):
     if not isinstance(value, str):
         raise SystemExit(f"status report {label} is invalid")
@@ -2047,10 +2052,11 @@ if expected_config_path:
     lightdm_sections = lightdm.get("sections")
     if not isinstance(lightdm_values, dict) or not isinstance(lightdm_sections, list):
         raise SystemExit(f"status report LightDM autologin values were not parsed: {lightdm_path}")
+    lightdm_sections = status_text_list(lightdm_sections, "LightDM autologin sections")
     live_lightdm_sections, live_lightdm_values = parse_key_value_text(lightdm_text, ("#", ";"))
-    if lightdm_values != live_lightdm_values or [str(value) for value in lightdm_sections] != live_lightdm_sections:
+    if lightdm_values != live_lightdm_values or lightdm_sections != live_lightdm_sections:
         raise SystemExit("status report LightDM autologin values do not match live LightDM config")
-    if "Seat:*" not in {str(value) for value in lightdm_sections}:
+    if "Seat:*" not in set(lightdm_sections):
         raise SystemExit("LightDM autologin config missing [Seat:*] section")
     if str(lightdm_values.get("autologin-user", "")).strip() != os.environ.get("USER", ""):
         raise SystemExit(
@@ -2609,7 +2615,7 @@ for unit, expected_target in expected_unit_files.items():
     wanted_by = state.get("wanted_by")
     if not isinstance(wanted_by, list):
         raise SystemExit(f"status report {unit} install targets were not parsed: {expected_unit_path}")
-    status_wanted_by = [str(value) for value in wanted_by]
+    status_wanted_by = status_text_list(wanted_by, f"{unit} wanted_by")
     live_wanted_by = install_wanted_by_targets(unit_text.splitlines())
     if status_wanted_by != live_wanted_by:
         raise SystemExit(
@@ -2619,7 +2625,7 @@ for unit, expected_target in expected_unit_files.items():
     status_lines = state.get("lines")
     if not isinstance(status_lines, list):
         raise SystemExit(f"status report {unit} has no parsed unit file lines: {expected_unit_path}")
-    normalized_status_lines = [str(line) for line in status_lines]
+    normalized_status_lines = status_text_list(status_lines, f"{unit} lines")
     live_lines = unit_text.splitlines()
     if normalized_status_lines != live_lines:
         raise SystemExit(f"status report {unit} lines do not match live unit file: {expected_unit_path}")
