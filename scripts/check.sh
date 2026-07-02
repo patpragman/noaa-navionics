@@ -5155,6 +5155,8 @@ grep -q 'status report gps_fix has no satellite or HDOP quality fields' src/noaa
 grep -q 'status report missing track_log section' src/noaa_navionics/report.py
 grep -q 'status report track_log track_output is a symlink or missing symlink status' src/noaa_navionics/report.py
 grep -q 'status report track_log ok is not boolean' src/noaa_navionics/report.py
+grep -q 'track_log detail contains control characters' tests/test_downloader.py
+grep -q 'track_storage_symlink_component contains control characters' tests/test_downloader.py
 grep -q '_track_log_validation_failures(report.get("track_log"), now=now)' src/noaa_navionics/report.py
 grep -q 'status report track_log has no valid latest_time' src/noaa_navionics/report.py
 grep -q 'status report track_log age_seconds {age_seconds:g} is inconsistent with latest_time age' src/noaa_navionics/report.py

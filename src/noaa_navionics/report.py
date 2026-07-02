@@ -2436,20 +2436,31 @@ def _gps_fix_validation_failures(
 def _track_log_validation_failures(track_log: object, *, now: Optional[datetime] = None) -> list[CheckResult]:
     if not isinstance(track_log, dict):
         return [CheckResult("Track Log", False, "status report missing track_log section")]
-    track_output_text = str(track_log.get("track_output", ""))
-    tracks_dir_text = str(track_log.get("tracks_dir", ""))
-    latest_path_text = str(track_log.get("latest_path", ""))
-    for value, label in (
-        (track_output_text, "track_log track_output"),
-        (tracks_dir_text, "track_log tracks_dir"),
-        (latest_path_text, "track_log latest_path"),
-    ):
-        control_failure = _status_control_character_failure(value, label)
-        if control_failure:
-            return [CheckResult("Track Log", False, control_failure)]
-    track_output = track_output_text.strip()
-    tracks_dir = tracks_dir_text.strip()
-    latest_path = latest_path_text.strip()
+    track_output, failure = _status_required_text_field(
+        track_log,
+        "track_output",
+        "status report track_log track_output is not absolute",
+        "track_log track_output",
+        "Track Log",
+    )
+    if failure:
+        return [failure]
+    tracks_dir, failure = _status_required_text_field(
+        track_log,
+        "tracks_dir",
+        "status report track_log tracks_dir is not absolute",
+        "track_log tracks_dir",
+        "Track Log",
+    )
+    if failure:
+        return [failure]
+    latest_path_value = track_log.get("latest_path", "")
+    if not isinstance(latest_path_value, str):
+        return [CheckResult("Track Log", False, "status report track_log has no latest_path")]
+    latest_path = latest_path_value.strip()
+    control_failure = _status_control_character_failure(latest_path, "track_log latest_path")
+    if control_failure:
+        return [CheckResult("Track Log", False, control_failure)]
     if not _status_absolute_path(track_output):
         return [CheckResult("Track Log", False, "status report track_log track_output is not absolute")]
     if not _status_absolute_path(tracks_dir):
@@ -2460,12 +2471,29 @@ def _track_log_validation_failures(track_log: object, *, now: Optional[datetime]
         return [CheckResult("Track Log", False, "status report track_log track_output is a symlink or missing symlink status")]
     if "track_storage_symlink_component" not in track_log:
         return [CheckResult("Track Log", False, "status report track_log missing track_storage_symlink_component")]
-    if str(track_log.get("track_storage_symlink_component", "")).strip():
+    track_storage_symlink_component = track_log.get("track_storage_symlink_component", "")
+    if not isinstance(track_storage_symlink_component, str):
+        return [CheckResult("Track Log", False, "status report track_log track_storage_symlink_component is not text")]
+    track_storage_symlink_component_text = track_storage_symlink_component.strip()
+    control_failure = _status_control_character_failure(
+        track_storage_symlink_component_text,
+        "track_log track_storage_symlink_component",
+    )
+    if control_failure:
+        return [CheckResult("Track Log", False, control_failure)]
+    if track_storage_symlink_component_text:
         return [CheckResult("Track Log", False, "status report track_log storage path contains a symlink")]
     if not isinstance(track_log.get("ok"), bool):
         return [CheckResult("Track Log", False, "status report track_log ok is not boolean")]
     if track_log.get("ok") is not True:
-        return [CheckResult("Track Log", False, f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")]
+        detail_value = track_log.get("detail", "<missing detail>")
+        if not isinstance(detail_value, str):
+            return [CheckResult("Track Log", False, "status report track_log detail is not text")]
+        detail = detail_value.strip() or "<missing detail>"
+        control_failure = _status_control_character_failure(detail, "track_log detail")
+        if control_failure:
+            return [CheckResult("Track Log", False, control_failure)]
+        return [CheckResult("Track Log", False, f"status report track_log is not ok: {detail}")]
     if not latest_path:
         return [CheckResult("Track Log", False, "status report track_log has no latest_path")]
     if not _status_absolute_path(latest_path):
