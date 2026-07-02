@@ -8579,6 +8579,10 @@ class CLIValidationTests(unittest.TestCase):
             ["status-gui", "--gps-seconds", "999999999999999999999999999999"],
             ["status-gui", "--action-gps-seconds", "601"],
             ["status-gui", "--action-gps-seconds", "999999999999999999999999999999"],
+            ["mark-position", "--seconds", "601"],
+            ["mark-position", "--seconds", "999999999999999999999999999999"],
+            ["mob", "--seconds", "601"],
+            ["mob", "--seconds", "999999999999999999999999999999"],
         ):
             with self.subTest(args=args):
                 self.assert_parse_error(args)

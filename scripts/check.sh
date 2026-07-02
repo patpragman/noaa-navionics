@@ -5884,8 +5884,8 @@ grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB
 grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB path rings the terminal bell after saving' docs/sailboat-pi.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' README.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' docs/sailboat-pi.md
-grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits must be finite and positive, and are bounded to 600 seconds' README.md
-grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits must be finite and positive, and are bounded to 600 seconds' docs/sailboat-pi.md
+grep -q 'Direct `preflight`, `status-report`, status GUI, Mark, and MOB GPS-fix waits must be finite and positive, and are bounded to 600 seconds' README.md
+grep -q 'Direct `preflight`, `status-report`, status GUI, Mark, and MOB GPS-fix waits must be finite and positive, and are bounded to 600 seconds' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' docs/sailboat-pi.md
 grep -q -- 'Start Watch captures a fresh anchor fix, refuses to reset an active watch, freezes the selected watch radius, requires `--anchor-watch-seconds N` to be at least 1 second, rechecks drift at that interval' README.md
