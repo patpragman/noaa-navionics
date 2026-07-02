@@ -4021,6 +4021,9 @@ grep -q 'endswith(".part")' src/noaa_navionics/health.py
 grep -q 'def _manifest_archive_path' src/noaa_navionics/health.py
 grep -q 'suffix.lower() == ".zip"' src/noaa_navionics/health.py
 grep -q 'Track Disk' src/noaa_navionics/health.py
+grep -q 'MIN_STORAGE_FREE_GB = 0.1' src/noaa_navionics/health.py
+grep -q 'minimum free-space threshold must be finite and at least' src/noaa_navionics/health.py
+grep -q 'test_disk_check_rejects_invalid_free_space_floor' tests/test_downloader.py
 grep -q 'Display Power' src/noaa_navionics/health.py
 grep -q 'def _is_raspberry_pi' src/noaa_navionics/health.py
 grep -q 'RASPBERRY_PI_MODEL_PATH = Path("/proc/device-tree/model")' src/noaa_navionics/health.py
@@ -5130,8 +5133,8 @@ grep -q 'READY reports also require structured Clock and Time Sync evidence' REA
 grep -q 'READY reports also require structured Clock and Time Sync evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' README.md
 grep -q 'READY reports also require structured Pi Power and Pi Thermal evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured Disk and Track Disk storage evidence' README.md
-grep -q 'READY reports also require structured Disk and Track Disk storage evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured Disk and Track Disk storage evidence, including absolute inspected paths, owner and mode, mount status, writability, measured free space, available inode evidence, and a finite free-space threshold of at least 0.1 GB' README.md
+grep -q 'READY reports also require structured Disk and Track Disk storage evidence, including absolute inspected paths, owner and mode, mount status, writability, measured free space, available inode evidence, and a finite free-space threshold of at least 0.1 GB' docs/sailboat-pi.md
 grep -q 'available inode evidence' README.md
 grep -q 'available inode evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' README.md

@@ -21040,6 +21040,23 @@ class GpsTests(unittest.TestCase):
             self.assertIsNotNone(result.data)
             self.assertLess(result.data.get("free_gb"), result.data.get("min_free_gb"))
 
+    def test_disk_check_rejects_invalid_free_space_floor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for min_free_gb in (0.0, -1.0, float("nan"), float("inf"), "bad"):
+                with self.subTest(min_free_gb=min_free_gb):
+                    result = check_disk_space(
+                        Path(tmpdir),
+                        min_free_gb=min_free_gb,  # type: ignore[arg-type]
+                    )
+
+                    self.assertFalse(result.ok)
+                    self.assertIn(
+                        "minimum free-space threshold must be finite and at least 0.1 GB",
+                        result.detail,
+                    )
+                    self.assertIsNotNone(result.data)
+                    self.assertEqual(result.data.get("configured_path"), str(Path(tmpdir)))
+
     def test_disk_check_rejects_storage_with_no_free_inodes(self):
         original_statvfs = health_module.os.statvfs
 

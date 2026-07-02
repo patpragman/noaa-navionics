@@ -52,6 +52,7 @@ RASPBERRY_PI_MODEL_PATH = Path("/proc/device-tree/model")
 GPS_UDEV_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
 REMOVABLE_STORAGE_ROOTS = (Path("/media"), Path("/mnt"), Path("/run/media"))
 CHRONY_GPSD_REFCLOCK = "refclock SHM 0 offset 0.5 delay 0.1 refid GPS"
+MIN_STORAGE_FREE_GB = 0.1
 TRUSTED_SYSTEM_COMMAND_DIRS = {
     Path("/usr/local/sbin"),
     Path("/usr/local/bin"),
@@ -1520,12 +1521,31 @@ def _unexpected_enc_dirs(chart_dir: Path, extract_path: Path) -> list[Path]:
 def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float = 2.0) -> CheckResult:
     path = Path(chart_dir).expanduser()
     existing = path if path.exists() else path.parent
+    try:
+        minimum_free_gb = float(min_free_gb)
+    except (TypeError, ValueError):
+        minimum_free_gb = None
     data: dict[str, object] = {
         "configured_path": str(path),
         "checked_path": str(existing),
         "exists": existing.exists(),
-        "min_free_gb": float(min_free_gb),
+        "min_free_gb": (
+            minimum_free_gb
+            if minimum_free_gb is not None and math.isfinite(minimum_free_gb)
+            else str(min_free_gb)
+        ),
     }
+    if (
+        minimum_free_gb is None
+        or not math.isfinite(minimum_free_gb)
+        or minimum_free_gb < MIN_STORAGE_FREE_GB
+    ):
+        return CheckResult(
+            name,
+            False,
+            f"minimum free-space threshold must be finite and at least {MIN_STORAGE_FREE_GB:g} GB",
+            data,
+        )
     if not existing.exists():
         data["is_directory"] = False
         return CheckResult(
@@ -1576,8 +1596,8 @@ def check_disk_space(chart_dir: Path, *, name: str = "Disk", min_free_gb: float 
     data["free_inodes"] = free_inodes
     data["writable"] = writable
     inodes_available = total_inodes <= 0 or free_inodes > 0
-    ok = free_gb >= min_free_gb and writable and inodes_available
-    detail = f"{free_gb:.1f} GB free at {existing}; minimum {min_free_gb:.1f} GB"
+    ok = free_gb >= minimum_free_gb and writable and inodes_available
+    detail = f"{free_gb:.1f} GB free at {existing}; minimum {minimum_free_gb:.1f} GB"
     if not inodes_available:
         detail += "; no free inodes"
     if not writable:
