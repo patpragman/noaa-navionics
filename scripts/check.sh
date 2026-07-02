@@ -3928,7 +3928,15 @@ grep -q 'outside -90..90' src/noaa_navionics/gps.py
 grep -q 'outside -180..180' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: 0.000000, 0.000000 coordinates' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: negative HDOP' src/noaa_navionics/gps.py
+grep -q 'invalid GPS fix: non-finite HDOP' src/noaa_navionics/gps.py
+grep -q 'invalid GPS fix: HDOP is not numeric' src/noaa_navionics/gps.py
+grep -q 'invalid GPS fix: satellite count is not an integer' src/noaa_navionics/gps.py
 grep -q 'test_shared_gps_quality_rejects_negative_hdop' tests/test_downloader.py
+grep -q 'test_shared_gps_quality_rejects_non_finite_hdop' tests/test_downloader.py
+grep -q 'test_shared_gps_quality_rejects_malformed_hdop' tests/test_downloader.py
+grep -q 'test_shared_gps_quality_rejects_non_integer_satellite_count' tests/test_downloader.py
+grep -q 'Shared GPS quality checks also reject malformed satellite-count or non-finite/malformed HDOP evidence' README.md
+grep -q 'Shared GPS quality checks also reject malformed satellite-count or non-finite/malformed HDOP evidence' docs/sailboat-pi.md
 grep -q 'missing_quality_detail' src/noaa_navionics/health.py
 ! grep -q 'pending_without_quality' src/noaa_navionics/health.py
 grep -q 'def gps_fix_has_quality_fields' src/noaa_navionics/gps.py

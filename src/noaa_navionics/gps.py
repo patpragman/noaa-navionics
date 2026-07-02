@@ -386,12 +386,21 @@ def gps_fix_quality_failure(
         return f"invalid GPS fix: longitude {longitude:.6f} outside -180..180"
     if latitude == 0.0 and longitude == 0.0:
         return "invalid GPS fix: 0.000000, 0.000000 coordinates"
-    if fix.satellites is not None and fix.satellites < min_satellites:
-        return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
-    if fix.hdop is not None and fix.hdop < 0.0:
-        return f"invalid GPS fix: negative HDOP {fix.hdop:g}"
-    if fix.hdop is not None and fix.hdop > max_hdop:
-        return f"weak GPS fix: HDOP {fix.hdop}; max is {max_hdop:g}"
+    if fix.satellites is not None:
+        if isinstance(fix.satellites, bool) or not isinstance(fix.satellites, int):
+            return f"invalid GPS fix: satellite count is not an integer: {fix.satellites!r}"
+        if fix.satellites < min_satellites:
+            return f"weak GPS fix: {fix.satellites} satellites; need at least {min_satellites}"
+    if fix.hdop is not None:
+        if isinstance(fix.hdop, bool) or not isinstance(fix.hdop, (int, float)):
+            return f"invalid GPS fix: HDOP is not numeric: {fix.hdop!r}"
+        hdop = float(fix.hdop)
+        if not math.isfinite(hdop):
+            return f"invalid GPS fix: non-finite HDOP {fix.hdop!r}"
+        if hdop < 0.0:
+            return f"invalid GPS fix: negative HDOP {hdop:g}"
+        if hdop > max_hdop:
+            return f"weak GPS fix: HDOP {hdop}; max is {max_hdop:g}"
     return ""
 
 

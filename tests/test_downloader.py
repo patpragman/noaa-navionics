@@ -18830,6 +18830,21 @@ class GpsTests(unittest.TestCase):
 
         self.assertIn("negative HDOP", gps_fix_quality_failure(fix))
 
+    def test_shared_gps_quality_rejects_non_finite_hdop(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=math.nan)
+
+        self.assertIn("non-finite HDOP", gps_fix_quality_failure(fix))
+
+    def test_shared_gps_quality_rejects_malformed_hdop(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop="bad")  # type: ignore[arg-type]
+
+        self.assertIn("HDOP is not numeric", gps_fix_quality_failure(fix))
+
+    def test_shared_gps_quality_rejects_non_integer_satellite_count(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=4.5, hdop=1.2)  # type: ignore[arg-type]
+
+        self.assertIn("satellite count is not an integer", gps_fix_quality_failure(fix))
+
     def test_shared_gps_quality_rejects_null_island_fix(self):
         fix = GPSFix(latitude=0.0, longitude=0.0, satellites=8, hdop=1.2)
 
