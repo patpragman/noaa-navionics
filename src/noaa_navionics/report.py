@@ -3346,8 +3346,12 @@ def _status_path_under(child: str, parent: str) -> bool:
 
 
 def _status_mode_value(value: object) -> Optional[int]:
-    text = str(value).strip()
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
     if not text:
+        return None
+    if _status_text_has_control_char(text):
         return None
     try:
         parsed = int(text, 8)

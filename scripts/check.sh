@@ -6449,6 +6449,9 @@ grep -q 'status report track_log tracks_dir does not match track_output' src/noa
 grep -q 'status report track_log latest_path is not absolute' src/noaa_navionics/report.py
 grep -q 'status report track_log latest_path is not under tracks_dir' src/noaa_navionics/report.py
 grep -Fq 'status report track_log latest_path is not a track-*.gpx file' src/noaa_navionics/report.py
+grep -q 'if not isinstance(value, str)' src/noaa_navionics/report.py
+grep -q '"tracks_mode": 700' tests/test_downloader.py
+grep -q '"latest_mode": 600' tests/test_downloader.py
 grep -q 'status report track_log tracks_mode is missing or invalid' src/noaa_navionics/report.py
 grep -q 'status report track_log latest_mode is missing or invalid' src/noaa_navionics/report.py
 grep -q 'status report manifest download path is not absolute' src/noaa_navionics/report.py
