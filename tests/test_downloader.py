@@ -10458,6 +10458,50 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("manifest download path", result.detail)
             self.assertIn("has permissions 0622", result.detail)
 
+    def test_manifest_archive_rejects_archive_changed_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            with zipfile.ZipFile(archive, "w") as zip_handle:
+                zip_handle.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            digest = downloader_module.sha256_file(archive)
+            replacement = root / "replacement.zip"
+            with zipfile.ZipFile(replacement, "w") as zip_handle:
+                zip_handle.writestr("US5AK3CM/US5AK3CM.000", "changed")
+            extract = root / "AK_ENCs"
+            cell = extract / "US5AK3CM" / "US5AK3CM.000"
+            cell.parent.mkdir(parents=True)
+            cell.write_text("cell", encoding="ascii")
+            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            (root / MANIFEST_NAME).write_text(
+                '{"created_at":"' + now + '",'
+                '"package":{"label":"State AK","filename":"AK_ENCs.zip",'
+                '"url":"https://www.charts.noaa.gov/ENCs/AK_ENCs.zip"},'
+                f'"download":{{"path":"{archive}","bytes":{archive.stat().st_size},"sha256":"{digest}"}},'
+                f'"extract":{{"path":"{extract}","enc_cell_count":1}}}}\n',
+                encoding="utf-8",
+            )
+            original_sha256_trusted_file = health_module._sha256_trusted_file
+
+            def replace_archive_before_hashing(path, *, label, expected_uid, expected_stat=None):
+                os.replace(replacement, archive)
+                return original_sha256_trusted_file(
+                    path,
+                    label=label,
+                    expected_uid=expected_uid,
+                    expected_stat=expected_stat,
+                )
+
+            try:
+                health_module._sha256_trusted_file = replace_archive_before_hashing
+
+                result = check_chart_manifest(root, expected_package="state", expected_value="AK", require_archive=True)
+            finally:
+                health_module._sha256_trusted_file = original_sha256_trusted_file
+
+            self.assertFalse(result.ok)
+            self.assertIn("manifest download path changed before it could be read", result.detail)
+
     def test_manifest_archive_rejects_retained_file_that_is_not_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -10567,6 +10611,22 @@ class ManifestTests(unittest.TestCase):
         finally:
             health_module.MAX_ZIP_MEMBER_UNCOMPRESSED_BYTES = original_limit
 
+    def test_validate_retained_archive_rejects_changed_archive_before_reading(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            with zipfile.ZipFile(archive, "w") as zip_handle:
+                zip_handle.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            expected_stat = archive.stat()
+            replacement = root / "replacement.zip"
+            with zipfile.ZipFile(replacement, "w") as zip_handle:
+                zip_handle.writestr("US5AK3CM/US5AK3CM.000", "changed")
+            os.replace(replacement, archive)
+
+            detail = health_module._validate_retained_enc_archive(archive, expected_stat=expected_stat)
+
+            self.assertIn("retained chart archive changed before it could be read", detail)
+
     def test_sha256_trusted_file_rejects_writable_archive_before_hashing(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             archive = Path(tmpdir) / "AK_ENCs.zip"
@@ -10575,6 +10635,24 @@ class ManifestTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "has permissions 0622"):
                 _sha256_trusted_file(archive, label="manifest download path", expected_uid=os.getuid())
+
+    def test_sha256_trusted_file_rejects_changed_archive_before_hashing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            archive = root / "AK_ENCs.zip"
+            archive.write_bytes(b"chart")
+            expected_stat = archive.stat()
+            replacement = root / "replacement.zip"
+            replacement.write_bytes(b"changed")
+            os.replace(replacement, archive)
+
+            with self.assertRaisesRegex(RuntimeError, "manifest download path changed before it could be read"):
+                _sha256_trusted_file(
+                    archive,
+                    label="manifest download path",
+                    expected_uid=os.getuid(),
+                    expected_stat=expected_stat,
+                )
 
     def test_sha256_file_rejects_symlinked_archive_before_hashing(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -3992,10 +3992,16 @@ grep -q 'test_manifest_archive_nonregular_path_fails' tests/test_downloader.py
 grep -q 'test_manifest_archive_writable_file_fails' tests/test_downloader.py
 grep -q 'def _sha256_trusted_file' src/noaa_navionics/health.py
 grep -q 'actual_bytes, actual_sha256 = _sha256_trusted_file' src/noaa_navionics/health.py
+grep -q 'expected_stat=archive_stat' src/noaa_navionics/health.py
+grep -q 'retained_archive_error = _validate_retained_enc_archive(archive_path, expected_stat=archive_stat)' src/noaa_navionics/health.py
 grep -q 'os.fdopen(fd, "rb")' src/noaa_navionics/health.py
 grep -q 'test_sha256_trusted_file_rejects_writable_archive_before_hashing' tests/test_downloader.py
-grep -q 'retained ZIP hashes and archive checks are computed from no-follow descriptors that readiness verified' README.md
-grep -q 'retained ZIP hashes and archive checks are computed from no-follow descriptors that readiness verified' docs/sailboat-pi.md
+grep -q 'test_manifest_archive_rejects_archive_changed_before_hashing' tests/test_downloader.py
+grep -q 'test_validate_retained_archive_rejects_changed_archive_before_reading' tests/test_downloader.py
+grep -q 'test_sha256_trusted_file_rejects_changed_archive_before_hashing' tests/test_downloader.py
+grep -q 'retained chart archive changed before it could be read' src/noaa_navionics/health.py
+grep -q 'retained ZIP hashes and archive checks are computed from no-follow same-file descriptors that readiness verified' README.md
+grep -q 'retained ZIP hashes and archive checks are computed from no-follow same-file descriptors that readiness verified' docs/sailboat-pi.md
 grep -q 'positive download byte count' src/noaa_navionics/health.py
 grep -q 'download SHA-256' src/noaa_navionics/health.py
 grep -q 'manifest SHA-256 does not match' src/noaa_navionics/health.py
@@ -4008,9 +4014,9 @@ end = text.index("\ndef _expected_manifest_package", start)
 block = text[start:end]
 bytes_index = block.index('expected_bytes = int(download.get("bytes", 0))')
 sha_index = block.index('expected_sha256 = str(download.get("sha256", "")).strip().lower()')
-exists_index = block.index('if not archive_path.exists():')
-if not (bytes_index < exists_index and sha_index < exists_index):
-    raise SystemExit("manifest download byte count and SHA-256 must be validated before retained ZIP existence")
+stat_index = block.index('archive_stat = archive_path.stat()')
+if not (bytes_index < stat_index and sha_index < stat_index):
+    raise SystemExit("manifest download byte count and SHA-256 must be validated before retained ZIP stat capture")
 PY
 grep -q 'create or mount the configured storage path' src/noaa_navionics/health.py
 grep -q 'use a real mounted storage directory' src/noaa_navionics/health.py

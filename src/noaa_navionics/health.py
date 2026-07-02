@@ -1306,15 +1306,20 @@ def _check_manifest_archive(
     expected_sha256 = str(download.get("sha256", "")).strip().lower()
     if not expected_sha256:
         return CheckResult("Manifest", False, "manifest does not record a download SHA-256")
-    if not archive_path.exists():
+    try:
+        archive_stat = archive_path.stat()
+    except FileNotFoundError:
         if required:
             return CheckResult("Manifest", False, f"manifest retained download path is missing: {archive_path}")
         return None
+    except OSError as exc:
+        return CheckResult("Manifest", False, f"could not inspect manifest download path {archive_path}: {exc}")
     try:
         actual_bytes, actual_sha256 = _sha256_trusted_file(
             archive_path,
             label="manifest download path",
             expected_uid=os.getuid(),
+            expected_stat=archive_stat,
         )
     except OSError as exc:
         return CheckResult("Manifest", False, f"could not read manifest download path {archive_path}: {exc}")
@@ -1328,22 +1333,31 @@ def _check_manifest_archive(
         )
     if actual_sha256.lower() != expected_sha256:
         return CheckResult("Manifest", False, f"manifest SHA-256 does not match {archive_path}")
-    retained_archive_error = _validate_retained_enc_archive(archive_path)
+    retained_archive_error = _validate_retained_enc_archive(archive_path, expected_stat=archive_stat)
     if retained_archive_error:
         return CheckResult("Manifest", False, retained_archive_error)
     return None
 
 
-def _validate_retained_enc_archive(path: Path) -> str:
+def _validate_retained_enc_archive(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> str:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
+    except FileNotFoundError as exc:
+        if expected_stat is not None:
+            return f"retained chart archive disappeared before it could be read: {path}"
+        return f"could not open retained chart archive {path}: {exc}"
     except OSError as exc:
         if path.is_symlink():
             return f"retained chart archive is a symlink: {path}"
         return f"could not open retained chart archive {path}: {exc}"
     try:
         stat_result = os.fstat(fd)
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            return f"retained chart archive changed before it could be read: {path}"
         if not stat.S_ISREG(stat_result.st_mode):
             return f"retained chart archive is not a regular file: {path}"
         if stat_result.st_uid != os.getuid():
@@ -1410,16 +1424,31 @@ def _zip_member_path_is_unsafe(filename: str) -> bool:
     return False
 
 
-def _sha256_trusted_file(path: Path, *, label: str, expected_uid: int) -> tuple[int, str]:
+def _sha256_trusted_file(
+    path: Path,
+    *,
+    label: str,
+    expected_uid: int,
+    expected_stat: Optional[os.stat_result] = None,
+) -> tuple[int, str]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
+    except FileNotFoundError:
+        if expected_stat is not None:
+            raise RuntimeError(f"{label} disappeared before it could be read: {path}") from None
+        raise
     except OSError:
         if path.is_symlink():
             raise RuntimeError(f"{label} is a symlink: {path}")
         raise
     try:
         stat_result = os.fstat(fd)
+        if expected_stat is not None and (stat_result.st_dev, stat_result.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise RuntimeError(f"{label} changed before it could be read: {path}")
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"{label} is not a regular file: {path}")
         if stat_result.st_uid != expected_uid:
