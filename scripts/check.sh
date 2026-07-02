@@ -5756,13 +5756,17 @@ grep -q 'mktemp "${launcher_env_dir}/.launcher.env.XXXXXX"' scripts/provision_sa
 grep -q 'chmod 0600 "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$launcher_env_tmp"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_install_path "$launcher_env" "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh)" -ge 2
-grep -q 'mv -f "$launcher_env_tmp" "$launcher_env"' scripts/provision_sailboat_pi.sh
+grep -q 'promote_user_temp_path "$launcher_env_tmp" "$launcher_env" 0600 "chartplotter launcher environment"' scripts/provision_sailboat_pi.sh
 grep -q 'verify_launcher_env "$launcher_env" "$gps_seconds" "$warning_seconds" "$readiness_attempts" "$readiness_retry_delay" "$start_on_failed_readiness" "$opencpn_restarts" "$opencpn_restart_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' scripts/provision_sailboat_pi.sh
+grep -q 'os.replace(tmp_path.name, target_path.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)' scripts/provision_sailboat_pi.sh
+grep -q 'promoted file is not the validated temporary file' scripts/provision_sailboat_pi.sh
 grep -q 'promoted launcher environment .* expected 0600' scripts/provision_sailboat_pi.sh
 grep -q 'has values .* expected' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning revalidates user directories after creating or tightening them before placing temporary files there' README.md
 grep -q 'Provisioning revalidates user directories after creating or tightening them before placing temporary files there' docs/sailboat-pi.md
+grep -q 'Provisioning promotes launcher environment, user service, and desktop autostart temp files by no-follow opened target-directory descriptors' README.md
+grep -q 'Provisioning promotes launcher environment, user service, and desktop autostart temp files by no-follow opened target-directory descriptors' docs/sailboat-pi.md
 grep -q 'Failed provisioning temporary paths are cleaned through no-follow same-file validation' README.md
 grep -q 'Failed provisioning temporary paths are cleaned through no-follow same-file validation' docs/sailboat-pi.md
 grep -q 'cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true' scripts/provision_sailboat_pi.sh
@@ -5782,13 +5786,14 @@ grep -q -- '--skip-gps-time' scripts/provision_sailboat_pi.sh
 grep -q 'configure_desktop_autologin.sh' scripts/provision_sailboat_pi.sh
 grep -q 'noaa-navionics-chartplotter.desktop' scripts/provision_sailboat_pi.sh
 grep -q 'install_file_atomic' scripts/provision_sailboat_pi.sh
+grep -q 'promote_user_temp_path' scripts/provision_sailboat_pi.sh
 grep -q 'mktemp "${target_dir}/.${target_name}.XXXXXX"' scripts/provision_sailboat_pi.sh
 grep -q 'install -m "$mode" "$source" "$tmp"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$tmp"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_directory_path "$target" "$label"' scripts/provision_sailboat_pi.sh)" -ge 3
 grep -q 'validate_user_directory_path "$target_dir" "provisioned user file directory"' scripts/provision_sailboat_pi.sh
 test "$(grep -c 'validate_user_install_path "$target" "provisioned user file"' scripts/provision_sailboat_pi.sh)" -ge 2
-grep -q 'mv -f "$tmp" "$target"' scripts/provision_sailboat_pi.sh
+grep -q 'promote_user_temp_path "$tmp" "$target" "$mode" "provisioned user file"' scripts/provision_sailboat_pi.sh
 grep -q 'sync_paths "$target"' scripts/provision_sailboat_pi.sh
 grep -q 'verify_promoted_user_file "$source" "$target" "$mode"' scripts/provision_sailboat_pi.sh
 grep -q 'promoted provisioned user file .* expected' scripts/provision_sailboat_pi.sh
@@ -5801,7 +5806,7 @@ install_start = text.index("install_file_atomic()")
 install_mkdir = text.index('mkdir -p "$target_dir"', install_start)
 install_validate_dir = text.index('validate_user_directory_path "$target_dir" "provisioned user file directory"', install_mkdir)
 install_mktemp = text.index('mktemp "${target_dir}/.${target_name}.XXXXXX"', install_validate_dir)
-promote = text.index('mv -f "$tmp" "$target"', install_start)
+promote = text.index('promote_user_temp_path "$tmp" "$target" "$mode" "provisioned user file"', install_start)
 verify = text.index('verify_promoted_user_file "$source" "$target" "$mode"', promote)
 sync = text.index('sync_paths "$target"', verify)
 daemon = text.index('run "$systemctl_cmd" --user daemon-reload')

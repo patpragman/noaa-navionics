@@ -1396,6 +1396,78 @@ finally:
 PY
 }
 
+promote_user_temp_path() {
+  local tmp="$1"
+  local target="$2"
+  local mode="$3"
+  local label="$4"
+  "$python3_cmd" - "$tmp" "$target" "$mode" "$label" <<'PY'
+from pathlib import Path
+import os
+import stat
+import sys
+
+tmp_path = Path(sys.argv[1]).expanduser()
+target_path = Path(sys.argv[2]).expanduser()
+expected_mode = int(sys.argv[3], 8)
+label = sys.argv[4]
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+
+if tmp_path.parent != target_path.parent:
+    raise SystemExit(f"{label} temporary path must be in target directory before promotion: {tmp_path}")
+
+try:
+    dir_fd = os.open(target_path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
+except OSError as exc:
+    if target_path.parent.is_symlink():
+        raise SystemExit(f"{label} target directory is a symlink: {target_path.parent}") from exc
+    raise SystemExit(f"could not open {label} target directory {target_path.parent}: {exc}") from exc
+try:
+    dir_stat = os.fstat(dir_fd)
+    dir_mode = stat.S_IMODE(dir_stat.st_mode)
+    if not stat.S_ISDIR(dir_stat.st_mode) or dir_stat.st_uid != os.getuid() or dir_mode & 0o022:
+        raise SystemExit(f"{label} target directory is not trusted for promotion: {target_path.parent}")
+    try:
+        target_stat = os.stat(target_path.name, dir_fd=dir_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+    else:
+        if not stat.S_ISREG(target_stat.st_mode):
+            raise SystemExit(f"{label} target is not a regular file before promotion: {target_path}")
+        if target_stat.st_uid != os.getuid() or stat.S_IMODE(target_stat.st_mode) & 0o022:
+            raise SystemExit(f"{label} target is not trusted before promotion: {target_path}")
+
+    tmp_fd = os.open(tmp_path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    try:
+        tmp_stat = os.fstat(tmp_fd)
+        tmp_mode = stat.S_IMODE(tmp_stat.st_mode)
+        if not stat.S_ISREG(tmp_stat.st_mode):
+            raise SystemExit(f"{label} temporary path is not a regular file before promotion: {tmp_path}")
+        if tmp_stat.st_uid != os.getuid() or tmp_mode != expected_mode:
+            raise SystemExit(f"{label} temporary path has uid/mode {tmp_stat.st_uid}:{tmp_mode:04o}, expected {os.getuid()}:{expected_mode:04o}")
+        os.fsync(tmp_fd)
+    finally:
+        os.close(tmp_fd)
+
+    os.replace(tmp_path.name, target_path.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+
+    target_fd = os.open(target_path.name, os.O_RDONLY | nofollow, dir_fd=dir_fd)
+    try:
+        promoted = os.fstat(target_fd)
+        if not os.path.samestat(tmp_stat, promoted):
+            raise SystemExit(f"{label} promoted file is not the validated temporary file: {target_path}")
+        promoted_mode = stat.S_IMODE(promoted.st_mode)
+        if promoted.st_uid != os.getuid() or promoted_mode != expected_mode:
+            raise SystemExit(f"{label} promoted file has uid/mode {promoted.st_uid}:{promoted_mode:04o}, expected {os.getuid()}:{expected_mode:04o}")
+        os.fsync(target_fd)
+    finally:
+        os.close(target_fd)
+    os.fsync(dir_fd)
+finally:
+    os.close(dir_fd)
+PY
+}
+
 install_file_atomic() {
   local source="$1"
   local target="$2"
@@ -1425,7 +1497,7 @@ install_file_atomic() {
     cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true
     return 1
   fi
-  if ! mv -f "$tmp" "$target"; then
+  if ! promote_user_temp_path "$tmp" "$target" "$mode" "provisioned user file"; then
     cleanup_user_temp_path "$tmp" "provisioned user file temporary path" || true
     return 1
   fi
@@ -1665,7 +1737,7 @@ write_launcher_env() {
       cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
-    if ! mv -f "$launcher_env_tmp" "$launcher_env"; then
+    if ! promote_user_temp_path "$launcher_env_tmp" "$launcher_env" 0600 "chartplotter launcher environment"; then
       cleanup_user_temp_path "$launcher_env_tmp" "chartplotter launcher environment temporary path" || true
       return 1
     fi
