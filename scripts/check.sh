@@ -2863,10 +2863,14 @@ grep -q 'chartplotter launcher utility command revalidation' scripts/verify_pi.s
 grep -q 'check "chartplotter launcher utility command revalidation" grep -Fq '\''revalidate_trusted_utility_command'\''' scripts/verify_pi.sh
 grep -q 'chartplotter launcher process lookup revalidation' scripts/verify_pi.sh
 grep -q 'check "chartplotter launcher process lookup revalidation" grep -Fq '\''revalidate_process_lookup_command'\''' scripts/verify_pi.sh
+grep -q 'chartplotter launcher sleep command revalidation' scripts/verify_pi.sh
+grep -q 'check "chartplotter launcher sleep command revalidation" grep -Fq '\''revalidate_sleep_command'\''' scripts/verify_pi.sh
+grep -q 'chartplotter launcher trusted sleep wrapper' scripts/verify_pi.sh
+grep -q 'check "chartplotter launcher trusted sleep wrapper" grep -Fq '\''trusted_sleep'\''' scripts/verify_pi.sh
 grep -q 'chartplotter launcher display command revalidation' scripts/verify_pi.sh
 grep -q 'check "chartplotter launcher display command revalidation" grep -Fq '\''revalidate_display_power_command'\''' scripts/verify_pi.sh
-grep -q 'OpenCPN/pgrep/xset descriptor revalidation hooks' README.md
-grep -q 'OpenCPN/pgrep/xset descriptor revalidation hooks' docs/sailboat-pi.md
+grep -q 'OpenCPN/pgrep/sleep/xset descriptor revalidation hooks' README.md
+grep -q 'OpenCPN/pgrep/sleep/xset descriptor revalidation hooks' docs/sailboat-pi.md
 grep -q 'launcher-supervised or active-handoff `opencpn` process' README.md
 grep -q 'launcher-supervised or active-handoff `opencpn` process' docs/sailboat-pi.md
 grep -q 'trusted root-owned executable with `-parse_all_enc`' README.md

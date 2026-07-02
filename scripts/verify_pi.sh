@@ -5523,6 +5523,8 @@ if [[ -x "$launcher" ]]; then
   check "chartplotter launcher ENC parse" grep -Fq '"$opencpn_bin" -parse_all_enc' "$launcher"
   check "chartplotter launcher utility command revalidation" grep -Fq 'revalidate_trusted_utility_command' "$launcher"
   check "chartplotter launcher process lookup revalidation" grep -Fq 'revalidate_process_lookup_command' "$launcher"
+  check "chartplotter launcher sleep command revalidation" grep -Fq 'revalidate_sleep_command' "$launcher"
+  check "chartplotter launcher trusted sleep wrapper" grep -Fq 'trusted_sleep' "$launcher"
   check "chartplotter launcher display awake" grep -Fq 'keep_display_awake' "$launcher"
   check "chartplotter launcher display command revalidation" grep -Fq 'revalidate_display_power_command' "$launcher"
   check "chartplotter launcher display failure logging" grep -Fq 'xset command(s) failed' "$launcher"
