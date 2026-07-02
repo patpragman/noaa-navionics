@@ -453,8 +453,11 @@ grep -q 'Display power command is owned by uid .* expected root on Raspberry Pi'
 grep -q '"$xset_bin" s off' scripts/start_chartplotter.sh
 grep -q '"$xset_bin" s noblank' scripts/start_chartplotter.sh
 grep -q '"$xset_bin" -dpms' scripts/start_chartplotter.sh
+grep -q 'keep_display_awake || exit 1' scripts/start_chartplotter.sh
 grep -q 'resolves and revalidates `xset` through no-follow same-file descriptors before each display-power command' README.md
 grep -q 'resolves and revalidates `xset` through no-follow same-file descriptors before asking X11 desktop sessions' docs/sailboat-pi.md
+grep -q 'If `xset` is missing, untrusted, or any display-power command fails, the launcher stops before starting OpenCPN' README.md
+grep -q 'stops before OpenCPN if `xset` is missing, untrusted, or any display-power command fails' docs/sailboat-pi.md
 grep -q 'xset command(s) failed' scripts/start_chartplotter.sh
 grep -q 'xset is unavailable or not trusted' scripts/start_chartplotter.sh
 grep -q 'launcher.env' scripts/start_chartplotter.sh
@@ -16126,14 +16129,22 @@ chmod 0775 "$0"
 exit 0
 EOF
 chmod +x "$launcher_mutated_xset_home/.local/bin/noaa-navionics" "$launcher_mutated_xset_bin/pgrep" "$launcher_mutated_xset_bin/opencpn" "$launcher_mutated_xset_bin/xset"
+set +e
 HOME="$launcher_mutated_xset_home" DISPLAY=:99 PATH="$launcher_mutated_xset_bin:$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_mutated_xset_code=$?
+set -e
+if [[ "$launcher_mutated_xset_code" -eq 0 ]]; then
+  cat "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to fail closed when display power setup becomes unsafe" >&2
+  exit 1
+fi
 test "$(cat "$launcher_mutated_xset_home/.cache/noaa-navionics/xset-count")" -eq 1
 grep -q '^xset s off$' "$launcher_mutated_xset_home/.cache/noaa-navionics/xset.log"
 ! grep -q '^xset s noblank$' "$launcher_mutated_xset_home/.cache/noaa-navionics/xset.log"
 ! grep -q '^xset -dpms$' "$launcher_mutated_xset_home/.cache/noaa-navionics/xset.log"
 grep -q 'Display power command has permissions 0775, expected no group/other write bits before use' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'Display session found, but 2 xset command(s) failed' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
-grep -q 'Launching OpenCPN with ENC processing.' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_mutated_xset_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_missing_env_home="$tmpdir/launcher-missing-env-home"
 mkdir -p "$launcher_missing_env_home/.local/bin" "$launcher_missing_env_home/.cache/noaa-navionics" "$launcher_missing_env_home/.config/noaa-navionics"
@@ -16644,11 +16655,19 @@ write_test_launcher_env "$launcher_fail_home"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_fail_home/.local/bin/noaa-navionics"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/xset"
 chmod +x "$launcher_fail_home/.local/bin/noaa-navionics" "$tmpdir/xset"
+set +e
 HOME="$launcher_fail_home" DISPLAY=:99 PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
+launcher_fail_code=$?
+set -e
+if [[ "$launcher_fail_code" -eq 0 ]]; then
+  cat "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log" >&2
+  echo "expected chartplotter launcher to fail closed when display power commands fail" >&2
+  exit 1
+fi
 test ! -e "$launcher_fail_home/.cache/noaa-navionics/chartplotter.launch.lock"
 grep -q 'Display session found, but 3 xset command(s) failed' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
-grep -q 'Launching OpenCPN with ENC processing.' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
-grep -q 'OpenCPN exited with status 0' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'Launching OpenCPN with ENC processing.' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
+! grep -q 'OpenCPN exited with status 0' "$launcher_fail_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_symlink_lock_home="$tmpdir/launcher-symlink-lock-home"
 launcher_symlink_lock_target="$tmpdir/launcher-symlink-lock-real"

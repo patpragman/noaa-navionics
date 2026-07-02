@@ -1243,9 +1243,11 @@ keep_display_awake() {
       echo "Requested display sleep and blanking disabled."
     else
       echo "Display session found, but ${failures} xset command(s) failed; leaving some display power settings unchanged." >&2
+      return 1
     fi
   elif [[ -n "${DISPLAY:-}" ]]; then
     echo "Display session found, but xset is unavailable or not trusted; leaving display power settings unchanged." >&2
+    return 1
   fi
   return 0
 }
@@ -2289,7 +2291,7 @@ acquire_launcher_lock
 trap shutdown_launcher INT TERM
 validate_launcher_env_path
 load_launcher_settings
-keep_display_awake
+keep_display_awake || exit 1
 
 if ! run_readiness_report; then
   echo "NOAA Navionics readiness failed after ${readiness_attempts} attempt(s). Status report: $status_report" >&2
