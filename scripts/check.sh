@@ -5263,6 +5263,10 @@ grep -q 'ENC cell sample paths are not a text list' tests/test_downloader.py
 grep -q 'status report Charts found no extracted ENC cells' src/noaa_navionics/report.py
 grep -q 'status report Chart Update Debris found stale update debris' src/noaa_navionics/report.py
 grep -q 'status report Manifest check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _manifest_readiness_text' src/noaa_navionics/report.py
+grep -q 'Manifest configured path is not text' tests/test_downloader.py
+grep -q 'Manifest download path is not text' tests/test_downloader.py
+grep -q 'Manifest extract path is not text' tests/test_downloader.py
 grep -q 'status report Manifest path does not match manifest summary' src/noaa_navionics/report.py
 grep -q 'status report Manifest is {age_days:.1f} days old' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN Charts check has no structured data' src/noaa_navionics/report.py

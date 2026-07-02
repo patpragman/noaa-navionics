@@ -767,23 +767,20 @@ def _chart_readiness_validation_failures(
             failures.append(CheckResult("Manifest", False, "status report Manifest check has no top-level manifest summary"))
         else:
             expected_path = str(config.get("chart_output", "")).strip()
-            configured_path_text = str(data.get("configured_path", ""))
-            configured_path_failure = _status_control_character_failure(configured_path_text, "Manifest configured path")
-            if configured_path_failure:
-                failures.append(CheckResult("Manifest", False, configured_path_failure))
-            configured_path = configured_path_text.strip()
-            if not _status_absolute_path(configured_path):
+            configured_path = _manifest_readiness_text(
+                data,
+                "configured_path",
+                "Manifest configured path",
+                failures,
+            )
+            if configured_path is not None and not _status_absolute_path(configured_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest configured path is not absolute"))
-            if configured_path != expected_path:
+            if configured_path is not None and configured_path != expected_path:
                 failures.append(CheckResult("Manifest", False, "status report Manifest configured path does not match chart output"))
-            manifest_path_text = str(data.get("path", ""))
-            manifest_path_failure = _status_control_character_failure(manifest_path_text, "Manifest path")
-            if manifest_path_failure:
-                failures.append(CheckResult("Manifest", False, manifest_path_failure))
-            manifest_path = manifest_path_text.strip()
-            if not _status_absolute_path(manifest_path):
+            manifest_path = _manifest_readiness_text(data, "path", "Manifest path", failures)
+            if manifest_path is not None and not _status_absolute_path(manifest_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest path is not absolute"))
-            if manifest_path != str(manifest.get("path", "")).strip():
+            if manifest_path is not None and manifest_path != str(manifest.get("path", "")).strip():
                 failures.append(CheckResult("Manifest", False, "status report Manifest path does not match manifest summary"))
             for row_field, summary_field, detail in (
                 ("created_at", "created_at", "created_at does not match manifest summary"),
@@ -835,23 +832,15 @@ def _chart_readiness_validation_failures(
             reported_age_days = _finite_gps_fix_float(data.get("age_days"))
             if reported_age_days is None or reported_age_days < 0:
                 failures.append(CheckResult("Manifest", False, "status report Manifest age_days is invalid"))
-            download_path_text = str(data.get("download_path", ""))
-            extract_path_text = str(data.get("extract_path", ""))
-            download_path_failure = _status_control_character_failure(download_path_text, "Manifest download path")
-            if download_path_failure:
-                failures.append(CheckResult("Manifest", False, download_path_failure))
-            extract_path_failure = _status_control_character_failure(extract_path_text, "Manifest extract path")
-            if extract_path_failure:
-                failures.append(CheckResult("Manifest", False, extract_path_failure))
-            download_path = download_path_text.strip()
-            extract_path = extract_path_text.strip()
-            if not _status_absolute_path(download_path):
+            download_path = _manifest_readiness_text(data, "download_path", "Manifest download path", failures)
+            extract_path = _manifest_readiness_text(data, "extract_path", "Manifest extract path", failures)
+            if download_path is not None and not _status_absolute_path(download_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest download path is not absolute"))
-            elif not _status_path_under(download_path, expected_path):
+            elif download_path is not None and not _status_path_under(download_path, expected_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest download path is outside chart output"))
-            if not _status_absolute_path(extract_path):
+            if extract_path is not None and not _status_absolute_path(extract_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest extract path is not absolute"))
-            elif not _status_path_under(extract_path, expected_path):
+            elif extract_path is not None and not _status_path_under(extract_path, expected_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest extract path is outside chart output"))
             download_bytes = _positive_status_int(data.get("download_bytes"))
             summary_download_bytes = _positive_status_int(manifest.get("download_bytes"))
@@ -913,6 +902,24 @@ def _chart_readiness_text(
     control_failure = _status_control_character_failure(text, label)
     if control_failure:
         failures.append(CheckResult(check_name, False, control_failure))
+        return None
+    return text
+
+
+def _manifest_readiness_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult("Manifest", False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult("Manifest", False, control_failure))
         return None
     return text
 
