@@ -2444,6 +2444,10 @@ grep -q 'contains unsafe member name' scripts/post_trip_collect_pi.sh
 grep -q 'contains unsafe backslash member name' scripts/post_trip_collect_pi.sh
 grep -q 'contains duplicate normalized member name' scripts/post_trip_collect_pi.sh
 grep -q 'contains unsupported member type' scripts/post_trip_collect_pi.sh
+grep -q 'MAX_METADATA_MEMBER_BYTES = 1024 \* 1024' scripts/post_trip_collect_pi.sh
+grep -q 'MAX_TRACK_MEMBER_BYTES = 100 \* 1024 \* 1024' scripts/post_trip_collect_pi.sh
+grep -q 'MAX_SUPPORT_MEMBER_BYTES = 10 \* 1024 \* 1024' scripts/post_trip_collect_pi.sh
+grep -q 'member exceeds size limit' scripts/post_trip_collect_pi.sh
 grep -q 'is missing README.txt' scripts/post_trip_collect_pi.sh
 grep -q 'README.txt is not a regular file' scripts/post_trip_collect_pi.sh
 grep -q 'contains non-GPX track data member' scripts/post_trip_collect_pi.sh
@@ -2453,6 +2457,8 @@ grep -q 'manifest track_count does not match data file count' scripts/post_trip_
 grep -q 'contains no diagnostic files' scripts/post_trip_collect_pi.sh
 grep -q 'requires a regular archive `README.txt`' README.md
 grep -q 'requires a regular archive `README.txt`' docs/sailboat-pi.md
+grep -q 'enforces metadata, GPX track, and support diagnostic member size caps' README.md
+grep -q 'enforces metadata, GPX track, and support diagnostic member size caps' docs/sailboat-pi.md
 grep -q 'backslash member names' README.md
 grep -q 'backslash member names' docs/sailboat-pi.md
 grep -q 'name in {"", ".", ".."}' scripts/post_trip_collect_pi.sh
@@ -9850,6 +9856,19 @@ with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         info.mode = 0o600
         info.mtime = int(time.time())
         archive.addfile(info, io.BytesIO(manifest))
+    elif os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_OVERSIZED_TRACK_MANIFEST") == "1":
+        data = b"fake track export\n"
+        info = tarfile.TarInfo("README.txt")
+        info.size = len(data)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(data))
+        manifest = b"{" + (b'"padding":' + json.dumps("x" * (1024 * 1024)).encode("ascii")) + b"}\n"
+        info = tarfile.TarInfo("manifest.json")
+        info.size = len(manifest)
+        info.mode = 0o600
+        info.mtime = int(time.time())
+        archive.addfile(info, io.BytesIO(manifest))
     elif os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_NON_GPX_TRACK_DATA") == "1":
         data = b"fake track export\n"
         info = tarfile.TarInfo("README.txt")
@@ -9971,7 +9990,10 @@ NOAA_HOME_FILES = [
 path = sys.argv[1]
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT) as archive:
-    data = b"fake support bundle\n"
+    if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_OVERSIZED_SUPPORT_README") == "1":
+        data = b"x" * (1024 * 1024 + 1)
+    else:
+        data = b"fake support bundle\n"
     info = tarfile.TarInfo("README.txt")
     info.size = len(data)
     info.mode = 0o600
@@ -10340,6 +10362,26 @@ fi
 grep -q 'track export archive manifest track_count does not match data file count: 1 != 0' "$verify_output"
 grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_mismatched_track_log"
 
+post_trip_oversized_track_manifest_log="$tmpdir/post-trip-oversized-track-manifest-helper-calls"
+post_trip_oversized_track_manifest_output_dir="$tmpdir/post-trip-oversized-track-manifest-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_oversized_track_manifest_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_OVERSIZED_TRACK_MANIFEST=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_oversized_track_manifest_output_dir" \
+  --skip-status \
+  --skip-support >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject an oversized track archive metadata member with exit 2" >&2
+  exit 1
+fi
+grep -q 'track export archive member exceeds size limit' "$verify_output"
+grep -q 'manifest.json' "$verify_output"
+grep -Eq '^tracks\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z --days 30$' "$post_trip_oversized_track_manifest_log"
+
 post_trip_non_gpx_track_log="$tmpdir/post-trip-non-gpx-track-helper-calls"
 post_trip_non_gpx_track_output_dir="$tmpdir/post-trip-non-gpx-track-output"
 set +e
@@ -10396,6 +10438,26 @@ if [[ "$post_trip_code" -ne 2 ]]; then
 fi
 grep -q 'support bundle archive contains no diagnostic files' "$verify_output"
 grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_readme_only_support_log"
+
+post_trip_oversized_support_readme_log="$tmpdir/post-trip-oversized-support-readme-helper-calls"
+post_trip_oversized_support_readme_output_dir="$tmpdir/post-trip-oversized-support-readme-output"
+set +e
+NOAA_NAVIONICS_FAKE_POST_TRIP_LOG="$post_trip_oversized_support_readme_log" \
+  NOAA_NAVIONICS_FAKE_POST_TRIP_OVERSIZED_SUPPORT_README=1 \
+  "$post_trip_repo/scripts/post_trip_collect_pi.sh" \
+  pi@example.invalid "$post_trip_oversized_support_readme_output_dir" \
+  --skip-status \
+  --skip-tracks >"$verify_output" 2>&1
+post_trip_code=$?
+set -e
+if [[ "$post_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected post_trip_collect_pi.sh to reject an oversized support archive metadata member with exit 2" >&2
+  exit 1
+fi
+grep -q 'support bundle archive member exceeds size limit' "$verify_output"
+grep -q 'README.txt' "$verify_output"
+grep -Eq '^support\|pi@example.invalid .*/noaa-navionics-pi-post-trip-pi_example_invalid-[0-9]{8}T[0-9]{6}Z$' "$post_trip_oversized_support_readme_log"
 
 post_trip_thin_support_log="$tmpdir/post-trip-thin-support-helper-calls"
 post_trip_thin_support_output_dir="$tmpdir/post-trip-thin-support-output"

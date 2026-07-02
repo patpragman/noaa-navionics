@@ -1543,6 +1543,9 @@ if not path.is_absolute():
 if not parent.is_absolute():
     parent = Path.cwd() / parent
 nofollow = getattr(os, "O_NOFOLLOW", 0)
+MAX_METADATA_MEMBER_BYTES = 1024 * 1024
+MAX_TRACK_MEMBER_BYTES = 100 * 1024 * 1024
+MAX_SUPPORT_MEMBER_BYTES = 10 * 1024 * 1024
 
 try:
     parent_initial = parent.lstat()
@@ -1646,6 +1649,22 @@ for member in members:
     if not (member.isfile() or member.isdir()):
         print(f"{label} contains unsupported member type: {name}", file=sys.stderr)
         raise SystemExit(124)
+    if member.isfile():
+        if member.size < 0:
+            print(f"{label} member has invalid negative size: {name}", file=sys.stderr)
+            raise SystemExit(124)
+        if normalized_name in {"README.txt", "manifest.json"}:
+            max_member_size = MAX_METADATA_MEMBER_BYTES
+        elif label == "track export archive":
+            max_member_size = MAX_TRACK_MEMBER_BYTES
+        else:
+            max_member_size = MAX_SUPPORT_MEMBER_BYTES
+        if member.size > max_member_size:
+            print(
+                f"{label} member exceeds size limit ({member.size} > {max_member_size} bytes): {name}",
+                file=sys.stderr,
+            )
+            raise SystemExit(124)
     if member.isfile() and normalized_name not in {"README.txt", "manifest.json"}:
         if label == "track export archive" and not (
             normalized_name.startswith("tracks/")
