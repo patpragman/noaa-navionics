@@ -1099,14 +1099,16 @@ def require_status_unit(
             raise SystemExit(f"status report {unit} loaded properties unavailable: {error}")
     return state
 
+def status_uid_value(value, label):
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise SystemExit(f"status report {label} uid is invalid: {value!r}")
+    return value
+
 def verify_status_file_owner_and_mode(summary, path, stat_result, label, expected_uid):
     status_uid = summary.get("uid")
     if status_uid is None:
         raise SystemExit(f"status report {label} has no uid: {path}")
-    try:
-        parsed_uid = int(status_uid)
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(f"status report {label} uid is invalid: {status_uid!r}") from exc
+    parsed_uid = status_uid_value(status_uid, label)
     if parsed_uid != stat_result.st_uid:
         raise SystemExit(
             f"status report {label} uid {parsed_uid} does not match live owner "
@@ -1689,13 +1691,10 @@ if expected_config_path:
             f"{opencpn_dir_stat.st_uid}, expected {os.getuid()}"
         )
     opencpn_dir_mode = opencpn_dir_stat.st_mode & 0o777
-    status_opencpn_dir_uid = opencpn_config.get("directory_uid")
-    try:
-        parsed_opencpn_dir_uid = int(status_opencpn_dir_uid)
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(
-            f"status report OpenCPN config directory_uid is invalid: {status_opencpn_dir_uid!r}"
-        ) from exc
+    parsed_opencpn_dir_uid = status_uid_value(
+        opencpn_config.get("directory_uid"),
+        "OpenCPN config directory",
+    )
     if parsed_opencpn_dir_uid != opencpn_dir_stat.st_uid:
         raise SystemExit(
             f"status report OpenCPN config directory_uid {parsed_opencpn_dir_uid} "
@@ -2187,7 +2186,7 @@ if expected_config_path:
         os.getuid(),
     )
     manifest_dir_stat = manifest_file_path.parent.stat()
-    status_manifest_dir_uid = manifest.get("directory_uid")
+    status_manifest_dir_uid = status_uid_value(manifest.get("directory_uid"), "manifest directory")
     if status_manifest_dir_uid != manifest_dir_stat.st_uid:
         raise SystemExit(
             f"status report manifest directory_uid {status_manifest_dir_uid!r} "
@@ -2622,7 +2621,7 @@ for unit, expected_target in expected_unit_files.items():
         unit_dir_stat = expected_unit_path.parent.stat()
     except OSError as exc:
         raise SystemExit(f"could not inspect status report {unit} ownership: {exc}") from exc
-    status_uid = state.get("uid")
+    status_uid = status_uid_value(state.get("uid"), unit)
     if status_uid != unit_stat.st_uid:
         raise SystemExit(
             f"status report {unit} uid {status_uid!r} does not match file owner uid {unit_stat.st_uid}"
@@ -2643,7 +2642,7 @@ for unit, expected_target in expected_unit_files.items():
             f"status report {unit} file has permissions {unit_mode:04o}, "
             "expected no group/other write bits"
         )
-    status_dir_uid = state.get("directory_uid")
+    status_dir_uid = status_uid_value(state.get("directory_uid"), f"{unit} directory")
     if status_dir_uid != unit_dir_stat.st_uid:
         raise SystemExit(
             f"status report {unit} directory_uid {status_dir_uid!r} "

@@ -2977,6 +2977,13 @@ grep -q 'status_text(summary.get("detail", "systemctl not available"), f"{summar
 grep -q 'status_text(state.get("enabled", ""), f"{unit} enabled")' scripts/verify_pi.sh
 grep -q 'status_text(state.get("active", ""), f"{unit} active")' scripts/verify_pi.sh
 grep -q 'status_text(properties.get("error", ""), f"{unit} loaded properties error")' scripts/verify_pi.sh
+grep -q 'def status_uid_value' scripts/verify_pi.sh
+grep -q 'status_uid_value(status_uid, label)' scripts/verify_pi.sh
+grep -q 'parsed_opencpn_dir_uid = status_uid_value(' scripts/verify_pi.sh
+grep -q 'opencpn_config.get("directory_uid")' scripts/verify_pi.sh
+grep -q 'status_uid_value(manifest.get("directory_uid"), "manifest directory")' scripts/verify_pi.sh
+grep -q 'status_uid_value(state.get("uid"), unit)' scripts/verify_pi.sh
+grep -q 'status_uid_value(state.get("directory_uid"), f"{unit} directory")' scripts/verify_pi.sh
 grep -q 'status report has duplicate readiness check' scripts/verify_pi.sh
 grep -q 'status report has duplicate service check' scripts/verify_pi.sh
 grep -q 'status report Source Revision row does not match deployed source revision' scripts/verify_pi.sh
