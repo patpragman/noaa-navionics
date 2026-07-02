@@ -13607,6 +13607,26 @@ class StatusReportTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, source)
 
+    def test_verify_pi_validates_lightdm_x11_session_file_integrity(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_lightdm_autologin_session",
+        )
+
+        for expected in (
+            'session_file = Path("/usr/share/xsessions") / f"{session}.desktop"',
+            "LightDM X11 session directory is a symlink",
+            "LightDM X11 session directory {session_dir} is owned by uid",
+            "LightDM X11 session directory {session_dir} has permissions",
+            "LightDM autologin session file is a symlink",
+            'os.open(session_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))',
+            "LightDM autologin session file changed before it could be verified",
+            "LightDM autologin session file {session_file} is owned by uid",
+            "LightDM autologin session file {session_file} has permissions",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
     def test_status_snapshot_validators_require_usable_timezone_offsets(self):
         for script in (
             "scripts/pre_trip_prepare_pi.sh",

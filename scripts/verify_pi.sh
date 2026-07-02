@@ -2814,8 +2814,51 @@ if not session:
 if not re.fullmatch(r"[A-Za-z0-9._+-]+", session):
     raise SystemExit(f"LightDM autologin session name is unsafe: {session}")
 session_file = Path("/usr/share/xsessions") / f"{session}.desktop"
+session_dir = session_file.parent
+if session_dir.is_symlink():
+    raise SystemExit(f"LightDM X11 session directory is a symlink: {session_dir}")
+try:
+    session_dir_stat = session_dir.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect LightDM X11 session directory {session_dir}: {exc}") from exc
+if not stat.S_ISDIR(session_dir_stat.st_mode):
+    raise SystemExit(f"LightDM X11 session directory is not a directory: {session_dir}")
+if session_dir_stat.st_uid != 0:
+    raise SystemExit(f"LightDM X11 session directory {session_dir} is owned by uid {session_dir_stat.st_uid}, expected root")
+session_dir_mode = session_dir_stat.st_mode & 0o777
+if session_dir_mode & 0o022:
+    raise SystemExit(
+        f"LightDM X11 session directory {session_dir} has permissions {session_dir_mode:04o}, "
+        "expected no group/other write bits"
+    )
+if session_file.is_symlink():
+    raise SystemExit(f"LightDM autologin session file is a symlink: {session_file}")
 if not session_file.is_file():
     raise SystemExit(f"LightDM autologin session is not an installed X11 session: {session_file}")
+try:
+    before = session_file.stat()
+except OSError as exc:
+    raise SystemExit(f"could not inspect LightDM autologin session file {session_file}: {exc}") from exc
+try:
+    session_fd = os.open(session_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+except OSError as exc:
+    raise SystemExit(f"could not open LightDM autologin session file {session_file}: {exc}") from exc
+try:
+    opened = os.fstat(session_fd)
+finally:
+    os.close(session_fd)
+if not os.path.samestat(before, opened):
+    raise SystemExit(f"LightDM autologin session file changed before it could be verified: {session_file}")
+if not stat.S_ISREG(opened.st_mode):
+    raise SystemExit(f"LightDM autologin session file is not a regular file: {session_file}")
+if opened.st_uid != 0:
+    raise SystemExit(f"LightDM autologin session file {session_file} is owned by uid {opened.st_uid}, expected root")
+session_mode = opened.st_mode & 0o777
+if session_mode & 0o022:
+    raise SystemExit(
+        f"LightDM autologin session file {session_file} has permissions {session_mode:04o}, "
+        "expected no group/other write bits"
+    )
 PY
 }
 

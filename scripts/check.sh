@@ -3275,6 +3275,11 @@ grep -q 'LightDM autologin user' scripts/verify_pi.sh
 grep -q 'LightDM autologin X11 session' scripts/verify_pi.sh
 grep -q 'could not open LightDM autologin config' scripts/verify_pi.sh
 grep -q 'LightDM autologin config is not a regular file' scripts/verify_pi.sh
+grep -q 'LightDM X11 session directory is a symlink' scripts/verify_pi.sh
+grep -q 'LightDM autologin session file is a symlink' scripts/verify_pi.sh
+grep -q 'LightDM autologin session file changed before it could be verified' scripts/verify_pi.sh
+grep -q 'os.open(session_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/verify_pi.sh
+grep -q 'test_verify_pi_validates_lightdm_x11_session_file_integrity' tests/test_downloader.py
 grep -q '/usr/share/xsessions' scripts/verify_pi.sh
 grep -q 'chart service sync command' scripts/verify_pi.sh
 grep -q 'chart service network wait command' scripts/verify_pi.sh
@@ -5703,12 +5708,14 @@ grep -q 'requires explicit `NOAA_NAVIONICS_GPS_SECONDS`, `NOAA_NAVIONICS_WARNING
 grep -q 'requires explicit `NOAA_NAVIONICS_GPS_SECONDS`, `NOAA_NAVIONICS_WARNING_SECONDS`, `NOAA_NAVIONICS_READINESS_ATTEMPTS`, `NOAA_NAVIONICS_READINESS_RETRY_DELAY`, `NOAA_NAVIONICS_OPENCPN_RESTARTS`, `NOAA_NAVIONICS_OPENCPN_RESTART_DELAY`, and `NOAA_NAVIONICS_START_ON_FAILED_READINESS` values' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart, MOB desktop launcher, and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' README.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' README.md
+grep -q 'selected X11 session file to be root-owned, non-writable, regular, and opened through a no-follow descriptor' README.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' README.md
 grep -q 'rejects missing, invalid, or oversized launcher timing and fail-open values instead of falling back to defaults' docs/sailboat-pi.md
 grep -q 'GPS and warning waits are capped at 600 seconds, readiness attempts at 20, retry/restart delays at 3600 seconds, and OpenCPN restarts at 20' docs/sailboat-pi.md
 grep -q 'records launcher settings in status reports only after checking the launcher environment directory ownership and permissions' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse desktop autostart, MOB desktop launcher, and LightDM autologin files only after a no-follow descriptor read confirms the opened file is still the inspected file' docs/sailboat-pi.md
 grep -q 'Pi verification reads the live LightDM autologin session and chrony GPSD refclock config through no-follow descriptors' docs/sailboat-pi.md
+grep -q 'selected X11 session file to be root-owned, non-writable, regular, and opened through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification parse user systemd unit install targets only after a no-follow descriptor read confirms the opened unit file is still the inspected file' docs/sailboat-pi.md
 grep -q 'launcher environment path-component integrity' docs/sailboat-pi.md
 grep -q 'desktop autostart, MOB desktop launcher, and LightDM autologin path-component integrity' README.md
