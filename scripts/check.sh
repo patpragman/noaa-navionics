@@ -5044,6 +5044,9 @@ grep -q 'test_trip_snapshot_validators_reject_non_string_text' tests/test_downlo
 grep -q '"desktop autostart path_symlink_component"' tests/test_downloader.py
 grep -q '"MOB desktop launcher path_symlink_component"' tests/test_downloader.py
 grep -q '"status GUI desktop launcher path_symlink_component"' tests/test_downloader.py
+grep -q '"track_log track_storage_symlink_component"' tests/test_downloader.py
+grep -q '"GPSD Config directory_symlink_component"' tests/test_downloader.py
+grep -q '"Chrony Config refclock_line"' tests/test_downloader.py
 grep -q 'def snapshot_absolute_path' scripts/pre_trip_prepare_pi.sh
 grep -q 'def snapshot_absolute_path' scripts/verify_pi_recovery_exports.sh
 grep -q 'def snapshot_absolute_path' scripts/post_trip_collect_pi.sh
@@ -5054,8 +5057,8 @@ grep -q 'OpenCPN GPSD config path' scripts/verify_pi_recovery_exports.sh
 grep -q 'OpenCPN GPSD config path' scripts/post_trip_collect_pi.sh
 grep -q 'f"{row_name} configured path"' tests/test_downloader.py
 grep -q 'f"{row_name} checked path"' tests/test_downloader.py
-grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, manifest, and GPX track evidence' README.md
-grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, manifest, and GPX track evidence' docs/sailboat-pi.md
+grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence' README.md
+grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators reject non-string values and control characters in saved status artifacts before using path comparisons for chart, disk storage, desktop launcher, OpenCPN, GPS, GPSD/chrony time, manifest, and GPX track evidence' docs/sailboat-pi.md
 grep -q 'status report config gps_mode is invalid' src/noaa_navionics/report.py
 grep -q 'status report config gpsd_host is not local' src/noaa_navionics/report.py
 grep -q 'status report manifest path .* does not match configured' src/noaa_navionics/report.py

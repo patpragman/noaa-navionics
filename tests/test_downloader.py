@@ -14601,6 +14601,12 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('"MOB desktop launcher path_symlink_component"', source)
                 self.assertIn('"status GUI desktop launcher path"', source)
                 self.assertIn('"status GUI desktop launcher path_symlink_component"', source)
+                self.assertIn('"track_log track_storage_symlink_component"', source)
+                self.assertIn('"GPSD Config path"', source)
+                self.assertIn('"GPSD Config directory_symlink_component"', source)
+                self.assertIn('"Chrony Config path"', source)
+                self.assertIn('"Chrony Config directory_symlink_component"', source)
+                self.assertIn('"Chrony Config refclock_line"', source)
 
     def test_post_trip_checksum_helpers_use_descriptor_validated_directory(self):
         script = Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8")

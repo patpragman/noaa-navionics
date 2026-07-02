@@ -1013,7 +1013,7 @@ def validate_snapshot_track_log(track_log: dict[str, object], *, generated_at: d
         fail(f"status snapshot JSON track_log track_output is a symlink or missing symlink status: {path}")
     if "track_storage_symlink_component" not in track_log:
         fail(f"status snapshot JSON track_log missing track_storage_symlink_component: {path}")
-    if str(track_log.get("track_storage_symlink_component", "")).strip():
+    if snapshot_text(track_log.get("track_storage_symlink_component", ""), "track_log track_storage_symlink_component", path):
         fail(f"status snapshot JSON track_log storage path contains a symlink: {path}")
     validate_track_log_paths(track_log, path=path)
     latitude = finite_status_float(track_log.get("latest_latitude"))
@@ -1303,13 +1303,13 @@ def validate_snapshot_gpsd_rows(
     gpsd_config_data = gpsd_config_row.get("data")
     if not isinstance(gpsd_config_data, dict):
         fail(f"status snapshot JSON GPSD Config row has no structured data: {path}")
-    if str(gpsd_config_data.get("path", "")).strip() != "/etc/default/gpsd":
+    if snapshot_text(gpsd_config_data.get("path", ""), "GPSD Config path", path) != "/etc/default/gpsd":
         fail(f"status snapshot JSON GPSD Config path is not /etc/default/gpsd: {path}")
     if gpsd_config_data.get("exists") is not True:
         fail(f"status snapshot JSON GPSD Config path does not exist: {path}")
     if gpsd_config_data.get("is_symlink") is not False:
         fail(f"status snapshot JSON GPSD Config path is a symlink: {path}")
-    if str(gpsd_config_data.get("directory_symlink_component", "")).strip():
+    if snapshot_text(gpsd_config_data.get("directory_symlink_component", ""), "GPSD Config directory_symlink_component", path):
         fail(f"status snapshot JSON GPSD Config directory contains a symlink: {path}")
     if gpsd_config_data.get("is_regular") is not True:
         fail(f"status snapshot JSON GPSD Config path is not a regular file: {path}")
@@ -1333,19 +1333,19 @@ def validate_snapshot_gpsd_rows(
         fail(f"status snapshot JSON Chrony Config row has no structured data: {path}")
     if chrony_data.get("is_raspberry_pi") is False and chrony_data.get("skipped") is True:
         fail(f"status snapshot JSON Chrony Config records non-Pi diagnostic skip: {path}")
-    if str(chrony_data.get("path", "")).strip() != "/etc/chrony/chrony.conf":
+    if snapshot_text(chrony_data.get("path", ""), "Chrony Config path", path) != "/etc/chrony/chrony.conf":
         fail(f"status snapshot JSON Chrony Config path is not /etc/chrony/chrony.conf: {path}")
     if chrony_data.get("exists") is not True:
         fail(f"status snapshot JSON Chrony Config path does not exist: {path}")
     if chrony_data.get("is_symlink") is not False:
         fail(f"status snapshot JSON Chrony Config path is a symlink: {path}")
-    if str(chrony_data.get("directory_symlink_component", "")).strip():
+    if snapshot_text(chrony_data.get("directory_symlink_component", ""), "Chrony Config directory_symlink_component", path):
         fail(f"status snapshot JSON Chrony Config directory contains a symlink: {path}")
     if chrony_data.get("is_regular") is not True:
         fail(f"status snapshot JSON Chrony Config path is not a regular file: {path}")
     if chrony_data.get("managed_refclock_present") is not True:
         fail(f"status snapshot JSON Chrony Config is missing managed GPSD SHM refclock: {path}")
-    if str(chrony_data.get("refclock_line", "")).strip() != "refclock SHM 0 offset 0.5 delay 0.1 refid GPS":
+    if snapshot_text(chrony_data.get("refclock_line", ""), "Chrony Config refclock_line", path) != "refclock SHM 0 offset 0.5 delay 0.1 refid GPS":
         fail(f"status snapshot JSON Chrony Config refclock line is not the managed GPSD SHM source: {path}")
 
     time_row = check_rows.get("GPS Time Source")
