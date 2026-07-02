@@ -820,8 +820,8 @@ grep -q 'streams each diagnostic command capture through a 2 MiB per-command out
 grep -q 'streams each diagnostic command capture through a 2 MiB per-command output cap with a truncation marker and a 60-second per-command timeout marker' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" README.md
 grep -q "validates the Pi's trusted root-owned \`python3\` command path before running Pi-side cleanup, copy, metadata, and archive helper snippets" docs/sailboat-pi.md
-grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' README.md
-grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked or non-regular bundle entries and revalidating opened file descriptors' docs/sailboat-pi.md
+grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked, non-regular, or oversized bundle entries and revalidating opened file descriptors' README.md
+grep -q 'archives the Pi-side bundle through that validated Python helper after rejecting symlinked, non-regular, or oversized bundle entries and revalidating opened file descriptors' docs/sailboat-pi.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' README.md
 grep -q 'writes a local private `0600` `.tgz` containing Pi-side NOAA Navionics config' docs/sailboat-pi.md
 grep -q 'promotes the local bundle from a descriptor-validated private partial file without overwriting an existing final archive' README.md
@@ -1493,6 +1493,12 @@ grep -q 'os.link(partial.name, final.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd,
 grep -q 'finalize_private_archive "$bundle_path"' scripts/collect_pi_support_bundle.sh
 grep -q 'validate_private_support_bundle "$bundle_path"' scripts/collect_pi_support_bundle.sh
 grep -q 'Support bundle contains duplicate member' scripts/collect_pi_support_bundle.sh
+grep -Fq 'MAX_SUPPORT_FILE_BYTES = 10 * 1024 * 1024' scripts/collect_pi_support_bundle.sh
+grep -q 'refusing to copy oversized support file' scripts/collect_pi_support_bundle.sh
+grep -q 'opened support file is too large to copy safely' scripts/collect_pi_support_bundle.sh
+grep -q 'refusing to archive oversized support bundle entry' scripts/collect_pi_support_bundle.sh
+grep -q 'opened support bundle entry is too large to archive safely' scripts/collect_pi_support_bundle.sh
+grep -q 'Support bundle contains oversized member' scripts/collect_pi_support_bundle.sh
 grep -q 'parts = normalized.split("/") if normalized else \[\]' scripts/collect_pi_support_bundle.sh
 grep -q 'any(part in {"", ".", ".."} for part in parts)' scripts/collect_pi_support_bundle.sh
 grep -q 'Support bundle contains no diagnostic files' scripts/collect_pi_support_bundle.sh
@@ -1520,6 +1526,10 @@ grep -q 'cleanup_copy_temp(tmp_path)' scripts/collect_pi_support_bundle.sh
 ! grep -q 'tmp_path.unlink()' scripts/collect_pi_support_bundle.sh
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' README.md
 grep -q 'cleans temporary copy-error captures and Pi-side copy temp files through no-follow same-file validation' docs/sailboat-pi.md
+grep -q 'rejects copied support files larger than 10 MiB' README.md
+grep -q 'rejects copied support files larger than 10 MiB' docs/sailboat-pi.md
+grep -q 'rejecting symlinked, non-regular, or oversized bundle entries' README.md
+grep -q 'rejecting symlinked, non-regular, or oversized bundle entries' docs/sailboat-pi.md
 grep -q 'config_fd = os.open(config_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))' scripts/collect_pi_support_bundle.sh
 grep -q 'onboard config changed before storage metadata parse' scripts/collect_pi_support_bundle.sh
 grep -q 'parser.read_file(config_handle)' scripts/collect_pi_support_bundle.sh
@@ -10267,6 +10277,52 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FOR
 PY
   exit 0
 fi
+if [[ "${NOAA_NAVIONICS_FAKE_OVERSIZED_SUPPORT_BUNDLE:-0}" == "1" ]]; then
+  python3 - <<'PY'
+import io
+import sys
+import tarfile
+import time
+
+
+def add_bytes(archive, name, data):
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+CORE_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
+
+with tarfile.open(fileobj=sys.stdout.buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_bytes(archive, "README.txt", b"fake support bundle\n")
+    for name in CORE_COMMAND_FILES:
+        add_bytes(archive, name, f"{name}\n".encode("utf-8"))
+    add_bytes(archive, "files/home/pi/.cache/noaa-navionics/chartplotter.log", b"x" * (10 * 1024 * 1024 + 1))
+PY
+  exit 0
+fi
 python3 - <<'PY'
 import io
 import sys
@@ -10428,6 +10484,25 @@ grep -q 'noaa-navionics-manifest.json' "$support_fake_ssh_stdin"
 grep -q 'configured-chart-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'configured-track-storage-tree' "$support_fake_ssh_stdin"
 grep -q 'Support bundle README.txt must be a regular file' scripts/collect_pi_support_bundle.sh
+
+support_oversized_output_dir="$tmpdir/support-bundles-oversized"
+mkdir -p "$support_oversized_output_dir"
+set +e
+NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
+  NOAA_NAVIONICS_FAKE_OVERSIZED_SUPPORT_BUNDLE=1 \
+  NOAA_NAVIONICS_FAKE_SSH_ARGS="$support_fake_ssh_args" \
+  NOAA_NAVIONICS_FAKE_SSH_STDIN="$support_fake_ssh_stdin" \
+  PATH="$support_fake_ssh_bin:$PATH" \
+  scripts/collect_pi_support_bundle.sh pi@example.invalid "$support_oversized_output_dir" >"$verify_output" 2>&1
+support_bundle_code=$?
+set -e
+if [[ "$support_bundle_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected collect_pi_support_bundle.sh to reject an oversized support bundle member with exit 1" >&2
+  exit 1
+fi
+grep -q 'Support bundle contains oversized member' "$verify_output"
+! grep -q 'Collected Pi support bundle:' "$verify_output"
 
 support_bad_output_dir="$tmpdir/support-bundles-bad-archive"
 mkdir -p "$support_bad_output_dir"

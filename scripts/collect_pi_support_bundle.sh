@@ -574,6 +574,8 @@ import stat
 import sys
 import tarfile
 
+MAX_SUPPORT_FILE_BYTES = 10 * 1024 * 1024
+
 bundle_path = sys.argv[1]
 
 
@@ -627,6 +629,8 @@ try:
                     by_name[normalized] = member
                     if not (member.isreg() or member.isdir()):
                         fail(f"Support bundle contains unsupported member type: {member.name}")
+                    if member.isreg() and member.size > MAX_SUPPORT_FILE_BYTES:
+                        fail(f"Support bundle contains oversized member: {member.name} ({member.size} bytes > {MAX_SUPPORT_FILE_BYTES})")
         except (tarfile.TarError, OSError) as exc:
             fail(f"Support bundle is not a readable gzip tar: {bundle_path}: {exc}")
 finally:
@@ -874,6 +878,8 @@ import shutil
 import stat
 import sys
 
+MAX_SUPPORT_FILE_BYTES = 10 * 1024 * 1024
+
 source = Path(sys.argv[1])
 target = Path(sys.argv[2])
 nofollow = getattr(os, "O_NOFOLLOW", 0)
@@ -933,6 +939,11 @@ try:
         raise RuntimeError(f"refusing to copy symlink: {source}")
     if not stat.S_ISREG(expected.st_mode):
         raise RuntimeError(f"refusing to copy non-regular file: {source}")
+    if expected.st_size > MAX_SUPPORT_FILE_BYTES:
+        raise RuntimeError(
+            f"refusing to copy oversized support file: {source} "
+            f"({expected.st_size} bytes > {MAX_SUPPORT_FILE_BYTES})"
+        )
 
     src_fd = os.open(source, os.O_RDONLY | nofollow)
     opened = os.fstat(src_fd)
@@ -940,6 +951,11 @@ try:
         raise RuntimeError(f"file changed before copy: {source}")
     if not stat.S_ISREG(opened.st_mode):
         raise RuntimeError(f"opened source is not regular: {source}")
+    if opened.st_size > MAX_SUPPORT_FILE_BYTES:
+        raise RuntimeError(
+            f"opened support file is too large to copy safely: {source} "
+            f"({opened.st_size} bytes > {MAX_SUPPORT_FILE_BYTES})"
+        )
 
     target.parent.mkdir(parents=True, exist_ok=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow
@@ -1613,6 +1629,8 @@ import stat
 import sys
 import tarfile
 
+MAX_SUPPORT_FILE_BYTES = 10 * 1024 * 1024
+
 
 def fail(message: str) -> None:
     print(message, file=sys.stderr)
@@ -1664,6 +1682,8 @@ def iter_bundle_paths(root: Path):
                 stack.append(child)
             elif not stat.S_ISREG(child_stat.st_mode):
                 fail(f"refusing to archive non-regular support bundle entry: {child}")
+            elif child_stat.st_size > MAX_SUPPORT_FILE_BYTES:
+                fail(f"refusing to archive oversized support bundle entry: {child} ({child_stat.st_size} bytes > {MAX_SUPPORT_FILE_BYTES})")
             yield child, child_stat
 
 
@@ -1692,6 +1712,9 @@ def archive_file(archive: tarfile.TarFile, root: Path, path: Path, stat_result: 
     if current_stat.st_uid != os.getuid():
         os.close(fd)
         fail(f"opened support bundle entry is owned by uid {current_stat.st_uid}, expected {os.getuid()}: {path}")
+    if current_stat.st_size > MAX_SUPPORT_FILE_BYTES:
+        os.close(fd)
+        fail(f"opened support bundle entry is too large to archive safely: {path} ({current_stat.st_size} bytes > {MAX_SUPPORT_FILE_BYTES})")
     arcname = path.relative_to(root).as_posix()
     info = tarfile.TarInfo(arcname)
     info.size = current_stat.st_size
