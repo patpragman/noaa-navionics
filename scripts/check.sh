@@ -1772,6 +1772,7 @@ grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
 grep -q 'interval_seconds=args.interval_seconds' src/noaa_navionics/cli.py
 grep -q 'distance_meters' src/noaa_navionics/cli.py
 grep -q 'ANCHOR ALARM' src/noaa_navionics/cli.py
+grep -q 'ANCHOR WATCH GPS LOST' src/noaa_navionics/cli.py
 grep -q 'No usable GPS fix was available for anchor watch' src/noaa_navionics/cli.py
 grep -q 'app_config.anchor_radius_meters' src/noaa_navionics/cli.py
 grep -q 'gpx_position_mark_path' src/noaa_navionics/cli.py
@@ -4260,6 +4261,8 @@ grep -q 'gps_fix_has_quality_fields(fix)' src/noaa_navionics/gps.py
 grep -q '<sat>{fix.satellites}</sat>' src/noaa_navionics/gps.py
 grep -q '<hdop>{fix.hdop:g}</hdop>' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
+grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends after the anchor is established' README.md
+grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends after the anchor is established' docs/sailboat-pi.md
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py

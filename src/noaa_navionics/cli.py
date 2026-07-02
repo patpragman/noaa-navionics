@@ -1295,16 +1295,23 @@ def _run_anchor_watch(
             )
             return 1
         if live_stream:
-            print("Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.", file=sys.stderr)
+            _print_anchor_watch_gps_lost()
             return 1
         return 0
     if checked > 0:
         if live_stream:
-            print("Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.", file=sys.stderr)
+            _print_anchor_watch_gps_lost()
             return 1
         return 0
     print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
     return 1
+
+
+def _print_anchor_watch_gps_lost() -> None:
+    print(
+        "\aANCHOR WATCH GPS LOST: Live GPS stream ended unexpectedly; restart anchor watch to resume monitoring.",
+        file=sys.stderr,
+    )
 
 
 def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:

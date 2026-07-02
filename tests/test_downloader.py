@@ -2711,6 +2711,59 @@ class OpenCPNConfigTests(unittest.TestCase):
                 live_stream=False,
             )
 
+    def test_cli_anchor_watch_live_stream_loss_after_anchor_is_audible_alarm(self):
+        now = datetime.now(timezone.utc) - timedelta(seconds=3)
+        fixes = [
+            GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.9),
+            GPSFix(timestamp=now + timedelta(seconds=1), latitude=61.00001, longitude=-149.00001, satellites=9, hdop=0.9),
+        ]
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli_module._run_anchor_watch(
+                iter(fixes),
+                radius_meters=50.0,
+                anchor_latitude=None,
+                anchor_longitude=None,
+                anchor_samples=1,
+                interval_seconds=None,
+                live_stream=True,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Anchor set: 61.000000, -149.000000", stdout.getvalue())
+        self.assertIn("Anchor distance:", stdout.getvalue())
+        self.assertIn("\aANCHOR WATCH GPS LOST", stderr.getvalue())
+        self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+
+    def test_cli_anchor_watch_live_stream_loss_after_explicit_anchor_is_audible_alarm(self):
+        fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.00001,
+            longitude=-149.00001,
+            satellites=9,
+            hdop=0.9,
+        )
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli_module._run_anchor_watch(
+                iter([fix]),
+                radius_meters=50.0,
+                anchor_latitude=61.0,
+                anchor_longitude=-149.0,
+                anchor_samples=1,
+                interval_seconds=None,
+                live_stream=True,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Anchor distance:", stdout.getvalue())
+        self.assertIn("\aANCHOR WATCH GPS LOST", stderr.getvalue())
+        self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+
     def test_cli_anchor_watch_uses_configured_radius_by_default(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
