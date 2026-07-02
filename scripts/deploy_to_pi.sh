@@ -35,8 +35,10 @@ saw_provision_option=0
 allow_dirty=0
 device=""
 skip_gpsd=0
+skip_sync=0
 skip_services=0
 skip_autologin=0
+sync_retry_option_args=()
 max_gps_seconds=600
 max_sync_retries=20
 max_sync_retry_delay=3600
@@ -519,6 +521,7 @@ while [[ $# -gt 0 ]]; do
           ;;
         --sync-retries)
           require_integer_at_most "$1" "${2:-}" "$max_sync_retries"
+          sync_retry_option_args+=("$1")
           ;;
       esac
       provision_args+=("$1" "${2:-}")
@@ -534,6 +537,7 @@ while [[ $# -gt 0 ]]; do
       case "$1" in
         --sync-retry-delay)
           require_integer_at_most "$1" "${2:-}" "$max_sync_retry_delay"
+          sync_retry_option_args+=("$1")
           ;;
         --opencpn-restarts)
           require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
@@ -565,7 +569,13 @@ while [[ $# -gt 0 ]]; do
       provision_args+=("$1")
       shift
       ;;
-    --skip-sync|--skip-gps-time|--no-device-check)
+    --skip-sync)
+      saw_provision_option=1
+      skip_sync=1
+      provision_args+=("$1")
+      shift
+      ;;
+    --skip-gps-time|--no-device-check)
       saw_provision_option=1
       provision_args+=("$1")
       shift
@@ -597,6 +607,11 @@ if [[ "$skip_autologin" -eq 1 && "$skip_services" -eq 0 ]]; then
 --skip-autologin requires --skip-services.
 Readiness verifies desktop startup, so services and chartplotter autostart must be deployed together for unattended startup.
 EOF
+  exit 2
+fi
+
+if [[ "$skip_sync" -eq 1 && "${#sync_retry_option_args[@]}" -gt 0 ]]; then
+  echo "Chart sync retry options require chart sync; remove --skip-sync or omit: ${sync_retry_option_args[*]}" >&2
   exit 2
 fi
 

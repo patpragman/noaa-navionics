@@ -1056,6 +1056,8 @@ grep -q 'max_opencpn_restart_delay=3600' scripts/deploy_to_pi.sh
 grep -q 'max_sync_retries=20' scripts/deploy_to_pi.sh
 grep -q 'max_sync_retry_delay=3600' scripts/deploy_to_pi.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/deploy_to_pi.sh
+grep -q 'Chart sync retry options require chart sync' scripts/provision_sailboat_pi.sh
+grep -q 'Chart sync retry options require chart sync' scripts/deploy_to_pi.sh
 grep -q 'max_opencpn_restarts=20' scripts/dock_test_pi.sh
 grep -q 'max_opencpn_restart_delay=3600' scripts/dock_test_pi.sh
 grep -q 'max_sync_retries=20' scripts/dock_test_pi.sh
@@ -5689,8 +5691,10 @@ grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/pre_tr
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/pre_trip_prepare_pi.sh
 grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, refresh retry delays to 0-3600 seconds, track export lookback to 0-3650 days, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' README.md
 grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, refresh retry delays to 0-3600 seconds, track export lookback to 0-3650 days, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' docs/sailboat-pi.md
-grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' README.md
-grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' docs/sailboat-pi.md
+grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, reject chart sync retry controls with `--skip-sync`, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' README.md
+grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, reject chart sync retry controls with `--skip-sync`, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' docs/sailboat-pi.md
+grep -q 'Provisioning rejects `--sync-retries` and `--sync-retry-delay` with `--skip-sync`' README.md
+grep -q 'Provisioning rejects `--sync-retries` and `--sync-retry-delay` with `--skip-sync`' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -6686,6 +6690,28 @@ fi
 grep -q -- '--sync-retries must be at most 20' "$provision_output"
 
 set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --skip-sync --skip-services --skip-autologin --sync-retries 2 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --sync-retries with --skip-sync with exit 2" >&2
+  exit 1
+fi
+grep -q 'Chart sync retry options require chart sync' "$provision_output"
+
+set +e
+scripts/provision_sailboat_pi.sh --allow-non-pi --dry-run --skip-gpsd --skip-sync --skip-services --skip-autologin --sync-retry-delay 5 >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --sync-retry-delay with --skip-sync with exit 2" >&2
+  exit 1
+fi
+grep -q 'Chart sync retry options require chart sync' "$provision_output"
+
+set +e
 scripts/provision_sailboat_pi.sh \
   --allow-non-pi \
   --dry-run \
@@ -6853,6 +6879,30 @@ if [[ "$deploy_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--sync-retries must be at most 20' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --skip-gpsd --skip-sync --sync-retries 2 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject --sync-retries with --skip-sync with exit 2" >&2
+  exit 1
+fi
+grep -q 'Chart sync retry options require chart sync' "$deploy_output"
+grep -q -- '--sync-retries' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --skip-gpsd --skip-sync --sync-retry-delay 5 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject --sync-retry-delay with --skip-sync with exit 2" >&2
+  exit 1
+fi
+grep -q 'Chart sync retry options require chart sync' "$deploy_output"
+grep -q -- '--sync-retry-delay' "$deploy_output"
 
 set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --opencpn-restart-delay soon >"$deploy_output" 2>&1

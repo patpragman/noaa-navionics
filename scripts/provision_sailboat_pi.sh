@@ -50,8 +50,10 @@ max_opencpn_restarts=20
 opencpn_restart_delay=5
 max_opencpn_restart_delay=3600
 sync_retries=5
+sync_retries_set=0
 max_sync_retries=20
 sync_retry_delay=30
+sync_retry_delay_set=0
 max_sync_retry_delay=3600
 venv_dir="${HOME}/.local/share/noaa-navionics/venv"
 bin="${HOME}/.local/bin/noaa-navionics"
@@ -692,6 +694,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       sync_retries="${2:-}"
+      sync_retries_set=1
       shift 2
       ;;
     --opencpn-restarts)
@@ -716,6 +719,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       sync_retry_delay="${2:-}"
+      sync_retry_delay_set=1
       shift 2
       ;;
     --dry-run)
@@ -804,6 +808,11 @@ if [[ "$skip_autologin" -eq 1 && "$skip_services" -eq 0 ]]; then
 --skip-autologin requires --skip-services.
 Readiness now verifies desktop startup, so services and chartplotter autostart must be provisioned together for unattended startup.
 EOF
+  exit 2
+fi
+
+if [[ "$skip_sync" -eq 1 && ( "$sync_retries_set" -eq 1 || "$sync_retry_delay_set" -eq 1 ) ]]; then
+  echo "Chart sync retry options require chart sync; remove --skip-sync or omit --sync-retries and --sync-retry-delay" >&2
   exit 2
 fi
 
