@@ -586,6 +586,88 @@ CORE_SERVICE_CHECKS = {
     "User Linger",
 }
 GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
+COMMAND_READINESS_CHECKS = {
+    "OpenCPN": "opencpn",
+    "Display Power": "xset",
+    "Desktop Shell": "sh",
+    "Sleep": "sleep",
+}
+
+
+def status_octal_mode(value, label):
+    text = status_text(value, f"{label} mode")
+    if not text:
+        fail(f"{label} mode is missing")
+    try:
+        return int(text, 8)
+    except ValueError as exc:
+        fail(f"{label} mode is invalid: {exc}")
+
+
+def status_root_uid(value, label):
+    if isinstance(value, bool) or not isinstance(value, int):
+        fail(f"{label} owner is not an integer")
+    if value != 0:
+        fail(f"{label} owner is not root")
+
+
+def validate_command_readiness_rows(readiness_rows):
+    for name, expected_command in COMMAND_READINESS_CHECKS.items():
+        row = readiness_rows.get(name)
+        if not isinstance(row, dict):
+            fail(f"missing {name} readiness check")
+        data = row.get("data")
+        if not isinstance(data, dict):
+            fail(f"{name} readiness check has no structured command data")
+        command = status_text(data.get("command", ""), f"{name} command")
+        if command != expected_command:
+            command_label = command or "<missing>"
+            fail(f"{name} command {command_label} is not {expected_command}")
+        command_path = status_text(data.get("path", ""), f"{name} command path")
+        command_directory = status_text(data.get("directory", ""), f"{name} command directory")
+        if not posixpath.isabs(command_path) or data.get("is_absolute") is not True:
+            fail(f"{name} command path is not absolute")
+        if not posixpath.isabs(command_directory):
+            fail(f"{name} command directory is not absolute")
+        desktop_shell = name == "Desktop Shell"
+        if desktop_shell and command_path != "/bin/sh":
+            fail("Desktop Shell command path is not /bin/sh")
+        if data.get("is_symlink") is not False and not desktop_shell:
+            fail(f"{name} command is a symlink")
+        symlink_component = status_text(data.get("path_symlink_component", ""), f"{name} command path_symlink_component")
+        if symlink_component and not desktop_shell:
+            fail(f"{name} command path contains a symlink")
+        if data.get("trusted_system_directory") is not True:
+            fail(f"{name} command is not in a trusted system directory")
+        if data.get("is_regular") is not True:
+            fail(f"{name} command is not a regular file")
+        if data.get("executable") is not True:
+            fail(f"{name} command is not executable")
+        status_root_uid(data.get("uid"), f"{name} command")
+        status_root_uid(data.get("directory_uid"), f"{name} command directory")
+        command_mode = status_octal_mode(data.get("mode", ""), f"{name} command")
+        directory_mode = status_octal_mode(data.get("directory_mode", ""), f"{name} command directory")
+        if command_mode & 0o022:
+            fail(f"{name} command is group/world writable")
+        if directory_mode & 0o022:
+            fail(f"{name} command directory is group/world writable")
+        if not desktop_shell:
+            continue
+        resolved_path = status_text(data.get("resolved_path", ""), "Desktop Shell resolved command path")
+        resolved_directory = status_text(data.get("resolved_directory", ""), "Desktop Shell resolved command directory")
+        if not posixpath.isabs(resolved_path):
+            fail("Desktop Shell resolved command path is not absolute")
+        if not posixpath.isabs(resolved_directory):
+            fail("Desktop Shell resolved command directory is not absolute")
+        if data.get("resolved_trusted_system_directory") is not True:
+            fail("Desktop Shell resolved command is not in a trusted system directory")
+        status_root_uid(data.get("path_directory_uid"), "Desktop Shell literal command directory")
+        path_directory_mode = status_octal_mode(
+            data.get("path_directory_mode", ""),
+            "Desktop Shell literal command directory",
+        )
+        if path_directory_mode & 0o022:
+            fail("Desktop Shell literal command directory is group/world writable")
 
 
 def validate_required_rows(config, readiness_rows, service_rows):
@@ -729,6 +811,7 @@ validate_optional_text_fields(
 config = report.get("config")
 validate_config_summary(config)
 validate_required_rows(config, readiness_rows, service_rows)
+validate_command_readiness_rows(readiness_rows)
 
 for section_name in ("gps_fix", "track_log"):
     summary = report.get(section_name)

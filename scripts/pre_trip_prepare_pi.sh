@@ -1103,6 +1103,12 @@ SNAPSHOT_STATIC_DIAGNOSTICS = (
     "pre-departure status snapshot JSON OpenCPN Charts config path is not absolute",
     "pre-departure status snapshot JSON OpenCPN GPSD config path is not absolute",
 )
+COMMAND_READINESS_CHECKS = {
+    "OpenCPN": "opencpn",
+    "Display Power": "xset",
+    "Desktop Shell": "sh",
+    "Sleep": "sleep",
+}
 
 
 def stable_snapshot_gps_device_path(path: str) -> bool:
@@ -1114,6 +1120,83 @@ def stable_snapshot_gps_device_path(path: str) -> bool:
                 char in allowed for char in suffix
             )
     return path in {"/dev/serial0", "/dev/serial1", "/dev/gps"}
+
+
+def snapshot_root_uid(value: object, label: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        fail(f"pre-departure status snapshot JSON {label} owner is not an integer")
+    if value != 0:
+        fail(f"pre-departure status snapshot JSON {label} owner is not root")
+
+
+def validate_snapshot_command_rows(check_rows: dict[str, dict[str, object]]) -> None:
+    for row_name, expected_command in COMMAND_READINESS_CHECKS.items():
+        row = check_rows.get(row_name)
+        if not isinstance(row, dict):
+            fail(f"pre-departure status snapshot JSON missing {row_name} readiness row")
+        data = row.get("data")
+        if not isinstance(data, dict):
+            fail(f"pre-departure status snapshot JSON {row_name} row has no structured command data")
+        command = snapshot_text(data.get("command", ""), f"{row_name} command")
+        if command != expected_command:
+            fail(
+                f"pre-departure status snapshot JSON {row_name} command "
+                f"{command or '<missing>'} is not {expected_command}"
+            )
+        command_path = snapshot_text(data.get("path", ""), f"{row_name} command path")
+        command_directory = snapshot_text(data.get("directory", ""), f"{row_name} command directory")
+        if not Path(command_path).is_absolute() or data.get("is_absolute") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} command path is not absolute")
+        if not Path(command_directory).is_absolute():
+            fail(f"pre-departure status snapshot JSON {row_name} command directory is not absolute")
+        desktop_shell = row_name == "Desktop Shell"
+        if desktop_shell and command_path != "/bin/sh":
+            fail("pre-departure status snapshot JSON Desktop Shell command path is not /bin/sh")
+        if data.get("is_symlink") is not False and not desktop_shell:
+            fail(f"pre-departure status snapshot JSON {row_name} command is a symlink")
+        symlink_component = snapshot_text(
+            data.get("path_symlink_component", ""),
+            f"{row_name} command path_symlink_component",
+        )
+        if symlink_component and not desktop_shell:
+            fail(f"pre-departure status snapshot JSON {row_name} command path contains a symlink")
+        if data.get("trusted_system_directory") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} command is not in a trusted system directory")
+        if data.get("is_regular") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} command is not a regular file")
+        if data.get("executable") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} command is not executable")
+        snapshot_root_uid(data.get("uid"), f"{row_name} command")
+        snapshot_root_uid(data.get("directory_uid"), f"{row_name} command directory")
+        command_mode = snapshot_octal_mode(data.get("mode", ""), label=f"{row_name} command")
+        directory_mode = snapshot_octal_mode(data.get("directory_mode", ""), label=f"{row_name} command directory")
+        if command_mode & 0o022:
+            fail(f"pre-departure status snapshot JSON {row_name} command is group/world writable")
+        if directory_mode & 0o022:
+            fail(f"pre-departure status snapshot JSON {row_name} command directory is group/world writable")
+        if not desktop_shell:
+            continue
+        resolved_path = snapshot_text(data.get("resolved_path", ""), "Desktop Shell resolved command path")
+        resolved_directory = snapshot_text(
+            data.get("resolved_directory", ""),
+            "Desktop Shell resolved command directory",
+        )
+        if not Path(resolved_path).is_absolute():
+            fail("pre-departure status snapshot JSON Desktop Shell resolved command path is not absolute")
+        if not Path(resolved_directory).is_absolute():
+            fail("pre-departure status snapshot JSON Desktop Shell resolved command directory is not absolute")
+        if data.get("resolved_trusted_system_directory") is not True:
+            fail(
+                "pre-departure status snapshot JSON Desktop Shell resolved command "
+                "is not in a trusted system directory"
+            )
+        snapshot_root_uid(data.get("path_directory_uid"), "Desktop Shell literal command directory")
+        path_directory_mode = snapshot_octal_mode(
+            data.get("path_directory_mode", ""),
+            label="Desktop Shell literal command directory",
+        )
+        if path_directory_mode & 0o022:
+            fail("pre-departure status snapshot JSON Desktop Shell literal command directory is group/world writable")
 
 
 def validate_snapshot_gps_device_row(check_rows: dict[str, dict[str, object]], *, expected_device: str) -> None:
@@ -2019,6 +2102,7 @@ def validate_successful_status_snapshot(
             "pre-departure status snapshot JSON missing structured readiness data for: "
             + ", ".join(missing_structured_data)
         )
+    validate_snapshot_command_rows(check_rows)
     validate_snapshot_gps_device_row(check_rows, expected_device=gps_device)
     validate_snapshot_autostart(payload)
     validate_snapshot_status_launcher(payload)

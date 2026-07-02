@@ -5815,6 +5815,17 @@ grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS T
 grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN, Display Power, Desktop Shell, and Sleep command evidence' README.md
 grep -q 'READY reports also require structured OpenCPN, Display Power, Desktop Shell, and Sleep command evidence' docs/sailboat-pi.md
+grep -q 'def validate_command_readiness_rows' scripts/check_pi_status.sh
+grep -q 'Desktop Shell command path is not /bin/sh' scripts/check_pi_status.sh
+grep -q 'def validate_snapshot_command_rows' scripts/pre_trip_prepare_pi.sh
+grep -q 'def validate_snapshot_command_rows' scripts/post_trip_collect_pi.sh
+grep -q 'def validate_snapshot_command_rows' scripts/verify_pi_recovery_exports.sh
+grep -q 'resolved_trusted_system_directory' scripts/pre_trip_prepare_pi.sh
+grep -q 'resolved_trusted_system_directory' scripts/post_trip_collect_pi.sh
+grep -q 'resolved_trusted_system_directory' scripts/verify_pi_recovery_exports.sh
+grep -q 'path_directory_mode' scripts/pre_trip_prepare_pi.sh
+grep -q 'path_directory_mode' scripts/post_trip_collect_pi.sh
+grep -q 'path_directory_mode' scripts/verify_pi_recovery_exports.sh
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
@@ -9712,6 +9723,44 @@ checks = [
     {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
     for name in sorted(core_readiness_checks + gpsd_readiness_checks + ["GPS Device"])
 ]
+
+def command_row_data(command, path, directory="/usr/bin", **overrides):
+    data = {
+        "command": command,
+        "path": path,
+        "directory": directory,
+        "is_absolute": True,
+        "is_symlink": False,
+        "path_symlink_component": "",
+        "trusted_system_directory": True,
+        "is_regular": True,
+        "executable": True,
+        "uid": 0,
+        "directory_uid": 0,
+        "expected_uids": [0],
+        "mode": "0755",
+        "directory_mode": "0755",
+    }
+    data.update(overrides)
+    return data
+
+command_rows = {
+    "OpenCPN": command_row_data("opencpn", "/usr/bin/opencpn"),
+    "Display Power": command_row_data("xset", "/usr/bin/xset"),
+    "Desktop Shell": command_row_data(
+        "sh",
+        "/bin/sh",
+        directory="/bin",
+        is_symlink=True,
+        path_symlink_component="/bin",
+        resolved_path="/usr/bin/dash",
+        resolved_directory="/usr/bin",
+        resolved_trusted_system_directory=True,
+        path_directory_uid=0,
+        path_directory_mode="0755",
+    ),
+    "Sleep": command_row_data("sleep", "/usr/bin/sleep"),
+}
 source_revision = "fixture123"
 if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_DIRTY_REVISION") == "1":
     source_revision = "fixture123-dirty"
@@ -9726,6 +9775,8 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_NON_PI_SKIP") == "1":
         if row["name"] == "Time Sync":
             row["data"] = {"is_raspberry_pi": False, "skipped": True}
 for row in checks:
+    if row["name"] in command_rows:
+        row["data"] = dict(command_rows[row["name"]])
     if row["name"] == "Source Revision":
         row["data"] = {"revision": source_revision}
     if row["name"] == "GPS Device":
@@ -10813,6 +10864,44 @@ checks = [
     {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
     for name in sorted(core_readiness_checks + gpsd_readiness_checks + ["GPS Device"])
 ]
+
+def command_row_data(command, path, directory="/usr/bin", **overrides):
+    data = {
+        "command": command,
+        "path": path,
+        "directory": directory,
+        "is_absolute": True,
+        "is_symlink": False,
+        "path_symlink_component": "",
+        "trusted_system_directory": True,
+        "is_regular": True,
+        "executable": True,
+        "uid": 0,
+        "directory_uid": 0,
+        "expected_uids": [0],
+        "mode": "0755",
+        "directory_mode": "0755",
+    }
+    data.update(overrides)
+    return data
+
+command_rows = {
+    "OpenCPN": command_row_data("opencpn", "/usr/bin/opencpn"),
+    "Display Power": command_row_data("xset", "/usr/bin/xset"),
+    "Desktop Shell": command_row_data(
+        "sh",
+        "/bin/sh",
+        directory="/bin",
+        is_symlink=True,
+        path_symlink_component="/bin",
+        resolved_path="/usr/bin/dash",
+        resolved_directory="/usr/bin",
+        resolved_trusted_system_directory=True,
+        path_directory_uid=0,
+        path_directory_mode="0755",
+    ),
+    "Sleep": command_row_data("sleep", "/usr/bin/sleep"),
+}
 if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_MISSING_REQUIRED_STATUS") == "1":
     checks = [row for row in checks if row["name"] != "Manifest"]
 if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_UNSTRUCTURED_STATUS") == "1":
@@ -10824,6 +10913,8 @@ if os.environ.get("NOAA_NAVIONICS_FAKE_POST_TRIP_NON_PI_SKIP") == "1":
         if row["name"] == "Pi Power":
             row["data"] = {"is_raspberry_pi": False, "skipped": True}
 for row in checks:
+    if row["name"] in command_rows:
+        row["data"] = dict(command_rows[row["name"]])
     if row["name"] == "Source Revision":
         row["data"] = {"revision": source_revision}
     if row["name"] == "GPS Device":
@@ -12362,6 +12453,47 @@ service_checks = {
     "Chrony Service",
 }
 check_rows = [{"name": name, "ok": True} for name in sorted(checks)]
+
+def command_row_data(command, path, directory="/usr/bin", **overrides):
+    data = {
+        "command": command,
+        "path": path,
+        "directory": directory,
+        "is_absolute": True,
+        "is_symlink": False,
+        "path_symlink_component": "",
+        "trusted_system_directory": True,
+        "is_regular": True,
+        "executable": True,
+        "uid": 0,
+        "directory_uid": 0,
+        "expected_uids": [0],
+        "mode": "0755",
+        "directory_mode": "0755",
+    }
+    data.update(overrides)
+    return data
+
+command_rows = {
+    "OpenCPN": command_row_data("opencpn", "/usr/bin/opencpn"),
+    "Display Power": command_row_data("xset", "/usr/bin/xset"),
+    "Desktop Shell": command_row_data(
+        "sh",
+        "/bin/sh",
+        directory="/bin",
+        is_symlink=True,
+        path_symlink_component="/bin",
+        resolved_path="/usr/bin/dash",
+        resolved_directory="/usr/bin",
+        resolved_trusted_system_directory=True,
+        path_directory_uid=0,
+        path_directory_mode="0755",
+    ),
+    "Sleep": command_row_data("sleep", "/usr/bin/sleep"),
+}
+for row in check_rows:
+    if row["name"] in command_rows:
+        row["data"] = dict(command_rows[row["name"]])
 gpsd_row = next(row for row in check_rows if row["name"] == "GPSD")
 gpsd_row["data"] = {
     "timestamp": generated_at,
@@ -15135,7 +15267,47 @@ def write_pre_departure_status(directory):
         {"name": name, "ok": True, "detail": "ok", "data": {"fixture": True}}
         for name in sorted(CORE_READINESS_CHECKS + GPSD_READINESS_CHECKS + ["GPS Device"])
     ]
+
+    def command_row_data(command, path, directory="/usr/bin", **overrides):
+        data = {
+            "command": command,
+            "path": path,
+            "directory": directory,
+            "is_absolute": True,
+            "is_symlink": False,
+            "path_symlink_component": "",
+            "trusted_system_directory": True,
+            "is_regular": True,
+            "executable": True,
+            "uid": 0,
+            "directory_uid": 0,
+            "expected_uids": [0],
+            "mode": "0755",
+            "directory_mode": "0755",
+        }
+        data.update(overrides)
+        return data
+
+    command_rows = {
+        "OpenCPN": command_row_data("opencpn", "/usr/bin/opencpn"),
+        "Display Power": command_row_data("xset", "/usr/bin/xset"),
+        "Desktop Shell": command_row_data(
+            "sh",
+            "/bin/sh",
+            directory="/bin",
+            is_symlink=True,
+            path_symlink_component="/bin",
+            resolved_path="/usr/bin/dash",
+            resolved_directory="/usr/bin",
+            resolved_trusted_system_directory=True,
+            path_directory_uid=0,
+            path_directory_mode="0755",
+        ),
+        "Sleep": command_row_data("sleep", "/usr/bin/sleep"),
+    }
     for row in checks:
+        if row["name"] in command_rows:
+            row["data"] = dict(command_rows[row["name"]])
         if row["name"] == "Source Revision":
             row["data"] = {"revision": "fixture123"}
         if row["name"] == "GPS Device":
