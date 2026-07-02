@@ -2115,6 +2115,13 @@ def check_gpsd(
     missing_quality_detail = ""
     connection_detail = ""
     saw_fix = False
+
+    def record_invalid_fix(fix: GPSFix) -> None:
+        nonlocal quality_detail
+        detail = gps_fix_quality_failure(fix)
+        if detail:
+            quality_detail = detail
+
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -2122,7 +2129,19 @@ def check_gpsd(
         try:
             timeout = max(0.1, remaining)
             max_duration = max(0.001, remaining)
-            for fix in iter_gpsd_fixes(host=host, port=port, timeout=timeout, max_duration=max_duration):
+            try:
+                fixes = iter_gpsd_fixes(
+                    host=host,
+                    port=port,
+                    timeout=timeout,
+                    max_duration=max_duration,
+                    invalid_fix_callback=record_invalid_fix,
+                )
+            except TypeError as exc:
+                if "invalid_fix_callback" not in str(exc):
+                    raise
+                fixes = iter_gpsd_fixes(host=host, port=port, timeout=timeout, max_duration=max_duration)
+            for fix in fixes:
                 if time.monotonic() > deadline:
                     break
                 saw_fix = True

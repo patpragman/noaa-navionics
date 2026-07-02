@@ -275,6 +275,7 @@ def iter_gpsd_fixes(
     idle_timeout: Optional[float] = None,
     sky_max_age_seconds: float = 10.0,
     max_message_bytes: int = GPSD_MAX_MESSAGE_BYTES,
+    invalid_fix_callback: Optional[Callable[[GPSFix], None]] = None,
 ) -> Iterator[GPSFix]:
     latest_sky: Optional[GPSFix] = None
     latest_sky_monotonic: Optional[float] = None
@@ -312,6 +313,8 @@ def iter_gpsd_fixes(
                     fix = parse_gpsd_tpv(line)
                 except (json.JSONDecodeError, ValueError, TypeError):
                     continue
+                if fix and not fix.valid and invalid_fix_callback is not None:
+                    invalid_fix_callback(fix)
                 if fix and fix.valid:
                     if (
                         latest_sky is not None

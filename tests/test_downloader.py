@@ -19480,6 +19480,40 @@ class GpsTests(unittest.TestCase):
 
         self.assertEqual(fixes, [])
 
+    def test_iter_gpsd_fixes_reports_invalid_position_to_callback(self):
+        original = gps_module.socket.create_connection
+        invalid_fixes = []
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":0.0,"lon":0.0}\n'
+                )
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            fixes = list(iter_gpsd_fixes(timeout=1, invalid_fix_callback=invalid_fixes.append))
+        finally:
+            gps_module.socket.create_connection = original
+
+        self.assertEqual(fixes, [])
+        self.assertEqual(len(invalid_fixes), 1)
+        self.assertEqual(invalid_fixes[0].latitude, 0.0)
+        self.assertEqual(invalid_fixes[0].longitude, 0.0)
+
     def test_iter_gpsd_fixes_rejects_overlong_message(self):
         original = gps_module.socket.create_connection
 
@@ -20232,6 +20266,38 @@ class GpsTests(unittest.TestCase):
             result = check_gpsd(seconds=1, max_fix_age_seconds=300)
         finally:
             health_module.iter_gpsd_fixes = original
+
+        self.assertFalse(result.ok)
+        self.assertIn("0.000000, 0.000000", result.detail)
+
+    def test_check_gpsd_reports_streamed_null_island_fix(self):
+        original = gps_module.socket.create_connection
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"SKY","uSat":8,"hdop":0.9}\n'
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":0.0,"lon":0.0}\n'
+                )
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            result = check_gpsd(seconds=1, max_fix_age_seconds=300)
+        finally:
+            gps_module.socket.create_connection = original
 
         self.assertFalse(result.ok)
         self.assertIn("0.000000, 0.000000", result.detail)

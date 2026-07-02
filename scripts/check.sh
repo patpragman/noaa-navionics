@@ -4362,6 +4362,8 @@ grep -q 'test_parse_nmea_rejects_impossible_coordinate_values' tests/test_downlo
 grep -q 'test_iter_fixes_rejects_null_island_position' tests/test_downloader.py
 grep -q 'test_parse_gpsd_tpv_rejects_out_of_range_position' tests/test_downloader.py
 grep -q 'test_parse_gpsd_tpv_marks_null_island_position_invalid' tests/test_downloader.py
+grep -q 'test_iter_gpsd_fixes_reports_invalid_position_to_callback' tests/test_downloader.py
+grep -q 'test_check_gpsd_reports_streamed_null_island_fix' tests/test_downloader.py
 grep -q 'if gps_fix_quality_failure(fix):' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: missing coordinates' src/noaa_navionics/gps.py
 grep -q 'hemisphere not in ("N", "S")' src/noaa_navionics/gps.py
@@ -4628,6 +4630,8 @@ grep -q 'NMEA readers and GPSD streams reject overlong messages' README.md
 grep -q 'NMEA readers and GPSD streams reject overlong messages' docs/sailboat-pi.md
 grep -q 'low-level GPS iterators reject `0,0` null-island positions' README.md
 grep -q 'low-level GPS iterators reject `0,0` null-island positions' docs/sailboat-pi.md
+grep -q 'GPSD readiness preserves the specific invalid-coordinate diagnostic for streamed null-island fixes' README.md
+grep -q 'GPSD readiness preserves the specific invalid-coordinate diagnostic for streamed null-island fixes' docs/sailboat-pi.md
 grep -q 'sock.settimeout' src/noaa_navionics/gps.py
 grep -q 'sock.settimeout(idle_timeout)' src/noaa_navionics/gps.py
 grep -q 'no GPSD messages within' src/noaa_navionics/gps.py
