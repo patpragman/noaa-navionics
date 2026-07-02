@@ -12728,6 +12728,19 @@ class StatusReportTests(unittest.TestCase):
         generated_at = now.isoformat().replace("+00:00", "Z")
         cases = [
             ("Clock", None, "Clock check has no structured data", "Clock"),
+            ("Clock", {"timestamp": 123, "min_year": 2024}, "Clock timestamp is not text", "Clock"),
+            (
+                "Clock",
+                {"timestamp": "2026-07-01T12:00:00Z\x00", "min_year": 2024},
+                "Clock timestamp contains control characters",
+                "Clock",
+            ),
+            (
+                "Clock",
+                {"timestamp": generated_at, "min_year": "2024"},
+                "Clock min_year is not a positive integer",
+                "Clock",
+            ),
             (
                 "Clock",
                 {"timestamp": "1970-01-01T00:00:00Z", "min_year": 2024},
@@ -12749,6 +12762,46 @@ class StatusReportTests(unittest.TestCase):
                     "ntp_synchronized": "yes",
                 },
                 "SystemClockSynchronized=yes",
+                "Time Sync",
+            ),
+            (
+                "Time Sync",
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": True,
+                    "ntp_synchronized": "yes",
+                },
+                "system_clock_synchronized is not text",
+                "Time Sync",
+            ),
+            (
+                "Time Sync",
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "yes\x00",
+                    "ntp_synchronized": "yes",
+                },
+                "system_clock_synchronized contains control characters",
+                "Time Sync",
+            ),
+            (
+                "Time Sync",
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "yes",
+                    "ntp_synchronized": 1,
+                },
+                "ntp_synchronized is not text",
+                "Time Sync",
+            ),
+            (
+                "Time Sync",
+                {
+                    "is_raspberry_pi": True,
+                    "system_clock_synchronized": "yes",
+                    "ntp_synchronized": "yes\x00",
+                },
+                "ntp_synchronized contains control characters",
                 "Time Sync",
             ),
         ]

@@ -1759,6 +1759,25 @@ def _pi_health_validation_failures(report: dict[str, object]) -> list[CheckResul
     return failures
 
 
+def _clock_time_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    check_name: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult(check_name, False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult(check_name, False, control_failure))
+        return None
+    return text
+
+
 def _clock_time_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     checks = report.get("checks")
     if not isinstance(checks, list):
@@ -1771,19 +1790,23 @@ def _clock_time_validation_failures(report: dict[str, object]) -> list[CheckResu
         if not isinstance(data, dict):
             failures.append(CheckResult("Clock", False, "status report Clock check has no structured data"))
         else:
-            timestamp = data.get("timestamp")
-            try:
-                parsed_clock = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
-            except ValueError:
-                failures.append(CheckResult("Clock", False, f"status report Clock timestamp is invalid: {timestamp}"))
+            timestamp = _clock_time_text(data, "timestamp", "Clock timestamp", "Clock", failures)
+            if timestamp is not None:
+                try:
+                    parsed_clock = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                except ValueError:
+                    failures.append(CheckResult("Clock", False, f"status report Clock timestamp is invalid: {timestamp}"))
+                    parsed_clock = None
             else:
+                parsed_clock = None
+            if parsed_clock is not None:
                 if parsed_clock.tzinfo is None or parsed_clock.utcoffset() is None:
                     failures.append(CheckResult("Clock", False, "status report Clock timestamp must include a timezone"))
                 else:
-                    min_year = data.get("min_year", 2024)
-                    try:
-                        parsed_min_year = int(min_year)
-                    except (TypeError, ValueError):
+                    min_year = data.get("min_year")
+                    parsed_min_year = _positive_status_int(min_year)
+                    if parsed_min_year is None:
+                        failures.append(CheckResult("Clock", False, "status report Clock min_year is not a positive integer"))
                         parsed_min_year = 2024
                     parsed_clock_utc = parsed_clock.astimezone(timezone.utc)
                     if parsed_clock_utc.year < parsed_min_year:
@@ -1823,14 +1846,29 @@ def _clock_time_validation_failures(report: dict[str, object]) -> list[CheckResu
             pass
         elif data.get("is_raspberry_pi") is not True:
             failures.append(CheckResult("Time Sync", False, "status report Time Sync missing Raspberry Pi evidence"))
-        elif str(data.get("system_clock_synchronized", "")).strip().lower() != "yes":
-            failures.append(
-                CheckResult(
-                    "Time Sync",
-                    False,
-                    "status report Time Sync did not report SystemClockSynchronized=yes",
-                )
+        else:
+            system_clock_synchronized = _clock_time_text(
+                data,
+                "system_clock_synchronized",
+                "Time Sync system_clock_synchronized",
+                "Time Sync",
+                failures,
             )
+            _clock_time_text(
+                data,
+                "ntp_synchronized",
+                "Time Sync ntp_synchronized",
+                "Time Sync",
+                failures,
+            )
+            if system_clock_synchronized is not None and system_clock_synchronized.lower() != "yes":
+                failures.append(
+                    CheckResult(
+                        "Time Sync",
+                        False,
+                        "status report Time Sync did not report SystemClockSynchronized=yes",
+                    )
+                )
     return failures
 
 

@@ -5241,6 +5241,11 @@ grep -q 'Source Revision path contains control characters' tests/test_downloader
 grep -q 'Source Revision directory symlink component contains control characters' tests/test_downloader.py
 grep -q 'Source Revision mode contains control characters' tests/test_downloader.py
 grep -q 'status report Clock check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _clock_time_text' src/noaa_navionics/report.py
+grep -q 'status report Clock min_year is not a positive integer' src/noaa_navionics/report.py
+grep -q 'Clock timestamp is not text' tests/test_downloader.py
+grep -q 'system_clock_synchronized is not text' tests/test_downloader.py
+grep -q 'ntp_synchronized is not text' tests/test_downloader.py
 grep -q 'status report Time Sync did not report SystemClockSynchronized=yes' src/noaa_navionics/report.py
 grep -q 'status report Pi Power check has no structured data' src/noaa_navionics/report.py
 grep -q 'def _pi_health_text' src/noaa_navionics/report.py
