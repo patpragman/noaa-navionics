@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import BinaryIO, Iterable, Iterator, Optional, TextIO
+from typing import BinaryIO, Callable, Iterable, Iterator, Optional, TextIO
 import json
 import math
 import os
@@ -50,6 +50,7 @@ class GPSFix:
             and self.longitude is not None
             and _coordinate_in_range(self.latitude, latitude=True)
             and _coordinate_in_range(self.longitude, latitude=False)
+            and not (self.latitude == 0.0 and self.longitude == 0.0)
             and self.fix_quality is not None
             and self.fix_quality != 0
         )
@@ -92,7 +93,12 @@ def checksum_ok(sentence: str) -> bool:
     return f"{value:02X}" == supplied.upper()
 
 
-def iter_fixes(lines: Iterable[str], *, max_quality_merge_age_seconds: float = 5.0) -> Iterator[GPSFix]:
+def iter_fixes(
+    lines: Iterable[str],
+    *,
+    max_quality_merge_age_seconds: float = 5.0,
+    invalid_fix_callback: Optional[Callable[[GPSFix], None]] = None,
+) -> Iterator[GPSFix]:
     latest: Optional[GPSFix] = None
     latest_position_monotonic: Optional[float] = None
     latest_quality_monotonic: Optional[float] = None
@@ -109,6 +115,8 @@ def iter_fixes(lines: Iterable[str], *, max_quality_merge_age_seconds: float = 5
         if gps_fix_has_quality_fields(fix):
             latest_quality_monotonic = received_monotonic
         latest = merge_fixes(latest, fix)
+        if latest and not latest.valid and invalid_fix_callback is not None:
+            invalid_fix_callback(latest)
         if latest and latest.valid:
             if (
                 gps_fix_has_quality_fields(latest)

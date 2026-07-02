@@ -18117,6 +18117,15 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(parse_nmea_sentence(non_finite))
         self.assertEqual(list(iter_fixes([bad_latitude, bad_longitude, negative_degrees, non_finite])), [])
 
+    def test_iter_fixes_rejects_null_island_position(self):
+        sentence = "$GPGGA,123519,0000.000,N,00000.000,E,1,08,0.9,545.4,M,46.9,M,,"
+        fix = parse_nmea_sentence(sentence)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertFalse(fix.valid)
+        self.assertEqual(list(iter_fixes([sentence])), [])
+
     def test_iter_fixes_merges_gga_and_rmc(self):
         fixes = list(
             iter_fixes(
@@ -19234,6 +19243,14 @@ class GpsTests(unittest.TestCase):
         self.assertIsNone(parse_gpsd_tpv(bad_latitude))
         self.assertIsNone(parse_gpsd_tpv(bad_longitude))
 
+    def test_parse_gpsd_tpv_marks_null_island_position_invalid(self):
+        payload = '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z","lat":0.0,"lon":0.0}'
+        fix = parse_gpsd_tpv(payload)
+
+        self.assertIsNotNone(fix)
+        assert fix is not None
+        self.assertFalse(fix.valid)
+
     def test_parse_gpsd_tpv_rejects_malformed_fix_mode(self):
         base = '"class":"TPV","time":"2026-06-28T12:34:56.000Z","lat":61.2181,"lon":-149.9003'
 
@@ -19431,6 +19448,37 @@ class GpsTests(unittest.TestCase):
         self.assertEqual(fix.satellites, 5)
         self.assertEqual(fix.hdop, 1.8)
         self.assertAlmostEqual(fix.latitude, 61.2181)
+
+    def test_iter_gpsd_fixes_rejects_null_island_position(self):
+        original = gps_module.socket.create_connection
+
+        class FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def sendall(self, data):
+                self.request = data
+
+            def makefile(self, mode, encoding=None, errors=None):
+                return StringIO(
+                    '{"class":"SKY","uSat":8,"hdop":0.9}\n'
+                    '{"class":"TPV","mode":3,"time":"2026-06-28T12:34:56.000Z",'
+                    '"lat":0.0,"lon":0.0}\n'
+                )
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+        try:
+            gps_module.socket.create_connection = lambda address, timeout=10.0: FakeSocket()
+            fixes = list(iter_gpsd_fixes(timeout=1))
+        finally:
+            gps_module.socket.create_connection = original
+
+        self.assertEqual(fixes, [])
 
     def test_iter_gpsd_fixes_rejects_overlong_message(self):
         original = gps_module.socket.create_connection

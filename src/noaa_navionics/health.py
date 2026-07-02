@@ -1747,9 +1747,16 @@ def check_gps_sample(sample: Path) -> CheckResult:
         return CheckResult("GPS", False, f"sample file not found: {path}")
     quality_detail = ""
     missing_quality_detail = ""
+
+    def record_invalid_fix(fix: GPSFix) -> None:
+        nonlocal quality_detail
+        detail = gps_fix_quality_failure(fix)
+        if detail:
+            quality_detail = detail
+
     try:
         with open_trusted_gps_sample(path) as handle:
-            for fix in iter_fixes(handle):
+            for fix in iter_fixes(handle, invalid_fix_callback=record_invalid_fix):
                 quality_detail = gps_fix_quality_failure(fix)
                 if quality_detail:
                     continue
@@ -2060,9 +2067,16 @@ def check_gps_device(
     stale_detail = ""
     quality_detail = ""
     missing_quality_detail = ""
+
+    def record_invalid_fix(fix: GPSFix) -> None:
+        nonlocal quality_detail
+        detail = gps_fix_quality_failure(fix)
+        if detail:
+            quality_detail = detail
+
     try:
         with open_nmea_stream(device, baud=baud) as stream:
-            for fix in iter_fixes(_read_nmea_lines_until(stream, deadline)):
+            for fix in iter_fixes(_read_nmea_lines_until(stream, deadline), invalid_fix_callback=record_invalid_fix):
                 freshness_detail = _fix_freshness_failure(fix, max_fix_age_seconds=max_fix_age_seconds)
                 if freshness_detail:
                     stale_detail = f"; {freshness_detail}"

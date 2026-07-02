@@ -4353,10 +4353,15 @@ grep -q 'anchor-watch", "--radius-meters", "0"' tests/test_downloader.py
 grep -q 'def _coordinate_in_range' src/noaa_navionics/gps.py
 grep -q '_coordinate_in_range(self.latitude, latitude=True)' src/noaa_navionics/gps.py
 grep -q '_coordinate_in_range(self.longitude, latitude=False)' src/noaa_navionics/gps.py
+grep -q 'not (self.latitude == 0.0 and self.longitude == 0.0)' src/noaa_navionics/gps.py
+grep -q 'invalid_fix_callback' src/noaa_navionics/gps.py
+grep -q 'invalid_fix_callback=record_invalid_fix' src/noaa_navionics/health.py
 grep -q 'self.fix_quality is not None' src/noaa_navionics/gps.py
 grep -q 'self.fix_quality != 0' src/noaa_navionics/gps.py
 grep -q 'test_parse_nmea_rejects_impossible_coordinate_values' tests/test_downloader.py
+grep -q 'test_iter_fixes_rejects_null_island_position' tests/test_downloader.py
 grep -q 'test_parse_gpsd_tpv_rejects_out_of_range_position' tests/test_downloader.py
+grep -q 'test_parse_gpsd_tpv_marks_null_island_position_invalid' tests/test_downloader.py
 grep -q 'if gps_fix_quality_failure(fix):' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: missing coordinates' src/noaa_navionics/gps.py
 grep -q 'hemisphere not in ("N", "S")' src/noaa_navionics/gps.py
@@ -4437,8 +4442,8 @@ grep -q 'parse_timezone_aware_timestamp(generated_at, "status report generated_a
 grep -q 'parse_timezone_aware_timestamp(gps_timestamp, "status report gps_fix")' scripts/verify_pi.sh
 grep -q 'parse_timezone_aware_timestamp(timestamp_text, "launcher startup")' scripts/verify_pi.sh
 grep -q 'has a timezone-less GPX trackpoint timestamp' scripts/verify_pi.sh
-grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, timezone-less timestamps, stale or future-dated timestamps, and weak satellite/HDOP fixes' README.md
-grep -q 'skips invalid coordinates, missing satellite/HDOP quality fields, untimestamped fixes, timezone-less timestamps, stale or future-dated timestamps, and weak satellite/HDOP fixes' docs/sailboat-pi.md
+grep -q 'skips invalid coordinates, including `0,0` null-island fixes, missing satellite/HDOP quality fields' README.md
+grep -q 'skips invalid coordinates, including `0,0` null-island fixes, missing satellite/HDOP quality fields' docs/sailboat-pi.md
 ! grep -q 'pending_without_quality' src/noaa_navionics/cli.py
 grep -q 'gps_fix_quality_failure' src/noaa_navionics/cli.py
 grep -q 'gps_fix_has_quality_fields' src/noaa_navionics/cli.py
@@ -4618,8 +4623,11 @@ grep -q 'idle_timeout' src/noaa_navionics/gps.py
 grep -q 'GPSD_MAX_MESSAGE_BYTES' src/noaa_navionics/gps.py
 grep -q 'GPSD message exceeded' src/noaa_navionics/gps.py
 grep -q 'test_iter_gpsd_fixes_rejects_overlong_message' tests/test_downloader.py
+grep -q 'test_iter_gpsd_fixes_rejects_null_island_position' tests/test_downloader.py
 grep -q 'NMEA readers and GPSD streams reject overlong messages' README.md
 grep -q 'NMEA readers and GPSD streams reject overlong messages' docs/sailboat-pi.md
+grep -q 'low-level GPS iterators reject `0,0` null-island positions' README.md
+grep -q 'low-level GPS iterators reject `0,0` null-island positions' docs/sailboat-pi.md
 grep -q 'sock.settimeout' src/noaa_navionics/gps.py
 grep -q 'sock.settimeout(idle_timeout)' src/noaa_navionics/gps.py
 grep -q 'no GPSD messages within' src/noaa_navionics/gps.py
@@ -5122,8 +5130,8 @@ grep -q 'READY reports also require structured Chart Package, Charts, Chart Upda
 grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' README.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range coordinates matching the top-level `gps_fix`' README.md
-grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range coordinates matching the top-level `gps_fix`' docs/sailboat-pi.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range non-0,0 coordinates matching the top-level `gps_fix`' README.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range non-0,0 coordinates matching the top-level `gps_fix`' docs/sailboat-pi.md
 grep -q 'status report {expected_name} fix latitude is outside -90..90' src/noaa_navionics/report.py
 grep -q 'status report {expected_name} fix longitude is outside -180..180' src/noaa_navionics/report.py
 grep -q 'fix latitude is outside -90..90' tests/test_downloader.py
