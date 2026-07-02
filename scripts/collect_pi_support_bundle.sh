@@ -727,6 +727,7 @@ fi
 bundle_root="$(mktemp -d "${cache_dir}/support-bundle.XXXXXX")"
 files_dir="${bundle_root}/files"
 commands_dir="${bundle_root}/commands"
+max_command_output_bytes=$((2 * 1024 * 1024))
 mkdir "$files_dir" "$commands_dir"
 cleanup_remote_bundle() {
   case "$bundle_root" in
@@ -987,15 +988,48 @@ run_command() {
   local name="$1"
   shift
   local output="${commands_dir}/${name}.txt"
-  {
-    printf '$'
-    printf ' %q' "$@"
-    printf '\n\n'
-    "$@"
-  } >"$output" 2>&1 || {
-    local status=$?
-    printf '\n(command exited %s)\n' "$status" >>"$output"
-  }
+  "$python3_cmd" - "$output" "$max_command_output_bytes" "$@" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import shlex
+import subprocess
+import sys
+
+output = Path(sys.argv[1])
+limit = int(sys.argv[2])
+command = sys.argv[3:]
+
+if not command:
+    print("support bundle command is missing", file=sys.stderr)
+    raise SystemExit(1)
+
+written = 0
+truncated = False
+
+with output.open("wb") as handle:
+    header = "$ " + " ".join(shlex.quote(part) for part in command) + "\n\n"
+    handle.write(header.encode("utf-8", "replace"))
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    assert process.stdout is not None
+    while True:
+        chunk = process.stdout.read(65536)
+        if not chunk:
+            break
+        remaining = limit - written
+        if remaining > 0:
+            accepted = chunk[:remaining]
+            handle.write(accepted)
+            written += len(accepted)
+            if len(chunk) <= remaining:
+                continue
+        if not truncated:
+            handle.write(f"\n(output truncated after {limit} bytes)\n".encode("utf-8"))
+            truncated = True
+    status = process.wait()
+    if status:
+        handle.write(f"\n(command exited {status})\n".encode("utf-8"))
+PY
 }
 
 skip_command() {
