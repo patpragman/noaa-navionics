@@ -3326,8 +3326,10 @@ grep -q 'Existing chart config is required when --skip-sync is used with unatten
 grep -q 'Existing chart config is invalid when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts could not be validated when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'existing complete charts are required when --skip-sync is used with unattended startup' scripts/provision_sailboat_pi.sh
-grep -q 'malformed or unsafe chart config plus missing, incomplete, symlinked chart-directory ancestors' README.md
-grep -q 'malformed or unsafe chart config plus missing, incomplete, symlinked chart-directory ancestors' docs/sailboat-pi.md
+grep -q 'the configured GPX track output is trusted writable storage too' README.md
+grep -q 'the configured GPX track output is trusted writable storage too' docs/sailboat-pi.md
+grep -q 'applies the same disk check to separate track storage' README.md
+grep -q 'applies the same disk check to separate track storage' docs/sailboat-pi.md
 grep -q 'check_chart_manifest' scripts/provision_sailboat_pi.sh
 grep -q 'check_disk_space(app_config.chart_output' scripts/provision_sailboat_pi.sh
 grep -q 'check_disk_space(app_config.track_output, name="Track Disk"' scripts/provision_sailboat_pi.sh
