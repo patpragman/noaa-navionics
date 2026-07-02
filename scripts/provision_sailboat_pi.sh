@@ -362,6 +362,9 @@ import os
 import stat as stat_module
 import sys
 
+GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
+GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
 config_path = Path(sys.argv[1]).expanduser()
 check_device = sys.argv[2] == "1"
 expected_device = sys.argv[3].strip()
@@ -423,6 +426,18 @@ def read_existing_gps_config(path):
         if fd >= 0:
             os.close(fd)
 
+def parse_existing_config_int(parser, section, key, fallback, *, label, minimum=None, maximum=None):
+    raw_value = parser.get(section, key, fallback=fallback).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise SystemExit(f"{label} must be an integer when --skip-gpsd is used: {raw_value!r}") from exc
+    if minimum is not None and value < minimum:
+        raise SystemExit(f"{label} must be at least {minimum} when --skip-gpsd is used")
+    if maximum is not None and value > maximum:
+        raise SystemExit(f"{label} must be at most {maximum} when --skip-gpsd is used")
+    return value
+
 parser = ConfigParser()
 try:
     parser.read_string(read_existing_gps_config(config_path), source=str(config_path))
@@ -432,8 +447,16 @@ mode = parser.get("gps", "mode", fallback="").strip().lower()
 if mode != "gpsd":
     raise SystemExit(f"gps.mode must be gpsd when --skip-gpsd is used with unattended startup, not {mode or '<empty>'}")
 host = parser.get("gps", "gpsd_host", fallback="").strip().lower()
-if host not in {"127.0.0.1", "localhost", "::1"}:
+if not host or any(separator in host for separator in (";", "|")) or any(char.isspace() for char in host):
+    raise SystemExit(
+        "gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes when --skip-gpsd is used"
+    )
+if host not in GPSD_LOCAL_HOSTS:
     raise SystemExit("gps.gpsd_host must be local when --skip-gpsd is used with unattended startup")
+baud = parse_existing_config_int(parser, "gps", "baud", "4800", label="gps.baud")
+if baud not in GPS_BAUD_RATES:
+    raise SystemExit("gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200 when --skip-gpsd is used")
+parse_existing_config_int(parser, "gps", "gpsd_port", "2947", label="gps.gpsd_port", minimum=1, maximum=65535)
 device = parser.get("gps", "device", fallback="").strip()
 if not device or device == "/dev/serial/by-id/YOUR_GPS_DEVICE":
     raise SystemExit("gps.device must name the already configured GPS receiver when --skip-gpsd is used")

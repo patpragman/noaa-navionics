@@ -3261,7 +3261,11 @@ grep -q 'Existing GPS config .* is owned by uid' scripts/provision_sailboat_pi.s
 grep -q 'Existing GPS config .* has permissions' scripts/provision_sailboat_pi.sh
 grep -q 'gps.device must name the already configured GPS receiver when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'does not match requested --device' scripts/provision_sailboat_pi.sh
+grep -q 'gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'gps.gpsd_host must be local when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200 when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
+grep -q 'parse_existing_config_int(parser, "gps", "gpsd_port", "2947", label="gps.gpsd_port", minimum=1, maximum=65535)' scripts/provision_sailboat_pi.sh
+grep -q 'f"{label} must be at most {maximum} when --skip-gpsd is used"' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service gpsd.socket "GPSD socket" --skip-gpsd' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service gpsd.service GPSD --skip-gpsd' scripts/provision_sailboat_pi.sh
 grep -Fq 'suffix not in {".", ".."}' scripts/provision_sailboat_pi.sh
@@ -15061,6 +15065,110 @@ if [[ "$provision_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' "$provision_output"
+
+write_skip_gpsd_existing_config() {
+  local target="$1"
+  local device_value="$2"
+  local baud_value="$3"
+  local host_value="$4"
+  local port_value="$5"
+  mkdir -p "$(dirname "$target")"
+  cat >"$target" <<EOF
+[charts]
+package = state
+value = AK
+output = ~/charts/noaa-enc
+extract = yes
+keep_zip = yes
+force = yes
+max_age_days = 30
+min_free_gb = 2.0
+
+[gps]
+mode = gpsd
+device = ${device_value}
+baud = ${baud_value}
+gpsd_host = ${host_value}
+gpsd_port = ${port_value}
+
+[tracking]
+output = ~/charts/noaa-enc
+retention_days = 90
+EOF
+  chmod 0600 "$target"
+}
+
+skip_gpsd_bad_baud_home="$tmpdir/skip-gpsd-bad-baud-home"
+write_skip_gpsd_existing_config \
+  "$skip_gpsd_bad_baud_home/.config/noaa-navionics/config.ini" \
+  /dev/serial/by-id/mock-gps \
+  12345 \
+  127.0.0.1 \
+  2947
+set +e
+HOME="$skip_gpsd_bad_baud_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-gpsd with unsupported gps.baud" >&2
+  exit 1
+fi
+grep -q 'gps.baud must be one of: 4800, 9600, 19200, 38400, 57600, 115200 when --skip-gpsd is used' "$provision_output"
+! grep -q 'Traceback' "$provision_output"
+
+skip_gpsd_bad_host_home="$tmpdir/skip-gpsd-bad-host-home"
+write_skip_gpsd_existing_config \
+  "$skip_gpsd_bad_host_home/.config/noaa-navionics/config.ini" \
+  /dev/serial/by-id/mock-gps \
+  4800 \
+  '127.0.0.1;bad' \
+  2947
+set +e
+HOME="$skip_gpsd_bad_host_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-gpsd with malformed gps.gpsd_host" >&2
+  exit 1
+fi
+grep -q 'gps.gpsd_host must be a hostname or IP address without spaces, semicolons, or pipes when --skip-gpsd is used' "$provision_output"
+! grep -q 'Traceback' "$provision_output"
+
+skip_gpsd_bad_port_home="$tmpdir/skip-gpsd-bad-port-home"
+write_skip_gpsd_existing_config \
+  "$skip_gpsd_bad_port_home/.config/noaa-navionics/config.ini" \
+  /dev/serial/by-id/mock-gps \
+  4800 \
+  127.0.0.1 \
+  70000
+set +e
+HOME="$skip_gpsd_bad_port_home" scripts/provision_sailboat_pi.sh \
+  --allow-non-pi \
+  --dry-run \
+  --skip-gpsd \
+  --skip-sync \
+  --device /dev/serial/by-id/mock-gps >"$provision_output" 2>&1
+provision_code=$?
+set -e
+if [[ "$provision_code" -ne 2 ]]; then
+  cat "$provision_output" >&2
+  echo "expected provision_sailboat_pi.sh to reject --skip-gpsd with invalid gps.gpsd_port" >&2
+  exit 1
+fi
+grep -q 'gps.gpsd_port must be at most 65535 when --skip-gpsd is used' "$provision_output"
+! grep -q 'Traceback' "$provision_output"
 
 skip_gpsd_mismatch_home="$tmpdir/skip-gpsd-mismatch-home"
 mkdir -p "$skip_gpsd_mismatch_home/.config/noaa-navionics"
