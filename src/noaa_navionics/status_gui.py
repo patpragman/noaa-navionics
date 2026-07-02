@@ -379,6 +379,7 @@ class StatusApp(tk.Tk):
         self.anchor_samples = tk.StringVar(value=str(anchor_samples))
         self.queue: Queue = Queue()
         self.worker: Optional[Thread] = None
+        self.pending_mob_mark = False
         self.after_id: Optional[str] = None
         self.poll_after_id: Optional[str] = None
         self._closed = False
@@ -464,9 +465,21 @@ class StatusApp(tk.Tk):
         if getattr(self, "_closed", False):
             return
         if self.worker is not None:
+            if mob:
+                self.pending_mob_mark = True
+                message = "MOB mark queued; it will be recorded after the current action finishes."
+                self.summary.set(message)
+                self.last_report.set(message)
+                bell = getattr(self, "bell", None)
+                if callable(bell):
+                    bell()
+                self._set_busy(True)
             return
+        self._start_mark_worker(mob=mob)
+
+    def _start_mark_worker(self, *, mob: bool) -> None:
         self._set_busy(True)
-        self.summary.set("Recording current GPS position...")
+        self.summary.set("Recording MOB position..." if mob else "Recording current GPS position...")
         self.worker = Thread(target=self._mark_worker, kwargs={"mob": mob}, daemon=True)
         self.worker.start()
 
@@ -640,6 +653,9 @@ class StatusApp(tk.Tk):
                     pass
         except Empty:
             pass
+        if not getattr(self, "_closed", False) and self.worker is None and getattr(self, "pending_mob_mark", False):
+            self.pending_mob_mark = False
+            self._start_mark_worker(mob=True)
         if not getattr(self, "_closed", False):
             self.poll_after_id = self.after(150, self._poll_queue)
 
@@ -856,7 +872,7 @@ class StatusApp(tk.Tk):
         state = tk.DISABLED if busy else tk.NORMAL
         self.refresh_button.configure(state=state)
         self.mark_button.configure(state=state)
-        self.mob_button.configure(state=state)
+        self.mob_button.configure(state=tk.DISABLED if getattr(self, "pending_mob_mark", False) else tk.NORMAL)
         self.anchor_button.configure(state=state)
         self.anchor_watch_button.configure(
             state=tk.DISABLED if busy or self.anchor_watch_fix is not None else tk.NORMAL

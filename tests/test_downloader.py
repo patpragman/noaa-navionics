@@ -4038,6 +4038,64 @@ class GuiTests(unittest.TestCase):
 
             self.assertEqual(calls, [{"gps_seconds": 4.0}])
 
+    def test_status_gui_queues_mob_mark_while_worker_is_busy(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeButton:
+            def __init__(self):
+                self.state = None
+
+            def configure(self, *, state):
+                self.state = state
+
+        class BusyWorker:
+            pass
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.worker = BusyWorker()
+                self.pending_mob_mark = False
+                self.summary = FakeVar()
+                self.last_report = FakeVar()
+                self.refresh_button = FakeButton()
+                self.mark_button = FakeButton()
+                self.mob_button = FakeButton()
+                self.anchor_button = FakeButton()
+                self.anchor_watch_button = FakeButton()
+                self.stop_anchor_watch_button = FakeButton()
+                self.anchor_radius_entry = FakeButton()
+                self.anchor_samples_entry = FakeButton()
+                self.anchor_watch_fix = None
+                self.bells = 0
+
+            def bell(self):
+                self.bells += 1
+
+            def _set_busy(self, busy):
+                status_gui_module.StatusApp._set_busy(self, busy)
+
+        app = FakeApp()
+        worker = app.worker
+
+        status_gui_module.StatusApp.mark_position(app, mob=True)
+
+        self.assertIs(app.worker, worker)
+        self.assertTrue(app.pending_mob_mark)
+        self.assertEqual(app.bells, 1)
+        self.assertEqual(
+            app.summary.value,
+            "MOB mark queued; it will be recorded after the current action finishes.",
+        )
+        self.assertEqual(app.last_report.value, app.summary.value)
+        self.assertEqual(app.mark_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.mob_button.state, status_gui_module.tk.DISABLED)
+
     def test_status_gui_position_mark_rejects_stale_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -5592,7 +5650,7 @@ class GuiTests(unittest.TestCase):
 
         self.assertEqual(app.refresh_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.mark_button.state, status_gui_module.tk.DISABLED)
-        self.assertEqual(app.mob_button.state, status_gui_module.tk.DISABLED)
+        self.assertEqual(app.mob_button.state, status_gui_module.tk.NORMAL)
         self.assertEqual(app.anchor_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.anchor_watch_button.state, status_gui_module.tk.DISABLED)
         self.assertEqual(app.stop_anchor_watch_button.state, status_gui_module.tk.NORMAL)
@@ -5877,6 +5935,95 @@ class GuiTests(unittest.TestCase):
 
         self.assertIsNone(app.worker)
         self.assertEqual(app.report_errors, [("status-report failed", None)])
+        self.assertEqual(app.poll_after_id, "next-poll-after")
+        self.assertEqual(app.after_calls, [(150, "_poll_queue")])
+
+    def test_status_gui_poll_queue_starts_queued_mob_after_worker_finishes(self):
+        class FakeVar:
+            def __init__(self):
+                self.value = None
+
+            def set(self, value):
+                self.value = value
+
+        class FakeButton:
+            def __init__(self):
+                self.state = None
+
+            def configure(self, *, state):
+                self.state = state
+
+        class FinishedWorker:
+            def is_alive(self):
+                return False
+
+        class FakeThread:
+            def __init__(self, *, target, kwargs, daemon):
+                self.target = target
+                self.kwargs = kwargs
+                self.daemon = daemon
+                self.started = False
+
+            def start(self):
+                self.started = True
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.poll_after_id = "poll-after"
+                self.queue = status_gui_module.Queue()
+                self.queue.put(("worker_done", None))
+                self.worker = FinishedWorker()
+                self.pending_mob_mark = True
+                self.summary = FakeVar()
+                self.refresh_button = FakeButton()
+                self.mark_button = FakeButton()
+                self.mob_button = FakeButton()
+                self.anchor_button = FakeButton()
+                self.anchor_watch_button = FakeButton()
+                self.stop_anchor_watch_button = FakeButton()
+                self.anchor_radius_entry = FakeButton()
+                self.anchor_samples_entry = FakeButton()
+                self.anchor_watch_fix = None
+                self.after_calls = []
+
+            def _mark_worker(self, *, mob):
+                raise AssertionError("fake thread should not run synchronously")
+
+            def after(self, delay_ms, callback):
+                self.after_calls.append((delay_ms, callback.__name__))
+                return "next-poll-after"
+
+            def _set_busy(self, busy):
+                status_gui_module.StatusApp._set_busy(self, busy)
+
+            def _start_mark_worker(self, *, mob):
+                status_gui_module.StatusApp._start_mark_worker(self, mob=mob)
+
+            def _poll_queue(self):
+                return status_gui_module.StatusApp._poll_queue(self)
+
+        app = FakeApp()
+        started_threads = []
+        original_thread = status_gui_module.Thread
+
+        def fake_thread(*, target, kwargs, daemon):
+            thread = FakeThread(target=target, kwargs=kwargs, daemon=daemon)
+            started_threads.append(thread)
+            return thread
+
+        try:
+            status_gui_module.Thread = fake_thread
+            status_gui_module.StatusApp._poll_queue(app)
+        finally:
+            status_gui_module.Thread = original_thread
+
+        self.assertFalse(app.pending_mob_mark)
+        self.assertIs(app.worker, started_threads[0])
+        self.assertEqual(started_threads[0].kwargs, {"mob": True})
+        self.assertTrue(started_threads[0].started)
+        self.assertEqual(app.summary.value, "Recording MOB position...")
+        self.assertEqual(app.mob_button.state, status_gui_module.tk.NORMAL)
         self.assertEqual(app.poll_after_id, "next-poll-after")
         self.assertEqual(app.after_calls, [(150, "_poll_queue")])
 

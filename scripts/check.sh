@@ -5020,6 +5020,7 @@ grep -q 'write_available_gpx_position_mark(path, fix, name=name, description=des
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_current_position_mark(self.config_path, gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py
+grep -q 'pending_mob_mark' src/noaa_navionics/status_gui.py
 grep -q 'capture_anchor_watch_fix(' src/noaa_navionics/status_gui.py
 grep -q 'check_anchor_watch_drift(' src/noaa_navionics/status_gui.py
 grep -q 'gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py
@@ -5043,6 +5044,8 @@ grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change 
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
+grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' README.md
+grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' docs/sailboat-pi.md
 grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' README.md
 grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' docs/sailboat-pi.md
 grep -q -- '--action-gps-seconds N` bounds those button-triggered GPS waits separately from automatic refreshes' README.md
@@ -5055,22 +5058,24 @@ grep -q 'ignores stale anchor-watch results and errors after the watch is stoppe
 grep -q 'ignores stale anchor-watch results and errors after the watch is stopped or reset' docs/sailboat-pi.md
 grep -q 'Mark, MOB, and Anchor Check reject timezone-less, stale, or future-dated GPS fixes and broken, fake, or non-device stable serial paths' README.md
 grep -q 'Mark, MOB, and Anchor Check reject timezone-less, stale, or future-dated GPS fixes and broken, fake, or non-device stable serial paths' docs/sailboat-pi.md
-grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' README.md
-grep -q 'use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' docs/sailboat-pi.md
+grep -q 'Use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' README.md
+grep -q 'Use Anchor Check for a bounded fresh-fix drift check with an optional date-line-safe averaged anchor sample count' docs/sailboat-pi.md
 grep -q 'mean_longitude_degrees(longitudes)' src/noaa_navionics/status_gui.py
 grep -q 'test_status_gui_anchor_watch_averages_longitude_across_date_line' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_longitude_across_date_line' tests/test_downloader.py
+grep -q 'test_status_gui_queues_mob_mark_while_worker_is_busy' tests/test_downloader.py
 grep -q 'test_status_gui_stop_watch_stays_available_while_anchor_watch_check_is_busy' tests/test_downloader.py
 grep -q 'test_status_gui_close_cancels_scheduled_callbacks' tests/test_downloader.py
 grep -q 'test_status_gui_does_not_schedule_callbacks_after_close' tests/test_downloader.py
 grep -q 'test_status_gui_refresh_cancels_pending_refresh_callback_before_starting_worker' tests/test_downloader.py
 grep -q 'test_status_gui_refresh_waits_for_unprocessed_worker_result' tests/test_downloader.py
 grep -q 'test_status_gui_poll_queue_clears_worker_before_dispatching_result' tests/test_downloader.py
+grep -q 'test_status_gui_poll_queue_starts_queued_mob_after_worker_finishes' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_worker_queues_completion_when_watch_stopped_before_read' tests/test_downloader.py
 grep -q 'test_status_gui_poll_queue_clears_worker_for_noop_completion' tests/test_downloader.py
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' README.md
-grep -q 'Stop Watch stays available during long GPS/readiness actions so a watch can still be cancelled while a check is running' README.md
-grep -q 'Stop Watch stays available during long GPS/readiness actions so a watch can still be cancelled while a check is running' docs/sailboat-pi.md
+grep -q 'Stop Watch and MOB stay available during long GPS/readiness actions so a watch can still be cancelled and a MOB mark can still be queued while a check is running' README.md
+grep -q 'Stop Watch and MOB stay available during long GPS/readiness actions so a watch can still be cancelled and a MOB mark can still be queued while a check is running' docs/sailboat-pi.md
 grep -q 'cancels scheduled refresh, queue-poll, stop-confirmation, and anchor-watch callbacks when the window is closed' README.md
 grep -q 'cancels scheduled refresh, queue-poll, stop-confirmation, and anchor-watch callbacks when the window is closed' docs/sailboat-pi.md
 grep -q 'serial-mode button actions reject broken, fake, or non-device stable GPS paths before opening the GPS receiver' docs/sailboat-pi.md
