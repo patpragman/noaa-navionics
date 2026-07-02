@@ -4391,6 +4391,17 @@ class GuiTests(unittest.TestCase):
                     status_gui_module.build_parser().parse_args(args)
                 self.assertIn(f"must be at most {status_gui_module.MAX_GPS_WAIT_SECONDS:g}", stderr.getvalue())
 
+    def test_status_gui_parser_rejects_zero_gps_waits(self):
+        for args in (
+            ["--gps-seconds", "0"],
+            ["--action-gps-seconds", "0"],
+        ):
+            with self.subTest(args=args):
+                stderr = StringIO()
+                with redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    status_gui_module.build_parser().parse_args(args)
+                self.assertIn("must be greater than 0", stderr.getvalue())
+
     def test_status_gui_binds_underway_keyboard_shortcuts(self):
         class FakeApp:
             def __init__(self):
@@ -8154,11 +8165,15 @@ class CLIValidationTests(unittest.TestCase):
             self.assertEqual(calls[0]["chart_dir"], Path("~/charts/noaa-enc").expanduser())
             self.assertNotEqual(calls[0]["chart_dir"], configured_charts)
 
-    def test_gps_waits_reject_negative_seconds(self):
+    def test_gps_waits_reject_non_positive_seconds(self):
         self.assert_parse_error(["preflight", "--gps-seconds", "-1"])
+        self.assert_parse_error(["preflight", "--gps-seconds", "0"])
         self.assert_parse_error(["status-report", "--gps-seconds", "-1"])
+        self.assert_parse_error(["status-report", "--gps-seconds", "0"])
         self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
         self.assert_parse_error(["status-gui", "--action-gps-seconds", "-1"])
+        self.assert_parse_error(["status-gui", "--gps-seconds", "0"])
+        self.assert_parse_error(["status-gui", "--action-gps-seconds", "0"])
         self.assert_parse_error(["status-gui", "--refresh-seconds", "0"])
         self.assert_parse_error(["status-gui", "--refresh-seconds", "0.5"])
         self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "-1"])

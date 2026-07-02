@@ -157,7 +157,7 @@ def _non_negative_float(value: str) -> float:
 
 
 def _gps_wait_seconds(value: str) -> float:
-    parsed = _non_negative_float(value)
+    parsed = _positive_float(value)
     if parsed > MAX_GPS_WAIT_SECONDS:
         raise argparse.ArgumentTypeError(f"must be at most {MAX_GPS_WAIT_SECONDS:g}")
     return parsed

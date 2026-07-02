@@ -4910,6 +4910,7 @@ grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/status_gui.py
 grep -q 'MAX_GPS_WAIT_SECONDS = 600.0' src/noaa_navionics/status_gui.py
 grep -q 'MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0' src/noaa_navionics/status_gui.py
 grep -q 'def _gps_wait_seconds(value: str) -> float' src/noaa_navionics/status_gui.py
+grep -q 'parsed = _positive_float(value)' src/noaa_navionics/status_gui.py
 grep -q 'def _status_gui_interval_seconds(value: str) -> float' src/noaa_navionics/status_gui.py
 grep -q 'def _timer_delay_ms(seconds: float) -> int' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
@@ -5327,7 +5328,9 @@ grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/status_gui.py
 grep -q 'anchor_samples=args.anchor_samples' src/noaa_navionics/cli.py
 grep -q 'MAX_GPS_WAIT_SECONDS = 600.0' src/noaa_navionics/cli.py
 grep -q 'def _gps_wait_seconds(value: str) -> float' src/noaa_navionics/cli.py
+grep -q 'parsed = _positive_float(value)' src/noaa_navionics/cli.py
 grep -q 'if parsed > MAX_GPS_WAIT_SECONDS' src/noaa_navionics/cli.py
+grep -q 'test_gps_waits_reject_non_positive_seconds' tests/test_downloader.py
 grep -q 'test_direct_readiness_gps_waits_reject_oversized_seconds' tests/test_downloader.py
 grep -q 'anchor-watch-seconds' src/noaa_navionics/cli.py
 grep -q 'action-gps-seconds' src/noaa_navionics/cli.py
@@ -5485,6 +5488,7 @@ grep -q 'test_status_gui_parser_rejects_subsecond_anchor_watch_seconds' tests/te
 grep -q 'test_status_gui_refresh_interval_has_minimum_timer_delay' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_interval_has_minimum_timer_delay' tests/test_downloader.py
 grep -q 'test_status_gui_parser_rejects_oversized_gps_waits' tests/test_downloader.py
+grep -q 'test_status_gui_parser_rejects_zero_gps_waits' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_rejects_short_fix_list_before_using_current_fix' tests/test_downloader.py
