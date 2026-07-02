@@ -4357,6 +4357,12 @@ grep -q 'chart extraction destination is a symlink before promotion' src/noaa_na
 grep -q 'test_write_manifest_revalidates_manifest_target_before_promotion' tests/test_downloader.py
 grep -q 'Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement' README.md
 grep -q 'Chart archive, extraction, and manifest promotion revalidate output paths immediately before replacement' docs/sailboat-pi.md
+grep -q 'promoted chart archives are reopened through no-follow descriptors and checked for private `0600` mode plus expected byte count and SHA-256 before extraction or manifest use' README.md
+grep -q 'promoted chart archives are reopened through no-follow descriptors and checked for private `0600` mode plus expected byte count and SHA-256 before extraction or manifest use' docs/sailboat-pi.md
+grep -q 'def _validate_promoted_download' src/noaa_navionics/downloader.py
+grep -q 'promoted chart archive byte count changed before manifest' src/noaa_navionics/downloader.py
+grep -q 'promoted chart archive SHA-256 changed before manifest' src/noaa_navionics/downloader.py
+grep -q 'test_download_revalidates_promoted_archive_before_manifest' tests/test_downloader.py
 grep -q 'extracted ENC directories/files are tightened to private `0700`/`0600` before promotion' README.md
 grep -q 'extracted ENC directories/files are tightened to private `0700`/`0600` before promotion' docs/sailboat-pi.md
 grep -q 'chart download path is not a regular file' src/noaa_navionics/downloader.py
@@ -4364,7 +4370,7 @@ grep -q 'chart download path .* is owned by uid' src/noaa_navionics/downloader.p
 grep -q 'chart download path .* has permissions' src/noaa_navionics/downloader.py
 grep -q 'def _hash_existing_download_path' src/noaa_navionics/downloader.py
 grep -q 'chart download path contains a symlink' src/noaa_navionics/downloader.py
-grep -q 'destination_stat, digest = _hash_existing_download_path(destination)' src/noaa_navionics/downloader.py
+grep -q 'destination_stat = _validate_promoted_download' src/noaa_navionics/downloader.py
 grep -q 'os.fdopen(fd, "rb")' src/noaa_navionics/downloader.py
 ! grep -q 'digest = sha256_file(destination)' src/noaa_navionics/downloader.py
 grep -q 'def sha256_file' src/noaa_navionics/downloader.py

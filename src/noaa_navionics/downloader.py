@@ -385,7 +385,11 @@ def _download_package_unlocked(
         )
         raise RuntimeError(f"chart archive path is a symlink before promotion: {destination}")
     _promote_download_partial(tmp_path, destination, output_path, expected_stat=tmp_stat)
-    destination_stat = destination.lstat()
+    destination_stat = _validate_promoted_download(
+        destination,
+        expected_bytes=written,
+        expected_sha256=digest,
+    )
     extracted_to = None
     if extract and destination.suffix.lower() == ".zip":
         extracted_to = extract_zip(destination, output_path / destination.stem)
@@ -541,6 +545,26 @@ def _promote_download_partial(
 
     os.replace(partial, destination)
     _fsync_directory(output_path)
+
+
+def _validate_promoted_download(
+    destination: Path,
+    *,
+    expected_bytes: int,
+    expected_sha256: str,
+) -> os.stat_result:
+    stat_result, digest = _hash_existing_download_path(destination)
+    mode = stat_result.st_mode & 0o777
+    if mode != 0o600:
+        raise RuntimeError(f"promoted chart archive {destination} has permissions {mode:04o}, expected private 0600")
+    if stat_result.st_size != expected_bytes:
+        raise RuntimeError(
+            f"promoted chart archive byte count changed before manifest: "
+            f"{destination} ({stat_result.st_size} != {expected_bytes})"
+        )
+    if digest.lower() != expected_sha256.lower():
+        raise RuntimeError(f"promoted chart archive SHA-256 changed before manifest: {destination}")
+    return stat_result
 
 
 def extract_zip(zip_path: Path, destination: Path) -> Path:

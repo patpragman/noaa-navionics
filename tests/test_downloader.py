@@ -9244,6 +9244,32 @@ class ManifestTests(unittest.TestCase):
             self.assertFalse((output / MANIFEST_NAME).exists())
             self.assertEqual((output / "AK_ENCs.zip.part").read_text(encoding="ascii"), "replacement\n")
 
+    def test_download_revalidates_promoted_archive_before_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("US5AK3CM/US5AK3CM.000", "cell")
+            output = root / "charts"
+            package = Package("State AK", source_zip.as_uri(), "AK_ENCs.zip")
+            original_replace = downloader_module.os.replace
+
+            def corrupt_promoted_archive(source, target):
+                original_replace(source, target)
+                target_path = Path(target)
+                if target_path.name == "AK_ENCs.zip":
+                    data = target_path.read_bytes()
+                    target_path.write_bytes(b"X" * len(data))
+                    target_path.chmod(0o600)
+
+            with patch("noaa_navionics.downloader.os.replace", side_effect=corrupt_promoted_archive):
+                with self.assertRaisesRegex(RuntimeError, "promoted chart archive SHA-256 changed before manifest"):
+                    download_package(package, output, extract=True, keep_zip=True, force=True)
+
+            self.assertTrue((output / "AK_ENCs.zip").exists())
+            self.assertFalse((output / "AK_ENCs").exists())
+            self.assertFalse((output / MANIFEST_NAME).exists())
+
     def test_download_manifest_records_final_response_url(self):
         original = downloader_module.urlopen
 
