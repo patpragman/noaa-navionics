@@ -1711,6 +1711,58 @@ class OpenCPNConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "OpenCPN config path .* has permissions"):
                 read_data_connections(config)
 
+    def test_read_chart_directories_rejects_replaced_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            config.write_text("[ChartDirectories]\nChartDir1=/old\n", encoding="utf-8")
+            config.chmod(0o600)
+            replacement = root / "replacement-opencpn.conf"
+            replacement.write_text("[ChartDirectories]\nChartDir1=/new\n", encoding="utf-8")
+            replacement.chmod(0o600)
+            original_open = opencpn_module.os.open
+            swapped = False
+
+            def swap_before_open(path, flags, mode=0o777, *args, **kwargs):
+                nonlocal swapped
+                if not swapped and Path(path) == config:
+                    swapped = True
+                    os.replace(replacement, config)
+                return original_open(path, flags, mode, *args, **kwargs)
+
+            opencpn_module.os.open = swap_before_open
+            try:
+                with self.assertRaisesRegex(RuntimeError, "OpenCPN config path changed while being opened"):
+                    read_chart_directories(config)
+            finally:
+                opencpn_module.os.open = original_open
+
+    def test_read_data_connections_rejects_removed_config_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = Path(tmpdir) / "opencpn.conf"
+            config.write_text(
+                "[Settings/NMEADataSource]\n"
+                "DataConnections=1;2;127.0.0.1;2947;0;;4800;1;0;0;;0;;0;0;0;0;1;GPSd;0;;0;0;\n",
+                encoding="utf-8",
+            )
+            config.chmod(0o600)
+            original_open = opencpn_module.os.open
+            removed = False
+
+            def remove_before_open(path, flags, mode=0o777, *args, **kwargs):
+                nonlocal removed
+                if not removed and Path(path) == config:
+                    removed = True
+                    os.unlink(config)
+                return original_open(path, flags, mode, *args, **kwargs)
+
+            opencpn_module.os.open = remove_before_open
+            try:
+                with self.assertRaisesRegex(RuntimeError, "OpenCPN config path disappeared while being opened"):
+                    read_data_connections(config)
+            finally:
+                opencpn_module.os.open = original_open
+
     def test_configure_chart_directory_is_idempotent_and_backs_up_existing_config(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1755,6 +1807,34 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(second.read_text(encoding="utf-8"), "second\n")
             self.assertEqual(first.name, "opencpn.conf.noaa-navionics.20260629T120000Z.bak")
             self.assertEqual(second.name, "opencpn.conf.noaa-navionics.20260629T120000Z.1.bak")
+
+    def test_opencpn_backup_rejects_replaced_config_before_copy(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = root / "opencpn.conf"
+            config.write_text("original\n", encoding="utf-8")
+            config.chmod(0o600)
+            replacement = root / "replacement-opencpn.conf"
+            replacement.write_text("replacement\n", encoding="utf-8")
+            replacement.chmod(0o600)
+            original_open = opencpn_module.os.open
+            swapped = False
+
+            def swap_before_open(path, flags, mode=0o777, *args, **kwargs):
+                nonlocal swapped
+                if not swapped and Path(path) == config:
+                    swapped = True
+                    os.replace(replacement, config)
+                return original_open(path, flags, mode, *args, **kwargs)
+
+            opencpn_module.os.open = swap_before_open
+            try:
+                with self.assertRaisesRegex(RuntimeError, "OpenCPN config path changed while being opened"):
+                    opencpn_module._write_backup(config)
+            finally:
+                opencpn_module.os.open = original_open
+
+            self.assertFalse(list(root.glob("*.bak")))
 
     def test_opencpn_backup_is_private_with_permissive_umask(self):
         with tempfile.TemporaryDirectory() as tmpdir:

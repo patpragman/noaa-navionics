@@ -60,10 +60,10 @@ def opencpn_config_path(explicit: Optional[Path] = None) -> Path:
 
 def read_chart_directories(config_path: Optional[Path] = None) -> list[Path]:
     path = opencpn_config_path(config_path)
-    _reject_unsafe_config_path(path)
-    if not path.exists():
+    expected_config_stat = _reject_unsafe_config_path(path)
+    if expected_config_stat is None:
         return []
-    text = _read_config_text(path)
+    text = _read_config_text(path, expected_stat=expected_config_stat)
     return [Path(value).expanduser() for _, value in _chart_dir_entries(text)]
 
 
@@ -74,10 +74,10 @@ def chart_directory_configured(chart_dir: Path, config_path: Optional[Path] = No
 
 def read_data_connections(config_path: Optional[Path] = None) -> list[str]:
     path = opencpn_config_path(config_path)
-    _reject_unsafe_config_path(path)
-    if not path.exists():
+    expected_config_stat = _reject_unsafe_config_path(path)
+    if expected_config_stat is None:
         return []
-    text = _read_config_text(path)
+    text = _read_config_text(path, expected_stat=expected_config_stat)
     value = _data_connections_value(text)
     return [part for part in value.split("|") if part] if value else []
 
@@ -128,10 +128,14 @@ def configure_chart_directory(
     dry_run: bool = False,
 ) -> OpenCPNConfigResult:
     target = opencpn_config_path(config_path)
-    _reject_unsafe_config_path(target)
+    expected_config_stat = _reject_unsafe_config_path(target)
     _validate_chart_directory_for_opencpn(Path(chart_dir).expanduser())
     wanted = _normalize_chart_dir(chart_dir)
-    original = _read_config_text(target) if target.exists() else ""
+    original = (
+        _read_config_text(target, expected_stat=expected_config_stat)
+        if expected_config_stat is not None
+        else ""
+    )
     updated, changed, key = _set_chart_directory(original, wanted)
     backup_path = None
 
@@ -160,8 +164,12 @@ def configure_gpsd_connection(
     dry_run: bool = False,
 ) -> OpenCPNGPSDConfigResult:
     target = opencpn_config_path(config_path)
-    _reject_unsafe_config_path(target)
-    original = _read_config_text(target) if target.exists() else ""
+    expected_config_stat = _reject_unsafe_config_path(target)
+    original = (
+        _read_config_text(target, expected_stat=expected_config_stat)
+        if expected_config_stat is not None
+        else ""
+    )
     updated, changed = _set_gpsd_connection(original, host, port)
     backup_path = None
 
@@ -247,15 +255,18 @@ def _process_state_from_stat_text(text: str) -> str:
 
 
 def _write_backup(target: Path) -> Path:
-    _reject_unsafe_config_path(target)
+    expected_config_stat = _reject_unsafe_config_path(target)
     _prepare_config_parent(target)
+    if expected_config_stat is None:
+        raise RuntimeError(f"OpenCPN config path disappeared before backup: {target}")
+    source_bytes = _read_config_bytes(target, expected_stat=expected_config_stat)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = _available_backup_path(target, stamp)
     backup_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(backup_path, backup_flags, 0o600)
     with os.fdopen(fd, "wb") as handle:
         os.fchmod(handle.fileno(), 0o600)
-        handle.write(_read_config_bytes(target))
+        handle.write(source_bytes)
         handle.flush()
         os.fsync(handle.fileno())
     _fsync_directory(backup_path.parent)
@@ -427,14 +438,14 @@ def _prepare_config_parent(target: Path) -> None:
         )
 
 
-def _reject_unsafe_config_path(path: Path) -> None:
+def _reject_unsafe_config_path(path: Path) -> Optional[os.stat_result]:
     if path.is_symlink():
         raise RuntimeError(f"OpenCPN config path is a symlink: {path}")
     symlink_component = _first_symlink_ancestor(path.parent)
     if symlink_component is not None:
         raise RuntimeError(f"OpenCPN config directory is a symlink: {symlink_component}")
     if not path.exists():
-        return
+        return None
     if not path.is_file():
         raise RuntimeError(f"OpenCPN config path is not a regular file: {path}")
     try:
@@ -448,18 +459,25 @@ def _reject_unsafe_config_path(path: Path) -> None:
         raise RuntimeError(
             f"OpenCPN config path {path} has permissions {mode:04o}, expected no group/other write bits"
         )
+    return path_stat
 
 
-def _open_trusted_config(path: Path) -> int:
+def _open_trusted_config(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> int:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
+    except FileNotFoundError:
+        if expected_stat is not None:
+            raise RuntimeError(f"OpenCPN config path disappeared while being opened: {path}") from None
+        raise
     except OSError:
         if path.is_symlink():
             raise RuntimeError(f"OpenCPN config path is a symlink: {path}")
         raise
     try:
         stat_result = os.fstat(fd)
+        if expected_stat is not None and not os.path.samestat(stat_result, expected_stat):
+            raise RuntimeError(f"OpenCPN config path changed while being opened: {path}")
         if not stat.S_ISREG(stat_result.st_mode):
             raise RuntimeError(f"OpenCPN config path is not a regular file: {path}")
         if stat_result.st_uid != os.getuid():
@@ -477,14 +495,14 @@ def _open_trusted_config(path: Path) -> int:
         raise
 
 
-def _read_config_text(path: Path) -> str:
-    fd = _open_trusted_config(path)
+def _read_config_text(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> str:
+    fd = _open_trusted_config(path, expected_stat=expected_stat)
     with os.fdopen(fd, encoding="utf-8", errors="ignore") as handle:
         return handle.read()
 
 
-def _read_config_bytes(path: Path) -> bytes:
-    fd = _open_trusted_config(path)
+def _read_config_bytes(path: Path, *, expected_stat: Optional[os.stat_result] = None) -> bytes:
+    fd = _open_trusted_config(path, expected_stat=expected_stat)
     with os.fdopen(fd, "rb") as handle:
         return handle.read()
 

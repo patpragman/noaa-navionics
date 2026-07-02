@@ -5456,12 +5456,17 @@ grep -q 'test_read_chart_directories_rejects_symlinked_config_file' tests/test_d
 grep -q 'test_read_chart_directories_rejects_nonregular_config_file' tests/test_downloader.py
 grep -q 'test_read_chart_directories_rejects_writable_config_file' tests/test_downloader.py
 grep -q 'test_read_data_connections_rejects_writable_config_file' tests/test_downloader.py
+grep -q 'OpenCPN config path changed while being opened' src/noaa_navionics/opencpn.py
+grep -q 'OpenCPN config path disappeared while being opened' src/noaa_navionics/opencpn.py
+grep -q 'test_read_chart_directories_rejects_replaced_config_before_parsing' tests/test_downloader.py
+grep -q 'test_read_data_connections_rejects_removed_config_before_parsing' tests/test_downloader.py
+grep -q 'test_opencpn_backup_rejects_replaced_config_before_copy' tests/test_downloader.py
 grep -q 'symlinked, non-regular, misowned, or group/world-writable OpenCPN config files' README.md
 grep -q 'symlinked, non-regular, misowned, or group/world-writable OpenCPN config files' docs/sailboat-pi.md
 grep -q 'def _open_trusted_config' src/noaa_navionics/opencpn.py
 grep -q 'flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)' src/noaa_navionics/opencpn.py
-grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' README.md
-grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor, compare the opened descriptor with the inspected path before parsing or backing up the config' README.md
+grep -q 'OpenCPN chart and GPSD config reads use a no-follow descriptor, compare the opened descriptor with the inspected path before parsing or backing up the config' docs/sailboat-pi.md
 grep -q 'refuses to register missing, non-directory, or symlinked chart directories' README.md
 grep -q 'refuses to register missing, non-directory, or symlinked chart directories' docs/sailboat-pi.md
 grep -q 'def _available_backup_path' src/noaa_navionics/opencpn.py
