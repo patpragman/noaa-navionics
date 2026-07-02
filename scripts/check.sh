@@ -2997,6 +2997,9 @@ grep -q 'status report OpenCPN config directory .* has permissions' scripts/veri
 grep -q 'status_opencpn_dir_mode = status_octal_mode_text(' scripts/verify_pi.sh
 grep -q 'OpenCPN config directory_mode' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config is a symlink' scripts/verify_pi.sh
+grep -q 'opencpn_error = status_text(opencpn_config.get("error", ""), "OpenCPN config error")' scripts/verify_pi.sh
+grep -q 'status_text_list(status_chart_directories, "OpenCPN chart directories")' scripts/verify_pi.sh
+grep -q 'status_text_list(status_data_connections, "OpenCPN data connections")' scripts/verify_pi.sh
 grep -q 'status report launcher settings path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
 grep -q 'launcher_settings_symlink_component = status_text(' scripts/verify_pi.sh
@@ -3012,6 +3015,8 @@ grep -q 'launcher settings NOAA_NAVIONICS_START_ON_FAILED_READINESS' scripts/ver
 grep -q 'status_text(values.get(key, ""), f"launcher settings {key}")' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report desktop autostart missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'actual = status_text(autostart_values.get(key, ""), f"desktop autostart {key}")' scripts/verify_pi.sh
+grep -q 'autostart_hidden = status_text(autostart_values.get("Hidden", ""), "desktop autostart Hidden").lower()' scripts/verify_pi.sh
 grep -q 'status_text(user.get("name", ""), "user name")' scripts/verify_pi.sh
 grep -q 'status_text(user.get("linger", ""), "user linger")' scripts/verify_pi.sh
 grep -q 'status_text(gps_fix.get("source", ""), "gps_fix source")' scripts/verify_pi.sh
@@ -3024,11 +3029,24 @@ grep -q 'status report has no MOB desktop launcher section' scripts/verify_pi.sh
 grep -q 'status report MOB desktop launcher values do not match live desktop file' scripts/verify_pi.sh
 grep -q 'status GUI desktop launcher must not be configured for autostart' scripts/verify_pi.sh
 grep -q 'MOB desktop launcher must not be configured for autostart' scripts/verify_pi.sh
+grep -q 'actual = status_text(status_launcher_values.get(key, ""), f"status GUI desktop launcher {key}")' scripts/verify_pi.sh
+grep -q 'status_launcher_hidden = status_text(' scripts/verify_pi.sh
+grep -q 'status GUI desktop launcher Hidden' scripts/verify_pi.sh
+grep -q 'status_launcher_autostart_enabled = status_text(' scripts/verify_pi.sh
+grep -q 'status GUI desktop launcher X-GNOME-Autostart-enabled' scripts/verify_pi.sh
+grep -q 'actual = status_text(mob_launcher_values.get(key, ""), f"MOB desktop launcher {key}")' scripts/verify_pi.sh
+grep -q 'mob_launcher_hidden = status_text(mob_launcher_values.get("Hidden", ""), "MOB desktop launcher Hidden").lower()' scripts/verify_pi.sh
+grep -q 'mob_launcher_autostart_enabled = status_text(' scripts/verify_pi.sh
+grep -q 'MOB desktop launcher X-GNOME-Autostart-enabled' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config missing path_symlink_component' scripts/verify_pi.sh
 grep -q 'status_text(lightdm.get("path", ""), "LightDM autologin config path")' scripts/verify_pi.sh
 grep -q 'lightdm_symlink_component = status_text(' scripts/verify_pi.sh
 grep -q 'LightDM autologin config path_symlink_component' scripts/verify_pi.sh
+grep -q 'lightdm_user = status_text(lightdm_values.get("autologin-user", ""), "LightDM autologin-user")' scripts/verify_pi.sh
+grep -q 'lightdm_timeout = status_text(' scripts/verify_pi.sh
+grep -q 'LightDM autologin-user-timeout' scripts/verify_pi.sh
+grep -q 'session = status_text(lightdm_values.get("autologin-session", ""), "LightDM autologin-session")' scripts/verify_pi.sh
 grep -q 'status_text(desktop.get("graphical_target", ""), "desktop graphical_target")' scripts/verify_pi.sh
 grep -q 'status_text(desktop.get("lightdm_enabled", ""), "desktop lightdm_enabled")' scripts/verify_pi.sh
 grep -q 'status_text_list(lightdm_sections, "LightDM autologin sections")' scripts/verify_pi.sh

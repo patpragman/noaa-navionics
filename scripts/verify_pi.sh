@@ -1654,9 +1654,10 @@ if expected_config_path:
     )
     if opencpn_symlink_component:
         raise SystemExit(f"status report OpenCPN config path contains a symlink: {opencpn_symlink_component}")
-    if str(opencpn_config.get("error", "")).strip():
+    opencpn_error = status_text(opencpn_config.get("error", ""), "OpenCPN config error")
+    if opencpn_error:
         raise SystemExit(
-            f"status report OpenCPN config has parse error at {opencpn_config_path}: {opencpn_config.get('error')}"
+            f"status report OpenCPN config has parse error at {opencpn_config_path}: {opencpn_error}"
         )
     status_chart_directories = opencpn_config.get("chart_directories")
     status_data_connections = opencpn_config.get("data_connections")
@@ -1738,8 +1739,10 @@ if expected_config_path:
             "expected no group/other write bits"
         )
     live_chart_directories, live_data_connections = parse_opencpn_config_text(opencpn_text)
-    normalized_status_chart_directories = [normalize_path(str(value)) for value in status_chart_directories]
-    normalized_status_data_connections = [str(value) for value in status_data_connections]
+    normalized_status_chart_directories = [
+        normalize_path(value) for value in status_text_list(status_chart_directories, "OpenCPN chart directories")
+    ]
+    normalized_status_data_connections = status_text_list(status_data_connections, "OpenCPN data connections")
     if normalized_status_chart_directories != live_chart_directories:
         raise SystemExit(
             f"status report OpenCPN chart directories {normalized_status_chart_directories!r} "
@@ -1843,10 +1846,11 @@ if expected_config_path:
         "X-GNOME-Autostart-enabled": "true",
     }
     for key, expected in expected_autostart.items():
-        actual = str(autostart_values.get(key, "")).strip()
+        actual = status_text(autostart_values.get(key, ""), f"desktop autostart {key}")
         if actual != expected:
             raise SystemExit(f"desktop autostart {key}={actual or '<missing>'} expected {expected}")
-    if str(autostart_values.get("Hidden", "")).strip().lower() == "true":
+    autostart_hidden = status_text(autostart_values.get("Hidden", ""), "desktop autostart Hidden").lower()
+    if autostart_hidden == "true":
         raise SystemExit("desktop autostart is hidden")
     status_launcher = desktop.get("status_launcher")
     if not isinstance(status_launcher, dict):
@@ -1927,12 +1931,20 @@ if expected_config_path:
         "Terminal": "false",
     }
     for key, expected in expected_status_launcher.items():
-        actual = str(status_launcher_values.get(key, "")).strip()
+        actual = status_text(status_launcher_values.get(key, ""), f"status GUI desktop launcher {key}")
         if actual != expected:
             raise SystemExit(f"status GUI desktop launcher {key}={actual or '<missing>'} expected {expected}")
-    if str(status_launcher_values.get("Hidden", "")).strip().lower() == "true":
+    status_launcher_hidden = status_text(
+        status_launcher_values.get("Hidden", ""),
+        "status GUI desktop launcher Hidden",
+    ).lower()
+    if status_launcher_hidden == "true":
         raise SystemExit("status GUI desktop launcher is hidden")
-    if str(status_launcher_values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+    status_launcher_autostart_enabled = status_text(
+        status_launcher_values.get("X-GNOME-Autostart-enabled", ""),
+        "status GUI desktop launcher X-GNOME-Autostart-enabled",
+    ).lower()
+    if status_launcher_autostart_enabled == "true":
         raise SystemExit("status GUI desktop launcher must not be configured for autostart")
     mob_launcher = desktop.get("mob_launcher")
     if not isinstance(mob_launcher, dict):
@@ -2004,12 +2016,17 @@ if expected_config_path:
         "Terminal": "true",
     }
     for key, expected in expected_mob_launcher.items():
-        actual = str(mob_launcher_values.get(key, "")).strip()
+        actual = status_text(mob_launcher_values.get(key, ""), f"MOB desktop launcher {key}")
         if actual != expected:
             raise SystemExit(f"MOB desktop launcher {key}={actual or '<missing>'} expected {expected}")
-    if str(mob_launcher_values.get("Hidden", "")).strip().lower() == "true":
+    mob_launcher_hidden = status_text(mob_launcher_values.get("Hidden", ""), "MOB desktop launcher Hidden").lower()
+    if mob_launcher_hidden == "true":
         raise SystemExit("MOB desktop launcher is hidden")
-    if str(mob_launcher_values.get("X-GNOME-Autostart-enabled", "")).strip().lower() == "true":
+    mob_launcher_autostart_enabled = status_text(
+        mob_launcher_values.get("X-GNOME-Autostart-enabled", ""),
+        "MOB desktop launcher X-GNOME-Autostart-enabled",
+    ).lower()
+    if mob_launcher_autostart_enabled == "true":
         raise SystemExit("MOB desktop launcher must not be configured for autostart")
     lightdm = desktop.get("lightdm_autologin")
     if not isinstance(lightdm, dict):
@@ -2073,14 +2090,19 @@ if expected_config_path:
         raise SystemExit("status report LightDM autologin values do not match live LightDM config")
     if "Seat:*" not in set(lightdm_sections):
         raise SystemExit("LightDM autologin config missing [Seat:*] section")
-    if str(lightdm_values.get("autologin-user", "")).strip() != os.environ.get("USER", ""):
+    lightdm_user = status_text(lightdm_values.get("autologin-user", ""), "LightDM autologin-user")
+    if lightdm_user != os.environ.get("USER", ""):
         raise SystemExit(
-            f"LightDM autologin-user {lightdm_values.get('autologin-user', '<missing>')} "
+            f"LightDM autologin-user {lightdm_user or '<missing>'} "
             f"does not match {os.environ.get('USER', '')}"
         )
-    if str(lightdm_values.get("autologin-user-timeout", "")).strip() != "0":
+    lightdm_timeout = status_text(
+        lightdm_values.get("autologin-user-timeout", ""),
+        "LightDM autologin-user-timeout",
+    )
+    if lightdm_timeout != "0":
         raise SystemExit("LightDM autologin-user-timeout is not 0")
-    session = str(lightdm_values.get("autologin-session", "")).strip()
+    session = status_text(lightdm_values.get("autologin-session", ""), "LightDM autologin-session")
     if not re.fullmatch(r"[A-Za-z0-9._+-]+", session):
         raise SystemExit(f"LightDM autologin-session is unsafe or missing: {session or '<missing>'}")
     if not (Path("/usr/share/xsessions") / f"{session}.desktop").is_file():
