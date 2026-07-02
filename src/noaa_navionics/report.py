@@ -2319,7 +2319,7 @@ def _unit_files_validation_failures(unit_files: object) -> list[CheckResult]:
             "Track Logger Unit File",
             [
                 "Type=simple",
-                "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+                "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300",
                 "StandardOutput=null",
                 "StandardError=journal",
                 "Restart=on-failure",
@@ -5333,6 +5333,8 @@ def _service_readiness_checks(
                             "--config",
                             "noaa-navionics/config.ini",
                             "--rotate-daily",
+                            "--gpsd-idle-timeout 300",
+                            "--serial-idle-timeout 300",
                         ],
                     },
                 ),
@@ -5426,7 +5428,7 @@ def _service_readiness_checks(
                     "Track Logger Unit File",
                     [
                         "Type=simple",
-                        "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+                        "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300",
                         "StandardOutput=null",
                         "StandardError=journal",
                         "Restart=on-failure",

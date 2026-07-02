@@ -217,7 +217,7 @@ def trusted_user_services_summary(**overrides: object) -> dict[str, object]:
                 "SystemCallArchitectures": "native",
                 "UMask": "0077",
                 "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                "ExecStart": "/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily",
+                "ExecStart": "/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300",
             },
         },
         "noaa-navionics-preflight.service": {
@@ -932,7 +932,7 @@ def trusted_unit_file_lines(unit_name: str) -> list[str]:
             "StartLimitBurst=60",
             "[Service]",
             "Type=simple",
-            "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily",
+            "ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300",
             "StandardOutput=null",
             "StandardError=journal",
             "Restart=on-failure",
@@ -18895,7 +18895,7 @@ class StatusReportTests(unittest.TestCase):
                 "active": "active",
                 "properties": {
                     "FragmentPath": "/home/pi/.config/systemd/user/noaa-navionics-track.service",
-                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300 ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
                     "StandardError": "journal",
@@ -19917,7 +19917,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
-                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "ExecStart": "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300 ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
                     "StandardError": "journal",
@@ -20016,6 +20016,28 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("StandardOutput=journal", track_settings.detail)
         self.assertIn("StandardError=inherit", track_settings.detail)
         self.assertIn("Restart=no", track_settings.detail)
+
+    def test_service_readiness_checks_fail_loaded_track_command_without_idle_recovery(self):
+        services = trusted_user_services_summary()
+        track_properties = services["noaa-navionics-track.service"]["properties"]
+        track_properties["ExecStart"] = (
+            "{ path=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics ; "
+            "argv[]=/home/pi/.local/share/noaa-navionics/venv/bin/noaa-navionics "
+            "log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }"
+        )
+        system_services = {
+            "available": True,
+            "gpsd.socket": {"enabled": "enabled", "active": "active"},
+            "gpsd.service": {"enabled": "enabled", "active": "active"},
+            "chrony.service": {"enabled": "enabled", "active": "active"},
+        }
+
+        checks = _service_readiness_checks(services, system_services, gps_mode="gpsd")
+        track_settings = next(check for check in checks if check.name == "Track Logger Settings")
+
+        self.assertFalse(track_settings.ok)
+        self.assertIn("missing --gpsd-idle-timeout 300", track_settings.detail)
+        self.assertIn("missing --serial-idle-timeout 300", track_settings.detail)
 
     def test_service_readiness_checks_fail_stale_loaded_boot_readiness_restart(self):
         services = {
@@ -20338,7 +20360,7 @@ class StatusReportTests(unittest.TestCase):
                 "enabled": "enabled",
                 "active": "active",
                 "properties": {
-                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily ; }",
+                    "ExecStart": "{ path=/tmp/noaa-navionics ; argv[]=/tmp/noaa-navionics log-track --config /home/pi/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300 ; }",
                     "Type": "simple",
                     "StandardOutput": "null",
                     "StandardError": "journal",

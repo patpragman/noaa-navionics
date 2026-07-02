@@ -3394,7 +3394,9 @@ grep -q 'loaded_unit_property_contains_all()' scripts/verify_pi.sh
 grep -q 'loaded="$("$systemctl_cmd" --user show "$unit" -p "$property" 2>/dev/null)"' scripts/verify_pi.sh
 grep -q 'check "chart service loaded fragment path" loaded_unit_property_equals noaa-navionics.service FragmentPath "$chart_service"' scripts/verify_pi.sh
 grep -q 'check "chart service loaded network wait command" loaded_unit_property_contains_all noaa-navionics.service ExecStartPre' scripts/verify_pi.sh
-grep -q 'check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart' scripts/verify_pi.sh
+grep -q 'check "track service loaded rotate daily with idle recovery" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart' scripts/verify_pi.sh
+grep -q -- '--gpsd-idle-timeout 300' scripts/verify_pi.sh
+grep -q -- '--serial-idle-timeout 300' scripts/verify_pi.sh
 grep -q 'check "preflight service loaded status report" loaded_unit_property_contains_all noaa-navionics-preflight.service ExecStart' scripts/verify_pi.sh
 ! grep -q 'check "Chrony command integrity" check_root_command_integrity chronyc "Chrony command"' scripts/verify_pi.sh
 ! grep -q 'check "LightDM enabled" systemctl is-enabled --quiet lightdm.service' scripts/verify_pi.sh
@@ -3577,9 +3579,9 @@ grep -q 'check_unit_install_target' scripts/verify_pi.sh
 grep -q 'could not open unit file' scripts/verify_pi.sh
 grep -q 'unit file is not a regular file' scripts/verify_pi.sh
 grep -q 'section == "Install"' scripts/verify_pi.sh
-grep -q 'track service rotate daily' scripts/verify_pi.sh
+grep -q 'track service rotate daily with idle recovery' scripts/verify_pi.sh
 grep -q 'track service loaded fragment path' scripts/verify_pi.sh
-grep -q 'track service loaded rotate daily' scripts/verify_pi.sh
+grep -q 'track service loaded rotate daily with idle recovery' scripts/verify_pi.sh
 grep -q 'track service quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded quiet stdout' scripts/verify_pi.sh
 grep -q 'track service loaded restart' scripts/verify_pi.sh
@@ -4949,8 +4951,8 @@ grep -q 'test_read_nmea_lines_rejects_invalid_line_limit_before_read' tests/test
 grep -q 'def _live_idle_timeout' src/noaa_navionics/cli.py
 grep -q 'test_cli_log_track_zero_gpsd_idle_timeout_disables_live_timeout' tests/test_downloader.py
 grep -q 'test_cli_log_track_zero_serial_idle_timeout_disables_live_timeout' tests/test_downloader.py
-grep -q 'after 300 quiet seconds by default' README.md
-grep -q 'after 300 quiet seconds by default' docs/sailboat-pi.md
+grep -q 'the installed unit pins both `--gpsd-idle-timeout 300` and `--serial-idle-timeout 300`' README.md
+grep -q 'the installed unit pins both `--gpsd-idle-timeout 300` and `--serial-idle-timeout 300`' docs/sailboat-pi.md
 grep -q 'Live serial logging uses the same 300-second quiet limit' README.md
 grep -q 'Live serial logging uses the same 300-second quiet limit' docs/sailboat-pi.md
 grep -q 'max_duration = max(0.001, remaining)' src/noaa_navionics/health.py
@@ -4966,6 +4968,12 @@ grep -q 'gpsd_idle_timeout' src/noaa_navionics/cli.py
 grep -q 'serial_idle_timeout' src/noaa_navionics/cli.py
 grep -q -- '--gpsd-idle-timeout' src/noaa_navionics/cli.py
 grep -q -- '--serial-idle-timeout' src/noaa_navionics/cli.py
+grep -q -- '--gpsd-idle-timeout 300' systemd/noaa-navionics-track.service
+grep -q -- '--serial-idle-timeout 300' systemd/noaa-navionics-track.service
+grep -q -- '--gpsd-idle-timeout 300' README.md
+grep -q -- '--serial-idle-timeout 300' README.md
+grep -q -- '--gpsd-idle-timeout 300' docs/sailboat-pi.md
+grep -q -- '--serial-idle-timeout 300' docs/sailboat-pi.md
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
 grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/cli.py
 grep -q 'MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0' src/noaa_navionics/cli.py

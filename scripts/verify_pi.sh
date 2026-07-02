@@ -5780,8 +5780,8 @@ fi
 check "track service loaded fragment path" loaded_unit_property_equals noaa-navionics-track.service FragmentPath "$track_service"
 check "track service type" grep -Fxq 'Type=simple' "$track_service"
 check "track service loaded type" loaded_unit_property_equals noaa-navionics-track.service Type simple
-check "track service rotate daily" grep -Fq 'ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily' "$track_service"
-check "track service loaded rotate daily" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily"
+check "track service rotate daily with idle recovery" grep -Fq 'ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300' "$track_service"
+check "track service loaded rotate daily with idle recovery" loaded_unit_property_contains_all noaa-navionics-track.service ExecStart ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily" "--gpsd-idle-timeout 300" "--serial-idle-timeout 300"
 check "track service quiet stdout" grep -Fxq 'StandardOutput=null' "$track_service"
 check "track service loaded quiet stdout" loaded_unit_property_equals noaa-navionics-track.service StandardOutput null
 check "track service journals stderr" grep -Fxq 'StandardError=journal' "$track_service"

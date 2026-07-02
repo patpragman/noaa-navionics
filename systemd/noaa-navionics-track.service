@@ -5,7 +5,7 @@ StartLimitBurst=60
 
 [Service]
 Type=simple
-ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily
+ExecStart=%h/.local/share/noaa-navionics/venv/bin/noaa-navionics log-track --config %h/.config/noaa-navionics/config.ini --rotate-daily --gpsd-idle-timeout 300 --serial-idle-timeout 300
 StandardOutput=null
 StandardError=journal
 Restart=on-failure
