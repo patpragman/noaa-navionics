@@ -4009,6 +4009,9 @@ grep -q 'invalid GPS fix: negative HDOP' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: non-finite HDOP' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: HDOP is not numeric' src/noaa_navionics/gps.py
 grep -q 'invalid GPS fix: satellite count is not an integer' src/noaa_navionics/gps.py
+grep -q 'def _gps_quality_policy_failure' src/noaa_navionics/gps.py
+grep -q 'invalid GPS quality policy' src/noaa_navionics/gps.py
+grep -q 'test_shared_gps_quality_rejects_invalid_policy_thresholds' tests/test_downloader.py
 grep -q 'test_shared_gps_quality_rejects_negative_hdop' tests/test_downloader.py
 grep -q 'test_shared_gps_quality_rejects_non_finite_hdop' tests/test_downloader.py
 grep -q 'test_shared_gps_quality_rejects_malformed_hdop' tests/test_downloader.py

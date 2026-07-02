@@ -436,6 +436,9 @@ def gps_fix_quality_failure(
     min_satellites: int = 4,
     max_hdop: float = 5.0,
 ) -> str:
+    policy_failure = _gps_quality_policy_failure(min_satellites=min_satellites, max_hdop=max_hdop)
+    if policy_failure:
+        return policy_failure
     latitude = fix.latitude
     longitude = fix.longitude
     if latitude is None or longitude is None:
@@ -463,6 +466,17 @@ def gps_fix_quality_failure(
             return f"invalid GPS fix: negative HDOP {hdop:g}"
         if hdop > max_hdop:
             return f"weak GPS fix: HDOP {hdop}; max is {max_hdop:g}"
+    return ""
+
+
+def _gps_quality_policy_failure(*, min_satellites: int, max_hdop: float) -> str:
+    if isinstance(min_satellites, bool) or not isinstance(min_satellites, int) or min_satellites < 1:
+        return f"invalid GPS quality policy: min_satellites must be a positive integer: {min_satellites!r}"
+    if isinstance(max_hdop, bool) or not isinstance(max_hdop, (int, float)):
+        return f"invalid GPS quality policy: max_hdop must be a finite positive number: {max_hdop!r}"
+    parsed_hdop = float(max_hdop)
+    if not math.isfinite(parsed_hdop) or parsed_hdop <= 0.0:
+        return f"invalid GPS quality policy: max_hdop must be a finite positive number: {max_hdop!r}"
     return ""
 
 

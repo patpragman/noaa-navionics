@@ -19825,6 +19825,23 @@ class GpsTests(unittest.TestCase):
 
         self.assertIn("HDOP", gps_fix_quality_failure(fix))
 
+    def test_shared_gps_quality_rejects_invalid_policy_thresholds(self):
+        fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
+        cases = [
+            ({"min_satellites": 0}, "min_satellites must be a positive integer"),
+            ({"min_satellites": True}, "min_satellites must be a positive integer"),
+            ({"min_satellites": 4.5}, "min_satellites must be a positive integer"),
+            ({"max_hdop": 0}, "max_hdop must be a finite positive number"),
+            ({"max_hdop": math.inf}, "max_hdop must be a finite positive number"),
+            ({"max_hdop": math.nan}, "max_hdop must be a finite positive number"),
+            ({"max_hdop": False}, "max_hdop must be a finite positive number"),
+            ({"max_hdop": "5"}, "max_hdop must be a finite positive number"),
+        ]
+
+        for kwargs, message in cases:
+            with self.subTest(kwargs=kwargs):
+                self.assertIn(message, gps_fix_quality_failure(fix, **kwargs))
+
     def test_shared_gps_quality_rejects_negative_hdop(self):
         fix = GPSFix(latitude=1.0, longitude=2.0, satellites=8, hdop=-0.1)
 
