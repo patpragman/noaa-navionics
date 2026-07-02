@@ -11655,6 +11655,7 @@ class StatusReportTests(unittest.TestCase):
         valid_manifest = valid_report["manifest"]
         cases = [
             ({}, "missing config_path"),
+            ({"config_path": "config.ini"}, "config_path is not absolute"),
             ({"config": None}, "missing config section"),
             ({"config": {**valid_config, "chart_package": "bad"}}, "chart_package is invalid"),
             ({"config": {**valid_config, "chart_value": ""}}, "chart_value is required"),
@@ -12691,6 +12692,7 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON {expected_name} latitude does not match gps_fix",
                 "pre-departure status snapshot JSON {expected_name} timestamp does not match gps_fix",
                 "pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix",
+                "pre-departure status snapshot JSON config_path is not absolute",
                 "pre-departure status snapshot JSON config gps_device is volatile",
                 "pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
                 "pre-departure status snapshot JSON config chart_output is not absolute",
@@ -12730,6 +12732,7 @@ class StatusReportTests(unittest.TestCase):
                 "pre-departure status snapshot JSON {expected_name} latitude does not match gps_fix",
                 "pre-departure status snapshot JSON {expected_name} timestamp does not match gps_fix",
                 "pre-departure status snapshot JSON {expected_name} HDOP does not match gps_fix",
+                "pre-departure status snapshot JSON config_path is not absolute",
                 "pre-departure status snapshot JSON config gps_device is volatile",
                 "pre-departure status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
                 "pre-departure status snapshot JSON config chart_output is not absolute",
@@ -12769,6 +12772,7 @@ class StatusReportTests(unittest.TestCase):
                 "status snapshot JSON {expected_name} latitude does not match gps_fix",
                 "status snapshot JSON {expected_name} timestamp does not match gps_fix",
                 "status snapshot JSON {expected_name} HDOP does not match gps_fix",
+                "status snapshot JSON config_path is not absolute",
                 "status snapshot JSON config gps_device is volatile",
                 "status snapshot JSON config gps_device must be /dev/serial/by-id/..., /dev/serial0, /dev/serial1, or /dev/gps",
                 "status snapshot JSON config chart_output is not absolute",

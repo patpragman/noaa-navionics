@@ -4431,6 +4431,10 @@ grep -q 'def _chart_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _opencpn_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _gps_readiness_validation_failures' src/noaa_navionics/report.py
 grep -q 'def _serial_gps_device_validation_failures' src/noaa_navionics/report.py
+grep -q 'status report config_path is not absolute' src/noaa_navionics/report.py
+grep -q 'pre-departure status snapshot JSON config_path is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config_path is not absolute' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON config_path is not absolute' scripts/post_trip_collect_pi.sh
 grep -q 'status report config gps_device is volatile; use /dev/serial/by-id/' src/noaa_navionics/report.py
 grep -q 'status report config gps_device must be /dev/serial/by-id/' src/noaa_navionics/report.py
 grep -q 'pre-departure status snapshot JSON config gps_device is volatile' scripts/pre_trip_prepare_pi.sh
@@ -8000,6 +8004,7 @@ payload = {
     "ok": True,
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
     "app": {"source_revision": source_revision},
+    "config_path": "/home/pi/.config/noaa-navionics/config.ini",
     "config": {
         "gps_mode": "gpsd",
         "gps_device": "/dev/serial/by-id/mock-gps",
@@ -8874,6 +8879,7 @@ payload = {
     "ok": True,
     "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
     "app": {"source_revision": source_revision},
+    "config_path": "/home/pi/.config/noaa-navionics/config.ini",
     "config": {
         "gps_mode": "gpsd",
         "gps_device": "/dev/serial/by-id/mock-gps",
@@ -12318,6 +12324,7 @@ def write_pre_departure_status(directory):
                 "generated_at": generated_at,
                 "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
                 "app": {"source_revision": "fixture123"},
+                "config_path": "/home/pi/.config/noaa-navionics/config.ini",
                 "config": {
                     "gps_mode": "gpsd",
                     "gps_device": "/dev/serial/by-id/mock-gps",

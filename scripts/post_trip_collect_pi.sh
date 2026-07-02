@@ -1186,6 +1186,11 @@ def validate_successful_status_snapshot(
             fail(f"status snapshot JSON has duplicate service check: {name}: {path}")
         service_rows[name] = row
 
+    config_path = str(payload.get("config_path", "")).strip()
+    if not config_path:
+        fail(f"status snapshot JSON missing config_path: {path}")
+    if not Path(config_path).is_absolute():
+        fail(f"status snapshot JSON config_path is not absolute: {path}")
     config = payload.get("config")
     if not isinstance(config, dict):
         fail(f"status snapshot JSON missing config section: {path}")

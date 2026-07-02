@@ -1262,6 +1262,11 @@ def validate_pre_departure_status_checks(
             fail(f"pre-departure status snapshot JSON has duplicate service check: {name}")
         service_rows[name] = row
 
+    config_path = str(status.get("config_path", "")).strip()
+    if not config_path:
+        fail("pre-departure status snapshot JSON missing config_path")
+    if not Path(config_path).is_absolute():
+        fail("pre-departure status snapshot JSON config_path is not absolute")
     config = status.get("config")
     if not isinstance(config, dict):
         fail("pre-departure status snapshot JSON missing config section")

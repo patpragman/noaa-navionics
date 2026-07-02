@@ -1376,6 +1376,8 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     config_path = report.get("config_path")
     if not isinstance(config_path, str) or not config_path.strip():
         return [CheckResult("Config", False, "status report missing config_path")]
+    if not _status_absolute_path(config_path.strip()):
+        return [CheckResult("Config", False, f"status report config_path is not absolute: {config_path}")]
     config = report.get("config")
     if not isinstance(config, dict):
         return [CheckResult("Config", False, "status report missing config section")]
