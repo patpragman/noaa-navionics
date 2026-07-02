@@ -224,6 +224,35 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+CORE_SUPPORT_NOAA_COMMAND_FILES = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+CORE_SUPPORT_HOME_FILE_PATTERNS = [
+    (
+        "NOAA Navionics config copy",
+        re.compile(r"^files/home/[^/]+/\.config/noaa-navionics/config\.ini$"),
+    ),
+    (
+        "NOAA Navionics launcher environment copy",
+        re.compile(r"^files/home/[^/]+/\.config/noaa-navionics/launcher\.env$"),
+    ),
+    (
+        "NOAA Navionics saved status copy",
+        re.compile(r"^files/home/[^/]+/\.cache/noaa-navionics/status\.json$"),
+    ),
+    (
+        "NOAA Navionics source revision copy",
+        re.compile(r"^files/home/[^/]+/\.local/share/noaa-navionics/source-revision$"),
+    ),
+]
 CORE_SETTINGS_FILES = [
     "noaa-navionics/config.ini",
     "noaa-navionics/launcher.env",
@@ -267,7 +296,8 @@ ARCHIVES = [
         "label": "diagnostic support bundle",
         "pattern": "noaa-navionics-pi-support-*.tgz",
         "manifest_key": None,
-        "required_members": CORE_SUPPORT_COMMAND_FILES,
+        "required_members": CORE_SUPPORT_COMMAND_FILES + CORE_SUPPORT_NOAA_COMMAND_FILES,
+        "required_member_patterns": CORE_SUPPORT_HOME_FILE_PATTERNS,
         "max_member_bytes": MAX_SUPPORT_ARCHIVE_MEMBER_BYTES,
     },
 ]
@@ -534,6 +564,17 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                     fail(
                         f"{archive_path.name} is missing required archive member(s): "
                         f"{', '.join(missing_members)}"
+                    )
+                required_member_patterns = list(spec.get("required_member_patterns", []))
+                missing_pattern_labels = [
+                    label
+                    for label, pattern in required_member_patterns
+                    if not any(member.isfile() and pattern.fullmatch(name) for name, member in members_by_name.items())
+                ]
+                if missing_pattern_labels:
+                    fail(
+                        f"{archive_path.name} is missing required archive evidence file(s): "
+                        f"{', '.join(missing_pattern_labels)}"
                     )
 
                 if regular_file_count <= 0:

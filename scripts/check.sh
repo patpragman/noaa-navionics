@@ -1012,8 +1012,8 @@ grep -q 'runs any requested clean shutdown after collection, then exits non-zero
 grep -q 'runs any requested clean shutdown after collection, then exits non-zero' docs/sailboat-pi.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' README.md
 grep -q 'validates the returned track/support archives as private no-follow readable gzip tar files inside the trip folder' docs/sailboat-pi.md
-grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' README.md
-grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence files' docs/sailboat-pi.md
+grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence plus NOAA support evidence files' README.md
+grep -Fq 'requires a regular archive `README.txt`, requires the track archive manifest `track_count` and track names to match regular `tracks/*.gpx` data files and the support archive to contain the core command-evidence plus NOAA support evidence files' docs/sailboat-pi.md
 grep -q 'rejects shutdown-only runs when all artifact collection steps are skipped' README.md
 grep -q 'rejects shutdown-only runs when all artifact collection steps are skipped' docs/sailboat-pi.md
 grep -q 'continues exporting tracks/support even when the status snapshot reports unhealthy state' README.md
@@ -1064,8 +1064,8 @@ grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionic
 grep -q 'scripts/verify_pi_recovery_exports.sh pi-recovery-exports/noaa-navionics-pi-recovery-pi_raspberrypi_local-YYYYMMDDTHHMMSSZ' docs/sailboat-pi.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' README.md
 grep -q 'recovery verifier validates the trusted root-owned local `python3` command path before running its verifier engine, rejects recovery directory paths with control characters, parent-directory components, or symlinked path components, requires the timestamped recovery directory to be user-owned private `0700` storage, requires each archive and the checksum manifest to be user-owned private `0600` files opened through no-follow descriptor revalidation, verifies each archive' docs/sailboat-pi.md
-grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' README.md
-grep -q 'requires the diagnostic support bundle to contain the core command-evidence files' docs/sailboat-pi.md
+grep -q 'requires the diagnostic support bundle to contain core command-evidence, NOAA status-report, storage-listing, app config, launcher environment, saved status, and source-revision evidence files' README.md
+grep -q 'requires the diagnostic support bundle to contain core command-evidence, NOAA status-report, storage-listing, app config, launcher environment, saved status, and source-revision evidence files' docs/sailboat-pi.md
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' README.md
 grep -q 'When optional `pre-departure-status.json` and `pre-departure-status.sha256` files are present, the verifier also requires them to be private `0600` files, checks the sidecar digest, and requires the JSON to report `ok=true` with a valid GPSD or serial config, boolean passing GPS and track-log summaries, complete GPS and latest-track position/time/quality fields consistent with `generated_at`, GPS readiness-row evidence matching the top-level fix, trusted track-log symlink-status fields, track-log output context, the full required readiness/service check names, all readiness/service rows boolean and passing, structured data on every required readiness row, no non-Pi diagnostic skips for Pi-only checks' docs/sailboat-pi.md
 grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and matching Source Revision row evidence' README.md
@@ -1075,8 +1075,8 @@ grep -q 'verifier checks the local `.tgz` files with the validated local Python 
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' docs/sailboat-pi.md
-grep -q 'support bundle core command-evidence files' README.md
-grep -q 'support bundle core command-evidence files' docs/sailboat-pi.md
+grep -q 'support bundle core command-evidence and NOAA support evidence files' README.md
+grep -q 'support bundle core command-evidence and NOAA support evidence files' docs/sailboat-pi.md
 grep -q 'regular README files' README.md
 grep -q 'regular README files' docs/sailboat-pi.md
 grep -q 'safe and unique normalized member paths' README.md
@@ -1960,6 +1960,10 @@ grep -q 'CORE_SUPPORT_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/system-command-integrity.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/df-inodes.txt' scripts/verify_pi_recovery_exports.sh
 grep -q 'commands/recent-system-journal.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'CORE_SUPPORT_NOAA_COMMAND_FILES = \[' scripts/verify_pi_recovery_exports.sh
+grep -q 'commands/noaa-status-report-commissioned-json.txt' scripts/verify_pi_recovery_exports.sh
+grep -q 'CORE_SUPPORT_HOME_FILE_PATTERNS = \[' scripts/verify_pi_recovery_exports.sh
+grep -q 'NOAA Navionics saved status copy' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SETTINGS_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-chartplotter.desktop' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-mob.desktop' scripts/verify_pi_recovery_exports.sh
@@ -13179,6 +13183,23 @@ CORE_SUPPORT_COMMAND_FILES = [
     "commands/recent-user-journal.txt",
     "commands/recent-system-journal.txt",
 ]
+CORE_SUPPORT_NOAA_COMMAND_FILES = [
+    "commands/configured-storage-paths.txt",
+    "commands/configured-chart-storage-tree.txt",
+    "commands/configured-track-storage-tree.txt",
+    "commands/noaa-gps-device-candidates.txt",
+    "commands/noaa-status-report-json.txt",
+    "commands/noaa-status-report-commissioned-json.txt",
+    "commands/noaa-cache-tree.txt",
+    "commands/noaa-config-tree.txt",
+    "commands/noaa-data-tree.txt",
+]
+CORE_SUPPORT_HOME_FILES = [
+    "files/home/pi/.config/noaa-navionics/config.ini",
+    "files/home/pi/.config/noaa-navionics/launcher.env",
+    "files/home/pi/.cache/noaa-navionics/status.json",
+    "files/home/pi/.local/share/noaa-navionics/source-revision",
+]
 CORE_SETTINGS_FILES = [
     "noaa-navionics/config.ini",
     "noaa-navionics/launcher.env",
@@ -13537,6 +13558,8 @@ with tarfile.open(
     add_text(archive, "./README.txt", "support fixture\n")
     for name in CORE_SUPPORT_COMMAND_FILES:
         add_text(archive, f"./{name}", f"{name}\n")
+    for name in CORE_SUPPORT_NOAA_COMMAND_FILES + CORE_SUPPORT_HOME_FILES:
+        add_text(archive, f"./{name}", f"{name}\n")
 (root / "noaa-navionics-pi-support-pi_example_invalid-20260101T000000Z.tgz").chmod(0o600)
 write_checksums(root)
 write_pre_departure_status(root)
@@ -13889,6 +13912,73 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'is missing required archive member(s): commands/system-command-integrity.txt' "$verify_output"
+
+recovery_verify_generic_only_support_dir="$tmpdir/recovery-verify-generic-only-support"
+cp -a "$recovery_verify_dir" "$recovery_verify_generic_only_support_dir"
+python3 - "$recovery_verify_generic_only_support_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import sys
+import tarfile
+import time
+
+CORE_SUPPORT_COMMAND_FILES = [
+    "commands/system-command-integrity.txt",
+    "commands/date-utc.txt",
+    "commands/uname.txt",
+    "commands/hostname.txt",
+    "commands/uptime.txt",
+    "commands/package-versions.txt",
+    "commands/df.txt",
+    "commands/df-inodes.txt",
+    "commands/mount-findmnt.txt",
+    "commands/serial-devices.txt",
+    "commands/user-units.txt",
+    "commands/user-unit-properties.txt",
+    "commands/system-services.txt",
+    "commands/system-service-properties.txt",
+    "commands/chrony-sources.txt",
+    "commands/timedatectl.txt",
+    "commands/pi-throttling.txt",
+    "commands/recent-user-journal.txt",
+    "commands/recent-system-journal.txt",
+]
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+support = next(root.glob("noaa-navionics-pi-support-*.tgz"))
+with tarfile.open(support, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "support fixture\n")
+    for name in CORE_SUPPORT_COMMAND_FILES:
+        add_text(archive, name, f"{name}\n")
+support.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_generic_only_support_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a support bundle missing NOAA support evidence with exit 1" >&2
+  exit 1
+fi
+grep -q 'is missing required archive member(s): commands/configured-storage-paths.txt' "$verify_output"
 
 recovery_verify_bad_status_checksum_dir="$tmpdir/recovery-verify-bad-status-checksum"
 cp -a "$recovery_verify_dir" "$recovery_verify_bad_status_checksum_dir"
