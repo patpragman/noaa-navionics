@@ -113,10 +113,13 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
     tracking = parser["tracking"] if parser.has_section("tracking") else {}
     anchor = parser["anchor"] if parser.has_section("anchor") else {}
 
-    chart_package = charts.get("package", defaults.chart_package).strip().lower()
+    chart_package = _reject_control_characters(
+        charts.get("package", defaults.chart_package).strip().lower(),
+        label="charts.package",
+    )
     if chart_package not in CHART_PACKAGES:
         raise ValueError("charts.package must be one of: state, cgd, region, chart, all")
-    chart_value = charts.get("value", defaults.chart_value).strip()
+    chart_value = _reject_control_characters(charts.get("value", defaults.chart_value).strip(), label="charts.value")
     if chart_package in CHART_PACKAGES_REQUIRING_VALUE and not chart_value:
         raise ValueError(f"charts.value is required when charts.package is {chart_package}")
     _validate_chart_package_value(chart_package, chart_value)
@@ -138,13 +141,13 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         label="charts.min_free_gb",
         minimum=0.1,
     )
-    gps_mode = gps.get("mode", defaults.gps_mode).strip().lower()
+    gps_mode = _reject_control_characters(gps.get("mode", defaults.gps_mode).strip().lower(), label="gps.mode")
     if gps_mode not in {"gpsd", "serial"}:
         raise ValueError("gps.mode must be either gpsd or serial")
     gps_baud = _get_int(gps, "baud", defaults.gps_baud, label="gps.baud")
     if gps_baud not in GPS_BAUD_RATES:
         raise ValueError(f"gps.baud must be one of: {', '.join(str(rate) for rate in sorted(GPS_BAUD_RATES))}")
-    gps_device = gps.get("device", defaults.gps_device).strip()
+    gps_device = _reject_control_characters(gps.get("device", defaults.gps_device).strip(), label="gps.device")
     if gps_mode in {"gpsd", "serial"} and not gps_device:
         raise ValueError(f"gps.device is required when gps.mode is {gps_mode}")
     if gps_device and not _stable_gps_device_path(gps_device):
@@ -570,6 +573,7 @@ def _get_bool(section: object, key: str, default: bool, *, label: Optional[str] 
 
 
 def _get_required_text(section: object, key: str, default: str, *, label: Optional[str] = None) -> str:
+    field = label or key
     if not hasattr(section, "get"):
         value = default
     else:
@@ -577,7 +581,14 @@ def _get_required_text(section: object, key: str, default: str, *, label: Option
         value = default if raw is None else str(raw)
     text = value.strip()
     if not text:
-        raise ValueError(f"{label or key} must not be empty")
+        raise ValueError(f"{field} must not be empty")
+    _reject_control_characters(text, label=field)
+    return text
+
+
+def _reject_control_characters(text: str, *, label: str) -> str:
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
+        raise ValueError(f"{label} must not contain control characters")
     return text
 
 

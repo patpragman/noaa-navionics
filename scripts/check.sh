@@ -4665,6 +4665,12 @@ grep -q 'FORBIDDEN_STORAGE_ROOTS' src/noaa_navionics/config.py
 grep -q 'ALLOWED_STORAGE_ROOTS' src/noaa_navionics/config.py
 grep -q 'must be a dedicated storage directory' src/noaa_navionics/config.py
 grep -q 'must not contain parent-directory components' src/noaa_navionics/config.py
+grep -q 'def _reject_control_characters' src/noaa_navionics/config.py
+grep -q 'must not contain control characters' src/noaa_navionics/config.py
+grep -q 'Parsed onboard config text values reject control characters before they can become chart storage paths, GPS device names, GPSD hostnames, or chart package selectors' README.md
+grep -q 'Parsed onboard config text values reject control characters before they can become chart storage paths, GPS device names, GPSD hostnames, or chart package selectors' docs/sailboat-pi.md
+grep -Fq '\x00' tests/test_downloader.py
+grep -Fq '\x7f' tests/test_downloader.py
 grep -q 'must not be under volatile or system directory' src/noaa_navionics/config.py
 grep -q 'broad system, volatile, or home directories' README.md
 grep -q 'broad system, volatile, or home directories' docs/sailboat-pi.md
