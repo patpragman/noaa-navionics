@@ -299,6 +299,20 @@ CORE_RESTORE_SETTINGS_FILES = [
     "desktop/noaa-navionics-status.desktop",
     "desktop/noaa-navionics-mob.desktop",
 ]
+EXPECTED_RESTORE_DESKTOP_LAUNCHERS = {
+    "status GUI desktop launcher": {
+        "Type": "Application",
+        "Name": "NOAA Navionics Status",
+        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
+        "Terminal": "false",
+    },
+    "MOB desktop launcher": {
+        "Type": "Application",
+        "Name": "NOAA Navionics MOB",
+        "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics mob; printf \'\\nPress Enter to close...\'; read _"',
+        "Terminal": "true",
+    },
+}
 MAX_SETTING_ARCHIVE_MEMBER_BYTES = 4 * 1024 * 1024
 MAX_OPENCPN_ARCHIVE_MEMBER_BYTES = 50 * 1024 * 1024
 MAX_TRACK_ARCHIVE_MEMBER_BYTES = 100 * 1024 * 1024
@@ -1036,6 +1050,34 @@ def parse_restored_config(config_text: str) -> ConfigParser:
     return parser
 
 
+def parse_restored_desktop_entry(data: bytes, label: str) -> dict[str, str]:
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        fail(f"restored {label} is not UTF-8: {exc}")
+    parser = ConfigParser(interpolation=None)
+    parser.optionxform = str
+    try:
+        parser.read_string(text)
+    except ConfigParserError as exc:
+        fail(f"restored {label} is invalid desktop entry syntax: {exc}")
+    if not parser.has_section("Desktop Entry"):
+        fail(f"restored {label} is missing [Desktop Entry]")
+    return {key: value.strip() for key, value in parser.items("Desktop Entry")}
+
+
+def validate_restored_desktop_launcher(data: bytes, label: str, expected_values: dict[str, str]) -> None:
+    values = parse_restored_desktop_entry(data, label)
+    for key, expected in expected_values.items():
+        actual = values.get(key, "").strip()
+        if actual != expected:
+            fail(f"restored {label} {key}={actual or '<missing>'} expected {expected}")
+    if values.get("Hidden", "").strip().lower() == "true":
+        fail(f"restored {label} must not be hidden")
+    if values.get("X-GNOME-Autostart-enabled", "").strip().lower() == "true":
+        fail(f"restored {label} must not be configured for autostart")
+
+
 def restored_config_text(parser: ConfigParser, section: str, key: str, default: str, *, label: str) -> str:
     raw = parser.get(section, key, fallback=default)
     value = str(raw).strip()
@@ -1216,6 +1258,11 @@ def main() -> None:
         0o600,
     ))
     status_launcher = settings["desktop/noaa-navionics-status.desktop"]
+    validate_restored_desktop_launcher(
+        status_launcher,
+        "status GUI desktop launcher",
+        EXPECTED_RESTORE_DESKTOP_LAUNCHERS["status GUI desktop launcher"],
+    )
     planned.append((
         "settings",
         home / "Desktop" / "noaa-navionics-status.desktop",
@@ -1224,6 +1271,11 @@ def main() -> None:
         0o755,
     ))
     mob_launcher = settings["desktop/noaa-navionics-mob.desktop"]
+    validate_restored_desktop_launcher(
+        mob_launcher,
+        "MOB desktop launcher",
+        EXPECTED_RESTORE_DESKTOP_LAUNCHERS["MOB desktop launcher"],
+    )
     planned.append((
         "settings",
         home / "Desktop" / "noaa-navionics-mob.desktop",

@@ -13623,6 +13623,11 @@ class StatusReportTests(unittest.TestCase):
             ],
         )
         self.assertIn("CORE_RESTORE_SETTINGS_FILES", source)
+        self.assertIn("EXPECTED_RESTORE_DESKTOP_LAUNCHERS", source)
+        self.assertIn('sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"', source)
+        self.assertIn("noaa-navionics mob; printf", source)
+        self.assertIn("Press Enter to close", source)
+        self.assertIn("validate_restored_desktop_launcher", source)
         self.assertIn("is missing required archive member(s)", source)
 
     def test_post_trip_required_status_checks_match_shared_readiness(self):

@@ -1107,6 +1107,8 @@ grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest co
 grep -Fq 'requiring settings/OpenCPN manifest file names and the GPX manifest count and track names to match regular data files' docs/sailboat-pi.md
 grep -q 'requiring the settings archive to include `noaa-navionics/config.ini`, `noaa-navionics/launcher.env`, `desktop/noaa-navionics-status.desktop`, and `desktop/noaa-navionics-mob.desktop`' README.md
 grep -q 'requiring the settings archive to include `noaa-navionics/config.ini`, `noaa-navionics/launcher.env`, `desktop/noaa-navionics-status.desktop`, and `desktop/noaa-navionics-mob.desktop`' docs/sailboat-pi.md
+grep -q 'validating those restored desktop launchers are parseable, visible, non-autostarting, and pointed at the expected status GUI and MOB commands' README.md
+grep -q 'validating those restored desktop launchers are parseable, visible, non-autostarting, and pointed at the expected status GUI and MOB commands' docs/sailboat-pi.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' README.md
 grep -q 'whitelisted OpenCPN user config/routes/waypoints/layers' docs/sailboat-pi.md
 grep -q "validating the diagnostic support archive's core command-evidence and NOAA support evidence files without loading its contents into memory" README.md
@@ -2188,6 +2190,13 @@ grep -q 'noaa-navionics/config.ini' scripts/restore_pi_recovery_user_data.sh
 grep -q 'opencpn' scripts/restore_pi_recovery_user_data.sh
 grep -q 'tracks archive contains unexpected restore member' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def safe_storage_output_from_config' scripts/restore_pi_recovery_user_data.sh
+grep -q 'EXPECTED_RESTORE_DESKTOP_LAUNCHERS' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def parse_restored_desktop_entry' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def validate_restored_desktop_launcher' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored {label} is invalid desktop entry syntax' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored {label} must not be hidden' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restored {label} must not be configured for autostart' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_restored_desktop_launcher(' scripts/restore_pi_recovery_user_data.sh
 grep -q 'safe_storage_output_from_config(home, "charts.output"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'safe_storage_output_from_config(home, "tracking.output"' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restored {label} must not contain parent-directory components' scripts/restore_pi_recovery_user_data.sh
@@ -15238,7 +15247,7 @@ def build_restore_fixture(root, config, opencpn_extra=None, *, readme_dir=False)
                 "[Desktop Entry]\n"
                 "Type=Application\n"
                 "Name=NOAA Navionics MOB\n"
-                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob --note desktop\"\n"
+                "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
                 "Terminal=true\n"
             ),
         },
@@ -15661,6 +15670,88 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'is missing required archive member(s): noaa-navionics/launcher.env' "$verify_output"
+! grep -q 'would restore' "$verify_output"
+
+recovery_restore_bad_desktop_dir="$tmpdir/recovery-restore-bad-desktop"
+cp -a "$recovery_restore_dir" "$recovery_restore_bad_desktop_dir"
+python3 - "$recovery_restore_bad_desktop_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import time
+
+
+def add_text(archive, name, text):
+    data = text.encode("utf-8")
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    add_text(archive, "README.txt", "restore fixture\n")
+    add_text(
+        archive,
+        "manifest.json",
+        json.dumps({
+            "file_count": 4,
+            "files": [
+                {"archive_path": "noaa-navionics/config.ini"},
+                {"archive_path": "noaa-navionics/launcher.env"},
+                {"archive_path": "desktop/noaa-navionics-status.desktop"},
+                {"archive_path": "desktop/noaa-navionics-mob.desktop"},
+            ],
+        }) + "\n",
+    )
+    add_text(archive, "noaa-navionics/config.ini", "[charts]\noutput = ~/tracks-store\n")
+    add_text(archive, "noaa-navionics/launcher.env", "NOAA_NAVIONICS_GPS_SECONDS=60\n")
+    add_text(
+        archive,
+        "desktop/noaa-navionics-status.desktop",
+        (
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            "Name=NOAA Navionics Status\n"
+            "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics-status-gui --unsafe\"\n"
+            "Terminal=false\n"
+        ),
+    )
+    add_text(
+        archive,
+        "desktop/noaa-navionics-mob.desktop",
+        (
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            "Name=NOAA Navionics MOB\n"
+            "Exec=sh -lc \"$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _\"\n"
+            "Terminal=true\n"
+        ),
+    )
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_bad_desktop_dir" >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject a mispointed restored desktop launcher with exit 1" >&2
+  exit 1
+fi
+grep -q 'restored status GUI desktop launcher Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui --unsafe" expected sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"' "$verify_output"
 ! grep -q 'would restore' "$verify_output"
 
 recovery_restore_mismatched_manifest_dir="$tmpdir/recovery-restore-mismatched-manifest"
