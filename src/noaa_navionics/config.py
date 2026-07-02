@@ -18,6 +18,7 @@ GPS_BAUD_RATES = {4800, 9600, 19200, 38400, 57600, 115200}
 GPSD_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STABLE_GPS_DEVICE_PATHS = {"/dev/serial0", "/dev/serial1", "/dev/gps"}
 GPS_UDEV_SAFE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:+@-")
+MAX_TRACK_FSYNC_INTERVAL_SECONDS = 3600.0
 UNSAFE_STORAGE_NAMES = {
     "",
     ".cache",
@@ -179,6 +180,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         defaults.track_fsync_interval_seconds,
         label="tracking.fsync_interval_seconds",
         minimum=0.0,
+        maximum=MAX_TRACK_FSYNC_INTERVAL_SECONDS,
     )
     anchor_radius_meters = _get_float(
         anchor,

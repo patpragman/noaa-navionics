@@ -16,6 +16,7 @@ import sys
 
 from .config import (
     DEFAULT_CONFIG_PATH,
+    MAX_TRACK_FSYNC_INTERVAL_SECONDS,
     _stable_gps_device_path,
     _volatile_usb_device_path,
     package_kwargs,
@@ -209,6 +210,13 @@ def _status_gui_interval_seconds(value: str) -> float:
     parsed = _positive_float(value)
     if parsed < MIN_STATUS_GUI_INTERVAL_SECONDS:
         raise argparse.ArgumentTypeError(f"must be at least {MIN_STATUS_GUI_INTERVAL_SECONDS:g}")
+    return parsed
+
+
+def _track_fsync_interval_seconds(value: str) -> float:
+    parsed = _non_negative_float(value)
+    if parsed > MAX_TRACK_FSYNC_INTERVAL_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_TRACK_FSYNC_INTERVAL_SECONDS:g}")
     return parsed
 
 
@@ -428,7 +436,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     track.add_argument(
         "--fsync-interval-seconds",
-        type=_non_negative_float,
+        type=_track_fsync_interval_seconds,
         help="seconds between forced GPX data syncs; defaults to [tracking].fsync_interval_seconds",
     )
 

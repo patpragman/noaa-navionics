@@ -1575,6 +1575,7 @@ class ConfigTests(unittest.TestCase):
             ("[tracking]\noutput = /run/noaa-navionics\n", "tracking.output"),
             ("[tracking]\nretention_days = -1\n", "tracking.retention_days"),
             ("[tracking]\nfsync_interval_seconds = -1\n", "tracking.fsync_interval_seconds"),
+            ("[tracking]\nfsync_interval_seconds = 3601\n", "tracking.fsync_interval_seconds"),
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -8703,6 +8704,8 @@ class CLIValidationTests(unittest.TestCase):
     def test_track_logger_rejects_negative_retention_days(self):
         self.assert_parse_error(["log-track", "--retention-days", "-1"])
         self.assert_parse_error(["log-track", "--fsync-interval-seconds", "-1"])
+        self.assert_parse_error(["log-track", "--fsync-interval-seconds", "3601"])
+        self.assert_parse_error(["log-track", "--fsync-interval-seconds", "999999999999999999999999999999"])
 
     def test_live_serial_device_validation_rejects_broken_by_id_symlink(self):
         with (
@@ -14234,6 +14237,10 @@ class StatusReportTests(unittest.TestCase):
                 {"config": {**valid_config, "track_fsync_interval_seconds": -1.0}},
                 "track_fsync_interval_seconds is negative or invalid",
             ),
+            (
+                {"config": {**valid_config, "track_fsync_interval_seconds": 3601.0}},
+                "track_fsync_interval_seconds exceeds 3600s",
+            ),
             ({"config": {**valid_config, "anchor_radius_meters": 0.0}}, "anchor_radius_meters is not positive"),
             (
                 {
@@ -16284,6 +16291,7 @@ class StatusReportTests(unittest.TestCase):
             (("config", "track_retention_days"), -1, "config track_retention_days is below 0"),
             (("config", "track_fsync_interval_seconds"), "30", "config track_fsync_interval_seconds is not numeric"),
             (("config", "track_fsync_interval_seconds"), -1.0, "config track_fsync_interval_seconds is negative"),
+            (("config", "track_fsync_interval_seconds"), 3601.0, "config track_fsync_interval_seconds is above 3600"),
             (("config", "anchor_radius_meters"), 0.5, "config anchor_radius_meters is below 1.0"),
             (("gps_fix", "latitude"), "61.2181", "gps_fix latitude is not numeric"),
             (("gps_fix", "timestamp"), "2026-07-02T12:00:00", "gps_fix timestamp must include a timezone"),
@@ -16479,7 +16487,7 @@ class StatusReportTests(unittest.TestCase):
             '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)',
             '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)',
             '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)',
-            '"track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0)',
+            '"track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0, maximum=3600.0)',
             '"anchor_radius_meters": config_float(parser, "anchor", "radius_meters", "50", minimum=1.0)',
         ):
             with self.subTest(expected=expected):

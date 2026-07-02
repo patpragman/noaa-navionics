@@ -1580,6 +1580,8 @@ def validate_successful_status_snapshot(
     track_fsync_interval_seconds = finite_status_float(config.get("track_fsync_interval_seconds"))
     if track_fsync_interval_seconds is None or track_fsync_interval_seconds < 0.0:
         fail(f"status snapshot JSON config track_fsync_interval_seconds is negative or invalid: {path}")
+    if track_fsync_interval_seconds > 3600.0:
+        fail(f"status snapshot JSON config track_fsync_interval_seconds exceeds 3600s: {path}")
     anchor_radius_meters = finite_status_float(config.get("anchor_radius_meters"))
     if anchor_radius_meters is None or anchor_radius_meters < 1.0:
         fail(f"status snapshot JSON config anchor_radius_meters is below 1.0: {path}")

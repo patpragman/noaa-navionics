@@ -638,7 +638,9 @@ def validate_config_summary(config):
         fail("config gps_baud is invalid")
     status_integer(config, "config", "gpsd_port", minimum=1, maximum=65535)
     status_integer(config, "config", "track_retention_days", minimum=0)
-    status_nonnegative_number(config, "config", "track_fsync_interval_seconds")
+    track_fsync_interval_seconds = status_nonnegative_number(config, "config", "track_fsync_interval_seconds")
+    if track_fsync_interval_seconds > 3600.0:
+        fail("config track_fsync_interval_seconds is above 3600")
     anchor_radius = status_number(config, "config", "anchor_radius_meters")
     if anchor_radius < 1.0:
         fail("config anchor_radius_meters is below 1.0")

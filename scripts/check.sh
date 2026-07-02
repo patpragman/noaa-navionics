@@ -3176,9 +3176,9 @@ grep -q 'status_octal_mode_text(track_log.get("latest_mode"), "track_log latest_
 grep -q '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)' scripts/verify_pi.sh
 grep -q '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)' scripts/verify_pi.sh
 grep -q '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)' scripts/verify_pi.sh
-grep -q '"track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0)' scripts/verify_pi.sh
+grep -q '"track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0, maximum=3600.0)' scripts/verify_pi.sh
 grep -q '`charts.min_free_gb` must be finite and at least `0.1`' docs/sailboat-pi.md
-grep -q '`tracking.fsync_interval_seconds` must be finite and at least `0.0`' docs/sailboat-pi.md
+grep -q '`tracking.fsync_interval_seconds` must be finite and between `0.0` and `3600.0`' docs/sailboat-pi.md
 grep -q '`anchor.radius_meters` must be finite and at least `1.0`' docs/sailboat-pi.md
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
@@ -4745,6 +4745,11 @@ grep -q '<hdop>{fix.hdop:g}</hdop>' src/noaa_navionics/gps.py
 grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'TRACK LOGGER GPS LOST' src/noaa_navionics/cli.py
 grep -q 'self.fsync_interval_seconds = _seconds_value' src/noaa_navionics/gps.py
+grep -q 'MAX_TRACK_FSYNC_INTERVAL_SECONDS = 3600.0' src/noaa_navionics/config.py
+grep -q 'maximum=MAX_TRACK_FSYNC_INTERVAL_SECONDS' src/noaa_navionics/config.py
+grep -q 'def _track_fsync_interval_seconds' src/noaa_navionics/cli.py
+grep -q 'type=_track_fsync_interval_seconds' src/noaa_navionics/cli.py
+grep -q 'track_fsync_interval_seconds exceeds {MAX_TRACK_FSYNC_INTERVAL_SECONDS:g}s' src/noaa_navionics/report.py
 grep -q 'test_gpx_logger_rejects_invalid_fsync_interval_before_file_creation' tests/test_downloader.py
 grep -q 'test_cli_log_track_live_stream_timeout_after_fix_is_audible_alarm' tests/test_downloader.py
 grep -q 'test_log_single_track_closes_gpx_on_stream_timeout_after_fix' tests/test_downloader.py
@@ -4757,6 +4762,8 @@ grep -q 'a live GPS timeout before enough samples arrive reports the anchor-samp
 grep -q 'a live GPS timeout before enough samples arrive reports the anchor-sample shortfall' docs/sailboat-pi.md
 grep -q 'logger = GPXTrackLogger(output, fsync_interval_seconds=fsync_interval_seconds)' src/noaa_navionics/cli.py
 grep -q 'logger = GPXTrackLogger(current_path, fsync_interval_seconds=fsync_interval_seconds)' src/noaa_navionics/cli.py
+grep -q 'direct and configured GPX fsync intervals are capped at 3600 seconds' README.md
+grep -q 'direct and configured GPX fsync intervals are capped at 3600 seconds' docs/sailboat-pi.md
 grep -q 'test_log_single_track_passes_fsync_interval_to_gpx_logger' tests/test_downloader.py
 grep -q 'test_log_rotating_tracks_passes_fsync_interval_to_gpx_logger' tests/test_downloader.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
@@ -12391,6 +12398,11 @@ grep -q 'config gps_device must be /dev/serial/by-id/..., /dev/serial/by-path/..
 grep -q 'config gps_baud is invalid' scripts/check_pi_status.sh
 grep -q '"track_fsync_interval_seconds"' scripts/check_pi_status.sh
 grep -q 'config track_fsync_interval_seconds is negative' tests/test_downloader.py
+grep -q 'config track_fsync_interval_seconds is above 3600' scripts/check_pi_status.sh
+grep -q 'config track_fsync_interval_seconds is above 3600' tests/test_downloader.py
+grep -q 'pre-departure status snapshot JSON config track_fsync_interval_seconds exceeds 3600s' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON config track_fsync_interval_seconds exceeds 3600s' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON config track_fsync_interval_seconds exceeds 3600s' scripts/post_trip_collect_pi.sh
 grep -q 'def status_timestamp' scripts/check_pi_status.sh
 grep -q 'def validate_position_summary' scripts/check_pi_status.sh
 grep -q 'validate_position_summary(' scripts/check_pi_status.sh

@@ -22,6 +22,7 @@ from .config import (
     CHART_PACKAGES_REQUIRING_VALUE,
     GPSD_LOCAL_HOSTS,
     GPS_BAUD_RATES,
+    MAX_TRACK_FSYNC_INTERVAL_SECONDS,
     read_config,
 )
 from .downloader import MANIFEST_NAME, read_manifest
@@ -2195,6 +2196,14 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
                 "Config",
                 False,
                 "status report config track_fsync_interval_seconds is negative or invalid",
+            )
+        ]
+    if track_fsync_interval_seconds > MAX_TRACK_FSYNC_INTERVAL_SECONDS:
+        return [
+            CheckResult(
+                "Config",
+                False,
+                f"status report config track_fsync_interval_seconds exceeds {MAX_TRACK_FSYNC_INTERVAL_SECONDS:g}s",
             )
         ]
     anchor_radius_meters = _positive_status_float(config.get("anchor_radius_meters"))
