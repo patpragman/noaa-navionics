@@ -338,6 +338,14 @@ validate_remote_dir() {
       exit 2
       ;;
   esac
+  case "$trimmed" in
+    "~/"*|/home/*)
+      ;;
+    *)
+      echo "Remote deployment directory must be under the Pi user's home directory, not a relative or non-home path: $value" >&2
+      exit 2
+      ;;
+  esac
   basename="${trimmed##*/}"
   case "$basename" in
     noaa-navionics|noaa-navionics-*|noaa-navionics_*|noaa-navionics.*)

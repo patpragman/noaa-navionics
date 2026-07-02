@@ -6626,6 +6626,17 @@ fi
 grep -q 'Remote deployment directory must end in noaa-navionics' "$deploy_output"
 
 set +e
+scripts/deploy_to_pi.sh pi@example.invalid noaa-navionics --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject relative remote deployment directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Remote deployment directory must be under the Pi user' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh pi@example.invalid /tmp/noaa-navionics --provision --device /dev/serial/by-id/mock-gps >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -6742,6 +6753,17 @@ set -e
 if [[ "$dock_code" -ne 2 ]]; then
   cat "$dock_output" >&2
   echo "expected dock_test_pi.sh to reject volatile remote deployment directories with exit 2" >&2
+  exit 1
+fi
+grep -q 'Remote deployment directory must be under the Pi user' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid noaa-navionics --device /dev/serial/by-id/mock-gps >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject relative remote deployment directories with exit 2" >&2
   exit 1
 fi
 grep -q 'Remote deployment directory must be under the Pi user' "$dock_output"
