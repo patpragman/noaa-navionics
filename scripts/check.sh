@@ -926,8 +926,11 @@ grep -q 'It does not deploy, reboot, download charts, or write the Pi status art
 grep -q 'It does not deploy, reboot, download charts, or write the Pi status artifact' docs/sailboat-pi.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' README.md
 grep -q 'scripts/refresh_pi_charts.sh pi@raspberrypi.local --retries 5 --retry-delay 30 --status' docs/sailboat-pi.md
-grep -q "refresh helper validates the SSH target, rejects loopback/current-hostname targets, validates the Pi's trusted root-owned \`python3\`, and validates the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" README.md
+grep -q "refresh helper validates the SSH target, rejects loopback/current-hostname targets" README.md
+grep -q "validates the Pi's trusted root-owned \`python3\`, and validates the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" README.md
 grep -q "refresh helper validates the SSH target, rejects loopback/current-hostname targets, bounds manual refresh controls to 1-20 retries, 0-3600 seconds between retries, and 1-600 seconds for optional post-refresh GPS waits" docs/sailboat-pi.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the chart-refresh heredoc' README.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe before using it for the chart-refresh heredoc' docs/sailboat-pi.md
 grep -q "validates the Pi's trusted root-owned \`python3\`, and validates the installed private venv command path through a no-follow descriptor immediately before each app execution, executes each app call through the validated no-follow descriptor" docs/sailboat-pi.md
 grep -Fq '/bin/bash -s' scripts/refresh_pi_charts.sh
 grep -q 'Add `--status` to run a read-only status report after the refreshed chart sync succeeds' README.md
@@ -2323,6 +2326,9 @@ grep -q 'echo "$name must be 0 or 1" >&2' scripts/refresh_pi_charts.sh
 grep -q -- '--gps-seconds-from-launcher-env "$launcher_env"' scripts/refresh_pi_charts.sh
 grep -q 'python3_cmd="$(require_remote_command python3)"' scripts/refresh_pi_charts.sh
 grep -q 'check_remote_directory_chain "$resolved_path"' scripts/refresh_pi_charts.sh
+grep -q 'validate_remote_bash_entrypoint' scripts/refresh_pi_charts.sh
+grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/refresh_pi_charts.sh
+grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/refresh_pi_charts.sh
 grep -q 'reject_symlinked_path_components' scripts/refresh_pi_charts.sh
 grep -q 'reject_symlinked_parent_components "installed noaa-navionics command"' scripts/refresh_pi_charts.sh
 grep -q 'check_installed_noaa_command_tree' scripts/refresh_pi_charts.sh
