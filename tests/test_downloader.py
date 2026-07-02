@@ -3009,6 +3009,32 @@ class OpenCPNConfigTests(unittest.TestCase):
         self.assertIn("\aANCHOR WATCH GPS LOST", stderr.getvalue())
         self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 
+    def test_cli_anchor_watch_live_stream_timeout_after_anchor_is_audible_alarm(self):
+        now = datetime.now(timezone.utc) - timedelta(seconds=3)
+
+        def fixes():
+            yield GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.9)
+            raise TimeoutError("no GPSD messages within 300s")
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli_module._run_anchor_watch(
+                fixes(),
+                radius_meters=50.0,
+                anchor_latitude=None,
+                anchor_longitude=None,
+                anchor_samples=1,
+                interval_seconds=None,
+                live_stream=True,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Anchor set: 61.000000, -149.000000", stdout.getvalue())
+        self.assertIn("\aANCHOR WATCH GPS LOST", stderr.getvalue())
+        self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+
     def test_cli_anchor_watch_live_stream_loss_after_explicit_anchor_is_audible_alarm(self):
         fix = GPSFix(
             timestamp=datetime.now(timezone.utc),
@@ -3033,6 +3059,30 @@ class OpenCPNConfigTests(unittest.TestCase):
 
         self.assertEqual(code, 1)
         self.assertIn("Anchor distance:", stdout.getvalue())
+        self.assertIn("\aANCHOR WATCH GPS LOST", stderr.getvalue())
+        self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+
+    def test_cli_anchor_watch_live_stream_timeout_after_explicit_anchor_is_audible_alarm(self):
+        def fixes():
+            raise TimeoutError("no NMEA bytes within 300s")
+            yield
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli_module._run_anchor_watch(
+                fixes(),
+                radius_meters=50.0,
+                anchor_latitude=61.0,
+                anchor_longitude=-149.0,
+                anchor_samples=1,
+                interval_seconds=None,
+                live_stream=True,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout.getvalue(), "")
         self.assertIn("\aANCHOR WATCH GPS LOST", stderr.getvalue())
         self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
 

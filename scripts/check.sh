@@ -4402,6 +4402,8 @@ grep -q 'test_cli_anchor_watch_averages_anchor_samples_across_date_line' tests/t
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_oversized_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_validates_direct_parameters' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_live_stream_timeout_after_anchor_is_audible_alarm' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_live_stream_timeout_after_explicit_anchor_is_audible_alarm' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests/test_downloader.py
 grep -q 'def _validated_anchor_watch_parameters' src/noaa_navionics/cli.py
@@ -4531,8 +4533,8 @@ grep -q 'Live GPS stream ended unexpectedly' src/noaa_navionics/cli.py
 grep -q 'TRACK LOGGER GPS LOST' src/noaa_navionics/cli.py
 grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly' README.md
 grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly' docs/sailboat-pi.md
-grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends after the anchor is established' README.md
-grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends after the anchor is established' docs/sailboat-pi.md
+grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' README.md
+grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' docs/sailboat-pi.md
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py

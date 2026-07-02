@@ -1251,43 +1251,49 @@ def _run_anchor_watch(
     anchor_sample_longitudes: list[float] = []
     checked = 0
     last_update_monotonic: Optional[float] = None
-    for fix in fixes:
-        if anchor_set_from_fix and not anchor_established:
-            anchor_sample_latitudes.append(fix.latitude)
-            anchor_sample_longitudes.append(fix.longitude)
-            if len(anchor_sample_latitudes) < anchor_samples:
-                print(f"Anchor sample {len(anchor_sample_latitudes)}/{anchor_samples}: {_format_fix(fix)}")
+    try:
+        for fix in fixes:
+            if anchor_set_from_fix and not anchor_established:
+                anchor_sample_latitudes.append(fix.latitude)
+                anchor_sample_longitudes.append(fix.longitude)
+                if len(anchor_sample_latitudes) < anchor_samples:
+                    print(f"Anchor sample {len(anchor_sample_latitudes)}/{anchor_samples}: {_format_fix(fix)}")
+                    continue
+                anchor_latitude = sum(anchor_sample_latitudes) / anchor_samples
+                anchor_longitude = mean_longitude_degrees(anchor_sample_longitudes)
+                anchor_established = True
+                if anchor_samples == 1:
+                    print(f"Anchor set: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
+                    print(_format_fix(fix))
+                else:
+                    print(f"Anchor set from {anchor_samples} fixes: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
+                    print(f"Last anchor sample: {_format_fix(fix)}")
                 continue
-            anchor_latitude = sum(anchor_sample_latitudes) / anchor_samples
-            anchor_longitude = mean_longitude_degrees(anchor_sample_longitudes)
-            anchor_established = True
-            if anchor_samples == 1:
-                print(f"Anchor set: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
-                print(_format_fix(fix))
-            else:
-                print(f"Anchor set from {anchor_samples} fixes: {anchor_latitude:.6f}, {anchor_longitude:.6f}")
-                print(f"Last anchor sample: {_format_fix(fix)}")
-            continue
 
-        checked += 1
-        distance = distance_meters(anchor_latitude, anchor_longitude, fix.latitude, fix.longitude)
-        alarm = distance > radius_meters
-        now = time.monotonic()
-        should_print_update = (
-            alarm
-            or interval_seconds is None
-            or last_update_monotonic is None
-            or now - last_update_monotonic >= interval_seconds
-        )
-        if should_print_update:
-            print(f"Anchor distance: {distance:.1f} m  radius {radius_meters:g} m  {_format_fix(fix)}")
-            last_update_monotonic = now
-        if alarm:
-            print(
-                f"\aANCHOR ALARM: {distance:.1f} m from anchor; radius {radius_meters:g} m",
-                file=sys.stderr,
+            checked += 1
+            distance = distance_meters(anchor_latitude, anchor_longitude, fix.latitude, fix.longitude)
+            alarm = distance > radius_meters
+            now = time.monotonic()
+            should_print_update = (
+                alarm
+                or interval_seconds is None
+                or last_update_monotonic is None
+                or now - last_update_monotonic >= interval_seconds
             )
+            if should_print_update:
+                print(f"Anchor distance: {distance:.1f} m  radius {radius_meters:g} m  {_format_fix(fix)}")
+                last_update_monotonic = now
+            if alarm:
+                print(
+                    f"\aANCHOR ALARM: {distance:.1f} m from anchor; radius {radius_meters:g} m",
+                    file=sys.stderr,
+                )
+                return 1
+    except OSError:
+        if live_stream and anchor_established:
+            _print_anchor_watch_gps_lost()
             return 1
+        raise
 
     if anchor_set_from_fix and not anchor_established:
         if anchor_sample_latitudes:
