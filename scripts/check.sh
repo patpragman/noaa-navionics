@@ -5408,14 +5408,34 @@ grep -q '0o600' src/noaa_navionics/gps.py
 grep -q 'mode=0o700' src/noaa_navionics/gps.py
 grep -q 'latest_mode' src/noaa_navionics/report.py
 grep -q 'tracks_mode' src/noaa_navionics/report.py
+grep -q 'def _status_path_under' src/noaa_navionics/report.py
+grep -q 'def _status_mode_value' src/noaa_navionics/report.py
+grep -q 'status report track_log track_output is not absolute' src/noaa_navionics/report.py
+grep -q 'status report track_log tracks_dir is not absolute' src/noaa_navionics/report.py
+grep -q 'status report track_log tracks_dir does not match track_output' src/noaa_navionics/report.py
+grep -q 'status report track_log latest_path is not absolute' src/noaa_navionics/report.py
+grep -q 'status report track_log latest_path is not under tracks_dir' src/noaa_navionics/report.py
+grep -Fq 'status report track_log latest_path is not a track-*.gpx file' src/noaa_navionics/report.py
+grep -q 'status report track_log tracks_mode is missing or invalid' src/noaa_navionics/report.py
+grep -q 'status report track_log latest_mode is missing or invalid' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0700' src/noaa_navionics/report.py
 grep -q 'permissions are.*expected private 0600' src/noaa_navionics/report.py
+grep -q 'pre-departure status snapshot JSON track_log track_output is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log latest_path is not under tracks_dir' scripts/pre_trip_prepare_pi.sh
+grep -Fq 'pre-departure status snapshot JSON track_log latest_path is not a track-*.gpx file' scripts/pre_trip_prepare_pi.sh
+grep -q 'private_octal_mode(track_log.get("tracks_mode"), field="tracks_mode")' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON track_log latest_path is not under tracks_dir' scripts/verify_pi_recovery_exports.sh
+grep -q 'private_octal_mode(track_log.get("latest_mode"), field="latest_mode")' scripts/verify_pi_recovery_exports.sh
+grep -q 'status snapshot JSON track_log latest_path is not under tracks_dir' scripts/post_trip_collect_pi.sh
+grep -q 'private_octal_mode(track_log.get("latest_mode"), field="latest_mode", path=path)' scripts/post_trip_collect_pi.sh
 grep -q 'private user-owned `0700` tracks directory' README.md
 grep -q 'private user-owned `0700` tracks directory' docs/sailboat-pi.md
 grep -q 'private `0600` no-follow opens' README.md
 grep -q 'private `0600` no-follow opens' docs/sailboat-pi.md
 grep -q 'service-created track files also use a private `0077` umask' README.md
 grep -q 'service-created track files also use a private `0077` umask' docs/sailboat-pi.md
+grep -Fq 'track-log snapshots require absolute paths, a latest `track-*.gpx` file under the configured tracks directory, and private mode evidence' README.md
+grep -Fq 'track-log snapshots require absolute paths, a latest `track-*.gpx` file under the configured tracks directory, and private mode evidence' docs/sailboat-pi.md
 grep -q 'StartLimitBurst=60' systemd/noaa-navionics-track.service
 grep -q -- '--retries "$sync_retries" --retry-delay "$sync_retry_delay"' scripts/provision_sailboat_pi.sh
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=%s' scripts/provision_sailboat_pi.sh
@@ -7970,6 +7990,7 @@ payload = {
         "detail": "ok",
         "track_output": "/charts",
         "tracks_dir": "/charts/tracks",
+        "tracks_mode": "0700",
         "track_output_is_symlink": False,
         "track_storage_symlink_component": "",
         "latest_path": "/charts/tracks/track-20260701.gpx",
@@ -7977,6 +7998,7 @@ payload = {
         "latest_latitude": 61.0,
         "latest_longitude": -149.0,
         "age_seconds": 0.0,
+        "latest_mode": "0600",
         "latest_satellites": 8,
         "latest_hdop": 0.9,
     },
@@ -8840,6 +8862,7 @@ payload = {
         "detail": "ok",
         "track_output": "/charts",
         "tracks_dir": "/charts/tracks",
+        "tracks_mode": "0700",
         "track_output_is_symlink": False,
         "track_storage_symlink_component": "",
         "latest_path": "/charts/tracks/track-20260701.gpx",
@@ -8847,6 +8870,7 @@ payload = {
         "latest_latitude": 61.0,
         "latest_longitude": -149.0,
         "age_seconds": 0.0,
+        "latest_mode": "0600",
         "latest_satellites": 8,
         "latest_hdop": 0.9,
     },
@@ -12280,6 +12304,7 @@ def write_pre_departure_status(directory):
                     "detail": "ok",
                     "track_output": "/charts",
                     "tracks_dir": "/charts/tracks",
+                    "tracks_mode": "0700",
                     "track_output_is_symlink": False,
                     "track_storage_symlink_component": "",
                     "latest_path": "/charts/tracks/track-20260701.gpx",
@@ -12287,6 +12312,7 @@ def write_pre_departure_status(directory):
                     "latest_latitude": 61.0,
                     "latest_longitude": -149.0,
                     "age_seconds": 0.0,
+                    "latest_mode": "0600",
                     "latest_satellites": 8,
                     "latest_hdop": 0.9,
                 },
@@ -12554,7 +12580,7 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   echo "expected verify_pi_recovery_exports.sh to reject a pre-departure status missing track output context with exit 1" >&2
   exit 1
 fi
-grep -q 'pre-departure status snapshot JSON missing track_log track_output' "$verify_output"
+grep -q 'pre-departure status snapshot JSON track_log track_output is not absolute' "$verify_output"
 
 recovery_verify_thin_support_dir="$tmpdir/recovery-verify-thin-support"
 cp -a "$recovery_verify_dir" "$recovery_verify_thin_support_dir"

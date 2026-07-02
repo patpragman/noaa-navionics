@@ -781,6 +781,50 @@ def validate_snapshot_quality(summary: dict[str, object], *, satellite_field: st
         fail(f"pre-departure status snapshot JSON {label} HDOP is weak or invalid")
 
 
+def private_octal_mode(value: object, *, field: str) -> int:
+    text = str(value).strip()
+    if not text:
+        fail(f"pre-departure status snapshot JSON track_log {field} is missing or invalid")
+    try:
+        mode = int(text, 8)
+    except ValueError:
+        fail(f"pre-departure status snapshot JSON track_log {field} is missing or invalid")
+    if mode < 0 or mode > 0o7777:
+        fail(f"pre-departure status snapshot JSON track_log {field} is missing or invalid")
+    if mode & 0o077:
+        fail(f"pre-departure status snapshot JSON track_log {field} is not private")
+    return mode
+
+
+def validate_track_log_paths(track_log: dict[str, object]) -> None:
+    track_output = str(track_log.get("track_output", "")).strip()
+    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    latest_path = str(track_log.get("latest_path", "")).strip()
+    if not track_output or not Path(track_output).is_absolute():
+        fail("pre-departure status snapshot JSON track_log track_output is not absolute")
+    if not tracks_dir or not Path(tracks_dir).is_absolute():
+        fail("pre-departure status snapshot JSON track_log tracks_dir is not absolute")
+    if str(Path(track_output) / "tracks") != tracks_dir:
+        fail("pre-departure status snapshot JSON track_log tracks_dir does not match track_output")
+    if not latest_path:
+        fail("pre-departure status snapshot JSON track_log missing latest_path")
+    if not Path(latest_path).is_absolute():
+        fail("pre-departure status snapshot JSON track_log latest_path is not absolute")
+    normalized_latest = os.path.normpath(latest_path)
+    normalized_tracks = os.path.normpath(tracks_dir)
+    try:
+        latest_common = os.path.commonpath([normalized_latest, normalized_tracks])
+    except ValueError:
+        latest_common = ""
+    if normalized_latest == normalized_tracks or latest_common != normalized_tracks:
+        fail("pre-departure status snapshot JSON track_log latest_path is not under tracks_dir")
+    latest_name = Path(latest_path).name
+    if not latest_name.startswith("track-") or Path(latest_name).suffix.lower() != ".gpx":
+        fail("pre-departure status snapshot JSON track_log latest_path is not a track-*.gpx file")
+    private_octal_mode(track_log.get("tracks_mode"), field="tracks_mode")
+    private_octal_mode(track_log.get("latest_mode"), field="latest_mode")
+
+
 def validate_snapshot_gps_fix(
     gps_fix: dict[str, object],
     *,
@@ -817,8 +861,7 @@ def validate_snapshot_track_log(track_log: dict[str, object], *, generated_at: d
         fail("pre-departure status snapshot JSON track_log missing track_storage_symlink_component")
     if str(track_log.get("track_storage_symlink_component", "")).strip():
         fail("pre-departure status snapshot JSON track_log storage path contains a symlink")
-    if not str(track_log.get("latest_path", "")).strip():
-        fail("pre-departure status snapshot JSON track_log missing latest_path")
+    validate_track_log_paths(track_log)
     latitude = finite_status_float(track_log.get("latest_latitude"))
     longitude = finite_status_float(track_log.get("latest_longitude"))
     if latitude is None or longitude is None:

@@ -2032,6 +2032,15 @@ def _gps_fix_validation_failures(
 def _track_log_validation_failures(track_log: object, *, now: Optional[datetime] = None) -> list[CheckResult]:
     if not isinstance(track_log, dict):
         return [CheckResult("Track Log", False, "status report missing track_log section")]
+    track_output = str(track_log.get("track_output", "")).strip()
+    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    latest_path = str(track_log.get("latest_path", "")).strip()
+    if not _status_absolute_path(track_output):
+        return [CheckResult("Track Log", False, "status report track_log track_output is not absolute")]
+    if not _status_absolute_path(tracks_dir):
+        return [CheckResult("Track Log", False, "status report track_log tracks_dir is not absolute")]
+    if _normalize_status_path(tracks_dir) != _normalize_status_path(str(Path(track_output) / "tracks")):
+        return [CheckResult("Track Log", False, "status report track_log tracks_dir does not match track_output")]
     if track_log.get("track_output_is_symlink") is not False:
         return [CheckResult("Track Log", False, "status report track_log track_output is a symlink or missing symlink status")]
     if "track_storage_symlink_component" not in track_log:
@@ -2042,8 +2051,25 @@ def _track_log_validation_failures(track_log: object, *, now: Optional[datetime]
         return [CheckResult("Track Log", False, "status report track_log ok is not boolean")]
     if track_log.get("ok") is not True:
         return [CheckResult("Track Log", False, f"status report track_log is not ok: {track_log.get('detail', '<missing detail>')}")]
-    if not str(track_log.get("latest_path", "")).strip():
+    if not latest_path:
         return [CheckResult("Track Log", False, "status report track_log has no latest_path")]
+    if not _status_absolute_path(latest_path):
+        return [CheckResult("Track Log", False, "status report track_log latest_path is not absolute")]
+    if not _status_path_under(latest_path, tracks_dir):
+        return [CheckResult("Track Log", False, "status report track_log latest_path is not under tracks_dir")]
+    latest_name = Path(latest_path).name
+    if not latest_name.startswith("track-") or Path(latest_name).suffix.lower() != ".gpx":
+        return [CheckResult("Track Log", False, "status report track_log latest_path is not a track-*.gpx file")]
+    tracks_mode = _status_mode_value(track_log.get("tracks_mode"))
+    if tracks_mode is None:
+        return [CheckResult("Track Log", False, "status report track_log tracks_mode is missing or invalid")]
+    if tracks_mode & 0o077:
+        return [CheckResult("Track Log", False, f"status report track_log tracks_mode {tracks_mode:04o} is not private")]
+    latest_mode = _status_mode_value(track_log.get("latest_mode"))
+    if latest_mode is None:
+        return [CheckResult("Track Log", False, "status report track_log latest_mode is missing or invalid")]
+    if latest_mode & 0o077:
+        return [CheckResult("Track Log", False, f"status report track_log latest_mode {latest_mode:04o} is not private")]
     latitude = _finite_gps_fix_float(track_log.get("latest_latitude"))
     longitude = _finite_gps_fix_float(track_log.get("latest_longitude"))
     age_seconds = _finite_gps_fix_float(track_log.get("age_seconds"))
@@ -2128,6 +2154,36 @@ def _positive_status_float(value: object) -> Optional[float]:
 
 def _status_absolute_path(value: str) -> bool:
     return bool(value) and Path(value).expanduser().is_absolute()
+
+
+def _normalize_status_path(value: str) -> str:
+    return os.path.normpath(value)
+
+
+def _status_path_under(child: str, parent: str) -> bool:
+    if not _status_absolute_path(child) or not _status_absolute_path(parent):
+        return False
+    normalized_child = _normalize_status_path(child)
+    normalized_parent = _normalize_status_path(parent)
+    if normalized_child == normalized_parent:
+        return False
+    try:
+        return os.path.commonpath([normalized_child, normalized_parent]) == normalized_parent
+    except ValueError:
+        return False
+
+
+def _status_mode_value(value: object) -> Optional[int]:
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        parsed = int(text, 8)
+    except ValueError:
+        return None
+    if parsed < 0 or parsed > 0o7777:
+        return None
+    return parsed
 
 
 def _finite_gps_fix_float(value: object) -> Optional[float]:
