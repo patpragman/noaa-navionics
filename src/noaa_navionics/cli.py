@@ -320,6 +320,17 @@ def build_parser() -> argparse.ArgumentParser:
     mark.add_argument("--description", default="", help="GPX waypoint description")
     mark.add_argument("--mob", action="store_true", help="record a MOB-named position mark")
 
+    mob = subparsers.add_parser("mob", help="record a man-overboard GPX waypoint")
+    mob.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
+    mob.add_argument("--device", help="NMEA serial device")
+    mob.add_argument("--baud", type=int, help="serial baud rate")
+    mob.add_argument("--gpsd", action="store_true", help="read GPSD at localhost:2947")
+    mob.add_argument("--sample", help="read NMEA from a text file instead of a serial device")
+    mob.add_argument("--seconds", type=_positive_float, default=10.0, help="seconds to wait for a GPS fix")
+    mob.add_argument("--output", "-o", help="base output directory; defaults to [tracking].output")
+    mob.add_argument("--file", help="explicit GPX waypoint output file")
+    mob.add_argument("--description", default="", help="GPX waypoint description")
+
     anchor = subparsers.add_parser("anchor-watch", help="alarm when GPS drifts outside an anchor radius")
     anchor.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="config file path")
     anchor.add_argument("--device", help="NMEA serial device")
@@ -660,7 +671,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     return 0
             return 1
 
-        if args.command == "mark-position":
+        if args.command in ("mark-position", "mob"):
             app_config = read_config(Path(args.config))
             use_gpsd = args.gpsd or (app_config.gps_mode == "gpsd" and not args.sample and args.device is None)
             device = args.device or app_config.gps_device
@@ -683,14 +694,15 @@ def main(argv: Optional[list[str]] = None) -> int:
             if fix is None:
                 print("No usable GPS fix was available for a position mark.", file=sys.stderr)
                 return 1
-            name = "MOB" if args.mob else args.name
+            mob_mark = args.command == "mob" or getattr(args, "mob", False)
+            name = "MOB" if mob_mark else args.name
             description = args.description
-            if args.mob and not description:
+            if mob_mark and not description:
                 description = "Man overboard position mark"
             output = (
                 Path(args.file).expanduser()
                 if args.file
-                else gpx_position_mark_path(base_output, fix.timestamp, prefix="mob" if args.mob else "mark")
+                else gpx_position_mark_path(base_output, fix.timestamp, prefix="mob" if mob_mark else "mark")
             )
             path = (
                 write_gpx_position_mark(output, fix, name=name, description=description)

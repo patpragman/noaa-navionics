@@ -2316,6 +2316,70 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
             self.assertIn(f"Marked position: {mark_path}", stdout.getvalue())
 
+    def test_cli_mob_alias_writes_mob_waypoint_to_configured_track_output(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "configured-tracks"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "baud = 4800\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {track_output}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=9,
+                hdop=0.9,
+            )
+            calls = []
+            original = cli_module._read_fixes
+
+            def fake_read_fixes(
+                device,
+                baud,
+                sample,
+                *,
+                gpsd=False,
+                gpsd_host="127.0.0.1",
+                gpsd_port=2947,
+                deadline=None,
+                gpsd_connect_retry=False,
+                gpsd_idle_timeout=None,
+                serial_idle_timeout=None,
+            ):
+                calls.append((device, baud, sample, gpsd, gpsd_host, gpsd_port, deadline))
+                return iter([fix])
+
+            try:
+                cli_module._read_fixes = fake_read_fixes
+                stdout = StringIO()
+                with redirect_stdout(stdout):
+                    code = cli_module.main(["mob", "--config", str(app_config), "--seconds", "12"])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 0)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][:6], ("/dev/serial/by-id/mock-gps", 4800, None, True, "127.0.0.1", 2947))
+            self.assertIsNotNone(calls[0][6])
+            mark_path = track_output / "tracks" / f"mob-{fix.timestamp.strftime('%Y%m%dT%H%M%SZ')}.gpx"
+            self.assertTrue(mark_path.exists())
+            text = mark_path.read_text(encoding="utf-8")
+            self.assertIn("<name>MOB</name>", text)
+            self.assertIn("<desc>Man overboard position mark</desc>", text)
+            self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
+            self.assertIn(f"Marked position: {mark_path}", stdout.getvalue())
+
     def test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -7531,6 +7595,7 @@ class CLIValidationTests(unittest.TestCase):
     def test_track_logger_rejects_non_positive_duration(self):
         self.assert_parse_error(["log-track", "--seconds", "0"])
         self.assert_parse_error(["mark-position", "--seconds", "0"])
+        self.assert_parse_error(["mob", "--seconds", "0"])
         self.assert_parse_error(["anchor-watch", "--seconds", "0"])
         self.assert_parse_error(["anchor-watch", "--anchor-samples", "0"])
         self.assert_parse_error(["anchor-watch", "--interval-seconds", "0"])

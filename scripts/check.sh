@@ -947,8 +947,10 @@ grep -q 'writes a local private `0600` `.tgz` containing only regular private `.
 grep -q 'writes a local private `0600` `.tgz` containing only regular private `.gpx` files' docs/sailboat-pi.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' README.md
 grep -q 'scripts/post_trip_collect_pi.sh pi@raspberrypi.local' docs/sailboat-pi.md
-grep -q 'noaa-navionics mark-position --mob' README.md
-grep -q 'noaa-navionics mark-position --mob' docs/sailboat-pi.md
+grep -q 'noaa-navionics mob' README.md
+grep -q 'noaa-navionics mob' docs/sailboat-pi.md
+grep -q 'mob` is the shorter equivalent intended for a desktop launcher, keyboard shortcut, or hardware button' README.md
+grep -q 'mob` is the shorter equivalent intended for a desktop launcher, keyboard shortcut, or hardware button' docs/sailboat-pi.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" README.md
 grep -q "reads one fresh quality-checked GPSD or serial fix" docs/sailboat-pi.md
 grep -q 'default Mark/MOB filenames advance to a suffixed name if the same timestamped mark already exists or appears during creation' README.md
@@ -4534,6 +4536,10 @@ grep -q 'symlinked config path components' README.md
 grep -q 'symlinked config path components' docs/sailboat-pi.md
 grep -q 'os.fchmod(handle.fileno(), 0o600)' src/noaa_navionics/config.py
 grep -q 'GPSD skipped: gps.mode' src/noaa_navionics/cli.py
+grep -q 'subparsers.add_parser("mob", help="record a man-overboard GPX waypoint")' src/noaa_navionics/cli.py
+grep -q 'if args.command in ("mark-position", "mob"):' src/noaa_navionics/cli.py
+grep -q 'test_cli_mob_alias_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py
+grep -Fq 'self.assert_parse_error(["mob", "--seconds", "0"])' tests/test_downloader.py
 grep -q 'sync-charts requires writable chart storage with enough free space' src/noaa_navionics/cli.py
 grep -q 'live_stream = deadline is None and not args.sample' src/noaa_navionics/cli.py
 grep -q 'gpsd_connect_retry=use_gpsd and not args.sample' src/noaa_navionics/cli.py
