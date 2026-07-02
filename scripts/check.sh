@@ -260,6 +260,10 @@ grep -q 'max_readiness_attempts=20' scripts/start_chartplotter.sh
 grep -q 'max_readiness_retry_delay=3600' scripts/start_chartplotter.sh
 grep -q 'max_opencpn_restarts=20' scripts/start_chartplotter.sh
 grep -q 'max_opencpn_restart_delay=3600' scripts/start_chartplotter.sh
+grep -q 'normalize_decimal_integer()' scripts/start_chartplotter.sh
+grep -q 'value="$(normalize_decimal_integer "$1")"' scripts/start_chartplotter.sh
+grep -q 'warning_seconds="$(normalize_decimal_integer "$warning_seconds")"' scripts/start_chartplotter.sh
+grep -q 'opencpn_restarts="$(normalize_decimal_integer "$opencpn_restarts")"' scripts/start_chartplotter.sh
 grep -q 'require_launcher_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' scripts/start_chartplotter.sh
 grep -q 'require_launcher_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTARTS" "$opencpn_restarts" "$max_opencpn_restarts"' scripts/start_chartplotter.sh
 grep -q 'Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=.*expected positive integer' scripts/start_chartplotter.sh
@@ -16528,7 +16532,7 @@ test "$(cat "$launcher_retry_home/.cache/noaa-navionics/readiness-count")" -eq 2
 launcher_opencpn_restart_home="$tmpdir/launcher-opencpn-restart-home"
 mkdir -p "$launcher_opencpn_restart_home/.local/bin" "$launcher_opencpn_restart_home/.cache/noaa-navionics" "$launcher_opencpn_restart_home/.config/noaa-navionics"
 chmod 0700 "$launcher_opencpn_restart_home/.config/noaa-navionics"
-printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=8\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=10\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=2\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=0\n' >"$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
+printf 'NOAA_NAVIONICS_GPS_SECONDS=60\nNOAA_NAVIONICS_WARNING_SECONDS=08\nNOAA_NAVIONICS_READINESS_ATTEMPTS=3\nNOAA_NAVIONICS_READINESS_RETRY_DELAY=00\nNOAA_NAVIONICS_START_ON_FAILED_READINESS=no\nNOAA_NAVIONICS_OPENCPN_RESTARTS=08\nNOAA_NAVIONICS_OPENCPN_RESTART_DELAY=00\n' >"$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
 chmod 0600 "$launcher_opencpn_restart_home/.config/noaa-navionics/launcher.env"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$launcher_opencpn_restart_home/.local/bin/noaa-navionics"
 cat >"$tmpdir/opencpn" <<'EOF'
@@ -16549,8 +16553,8 @@ printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/pgrep"
 chmod +x "$launcher_opencpn_restart_home/.local/bin/noaa-navionics" "$tmpdir/pgrep" "$tmpdir/opencpn"
 HOME="$launcher_opencpn_restart_home" PATH="$tmpdir:$PATH" scripts/start_chartplotter.sh >/dev/null
 test "$(cat "$launcher_opencpn_restart_home/.cache/noaa-navionics/opencpn-count")" -eq 3
-grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
-grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 2/2) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 1/8) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
+grep -q 'Restarting OpenCPN after nonzero exit status 7 (restart 2/8) in 0s.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 grep -q 'OpenCPN exited cleanly; not restarting.' "$launcher_opencpn_restart_home/.cache/noaa-navionics/chartplotter.log"
 
 launcher_mutated_opencpn_home="$tmpdir/launcher-mutated-opencpn-home"
