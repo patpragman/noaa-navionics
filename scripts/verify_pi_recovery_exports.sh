@@ -184,6 +184,7 @@ fi
 python3_cmd="$(require_local_command python3)"
 
 "$python3_cmd" - "$recovery_dir" <<'PY'
+import configparser
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 import json
@@ -279,6 +280,7 @@ ARCHIVES = [
         "pattern": "noaa-navionics-pi-settings-*.tgz",
         "manifest_key": "file_count",
         "required_members": CORE_SETTINGS_FILES,
+        "desktop_entries": True,
         "max_member_bytes": MAX_SETTING_ARCHIVE_MEMBER_BYTES,
     },
     {
@@ -358,6 +360,13 @@ CORE_SERVICE_CHECKS = {
     "User Linger",
 }
 GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
+EXPECTED_CHARTPLOTTER_DESKTOP_ENTRY_VALUES = {
+    "Type": "Application",
+    "Name": "NOAA Navionics Chartplotter",
+    "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"',
+    "Terminal": "false",
+    "X-GNOME-Autostart-enabled": "true",
+}
 EXPECTED_MOB_LAUNCHER_VALUES = {
     "Type": "Application",
     "Name": "NOAA Navionics MOB",
@@ -369,6 +378,23 @@ EXPECTED_STATUS_LAUNCHER_VALUES = {
     "Name": "NOAA Navionics Status",
     "Exec": 'sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"',
     "Terminal": "false",
+}
+EXPECTED_SETTINGS_DESKTOP_ENTRIES = {
+    "desktop/noaa-navionics-chartplotter.desktop": {
+        "label": "chartplotter desktop autostart",
+        "values": EXPECTED_CHARTPLOTTER_DESKTOP_ENTRY_VALUES,
+        "forbid_autostart": False,
+    },
+    "desktop/noaa-navionics-status.desktop": {
+        "label": "status GUI desktop launcher",
+        "values": EXPECTED_STATUS_LAUNCHER_VALUES,
+        "forbid_autostart": True,
+    },
+    "desktop/noaa-navionics-mob.desktop": {
+        "label": "MOB desktop launcher",
+        "values": EXPECTED_MOB_LAUNCHER_VALUES,
+        "forbid_autostart": True,
+    },
 }
 
 
@@ -394,6 +420,56 @@ def validate_member_name(name: str, archive_path: Path) -> str:
     if member_path.is_absolute() or ".." in member_path.parts:
         fail(f"{archive_path.name} contains unsafe member path: {name}")
     return normalized
+
+
+def parse_settings_desktop_entry(
+    archive: tarfile.TarFile,
+    member: tarfile.TarInfo,
+    archive_path: Path,
+    label: str,
+) -> dict[str, str]:
+    try:
+        member_file = archive.extractfile(member)
+    except (KeyError, OSError, tarfile.TarError) as exc:
+        fail(f"{archive_path.name} {label} could not be read: {exc}")
+    if member_file is None:
+        fail(f"{archive_path.name} {label} is not a regular file")
+    try:
+        text = member_file.read().decode("utf-8")
+    except UnicodeDecodeError as exc:
+        fail(f"{archive_path.name} {label} is not UTF-8: {exc}")
+
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.optionxform = str
+    try:
+        parser.read_string(text)
+    except configparser.Error as exc:
+        fail(f"{archive_path.name} {label} is invalid desktop entry syntax: {exc}")
+    if not parser.has_section("Desktop Entry"):
+        fail(f"{archive_path.name} {label} is missing [Desktop Entry]")
+    return {key: value.strip() for key, value in parser.items("Desktop Entry", raw=True)}
+
+
+def validate_settings_desktop_entries(
+    archive: tarfile.TarFile,
+    members_by_name: dict[str, tarfile.TarInfo],
+    archive_path: Path,
+) -> None:
+    for member_name, spec in EXPECTED_SETTINGS_DESKTOP_ENTRIES.items():
+        member = members_by_name.get(member_name)
+        label = str(spec["label"])
+        if member is None or not member.isfile():
+            fail(f"{archive_path.name} is missing required archive member(s): {member_name}")
+        values = parse_settings_desktop_entry(archive, member, archive_path, label)
+        expected_values = spec["values"]
+        for key, expected in expected_values.items():
+            actual = values.get(key, "")
+            if actual != expected:
+                fail(f"{archive_path.name} {label} {key}={actual or '<missing>'} expected {expected}")
+        if values.get("Hidden", "").lower() == "true":
+            fail(f"{archive_path.name} {label} must not be hidden")
+        if spec.get("forbid_autostart") and values.get("X-GNOME-Autostart-enabled", "").lower() == "true":
+            fail(f"{archive_path.name} {label} must not be configured for autostart")
 
 
 def first_symlink_ancestor(path: Path):
@@ -572,6 +648,8 @@ def inspect_archive(archive_path: Path, spec: dict[str, object]) -> int:
                         f"{archive_path.name} is missing required archive member(s): "
                         f"{', '.join(missing_members)}"
                     )
+                if spec.get("desktop_entries"):
+                    validate_settings_desktop_entries(archive, members_by_name, archive_path)
                 required_member_patterns = list(spec.get("required_member_patterns", []))
                 missing_pattern_labels = [
                     label

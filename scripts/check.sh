@@ -1085,8 +1085,8 @@ grep -q 'a clean deployed source revision without a dirty `-dirty` suffix, and m
 grep -q 'pre-departure status snapshot JSON Source Revision row does not match deployed source_revision' scripts/verify_pi_recovery_exports.sh
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' README.md
 grep -q 'verifier checks the local `.tgz` files with the validated local Python command' docs/sailboat-pi.md
-grep -q 'required commissioning settings members including the status GUI and MOB desktop launchers' README.md
-grep -q 'required commissioning settings members including the status GUI and MOB desktop launchers' docs/sailboat-pi.md
+grep -q 'validates those stored chartplotter/status/MOB desktop entries are parseable, visible, and pointed at the expected commands with status/MOB kept out of autostart' README.md
+grep -q 'validates those stored chartplotter/status/MOB desktop entries are parseable, visible, and pointed at the expected commands with status/MOB kept out of autostart' docs/sailboat-pi.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' README.md
 grep -Fq 'GPX manifest counts and track names that match the regular `tracks/*.gpx` data files' docs/sailboat-pi.md
 grep -q 'support bundle core command-evidence and NOAA support evidence files' README.md
@@ -1997,6 +1997,12 @@ grep -q 'CORE_SETTINGS_FILES = \[' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-chartplotter.desktop' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-status.desktop' scripts/verify_pi_recovery_exports.sh
 grep -q 'desktop/noaa-navionics-mob.desktop' scripts/verify_pi_recovery_exports.sh
+grep -q 'EXPECTED_SETTINGS_DESKTOP_ENTRIES = {' scripts/verify_pi_recovery_exports.sh
+grep -q 'def validate_settings_desktop_entries' scripts/verify_pi_recovery_exports.sh
+grep -q 'parse_settings_desktop_entry' scripts/verify_pi_recovery_exports.sh
+grep -q 'chartplotter desktop autostart' scripts/verify_pi_recovery_exports.sh
+grep -q 'status GUI desktop launcher must not be configured for autostart' scripts/verify_pi_recovery_exports.sh
+grep -q 'MOB desktop launcher must not be configured for autostart' scripts/verify_pi_recovery_exports.sh
 grep -q 'system/50-noaa-navionics-autologin.conf' scripts/verify_pi_recovery_exports.sh
 grep -q '"required_members": CORE_SETTINGS_FILES' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
@@ -6122,8 +6128,8 @@ grep -q 'Desktop/noaa-navionics-mob.desktop' scripts/collect_pi_support_bundle.s
 grep -q 'desktop/noaa-navionics-mob.desktop' scripts/export_pi_settings.sh
 grep -q 'Provisioning also installs an executable non-autostart `~/Desktop/noaa-navionics-status.desktop` launcher for the readiness, anchor-watch, Mark, and MOB panel, and Pi verification requires it to point at `noaa-navionics-status-gui`' README.md
 grep -q 'Provisioning also installs an executable non-autostart `~/Desktop/noaa-navionics-status.desktop` launcher for the readiness, anchor-watch, Mark, and MOB panel, and Pi verification requires it to point at `noaa-navionics-status-gui`' docs/sailboat-pi.md
-grep -q 'The commissioning settings archive also includes the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' README.md
-grep -q 'The commissioning settings archive also includes the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' docs/sailboat-pi.md
+grep -q 'The commissioning settings archive also includes and validates the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' README.md
+grep -q 'The commissioning settings archive also includes and validates the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' docs/sailboat-pi.md
 grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
@@ -13546,6 +13552,27 @@ CORE_SETTINGS_FILES = [
     "systemd/user/noaa-navionics-track.service",
     "systemd/user/noaa-navionics-preflight.service",
 ]
+SETTINGS_MEMBER_CONTENTS = {
+    "desktop/noaa-navionics-chartplotter.desktop": """[Desktop Entry]
+Type=Application
+Name=NOAA Navionics Chartplotter
+Exec=sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"
+Terminal=false
+X-GNOME-Autostart-enabled=true
+""",
+    "desktop/noaa-navionics-status.desktop": """[Desktop Entry]
+Type=Application
+Name=NOAA Navionics Status
+Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"
+Terminal=false
+""",
+    "desktop/noaa-navionics-mob.desktop": """[Desktop Entry]
+Type=Application
+Name=NOAA Navionics MOB
+Exec=sh -lc "$HOME/.local/bin/noaa-navionics mob; printf '\\nPress Enter to close...'; read _"
+Terminal=true
+""",
+}
 CORE_READINESS_CHECKS = [
     "Python",
     "Source Revision",
@@ -13884,7 +13911,7 @@ build_archive(
     root,
     "noaa-navionics-pi-settings-pi_example_invalid-20260101T000000Z.tgz",
     {"file_count": len(CORE_SETTINGS_FILES)},
-    {name: f"{name}\n" for name in CORE_SETTINGS_FILES},
+    {name: SETTINGS_MEMBER_CONTENTS.get(name, f"{name}\n") for name in CORE_SETTINGS_FILES},
 )
 build_archive(
     root,
@@ -13992,6 +14019,67 @@ fi
 grep -q 'is missing required archive member(s): noaa-navionics/launcher.env' "$verify_output"
 grep -q 'desktop/noaa-navionics-status.desktop' "$verify_output"
 grep -q 'desktop/noaa-navionics-mob.desktop' "$verify_output"
+
+recovery_verify_bad_desktop_dir="$tmpdir/recovery-verify-bad-desktop"
+cp -a "$recovery_verify_dir" "$recovery_verify_bad_desktop_dir"
+python3 - "$recovery_verify_bad_desktop_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import io
+import sys
+import tarfile
+import time
+
+
+def add_bytes(archive, name, data, mode=0o600):
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = mode
+    info.mtime = int(time.time())
+    archive.addfile(info, io.BytesIO(data))
+
+
+root = Path(sys.argv[1])
+settings = next(root.glob("noaa-navionics-pi-settings-*.tgz"))
+members = []
+with tarfile.open(settings, "r:gz") as source:
+    for member in source.getmembers():
+        if not member.isfile():
+            continue
+        extracted = source.extractfile(member)
+        if extracted is None:
+            raise RuntimeError(f"could not read fixture member: {member.name}")
+        data = extracted.read()
+        if member.name == "desktop/noaa-navionics-status.desktop":
+            data = b"""[Desktop Entry]
+Type=Application
+Name=NOAA Navionics Status
+Exec=sh -lc "$HOME/.local/bin/noaa-navionics-status-gui --wrong"
+Terminal=false
+"""
+        members.append((member.name, data, member.mode))
+with tarfile.open(settings, "w:gz", format=tarfile.PAX_FORMAT) as archive:
+    for name, data, mode in members:
+        add_bytes(archive, name, data, mode)
+settings.chmod(0o600)
+lines = []
+for path in sorted(root.glob("noaa-navionics-pi-*.tgz")):
+    lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+manifest = root / "SHA256SUMS.txt"
+manifest.write_text("".join(lines), encoding="ascii")
+manifest.chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_bad_desktop_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a settings archive with a mispointed status desktop launcher with exit 1" >&2
+  exit 1
+fi
+grep -q 'status GUI desktop launcher Exec=.*expected sh -lc "\$HOME/.local/bin/noaa-navionics-status-gui"' "$verify_output"
+! grep -q 'Verified Pi recovery exports:' "$verify_output"
 
 recovery_verify_missing_required_status_dir="$tmpdir/recovery-verify-missing-required-status"
 cp -a "$recovery_verify_dir" "$recovery_verify_missing_required_status_dir"

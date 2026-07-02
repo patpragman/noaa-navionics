@@ -13609,6 +13609,13 @@ class StatusReportTests(unittest.TestCase):
         )
         self.assertIn('"required_members": CORE_SETTINGS_FILES', source)
         self.assertIn("is missing required archive member(s)", source)
+        self.assertIn("EXPECTED_SETTINGS_DESKTOP_ENTRIES", source)
+        self.assertIn("validate_settings_desktop_entries", source)
+        self.assertIn('sh -lc "$HOME/.local/bin/noaa-navionics-start-chartplotter"', source)
+        self.assertIn('sh -lc "$HOME/.local/bin/noaa-navionics-status-gui"', source)
+        self.assertIn("noaa-navionics mob; printf", source)
+        self.assertIn("status GUI desktop launcher must not be configured for autostart", source)
+        self.assertIn("MOB desktop launcher must not be configured for autostart", source)
 
     def test_recovery_restore_requires_config_and_launcher_policy(self):
         source = shell_python_heredoc(Path("scripts/restore_pi_recovery_user_data.sh").read_text(encoding="utf-8"))
