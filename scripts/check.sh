@@ -4219,7 +4219,12 @@ grep -q 'radius_meters = 50' examples/noaa-navionics.ini
 grep -q '<wpt lat=' src/noaa_navionics/gps.py
 grep -q 'position mark requires satellite or HDOP quality data' src/noaa_navionics/gps.py
 grep -q 'expected a new regular GPX position mark file' src/noaa_navionics/gps.py
+grep -q '<sym>{escape(symbol)}</sym>' src/noaa_navionics/gps.py
+grep -q 'symbol = "Man Overboard" if mob_mark else ""' src/noaa_navionics/cli.py
+grep -q 'MOB position marked' src/noaa_navionics/cli.py
+grep -q 'symbol = "Man Overboard" if mob else ""' src/noaa_navionics/status_gui.py
 grep -q 'test_gpx_position_mark_writes_private_waypoint_file' tests/test_downloader.py
+grep -q '<sym>Man &lt;Overboard&gt;</sym>' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_rejects_missing_quality_fields' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_available_uses_suffix_for_existing_timestamp_mark' tests/test_downloader.py
 grep -q 'test_gpx_position_mark_available_retries_after_create_race' tests/test_downloader.py
@@ -5113,7 +5118,7 @@ grep -q 'preflight.add_argument("--gps-seconds", type=_gps_wait_seconds' src/noa
 grep -q 'status.add_argument("--gps-seconds", type=_gps_wait_seconds' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--action-gps-seconds", str(args.action_gps_seconds)])' src/noaa_navionics/cli.py
 grep -Fq 'status_gui_args.extend(["--anchor-watch-seconds", str(args.anchor_watch_seconds)])' src/noaa_navionics/cli.py
-grep -q 'write_available_gpx_position_mark(path, fix, name=name, description=description)' src/noaa_navionics/status_gui.py
+grep -q 'write_available_gpx_position_mark(path, fix, name=name, description=description, symbol=symbol)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)' src/noaa_navionics/status_gui.py
 grep -q 'write_current_position_mark(self.config_path, gps_seconds=self.action_gps_seconds' src/noaa_navionics/status_gui.py
@@ -5143,6 +5148,8 @@ grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change 
 grep -q 'Action successes such as Anchor Check or anchor-watch OK do not change the headline back to READY unless the last full readiness report was also READY' docs/sailboat-pi.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' README.md
 grep -q 'Use its Mark or MOB buttons to write a private GPX waypoint from a fresh quality-checked GPS fix' docs/sailboat-pi.md
+grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB path rings the terminal bell after saving' README.md
+grep -q 'MOB marks include a `Man Overboard` GPX symbol and the command-line MOB path rings the terminal bell after saving' docs/sailboat-pi.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' README.md
 grep -q 'if MOB is pressed while another panel action is still running, the panel rings and queues one MOB mark' docs/sailboat-pi.md
 grep -q 'Direct `preflight`, `status-report`, and status GUI GPS-fix waits are bounded to 600 seconds' README.md

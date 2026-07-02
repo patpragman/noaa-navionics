@@ -2345,11 +2345,12 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn('<wpt lat="61.21810000" lon="-149.90030000">', text)
             self.assertIn("<name>MOB</name>", text)
             self.assertIn("<desc>Man overboard position mark</desc>", text)
+            self.assertIn("<sym>Man Overboard</sym>", text)
             self.assertIn("<sat>9</sat>", text)
             self.assertIn("<hdop>0.9</hdop>", text)
             self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
-            self.assertIn(f"Marked position: {mark_path}", stdout.getvalue())
+            self.assertIn(f"\aMOB position marked: {mark_path}", stdout.getvalue())
 
     def test_cli_mob_alias_writes_mob_waypoint_to_configured_track_output(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -2411,9 +2412,10 @@ class OpenCPNConfigTests(unittest.TestCase):
             text = mark_path.read_text(encoding="utf-8")
             self.assertIn("<name>MOB</name>", text)
             self.assertIn("<desc>Man overboard position mark</desc>", text)
+            self.assertIn("<sym>Man Overboard</sym>", text)
             self.assertEqual(stat.S_IMODE(mark_path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(mark_path.stat().st_mode), 0o600)
-            self.assertIn(f"Marked position: {mark_path}", stdout.getvalue())
+            self.assertIn(f"\aMOB position marked: {mark_path}", stdout.getvalue())
 
     def test_cli_anchor_watch_alarms_on_drift_from_explicit_anchor(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -4100,6 +4102,7 @@ class GuiTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("<name>MOB</name>", text)
             self.assertIn("<desc>Man overboard position mark</desc>", text)
+            self.assertIn("<sym>Man Overboard</sym>", text)
 
     def test_status_gui_position_mark_uses_action_gps_seconds(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -18037,6 +18040,7 @@ class GpsTests(unittest.TestCase):
                 fix,
                 name="MOB & Crew",
                 description="Port <rail>",
+                symbol="Man <Overboard>",
             )
 
             self.assertEqual(written, path)
@@ -18046,6 +18050,7 @@ class GpsTests(unittest.TestCase):
             self.assertIn("<time>2026-06-30T12:34:56Z</time>", text)
             self.assertIn("<name>MOB &amp; Crew</name>", text)
             self.assertIn("<desc>Port &lt;rail&gt;</desc>", text)
+            self.assertIn("<sym>Man &lt;Overboard&gt;</sym>", text)
             self.assertIn("<sat>9</sat>", text)
             self.assertIn("<hdop>0.9</hdop>", text)
             self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
@@ -18117,7 +18122,7 @@ class GpsTests(unittest.TestCase):
             path = Path(tmpdir) / "tracks" / "mark.gpx"
             original_writer = gps_module._write_gpx_position_mark
 
-            def replace_path_then_fail(handle, fix_arg, *, name, description):
+            def replace_path_then_fail(handle, fix_arg, *, name, description, symbol):
                 handle.write("partial waypoint\n")
                 handle.flush()
                 path.unlink()
@@ -18188,11 +18193,11 @@ class GpsTests(unittest.TestCase):
             original = gps_module.write_gpx_position_mark
             calls = []
 
-            def racing_write(candidate, fix_arg, *, name="Position mark", description=""):
+            def racing_write(candidate, fix_arg, *, name="Position mark", description="", symbol=""):
                 calls.append(Path(candidate))
                 if len(calls) == 1:
                     raise FileExistsError(str(candidate))
-                return original(candidate, fix_arg, name=name, description=description)
+                return original(candidate, fix_arg, name=name, description=description, symbol=symbol)
 
             try:
                 gps_module.write_gpx_position_mark = racing_write

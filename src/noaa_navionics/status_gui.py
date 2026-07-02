@@ -136,7 +136,8 @@ def write_current_position_mark(
     path = gpx_position_mark_path(app_config.track_output, fix.timestamp, prefix="mob" if mob else "mark")
     name = "MOB" if mob else "Position mark"
     description = "Man overboard position mark" if mob else ""
-    return write_available_gpx_position_mark(path, fix, name=name, description=description), fix
+    symbol = "Man Overboard" if mob else ""
+    return write_available_gpx_position_mark(path, fix, name=name, description=description, symbol=symbol), fix
 
 
 def _position_mark_freshness_failure(

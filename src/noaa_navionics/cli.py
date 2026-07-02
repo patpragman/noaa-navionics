@@ -699,17 +699,18 @@ def main(argv: Optional[list[str]] = None) -> int:
             description = args.description
             if mob_mark and not description:
                 description = "Man overboard position mark"
+            symbol = "Man Overboard" if mob_mark else ""
             output = (
                 Path(args.file).expanduser()
                 if args.file
                 else gpx_position_mark_path(base_output, fix.timestamp, prefix="mob" if mob_mark else "mark")
             )
             path = (
-                write_gpx_position_mark(output, fix, name=name, description=description)
+                write_gpx_position_mark(output, fix, name=name, description=description, symbol=symbol)
                 if args.file
-                else write_available_gpx_position_mark(output, fix, name=name, description=description)
+                else write_available_gpx_position_mark(output, fix, name=name, description=description, symbol=symbol)
             )
-            print(f"Marked position: {path}")
+            print(f"\aMOB position marked: {path}" if mob_mark else f"Marked position: {path}")
             print(_format_fix(fix))
             return 0
 

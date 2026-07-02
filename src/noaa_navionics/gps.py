@@ -550,6 +550,7 @@ def write_gpx_position_mark(
     *,
     name: str = "Position mark",
     description: str = "",
+    symbol: str = "",
 ) -> Path:
     target = Path(path).expanduser()
     if fix.latitude is None or fix.longitude is None:
@@ -576,7 +577,7 @@ def write_gpx_position_mark(
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             created = False
-            _write_gpx_position_mark(handle, fix, name=name, description=description)
+            _write_gpx_position_mark(handle, fix, name=name, description=description, symbol=symbol)
             handle.flush()
             os.fsync(handle.fileno())
         _fsync_directory(target.parent)
@@ -595,6 +596,7 @@ def write_available_gpx_position_mark(
     *,
     name: str = "Position mark",
     description: str = "",
+    symbol: str = "",
     attempts: int = 1000,
 ) -> Path:
     target = Path(path).expanduser()
@@ -605,13 +607,13 @@ def write_available_gpx_position_mark(
         if candidate.exists():
             continue
         try:
-            return write_gpx_position_mark(candidate, fix, name=name, description=description)
+            return write_gpx_position_mark(candidate, fix, name=name, description=description, symbol=symbol)
         except FileExistsError:
             continue
     raise RuntimeError(f"could not find available GPX position mark filename near {target}")
 
 
-def _write_gpx_position_mark(handle: TextIO, fix: GPSFix, *, name: str, description: str) -> None:
+def _write_gpx_position_mark(handle: TextIO, fix: GPSFix, *, name: str, description: str, symbol: str) -> None:
     handle.write('<?xml version="1.0" encoding="UTF-8"?>\n')
     handle.write('<gpx version="1.1" creator="noaa-navionics" xmlns="http://www.topografix.com/GPX/1/1">\n')
     handle.write(f'  <wpt lat="{fix.latitude:.8f}" lon="{fix.longitude:.8f}">\n')
@@ -621,6 +623,8 @@ def _write_gpx_position_mark(handle: TextIO, fix: GPSFix, *, name: str, descript
     handle.write(f"    <name>{escape(name)}</name>\n")
     if description:
         handle.write(f"    <desc>{escape(description)}</desc>\n")
+    if symbol:
+        handle.write(f"    <sym>{escape(symbol)}</sym>\n")
     if fix.satellites is not None:
         handle.write(f"    <sat>{fix.satellites}</sat>\n")
     if fix.hdop is not None:
