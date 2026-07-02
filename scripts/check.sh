@@ -5268,6 +5268,8 @@ grep -q 'Manifest configured path is not text' tests/test_downloader.py
 grep -q 'Manifest created_at_source is not text' tests/test_downloader.py
 grep -q 'Manifest download_url contains control characters' tests/test_downloader.py
 grep -q 'Manifest sha256 is not text' tests/test_downloader.py
+grep -q 'Manifest expected_filename is not text' tests/test_downloader.py
+grep -q 'Manifest expected_url contains control characters' tests/test_downloader.py
 grep -q 'Manifest download path is not text' tests/test_downloader.py
 grep -q 'Manifest extract path is not text' tests/test_downloader.py
 grep -q 'status report Manifest path does not match manifest summary' src/noaa_navionics/report.py

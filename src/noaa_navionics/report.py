@@ -857,16 +857,25 @@ def _chart_readiness_validation_failures(
             created_at_source = manifest_row_text.get("created_at_source")
             if created_at_source is not None and created_at_source not in {"download", "previous-manifest"}:
                 failures.append(CheckResult("Manifest", False, "status report Manifest created_at_source is not verified"))
-            expected_package = str(config.get("chart_package", "")).strip().lower()
-            expected_value = str(config.get("chart_value", "")).strip()
-            expected_filename, expected_url = _expected_manifest_package(expected_package, expected_value)
-            if expected_filename and str(data.get("expected_filename", "")).strip() != expected_filename:
+            expected_package = _manifest_readiness_text(config, "chart_package", "config chart_package", failures)
+            if expected_package is not None:
+                expected_package = expected_package.lower()
+            expected_value = _manifest_readiness_text(config, "chart_value", "config chart_value", failures)
+            expected_filename, expected_url = _expected_manifest_package(expected_package or "", expected_value or "")
+            reported_expected_filename = _manifest_readiness_text(
+                data,
+                "expected_filename",
+                "Manifest expected_filename",
+                failures,
+            )
+            reported_expected_url = _manifest_readiness_text(data, "expected_url", "Manifest expected_url", failures)
+            if expected_filename and reported_expected_filename is not None and reported_expected_filename != expected_filename:
                 failures.append(CheckResult("Manifest", False, "status report Manifest expected filename does not match NOAA package"))
-            if expected_url and str(data.get("expected_url", "")).strip() != expected_url:
+            if expected_url and reported_expected_url is not None and reported_expected_url != expected_url:
                 failures.append(CheckResult("Manifest", False, "status report Manifest expected URL does not match NOAA package"))
-            if expected_filename and str(data.get("package_filename", "")).strip() != expected_filename:
+            if expected_filename and manifest_row_text.get("package_filename") != expected_filename:
                 failures.append(CheckResult("Manifest", False, "status report Manifest package filename does not match NOAA package"))
-            if expected_url and str(data.get("package_url", "")).strip() != expected_url:
+            if expected_url and manifest_row_text.get("package_url") != expected_url:
                 failures.append(CheckResult("Manifest", False, "status report Manifest package URL does not match NOAA package"))
             max_age_days = _positive_status_int(data.get("max_age_days"))
             if max_age_days is None:
