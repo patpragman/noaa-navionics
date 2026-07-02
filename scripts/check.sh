@@ -4902,8 +4902,13 @@ grep -q 'test_gui_gps_fix_rejects_by_id_serial_that_is_not_symlink' tests/test_d
 grep -q 'test_gui_gps_fix_rejects_by_id_serial_that_is_not_character_device' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_stable_alias_that_is_not_character_device' tests/test_downloader.py
 grep -q 'def _gps_fix_freshness_failure' src/noaa_navionics/gui.py
+grep -q 'GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"' src/noaa_navionics/gui.py
+grep -q 'GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE = "GPS fix future tolerance seconds must be finite and non-negative"' src/noaa_navionics/gui.py
+grep -q 'def _gps_freshness_policy_failure' src/noaa_navionics/gui.py
 grep -q 'future_tolerance_seconds: float = 0.0' src/noaa_navionics/gui.py
 grep -q 'fix timestamp is in the future' src/noaa_navionics/gui.py
+grep -q 'test_gui_gps_fix_rejects_invalid_freshness_limits_before_gpsd' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_freshness_rejects_invalid_policy_before_timestamp' tests/test_downloader.py
 grep -q 'def format_gps_fix' src/noaa_navionics/gui.py
 grep -q 'def download_selected_package' src/noaa_navionics/gui.py
 grep -q 'text="GPS Fix"' src/noaa_navionics/gui.py
@@ -5273,11 +5278,18 @@ grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
 grep -q 'def _gps_fix_freshness_failure' src/noaa_navionics/status_gui.py
+grep -q 'GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"' src/noaa_navionics/status_gui.py
+grep -q 'GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE = "GPS fix future tolerance seconds must be finite and non-negative"' src/noaa_navionics/status_gui.py
+grep -q 'def _gps_freshness_policy_failure' src/noaa_navionics/status_gui.py
 grep -q 'position mark requires a fresh GPS fix' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_position_mark_rejects_invalid_freshness_limits_before_config_read' tests/test_downloader.py
 grep -q 'def check_anchor_drift' src/noaa_navionics/status_gui.py
 grep -q 'anchor check requires fresh GPS fix' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_anchor_check_rejects_invalid_freshness_limits_before_config_read' tests/test_downloader.py
 grep -q 'def capture_anchor_watch_fix' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_anchor_watch_rejects_invalid_freshness_limits_before_config_read' tests/test_downloader.py
 grep -q 'def check_anchor_watch_drift' src/noaa_navionics/status_gui.py
+grep -q 'test_status_gui_anchor_watch_drift_rejects_invalid_freshness_limits_before_config_read' tests/test_downloader.py
 grep -q 'def _require_gps_fix_count' src/noaa_navionics/status_gui.py
 grep -q '_require_gps_fix_count(fixes, expected_fixes, "anchor check")' src/noaa_navionics/status_gui.py
 grep -q '_require_gps_fix_count(fixes, anchor_samples, "anchor watch")' src/noaa_navionics/status_gui.py

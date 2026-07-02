@@ -32,6 +32,8 @@ ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0
 MAX_ANCHOR_SAMPLES = 10
 MAX_GPS_WAIT_SECONDS = 600.0
 MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0
+GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"
+GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE = "GPS fix future tolerance seconds must be finite and non-negative"
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,12 @@ def write_current_position_mark(
     max_fix_age_seconds: float = 300.0,
     future_tolerance_seconds: float = 0.0,
 ) -> tuple[Path, GPSFix]:
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        raise ValueError(freshness_policy_failure)
     app_config = read_config(config_path)
     fix = read_configured_gps_fix(app_config, gps_seconds=gps_seconds)
     freshness_failure = _position_mark_freshness_failure(
@@ -159,6 +167,12 @@ def _gps_fix_freshness_failure(
     max_fix_age_seconds: float,
     future_tolerance_seconds: float,
 ) -> str:
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        return freshness_policy_failure
     if fix.timestamp is None:
         return "fix has no timestamp"
     timestamp = fix.timestamp
@@ -172,6 +186,28 @@ def _gps_fix_freshness_failure(
     return ""
 
 
+def _gps_freshness_policy_failure(
+    *,
+    max_fix_age_seconds: float,
+    future_tolerance_seconds: float,
+) -> str:
+    if (
+        isinstance(max_fix_age_seconds, bool)
+        or not isinstance(max_fix_age_seconds, (int, float))
+        or not math.isfinite(max_fix_age_seconds)
+        or max_fix_age_seconds <= 0
+    ):
+        return GPS_FIX_MAX_AGE_SECONDS_FAILURE
+    if (
+        isinstance(future_tolerance_seconds, bool)
+        or not isinstance(future_tolerance_seconds, (int, float))
+        or not math.isfinite(future_tolerance_seconds)
+        or future_tolerance_seconds < 0
+    ):
+        return GPS_FIX_FUTURE_TOLERANCE_SECONDS_FAILURE
+    return ""
+
+
 def check_anchor_drift(
     config_path: Path,
     *,
@@ -181,6 +217,12 @@ def check_anchor_drift(
     max_fix_age_seconds: float = 300.0,
     future_tolerance_seconds: float = 0.0,
 ) -> tuple[float, float, GPSFix, GPSFix]:
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        raise ValueError(freshness_policy_failure)
     if not math.isfinite(radius_meters) or radius_meters <= 0:
         raise ValueError("anchor radius must be greater than 0")
     if anchor_samples < 1:
@@ -214,6 +256,12 @@ def capture_anchor_watch_fix(
     max_fix_age_seconds: float = 300.0,
     future_tolerance_seconds: float = 0.0,
 ) -> GPSFix:
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        raise ValueError(freshness_policy_failure)
     if anchor_samples < 1:
         raise ValueError("anchor samples must be at least 1")
     if anchor_samples > MAX_ANCHOR_SAMPLES:
@@ -241,6 +289,12 @@ def check_anchor_watch_drift(
     max_fix_age_seconds: float = 300.0,
     future_tolerance_seconds: float = 0.0,
 ) -> tuple[float, float, GPSFix, GPSFix]:
+    freshness_policy_failure = _gps_freshness_policy_failure(
+        max_fix_age_seconds=max_fix_age_seconds,
+        future_tolerance_seconds=future_tolerance_seconds,
+    )
+    if freshness_policy_failure:
+        raise ValueError(freshness_policy_failure)
     if not math.isfinite(radius_meters) or radius_meters <= 0:
         raise ValueError("anchor radius must be greater than 0")
     if anchor_fix.latitude is None or anchor_fix.longitude is None:

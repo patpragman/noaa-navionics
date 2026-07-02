@@ -4527,6 +4527,34 @@ class GuiTests(unittest.TestCase):
 
             self.assertEqual(calls, [{"gps_seconds": 4.0}])
 
+    def test_status_gui_position_mark_rejects_invalid_freshness_limits_before_config_read(self):
+        original = status_gui_module.read_configured_gps_fix
+
+        def fake_read_configured_gps_fix(app_config, **kwargs):
+            raise AssertionError("read_configured_gps_fix should not be called")
+
+        try:
+            status_gui_module.read_configured_gps_fix = fake_read_configured_gps_fix
+            for max_fix_age_seconds in (0, -1, math.inf, math.nan, True, "bad"):
+                with self.subTest(max_fix_age_seconds=max_fix_age_seconds):
+                    with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+                        status_gui_module.write_current_position_mark(
+                            Path("/missing-config.ini"),
+                            max_fix_age_seconds=max_fix_age_seconds,
+                        )
+            for future_tolerance_seconds in (-1, math.inf, math.nan, False, "bad"):
+                with self.subTest(future_tolerance_seconds=future_tolerance_seconds):
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "GPS fix future tolerance seconds must be finite and non-negative",
+                    ):
+                        status_gui_module.write_current_position_mark(
+                            Path("/missing-config.ini"),
+                            future_tolerance_seconds=future_tolerance_seconds,
+                        )
+        finally:
+            status_gui_module.read_configured_gps_fix = original
+
     def test_status_gui_queues_mob_mark_while_worker_is_busy(self):
         class FakeVar:
             def __init__(self):
@@ -4856,6 +4884,12 @@ class GuiTests(unittest.TestCase):
                 anchor_samples=status_gui_module.MAX_ANCHOR_SAMPLES + 1,
             )
 
+    def test_status_gui_anchor_check_rejects_invalid_freshness_limits_before_config_read(self):
+        with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+            status_gui_module.check_anchor_drift(Path("/missing-config.ini"), max_fix_age_seconds=math.nan)
+        with self.assertRaisesRegex(ValueError, "GPS fix future tolerance seconds must be finite and non-negative"):
+            status_gui_module.check_anchor_drift(Path("/missing-config.ini"), future_tolerance_seconds=-1)
+
     def test_status_gui_anchor_check_rejects_short_fix_list_before_using_current_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -4892,6 +4926,12 @@ class GuiTests(unittest.TestCase):
                 Path("/missing-config.ini"),
                 anchor_samples=status_gui_module.MAX_ANCHOR_SAMPLES + 1,
             )
+
+    def test_status_gui_anchor_watch_rejects_invalid_freshness_limits_before_config_read(self):
+        with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+            status_gui_module.capture_anchor_watch_fix(Path("/missing-config.ini"), max_fix_age_seconds=0)
+        with self.assertRaisesRegex(ValueError, "GPS fix future tolerance seconds must be finite and non-negative"):
+            status_gui_module.capture_anchor_watch_fix(Path("/missing-config.ini"), future_tolerance_seconds=math.inf)
 
     def test_status_gui_anchor_watch_rejects_short_anchor_sample_list_before_averaging(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
@@ -5037,6 +5077,28 @@ class GuiTests(unittest.TestCase):
             self.assertIs(returned_anchor, anchor_fix)
             self.assertIs(returned_current, current_fix)
             self.assertGreater(distance, 500.0)
+
+    def test_status_gui_anchor_watch_drift_rejects_invalid_freshness_limits_before_config_read(self):
+        anchor_fix = GPSFix(
+            timestamp=datetime.now(timezone.utc),
+            latitude=61.0,
+            longitude=-149.0,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+            status_gui_module.check_anchor_watch_drift(
+                Path("/missing-config.ini"),
+                anchor_fix,
+                max_fix_age_seconds=False,
+            )
+        with self.assertRaisesRegex(ValueError, "GPS fix future tolerance seconds must be finite and non-negative"):
+            status_gui_module.check_anchor_watch_drift(
+                Path("/missing-config.ini"),
+                anchor_fix,
+                future_tolerance_seconds="bad",
+            )
 
     def test_status_gui_anchor_watch_set_updates_button_state_after_storing_anchor(self):
         class FakeVar:
@@ -7441,6 +7503,52 @@ class GuiTests(unittest.TestCase):
         finally:
             gui_module.open_nmea_stream = original
 
+    def test_gui_gps_fix_rejects_invalid_freshness_limits_before_gpsd(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="gpsd",
+            gps_device="/dev/serial/by-id/mock-gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+            anchor_radius_meters=75.0,
+        )
+        original = gui_module.iter_gpsd_fixes
+
+        def fake_iter_gpsd_fixes(**kwargs):
+            raise AssertionError("iter_gpsd_fixes should not be called")
+
+        try:
+            gui_module.iter_gpsd_fixes = fake_iter_gpsd_fixes
+            for max_fix_age_seconds in (0, -1, math.inf, math.nan, True, "bad"):
+                with self.subTest(max_fix_age_seconds=max_fix_age_seconds):
+                    with self.assertRaisesRegex(ValueError, "GPS fix max age seconds must be finite and greater than 0"):
+                        gui_module.read_configured_gps_fix(
+                            app_config,
+                            max_fix_age_seconds=max_fix_age_seconds,
+                        )
+            for future_tolerance_seconds in (-1, math.inf, math.nan, False, "bad"):
+                with self.subTest(future_tolerance_seconds=future_tolerance_seconds):
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "GPS fix future tolerance seconds must be finite and non-negative",
+                    ):
+                        gui_module.read_configured_gps_fix(
+                            app_config,
+                            future_tolerance_seconds=future_tolerance_seconds,
+                        )
+        finally:
+            gui_module.iter_gpsd_fixes = original
+
     def test_gui_gps_fix_skips_stale_before_fresh_fix(self):
         stale = GPSFix(
             timestamp=datetime.now(timezone.utc) - timedelta(seconds=600),
@@ -7551,6 +7659,32 @@ class GuiTests(unittest.TestCase):
                 gui_module.read_configured_gps_fix(app_config)
         finally:
             gui_module.iter_gpsd_fixes = original
+
+    def test_gui_gps_fix_freshness_rejects_invalid_policy_before_timestamp(self):
+        fix = GPSFix(
+            timestamp=None,
+            latitude=61.2181,
+            longitude=-149.9003,
+            satellites=9,
+            hdop=0.9,
+        )
+
+        self.assertEqual(
+            gui_module._gps_fix_freshness_failure(
+                fix,
+                max_fix_age_seconds=math.nan,
+                future_tolerance_seconds=0.0,
+            ),
+            "GPS fix max age seconds must be finite and greater than 0",
+        )
+        self.assertEqual(
+            gui_module._gps_fix_freshness_failure(
+                fix,
+                max_fix_age_seconds=300.0,
+                future_tolerance_seconds=math.inf,
+            ),
+            "GPS fix future tolerance seconds must be finite and non-negative",
+        )
 
     def test_gui_gps_fix_rejects_untimestamped_fix(self):
         fix = GPSFix(
