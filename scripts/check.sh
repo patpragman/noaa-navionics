@@ -6329,6 +6329,15 @@ grep -q 'wait_network.add_argument("--host", type=_network_host' src/noaa_navion
 grep -q 'def _tcp_port' src/noaa_navionics/cli.py
 grep -q 'must be between 1 and 65535' src/noaa_navionics/cli.py
 grep -q 'wait_network.add_argument("--port", type=_tcp_port' src/noaa_navionics/cli.py
+grep -q 'MAX_WAIT_NETWORK_SECONDS = 3600.0' src/noaa_navionics/cli.py
+grep -q 'MAX_WAIT_NETWORK_INTERVAL_SECONDS = 300.0' src/noaa_navionics/cli.py
+grep -q 'MAX_WAIT_NETWORK_PROBE_TIMEOUT_SECONDS = 60.0' src/noaa_navionics/cli.py
+grep -q 'def _wait_network_seconds' src/noaa_navionics/cli.py
+grep -q 'def _wait_network_interval_seconds' src/noaa_navionics/cli.py
+grep -q 'def _wait_network_probe_timeout_seconds' src/noaa_navionics/cli.py
+grep -q 'wait_network.add_argument("--seconds", type=_wait_network_seconds' src/noaa_navionics/cli.py
+grep -q 'wait_network.add_argument("--interval", type=_wait_network_interval_seconds' src/noaa_navionics/cli.py
+grep -q 'wait_network.add_argument("--timeout", type=_wait_network_probe_timeout_seconds' src/noaa_navionics/cli.py
 grep -q 'socket.create_connection' src/noaa_navionics/cli.py
 grep -q 'probe_timeout = min(timeout, max(0.001, remaining))' src/noaa_navionics/cli.py
 grep -q 'socket.create_connection((host, port), timeout=probe_timeout)' src/noaa_navionics/cli.py
@@ -6336,6 +6345,8 @@ grep -q 'test_wait_network_uses_immediate_probe_for_zero_second_budget' tests/te
 grep -q 'test_wait_network_caps_tcp_probe_timeout_to_remaining_budget' tests/test_downloader.py
 grep -q 'chart-refresh `wait-network` preflight caps each TCP probe to the remaining overall `--seconds` budget' README.md
 grep -q 'chart-refresh `wait-network` preflight caps each TCP probe to the remaining overall `--seconds` budget' docs/sailboat-pi.md
+grep -q 'Direct `wait-network` timing controls are bounded to 0-3600 total wait seconds, 1-300 seconds between probes, and 1-60 seconds per TCP probe' README.md
+grep -q 'Direct `wait-network` timing controls are bounded to 0-3600 total wait seconds, 1-300 seconds between probes, and 1-60 seconds per TCP probe' docs/sailboat-pi.md
 grep -q 'noaa-navionics sync-charts' src/noaa_navionics/report.py
 grep -q 'noaa-navionics wait-network' src/noaa_navionics/report.py
 grep -q '"ExecStartPre"' src/noaa_navionics/report.py

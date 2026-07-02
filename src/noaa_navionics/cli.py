@@ -64,6 +64,9 @@ from .report import (
 MAX_GPS_WAIT_SECONDS = 600.0
 MAX_CHART_RETRIES = 20
 MAX_CHART_RETRY_DELAY_SECONDS = 3600.0
+MAX_WAIT_NETWORK_SECONDS = 3600.0
+MAX_WAIT_NETWORK_INTERVAL_SECONDS = 300.0
+MAX_WAIT_NETWORK_PROBE_TIMEOUT_SECONDS = 60.0
 MAX_ANCHOR_SAMPLES = 10
 MIN_STATUS_GUI_INTERVAL_SECONDS = 1.0
 GPS_FIX_MAX_AGE_SECONDS_FAILURE = "GPS fix max age seconds must be finite and greater than 0"
@@ -174,6 +177,27 @@ def _chart_retry_delay_seconds(value: str) -> float:
     return parsed
 
 
+def _wait_network_seconds(value: str) -> float:
+    parsed = _non_negative_float(value)
+    if parsed > MAX_WAIT_NETWORK_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_WAIT_NETWORK_SECONDS:g}")
+    return parsed
+
+
+def _wait_network_interval_seconds(value: str) -> float:
+    parsed = _positive_float(value)
+    if parsed > MAX_WAIT_NETWORK_INTERVAL_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_WAIT_NETWORK_INTERVAL_SECONDS:g}")
+    return parsed
+
+
+def _wait_network_probe_timeout_seconds(value: str) -> float:
+    parsed = _positive_float(value)
+    if parsed > MAX_WAIT_NETWORK_PROBE_TIMEOUT_SECONDS:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_WAIT_NETWORK_PROBE_TIMEOUT_SECONDS:g}")
+    return parsed
+
+
 def _gps_wait_seconds(value: str) -> float:
     parsed = _positive_float(value)
     if parsed > MAX_GPS_WAIT_SECONDS:
@@ -221,9 +245,9 @@ def build_parser() -> argparse.ArgumentParser:
     wait_network = subparsers.add_parser("wait-network", help="wait for bounded TCP connectivity")
     wait_network.add_argument("--host", type=_network_host, default="www.charts.noaa.gov", help="host to probe")
     wait_network.add_argument("--port", type=_tcp_port, default=443, help="TCP port to probe")
-    wait_network.add_argument("--seconds", type=_non_negative_float, default=300.0, help="maximum seconds to wait")
-    wait_network.add_argument("--interval", type=_positive_float, default=5.0, help="seconds between probes")
-    wait_network.add_argument("--timeout", type=_positive_float, default=5.0, help="per-probe TCP timeout")
+    wait_network.add_argument("--seconds", type=_wait_network_seconds, default=300.0, help="maximum seconds to wait")
+    wait_network.add_argument("--interval", type=_wait_network_interval_seconds, default=5.0, help="seconds between probes")
+    wait_network.add_argument("--timeout", type=_wait_network_probe_timeout_seconds, default=5.0, help="per-probe TCP timeout")
 
     catalog = subparsers.add_parser("catalog", help="download NOAA's XML product catalog")
     catalog.add_argument("--output", "-o", default="~/charts/noaa-enc", help="download directory")

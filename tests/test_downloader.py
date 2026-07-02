@@ -8345,8 +8345,14 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["wait-network", "--port", "0"])
         self.assert_parse_error(["wait-network", "--port", "65536"])
         self.assert_parse_error(["wait-network", "--seconds", "-1"])
+        self.assert_parse_error(["wait-network", "--seconds", "3601"])
+        self.assert_parse_error(["wait-network", "--seconds", "999999999999999999999999999999"])
         self.assert_parse_error(["wait-network", "--interval", "0"])
+        self.assert_parse_error(["wait-network", "--interval", "301"])
+        self.assert_parse_error(["wait-network", "--interval", "999999999999999999999999999999"])
         self.assert_parse_error(["wait-network", "--timeout", "nan"])
+        self.assert_parse_error(["wait-network", "--timeout", "61"])
+        self.assert_parse_error(["wait-network", "--timeout", "999999999999999999999999999999"])
 
     def test_wait_network_uses_immediate_probe_for_zero_second_budget(self):
         calls = []
