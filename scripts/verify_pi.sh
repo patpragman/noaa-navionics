@@ -5062,6 +5062,10 @@ check "chart service private tmp" grep -Fxq 'PrivateTmp=true' "$chart_service"
 check "chart service loaded private tmp" loaded_unit_property_equals noaa-navionics.service PrivateTmp yes
 check "chart service protected system" grep -Fxq 'ProtectSystem=full' "$chart_service"
 check "chart service loaded protected system" loaded_unit_property_equals noaa-navionics.service ProtectSystem full
+check "chart service drops Linux capabilities" grep -Fxq 'CapabilityBoundingSet=' "$chart_service"
+check "chart service loaded drops Linux capabilities" loaded_unit_property_equals noaa-navionics.service CapabilityBoundingSet ""
+check "chart service restricts address families" grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' "$chart_service"
+check "chart service loaded restricts address families" loaded_unit_property_equals noaa-navionics.service RestrictAddressFamilies "AF_UNIX AF_INET AF_INET6"
 check "chart service lock personality" grep -Fxq 'LockPersonality=true' "$chart_service"
 check "chart service loaded lock personality" loaded_unit_property_equals noaa-navionics.service LockPersonality yes
 check "chart service restrict suid sgid" grep -Fxq 'RestrictSUIDSGID=true' "$chart_service"
@@ -5112,6 +5116,10 @@ check "track service private tmp" grep -Fxq 'PrivateTmp=true' "$track_service"
 check "track service loaded private tmp" loaded_unit_property_equals noaa-navionics-track.service PrivateTmp yes
 check "track service protected system" grep -Fxq 'ProtectSystem=full' "$track_service"
 check "track service loaded protected system" loaded_unit_property_equals noaa-navionics-track.service ProtectSystem full
+check "track service drops Linux capabilities" grep -Fxq 'CapabilityBoundingSet=' "$track_service"
+check "track service loaded drops Linux capabilities" loaded_unit_property_equals noaa-navionics-track.service CapabilityBoundingSet ""
+check "track service restricts address families" grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' "$track_service"
+check "track service loaded restricts address families" loaded_unit_property_equals noaa-navionics-track.service RestrictAddressFamilies "AF_UNIX AF_INET AF_INET6"
 check "track service lock personality" grep -Fxq 'LockPersonality=true' "$track_service"
 check "track service loaded lock personality" loaded_unit_property_equals noaa-navionics-track.service LockPersonality yes
 check "track service restrict suid sgid" grep -Fxq 'RestrictSUIDSGID=true' "$track_service"
@@ -5155,6 +5163,10 @@ check "preflight service private tmp" grep -Fxq 'PrivateTmp=true' "$preflight_se
 check "preflight service loaded private tmp" loaded_unit_property_equals noaa-navionics-preflight.service PrivateTmp yes
 check "preflight service protected system" grep -Fxq 'ProtectSystem=full' "$preflight_service"
 check "preflight service loaded protected system" loaded_unit_property_equals noaa-navionics-preflight.service ProtectSystem full
+check "preflight service drops Linux capabilities" grep -Fxq 'CapabilityBoundingSet=' "$preflight_service"
+check "preflight service loaded drops Linux capabilities" loaded_unit_property_equals noaa-navionics-preflight.service CapabilityBoundingSet ""
+check "preflight service restricts address families" grep -Fxq 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' "$preflight_service"
+check "preflight service loaded restricts address families" loaded_unit_property_equals noaa-navionics-preflight.service RestrictAddressFamilies "AF_UNIX AF_INET AF_INET6"
 check "preflight service lock personality" grep -Fxq 'LockPersonality=true' "$preflight_service"
 check "preflight service loaded lock personality" loaded_unit_property_equals noaa-navionics-preflight.service LockPersonality yes
 check "preflight service restrict suid sgid" grep -Fxq 'RestrictSUIDSGID=true' "$preflight_service"

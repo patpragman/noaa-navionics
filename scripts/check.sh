@@ -5372,6 +5372,12 @@ grep -q 'PrivateTmp=true' systemd/noaa-navionics-track.service
 grep -q 'ProtectSystem=full' systemd/noaa-navionics.service
 grep -q 'ProtectSystem=full' systemd/noaa-navionics-track.service
 grep -q 'ProtectSystem=full' systemd/noaa-navionics-preflight.service
+grep -q 'CapabilityBoundingSet=' systemd/noaa-navionics.service
+grep -q 'CapabilityBoundingSet=' systemd/noaa-navionics-track.service
+grep -q 'CapabilityBoundingSet=' systemd/noaa-navionics-preflight.service
+grep -q 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' systemd/noaa-navionics.service
+grep -q 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' systemd/noaa-navionics-track.service
+grep -q 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' systemd/noaa-navionics-preflight.service
 grep -q 'LockPersonality=true' systemd/noaa-navionics.service
 grep -q 'LockPersonality=true' systemd/noaa-navionics-track.service
 grep -q 'LockPersonality=true' systemd/noaa-navionics-preflight.service
@@ -5392,17 +5398,27 @@ grep -q 'UMask=0077' systemd/noaa-navionics-preflight.service
 grep -q 'NoNewPrivileges.*yes' src/noaa_navionics/report.py
 grep -q 'PrivateTmp.*yes' src/noaa_navionics/report.py
 grep -q 'ProtectSystem.*full' src/noaa_navionics/report.py
+grep -q 'CapabilityBoundingSet.*""' src/noaa_navionics/report.py
+grep -q 'RestrictAddressFamilies.*AF_UNIX AF_INET AF_INET6' src/noaa_navionics/report.py
 grep -q 'LockPersonality.*yes' src/noaa_navionics/report.py
 grep -q 'RestrictSUIDSGID.*yes' src/noaa_navionics/report.py
 grep -q 'MemoryDenyWriteExecute.*yes' src/noaa_navionics/report.py
 grep -q 'RestrictRealtime.*yes' src/noaa_navionics/report.py
 grep -q 'SystemCallArchitectures.*native' src/noaa_navionics/report.py
 grep -q 'LockPersonality' tests/test_downloader.py
+grep -q 'CapabilityBoundingSet' tests/test_downloader.py
+grep -q 'RestrictAddressFamilies' tests/test_downloader.py
 grep -q 'RestrictSUIDSGID' tests/test_downloader.py
 grep -q 'MemoryDenyWriteExecute' tests/test_downloader.py
 grep -q 'RestrictRealtime' tests/test_downloader.py
 grep -q 'SystemCallArchitectures' tests/test_downloader.py
 grep -q 'chart service lock personality' scripts/verify_pi.sh
+grep -q 'chart service drops Linux capabilities' scripts/verify_pi.sh
+grep -q 'track service loaded drops Linux capabilities' scripts/verify_pi.sh
+grep -q 'preflight service loaded drops Linux capabilities' scripts/verify_pi.sh
+grep -q 'chart service restricts address families' scripts/verify_pi.sh
+grep -q 'track service loaded restricts address families' scripts/verify_pi.sh
+grep -q 'preflight service loaded restricts address families' scripts/verify_pi.sh
 grep -q 'track service restrict suid sgid' scripts/verify_pi.sh
 grep -q 'preflight service loaded lock personality' scripts/verify_pi.sh
 grep -q 'chart service deny writable executable memory' scripts/verify_pi.sh
@@ -5412,11 +5428,15 @@ grep -q 'chart service loaded native syscall architecture' scripts/verify_pi.sh
 grep -q 'track service loaded native syscall architecture' scripts/verify_pi.sh
 grep -q 'preflight service loaded native syscall architecture' scripts/verify_pi.sh
 grep -q 'LockPersonality' README.md
+grep -q 'CapabilityBoundingSet' README.md
+grep -q 'RestrictAddressFamilies' README.md
 grep -q 'RestrictSUIDSGID' README.md
 grep -q 'MemoryDenyWriteExecute' README.md
 grep -q 'RestrictRealtime' README.md
 grep -q 'SystemCallArchitectures' README.md
 grep -q 'LockPersonality' docs/sailboat-pi.md
+grep -q 'CapabilityBoundingSet' docs/sailboat-pi.md
+grep -q 'RestrictAddressFamilies' docs/sailboat-pi.md
 grep -q 'RestrictSUIDSGID' docs/sailboat-pi.md
 grep -q 'MemoryDenyWriteExecute' docs/sailboat-pi.md
 grep -q 'RestrictRealtime' docs/sailboat-pi.md
@@ -5433,6 +5453,8 @@ expected_unit_properties = {
     "NoNewPrivileges": "true",
     "PrivateTmp": "true",
     "ProtectSystem": "full",
+    "CapabilityBoundingSet": "",
+    "RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6",
     "LockPersonality": "true",
     "RestrictSUIDSGID": "true",
     "MemoryDenyWriteExecute": "true",
@@ -5629,6 +5651,12 @@ grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem 
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service TimeoutStopUSec 30s "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service ProtectSystem full "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics.service CapabilityBoundingSet "" "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service CapabilityBoundingSet "" "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service CapabilityBoundingSet "" "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics.service RestrictAddressFamilies "AF_UNIX AF_INET AF_INET6" "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictAddressFamilies "AF_UNIX AF_INET AF_INET6" "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service RestrictAddressFamilies "AF_UNIX AF_INET AF_INET6" "boot readiness service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes "boot readiness service"' scripts/provision_sailboat_pi.sh
@@ -5648,6 +5676,8 @@ expected_properties = {
     "NoNewPrivileges": "yes",
     "PrivateTmp": "yes",
     "ProtectSystem": "full",
+    "CapabilityBoundingSet": '""',
+    "RestrictAddressFamilies": '"AF_UNIX AF_INET AF_INET6"',
     "LockPersonality": "yes",
     "RestrictSUIDSGID": "yes",
     "MemoryDenyWriteExecute": "yes",
@@ -15310,11 +15340,19 @@ grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service Prot
 grep -q 'require_loaded_user_unit_property noaa-navionics.service MemoryDenyWriteExecute yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictRealtime yes' "$provision_output"
 grep -q 'require_loaded_user_unit_property noaa-navionics-preflight.service MemoryDenyWriteExecute yes' "$provision_output"
+grep -q "require_loaded_user_unit_property noaa-navionics.service CapabilityBoundingSet ''" "$provision_output"
+grep -q 'require_loaded_user_unit_property noaa-navionics-track.service RestrictAddressFamilies AF_UNIX\\ AF_INET\\ AF_INET6' "$provision_output"
 for unit in noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service; do
-  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime SystemCallArchitectures UMask; do
+  for loaded_property in NoNewPrivileges PrivateTmp ProtectSystem CapabilityBoundingSet RestrictAddressFamilies LockPersonality RestrictSUIDSGID MemoryDenyWriteExecute RestrictRealtime SystemCallArchitectures UMask; do
     case "$loaded_property" in
       ProtectSystem)
         expected_value=full
+        ;;
+      CapabilityBoundingSet)
+        expected_value="''"
+        ;;
+      RestrictAddressFamilies)
+        expected_value='AF_UNIX\\ AF_INET\\ AF_INET6'
         ;;
       SystemCallArchitectures)
         expected_value=native
