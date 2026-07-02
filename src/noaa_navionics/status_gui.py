@@ -29,6 +29,7 @@ from .report import (
 
 DEFAULT_STATUS_REPORT = Path("~/.cache/noaa-navionics/status.json").expanduser()
 ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0
+MAX_ANCHOR_SAMPLES = 10
 
 
 @dataclass(frozen=True)
@@ -181,6 +182,8 @@ def check_anchor_drift(
         raise ValueError("anchor radius must be greater than 0")
     if anchor_samples < 1:
         raise ValueError("anchor samples must be at least 1")
+    if anchor_samples > MAX_ANCHOR_SAMPLES:
+        raise ValueError(f"anchor samples must be at most {MAX_ANCHOR_SAMPLES}")
     app_config = read_config(config_path)
     fixes = read_configured_gps_fixes(app_config, count=anchor_samples + 1, gps_seconds=gps_seconds)
     for index, fix in enumerate(fixes, start=1):
@@ -208,6 +211,8 @@ def capture_anchor_watch_fix(
 ) -> GPSFix:
     if anchor_samples < 1:
         raise ValueError("anchor samples must be at least 1")
+    if anchor_samples > MAX_ANCHOR_SAMPLES:
+        raise ValueError(f"anchor samples must be at most {MAX_ANCHOR_SAMPLES}")
     app_config = read_config(config_path)
     fixes = read_configured_gps_fixes(app_config, count=anchor_samples, gps_seconds=gps_seconds)
     for index, fix in enumerate(fixes, start=1):
@@ -292,6 +297,13 @@ def _positive_int(value: str) -> int:
         raise argparse.ArgumentTypeError("must be an integer") from exc
     if parsed < 1:
         raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed
+
+
+def _anchor_samples(value: str) -> int:
+    parsed = _positive_int(value)
+    if parsed > MAX_ANCHOR_SAMPLES:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_ANCHOR_SAMPLES}")
     return parsed
 
 
@@ -447,7 +459,7 @@ class StatusApp(tk.Tk):
             self._show_error(f"Anchor radius {exc}")
             return
         try:
-            anchor_samples = _positive_int(self.anchor_samples.get())
+            anchor_samples = _anchor_samples(self.anchor_samples.get())
         except argparse.ArgumentTypeError as exc:
             self._show_error(f"Anchor samples {exc}")
             return
@@ -474,7 +486,7 @@ class StatusApp(tk.Tk):
             self._show_error(f"Anchor radius {exc}")
             return
         try:
-            anchor_samples = _positive_int(self.anchor_samples.get())
+            anchor_samples = _anchor_samples(self.anchor_samples.get())
         except argparse.ArgumentTypeError as exc:
             self._show_error(f"Anchor samples {exc}")
             return
@@ -895,9 +907,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--anchor-samples",
-        type=_positive_int,
+        type=_anchor_samples,
         default=1,
-        help="quality GPS fixes to average for the Anchor Check button",
+        help=f"quality GPS fixes to average for the Anchor Check button; max {MAX_ANCHOR_SAMPLES}",
     )
     return parser
 

@@ -3941,6 +3941,7 @@ grep -q 'test_cli_anchor_watch_rejects_timezone_less_fix' tests/test_downloader.
 grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples_across_date_line' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_rejects_oversized_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests/test_downloader.py
 grep -q 'need at least one drift check' src/noaa_navionics/cli.py
@@ -3950,6 +3951,8 @@ grep -q 'skipped timezone-less, stale, future-dated, weak, or incomplete fixes a
 grep -q 'skipped timezone-less, stale, future-dated, weak, or incomplete fixes are reported as anchor-watch GPS evidence' docs/sailboat-pi.md
 grep -q 'longitude averaging is date-line-safe' README.md
 grep -q 'longitude averaging is date-line-safe' docs/sailboat-pi.md
+grep -q 'N is capped at 10 fixes' README.md
+grep -q 'N is capped at 10 fixes' docs/sailboat-pi.md
 grep -q 'def mean_longitude_degrees' src/noaa_navionics/gps.py
 grep -q 'mean_longitude_degrees(anchor_sample_longitudes)' src/noaa_navionics/cli.py
 grep -q 'test_distance_meters_uses_haversine_distance' tests/test_downloader.py
@@ -4247,6 +4250,9 @@ grep -q 'serial_idle_timeout' src/noaa_navionics/cli.py
 grep -q -- '--gpsd-idle-timeout' src/noaa_navionics/cli.py
 grep -q -- '--serial-idle-timeout' src/noaa_navionics/cli.py
 grep -q 'def _positive_float' src/noaa_navionics/cli.py
+grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/cli.py
+grep -q 'def _anchor_samples(value: str) -> int' src/noaa_navionics/cli.py
+grep -q 'if anchor_samples > MAX_ANCHOR_SAMPLES' src/noaa_navionics/cli.py
 grep -q 'gps.add_argument("--seconds", type=_positive_float' src/noaa_navionics/cli.py
 grep -q 'deadline = time.monotonic() + args.seconds if args.seconds else None' src/noaa_navionics/cli.py
 grep -q 'instead of waiting forever when GPSD is starting slowly, refusing connections, or connected but not producing a fix' README.md
@@ -4378,6 +4384,7 @@ grep -q 'test_gui_poll_queue_does_not_reschedule_after_close' tests/test_downloa
 grep -q 'test_gui_actions_do_not_start_after_close' tests/test_downloader.py
 grep -q 'class StatusApp' src/noaa_navionics/status_gui.py
 grep -q 'ANCHOR_WATCH_STOP_CONFIRM_SECONDS = 8.0' src/noaa_navionics/status_gui.py
+grep -q 'MAX_ANCHOR_SAMPLES = 10' src/noaa_navionics/status_gui.py
 grep -q 'def status_rows' src/noaa_navionics/status_gui.py
 grep -q 'def status_headline' src/noaa_navionics/status_gui.py
 grep -q 'CORE_READINESS_CHECKS' src/noaa_navionics/status_gui.py
@@ -4895,6 +4902,9 @@ grep -q 'test_status_gui_stop_watch_requires_second_press' tests/test_downloader
 grep -q 'test_status_gui_enables_start_watch_after_anchor_watch_stops' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_watch_uses_stored_radius_after_field_edit' tests/test_downloader.py
 grep -q 'test_status_gui_anchor_check_averages_anchor_samples' tests/test_downloader.py
+grep -q 'test_status_gui_parser_rejects_oversized_anchor_samples' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
+grep -q 'test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read' tests/test_downloader.py
 grep -q 'test_status_gui_formats_anchor_fix_quality_detail' tests/test_downloader.py
 grep -q 'test_status_gui_reads_configured_anchor_radius' tests/test_downloader.py
 grep -q 'test_cli_mark_position_writes_mob_waypoint_to_configured_track_output' tests/test_downloader.py

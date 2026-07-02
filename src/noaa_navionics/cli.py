@@ -62,6 +62,7 @@ from .report import (
 
 
 MAX_GPS_WAIT_SECONDS = 600.0
+MAX_ANCHOR_SAMPLES = 10
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,13 @@ def _positive_int(value: str) -> int:
         raise argparse.ArgumentTypeError("must be an integer") from exc
     if parsed < 1:
         raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed
+
+
+def _anchor_samples(value: str) -> int:
+    parsed = _positive_int(value)
+    if parsed > MAX_ANCHOR_SAMPLES:
+        raise argparse.ArgumentTypeError(f"must be at most {MAX_ANCHOR_SAMPLES}")
     return parsed
 
 
@@ -238,9 +246,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     status_gui.add_argument(
         "--anchor-samples",
-        type=_positive_int,
+        type=_anchor_samples,
         default=1,
-        help="quality GPS fixes to average for status GUI anchor checks",
+        help=f"quality GPS fixes to average for status GUI anchor checks; max {MAX_ANCHOR_SAMPLES}",
     )
 
     init_config = subparsers.add_parser("init-config", help="write a default onboard config file")
@@ -313,9 +321,9 @@ def build_parser() -> argparse.ArgumentParser:
     anchor.add_argument("--seconds", type=_positive_float, help="stop after this many seconds")
     anchor.add_argument(
         "--anchor-samples",
-        type=_positive_int,
+        type=_anchor_samples,
         default=1,
-        help="quality GPS fixes to average when setting the anchor from the current position",
+        help=f"quality GPS fixes to average when setting the anchor from the current position; max {MAX_ANCHOR_SAMPLES}",
     )
     anchor.add_argument(
         "--interval-seconds",
@@ -1210,6 +1218,8 @@ def _run_anchor_watch(
         raise ValueError("--anchor-lat and --anchor-lon must be used together")
     if anchor_samples < 1:
         raise ValueError("anchor_samples must be at least 1")
+    if anchor_samples > MAX_ANCHOR_SAMPLES:
+        raise ValueError(f"anchor_samples must be at most {MAX_ANCHOR_SAMPLES}")
 
     anchor_set_from_fix = anchor_latitude is None
     anchor_established = not anchor_set_from_fix

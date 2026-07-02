@@ -2620,6 +2620,23 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("Anchor sample 2/3", stdout.getvalue())
             self.assertIn("need 3 anchor samples", stderr.getvalue())
 
+    def test_cli_anchor_watch_rejects_oversized_anchor_samples(self):
+        stderr = StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            cli_module.main(["anchor-watch", "--anchor-samples", str(cli_module.MAX_ANCHOR_SAMPLES + 1)])
+
+        self.assertIn(f"must be at most {cli_module.MAX_ANCHOR_SAMPLES}", stderr.getvalue())
+        with self.assertRaisesRegex(ValueError, f"at most {cli_module.MAX_ANCHOR_SAMPLES}"):
+            cli_module._run_anchor_watch(
+                iter(()),
+                radius_meters=50.0,
+                anchor_latitude=None,
+                anchor_longitude=None,
+                anchor_samples=cli_module.MAX_ANCHOR_SAMPLES + 1,
+                interval_seconds=None,
+                live_stream=False,
+            )
+
     def test_cli_anchor_watch_uses_configured_radius_by_default(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -3769,6 +3786,15 @@ class GuiTests(unittest.TestCase):
             ],
         )
 
+    def test_status_gui_parser_rejects_oversized_anchor_samples(self):
+        stderr = StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            status_gui_module.build_parser().parse_args(
+                ["--anchor-samples", str(status_gui_module.MAX_ANCHOR_SAMPLES + 1)]
+            )
+
+        self.assertIn(f"must be at most {status_gui_module.MAX_ANCHOR_SAMPLES}", stderr.getvalue())
+
     def test_status_gui_write_current_position_mark_uses_configured_track_output(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -4026,6 +4052,20 @@ class GuiTests(unittest.TestCase):
                 status_gui_module.read_configured_gps_fixes = original
 
             self.assertEqual(calls, [(2, 4.0, {})])
+
+    def test_status_gui_anchor_check_rejects_oversized_anchor_samples_before_config_read(self):
+        with self.assertRaisesRegex(ValueError, f"at most {status_gui_module.MAX_ANCHOR_SAMPLES}"):
+            status_gui_module.check_anchor_drift(
+                Path("/missing-config.ini"),
+                anchor_samples=status_gui_module.MAX_ANCHOR_SAMPLES + 1,
+            )
+
+    def test_status_gui_anchor_watch_rejects_oversized_anchor_samples_before_config_read(self):
+        with self.assertRaisesRegex(ValueError, f"at most {status_gui_module.MAX_ANCHOR_SAMPLES}"):
+            status_gui_module.capture_anchor_watch_fix(
+                Path("/missing-config.ini"),
+                anchor_samples=status_gui_module.MAX_ANCHOR_SAMPLES + 1,
+            )
 
     def test_status_gui_anchor_watch_captures_average_anchor_fix(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
