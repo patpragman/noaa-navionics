@@ -1468,15 +1468,11 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
     if not isinstance(data, dict):
         return [CheckResult("GPS Device", False, "status report GPS Device check has no structured data")]
     failures: list[CheckResult] = []
-    configured_path_text = str(data.get("configured_path", ""))
-    configured_path_failure = _status_control_character_failure(configured_path_text, "GPS Device path")
-    if configured_path_failure:
-        failures.append(CheckResult("GPS Device", False, configured_path_failure))
-    configured_path = configured_path_text.strip()
-    expected_path = str(config.get("gps_device", "")).strip()
-    if not _status_absolute_path(configured_path):
+    configured_path = _serial_gps_device_text(data, "configured_path", "GPS Device path", failures)
+    expected_path = _serial_gps_device_text(config, "gps_device", "config gps_device", failures)
+    if configured_path is not None and not _status_absolute_path(configured_path):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path is not absolute"))
-    if configured_path != expected_path:
+    if configured_path is not None and expected_path is not None and configured_path != expected_path:
         failures.append(
             CheckResult(
                 "GPS Device",
@@ -1484,7 +1480,7 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
                 f"status report GPS Device path {configured_path or '<missing>'} does not match configured {expected_path or '<missing>'}",
             )
         )
-    if not _stable_status_gps_device_path(configured_path):
+    if configured_path is not None and not _stable_status_gps_device_path(configured_path):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path is not stable"))
     if data.get("stable_path") is not True:
         failures.append(CheckResult("GPS Device", False, "status report GPS Device missing stable path evidence"))
@@ -1494,18 +1490,36 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path does not exist"))
     if data.get("is_directory") is True:
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path is a directory"))
-    if configured_path.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/")) and data.get("is_symlink") is not True:
+    if (
+        configured_path is not None
+        and configured_path.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/"))
+        and data.get("is_symlink") is not True
+    ):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device udev path is not a symlink"))
     if data.get("is_character_device") is not True:
         failures.append(CheckResult("GPS Device", False, "status report GPS Device is not a character device"))
-    resolved_path_text = str(data.get("resolved_path", ""))
-    resolved_path_failure = _status_control_character_failure(resolved_path_text, "GPS Device resolved path")
-    if resolved_path_failure:
-        failures.append(CheckResult("GPS Device", False, resolved_path_failure))
-    resolved_path = resolved_path_text.strip()
-    if not _status_absolute_path(resolved_path):
+    resolved_path = _serial_gps_device_text(data, "resolved_path", "GPS Device resolved path", failures)
+    if resolved_path is not None and not _status_absolute_path(resolved_path):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device resolved path is not absolute"))
     return failures
+
+
+def _serial_gps_device_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult("GPS Device", False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult("GPS Device", False, control_failure))
+        return None
+    return text
 
 
 def _stable_status_gps_device_path(path: str) -> bool:

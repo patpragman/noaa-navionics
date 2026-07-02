@@ -5290,6 +5290,8 @@ grep -q 'gps_fix latitude is invalid' tests/test_downloader.py
 grep -q 'gps_fix HDOP is invalid' tests/test_downloader.py
 grep -q 'status report {expected_name} timestamp does not match gps_fix' src/noaa_navionics/report.py
 grep -q 'status report GPS Device check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _serial_gps_device_text' src/noaa_navionics/report.py
+grep -q 'resolved path is not text' tests/test_downloader.py
 grep -q 'status report GPS Device udev path is not a symlink' src/noaa_navionics/report.py
 grep -q 'status report GPS Device is not a character device' src/noaa_navionics/report.py
 grep -q 'status report GPSD Config check has no structured data' src/noaa_navionics/report.py

@@ -13265,6 +13265,7 @@ class StatusReportTests(unittest.TestCase):
 
         cases = [
             (None, "GPS Device check has no structured data"),
+            (device_data(configured_path=123), "path is not text"),
             (device_data(configured_path="/dev/serial/by-id/mock-gps\x00"), "path contains control characters"),
             (device_data(configured_path="/dev/ttyACM0"), "path /dev/ttyACM0 does not match configured"),
             (device_data(configured_path="/dev/serial/by-id/mock/extra"), "path is not stable"),
@@ -13274,6 +13275,7 @@ class StatusReportTests(unittest.TestCase):
             (device_data(is_directory=True), "path is a directory"),
             (device_data(is_symlink=False), "udev path is not a symlink"),
             (device_data(is_character_device=False), "is not a character device"),
+            (device_data(resolved_path=123), "resolved path is not text"),
             (device_data(resolved_path="/dev/ttyACM0\x00"), "resolved path contains control characters"),
             (device_data(resolved_path="ttyACM0"), "resolved path is not absolute"),
         ]
