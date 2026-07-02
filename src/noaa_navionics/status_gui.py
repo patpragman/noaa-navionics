@@ -788,6 +788,20 @@ class StatusApp(tk.Tk):
             self.last_report.set("Ignored stale anchor watch error; watch was stopped or reset.")
             self._schedule_refresh()
             return
+        if anchor_fix is not None:
+            self._set_busy(False)
+            summary = f"Anchor watch: ANCHOR ALARM: GPS check failed: {message}"
+            detail = "GPS: unavailable"
+            self.anchor_watch_status_summary = summary
+            self.anchor_watch_status_detail = detail
+            self.anchor_watch_alarm_active = True
+            self.anchor_watch_alarm_summary = summary
+            self.anchor_watch_alarm_detail = detail
+            self.last_report.set(f"Anchor watch error: {message}")
+            self._show_anchor_watch_alarm_if_active()
+            self._schedule_anchor_watch()
+            self._schedule_refresh()
+            return
         self._show_error(message)
 
     def _show_report_error(self, message: str) -> None:
