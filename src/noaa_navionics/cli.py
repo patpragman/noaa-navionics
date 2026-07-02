@@ -235,9 +235,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     status_gui.add_argument(
         "--anchor-watch-seconds",
-        type=_non_negative_float,
+        type=_positive_float,
         default=30.0,
-        help="seconds between automatic status GUI anchor-watch checks; 0 disables repeated checks",
+        help="seconds between automatic status GUI anchor-watch checks",
     )
     status_gui.add_argument(
         "--anchor-radius-meters",

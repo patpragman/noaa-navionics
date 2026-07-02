@@ -3795,6 +3795,13 @@ class GuiTests(unittest.TestCase):
 
         self.assertIn(f"must be at most {status_gui_module.MAX_ANCHOR_SAMPLES}", stderr.getvalue())
 
+    def test_status_gui_parser_rejects_zero_anchor_watch_seconds(self):
+        stderr = StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            status_gui_module.build_parser().parse_args(["--anchor-watch-seconds", "0"])
+
+        self.assertIn("must be greater than 0", stderr.getvalue())
+
     def test_status_gui_write_current_position_mark_uses_configured_track_output(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             root = Path(tmpdir)
@@ -5607,6 +5614,40 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(app.cancelled, ["confirm-id", "after-id"])
         self.assertEqual(app.refresh_scheduled, 1)
 
+    def test_status_gui_start_watch_rejects_disabled_repeating_interval(self):
+        class FakeVar:
+            def __init__(self, value):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+        class FakeApp:
+            def __init__(self):
+                self._closed = False
+                self.worker = None
+                self.anchor_watch_fix = None
+                self.anchor_watch_seconds = 0.0
+                self.anchor_radius = FakeVar("50")
+                self.anchor_samples = FakeVar("1")
+                self.errors = []
+                self.busy_calls = []
+
+            def _show_error(self, message):
+                self.errors.append(message)
+
+            def _set_busy(self, busy):
+                self.busy_calls.append(busy)
+
+        app = FakeApp()
+
+        status_gui_module.StatusApp.start_anchor_watch(app)
+
+        self.assertEqual(app.errors, ["Anchor watch interval must be greater than 0"])
+        self.assertEqual(app.busy_calls, [])
+        self.assertIsNone(app.worker)
+        self.assertIsNone(app.anchor_watch_fix)
+
     def test_status_gui_anchor_watch_uses_stored_radius_after_field_edit(self):
         class FakeVar:
             def __init__(self, value):
@@ -6784,6 +6825,7 @@ class CLIValidationTests(unittest.TestCase):
         self.assert_parse_error(["gps-monitor", "--seconds", "-1"])
         self.assert_parse_error(["status-gui", "--action-gps-seconds", "-1"])
         self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "-1"])
+        self.assert_parse_error(["status-gui", "--anchor-watch-seconds", "0"])
         self.assert_parse_error(["status-gui", "--anchor-radius-meters", "0"])
         self.assert_parse_error(["status-gui", "--anchor-samples", "0"])
 

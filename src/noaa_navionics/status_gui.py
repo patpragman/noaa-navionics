@@ -480,6 +480,9 @@ class StatusApp(tk.Tk):
         if self.anchor_watch_fix is not None:
             self._show_anchor_watch_already_active()
             return
+        if not math.isfinite(self.anchor_watch_seconds) or self.anchor_watch_seconds <= 0:
+            self._show_error("Anchor watch interval must be greater than 0")
+            return
         try:
             radius_meters = _positive_float(self.anchor_radius.get())
         except argparse.ArgumentTypeError as exc:
@@ -896,9 +899,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--anchor-watch-seconds",
-        type=_non_negative_float,
+        type=_positive_float,
         default=30.0,
-        help="seconds between automatic anchor-watch checks; 0 disables repeated checks",
+        help="seconds between automatic anchor-watch checks",
     )
     parser.add_argument(
         "--anchor-radius-meters",
