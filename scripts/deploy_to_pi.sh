@@ -727,7 +727,7 @@ def first_symlink_ancestor(path):
             return component
     return None
 
-def cleanup_source_revision_temp(path: Path) -> None:
+def cleanup_source_revision_temp(path: Path, expected_stat=None) -> None:
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     try:
         before = os.stat(path, follow_symlinks=False)
@@ -738,6 +738,9 @@ def cleanup_source_revision_temp(path: Path) -> None:
         return
     if not stat.S_ISREG(before.st_mode) or before.st_uid != expected_uid or stat.S_IMODE(before.st_mode) & 0o022:
         print(f'Deployment source revision temp is not a trusted private file; leaving it in place: {path}', file=sys.stderr)
+        return
+    if expected_stat is not None and not os.path.samestat(before, expected_stat):
+        print(f'Deployment source revision temp changed before cleanup; leaving it in place: {path}', file=sys.stderr)
         return
     try:
         dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
@@ -765,6 +768,39 @@ def cleanup_source_revision_temp(path: Path) -> None:
         os.fsync(dir_fd)
     finally:
         os.close(dir_fd)
+
+def validate_source_revision_temp_for_promotion(path: Path, expected_stat) -> None:
+    if expected_stat is None:
+        raise SystemExit(f'Deployment source revision temp was not opened safely before promotion: {path}')
+    try:
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise SystemExit(f'Deployment source revision temp could not be inspected before promotion: {path}: {exc}') from exc
+    if not stat.S_ISREG(current.st_mode):
+        raise SystemExit(f'Deployment source revision temp is not a regular file before promotion: {path}')
+    if current.st_uid != expected_uid:
+        raise SystemExit(
+            f'Deployment source revision temp is owned by uid {current.st_uid}, expected {expected_uid}: {path}'
+        )
+    mode = stat.S_IMODE(current.st_mode)
+    if mode != 0o600:
+        raise SystemExit(f'Deployment source revision temp has permissions {mode:04o}, expected private 0600: {path}')
+    if not os.path.samestat(current, expected_stat):
+        raise SystemExit(f'Deployment source revision temp changed before promotion; leaving it in place: {path}')
+
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, expected_stat):
+            raise SystemExit(f'Deployment source revision temp changed while being opened for promotion: {path}')
+        if not stat.S_ISREG(opened.st_mode):
+            raise SystemExit(f'Deployment source revision temp is not regular when opened for promotion: {path}')
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened.st_uid != expected_uid or opened_mode != 0o600:
+            raise SystemExit(f'Deployment source revision temp is not private user storage before promotion: {path}')
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 if repo.is_symlink():
     raise SystemExit(f'Refusing to write source revision through symlink deployment directory: {repo}')
@@ -807,6 +843,7 @@ if target.exists():
             f'expected no group/other write bits: {target}'
         )
 tmp_path = None
+tmp_stat = None
 try:
     with tempfile.NamedTemporaryFile(
         'w',
@@ -817,9 +854,12 @@ try:
         delete=False,
     ) as handle:
         tmp_path = Path(handle.name)
+        os.fchmod(handle.fileno(), 0o600)
         handle.write(revision + '\n')
         handle.flush()
         os.fsync(handle.fileno())
+        tmp_stat = os.fstat(handle.fileno())
+    validate_source_revision_temp_for_promotion(tmp_path, tmp_stat)
     os.replace(tmp_path, target)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
@@ -855,7 +895,7 @@ try:
         os.close(fd)
 finally:
     if tmp_path is not None:
-        cleanup_source_revision_temp(tmp_path)
+        cleanup_source_revision_temp(tmp_path, tmp_stat)
 PY"
 }
 
