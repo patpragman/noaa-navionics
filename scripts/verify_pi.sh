@@ -93,6 +93,71 @@ require_local_command() {
   printf '%s\n' "$command_path"
 }
 
+validate_remote_bash_entrypoint() {
+  "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && /bin/sh -s -- /bin/bash bash" <<'BASH_ENTRYPOINT_TRUST' >/dev/null
+set -eu
+
+command_path="$1"
+command_label="$2"
+
+check_trusted_system_path() {
+  case "$1" in
+    /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
+      return 0
+      ;;
+  esac
+  echo "Remote ${command_label} command is not in a trusted system directory: $1" >&2
+  exit 1
+}
+
+check_owner_and_mode() {
+  item_kind="$1"
+  item_path="$2"
+  stat_output="$(stat -Lc '%u %a' -- "$item_path")" || {
+    echo "Could not inspect remote ${command_label} ${item_kind}: ${item_path}" >&2
+    exit 1
+  }
+  owner_uid="${stat_output%% *}"
+  mode="${stat_output#* }"
+  mode_tail="$(printf '%s\n' "$mode" | sed 's/.*\(...\)$/\1/')"
+  if [ "$owner_uid" != "0" ]; then
+    echo "Remote ${command_label} ${item_kind} is owned by uid ${owner_uid}, expected 0: ${item_path}" >&2
+    exit 1
+  fi
+  case "$mode_tail" in
+    ?[2367]?|??[2367])
+      echo "Remote ${command_label} ${item_kind} has permissions ${mode}, expected no group/other write: ${item_path}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+check_directory_chain() {
+  directory="$(dirname -- "$1")"
+  while :; do
+    check_owner_and_mode directory "$directory"
+    [ "$directory" = "/" ] && break
+    directory="$(dirname -- "$directory")"
+  done
+}
+
+check_trusted_system_path "$command_path"
+resolved_cmd="$(readlink -f -- "$command_path")"
+check_trusted_system_path "$resolved_cmd"
+if [ ! -f "$resolved_cmd" ]; then
+  echo "Remote ${command_label} command is not a regular file after resolution: ${command_path} -> ${resolved_cmd}" >&2
+  exit 1
+fi
+if [ ! -x "$resolved_cmd" ]; then
+  echo "Remote ${command_label} command is not executable after resolution: ${resolved_cmd}" >&2
+  exit 1
+fi
+check_directory_chain "$command_path"
+check_directory_chain "$resolved_cmd"
+check_owner_and_mode file "$resolved_cmd"
+BASH_ENTRYPOINT_TRUST
+}
+
 local_path_in_trusted_system_dir() {
   case "$1" in
     /bin/*|/sbin/*|/usr/bin/*|/usr/sbin/*|/usr/local/bin/*|/usr/local/sbin/*)
@@ -398,6 +463,7 @@ opencpn_restarts_quoted="$(printf '%q' "$opencpn_restarts")"
 opencpn_restart_delay_quoted="$(printf '%q' "$opencpn_restart_delay")"
 expected_gps_device_quoted="$(printf '%q' "$expected_gps_device")"
 expected_boot_id_quoted="$(printf '%q' "$expected_boot_id")"
+validate_remote_bash_entrypoint
 
 "$ssh_cmd" -T "${ssh_batch_options[@]}" "$target" "${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted} NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED=${require_chartplotter_started_quoted} NOAA_NAVIONICS_GPS_SECONDS=${gps_seconds_quoted} NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted} NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted} NOAA_NAVIONICS_EXPECTED_GPS_DEVICE=${expected_gps_device_quoted} NOAA_NAVIONICS_EXPECTED_BOOT_ID=${expected_boot_id_quoted} /bin/bash -s" <<'REMOTE'
 set -euo pipefail

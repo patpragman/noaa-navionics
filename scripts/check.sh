@@ -747,6 +747,9 @@ grep -q 'Remote ${command_name} command is not a regular file after resolution' 
 grep -Fq '"$ssh_cmd" -T "${ssh_batch_options[@]}" "$target"' scripts/verify_pi.sh
 grep -Fq '${remote_system_path} && export PATH && NOAA_NAVIONICS_EXPECTED_REVISION=' scripts/verify_pi.sh
 grep -Fq '/bin/bash -s' scripts/verify_pi.sh
+grep -q 'validate_remote_bash_entrypoint' scripts/verify_pi.sh
+grep -Fq '/bin/sh -s -- /bin/bash bash' scripts/verify_pi.sh
+grep -q 'Remote ${command_label} command is not in a trusted system directory' scripts/verify_pi.sh
 grep -q 'validate_verifier_controls' scripts/verify_pi.sh
 grep -q 'require_remote_boolean "NOAA_NAVIONICS_REQUIRE_CHARTPLOTTER_STARTED" "$require_chartplotter_started"' scripts/verify_pi.sh
 grep -q 'require_remote_positive_integer "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds"' scripts/verify_pi.sh
@@ -760,8 +763,8 @@ grep -q 'require_remote_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTART_DELAY" "
 grep -q 'NOAA_NAVIONICS_EXPECTED_BOOT_ID must be the Linux boot_id value' scripts/verify_pi.sh
 grep -q 'validate_remote_gps_device_control "$expected_gps_device"' scripts/verify_pi.sh
 ! grep -Fq '"NOAA_NAVIONICS_EXPECTED_REVISION=${expected_revision_quoted}' scripts/verify_pi.sh
-grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
-grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe after pinning `PATH` and before launching the remote verifier' README.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe after pinning `PATH` and before launching the remote verifier' docs/sailboat-pi.md
 grep -q 'revalidates the SSH-transferred verifier controls on the Pi before acceptance checks use them' README.md
 grep -q 'revalidates the SSH-transferred verifier controls on the Pi before acceptance checks use them' docs/sailboat-pi.md
 grep -q 'Use `--gps-seconds N` here too if the GPS receiver needs a longer fix window, up to 600 seconds' README.md
@@ -6498,8 +6501,8 @@ grep -q 'root-owned, executable, non-group/world-writable commands in trusted sy
 grep -q 'root-owned, executable, non-group/world-writable commands in trusted system directories' docs/sailboat-pi.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' README.md
 grep -q 'pins remote reboot probes and sudo calls to trusted system command directories' docs/sailboat-pi.md
-grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' README.md
-grep -q 'uses the fixed remote `/bin/bash` entrypoint after pinning `PATH` before launching the remote verifier' docs/sailboat-pi.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe after pinning `PATH` and before launching the remote verifier' README.md
+grep -q 'validates the fixed remote `/bin/bash` entrypoint through a root-owned command and parent-directory trust probe after pinning `PATH` and before launching the remote verifier' docs/sailboat-pi.md
 grep -q 'reads and validates the Pi pre- and post-reboot boot IDs through no-follow descriptors as Linux `boot_id` values on the Pi before comparing them' README.md
 grep -q 'reads and validates the Pi pre- and post-reboot boot IDs through no-follow descriptors as Linux `boot_id` values on the Pi before comparing them' docs/sailboat-pi.md
 grep -q 'passes that observed post-reboot boot ID into strict verification' README.md
@@ -8076,7 +8079,7 @@ case "$args" in
     printf '/usr/bin/python3\n'
     exit 0
     ;;
-  *"/bin/sh -s -- /usr/sbin/reboot reboot"*|*"/bin/sh -s -- /usr/bin/sudo sudo"*|*"/bin/sh -s -- /usr/bin/python3 python3"*)
+  *"/bin/sh -s -- /bin/bash bash"*|*"/bin/sh -s -- /usr/sbin/reboot reboot"*|*"/bin/sh -s -- /usr/bin/sudo sudo"*|*"/bin/sh -s -- /usr/bin/python3 python3"*)
     exit 0
     ;;
   *"-n -l '/usr/sbin/reboot'"*)
@@ -8122,6 +8125,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --allow-dirty --device /dev/serial/by-id/mock-gps --timeout 5 >"$dock_output" 2>&1
 grep -q 'Dock test passed after reboot' "$dock_output"
 test "$(grep -c 'command -v python3' "$dock_revalidate_ssh_log")" -eq 2
+test "$(grep -c '/bin/sh -s -- /bin/bash bash' "$dock_revalidate_ssh_log")" -eq 2
 test "$(grep -c '/bin/sh -s -- /usr/bin/python3 python3' "$dock_revalidate_ssh_log")" -eq 2
 test "$(grep -c '/bin/sh -s -- /usr/sbin/reboot reboot' "$dock_revalidate_ssh_log")" -eq 2
 test "$(grep -c '/bin/sh -s -- /usr/bin/sudo sudo' "$dock_revalidate_ssh_log")" -eq 2
@@ -8168,6 +8172,9 @@ if [[ "$args" == *"/bin/sh -s -- /usr/bin/python3 python3"* ]]; then
     printf '%s\n' "$NOAA_NAVIONICS_FAKE_PYTHON_TRUST_ERROR" >&2
     exit 1
   fi
+  exit 0
+fi
+if [[ "$args" == *"/bin/sh -s -- /bin/bash bash"* ]]; then
   exit 0
 fi
 if [[ "$args" == *"-n -l"* ]]; then
