@@ -12125,7 +12125,126 @@ if [[ "${NOAA_NAVIONICS_FAKE_BAD_STATUS_JSON:-0}" == "1" ]]; then
   printf '{"ok": "yes", "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "checks": [{"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}], "gps_fix": {"ok": true}, "track_log": {"ok": true}}\n' "$generated_at"
   exit 0
 fi
-printf '{"ok": true, "generated_at": "%s", "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "config": {"chart_package": "state", "chart_value": "AK", "chart_output": "/charts", "gps_mode": "gpsd", "gps_device": "/dev/serial/by-id/mock-gps", "gps_baud": 4800, "gpsd_host": "127.0.0.1", "gpsd_port": 2947, "track_output": "/charts", "track_retention_days": 90, "track_fsync_interval_seconds": 30.0, "anchor_radius_meters": 50.0}, "checks": [{"name": "GPSD", "ok": true, "data": {"timestamp": "%s", "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}}, {"name": "Python", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true, "data": {"track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}], "gps_fix": {"ok": true, "source": "GPSD", "timestamp": "%s", "age_seconds": 0.0, "latitude": 61.2181, "longitude": -149.9003, "satellites": 8, "hdop": 0.9}, "track_log": {"ok": true, "track_output": "/charts", "tracks_dir": "/charts/tracks", "latest_path": "/charts/tracks/track-20260701.gpx", "track_storage_symlink_component": "", "latest_time": "%s", "age_seconds": 0.0, "latest_latitude": 61.2181, "latest_longitude": -149.9003, "latest_satellites": 8, "latest_hdop": 0.9}}\n' "$generated_at" "$generated_at" "$generated_at" "$generated_at" "$generated_at"
+python3 - "$generated_at" <<'PY'
+import json
+import sys
+
+generated_at = sys.argv[1]
+checks = {
+    "Python",
+    "Source Revision",
+    "Clock",
+    "Time Sync",
+    "Tkinter",
+    "OpenCPN",
+    "Display Power",
+    "Chart Package",
+    "Charts",
+    "Chart Update Debris",
+    "Manifest",
+    "OpenCPN Charts",
+    "Disk",
+    "Pi Power",
+    "Pi Thermal",
+    "OpenCPN GPSD",
+    "GPSD Config",
+    "Chrony Config",
+    "GPSD",
+    "GPS Time Source",
+}
+service_checks = {
+    "Chart Sync",
+    "Chart Sync Settings",
+    "Chart Sync Unit File",
+    "Chart Timer",
+    "Chart Timer Install",
+    "Chart Timer Settings",
+    "Chart Timer Unit File",
+    "Track Log",
+    "Track Logger",
+    "Track Logger Install",
+    "Track Logger Settings",
+    "Track Logger Unit File",
+    "Boot Readiness",
+    "Boot Readiness Install",
+    "Boot Readiness Settings",
+    "Boot Readiness Unit File",
+    "Boot Readiness Run",
+    "Desktop Startup",
+    "Launcher Settings",
+    "User Linger",
+    "GPSD Socket",
+    "GPSD Service",
+    "Chrony Service",
+}
+check_rows = [{"name": name, "ok": True} for name in sorted(checks)]
+gpsd_row = next(row for row in check_rows if row["name"] == "GPSD")
+gpsd_row["data"] = {
+    "timestamp": generated_at,
+    "latitude": 61.2181,
+    "longitude": -149.9003,
+    "satellites": 8,
+    "hdop": 0.9,
+}
+service_rows = [{"name": name, "ok": True} for name in sorted(service_checks)]
+track_row = next(row for row in service_rows if row["name"] == "Track Log")
+track_row["data"] = {
+    "track_output": "/charts",
+    "tracks_dir": "/charts/tracks",
+    "latest_path": "/charts/tracks/track-20260701.gpx",
+    "latest_time": generated_at,
+    "age_seconds": 0.0,
+    "latest_latitude": 61.2181,
+    "latest_longitude": -149.9003,
+    "latest_satellites": 8,
+    "latest_hdop": 0.9,
+}
+report = {
+    "ok": True,
+    "generated_at": generated_at,
+    "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"},
+    "config": {
+        "chart_package": "state",
+        "chart_value": "AK",
+        "chart_output": "/charts",
+        "gps_mode": "gpsd",
+        "gps_device": "/dev/serial/by-id/mock-gps",
+        "gps_baud": 4800,
+        "gpsd_host": "127.0.0.1",
+        "gpsd_port": 2947,
+        "track_output": "/charts",
+        "track_retention_days": 90,
+        "track_fsync_interval_seconds": 30.0,
+        "anchor_radius_meters": 50.0,
+    },
+    "checks": check_rows,
+    "service_checks": service_rows,
+    "gps_fix": {
+        "ok": True,
+        "source": "GPSD",
+        "timestamp": generated_at,
+        "age_seconds": 0.0,
+        "latitude": 61.2181,
+        "longitude": -149.9003,
+        "satellites": 8,
+        "hdop": 0.9,
+    },
+    "track_log": {
+        "ok": True,
+        "track_output": "/charts",
+        "tracks_dir": "/charts/tracks",
+        "latest_path": "/charts/tracks/track-20260701.gpx",
+        "track_storage_symlink_component": "",
+        "latest_time": generated_at,
+        "age_seconds": 0.0,
+        "latest_latitude": 61.2181,
+        "latest_longitude": -149.9003,
+        "latest_satellites": 8,
+        "latest_hdop": 0.9,
+    },
+}
+print(json.dumps(report))
+PY
 EOF
 chmod +x "$status_fake_ssh_bin/ssh"
 NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
@@ -12179,6 +12298,17 @@ grep -q 'track_log data does not match Track Log service check data for {field}'
 grep -q 'validate_track_log_service_row(report\["track_log"\], service_rows)' scripts/check_pi_status.sh
 grep -q 'gps_fix latitude is not numeric' tests/test_downloader.py
 grep -q 'track_log latest_latitude is not numeric' tests/test_downloader.py
+grep -q 'def validate_required_rows' scripts/check_pi_status.sh
+grep -q 'CORE_READINESS_CHECKS = {' scripts/check_pi_status.sh
+grep -q 'GPSD_READINESS_CHECKS = {' scripts/check_pi_status.sh
+grep -q 'SERIAL_READINESS_CHECKS = {' scripts/check_pi_status.sh
+grep -q 'CORE_SERVICE_CHECKS = {' scripts/check_pi_status.sh
+grep -q 'GPSD_SERVICE_CHECKS = {' scripts/check_pi_status.sh
+grep -q 'missing required readiness check(s)' scripts/check_pi_status.sh
+grep -q 'missing required service check(s)' scripts/check_pi_status.sh
+grep -q 'config gps_mode is unsupported' scripts/check_pi_status.sh
+grep -q 'missing required readiness check(s): Charts' tests/test_downloader.py
+grep -q 'missing required service check(s): Chart Sync Settings' tests/test_downloader.py
 grep -q 'missing non-empty {section_name} list' scripts/check_pi_status.sh
 grep -q 'missing {section_name} summary' scripts/check_pi_status.sh
 grep -q 'def status_text' scripts/check_pi_status.sh
@@ -12201,6 +12331,10 @@ grep -q 'GPS/GPSD readiness-row fix data that does not match top-level GPS evide
 grep -q 'GPS/GPSD readiness-row fix data that does not match top-level GPS evidence' docs/sailboat-pi.md
 grep -q 'Track Log service-row data that does not match top-level track evidence' README.md
 grep -q 'Track Log service-row data that does not match top-level track evidence' docs/sailboat-pi.md
+grep -q 'missing required core, GPSD or serial readiness row names' README.md
+grep -q 'missing required core, GPSD or serial readiness row names' docs/sailboat-pi.md
+grep -q 'missing required service row names' README.md
+grep -q 'missing required service row names' docs/sailboat-pi.md
 grep -q 'GPS/GPSD readiness row and Track Log service row' README.md
 grep -q 'GPS/GPSD readiness row and Track Log service row' docs/sailboat-pi.md
 grep -q 'status_output="$(run_remote_status)"' scripts/check_pi_status.sh

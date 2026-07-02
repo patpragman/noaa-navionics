@@ -16166,6 +16166,16 @@ class StatusReportTests(unittest.TestCase):
             "Track Log service check has no structured track data",
             "track_log data does not match Track Log service check data for {field}",
             'validate_track_log_service_row(report["track_log"], service_rows)',
+            "def validate_required_rows",
+            "CORE_READINESS_CHECKS = {",
+            "GPSD_READINESS_CHECKS = {",
+            "SERIAL_READINESS_CHECKS = {",
+            "CORE_SERVICE_CHECKS = {",
+            "GPSD_SERVICE_CHECKS = {",
+            "missing required readiness check(s)",
+            "missing required service check(s)",
+            "config gps_mode is unsupported",
+            "validate_required_rows(config, readiness_rows, service_rows)",
             "def validate_optional_text_fields",
             '(("checks", "readiness check"), ("service_checks", "service check"))',
             'status_text(name, f"{row_label} name")',
@@ -16274,7 +16284,7 @@ class StatusReportTests(unittest.TestCase):
                     "checks",
                     [row for row in report["checks"] if row["name"] != "GPSD"],
                 ),
-                "missing GPSD readiness check for gps_fix",
+                "missing required readiness check(s): GPSD",
             ),
             (
                 lambda report: next(
@@ -16310,7 +16320,7 @@ class StatusReportTests(unittest.TestCase):
                     "service_checks",
                     [row for row in report["service_checks"] if row["name"] != "Track Log"],
                 ),
-                "missing Track Log service check for track_log",
+                "missing required service check(s): Track Log",
             ),
             (
                 lambda report: next(
@@ -16326,6 +16336,37 @@ class StatusReportTests(unittest.TestCase):
             ),
         )
         for mutate, expected_error in track_log_row_cases:
+            report = copy.deepcopy(valid_report)
+            mutate(report)
+            result = subprocess.run(
+                [sys.executable, "-c", validator],
+                input=json.dumps(report),
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            with self.subTest(expected_error=expected_error):
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(expected_error, result.stderr)
+
+        required_row_cases = (
+            (
+                lambda report: report.__setitem__(
+                    "checks",
+                    [row for row in report["checks"] if row["name"] != "Charts"],
+                ),
+                "missing required readiness check(s): Charts",
+            ),
+            (
+                lambda report: report.__setitem__(
+                    "service_checks",
+                    [row for row in report["service_checks"] if row["name"] != "Chart Sync Settings"],
+                ),
+                "missing required service check(s): Chart Sync Settings",
+            ),
+        )
+        for mutate, expected_error in required_row_cases:
             report = copy.deepcopy(valid_report)
             mutate(report)
             result = subprocess.run(

@@ -535,6 +535,79 @@ def validate_track_log_service_row(track_log, service_rows):
             fail(f"track_log data does not match Track Log service check data for {field}")
 
 
+CORE_READINESS_CHECKS = {
+    "Python",
+    "Source Revision",
+    "Clock",
+    "Time Sync",
+    "Tkinter",
+    "OpenCPN",
+    "Display Power",
+    "Chart Package",
+    "Charts",
+    "Chart Update Debris",
+    "Manifest",
+    "OpenCPN Charts",
+    "Disk",
+    "Pi Power",
+    "Pi Thermal",
+}
+GPSD_READINESS_CHECKS = {
+    "OpenCPN GPSD",
+    "GPSD Config",
+    "Chrony Config",
+    "GPSD",
+    "GPS Time Source",
+}
+SERIAL_READINESS_CHECKS = {"GPS Device", "GPS"}
+CORE_SERVICE_CHECKS = {
+    "Chart Sync",
+    "Chart Sync Settings",
+    "Chart Sync Unit File",
+    "Chart Timer",
+    "Chart Timer Install",
+    "Chart Timer Settings",
+    "Chart Timer Unit File",
+    "Track Log",
+    "Track Logger",
+    "Track Logger Install",
+    "Track Logger Settings",
+    "Track Logger Unit File",
+    "Boot Readiness",
+    "Boot Readiness Install",
+    "Boot Readiness Settings",
+    "Boot Readiness Unit File",
+    "Boot Readiness Run",
+    "Desktop Startup",
+    "Launcher Settings",
+    "User Linger",
+}
+GPSD_SERVICE_CHECKS = {"GPSD Socket", "GPSD Service", "Chrony Service"}
+
+
+def validate_required_rows(config, readiness_rows, service_rows):
+    gps_mode = status_text(config.get("gps_mode", ""), "config gps_mode")
+    required_readiness = set(CORE_READINESS_CHECKS)
+    required_services = set(CORE_SERVICE_CHECKS)
+    if gps_mode == "gpsd":
+        required_readiness.update(GPSD_READINESS_CHECKS)
+        required_services.update(GPSD_SERVICE_CHECKS)
+    elif gps_mode == "serial":
+        required_readiness.update(SERIAL_READINESS_CHECKS)
+    else:
+        gps_mode_label = gps_mode or "<missing>"
+        fail(f"config gps_mode is unsupported: {gps_mode_label}")
+    separator = ", "
+    missing_readiness = sorted(required_readiness - set(readiness_rows))
+    if missing_readiness:
+        missing_readiness_label = separator.join(missing_readiness)
+        fail(f"missing required readiness check(s): {missing_readiness_label}")
+    missing_services = sorted(required_services - set(service_rows))
+    if missing_services:
+        missing_services_label = separator.join(missing_services)
+        fail(f"missing required service check(s): {missing_services_label}")
+
+
 def validate_config_summary(config):
     if not isinstance(config, dict):
         fail("missing config summary")
@@ -646,7 +719,9 @@ validate_optional_text_fields(
     "manifest",
     ("path", "download_path", "extract_path"),
 )
-validate_config_summary(report.get("config"))
+config = report.get("config")
+validate_config_summary(config)
+validate_required_rows(config, readiness_rows, service_rows)
 
 for section_name in ("gps_fix", "track_log"):
     summary = report.get(section_name)
