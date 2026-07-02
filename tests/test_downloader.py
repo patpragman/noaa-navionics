@@ -13175,15 +13175,18 @@ class StatusReportTests(unittest.TestCase):
 
         cases = [
             ("OpenCPN Charts", None, "OpenCPN Charts check has no structured data"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_dir=123), "chart directory is not text"),
             ("OpenCPN Charts", opencpn_charts_data(chart_dir="/charts\x00"), "chart directory contains control characters"),
             ("OpenCPN Charts", opencpn_charts_data(chart_dir="relative/charts"), "chart directory is not absolute"),
             ("OpenCPN Charts", opencpn_charts_data(chart_dir="/other-charts"), "chart directory does not match configured chart output"),
+            ("OpenCPN Charts", opencpn_charts_data(config_path=123), "config path is not text"),
             ("OpenCPN Charts", opencpn_charts_data(config_path="/home/pi/.opencpn/opencpn.conf\x00"), "config path contains control characters"),
             ("OpenCPN Charts", opencpn_charts_data(config_path="relative/opencpn.conf"), "config path is not absolute"),
             ("OpenCPN Charts", opencpn_charts_data(config_exists=False), "config does not exist"),
             ("OpenCPN Charts", opencpn_charts_data(chart_dir_exists=False), "chart directory does not exist"),
             ("OpenCPN Charts", opencpn_charts_data(configured=False), "did not prove configured chart directory"),
             ("OpenCPN Charts", opencpn_charts_data(chart_directories=[]), "has no parsed chart directories"),
+            ("OpenCPN Charts", opencpn_charts_data(chart_directories=[123]), "parsed directories are not a text list"),
             ("OpenCPN Charts", opencpn_charts_data(chart_directories=["/charts\x00"]), "parsed directories contain control characters"),
             ("OpenCPN Charts", opencpn_charts_data(chart_directories=["/other-charts"]), "parsed directories do not include configured chart output"),
             ("OpenCPN GPSD", None, "OpenCPN GPSD check has no structured data"),

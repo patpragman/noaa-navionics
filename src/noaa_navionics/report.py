@@ -1012,22 +1012,32 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
         if not isinstance(data, dict):
             failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts check has no structured data"))
         else:
-            chart_dir_text = str(data.get("chart_dir", ""))
-            chart_dir_failure = _status_control_character_failure(chart_dir_text, "OpenCPN Charts chart directory")
-            if chart_dir_failure:
-                failures.append(CheckResult("OpenCPN Charts", False, chart_dir_failure))
-            chart_dir = chart_dir_text.strip()
-            expected_chart_output = str(config.get("chart_output", "")).strip()
-            if not _status_absolute_path(chart_dir):
+            chart_dir = _opencpn_readiness_text(
+                data,
+                "chart_dir",
+                "OpenCPN Charts chart directory",
+                "OpenCPN Charts",
+                failures,
+            )
+            expected_chart_output = _opencpn_readiness_text(
+                config,
+                "chart_output",
+                "config chart_output",
+                "OpenCPN Charts",
+                failures,
+            )
+            if chart_dir is not None and not _status_absolute_path(chart_dir):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory is not absolute"))
-            if chart_dir != expected_chart_output:
+            if chart_dir is not None and expected_chart_output is not None and chart_dir != expected_chart_output:
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts chart directory does not match configured chart output"))
-            config_path_text = str(data.get("config_path", ""))
-            config_path_failure = _status_control_character_failure(config_path_text, "OpenCPN Charts config path")
-            if config_path_failure:
-                failures.append(CheckResult("OpenCPN Charts", False, config_path_failure))
-            config_path = config_path_text.strip()
-            if not _status_absolute_path(config_path):
+            config_path = _opencpn_readiness_text(
+                data,
+                "config_path",
+                "OpenCPN Charts config path",
+                "OpenCPN Charts",
+                failures,
+            )
+            if config_path is not None and not _status_absolute_path(config_path):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts config path is not absolute"))
             if data.get("config_exists") is not True:
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts config does not exist"))
@@ -1038,9 +1048,11 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
             chart_directories = data.get("chart_directories")
             if not isinstance(chart_directories, list) or not chart_directories:
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts has no parsed chart directories"))
-            elif any(_status_text_has_control_char(str(directory)) for directory in chart_directories):
+            elif any(not isinstance(directory, str) for directory in chart_directories):
+                failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts parsed directories are not a text list"))
+            elif any(_status_text_has_control_char(directory) for directory in chart_directories):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts parsed directories contain control characters"))
-            elif not any(str(directory).strip() == expected_chart_output for directory in chart_directories):
+            elif expected_chart_output is None or not any(directory.strip() == expected_chart_output for directory in chart_directories):
                 failures.append(CheckResult("OpenCPN Charts", False, "status report OpenCPN Charts parsed directories do not include configured chart output"))
 
     gps_mode = str(config.get("gps_mode", "")).strip().lower()
@@ -1087,6 +1099,25 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                 elif unexpected:
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD found unexpected enabled GPSD connections"))
     return failures
+
+
+def _opencpn_readiness_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    check_name: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult(check_name, False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult(check_name, False, control_failure))
+        return None
+    return text
 
 
 def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckResult]:
