@@ -5053,6 +5053,8 @@ grep -q '"Source Revision revision"' tests/test_downloader.py
 grep -q '"config gps_device"' tests/test_downloader.py
 grep -q '"Charts storage_symlink_component"' tests/test_downloader.py
 grep -q '"Chart Update Debris storage_symlink_component"' tests/test_downloader.py
+grep -q 'f"{row_name} storage_symlink_component"' tests/test_downloader.py
+grep -q 'f"{row_name} mode"' tests/test_downloader.py
 grep -q '"GPSD Config directory_symlink_component"' tests/test_downloader.py
 grep -q '"Chrony Config refclock_line"' tests/test_downloader.py
 grep -q 'def snapshot_absolute_path' scripts/pre_trip_prepare_pi.sh

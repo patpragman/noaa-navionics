@@ -1434,7 +1434,7 @@ def validate_snapshot_storage_rows(check_rows: dict[str, dict[str, object]], *, 
             fail(f"pre-departure status snapshot JSON {row_name} checked path does not exist")
         if data.get("is_directory") is not True:
             fail(f"pre-departure status snapshot JSON {row_name} checked path is not a directory")
-        if str(data.get("storage_symlink_component", "")).strip():
+        if snapshot_text(data.get("storage_symlink_component", ""), f"{row_name} storage_symlink_component"):
             fail(f"pre-departure status snapshot JSON {row_name} storage path contains a symlink")
         if data.get("missing_removable_mount") is True:
             fail(f"pre-departure status snapshot JSON {row_name} removable storage is not mounted")
@@ -1448,7 +1448,7 @@ def validate_snapshot_storage_rows(check_rows: dict[str, dict[str, object]], *, 
             or uid != expected_uid
         ):
             fail(f"pre-departure status snapshot JSON {row_name} storage owner is invalid")
-        mode_text = str(data.get("mode", "")).strip()
+        mode_text = snapshot_text(data.get("mode", ""), f"{row_name} mode")
         try:
             mode = int(mode_text, 8)
         except ValueError:

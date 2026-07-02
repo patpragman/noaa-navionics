@@ -14617,6 +14617,11 @@ class StatusReportTests(unittest.TestCase):
                 self.assertIn('"Chrony Config directory_symlink_component"', source)
                 self.assertIn('"Chrony Config refclock_line"', source)
 
+        for name in ("pre_trip", "recovery"):
+            with self.subTest(validator=name, storage_rows=True):
+                self.assertIn('f"{row_name} storage_symlink_component"', sources[name])
+                self.assertIn('f"{row_name} mode"', sources[name])
+
     def test_post_trip_checksum_helpers_use_descriptor_validated_directory(self):
         script = Path("scripts/post_trip_collect_pi.sh").read_text(encoding="utf-8")
         sources = {
