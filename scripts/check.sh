@@ -1490,6 +1490,10 @@ grep -q 'info.size = current_stat.st_size' scripts/export_pi_tracks.sh
 grep -q 'opened GPX track has permissions' scripts/export_pi_tracks.sh
 ! grep -q 'archive.gettarinfo(str(path)' scripts/export_pi_tracks.sh
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
+grep -q 'max_days=3650' scripts/export_pi_tracks.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_days"' scripts/export_pi_tracks.sh
+grep -q 'bounds direct track export lookback to 0-3650 days before preparing local output or starting SSH work' README.md
+grep -q 'bounds direct track export lookback to 0-3650 days before preparing local output or starting SSH work' docs/sailboat-pi.md
 grep -q 'configured GPX track directory' scripts/export_pi_tracks.sh
 grep -q 'refusing to export symlinked GPX track' scripts/export_pi_tracks.sh
 grep -q 'NOAA chart archives and extracted ENC cells are not included' scripts/export_pi_tracks.sh
@@ -1594,6 +1598,10 @@ grep -q 'export_pi_settings.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_opencpn_data.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
+grep -q 'max_track_days=3650' scripts/export_pi_recovery_bundle.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/export_pi_recovery_bundle.sh
+grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' README.md
+grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' docs/sailboat-pi.md
 grep -q 'Only output-dir is changed locally. Nothing is installed, enabled, rebooted,' scripts/export_pi_recovery_bundle.sh
 grep -q 'shut down, or downloaded, and no persistent Pi state is changed' scripts/export_pi_recovery_bundle.sh
 for artifact_script in \
@@ -10326,6 +10334,37 @@ if [[ "$track_export_code" -ne 2 ]]; then
 fi
 grep -q -- '--days must be a non-negative integer' "$verify_output"
 
+track_export_bad_output="$tmpdir/track-export-bad-control-output"
+set +e
+scripts/export_pi_tracks.sh pi@example.invalid "$track_export_bad_output" --days 3651 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject oversized --days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--days must be at most 3650' "$verify_output"
+if [[ -e "$track_export_bad_output" ]]; then
+  echo "expected export_pi_tracks.sh not to prepare output before rejecting oversized --days" >&2
+  exit 1
+fi
+
+set +e
+scripts/export_pi_tracks.sh pi@example.invalid "$track_export_bad_output" --days 999999999999999999999999999999 >"$verify_output" 2>&1
+track_export_code=$?
+set -e
+if [[ "$track_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_tracks.sh to reject huge --days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--days must be at most 3650' "$verify_output"
+if [[ -e "$track_export_bad_output" ]]; then
+  echo "expected export_pi_tracks.sh not to prepare output before rejecting huge --days" >&2
+  exit 1
+fi
+
 track_export_fake_ssh_bin="$tmpdir/track-export-fake-ssh-bin"
 track_export_fake_ssh_args="$tmpdir/track-export-fake-ssh-args"
 track_export_fake_ssh_stdin="$tmpdir/track-export-fake-ssh-stdin"
@@ -11438,6 +11477,37 @@ if [[ "$recovery_export_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--track-days must be a non-negative integer' "$verify_output"
+
+recovery_export_bad_output="$tmpdir/recovery-export-bad-control-output"
+set +e
+scripts/export_pi_recovery_bundle.sh pi@example.invalid "$recovery_export_bad_output" --track-days 3651 >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject oversized --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be at most 3650' "$verify_output"
+if [[ -e "$recovery_export_bad_output" ]]; then
+  echo "expected export_pi_recovery_bundle.sh not to prepare output before rejecting oversized --track-days" >&2
+  exit 1
+fi
+
+set +e
+scripts/export_pi_recovery_bundle.sh pi@example.invalid "$recovery_export_bad_output" --track-days 999999999999999999999999999999 >"$verify_output" 2>&1
+recovery_export_code=$?
+set -e
+if [[ "$recovery_export_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected export_pi_recovery_bundle.sh to reject huge --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be at most 3650' "$verify_output"
+if [[ -e "$recovery_export_bad_output" ]]; then
+  echo "expected export_pi_recovery_bundle.sh not to prepare output before rejecting huge --track-days" >&2
+  exit 1
+fi
 
 recovery_export_symlink="$tmpdir/recovery-export-output-link"
 ln -s "$tmpdir" "$recovery_export_symlink"

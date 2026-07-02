@@ -12,6 +12,7 @@ a .tgz archive into output-dir, or ./pi-track-exports by default.
 
 Options:
   --days N           Export tracks modified in the last N days; 0 exports all
+                     (max: 3650)
 
 Only output-dir is changed locally. Nothing is installed, enabled, rebooted,
 shut down, or downloaded, and no persistent Pi state is changed. NOAA chart
@@ -33,6 +34,7 @@ target="$1"
 shift
 output_dir="pi-track-exports"
 days=0
+max_days=3650
 if [[ $# -gt 0 && "$1" != --* ]]; then
   output_dir="$1"
   shift
@@ -52,6 +54,28 @@ require_non_negative_integer() {
   fi
 }
 
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
+    exit 2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --days)
@@ -60,6 +84,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_days"
       days="${2:-}"
       shift 2
       ;;
