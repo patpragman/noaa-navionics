@@ -386,6 +386,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=_non_negative_int,
         help="days of rotated GPX track logs to keep; defaults to [tracking].retention_days",
     )
+    track.add_argument(
+        "--fsync-interval-seconds",
+        type=_non_negative_float,
+        help="seconds between forced GPX data syncs; defaults to [tracking].fsync_interval_seconds",
+    )
 
     return parser
 
@@ -755,6 +760,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             if not use_gpsd and not args.sample:
                 _validate_live_serial_device(device)
             base_output = Path(args.output).expanduser() if args.output else app_config.track_output
+            fsync_interval_seconds = (
+                args.fsync_interval_seconds
+                if args.fsync_interval_seconds is not None
+                else app_config.track_fsync_interval_seconds
+            )
             deadline = time.monotonic() + args.seconds if args.seconds else None
             live_stream = deadline is None and not args.sample
             fixes = _read_fixes(
@@ -782,6 +792,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                         deadline=deadline,
                         sample=bool(args.sample),
                         retention_days=retention_days,
+                        fsync_interval_seconds=fsync_interval_seconds,
                     )
                     print(f"Saved {count} fixes to {', '.join(str(path) for path in outputs)}")
                 else:
@@ -790,7 +801,13 @@ def main(argv: Optional[list[str]] = None) -> int:
                         if args.file
                         else _available_track_path(default_track_path(base_output))
                     )
-                    count = _log_single_track(fixes, output, deadline=deadline, sample=bool(args.sample))
+                    count = _log_single_track(
+                        fixes,
+                        output,
+                        deadline=deadline,
+                        sample=bool(args.sample),
+                        fsync_interval_seconds=fsync_interval_seconds,
+                    )
                     print(f"Saved {count} fixes to {output}")
                 if count == 0:
                     print("No usable GPS fixes were written to the GPX track.", file=sys.stderr)
@@ -1430,7 +1447,14 @@ def _print_track_logger_gps_lost(detail: str = "") -> None:
     print(message, file=sys.stderr)
 
 
-def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:
+def _log_single_track(
+    fixes,
+    output: Path,
+    *,
+    deadline: Optional[float],
+    sample: bool,
+    fsync_interval_seconds: float = 30.0,
+) -> int:
     count = 0
     logger: Optional[GPXTrackLogger] = None
     iterator = iter(fixes)
@@ -1445,7 +1469,7 @@ def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample:
                     raise _TrackGPSStreamLost(str(exc)) from exc
                 raise
             if logger is None:
-                logger = GPXTrackLogger(output)
+                logger = GPXTrackLogger(output, fsync_interval_seconds=fsync_interval_seconds)
                 logger.__enter__()
             logger.append(fix)
             count += 1
@@ -1467,6 +1491,7 @@ def _log_rotating_tracks(
     deadline: Optional[float],
     sample: bool,
     retention_days: int = 0,
+    fsync_interval_seconds: float = 30.0,
 ) -> tuple[int, list[Path]]:
     count = 0
     current_day: Optional[str] = None
@@ -1492,7 +1517,7 @@ def _log_rotating_tracks(
                 current_path = _available_track_path(daily_track_path(base_output, fix.timestamp))
                 _prepare_private_tracks_dir(current_path.parent)
                 outputs.append(current_path)
-                logger = GPXTrackLogger(current_path)
+                logger = GPXTrackLogger(current_path, fsync_interval_seconds=fsync_interval_seconds)
                 logger.__enter__()
                 _prune_old_track_logs(base_output, retention_days=retention_days, now=fix.timestamp)
             assert logger is not None

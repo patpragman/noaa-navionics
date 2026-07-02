@@ -3127,7 +3127,9 @@ grep -q 'status_octal_mode_text(track_log.get("latest_mode"), "track_log latest_
 grep -q '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)' scripts/verify_pi.sh
 grep -q '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)' scripts/verify_pi.sh
 grep -q '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)' scripts/verify_pi.sh
+grep -q '"track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0)' scripts/verify_pi.sh
 grep -q '`charts.min_free_gb` must be finite and at least `0.1`' docs/sailboat-pi.md
+grep -q '`tracking.fsync_interval_seconds` must be finite and at least `0.0`' docs/sailboat-pi.md
 grep -q '`anchor.radius_meters` must be finite and at least `1.0`' docs/sailboat-pi.md
 grep -q 'require_track_disk_check' scripts/verify_pi.sh
 grep -q 'required_checks.add("Track Disk")' scripts/verify_pi.sh
@@ -4673,7 +4675,10 @@ grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or 
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' docs/sailboat-pi.md
 grep -q 'a live GPS timeout before enough samples arrive reports the anchor-sample shortfall' README.md
 grep -q 'a live GPS timeout before enough samples arrive reports the anchor-sample shortfall' docs/sailboat-pi.md
-grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
+grep -q 'logger = GPXTrackLogger(output, fsync_interval_seconds=fsync_interval_seconds)' src/noaa_navionics/cli.py
+grep -q 'logger = GPXTrackLogger(current_path, fsync_interval_seconds=fsync_interval_seconds)' src/noaa_navionics/cli.py
+grep -q 'test_log_single_track_passes_fsync_interval_to_gpx_logger' tests/test_downloader.py
+grep -q 'test_log_rotating_tracks_passes_fsync_interval_to_gpx_logger' tests/test_downloader.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py
 grep -q 'os.open(parent, flags)' src/noaa_navionics/gps.py

@@ -2171,6 +2171,15 @@ def _config_validation_failures(report: dict[str, object]) -> list[CheckResult]:
     track_retention_days = _nonnegative_status_int(config.get("track_retention_days"))
     if track_retention_days is None:
         return [CheckResult("Config", False, "status report config track_retention_days is negative or invalid")]
+    track_fsync_interval_seconds = _nonnegative_status_float(config.get("track_fsync_interval_seconds"))
+    if track_fsync_interval_seconds is None:
+        return [
+            CheckResult(
+                "Config",
+                False,
+                "status report config track_fsync_interval_seconds is negative or invalid",
+            )
+        ]
     anchor_radius_meters = _positive_status_float(config.get("anchor_radius_meters"))
     if anchor_radius_meters is None:
         return [CheckResult("Config", False, "status report config anchor_radius_meters is not positive")]
@@ -3372,6 +3381,15 @@ def _nonnegative_status_int(value: object) -> Optional[int]:
     return value
 
 
+def _nonnegative_status_float(value: object) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    parsed = float(value)
+    if not math.isfinite(parsed) or parsed < 0.0:
+        return None
+    return parsed
+
+
 def _positive_status_float(value: object) -> Optional[float]:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -3955,6 +3973,7 @@ def _config_summary(app_config: AppConfig) -> dict[str, object]:
         "gpsd_port": app_config.gpsd_port,
         "track_output": str(app_config.track_output),
         "track_retention_days": app_config.track_retention_days,
+        "track_fsync_interval_seconds": app_config.track_fsync_interval_seconds,
         "anchor_radius_meters": app_config.anchor_radius_meters,
     }
 

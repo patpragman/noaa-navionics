@@ -719,6 +719,7 @@ def complete_status_gui_report(
             "gpsd_port": 2947,
             "track_output": "/charts",
             "track_retention_days": 90,
+            "track_fsync_interval_seconds": 30.0,
             "anchor_radius_meters": 50.0,
         },
         "launcher_settings": trusted_launcher_settings(),
@@ -1056,10 +1057,12 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.max_chart_age_days, 30)
             self.assertEqual(config.min_free_gb, 2.0)
             self.assertEqual(config.track_retention_days, 90)
+            self.assertEqual(config.track_fsync_interval_seconds, 30.0)
             self.assertEqual(config.anchor_radius_meters, 50.0)
             self.assertTrue(config.extract)
             text = path.read_text(encoding="utf-8")
             self.assertIn("[anchor]\n", text)
+            self.assertIn("fsync_interval_seconds = 30\n", text)
             self.assertIn("radius_meters = 50\n", text)
 
     def test_write_default_config_creates_private_parent_and_file_with_permissive_umask(self):
@@ -1450,6 +1453,7 @@ class ConfigTests(unittest.TestCase):
                 "gpsd_port = 2947\n"
                 "[tracking]\n"
                 "retention_days = 14\n"
+                "fsync_interval_seconds = 0\n"
                 "[anchor]\n"
                 "radius_meters = 75.5\n",
                 encoding="utf-8",
@@ -1462,6 +1466,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(config.max_chart_age_days, 14)
             self.assertEqual(config.min_free_gb, 4.5)
             self.assertEqual(config.track_retention_days, 14)
+            self.assertEqual(config.track_fsync_interval_seconds, 0.0)
             self.assertEqual(config.anchor_radius_meters, 75.5)
             self.assertFalse(config.keep_zip)
             self.assertFalse(config.force)
@@ -1567,6 +1572,7 @@ class ConfigTests(unittest.TestCase):
             ("[tracking]\noutput = /var/tmp/noaa-navionics\n", "tracking.output"),
             ("[tracking]\noutput = /run/noaa-navionics\n", "tracking.output"),
             ("[tracking]\nretention_days = -1\n", "tracking.retention_days"),
+            ("[tracking]\nfsync_interval_seconds = -1\n", "tracking.fsync_interval_seconds"),
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -8583,6 +8589,7 @@ class CLIValidationTests(unittest.TestCase):
 
     def test_track_logger_rejects_negative_retention_days(self):
         self.assert_parse_error(["log-track", "--retention-days", "-1"])
+        self.assert_parse_error(["log-track", "--fsync-interval-seconds", "-1"])
 
     def test_live_serial_device_validation_rejects_broken_by_id_symlink(self):
         with (
@@ -13951,6 +13958,10 @@ class StatusReportTests(unittest.TestCase):
                 {"config": {**valid_config, "track_retention_days": -1}},
                 "track_retention_days is negative or invalid",
             ),
+            (
+                {"config": {**valid_config, "track_fsync_interval_seconds": -1.0}},
+                "track_fsync_interval_seconds is negative or invalid",
+            ),
             ({"config": {**valid_config, "anchor_radius_meters": 0.0}}, "anchor_radius_meters is not positive"),
             (
                 {
@@ -16060,6 +16071,7 @@ class StatusReportTests(unittest.TestCase):
             '"min_free_gb": config_float(parser, "charts", "min_free_gb", "2.0", minimum=0.1)',
             '"gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535)',
             '"track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0)',
+            '"track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0)',
             '"anchor_radius_meters": config_float(parser, "anchor", "radius_meters", "50", minimum=1.0)',
         ):
             with self.subTest(expected=expected):
@@ -21252,6 +21264,41 @@ class GpsTests(unittest.TestCase):
             self.assertIn('lat="1.00000000"', text)
             self.assertTrue(text.endswith("</gpx>\n"))
 
+    def test_log_single_track_passes_fsync_interval_to_gpx_logger(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
+        intervals = []
+        original_logger = cli_module.GPXTrackLogger
+
+        class FakeLogger:
+            def __init__(self, path, *args, fsync_interval_seconds=30.0, **kwargs):
+                intervals.append(fsync_interval_seconds)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def append(self, fix_arg):
+                return None
+
+        try:
+            cli_module.GPXTrackLogger = FakeLogger
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with redirect_stdout(StringIO()):
+                    count = _log_single_track(
+                        iter([fix]),
+                        Path(tmpdir) / "track.gpx",
+                        deadline=None,
+                        sample=True,
+                        fsync_interval_seconds=0.0,
+                    )
+        finally:
+            cli_module.GPXTrackLogger = original_logger
+
+        self.assertEqual(count, 1)
+        self.assertEqual(intervals, [0.0])
+
     def test_log_rotating_tracks_closes_gpx_on_stream_timeout_after_fix(self):
         fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
 
@@ -21269,6 +21316,42 @@ class GpsTests(unittest.TestCase):
             text = output.read_text(encoding="utf-8")
             self.assertIn('lat="1.00000000"', text)
             self.assertTrue(text.endswith("</gpx>\n"))
+
+    def test_log_rotating_tracks_passes_fsync_interval_to_gpx_logger(self):
+        fix = GPSFix(timestamp=datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc), latitude=1.0, longitude=2.0, satellites=8, hdop=1.2)
+        intervals = []
+        original_logger = cli_module.GPXTrackLogger
+
+        class FakeLogger:
+            def __init__(self, path, *args, fsync_interval_seconds=30.0, **kwargs):
+                intervals.append(fsync_interval_seconds)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+            def append(self, fix_arg):
+                return None
+
+        try:
+            cli_module.GPXTrackLogger = FakeLogger
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with redirect_stdout(StringIO()):
+                    count, outputs = _log_rotating_tracks(
+                        iter([fix]),
+                        Path(tmpdir),
+                        deadline=None,
+                        sample=True,
+                        fsync_interval_seconds=5.0,
+                    )
+        finally:
+            cli_module.GPXTrackLogger = original_logger
+
+        self.assertEqual(count, 1)
+        self.assertEqual([path.name for path in outputs], ["track-20260629.gpx"])
+        self.assertEqual(intervals, [5.0])
 
     def test_log_single_track_does_not_create_file_without_fixes(self):
         with tempfile.TemporaryDirectory() as tmpdir:

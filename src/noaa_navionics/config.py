@@ -72,6 +72,7 @@ class AppConfig:
     track_output: Path
     track_retention_days: int
     anchor_radius_meters: float
+    track_fsync_interval_seconds: float = 30.0
 
 
 def default_config() -> AppConfig:
@@ -93,6 +94,7 @@ def default_config() -> AppConfig:
         track_output=chart_output,
         track_retention_days=90,
         anchor_radius_meters=50.0,
+        track_fsync_interval_seconds=30.0,
     )
 
 
@@ -171,6 +173,13 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         label="tracking.retention_days",
         minimum=0,
     )
+    track_fsync_interval_seconds = _get_float(
+        tracking,
+        "fsync_interval_seconds",
+        defaults.track_fsync_interval_seconds,
+        label="tracking.fsync_interval_seconds",
+        minimum=0.0,
+    )
     anchor_radius_meters = _get_float(
         anchor,
         "radius_meters",
@@ -195,6 +204,7 @@ def read_config(path: Optional[Path] = None) -> AppConfig:
         track_output=track_output,
         track_retention_days=track_retention_days,
         anchor_radius_meters=anchor_radius_meters,
+        track_fsync_interval_seconds=track_fsync_interval_seconds,
     )
 
 
@@ -237,6 +247,8 @@ def default_config_text() -> str:
         f"output = {defaults.track_output}\n"
         "# Keep this many days of rotated GPX track logs; 0 disables pruning.\n"
         f"retention_days = {defaults.track_retention_days}\n"
+        "# Seconds between forced GPX data syncs; 0 syncs every accepted fix.\n"
+        f"fsync_interval_seconds = {defaults.track_fsync_interval_seconds:g}\n"
         "\n"
         "[anchor]\n"
         "# Default alarm radius used by anchor-watch and the status GUI Anchor Check.\n"

@@ -1445,6 +1445,7 @@ if expected_config_path:
         "gpsd_port": config_int(parser, "gps", "gpsd_port", "2947", minimum=1, maximum=65535),
         "track_output": str(Path(parser.get("tracking", "output", fallback=str(chart_output)).strip()).expanduser()),
         "track_retention_days": config_int(parser, "tracking", "retention_days", "90", minimum=0),
+        "track_fsync_interval_seconds": config_float(parser, "tracking", "fsync_interval_seconds", "30", minimum=0.0),
         "anchor_radius_meters": config_float(parser, "anchor", "radius_meters", "50", minimum=1.0),
     }
     expected_package_zip = expected_package_filename(
