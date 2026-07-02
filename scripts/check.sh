@@ -5021,8 +5021,10 @@ grep -q 'download path contains control characters' tests/test_downloader.py
 grep -q 'extract path contains control characters' tests/test_downloader.py
 grep -q 'tracks_dir contains control characters' tests/test_downloader.py
 grep -q 'latest_path contains control characters' tests/test_downloader.py
-grep -q 'Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, OpenCPN chart/config paths, manifest paths, and track storage paths before trusting a generated JSON artifact' README.md
-grep -q 'Status-report readiness validation rejects control characters in embedded config paths, chart package fields, GPS mode/device fields, GPSD host fields, OpenCPN chart/config paths, manifest paths, and track storage paths before trusting a generated JSON artifact' docs/sailboat-pi.md
+grep -q 'readiness-row storage paths, chart sample paths' README.md
+grep -q 'readiness-row storage paths, chart sample paths' docs/sailboat-pi.md
+grep -q 'ENC cell sample path contains control characters' tests/test_downloader.py
+grep -q 'resolved path contains control characters' tests/test_downloader.py
 grep -q 'def snapshot_text' scripts/pre_trip_prepare_pi.sh
 grep -q 'def snapshot_text' scripts/verify_pi_recovery_exports.sh
 grep -q 'def snapshot_text' scripts/post_trip_collect_pi.sh

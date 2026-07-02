@@ -572,7 +572,11 @@ def _chart_readiness_validation_failures(
             failures.append(CheckResult("Charts", False, "status report Charts check has no structured data"))
         else:
             expected_path = str(config.get("chart_output", "")).strip()
-            configured_path = str(data.get("configured_path", "")).strip()
+            configured_path_text = str(data.get("configured_path", ""))
+            configured_path_failure = _status_control_character_failure(configured_path_text, "Charts path")
+            if configured_path_failure:
+                failures.append(CheckResult("Charts", False, configured_path_failure))
+            configured_path = configured_path_text.strip()
             if not _status_absolute_path(configured_path):
                 failures.append(CheckResult("Charts", False, "status report Charts path is not absolute"))
             if configured_path != expected_path:
@@ -591,6 +595,8 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Charts", False, "status report Charts ZIP sample list is not empty"))
             if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
                 failures.append(CheckResult("Charts", False, "status report Charts has no ENC cell sample paths"))
+            elif any(_status_text_has_control_char(str(sample)) for sample in enc_cell_samples):
+                failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path contains control characters"))
             elif any(not _status_absolute_path(str(sample)) for sample in enc_cell_samples):
                 failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is not absolute"))
             elif any(not _status_path_under(str(sample), expected_path) for sample in enc_cell_samples):
@@ -603,7 +609,11 @@ def _chart_readiness_validation_failures(
             failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris check has no structured data"))
         else:
             expected_path = str(config.get("chart_output", "")).strip()
-            configured_path = str(data.get("configured_path", "")).strip()
+            configured_path_text = str(data.get("configured_path", ""))
+            configured_path_failure = _status_control_character_failure(configured_path_text, "Chart Update Debris path")
+            if configured_path_failure:
+                failures.append(CheckResult("Chart Update Debris", False, configured_path_failure))
+            configured_path = configured_path_text.strip()
             if not _status_absolute_path(configured_path):
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path is not absolute"))
             if configured_path != expected_path:
@@ -629,12 +639,20 @@ def _chart_readiness_validation_failures(
             failures.append(CheckResult("Manifest", False, "status report Manifest check has no top-level manifest summary"))
         else:
             expected_path = str(config.get("chart_output", "")).strip()
-            configured_path = str(data.get("configured_path", "")).strip()
+            configured_path_text = str(data.get("configured_path", ""))
+            configured_path_failure = _status_control_character_failure(configured_path_text, "Manifest configured path")
+            if configured_path_failure:
+                failures.append(CheckResult("Manifest", False, configured_path_failure))
+            configured_path = configured_path_text.strip()
             if not _status_absolute_path(configured_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest configured path is not absolute"))
             if configured_path != expected_path:
                 failures.append(CheckResult("Manifest", False, "status report Manifest configured path does not match chart output"))
-            manifest_path = str(data.get("path", "")).strip()
+            manifest_path_text = str(data.get("path", ""))
+            manifest_path_failure = _status_control_character_failure(manifest_path_text, "Manifest path")
+            if manifest_path_failure:
+                failures.append(CheckResult("Manifest", False, manifest_path_failure))
+            manifest_path = manifest_path_text.strip()
             if not _status_absolute_path(manifest_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest path is not absolute"))
             if manifest_path != str(manifest.get("path", "")).strip():
@@ -689,8 +707,16 @@ def _chart_readiness_validation_failures(
             reported_age_days = _finite_gps_fix_float(data.get("age_days"))
             if reported_age_days is None or reported_age_days < 0:
                 failures.append(CheckResult("Manifest", False, "status report Manifest age_days is invalid"))
-            download_path = str(data.get("download_path", "")).strip()
-            extract_path = str(data.get("extract_path", "")).strip()
+            download_path_text = str(data.get("download_path", ""))
+            extract_path_text = str(data.get("extract_path", ""))
+            download_path_failure = _status_control_character_failure(download_path_text, "Manifest download path")
+            if download_path_failure:
+                failures.append(CheckResult("Manifest", False, download_path_failure))
+            extract_path_failure = _status_control_character_failure(extract_path_text, "Manifest extract path")
+            if extract_path_failure:
+                failures.append(CheckResult("Manifest", False, extract_path_failure))
+            download_path = download_path_text.strip()
+            extract_path = extract_path_text.strip()
             if not _status_absolute_path(download_path):
                 failures.append(CheckResult("Manifest", False, "status report Manifest download path is not absolute"))
             elif not _status_path_under(download_path, expected_path):
@@ -1023,7 +1049,11 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
     if not isinstance(data, dict):
         return [CheckResult("GPS Device", False, "status report GPS Device check has no structured data")]
     failures: list[CheckResult] = []
-    configured_path = str(data.get("configured_path", "")).strip()
+    configured_path_text = str(data.get("configured_path", ""))
+    configured_path_failure = _status_control_character_failure(configured_path_text, "GPS Device path")
+    if configured_path_failure:
+        failures.append(CheckResult("GPS Device", False, configured_path_failure))
+    configured_path = configured_path_text.strip()
     expected_path = str(config.get("gps_device", "")).strip()
     if not _status_absolute_path(configured_path):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device path is not absolute"))
@@ -1049,7 +1079,11 @@ def _serial_gps_device_validation_failures(report: dict[str, object]) -> list[Ch
         failures.append(CheckResult("GPS Device", False, "status report GPS Device udev path is not a symlink"))
     if data.get("is_character_device") is not True:
         failures.append(CheckResult("GPS Device", False, "status report GPS Device is not a character device"))
-    resolved_path = str(data.get("resolved_path", "")).strip()
+    resolved_path_text = str(data.get("resolved_path", ""))
+    resolved_path_failure = _status_control_character_failure(resolved_path_text, "GPS Device resolved path")
+    if resolved_path_failure:
+        failures.append(CheckResult("GPS Device", False, resolved_path_failure))
+    resolved_path = resolved_path_text.strip()
     if not _status_absolute_path(resolved_path):
         failures.append(CheckResult("GPS Device", False, "status report GPS Device resolved path is not absolute"))
     return failures
@@ -1079,8 +1113,16 @@ def _storage_validation_failures(report: dict[str, object]) -> list[CheckResult]
         if not isinstance(data, dict):
             failures.append(CheckResult(name, False, f"status report {name} check has no structured data"))
             continue
-        configured_path = str(data.get("configured_path", "")).strip()
-        checked_path = str(data.get("checked_path", "")).strip()
+        configured_path_text = str(data.get("configured_path", ""))
+        checked_path_text = str(data.get("checked_path", ""))
+        configured_path_failure = _status_control_character_failure(configured_path_text, f"{name} configured path")
+        if configured_path_failure:
+            failures.append(CheckResult(name, False, configured_path_failure))
+        checked_path_failure = _status_control_character_failure(checked_path_text, f"{name} checked path")
+        if checked_path_failure:
+            failures.append(CheckResult(name, False, checked_path_failure))
+        configured_path = configured_path_text.strip()
+        checked_path = checked_path_text.strip()
         if not _status_absolute_path(configured_path):
             failures.append(CheckResult(name, False, f"status report {name} configured path is not absolute"))
         if not _status_absolute_path(checked_path):
