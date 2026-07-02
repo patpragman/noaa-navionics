@@ -3009,6 +3009,11 @@ grep -q 'status GUI desktop launcher must not be configured for autostart' scrip
 grep -q 'MOB desktop launcher must not be configured for autostart' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report LightDM autologin config missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'status_text(lightdm.get("path", ""), "LightDM autologin config path")' scripts/verify_pi.sh
+grep -q 'lightdm_symlink_component = status_text(' scripts/verify_pi.sh
+grep -q 'LightDM autologin config path_symlink_component' scripts/verify_pi.sh
+grep -q 'status_text(desktop.get("graphical_target", ""), "desktop graphical_target")' scripts/verify_pi.sh
+grep -q 'status_text(desktop.get("lightdm_enabled", ""), "desktop lightdm_enabled")' scripts/verify_pi.sh
 grep -q 'path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'missing path_symlink_component' scripts/verify_pi.sh
 grep -q 'def status_octal_mode_text' scripts/verify_pi.sh
@@ -3224,6 +3229,8 @@ grep -q 'status report {unit} uid' scripts/verify_pi.sh
 grep -q 'status report {unit} directory_uid' scripts/verify_pi.sh
 grep -q 'status report {unit} mode' scripts/verify_pi.sh
 grep -q 'status report {unit} directory_mode' scripts/verify_pi.sh
+grep -q 'status_text(state.get("path", ""), f"{unit} path")' scripts/verify_pi.sh
+grep -q 'status_text(state.get("path_symlink_component", ""), f"{unit} path_symlink_component")' scripts/verify_pi.sh
 grep -q 'status_octal_mode_text(state.get("mode"), f"{unit} mode")' scripts/verify_pi.sh
 grep -q 'status_octal_mode_text(state.get("directory_mode"), f"{unit} directory_mode")' scripts/verify_pi.sh
 grep -q 'status report {unit} has no parsed unit file lines' scripts/verify_pi.sh

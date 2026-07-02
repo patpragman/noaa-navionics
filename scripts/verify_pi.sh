@@ -1994,7 +1994,7 @@ if expected_config_path:
     lightdm = desktop.get("lightdm_autologin")
     if not isinstance(lightdm, dict):
         raise SystemExit("status report has no LightDM autologin section")
-    lightdm_path = str(lightdm.get("path", "")).strip()
+    lightdm_path = status_text(lightdm.get("path", ""), "LightDM autologin config path")
     if lightdm.get("exists") is not True:
         raise SystemExit(f"status report LightDM autologin config does not exist: {lightdm_path}")
     if lightdm.get("is_symlink") is not False:
@@ -2014,7 +2014,10 @@ if expected_config_path:
         raise SystemExit(
             f"status report LightDM autologin config missing path_symlink_component: {lightdm_path}"
         )
-    lightdm_symlink_component = str(lightdm.get("path_symlink_component", "")).strip()
+    lightdm_symlink_component = status_text(
+        lightdm.get("path_symlink_component", ""),
+        "LightDM autologin config path_symlink_component",
+    )
     if lightdm_symlink_component:
         raise SystemExit(
             f"status report LightDM autologin config path contains a symlink: {lightdm_symlink_component}"
@@ -2061,9 +2064,11 @@ if expected_config_path:
         raise SystemExit(f"LightDM autologin-session is unsafe or missing: {session or '<missing>'}")
     if not (Path("/usr/share/xsessions") / f"{session}.desktop").is_file():
         raise SystemExit(f"LightDM autologin-session is not installed: {session}")
-    if str(desktop.get("graphical_target", "")).strip() != "graphical.target":
+    graphical_target = status_text(desktop.get("graphical_target", ""), "desktop graphical_target")
+    if graphical_target != "graphical.target":
         raise SystemExit(f"status report graphical target is {desktop.get('graphical_target', '<missing>')}")
-    if str(desktop.get("lightdm_enabled", "")).strip() != "enabled":
+    lightdm_enabled = status_text(desktop.get("lightdm_enabled", ""), "desktop lightdm_enabled")
+    if lightdm_enabled != "enabled":
         raise SystemExit(f"status report LightDM enabled state is {desktop.get('lightdm_enabled', '<missing>')}")
     manifest = report.get("manifest")
     if not isinstance(manifest, dict):
@@ -2524,7 +2529,7 @@ for unit, expected_target in expected_unit_files.items():
     if not isinstance(state, dict):
         raise SystemExit(f"status report has no unit file entry for {unit}")
     expected_unit_path = expected_unit_dir / unit
-    unit_path = str(state.get("path", "")).strip()
+    unit_path = status_text(state.get("path", ""), f"{unit} path")
     if unit_path != str(expected_unit_path):
         raise SystemExit(f"status report {unit} path {unit_path} does not match {expected_unit_path}")
     if state.get("exists") is not True:
@@ -2541,7 +2546,7 @@ for unit, expected_target in expected_unit_files.items():
         )
     if "path_symlink_component" not in state:
         raise SystemExit(f"status report {unit} missing path_symlink_component: {expected_unit_path}")
-    unit_symlink_component = str(state.get("path_symlink_component", "")).strip()
+    unit_symlink_component = status_text(state.get("path_symlink_component", ""), f"{unit} path_symlink_component")
     if unit_symlink_component:
         raise SystemExit(f"status report {unit} path contains a symlink: {unit_symlink_component}")
     if expected_unit_path.parent.is_symlink():
