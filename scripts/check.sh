@@ -828,6 +828,8 @@ grep -q 'pre-departure status snapshot JSON {expected_name} HDOP does not match 
 grep -q 'pre-departure status snapshot JSON config chart_output is not absolute' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing config track_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON config track_output is not absolute' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {row_name} missing inode capacity measurement' scripts/pre_trip_prepare_pi.sh
+grep -q 'pre-departure status snapshot JSON {row_name} has no free inodes' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Charts path does not match config chart_output' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Chart Update Debris found stale update debris' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON OpenCPN Charts parsed directories do not include configured chart output' scripts/pre_trip_prepare_pi.sh
@@ -872,8 +874,8 @@ grep -q 'os.unlink(path.name, dir_fd=dir_fd)' scripts/pre_trip_prepare_pi.sh
 ! grep -q 'rm -f -- "${recovery_output:-}"' scripts/pre_trip_prepare_pi.sh
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' README.md
 grep -q 'refreshes NOAA charts on the Pi with a post-refresh status report, rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, tightens the local recovery export directory to user-owned private `0700`, requires the parsed recovery directory to be an immediate private child of that output directory, exports a local recovery bundle with a private checksum manifest, verifies archive structure and checksums' docs/sailboat-pi.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
-grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' README.md
+grep -q 'After a successful pre-departure check with recovery export enabled, it saves a private `0600` `pre-departure-status.json` readiness snapshot plus a private `0600` `pre-departure-status.sha256` sidecar in the local recovery directory, and rejects stale, far-future, thin, failed, non-boolean-row, non-boolean-summary, GPS/track-incomplete, chart-context-mismatched, manifest-inconsistent, unstructured, storage-inode-exhausted, non-Pi-skipped, source-mismatched, GPS-context-mismatched, or GPSD-context-mismatched readiness snapshots at capture time' docs/sailboat-pi.md
 grep -q 'Options for skipped pre-trip steps are rejected' README.md
 grep -q 'Options for skipped pre-trip steps are rejected' docs/sailboat-pi.md
 grep -q 'refresh, recovery, GPS-device, and pre-departure controls' README.md
@@ -1972,6 +1974,8 @@ grep -q 'pre-departure status snapshot JSON track_log tracks_dir does not match 
 grep -q 'pre-departure status snapshot JSON {field} age_seconds is inconsistent with timestamp age' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON has failed readiness check(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {row_name} missing inode capacity measurement' scripts/verify_pi_recovery_exports.sh
+grep -q 'pre-departure status snapshot JSON {row_name} has no free inodes' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON records non-Pi diagnostic skip(s)' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON has invalid gps_mode' scripts/verify_pi_recovery_exports.sh
 grep -q 'pre-departure status snapshot JSON missing track_log track_output' scripts/verify_pi_recovery_exports.sh
@@ -8538,6 +8542,24 @@ chart_row_data = {
     "has_unextracted_zips": False,
     "zip_samples": [],
 }
+disk_row_data = {
+    "configured_path": "/charts",
+    "checked_path": "/charts",
+    "exists": True,
+    "is_directory": True,
+    "storage_symlink_component": "",
+    "missing_removable_mount": False,
+    "uid": 1000,
+    "expected_uid": 1000,
+    "mode": "0755",
+    "min_free_gb": 2.0,
+    "free_gb": 12.5,
+    "total_inodes": 1000,
+    "free_inodes": 500,
+    "writable": True,
+}
+if os.environ.get("NOAA_NAVIONICS_FAKE_PRE_TRIP_NO_FREE_INODES") == "1":
+    disk_row_data["free_inodes"] = 0
 debris_row_data = {
     "configured_path": "/charts",
     "storage_symlink_component": "",
@@ -8598,6 +8620,8 @@ for row in checks:
         row["data"] = dict(manifest_row_data)
     if row["name"] == "Charts":
         row["data"] = dict(chart_row_data)
+    if row["name"] == "Disk":
+        row["data"] = dict(disk_row_data)
     if row["name"] == "Chart Update Debris":
         row["data"] = dict(debris_row_data)
     if row["name"] == "OpenCPN Charts":
@@ -8904,6 +8928,33 @@ grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps"
 grep -Fxq "status|pi@example.invalid --json" "$pre_trip_unstructured_log"
 test ! -e "$pre_trip_unstructured_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
 test ! -e "$pre_trip_unstructured_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
+
+pre_trip_no_inodes_repo="$tmpdir/pre-trip-no-inodes-repo"
+pre_trip_no_inodes_log="$tmpdir/pre-trip-no-inodes-helper-calls"
+pre_trip_no_inodes_output_dir="$tmpdir/pre-trip-no-inodes-output"
+cp -a "$pre_trip_repo" "$pre_trip_no_inodes_repo"
+mkdir -p "$pre_trip_no_inodes_output_dir"
+chmod 0777 "$pre_trip_no_inodes_output_dir"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_no_inodes_log" \
+NOAA_NAVIONICS_FAKE_PRE_TRIP_NO_FREE_INODES=1 \
+  "$pre_trip_no_inodes_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_no_inodes_output_dir" \
+  --skip-refresh >"$verify_output" 2>&1
+pre_trip_no_inodes_code=$?
+set -e
+if [[ "$pre_trip_no_inodes_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject captured status with no free storage inodes with exit 2" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON Disk has no free inodes' "$verify_output"
+grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps" "$pre_trip_no_inodes_log"
+grep -Fxq "status|pi@example.invalid --json" "$pre_trip_no_inodes_log"
+test ! -e "$pre_trip_no_inodes_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.json"
+test ! -e "$pre_trip_no_inodes_output_dir/noaa-navionics-pi-recovery-test/pre-departure-status.sha256"
 
 pre_trip_non_pi_skip_repo="$tmpdir/pre-trip-non-pi-skip-repo"
 pre_trip_non_pi_skip_log="$tmpdir/pre-trip-non-pi-skip-helper-calls"
@@ -13121,6 +13172,22 @@ def write_pre_departure_status(directory):
         "has_unextracted_zips": False,
         "zip_samples": [],
     }
+    disk_row_data = {
+        "configured_path": "/charts",
+        "checked_path": "/charts",
+        "exists": True,
+        "is_directory": True,
+        "storage_symlink_component": "",
+        "missing_removable_mount": False,
+        "uid": 1000,
+        "expected_uid": 1000,
+        "mode": "0755",
+        "min_free_gb": 2.0,
+        "free_gb": 12.5,
+        "total_inodes": 1000,
+        "free_inodes": 500,
+        "writable": True,
+    }
     debris_row_data = {
         "configured_path": "/charts",
         "storage_symlink_component": "",
@@ -13179,6 +13246,8 @@ def write_pre_departure_status(directory):
             row["data"] = dict(manifest_row_data)
         if row["name"] == "Charts":
             row["data"] = dict(chart_row_data)
+        if row["name"] == "Disk":
+            row["data"] = dict(disk_row_data)
         if row["name"] == "Chart Update Debris":
             row["data"] = dict(debris_row_data)
         if row["name"] == "OpenCPN Charts":
@@ -13379,6 +13448,39 @@ if [[ "$recovery_verify_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'pre-departure status snapshot JSON missing structured readiness data for: GPSD' "$verify_output"
+
+recovery_verify_no_inodes_status_dir="$tmpdir/recovery-verify-no-inodes-status"
+cp -a "$recovery_verify_dir" "$recovery_verify_no_inodes_status_dir"
+python3 - "$recovery_verify_no_inodes_status_dir" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+
+root = Path(sys.argv[1])
+status = json.loads((root / "pre-departure-status.json").read_text(encoding="utf-8"))
+for row in status["checks"]:
+    if row.get("name") == "Disk":
+        row["data"]["free_inodes"] = 0
+payload = json.dumps(status, sort_keys=True).encode("utf-8") + b"\n"
+(root / "pre-departure-status.json").write_bytes(payload)
+(root / "pre-departure-status.json").chmod(0o600)
+(root / "pre-departure-status.sha256").write_text(
+    f"{hashlib.sha256(payload).hexdigest()}  pre-departure-status.json\n",
+    encoding="ascii",
+)
+(root / "pre-departure-status.sha256").chmod(0o600)
+PY
+set +e
+scripts/verify_pi_recovery_exports.sh "$recovery_verify_no_inodes_status_dir" >"$verify_output" 2>&1
+recovery_verify_code=$?
+set -e
+if [[ "$recovery_verify_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected verify_pi_recovery_exports.sh to reject a pre-departure status with no free storage inodes with exit 1" >&2
+  exit 1
+fi
+grep -q 'pre-departure status snapshot JSON Disk has no free inodes' "$verify_output"
 
 recovery_verify_non_pi_skip_status_dir="$tmpdir/recovery-verify-non-pi-skip-status"
 cp -a "$recovery_verify_dir" "$recovery_verify_non_pi_skip_status_dir"

@@ -1318,6 +1318,73 @@ def validate_snapshot_manifest_row(
         fail("pre-departure status snapshot JSON Manifest actual ENC cell count does not match manifest summary")
 
 
+def validate_snapshot_storage_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object]) -> None:
+    chart_output = str(config.get("chart_output", "")).strip()
+    track_output = str(config.get("track_output", "")).strip()
+    expected_paths = {"Disk": chart_output}
+    if track_output != chart_output:
+        expected_paths["Track Disk"] = track_output
+
+    for row_name, expected_path in expected_paths.items():
+        row = check_rows.get(row_name)
+        if not isinstance(row, dict):
+            fail(f"pre-departure status snapshot JSON missing {row_name} readiness row")
+        data = row.get("data")
+        if not isinstance(data, dict):
+            fail(f"pre-departure status snapshot JSON {row_name} row has no structured data")
+        configured_path = str(data.get("configured_path", "")).strip()
+        checked_path = str(data.get("checked_path", "")).strip()
+        if configured_path != expected_path:
+            fail(f"pre-departure status snapshot JSON {row_name} configured path does not match config")
+        if not Path(configured_path).is_absolute():
+            fail(f"pre-departure status snapshot JSON {row_name} configured path is not absolute")
+        if not Path(checked_path).is_absolute():
+            fail(f"pre-departure status snapshot JSON {row_name} checked path is not absolute")
+        if data.get("exists") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} checked path does not exist")
+        if data.get("is_directory") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} checked path is not a directory")
+        if str(data.get("storage_symlink_component", "")).strip():
+            fail(f"pre-departure status snapshot JSON {row_name} storage path contains a symlink")
+        if data.get("missing_removable_mount") is True:
+            fail(f"pre-departure status snapshot JSON {row_name} removable storage is not mounted")
+        uid = data.get("uid")
+        expected_uid = data.get("expected_uid")
+        if (
+            isinstance(uid, bool)
+            or isinstance(expected_uid, bool)
+            or not isinstance(uid, int)
+            or not isinstance(expected_uid, int)
+            or uid != expected_uid
+        ):
+            fail(f"pre-departure status snapshot JSON {row_name} storage owner is invalid")
+        mode_text = str(data.get("mode", "")).strip()
+        try:
+            mode = int(mode_text, 8)
+        except ValueError:
+            fail(f"pre-departure status snapshot JSON {row_name} storage mode is invalid")
+        if mode & 0o022:
+            fail(f"pre-departure status snapshot JSON {row_name} storage is group/world writable")
+        min_free_gb = finite_status_float(data.get("min_free_gb"))
+        free_gb = finite_status_float(data.get("free_gb"))
+        if min_free_gb is None or min_free_gb <= 0.0:
+            fail(f"pre-departure status snapshot JSON {row_name} missing minimum free-space threshold")
+        if free_gb is None or free_gb < 0.0:
+            fail(f"pre-departure status snapshot JSON {row_name} missing finite free-space measurement")
+        if min_free_gb is not None and free_gb is not None and free_gb < min_free_gb:
+            fail(f"pre-departure status snapshot JSON {row_name} free space is below threshold")
+        total_inodes = data.get("total_inodes")
+        free_inodes = data.get("free_inodes")
+        if isinstance(total_inodes, bool) or not isinstance(total_inodes, int) or total_inodes < 0:
+            fail(f"pre-departure status snapshot JSON {row_name} missing inode capacity measurement")
+        if isinstance(free_inodes, bool) or not isinstance(free_inodes, int) or free_inodes < 0:
+            fail(f"pre-departure status snapshot JSON {row_name} missing free inode measurement")
+        if isinstance(total_inodes, int) and total_inodes > 0 and isinstance(free_inodes, int) and free_inodes <= 0:
+            fail(f"pre-departure status snapshot JSON {row_name} has no free inodes")
+        if data.get("writable") is not True:
+            fail(f"pre-departure status snapshot JSON {row_name} storage is not writable")
+
+
 def validate_snapshot_chart_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object]) -> None:
     chart_output = str(config.get("chart_output", "")).strip()
 
@@ -1654,6 +1721,7 @@ def validate_successful_status_snapshot(
             "pre-departure status snapshot JSON missing structured readiness data for: "
             + ", ".join(missing_structured_data)
         )
+    validate_snapshot_storage_rows(check_rows, config=config)
     validate_snapshot_chart_rows(check_rows, config=config)
     validate_snapshot_manifest_row(check_rows, config=config, manifest=payload.get("manifest"))
     validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix)
