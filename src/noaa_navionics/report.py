@@ -1158,8 +1158,13 @@ def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckR
     expected_name = "GPS" if gps_mode == "serial" else "GPSD"
     check_rows = {str(check.get("name", "")): check for check in checks if isinstance(check, dict)}
     row = check_rows.get(expected_name)
-    if not isinstance(row, dict) or row.get("ok") is not True:
+    if not isinstance(row, dict):
         return []
+    if row.get("ok") is not True:
+        detail = row.get("detail", "<missing detail>")
+        if not isinstance(detail, str) or _status_text_has_control_char(detail):
+            detail = "<invalid detail>"
+        return [CheckResult(expected_name, False, f"status report {expected_name} readiness check is not ok: {detail}")]
     data = row.get("data")
     if not isinstance(data, dict):
         return [CheckResult(expected_name, False, f"status report {expected_name} check has no structured fix data")]
@@ -3322,8 +3327,13 @@ def _track_log_readiness_row_validation_failures(report: dict[str, object]) -> l
         (check for check in service_checks if isinstance(check, dict) and check.get("name") == "Track Log"),
         None,
     )
-    if not isinstance(row, dict) or row.get("ok") is not True:
+    if not isinstance(row, dict):
         return []
+    if row.get("ok") is not True:
+        detail = row.get("detail", "<missing detail>")
+        if not isinstance(detail, str) or _status_text_has_control_char(detail):
+            detail = "<invalid detail>"
+        return [CheckResult("Track Log", False, f"status report Track Log service check is not ok: {detail}")]
     data = row.get("data")
     if not isinstance(data, dict):
         return [CheckResult("Track Log", False, "status report Track Log service check has no structured data")]

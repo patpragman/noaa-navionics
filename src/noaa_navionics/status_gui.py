@@ -66,8 +66,24 @@ def status_rows(report: dict[str, object]) -> list[StatusRow]:
             detail = str(item.get("detail", ""))
             rows.append(StatusRow(name, item.get("ok") is True, detail))
     for failure in status_report_validation_failures(report):
+        if _duplicates_failed_readiness_row(rows, failure):
+            continue
         rows.append(StatusRow(failure.name, False, failure.detail))
     return rows
+
+
+def _duplicates_failed_readiness_row(rows: list[StatusRow], failure: object) -> bool:
+    name = getattr(failure, "name", "")
+    detail = getattr(failure, "detail", "")
+    if not isinstance(name, str) or not isinstance(detail, str):
+        return False
+    prefixes = (
+        f"status report {name} readiness check is not ok: ",
+        f"status report {name} service check is not ok: ",
+    )
+    if not detail.startswith(prefixes):
+        return False
+    return any(row.name == name and not row.ok for row in rows)
 
 
 def count_failures(rows: list[StatusRow]) -> int:

@@ -5286,6 +5286,7 @@ grep -q 'status report track_log age_seconds {age_seconds:g} is inconsistent wit
 grep -q 'status report track_log age_seconds is stale' src/noaa_navionics/report.py
 grep -q 'status report track_log has no latest satellite or HDOP quality fields' src/noaa_navionics/report.py
 grep -q 'def _track_log_readiness_row_validation_failures' src/noaa_navionics/report.py
+grep -q 'status report Track Log service check is not ok: {detail}' src/noaa_navionics/report.py
 grep -q 'status report Track Log service check has no structured data' src/noaa_navionics/report.py
 grep -q 'status report Track Log service check {field} does not match track_log' src/noaa_navionics/report.py
 grep -q '_TRACK_LOG_READINESS_DATA_FIELDS' src/noaa_navionics/report.py
@@ -5406,6 +5407,7 @@ grep -q 'def _opencpn_connection_host' src/noaa_navionics/report.py
 grep -q 'expected_host is not text' tests/test_downloader.py
 grep -q 'expected_host contains control characters' tests/test_downloader.py
 grep -q 'status report OpenCPN GPSD found unexpected enabled GPSD connections' src/noaa_navionics/report.py
+grep -q 'status report {expected_name} readiness check is not ok: {detail}' src/noaa_navionics/report.py
 grep -q 'status report {expected_name} check has no structured fix data' src/noaa_navionics/report.py
 grep -q 'def _gps_readiness_summary_text' src/noaa_navionics/report.py
 grep -q 'gps_fix latitude is invalid' tests/test_downloader.py

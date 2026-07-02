@@ -15111,6 +15111,30 @@ class StatusReportTests(unittest.TestCase):
                 self.assertFalse(status_report_is_ready(report, now=now))
                 self.assertTrue(any(failure.name == row_name and expected in failure.detail for failure in failures))
 
+        row_status_cases = [
+            (
+                lambda report: next(check for check in report["checks"] if check["name"] == "GPSD").update(
+                    {"ok": False, "detail": "no live GPS fix"}
+                ),
+                "GPSD readiness check is not ok: no live GPS fix",
+            ),
+            (
+                lambda report: next(check for check in report["checks"] if check["name"] == "GPSD").update(
+                    {"ok": False, "detail": "no live GPS fix\x00"}
+                ),
+                "GPSD readiness check is not ok: <invalid detail>",
+            ),
+        ]
+        for mutate_report, expected in row_status_cases:
+            with self.subTest(row_status=expected):
+                report = complete_status_gui_report(generated_at=generated_at)
+                mutate_report(report)
+
+                failures = status_report_validation_failures(report, now=now)
+
+                self.assertFalse(status_report_is_ready(report, now=now))
+                self.assertTrue(any(failure.name == "GPSD" and expected in failure.detail for failure in failures))
+
         summary_cases = [
             ({"source": 123}, "gps_fix source is not text"),
             ({"source": "GPSD\x00"}, "gps_fix source contains control characters"),
@@ -15218,6 +15242,14 @@ class StatusReportTests(unittest.TestCase):
 
         service_row_cases = [
             (lambda row: row.pop("data", None), "Track Log service check has no structured data"),
+            (
+                lambda row: row.update({"ok": False, "detail": "no recent track point"}),
+                "Track Log service check is not ok: no recent track point",
+            ),
+            (
+                lambda row: row.update({"ok": False, "detail": "no recent track point\x00"}),
+                "Track Log service check is not ok: <invalid detail>",
+            ),
             (
                 lambda row: row["data"].__setitem__("latest_latitude", 62.0),
                 "Track Log service check latest_latitude does not match track_log",
