@@ -3223,13 +3223,14 @@ grep -q 'GPSD config path must not contain parent-directory components' scripts/
 grep -q 'GPS device path must not contain control characters' scripts/configure_gpsd.sh
 grep -q 'GPSD config path must not contain control characters' scripts/configure_gpsd.sh
 grep -q 'Refusing to write a non-standard GPSD config path' scripts/configure_gpsd.sh
-grep -q 'from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path' scripts/configure_gpsd.sh
+grep -q '_prepare_config_parent,' scripts/configure_gpsd.sh
+grep -q '_validate_config_temp_for_promotion,' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics.config import _read_existing_config, _reject_unsafe_config_path, read_config' scripts/configure_gpsd.sh
 grep -q 'from noaa_navionics._safeio import cleanup_private_temp_file' scripts/configure_gpsd.sh
 grep -q '_read_existing_config(parser, config_path)' scripts/configure_gpsd.sh
 ! grep -q 'parser.read(config_path)' scripts/configure_gpsd.sh
 grep -q 'app_config = read_config(tmp_path)' scripts/configure_gpsd.sh
-grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD config validation temp")' scripts/configure_gpsd.sh
+grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD config validation temp", expected_stat=tmp_stat)' scripts/configure_gpsd.sh
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
@@ -3298,6 +3299,8 @@ grep -q 'Generated local config temp cleanup is likewise no-follow and same-file
 grep -q 'Generated local config temp cleanup is likewise no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Python atomic-write temp cleanup for app config, OpenCPN config, status reports, and chart manifests is no-follow and same-file validated before unlinking' README.md
 grep -q 'Python atomic-write temp cleanup for app config, OpenCPN config, status reports, and chart manifests is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
+grep -q 'same-file validates the generated app-config temp' README.md
+grep -q 'same-file validates the generated app-config temp' docs/sailboat-pi.md
 grep -q 'GPSD app-config validation and promotion temp cleanup uses the same no-follow same-file validation' README.md
 grep -q 'GPSD app-config validation and promotion temp cleanup uses the same no-follow same-file validation' docs/sailboat-pi.md
 grep -q 'def cleanup_private_temp_file' src/noaa_navionics/_safeio.py
@@ -3307,10 +3310,24 @@ grep -q 'os.path.samestat(before, opened)' src/noaa_navionics/_safeio.py
 grep -q 'os.unlink(target.name, dir_fd=dir_fd)' src/noaa_navionics/_safeio.py
 grep -q 'tempfile.NamedTemporaryFile' scripts/configure_gpsd.sh
 grep -q 'dir=str(config_path.parent)' scripts/configure_gpsd.sh
-grep -q 'os.chmod(tmp_path, 0o600)' scripts/configure_gpsd.sh
+grep -q 'os.fchmod(handle.fileno(), 0o600)' scripts/configure_gpsd.sh
+grep -q '_validate_config_temp_for_promotion(tmp_path, expected_stat=tmp_stat)' scripts/configure_gpsd.sh
 grep -q 'os.replace(tmp_path, config_path)' scripts/configure_gpsd.sh
-grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD app config temp")' scripts/configure_gpsd.sh
+grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD config validation temp", expected_stat=tmp_stat)' scripts/configure_gpsd.sh
+grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD app config temp", expected_stat=tmp_stat)' scripts/configure_gpsd.sh
 ! grep -q 'tmp_path.unlink()' scripts/configure_gpsd.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/configure_gpsd.sh").read_text()
+start = text.index("from noaa_navionics.config import (")
+tmp_stat = text.index("tmp_stat = os.fstat(handle.fileno())", start)
+validate = text.index("_validate_config_temp_for_promotion(tmp_path, expected_stat=tmp_stat)", tmp_stat)
+promote = text.index("os.replace(tmp_path, config_path)", validate)
+cleanup = text.index('cleanup_private_temp_file(tmp_path, label="GPSD app config temp", expected_stat=tmp_stat)', promote)
+if not tmp_stat < validate < promote < cleanup:
+    raise SystemExit("GPSD app config temp must be same-file validated before promotion and cleanup")
+PY
 for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/configure_desktop_autologin.sh; do
   grep -q 'install_root_file_atomic' "$script"
   grep -q 'verify_promoted_root_file' "$script"

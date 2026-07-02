@@ -589,16 +589,18 @@ parser.set("gps", "gpsd_host", "127.0.0.1")
 parser.set("gps", "gpsd_port", "2947")
 
 tmp_path = None
+tmp_stat = None
 try:
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=str(config_path.parent), delete=False) as handle:
         tmp_path = Path(handle.name)
         parser.write(handle)
         handle.flush()
         os.fsync(handle.fileno())
+        tmp_stat = os.fstat(handle.fileno())
     app_config = read_config(tmp_path)
 finally:
     if tmp_path is not None:
-        cleanup_private_temp_file(tmp_path, label="GPSD config validation temp")
+        cleanup_private_temp_file(tmp_path, label="GPSD config validation temp", expected_stat=tmp_stat)
 
 if app_config.gps_mode != "gpsd":
     raise SystemExit("updated config did not set gps.mode=gpsd")
@@ -950,7 +952,12 @@ config_path = Path(sys.argv[2]).expanduser()
 device = sys.argv[3]
 
 sys.path.insert(0, str(repo_root / "src"))
-from noaa_navionics.config import _prepare_config_parent, _read_existing_config, _reject_unsafe_config_path
+from noaa_navionics.config import (
+    _prepare_config_parent,
+    _read_existing_config,
+    _reject_unsafe_config_path,
+    _validate_config_temp_for_promotion,
+)
 from noaa_navionics._safeio import cleanup_private_temp_file
 
 _prepare_config_parent(config_path)
@@ -965,6 +972,7 @@ parser.set("gps", "device", device)
 parser.set("gps", "gpsd_host", "127.0.0.1")
 parser.set("gps", "gpsd_port", "2947")
 tmp_path = None
+tmp_stat = None
 try:
     with tempfile.NamedTemporaryFile(
         "w",
@@ -975,10 +983,12 @@ try:
         delete=False,
     ) as handle:
         tmp_path = Path(handle.name)
+        os.fchmod(handle.fileno(), 0o600)
         parser.write(handle)
         handle.flush()
-        os.chmod(tmp_path, 0o600)
         os.fsync(handle.fileno())
+        tmp_stat = os.fstat(handle.fileno())
+    _validate_config_temp_for_promotion(tmp_path, expected_stat=tmp_stat)
     os.replace(tmp_path, config_path)
     try:
         flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
@@ -992,7 +1002,7 @@ try:
             os.close(fd)
 finally:
     if tmp_path is not None:
-        cleanup_private_temp_file(tmp_path, label="GPSD app config temp")
+        cleanup_private_temp_file(tmp_path, label="GPSD app config temp", expected_stat=tmp_stat)
 PY
 
 echo "Configured GPSD for $device"
