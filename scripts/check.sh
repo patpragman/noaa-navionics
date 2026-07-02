@@ -5256,6 +5256,10 @@ grep -q '"Chart Package expected_filename"' src/noaa_navionics/report.py
 grep -q '"Chart Package expected_url"' src/noaa_navionics/report.py
 grep -q 'expected_filename contains control characters' tests/test_downloader.py
 grep -q 'expected_url contains control characters' tests/test_downloader.py
+grep -q 'def _chart_readiness_text' src/noaa_navionics/report.py
+grep -q '"Charts storage_symlink_component"' src/noaa_navionics/report.py
+grep -q '"Chart Update Debris storage_symlink_component"' src/noaa_navionics/report.py
+grep -q 'ENC cell sample paths are not a text list' tests/test_downloader.py
 grep -q 'status report Charts found no extracted ENC cells' src/noaa_navionics/report.py
 grep -q 'status report Chart Update Debris found stale update debris' src/noaa_navionics/report.py
 grep -q 'status report Manifest check has no structured data' src/noaa_navionics/report.py

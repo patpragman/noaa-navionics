@@ -686,18 +686,21 @@ def _chart_readiness_validation_failures(
             failures.append(CheckResult("Charts", False, "status report Charts check has no structured data"))
         else:
             expected_path = str(config.get("chart_output", "")).strip()
-            configured_path_text = str(data.get("configured_path", ""))
-            configured_path_failure = _status_control_character_failure(configured_path_text, "Charts path")
-            if configured_path_failure:
-                failures.append(CheckResult("Charts", False, configured_path_failure))
-            configured_path = configured_path_text.strip()
-            if not _status_absolute_path(configured_path):
+            configured_path = _chart_readiness_text(data, "configured_path", "Charts path", "Charts", failures)
+            if configured_path is not None and not _status_absolute_path(configured_path):
                 failures.append(CheckResult("Charts", False, "status report Charts path is not absolute"))
-            if configured_path != expected_path:
+            if configured_path is not None and configured_path != expected_path:
                 failures.append(CheckResult("Charts", False, "status report Charts path does not match configured chart output"))
             if data.get("exists") is not True:
                 failures.append(CheckResult("Charts", False, "status report Charts path does not exist"))
-            if str(data.get("storage_symlink_component", "")).strip():
+            storage_symlink_component = _chart_readiness_text(
+                data,
+                "storage_symlink_component",
+                "Charts storage_symlink_component",
+                "Charts",
+                failures,
+            )
+            if storage_symlink_component:
                 failures.append(CheckResult("Charts", False, "status report Charts path contains a symlink"))
             enc_cell_samples = data.get("enc_cell_samples")
             if data.get("has_extracted_enc_cells") is not True:
@@ -709,11 +712,13 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Charts", False, "status report Charts ZIP sample list is not empty"))
             if not isinstance(enc_cell_samples, list) or not enc_cell_samples:
                 failures.append(CheckResult("Charts", False, "status report Charts has no ENC cell sample paths"))
-            elif any(_status_text_has_control_char(str(sample)) for sample in enc_cell_samples):
+            elif any(not isinstance(sample, str) for sample in enc_cell_samples):
+                failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample paths are not a text list"))
+            elif any(_status_text_has_control_char(sample) for sample in enc_cell_samples):
                 failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path contains control characters"))
-            elif any(not _status_absolute_path(str(sample)) for sample in enc_cell_samples):
+            elif any(not _status_absolute_path(sample) for sample in enc_cell_samples):
                 failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is not absolute"))
-            elif any(not _status_path_under(str(sample), expected_path) for sample in enc_cell_samples):
+            elif any(not _status_path_under(sample, expected_path) for sample in enc_cell_samples):
                 failures.append(CheckResult("Charts", False, "status report Charts ENC cell sample path is outside chart output"))
 
     debris_row = check_rows.get("Chart Update Debris")
@@ -723,16 +728,25 @@ def _chart_readiness_validation_failures(
             failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris check has no structured data"))
         else:
             expected_path = str(config.get("chart_output", "")).strip()
-            configured_path_text = str(data.get("configured_path", ""))
-            configured_path_failure = _status_control_character_failure(configured_path_text, "Chart Update Debris path")
-            if configured_path_failure:
-                failures.append(CheckResult("Chart Update Debris", False, configured_path_failure))
-            configured_path = configured_path_text.strip()
-            if not _status_absolute_path(configured_path):
+            configured_path = _chart_readiness_text(
+                data,
+                "configured_path",
+                "Chart Update Debris path",
+                "Chart Update Debris",
+                failures,
+            )
+            if configured_path is not None and not _status_absolute_path(configured_path):
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path is not absolute"))
-            if configured_path != expected_path:
+            if configured_path is not None and configured_path != expected_path:
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path does not match configured chart output"))
-            if str(data.get("storage_symlink_component", "")).strip():
+            storage_symlink_component = _chart_readiness_text(
+                data,
+                "storage_symlink_component",
+                "Chart Update Debris storage_symlink_component",
+                "Chart Update Debris",
+                failures,
+            )
+            if storage_symlink_component:
                 failures.append(CheckResult("Chart Update Debris", False, "status report Chart Update Debris path contains a symlink"))
             debris_count = data.get("debris_count")
             if isinstance(debris_count, bool) or not isinstance(debris_count, int) or debris_count != 0:
@@ -880,6 +894,25 @@ def _chart_package_text(
     control_failure = _status_control_character_failure(text, label)
     if control_failure:
         failures.append(CheckResult("Chart Package", False, control_failure))
+        return None
+    return text
+
+
+def _chart_readiness_text(
+    data: dict[str, object],
+    field: str,
+    label: str,
+    check_name: str,
+    failures: list[CheckResult],
+) -> Optional[str]:
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        failures.append(CheckResult(check_name, False, f"status report {label} is not text"))
+        return None
+    text = value.strip()
+    control_failure = _status_control_character_failure(text, label)
+    if control_failure:
+        failures.append(CheckResult(check_name, False, control_failure))
         return None
     return text
 
