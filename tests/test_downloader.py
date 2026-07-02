@@ -15501,6 +15501,45 @@ class StatusReportTests(unittest.TestCase):
         self.assertNotIn('status_manifest_dir_mode = str(', source)
         self.assertNotIn('status_dir_mode = str(', source)
 
+    def test_verify_pi_status_text_evidence_uses_strict_parser(self):
+        source = shell_function_python_heredoc(
+            Path("scripts/verify_pi.sh").read_text(encoding="utf-8"),
+            "check_status_report_json",
+        )
+
+        for expected in (
+            'status_text(user.get("name", ""), "user name")',
+            'status_text(user.get("linger", ""), "user linger")',
+            'status_text(track_log.get("latest_time", ""), "track_log latest_time")',
+            'status_text(manifest.get(key, ""), f"manifest {key}")',
+            'status_text(manifest.get("created_at_source", ""), "manifest created_at_source")',
+            'download_path_error = status_text(manifest.get("download_path_error", ""), "manifest download_path_error")',
+            'source_revision_symlink_component = status_text(',
+            'status_text(app.get("source_revision", "unknown"), "source revision source_revision")',
+            'status_text(source_revision_data.get("revision", ""), "Source Revision row revision")',
+            'status_text(host.get("boot_id", ""), "host boot_id")',
+            'status_text(gps_fix.get("source", ""), "gps_fix source")',
+            'status_text(gps_fix.get("timestamp", ""), "gps_fix timestamp")',
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
+        for rejected in (
+            'status_user = str(user.get("name", "")).strip()',
+            'status_linger = str(user.get("linger", "")).strip()',
+            'latest_time_text = str(track_log.get("latest_time", "")).strip()',
+            'status_value = str(manifest.get(status_key, "")).strip()',
+            'manifest_created_at_source = str(manifest.get("created_at_source", "")).strip()',
+            'source_revision_symlink_component = str(app.get("source_revision_symlink_component", "")).strip()',
+            'actual_revision = str(app.get("source_revision", "unknown")).strip()',
+            'row_revision = str(source_revision_data.get("revision", "")).strip()',
+            'report_boot_id = str(host.get("boot_id", "")).strip()',
+            'gps_source = str(gps_fix.get("source", "")).strip()',
+            'gps_timestamp = str(gps_fix.get("timestamp", "")).strip()',
+        ):
+            with self.subTest(rejected=rejected):
+                self.assertNotIn(rejected, source)
+
     def test_check_pi_status_rejects_json_control_characters(self):
         source = Path("scripts/check_pi_status.sh").read_text(encoding="utf-8")
 

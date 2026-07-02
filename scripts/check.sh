@@ -2978,6 +2978,10 @@ grep -q 'recorded a non-Pi diagnostic skip during Pi verification' scripts/verif
 grep -q 'status report source revision path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report source revision missing source_revision_symlink_component' scripts/verify_pi.sh
 grep -q 'status report source revision directory is a symlink' scripts/verify_pi.sh
+grep -q 'source_revision_symlink_component = status_text(' scripts/verify_pi.sh
+grep -q 'status_text(app.get("source_revision", "unknown"), "source revision source_revision")' scripts/verify_pi.sh
+grep -q 'status_text(source_revision_data.get("revision", ""), "Source Revision row revision")' scripts/verify_pi.sh
+grep -q 'status_text(host.get("boot_id", ""), "host boot_id")' scripts/verify_pi.sh
 grep -q 'status report config path' scripts/verify_pi.sh
 grep -q 'status report config path is a symlink' scripts/verify_pi.sh
 grep -q 'status report OpenCPN config directory is a symlink' scripts/verify_pi.sh
@@ -2991,6 +2995,11 @@ grep -q 'status report launcher settings path is a symlink or missing symlink st
 grep -q 'status report launcher settings missing launcher_settings_symlink_component' scripts/verify_pi.sh
 grep -q 'status report desktop autostart path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report desktop autostart missing path_symlink_component' scripts/verify_pi.sh
+grep -q 'status_text(user.get("name", ""), "user name")' scripts/verify_pi.sh
+grep -q 'status_text(user.get("linger", ""), "user linger")' scripts/verify_pi.sh
+grep -q 'status_text(gps_fix.get("source", ""), "gps_fix source")' scripts/verify_pi.sh
+grep -q 'status_text(gps_fix.get("timestamp", ""), "gps_fix timestamp")' scripts/verify_pi.sh
+grep -q 'status_text(track_log.get("latest_time", ""), "track_log latest_time")' scripts/verify_pi.sh
 grep -q 'status report has no status GUI desktop launcher section' scripts/verify_pi.sh
 grep -q 'status report status GUI desktop launcher values do not match live desktop file' scripts/verify_pi.sh
 grep -q 'status report status GUI desktop launcher has permissions' scripts/verify_pi.sh
@@ -6206,6 +6215,10 @@ grep -q 'test_read_manifest_rejects_writable_manifest_directory' tests/test_down
 grep -q 'status report manifest directory has permissions' scripts/verify_pi.sh
 grep -q 'status report manifest directory is a symlink' scripts/verify_pi.sh
 grep -q 'status_octal_mode_text(manifest.get("directory_mode"), "manifest directory_mode")' scripts/verify_pi.sh
+grep -q 'manifest_text_values = {}' scripts/verify_pi.sh
+grep -q 'status_text(manifest.get(key, ""), f"manifest {key}")' scripts/verify_pi.sh
+grep -q 'status_text(manifest.get("created_at_source", ""), "manifest created_at_source")' scripts/verify_pi.sh
+grep -q 'download_path_error = status_text(manifest.get("download_path_error", ""), "manifest download_path_error")' scripts/verify_pi.sh
 grep -q 'status report manifest path is a symlink or missing symlink status' scripts/verify_pi.sh
 grep -q 'status report manifest missing chart_storage_symlink_component' scripts/verify_pi.sh
 grep -q 'status report chart storage path contains a symlink' scripts/verify_pi.sh

@@ -1382,12 +1382,12 @@ if expected_launcher_env_path:
 user = report.get("user")
 if not isinstance(user, dict):
     raise SystemExit("status report has no user section")
-status_user = str(user.get("name", "")).strip()
+status_user = status_text(user.get("name", ""), "user name")
 if status_user != os.environ.get("USER", ""):
     raise SystemExit(
         f"status report user {status_user or '<missing>'} does not match {os.environ.get('USER', '')}"
     )
-status_linger = str(user.get("linger", "")).strip()
+status_linger = status_text(user.get("linger", ""), "user linger")
 if status_linger != "yes":
     raise SystemExit(f"status report user linger={status_linger or '<missing>'}, expected yes")
 expected_config = {}
@@ -1565,7 +1565,7 @@ if expected_config_path:
     latest_latitude = numeric_track_log_field("latest_latitude")
     latest_longitude = numeric_track_log_field("latest_longitude")
     age_seconds = numeric_track_log_field("age_seconds")
-    latest_time_text = str(track_log.get("latest_time", "")).strip()
+    latest_time_text = status_text(track_log.get("latest_time", ""), "track_log latest_time")
     if not latest_time_text:
         raise SystemExit("status report track_log has no latest_time")
     latest_time = parse_timezone_aware_timestamp(latest_time_text, "status report track_log latest_time")
@@ -2099,10 +2099,12 @@ if expected_config_path:
     )
     if manifest_symlink_component:
         raise SystemExit(f"status report manifest path contains a symlink: {manifest_symlink_component}")
+    manifest_text_values = {}
     for key in ("created_at", "package", "package_filename", "url", "download_path", "download_url", "sha256", "extract_path"):
-        if not str(manifest.get(key, "")).strip():
+        manifest_text_values[key] = status_text(manifest.get(key, ""), f"manifest {key}")
+        if not manifest_text_values[key]:
             raise SystemExit(f"status report manifest missing {key}: {expected_manifest_path}")
-    manifest_created_at_source = str(manifest.get("created_at_source", "")).strip()
+    manifest_created_at_source = status_text(manifest.get("created_at_source", ""), "manifest created_at_source")
     if not manifest_created_at_source:
         raise SystemExit(f"status report manifest missing created_at_source: {expected_manifest_path}")
     if manifest_created_at_source not in {"download", "previous-manifest"}:
@@ -2169,10 +2171,10 @@ if expected_config_path:
         raise SystemExit(f"manifest file has no extract section: {expected_manifest_path}")
     manifest_file_created_at_source = str(manifest_file.get("created_at_source", "")).strip()
     manifest_file_created_at = str(manifest_file.get("created_at", "")).strip()
-    if str(manifest.get("created_at", "")).strip() != manifest_file_created_at:
+    if manifest_text_values["created_at"] != manifest_file_created_at:
         raise SystemExit(
             "status report manifest created_at "
-            f"{str(manifest.get('created_at', '')).strip()} does not match manifest file {manifest_file_created_at}"
+            f"{manifest_text_values['created_at']} does not match manifest file {manifest_file_created_at}"
         )
     if manifest_file_created_at_source != manifest_created_at_source:
         raise SystemExit(
@@ -2196,7 +2198,7 @@ if expected_config_path:
         ("extract_path", extract_section, "path"),
     ]
     for status_key, source_section, source_key in manifest_field_pairs:
-        status_value = str(manifest.get(status_key, "")).strip()
+        status_value = manifest_text_values[status_key]
         file_value = str(source_section.get(source_key, "")).strip()
         if status_value != file_value:
             raise SystemExit(
@@ -2239,19 +2241,19 @@ if expected_config_path:
             f"status report manifest enc_cell_count {manifest.get('enc_cell_count', 0)} "
             f"does not match manifest file enc_cell_count {manifest_file_enc_cell_count}"
         )
-    manifest_package_filename = str(manifest.get("package_filename", "")).strip()
+    manifest_package_filename = manifest_text_values["package_filename"]
     if expected_package_zip and manifest_package_filename != expected_package_zip:
         raise SystemExit(
             f"status report manifest package filename {manifest_package_filename} "
             f"does not match configured {expected_package_zip}"
         )
-    manifest_package_url = str(manifest.get("url", "")).strip()
+    manifest_package_url = manifest_text_values["url"]
     if expected_package_source_url and manifest_package_url != expected_package_source_url:
         raise SystemExit(
             f"status report manifest package URL {manifest_package_url} "
             f"does not match configured {expected_package_source_url}"
         )
-    manifest_download_url = str(manifest.get("download_url", "")).strip()
+    manifest_download_url = manifest_text_values["download_url"]
     if expected_package_source_url and not download_url_matches_package(
         manifest_download_url,
         expected_package_source_url,
@@ -2272,7 +2274,7 @@ if expected_config_path:
             if parent == current:
                 return None
             current = parent
-    download_path = Path(status_text(manifest.get("download_path", ""), "manifest download path")).expanduser()
+    download_path = Path(manifest_text_values["download_path"]).expanduser()
     if manifest.get("download_path_is_symlink") is not False or download_path.is_symlink():
         raise SystemExit(
             f"status report manifest download path is a symlink or missing symlink status: {download_path}"
@@ -2287,7 +2289,7 @@ if expected_config_path:
         raise SystemExit(
             f"status report manifest download path contains a symlink: {download_path_symlink_component}"
         )
-    download_path_error = str(manifest.get("download_path_error", "")).strip()
+    download_path_error = status_text(manifest.get("download_path_error", ""), "manifest download_path_error")
     if download_path_error:
         raise SystemExit(f"status report manifest download path error: {download_path_error}")
     if download_path.name != manifest_package_filename:
@@ -2646,7 +2648,10 @@ if "source_revision_symlink_component" not in app:
     raise SystemExit(
         f"status report source revision missing source_revision_symlink_component: {source_revision_path}"
     )
-source_revision_symlink_component = str(app.get("source_revision_symlink_component", "")).strip()
+source_revision_symlink_component = status_text(
+    app.get("source_revision_symlink_component", ""),
+    "source revision source_revision_symlink_component",
+)
 if source_revision_symlink_component:
     raise SystemExit(
         f"status report source revision path contains a symlink: {source_revision_symlink_component}"
@@ -2661,7 +2666,7 @@ if live_source_revision_symlink_component is not None:
     raise SystemExit(
         f"status report source revision path contains a symlink: {live_source_revision_symlink_component}"
     )
-actual_revision = str(app.get("source_revision", "unknown")).strip()
+actual_revision = status_text(app.get("source_revision", "unknown"), "source revision source_revision")
 if not actual_revision or actual_revision == "unknown":
     raise SystemExit("status report missing deployed source revision")
 if actual_revision.endswith("-dirty"):
@@ -2672,7 +2677,7 @@ source_revision_row = check_rows.get("Source Revision")
 source_revision_data = source_revision_row.get("data") if isinstance(source_revision_row, dict) else None
 if not isinstance(source_revision_data, dict):
     raise SystemExit("status report Source Revision row missing structured data")
-row_revision = str(source_revision_data.get("revision", "")).strip()
+row_revision = status_text(source_revision_data.get("revision", ""), "Source Revision row revision")
 if not row_revision or row_revision == "unknown":
     raise SystemExit("status report Source Revision row missing revision")
 if row_revision.endswith("-dirty"):
@@ -2683,7 +2688,7 @@ if require_current_boot:
     host = report.get("host")
     if not isinstance(host, dict):
         raise SystemExit("status report has no host section")
-    report_boot_id = str(host.get("boot_id", "")).strip()
+    report_boot_id = status_text(host.get("boot_id", ""), "host boot_id")
     if not report_boot_id or report_boot_id == "unknown":
         raise SystemExit("status report has no current boot ID")
     if not valid_boot_id(report_boot_id):
@@ -2709,7 +2714,7 @@ if not isinstance(gps_fix.get("ok"), bool):
     raise SystemExit("status report gps_fix ok is not boolean")
 if gps_fix.get("ok") is not True:
     raise SystemExit(f"status report gps_fix is not ok: {gps_fix.get('detail', '<missing detail>')}")
-gps_source = str(gps_fix.get("source", "")).strip()
+gps_source = status_text(gps_fix.get("source", ""), "gps_fix source")
 expected_gps_source = "GPSD" if expected_config.get("gps_mode") == "gpsd" else "GPS"
 if gps_source != expected_gps_source:
     raise SystemExit(f"status report gps_fix source {gps_source or '<missing>'} is not {expected_gps_source}")
@@ -2751,7 +2756,7 @@ if not (-180.0 <= gps_longitude <= 180.0):
     raise SystemExit(f"status report gps_fix longitude is outside -180..180: {gps_longitude}")
 if abs(gps_latitude) < 1e-12 and abs(gps_longitude) < 1e-12:
     raise SystemExit("status report gps_fix coordinates are invalid 0,0")
-gps_timestamp = str(gps_fix.get("timestamp", "")).strip()
+gps_timestamp = status_text(gps_fix.get("timestamp", ""), "gps_fix timestamp")
 if not gps_timestamp:
     raise SystemExit("status report gps_fix has no timestamp")
 gps_time = parse_timezone_aware_timestamp(gps_timestamp, "status report gps_fix")
@@ -2830,7 +2835,7 @@ def numeric_track_log_field(field):
 latest_latitude = numeric_track_log_field("latest_latitude")
 latest_longitude = numeric_track_log_field("latest_longitude")
 age_seconds = numeric_track_log_field("age_seconds")
-latest_time_text = str(track_log.get("latest_time", "")).strip()
+latest_time_text = status_text(track_log.get("latest_time", ""), "track_log latest_time")
 if not latest_time_text:
     raise SystemExit("status report track_log has no latest_time")
 latest_time = parse_timezone_aware_timestamp(latest_time_text, "status report track_log latest_time")
