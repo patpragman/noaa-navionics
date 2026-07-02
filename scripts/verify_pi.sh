@@ -5610,6 +5610,17 @@ if [[ -r /etc/default/gpsd ]]; then
   check "GPSD single device" test "$gpsd_device_count" -eq 1
   gpsd_device="$(awk '{print $1}' <<<"$gpsd_devices")"
   if [[ -n "$gpsd_device" ]]; then
+    if [[ -L "$gpsd_device" && ! -e "$gpsd_device" ]]; then
+      gpsd_device_target="$(readlink -- "$gpsd_device" 2>/dev/null || true)"
+      if [[ "$gpsd_device" == /dev/serial/by-id/* || "$gpsd_device" == /dev/serial/by-path/* ]]; then
+        printf 'FAIL GPSD udev device path is a broken symlink: %s -> %s\n' "$gpsd_device" "${gpsd_device_target:-<unknown>}"
+      elif [[ "$gpsd_device" == /dev/gps || "$gpsd_device" == /dev/serial0 || "$gpsd_device" == /dev/serial1 ]]; then
+        printf 'FAIL GPSD stable alias is a broken symlink: %s -> %s\n' "$gpsd_device" "${gpsd_device_target:-<unknown>}"
+      else
+        printf 'FAIL GPSD device path is a broken symlink: %s -> %s\n' "$gpsd_device" "${gpsd_device_target:-<unknown>}"
+      fi
+      failures=$((failures + 1))
+    fi
     check "GPSD device exists" test -e "$gpsd_device"
     check "GPSD device is not directory" test ! -d "$gpsd_device"
     if [[ "$gpsd_device" == /dev/serial/by-id/* || "$gpsd_device" == /dev/serial/by-path/* ]]; then

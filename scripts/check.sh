@@ -2992,6 +2992,8 @@ grep -q 'onboard app config through a no-follow descriptor read' README.md
 grep -q 'onboard app config through a no-follow descriptor read' docs/sailboat-pi.md
 grep -q 'GPSD device comparisons through that same trusted config read path' README.md
 grep -q 'GPSD device comparisons through that same trusted config read path' docs/sailboat-pi.md
+grep -q 'GPSD device path including broken symlink targets' README.md
+grep -q 'GPSD device matching the onboard config with broken symlink targets reported' docs/sailboat-pi.md
 grep -q 'recent GPX trackpoint verification uses that same trusted config read path' README.md
 grep -q 'recent GPX trackpoint verification uses that same trusted config read path' docs/sailboat-pi.md
 grep -q 'status report boot ID' scripts/verify_pi.sh
@@ -3607,6 +3609,8 @@ grep -q 'ExecMainStartTimestampMonotonic' scripts/verify_pi.sh
 grep -q 'GPSD immediate polling' scripts/verify_pi.sh
 grep -q 'GPSD single device' scripts/verify_pi.sh
 grep -q 'GPSD device is not directory' scripts/verify_pi.sh
+grep -q 'GPSD udev device path is a broken symlink' scripts/verify_pi.sh
+grep -q 'GPSD stable alias is a broken symlink' scripts/verify_pi.sh
 grep -q 'GPSD udev device is symlink' scripts/verify_pi.sh
 grep -q 'GPSD device is character device' scripts/verify_pi.sh
 grep -q 'GPSD client command integrity' scripts/verify_pi.sh
