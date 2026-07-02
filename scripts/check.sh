@@ -997,6 +997,8 @@ grep -q 'when drift exceeds `\[anchor\].radius_meters`' README.md
 grep -q 'when drift exceeds `\[anchor\].radius_meters`' docs/sailboat-pi.md
 grep -q '`--radius-meters N` for a one-off radius override' README.md
 grep -q '`--radius-meters N` for a one-off radius override' docs/sailboat-pi.md
+grep -q 'requiring paired finite in-range coordinates and rejecting an explicit 0,0 anchor' README.md
+grep -q 'requiring paired finite in-range coordinates and rejecting an explicit 0,0 anchor' docs/sailboat-pi.md
 grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' README.md
 grep -q 'anchor-watch GPS evidence rather than GPX track-log evidence' docs/sailboat-pi.md
 grep -q 'Status reports and Pi verification include the configured anchor radius' README.md
@@ -4326,8 +4328,13 @@ grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples_across_date_line' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_oversized_anchor_samples' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_validates_direct_parameters' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_uses_configured_radius_by_default' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_interval_suppresses_non_alarm_updates_only' tests/test_downloader.py
+grep -q 'def _validated_anchor_watch_parameters' src/noaa_navionics/cli.py
+grep -q 'anchor radius must be greater than 0' src/noaa_navionics/cli.py
+grep -q 'anchor coordinates must be finite latitude/longitude values in range' src/noaa_navionics/cli.py
+grep -q 'anchor coordinates cannot be 0,0' src/noaa_navionics/cli.py
 grep -q 'need at least one drift check' src/noaa_navionics/cli.py
 grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' README.md
 grep -q 'A finite anchor-watch run succeeds only after at least one post-anchor drift fix has been checked' docs/sailboat-pi.md

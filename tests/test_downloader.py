@@ -2830,6 +2830,25 @@ class OpenCPNConfigTests(unittest.TestCase):
                 live_stream=False,
             )
 
+    def test_cli_anchor_watch_validates_direct_parameters(self):
+        cases = [
+            ({"radius_meters": 0.0, "anchor_latitude": None, "anchor_longitude": None}, "anchor radius must be greater than 0"),
+            ({"radius_meters": float("nan"), "anchor_latitude": None, "anchor_longitude": None}, "anchor radius must be greater than 0"),
+            ({"radius_meters": 50.0, "anchor_latitude": 61.0, "anchor_longitude": None}, "--anchor-lat and --anchor-lon"),
+            ({"radius_meters": 50.0, "anchor_latitude": 91.0, "anchor_longitude": -149.0}, "anchor coordinates must be finite"),
+            ({"radius_meters": 50.0, "anchor_latitude": 0.0, "anchor_longitude": 0.0}, "anchor coordinates cannot be 0,0"),
+        ]
+        for kwargs, expected in cases:
+            with self.subTest(expected=expected):
+                with self.assertRaisesRegex(ValueError, expected):
+                    cli_module._run_anchor_watch(
+                        iter(()),
+                        anchor_samples=1,
+                        interval_seconds=None,
+                        live_stream=False,
+                        **kwargs,
+                    )
+
     def test_cli_anchor_watch_live_stream_loss_after_anchor_is_audible_alarm(self):
         now = datetime.now(timezone.utc) - timedelta(seconds=3)
         fixes = [

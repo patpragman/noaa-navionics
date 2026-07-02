@@ -1235,8 +1235,11 @@ def _run_anchor_watch(
     interval_seconds: Optional[float],
     live_stream: bool,
 ) -> int:
-    if (anchor_latitude is None) != (anchor_longitude is None):
-        raise ValueError("--anchor-lat and --anchor-lon must be used together")
+    radius_meters, anchor_latitude, anchor_longitude = _validated_anchor_watch_parameters(
+        radius_meters,
+        anchor_latitude,
+        anchor_longitude,
+    )
     if anchor_samples < 1:
         raise ValueError("anchor_samples must be at least 1")
     if anchor_samples > MAX_ANCHOR_SAMPLES:
@@ -1315,6 +1318,39 @@ def _run_anchor_watch(
         return 0
     print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
     return 1
+
+
+def _validated_anchor_watch_parameters(
+    radius_meters: object,
+    anchor_latitude: Optional[object],
+    anchor_longitude: Optional[object],
+) -> tuple[float, Optional[float], Optional[float]]:
+    radius = _finite_cli_number(radius_meters)
+    if radius is None or radius <= 0.0:
+        raise ValueError("anchor radius must be greater than 0")
+    if (anchor_latitude is None) != (anchor_longitude is None):
+        raise ValueError("--anchor-lat and --anchor-lon must be used together")
+    if anchor_latitude is None and anchor_longitude is None:
+        return radius, None, None
+    latitude = _finite_cli_number(anchor_latitude)
+    longitude = _finite_cli_number(anchor_longitude)
+    if latitude is None or longitude is None or not (-90.0 <= latitude <= 90.0) or not (-180.0 <= longitude <= 180.0):
+        raise ValueError("anchor coordinates must be finite latitude/longitude values in range")
+    if abs(latitude) < 1e-12 and abs(longitude) < 1e-12:
+        raise ValueError("anchor coordinates cannot be 0,0")
+    return radius, latitude, longitude
+
+
+def _finite_cli_number(value: object) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
 
 
 def _print_anchor_watch_gps_lost() -> None:
