@@ -868,6 +868,49 @@ def cleanup_private_restore_temp(path: Path) -> None:
         os.close(parent_fd)
 
 
+def validate_restore_temp_for_promotion(path: Path, expected_stat: os.stat_result) -> None:
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    try:
+        before = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"restore temp could not be inspected before promotion; leaving it in place: {path}: {exc}")
+    if not os.path.samestat(before, expected_stat):
+        fail(f"restore temp changed before promotion; leaving it in place: {path}")
+    if not stat.S_ISREG(before.st_mode):
+        fail(f"restore temp is not a regular file before promotion; leaving it in place: {path}")
+    if before.st_uid != os.getuid():
+        fail(
+            f"restore temp is owned by uid {before.st_uid}, expected {os.getuid()} "
+            f"before promotion; leaving it in place: {path}"
+        )
+    mode = stat.S_IMODE(before.st_mode)
+    if mode != 0o600:
+        fail(f"restore temp has permissions {mode:04o}, expected 0600 before promotion; leaving it in place: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | nofollow)
+    except OSError as exc:
+        fail(f"restore temp could not be opened before promotion; leaving it in place: {path}: {exc}")
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, expected_stat):
+            fail(f"restore temp changed while being opened for promotion; leaving it in place: {path}")
+        if not stat.S_ISREG(opened.st_mode):
+            fail(f"restore temp is not regular when opened for promotion; leaving it in place: {path}")
+        if opened.st_uid != os.getuid():
+            fail(
+                f"restore temp is owned by uid {opened.st_uid}, expected {os.getuid()} "
+                f"when opened for promotion; leaving it in place: {path}"
+            )
+        opened_mode = stat.S_IMODE(opened.st_mode)
+        if opened_mode != 0o600:
+            fail(
+                f"restore temp has permissions {opened_mode:04o}, expected 0600 "
+                f"when opened for promotion; leaving it in place: {path}"
+            )
+    finally:
+        os.close(fd)
+
+
 def write_file_atomic(
     path: Path,
     data: bytes,
@@ -891,8 +934,10 @@ def write_file_atomic(
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
             handle.flush()
+            os.fchmod(handle.fileno(), 0o600)
             os.fsync(handle.fileno())
-        os.chmod(tmp_path, 0o600)
+            tmp_stat = os.fstat(handle.fileno())
+        validate_restore_temp_for_promotion(tmp_path, tmp_stat)
         validate_restore_target_state_before_promotion(path, existing_stat)
         os.replace(tmp_path, path)
         validate_promoted_restore_file(path, data)

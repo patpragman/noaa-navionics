@@ -2116,6 +2116,24 @@ grep -q 'validate_restore_target_state_before_promotion(path, existing_stat)' sc
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(backup_path, source_data, "promoted restore backup")' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(path, expected_data, "promoted restored file")' scripts/restore_pi_recovery_user_data.sh
+grep -q 'def validate_restore_temp_for_promotion' scripts/restore_pi_recovery_user_data.sh
+grep -q 'os.fchmod(handle.fileno(), 0o600)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'tmp_stat = os.fstat(handle.fileno())' scripts/restore_pi_recovery_user_data.sh
+grep -q 'validate_restore_temp_for_promotion(tmp_path, tmp_stat)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restore temp changed before promotion; leaving it in place' scripts/restore_pi_recovery_user_data.sh
+grep -q 'restore temp changed while being opened for promotion; leaving it in place' scripts/restore_pi_recovery_user_data.sh
+python3 - <<'PY'
+from pathlib import Path
+
+text = Path("scripts/restore_pi_recovery_user_data.sh").read_text()
+write_start = text.index("def write_file_atomic(")
+tmp_stat = text.index("tmp_stat = os.fstat(handle.fileno())", write_start)
+validate_temp = text.index("validate_restore_temp_for_promotion(tmp_path, tmp_stat)", tmp_stat)
+validate_target = text.index("validate_restore_target_state_before_promotion(path, existing_stat)", validate_temp)
+promote = text.index("os.replace(tmp_path, path)", validate_target)
+if not tmp_stat < validate_temp < validate_target < promote:
+    raise SystemExit("restore temp must be same-file validated before target recheck and promotion")
+PY
 grep -q 'def cleanup_private_restore_temp' scripts/restore_pi_recovery_user_data.sh
 grep -q 'restore temp changed before cleanup; leaving it in place' scripts/restore_pi_recovery_user_data.sh
 grep -q 'cleanup_private_restore_temp(tmp_path)' scripts/restore_pi_recovery_user_data.sh
@@ -2127,6 +2145,8 @@ grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS 
 grep -q 'rejecting parent-directory traversal, unsafe chart storage, unsafe GPS settings, or broad mounted-storage roots in the recovered config paths' docs/sailboat-pi.md
 grep -q 'immediately before restore promotion verify that the target is still the backed-up file or still absent' README.md
 grep -q 'immediately before restore promotion verify that the target is still the backed-up file or still absent' docs/sailboat-pi.md
+grep -q 'Restore temps are descriptor-chmodded and same-file validated through a no-follow reopen before promotion' README.md
+grep -q 'Restore temps are descriptor-chmodded and same-file validated through a no-follow reopen before promotion' docs/sailboat-pi.md
 grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed restore temp cleanup is no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Re-run provisioning, then scripts/verify_pi.sh or scripts/dock_test_pi.sh' scripts/restore_pi_recovery_user_data.sh
