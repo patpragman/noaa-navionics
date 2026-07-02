@@ -1237,7 +1237,7 @@ def validate_snapshot_gps_fix(
     generated_at: datetime,
 ) -> None:
     expected_source = "GPS" if gps_mode == "serial" else "GPSD"
-    source = str(gps_fix.get("source", "")).strip()
+    source = snapshot_text(gps_fix.get("source", ""), "gps_fix source")
     if source != expected_source:
         fail(
             "pre-departure status snapshot JSON gps_fix source "
