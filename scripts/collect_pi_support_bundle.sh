@@ -979,6 +979,7 @@ PY
     cleanup_private_temp_file "$copy_error" || true
   else
     write_note "could not copy: $src"
+    cleanup_private_temp_file "$copy_error" || true
   fi
 }
 

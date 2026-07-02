@@ -1839,6 +1839,7 @@ grep -q '"$python3_cmd" - "$cache_dir" "$bundle_root"' scripts/collect_pi_suppor
 grep -q '"$python3_cmd" - "$src" "$dest"' scripts/collect_pi_support_bundle.sh
 grep -q '"$python3_cmd" - "$config"' scripts/collect_pi_support_bundle.sh
 grep -q 'cleanup_private_temp_file "$copy_error" || true' scripts/collect_pi_support_bundle.sh
+test "$(grep -F 'cleanup_private_temp_file "$copy_error" || true' scripts/collect_pi_support_bundle.sh | wc -l)" -eq 2
 grep -q 'Support bundle temporary file changed before cleanup; leaving it in place' scripts/collect_pi_support_bundle.sh
 ! grep -q 'rm -f -- "$copy_error"' scripts/collect_pi_support_bundle.sh
 if awk "/<<'REMOTE'/{capture=1; next} /^REMOTE$/{capture=0} capture" scripts/collect_pi_support_bundle.sh | grep -q 'command -v python3'; then
