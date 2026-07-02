@@ -1915,6 +1915,13 @@ def check_gps_device_path(device: str) -> CheckResult:
             target = path
         data["resolved_path"] = str(target)
         return CheckResult("GPS Device", False, f"{path} is a broken {udev_kind} symlink to {target}", data)
+    if not is_udev_path and _stable_gps_device_path(path_text) and data["is_symlink"] and not data["exists"]:
+        try:
+            target = path.resolve(strict=False)
+        except OSError:
+            target = path
+        data["resolved_path"] = str(target)
+        return CheckResult("GPS Device", False, f"{path} is a broken stable alias to {target}", data)
     if not data["exists"]:
         return CheckResult("GPS Device", False, f"{path} does not exist", data)
     data["is_directory"] = path.is_dir()

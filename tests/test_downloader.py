@@ -8007,6 +8007,42 @@ class GuiTests(unittest.TestCase):
         finally:
             gui_module.open_nmea_stream = original
 
+    def test_gui_gps_fix_rejects_broken_stable_alias_before_opening(self):
+        app_config = AppConfig(
+            chart_package="state",
+            chart_value="AK",
+            chart_output=Path("/charts/noaa"),
+            extract=True,
+            keep_zip=True,
+            force=True,
+            max_chart_age_days=12,
+            min_free_gb=4.5,
+            gps_mode="serial",
+            gps_device="/dev/gps",
+            gps_baud=9600,
+            gpsd_host="127.0.0.1",
+            gpsd_port=2947,
+            track_output=Path("/tracks/noaa"),
+            track_retention_days=30,
+            anchor_radius_meters=75.0,
+        )
+        original = gui_module.open_nmea_stream
+
+        def fake_open_nmea_stream(*args, **kwargs):
+            raise AssertionError("open_nmea_stream should not be called")
+
+        try:
+            gui_module.open_nmea_stream = fake_open_nmea_stream
+            with (
+                patch("noaa_navionics.gui.Path.exists", return_value=False),
+                patch("noaa_navionics.gui.Path.is_symlink", return_value=True),
+                patch("noaa_navionics.gui.Path.resolve", return_value=Path("/dev/ttyACM0")),
+            ):
+                with self.assertRaisesRegex(ValueError, "broken stable alias"):
+                    gui_module.read_configured_gps_fix(app_config, gpsd_enabled=False)
+        finally:
+            gui_module.open_nmea_stream = original
+
     def test_gui_gps_fix_rejects_by_id_serial_that_is_not_symlink(self):
         app_config = AppConfig(
             chart_package="state",
@@ -8657,6 +8693,15 @@ class CLIValidationTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, "broken by-id symlink"):
                 cli_module._validate_live_serial_device("/dev/serial/by-id/mock-gps")
+
+    def test_live_serial_device_validation_rejects_broken_stable_alias(self):
+        with (
+            patch("noaa_navionics.cli.Path.exists", return_value=False),
+            patch("noaa_navionics.cli.Path.is_symlink", return_value=True),
+            patch("noaa_navionics.cli.Path.resolve", return_value=Path("/dev/ttyACM0")),
+        ):
+            with self.assertRaisesRegex(ValueError, "broken stable alias"):
+                cli_module._validate_live_serial_device("/dev/gps")
 
     def test_live_serial_device_validation_rejects_by_id_that_is_not_character_device(self):
         with (
@@ -23715,6 +23760,22 @@ class GpsTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("broken by-id symlink", result.detail)
+            self.assertIn("/dev/ttyACM0", result.detail)
+            self.assertIsNotNone(result.data)
+            self.assertEqual(result.data.get("is_symlink"), True)
+            self.assertEqual(result.data.get("exists"), False)
+            self.assertEqual(result.data.get("resolved_path"), "/dev/ttyACM0")
+
+    def test_check_gps_device_path_reports_broken_stable_alias(self):
+        with (
+            patch("noaa_navionics.health.Path.exists", return_value=False),
+            patch("noaa_navionics.health.Path.is_symlink", return_value=True),
+            patch("noaa_navionics.health.Path.resolve", return_value=Path("/dev/ttyACM0")),
+        ):
+            result = check_gps_device_path("/dev/gps")
+
+            self.assertFalse(result.ok)
+            self.assertIn("broken stable alias", result.detail)
             self.assertIn("/dev/ttyACM0", result.detail)
             self.assertIsNotNone(result.data)
             self.assertEqual(result.data.get("is_symlink"), True)

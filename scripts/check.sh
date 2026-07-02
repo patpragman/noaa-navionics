@@ -4854,9 +4854,11 @@ grep -q 'def _stable_gps_device_path' src/noaa_navionics/config.py
 grep -q 'def _validate_live_serial_device' src/noaa_navionics/cli.py
 grep -q 'GPS serial device uses a volatile USB name' src/noaa_navionics/cli.py
 grep -q 'GPS serial device {path} is a broken {udev_kind} symlink' src/noaa_navionics/cli.py
+grep -q 'GPS serial device {path} is a broken stable alias' src/noaa_navionics/cli.py
 grep -q 'GPS serial device {path} is not a udev {udev_kind} symlink' src/noaa_navionics/cli.py
 grep -q 'GPS serial device {path} is not a character device' src/noaa_navionics/cli.py
 grep -q 'test_live_serial_device_validation_rejects_broken_by_id_symlink' tests/test_downloader.py
+grep -q 'test_live_serial_device_validation_rejects_broken_stable_alias' tests/test_downloader.py
 grep -q 'test_live_serial_device_validation_rejects_by_id_that_is_not_character_device' tests/test_downloader.py
 grep -q 'test_live_serial_device_validation_rejects_stable_alias_that_is_not_character_device' tests/test_downloader.py
 grep -q 'test_cli_log_track_rejects_volatile_explicit_serial_device' tests/test_downloader.py
@@ -4873,6 +4875,8 @@ grep -q 'def check_gps_device' src/noaa_navionics/health.py
 grep -q 'gps_device_check = check_gps_device_path(device)' src/noaa_navionics/health.py
 grep -q 'test_check_gps_device_rejects_volatile_path_before_opening' tests/test_downloader.py
 grep -q 'test_check_gps_device_path_rejects_by_id_character_node_without_symlink' tests/test_downloader.py
+grep -q 'test_check_gps_device_path_reports_broken_stable_alias' tests/test_downloader.py
+grep -q 'is a broken stable alias to' src/noaa_navionics/health.py
 grep -q 'is not a udev {udev_kind} symlink' src/noaa_navionics/health.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/config.py
 grep -Fq 'suffix not in {".", ".."}' src/noaa_navionics/health.py
@@ -4880,6 +4884,8 @@ grep -q 'volatile USB name' src/noaa_navionics/config.py
 grep -q 'gps.device must be /dev/serial/by-id/' src/noaa_navionics/config.py
 grep -q 'actual udev symlinks' README.md
 grep -q 'actual udev symlinks' docs/sailboat-pi.md
+grep -q 'report broken stable aliases before opening the receiver' README.md
+grep -q 'report broken stable aliases before opening the receiver' docs/sailboat-pi.md
 grep -q 'def parse_gpsd_sky' src/noaa_navionics/gps.py
 grep -q 'uSat' src/noaa_navionics/gps.py
 grep -q 'used' src/noaa_navionics/gps.py
@@ -5066,9 +5072,11 @@ grep -q 'not math.isfinite(gps_seconds) or gps_seconds <= 0' src/noaa_navionics/
 grep -q 'gps_seconds must be finite and greater than 0' src/noaa_navionics/gui.py
 grep -q 'def _validate_serial_gps_device' src/noaa_navionics/gui.py
 grep -q 'GPS device path is a broken {udev_kind} symlink' src/noaa_navionics/gui.py
+grep -q 'GPS device path is a broken stable alias' src/noaa_navionics/gui.py
 grep -q 'GPS device path is not a udev {udev_kind} symlink' src/noaa_navionics/gui.py
 grep -q 'GPS device path is not a character device' src/noaa_navionics/gui.py
 grep -q 'test_gui_gps_fix_rejects_broken_by_id_serial_before_opening' tests/test_downloader.py
+grep -q 'test_gui_gps_fix_rejects_broken_stable_alias_before_opening' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_by_id_serial_that_is_not_symlink' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_by_id_serial_that_is_not_character_device' tests/test_downloader.py
 grep -q 'test_gui_gps_fix_rejects_stable_alias_that_is_not_character_device' tests/test_downloader.py

@@ -1121,6 +1121,12 @@ def _validate_live_serial_device(device: str) -> None:
         except OSError:
             target = path
         raise ValueError(f"GPS serial device {path} is a broken {udev_kind} symlink to {target}")
+    if not is_udev_path and path.is_symlink() and not path.exists():
+        try:
+            target = path.resolve(strict=False)
+        except OSError:
+            target = path
+        raise ValueError(f"GPS serial device {path} is a broken stable alias to {target}")
     if is_udev_path and path.exists() and not path.is_symlink():
         raise ValueError(f"GPS serial device {path} is not a udev {udev_kind} symlink")
     if path.exists() and not path.is_char_device():

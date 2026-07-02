@@ -176,6 +176,12 @@ def _validate_serial_gps_device(device: str) -> None:
         except OSError:
             target = path
         raise ValueError(f"GPS device path is a broken {udev_kind} symlink: {path} -> {target}")
+    if not is_udev_path and path.is_symlink() and not path.exists():
+        try:
+            target = path.resolve(strict=False)
+        except OSError:
+            target = path
+        raise ValueError(f"GPS device path is a broken stable alias: {path} -> {target}")
     if is_udev_path and path.exists() and not path.is_symlink():
         raise ValueError(f"GPS device path is not a udev {udev_kind} symlink: {path}")
     if path.exists() and not path.is_char_device():
