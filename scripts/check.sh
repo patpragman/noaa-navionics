@@ -6482,10 +6482,16 @@ grep -q 'pre-departure status snapshot JSON track_log track_output is not absolu
 grep -q 'pre-departure status snapshot JSON track_log latest_path is not under tracks_dir' scripts/pre_trip_prepare_pi.sh
 grep -Fq 'pre-departure status snapshot JSON track_log latest_path is not a track-*.gpx file' scripts/pre_trip_prepare_pi.sh
 grep -q 'private_octal_mode(track_log.get("tracks_mode"), field="tracks_mode")' scripts/pre_trip_prepare_pi.sh
+grep -q 'if not isinstance(value, str):' scripts/pre_trip_prepare_pi.sh
+grep -q 'any(ord(char) < 32 or ord(char) == 127 for char in text)' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON track_log latest_path is not under tracks_dir' scripts/verify_pi_recovery_exports.sh
 grep -q 'private_octal_mode(track_log.get("latest_mode"), field="latest_mode")' scripts/verify_pi_recovery_exports.sh
+grep -q 'if not isinstance(value, str):' scripts/verify_pi_recovery_exports.sh
+grep -q 'any(ord(char) < 32 or ord(char) == 127 for char in text)' scripts/verify_pi_recovery_exports.sh
 grep -q 'status snapshot JSON track_log latest_path is not under tracks_dir' scripts/post_trip_collect_pi.sh
 grep -q 'private_octal_mode(track_log.get("latest_mode"), field="latest_mode", path=path)' scripts/post_trip_collect_pi.sh
+grep -q 'if not isinstance(value, str):' scripts/post_trip_collect_pi.sh
+grep -q 'any(ord(char) < 32 or ord(char) == 127 for char in text)' scripts/post_trip_collect_pi.sh
 grep -q 'private user-owned `0700` tracks directory' README.md
 grep -q 'private user-owned `0700` tracks directory' docs/sailboat-pi.md
 grep -q 'private `0600` no-follow opens' README.md

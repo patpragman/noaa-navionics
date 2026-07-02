@@ -1034,8 +1034,12 @@ def validate_snapshot_quality(summary: dict[str, object], *, satellite_field: st
 
 
 def private_octal_mode(value: object, *, field: str) -> int:
-    text = str(value).strip()
+    if not isinstance(value, str):
+        fail(f"pre-departure status snapshot JSON track_log {field} is missing or invalid")
+    text = value.strip()
     if not text:
+        fail(f"pre-departure status snapshot JSON track_log {field} is missing or invalid")
+    if any(ord(char) < 32 or ord(char) == 127 for char in text):
         fail(f"pre-departure status snapshot JSON track_log {field} is missing or invalid")
     try:
         mode = int(text, 8)
