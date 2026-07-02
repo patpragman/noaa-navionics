@@ -861,6 +861,15 @@ def _list_gps_device_candidates(dev_root: Path = Path("/dev")) -> list[GPSDevice
             if not _stable_gps_device_path(display_path):
                 continue
             if not entry.is_symlink():
+                candidates.append(
+                    GPSDeviceCandidate(
+                        display_path,
+                        "invalid",
+                        f"not a udev {udev_kind} symlink; stable GPS entries must point to the receiver device",
+                        False,
+                    )
+                )
+                seen.add(display_path)
                 continue
             target = _dev_display_path(entry.resolve(strict=False), root)
             if not entry.exists():

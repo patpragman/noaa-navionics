@@ -2434,6 +2434,25 @@ class OpenCPNConfigTests(unittest.TestCase):
             )
             self.assertIn("No usable stable GPS device paths were found", stderr.getvalue())
 
+    def test_cli_list_gps_devices_reports_non_symlink_udev_entries(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            dev_root = Path(tmpdir)
+            by_id = dev_root / "serial/by-id"
+            by_id.mkdir(parents=True)
+            (by_id / "usb-GPS_Receiver-if00").write_text("", encoding="ascii")
+
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = cli_module.main(["list-gps-devices", "--dev-root", str(dev_root)])
+
+            self.assertEqual(code, 1)
+            self.assertIn(
+                "/dev/serial/by-id/usb-GPS_Receiver-if00\tinvalid\tnot a udev by-id symlink",
+                stdout.getvalue(),
+            )
+            self.assertIn("No usable stable GPS device paths were found", stderr.getvalue())
+
     def test_cli_list_gps_devices_warns_when_no_candidates_exist(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
             stdout = StringIO()
