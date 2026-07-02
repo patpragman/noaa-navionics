@@ -83,6 +83,7 @@ from noaa_navionics.health import (
     check_gpsd_startup_config,
     check_gps_sample,
     check_display_power_tool,
+    check_desktop_shell_tool,
     check_sleep_tool,
     check_chrony_gps_time_config,
     check_chrony_gps_time_source,
@@ -466,6 +467,29 @@ def complete_status_gui_report(
                 "expected_uids": [0],
                 "mode": "0755",
                 "directory_mode": "0755",
+            }
+        elif row["name"] == "Desktop Shell":
+            row["detail"] = "trusted executable at /bin/sh -> /usr/bin/dash"
+            row["data"] = {
+                "command": "sh",
+                "path": "/bin/sh",
+                "directory": "/bin",
+                "is_absolute": True,
+                "is_symlink": True,
+                "path_symlink_component": "/bin",
+                "trusted_system_directory": True,
+                "resolved_path": "/usr/bin/dash",
+                "resolved_directory": "/usr/bin",
+                "resolved_trusted_system_directory": True,
+                "is_regular": True,
+                "executable": True,
+                "uid": 0,
+                "directory_uid": 0,
+                "path_directory_uid": 0,
+                "expected_uids": [0],
+                "mode": "0755",
+                "directory_mode": "0755",
+                "path_directory_mode": "0755",
             }
         elif row["name"] == "Sleep":
             row["detail"] = "trusted executable at /usr/bin/sleep"
@@ -14057,6 +14081,22 @@ class StatusReportTests(unittest.TestCase):
             data.update(overrides)
             return data
 
+        def desktop_shell_data(**overrides):
+            data = command_data(
+                command="sh",
+                path="/bin/sh",
+                directory="/bin",
+                is_symlink=True,
+                path_symlink_component="/bin",
+                resolved_path="/usr/bin/dash",
+                resolved_directory="/usr/bin",
+                resolved_trusted_system_directory=True,
+                path_directory_uid=0,
+                path_directory_mode="0755",
+            )
+            data.update(overrides)
+            return data
+
         cases = [
             ("OpenCPN", None, "OpenCPN check has no structured command data"),
             ("OpenCPN", command_data(command=123), "command is missing"),
@@ -14094,6 +14134,38 @@ class StatusReportTests(unittest.TestCase):
                 "Display Power",
                 command_data(command="other", path="/usr/bin/xset"),
                 "command other is not xset",
+            ),
+            ("Desktop Shell", None, "Desktop Shell check has no structured command data"),
+            ("Desktop Shell", desktop_shell_data(command="other"), "command other is not sh"),
+            (
+                "Desktop Shell",
+                desktop_shell_data(path="/usr/bin/sh"),
+                "command path is not /bin/sh",
+            ),
+            (
+                "Desktop Shell",
+                desktop_shell_data(resolved_path="dash"),
+                "resolved command path is not absolute",
+            ),
+            (
+                "Desktop Shell",
+                desktop_shell_data(resolved_path="/usr/bin/dash\x00"),
+                "Desktop Shell resolved command path contains control characters",
+            ),
+            (
+                "Desktop Shell",
+                desktop_shell_data(resolved_trusted_system_directory=False),
+                "resolved command is not in a trusted system directory",
+            ),
+            (
+                "Desktop Shell",
+                desktop_shell_data(path_directory_uid=1000),
+                "literal command directory owner is not root",
+            ),
+            (
+                "Desktop Shell",
+                desktop_shell_data(path_directory_mode="0777"),
+                "literal command directory is group/world writable",
             ),
             (
                 "Sleep",
@@ -25594,6 +25666,27 @@ class PiHealthTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("Display Power command directory is not a trusted system directory", result.detail)
+
+    def test_check_desktop_shell_tool_accepts_bin_sh(self):
+        result = check_desktop_shell_tool()
+
+        self.assertTrue(result.ok)
+        self.assertIn("trusted executable", result.detail)
+        self.assertIsNotNone(result.data)
+        self.assertEqual(result.data.get("command"), "sh")
+        self.assertEqual(result.data.get("path"), "/bin/sh")
+        self.assertEqual(result.data.get("directory"), "/bin")
+        self.assertEqual(result.data.get("trusted_system_directory"), True)
+        self.assertTrue(str(result.data.get("resolved_path", "")).startswith("/"))
+        self.assertEqual(result.data.get("resolved_trusted_system_directory"), True)
+        self.assertEqual(result.data.get("is_regular"), True)
+        self.assertEqual(result.data.get("executable"), True)
+
+    def test_check_desktop_shell_tool_rejects_relative_shell_path(self):
+        result = check_desktop_shell_tool(Path("sh"))
+
+        self.assertFalse(result.ok)
+        self.assertIn("path is not absolute", result.detail)
 
     def test_check_sleep_tool_reports_missing_sleep(self):
         original_path = os.environ.get("PATH", "")

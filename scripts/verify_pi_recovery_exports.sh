@@ -314,6 +314,7 @@ CORE_READINESS_CHECKS = {
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Desktop Shell",
     "Sleep",
     "Chart Package",
     "Charts",

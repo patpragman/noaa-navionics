@@ -178,6 +178,7 @@ CORE_READINESS_CHECKS = frozenset(
         "Tkinter",
         "OpenCPN",
         "Display Power",
+        "Desktop Shell",
         "Sleep",
         "Chart Package",
         "Charts",
@@ -1386,6 +1387,7 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
     expected_commands = {
         "OpenCPN": "opencpn",
         "Display Power": "xset",
+        "Desktop Shell": "sh",
         "Sleep": "sleep",
     }
     failures: list[CheckResult] = []
@@ -1436,7 +1438,10 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
             failures.append(CheckResult(name, False, f"status report {name} command path is not absolute"))
         if not _status_absolute_path(directory):
             failures.append(CheckResult(name, False, f"status report {name} command directory is not absolute"))
-        if data.get("is_symlink") is not False:
+        desktop_shell = name == "Desktop Shell"
+        if desktop_shell and path != "/bin/sh":
+            failures.append(CheckResult(name, False, f"status report {name} command path is not /bin/sh"))
+        if data.get("is_symlink") is not False and not desktop_shell:
             failures.append(CheckResult(name, False, f"status report {name} command is a symlink"))
         symlink_component = data.get("path_symlink_component", "")
         if not isinstance(symlink_component, str):
@@ -1450,8 +1455,59 @@ def _command_evidence_validation_failures(report: dict[str, object]) -> list[Che
             )
             if control_failure:
                 failures.append(CheckResult(name, False, control_failure))
-        if symlink_component_text:
+        if symlink_component_text and not desktop_shell:
             failures.append(CheckResult(name, False, f"status report {name} command path contains a symlink"))
+        if desktop_shell:
+            resolved_path, failure = _status_required_text_field(
+                data,
+                "resolved_path",
+                f"status report {name} resolved command path is not absolute",
+                f"{name} resolved command path",
+                name,
+            )
+            if failure:
+                failures.append(failure)
+            resolved_directory, failure = _status_required_text_field(
+                data,
+                "resolved_directory",
+                f"status report {name} resolved command directory is not absolute",
+                f"{name} resolved command directory",
+                name,
+            )
+            if failure:
+                failures.append(failure)
+            if not _status_absolute_path(resolved_path):
+                failures.append(CheckResult(name, False, f"status report {name} resolved command path is not absolute"))
+            if not _status_absolute_path(resolved_directory):
+                failures.append(CheckResult(name, False, f"status report {name} resolved command directory is not absolute"))
+            if data.get("resolved_trusted_system_directory") is not True:
+                failures.append(
+                    CheckResult(name, False, f"status report {name} resolved command is not in a trusted system directory")
+                )
+            path_directory_uid = data.get("path_directory_uid")
+            if isinstance(path_directory_uid, bool) or not isinstance(path_directory_uid, int) or path_directory_uid != 0:
+                failures.append(CheckResult(name, False, f"status report {name} literal command directory owner is not root"))
+            path_directory_mode_value = data.get("path_directory_mode", "")
+            if not isinstance(path_directory_mode_value, str):
+                failures.append(CheckResult(name, False, f"status report {name} literal command directory mode is not text"))
+            else:
+                path_directory_mode = path_directory_mode_value.strip()
+                control_failure = _status_control_character_failure(
+                    path_directory_mode,
+                    f"{name} literal command directory mode",
+                )
+                if control_failure:
+                    failures.append(CheckResult(name, False, control_failure))
+                else:
+                    try:
+                        parsed_path_directory_mode = int(path_directory_mode, 8)
+                    except ValueError:
+                        failures.append(CheckResult(name, False, f"status report {name} literal command directory mode is invalid"))
+                    else:
+                        if parsed_path_directory_mode & 0o022:
+                            failures.append(
+                                CheckResult(name, False, f"status report {name} literal command directory is group/world writable")
+                            )
         if data.get("trusted_system_directory") is not True:
             failures.append(CheckResult(name, False, f"status report {name} command is not in a trusted system directory"))
         if data.get("is_regular") is not True:

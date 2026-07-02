@@ -863,6 +863,7 @@ grep -q 'pre-departure status snapshot JSON missing deployed source_revision' sc
 grep -q 'pre-departure status snapshot JSON dirty deployed source_revision is not production-ready' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON Source Revision row does not match deployed source_revision' scripts/pre_trip_prepare_pi.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/pre_trip_prepare_pi.sh
+grep -q '"Desktop Shell"' scripts/pre_trip_prepare_pi.sh
 grep -q 'def validate_successful_status_snapshot' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON missing required readiness check(s)' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure status snapshot JSON readiness check {name} ok is not boolean' scripts/pre_trip_prepare_pi.sh
@@ -2107,6 +2108,7 @@ grep -q 'MOB desktop launcher must not be configured for autostart' scripts/veri
 grep -q 'system/50-noaa-navionics-autologin.conf' scripts/verify_pi_recovery_exports.sh
 grep -q '"required_members": CORE_SETTINGS_FILES' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
+grep -q '"Desktop Shell"' scripts/verify_pi_recovery_exports.sh
 grep -q 'GPSD_READINESS_CHECKS = {' scripts/verify_pi_recovery_exports.sh
 grep -q 'CORE_SERVICE_CHECKS = {' scripts/verify_pi_recovery_exports.sh
 grep -q 'is missing required archive member' scripts/verify_pi_recovery_exports.sh
@@ -2491,6 +2493,7 @@ grep -q 'status snapshot JSON missing deployed source_revision' scripts/post_tri
 grep -q 'status snapshot JSON dirty deployed source_revision is not production-ready' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing non-empty {field} list' scripts/post_trip_collect_pi.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/post_trip_collect_pi.sh
+grep -q '"Desktop Shell"' scripts/post_trip_collect_pi.sh
 grep -q 'def validate_successful_status_snapshot' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON missing required readiness check(s)' scripts/post_trip_collect_pi.sh
 grep -q 'status snapshot JSON readiness check {name} ok is not boolean' scripts/post_trip_collect_pi.sh
@@ -3424,6 +3427,7 @@ grep -q 'check "Python command integrity" python3_command' scripts/verify_pi.sh
 grep -q 'python3_cmd="$(python3_command)" || python3_cmd="/bin/false"' scripts/verify_pi.sh
 grep -q 'check "display power command integrity" check_display_power_command_integrity' scripts/verify_pi.sh
 grep -q 'check "desktop launcher shell integrity" check_root_trusted_system_executable_path_integrity /bin/sh "desktop launcher shell"' scripts/verify_pi.sh
+grep -q '"Desktop Shell"' scripts/verify_pi.sh
 ! grep -q 'check "display power command" command -v xset' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" XAUTHORITY="$xauthority" xset q' scripts/verify_pi.sh
 ! grep -q 'DISPLAY="$display" xset q' scripts/verify_pi.sh
@@ -5651,6 +5655,10 @@ grep -q 'status report GPS Time Source usable lines contain control characters' 
 grep -q 'status report GPS Time Source did not prove selected or combined GPS time' src/noaa_navionics/report.py
 grep -q 'status report {name} check has no structured command data' src/noaa_navionics/report.py
 grep -q 'status report {name} command is not in a trusted system directory' src/noaa_navionics/report.py
+grep -q '"Desktop Shell": "sh"' src/noaa_navionics/report.py
+grep -q 'status report {name} command path is not /bin/sh' src/noaa_navionics/report.py
+grep -q 'resolved_trusted_system_directory' src/noaa_navionics/report.py
+grep -q 'literal command directory owner is not root' src/noaa_navionics/report.py
 grep -q '("uid", "command owner")' src/noaa_navionics/report.py
 grep -q 'is not root' src/noaa_navionics/report.py
 grep -q '"system_clock_synchronized"' src/noaa_navionics/health.py
@@ -5674,6 +5682,10 @@ grep -q '"stable_path"' src/noaa_navionics/health.py
 grep -q '"volatile_path"' src/noaa_navionics/health.py
 grep -q '"is_character_device"' src/noaa_navionics/health.py
 grep -q '"trusted_system_directory"' src/noaa_navionics/health.py
+grep -q 'def check_desktop_shell_tool' src/noaa_navionics/health.py
+grep -q '_trusted_system_executable_path_evidence("sh", path, resolved_path)' src/noaa_navionics/health.py
+grep -q '"resolved_trusted_system_directory"' src/noaa_navionics/health.py
+grep -q '"path_directory_mode"' src/noaa_navionics/health.py
 grep -q '"directory_mode"' src/noaa_navionics/health.py
 grep -q '_trusted_command_evidence' src/noaa_navionics/health.py
 grep -q '"version_info"' src/noaa_navionics/health.py
@@ -5801,8 +5813,8 @@ grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' R
 grep -q 'GPSD-mode READY reports also require structured GPSD Config evidence' docs/sailboat-pi.md
 grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' README.md
 grep -q 'GPSD-mode READY reports also require structured Chrony Config and GPS Time Source evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured OpenCPN, Display Power, and Sleep command evidence' README.md
-grep -q 'READY reports also require structured OpenCPN, Display Power, and Sleep command evidence' docs/sailboat-pi.md
+grep -q 'READY reports also require structured OpenCPN, Display Power, Desktop Shell, and Sleep command evidence' README.md
+grep -q 'READY reports also require structured OpenCPN, Display Power, Desktop Shell, and Sleep command evidence' docs/sailboat-pi.md
 grep -q 'def format_gps_summary' src/noaa_navionics/status_gui.py
 grep -q 'def write_current_position_mark' src/noaa_navionics/status_gui.py
 grep -q 'def _position_mark_freshness_failure' src/noaa_navionics/status_gui.py
@@ -9654,6 +9666,7 @@ core_readiness_checks = [
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Desktop Shell",
     "Sleep",
     "Chart Package",
     "Charts",
@@ -10745,6 +10758,7 @@ core_readiness_checks = [
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Desktop Shell",
     "Sleep",
     "Chart Package",
     "Charts",
@@ -12306,6 +12320,7 @@ checks = {
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Desktop Shell",
     "Sleep",
     "Chart Package",
     "Charts",
@@ -12475,6 +12490,7 @@ grep -q 'gps_fix latitude is not numeric' tests/test_downloader.py
 grep -q 'track_log latest_latitude is not numeric' tests/test_downloader.py
 grep -q 'def validate_required_rows' scripts/check_pi_status.sh
 grep -q 'CORE_READINESS_CHECKS = {' scripts/check_pi_status.sh
+grep -q '"Desktop Shell"' scripts/check_pi_status.sh
 grep -q 'GPSD_READINESS_CHECKS = {' scripts/check_pi_status.sh
 grep -q 'SERIAL_READINESS_CHECKS = {' scripts/check_pi_status.sh
 grep -q 'CORE_SERVICE_CHECKS = {' scripts/check_pi_status.sh
@@ -15036,6 +15052,7 @@ CORE_READINESS_CHECKS = [
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Desktop Shell",
     "Sleep",
     "Chart Package",
     "Charts",

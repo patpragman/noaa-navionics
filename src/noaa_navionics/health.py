@@ -99,6 +99,7 @@ def run_preflight(
         check_tkinter(),
         check_opencpn(),
         check_display_power_tool(),
+        check_desktop_shell_tool(),
         check_sleep_tool(),
         check_chart_package(chart_package, chart_value),
         check_chart_dir(chart_dir),
@@ -541,6 +542,92 @@ def check_sleep_tool() -> CheckResult:
         )
     assert path is not None
     return CheckResult("Sleep", True, f"trusted executable at {path}", _trusted_command_evidence("sleep", path))
+
+
+def check_desktop_shell_tool(shell_path: Path = Path("/bin/sh")) -> CheckResult:
+    path = Path(shell_path)
+    error = _trusted_system_executable_path_error(path, "Desktop Shell command")
+    if error:
+        return CheckResult(
+            "Desktop Shell",
+            False,
+            f"{error}; desktop launchers require a trusted /bin/sh entrypoint",
+        )
+    resolved_path = path.resolve(strict=True)
+    return CheckResult(
+        "Desktop Shell",
+        True,
+        f"trusted executable at {path} -> {resolved_path}",
+        _trusted_system_executable_path_evidence("sh", path, resolved_path),
+    )
+
+
+def _trusted_system_executable_path_error(path: Path, label: str) -> str:
+    if not path.is_absolute():
+        return f"{label} path is not absolute: {path}"
+    if path.parent not in TRUSTED_SYSTEM_COMMAND_DIRS:
+        return f"{label} directory is not a trusted system directory: {path.parent}"
+    try:
+        resolved_path = path.resolve(strict=True)
+    except OSError as exc:
+        return f"could not resolve {label} path {path}: {exc}"
+    if resolved_path.parent not in TRUSTED_SYSTEM_COMMAND_DIRS:
+        return f"{label} resolves outside trusted system directories: {path} -> {resolved_path}"
+    if not resolved_path.is_file():
+        return f"{label} is not a regular file after resolution: {path} -> {resolved_path}"
+    if not os.access(resolved_path, os.X_OK):
+        return f"{label} is not executable after resolution: {resolved_path}"
+    try:
+        stat_result = resolved_path.stat()
+        parent_stat = resolved_path.parent.stat()
+        path_parent_stat = path.parent.stat()
+    except OSError as exc:
+        return f"could not inspect {label} {path}: {exc}"
+    for item_label, stat_value in (
+        (label, stat_result),
+        (f"{label} resolved directory", parent_stat),
+        (f"{label} literal directory", path_parent_stat),
+    ):
+        mode = stat_value.st_mode & 0o777
+        if mode & 0o022:
+            return f"{item_label} has permissions {mode:04o}, expected no group/other write bits"
+    expected_uids = {0} if _is_raspberry_pi() else {0, os.getuid()}
+    expected_text = "root" if _is_raspberry_pi() else f"root or {os.getuid()}"
+    if path_parent_stat.st_uid not in expected_uids:
+        return f"{label} literal directory is owned by uid {path_parent_stat.st_uid}, expected {expected_text}: {path.parent}"
+    if parent_stat.st_uid not in expected_uids:
+        return f"{label} resolved directory is owned by uid {parent_stat.st_uid}, expected {expected_text}: {resolved_path.parent}"
+    if stat_result.st_uid not in expected_uids:
+        return f"{label} is owned by uid {stat_result.st_uid}, expected {expected_text}: {resolved_path}"
+    return ""
+
+
+def _trusted_system_executable_path_evidence(command: str, path: Path, resolved_path: Path) -> dict[str, object]:
+    stat_result = resolved_path.stat()
+    parent_stat = resolved_path.parent.stat()
+    path_parent_stat = path.parent.stat()
+    symlink_component = _first_symlink_ancestor(path.parent)
+    return {
+        "command": command,
+        "path": str(path),
+        "directory": str(path.parent),
+        "is_absolute": path.is_absolute(),
+        "is_symlink": path.is_symlink(),
+        "path_symlink_component": "" if symlink_component is None else str(symlink_component),
+        "trusted_system_directory": path.parent in TRUSTED_SYSTEM_COMMAND_DIRS,
+        "resolved_path": str(resolved_path),
+        "resolved_directory": str(resolved_path.parent),
+        "resolved_trusted_system_directory": resolved_path.parent in TRUSTED_SYSTEM_COMMAND_DIRS,
+        "is_regular": resolved_path.is_file(),
+        "executable": os.access(resolved_path, os.X_OK),
+        "uid": stat_result.st_uid,
+        "directory_uid": parent_stat.st_uid,
+        "path_directory_uid": path_parent_stat.st_uid,
+        "expected_uids": sorted({0} if _is_raspberry_pi() else {0, os.getuid()}),
+        "mode": f"{stat_result.st_mode & 0o777:04o}",
+        "directory_mode": f"{parent_stat.st_mode & 0o777:04o}",
+        "path_directory_mode": f"{path_parent_stat.st_mode & 0o777:04o}",
+    }
 
 
 def _trusted_command_evidence(

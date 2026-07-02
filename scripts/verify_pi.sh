@@ -2525,6 +2525,7 @@ required_checks = {
     "Tkinter",
     "OpenCPN",
     "Display Power",
+    "Desktop Shell",
     "Sleep",
     "Chart Package",
     "Charts",
