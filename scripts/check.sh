@@ -982,6 +982,8 @@ grep -q 'promoted restored file is reopened through a no-follow descriptor' READ
 grep -q 'promoted restored file is reopened through a no-follow descriptor' docs/sailboat-pi.md
 grep -q 'Overwrite backups read the existing target through a no-follow descriptor' README.md
 grep -q 'Overwrite backups read the existing target through a no-follow descriptor' docs/sailboat-pi.md
+grep -q 'reject writable, misowned, or category-oversized source files' README.md
+grep -q 'reject writable, misowned, or category-oversized source files' docs/sailboat-pi.md
 grep -q 'dry-run by default and requires `--apply` before writing' README.md
 grep -q 'dry-run by default and requires `--apply` before writing' docs/sailboat-pi.md
 grep -q 'does not restore root-owned GPSD, chrony, LightDM' README.md
@@ -1920,7 +1922,12 @@ grep -q 'def read_trusted_restore_file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_private_file_content' scripts/restore_pi_recovery_user_data.sh
 grep -q 'def validate_promoted_restore_file' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_promoted_restore_file(path, data)' scripts/restore_pi_recovery_user_data.sh
-grep -q 'source_data = read_trusted_restore_file(path, "backup source", expected_stat)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'is too large to back up safely' scripts/restore_pi_recovery_user_data.sh
+grep -q 'opened {label} is too large to back up safely' scripts/restore_pi_recovery_user_data.sh
+grep -q 'source_data = read_trusted_restore_file(path, "backup source", expected_stat, max_existing_bytes)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'backup_existing(path, backup_root, existing_stat, max_existing_bytes)' scripts/restore_pi_recovery_user_data.sh
+grep -q 'max_existing_bytes=max_existing_bytes' scripts/restore_pi_recovery_user_data.sh
+grep -q 'planned: list\[tuple\[str, Path, bytes, int\]\]' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_restore_target_state_before_promotion(path, existing_stat)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)' scripts/restore_pi_recovery_user_data.sh
 grep -q 'validate_private_file_content(backup_path, source_data, "promoted restore backup")' scripts/restore_pi_recovery_user_data.sh
@@ -14038,6 +14045,30 @@ if [[ "$recovery_restore_code" -ne 1 ]]; then
   exit 1
 fi
 grep -q 'restore target already exists; use --overwrite' "$verify_output"
+
+restore_saved_config="$tmpdir/restore-saved-config.ini"
+cp "$restore_home/.config/noaa-navionics/config.ini" "$restore_saved_config"
+python3 - "$restore_home/.config/noaa-navionics/config.ini" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_bytes(b"x" * (4 * 1024 * 1024 + 1))
+path.chmod(0o600)
+PY
+set +e
+HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply --overwrite >"$verify_output" 2>&1
+recovery_restore_code=$?
+set -e
+cp "$restore_saved_config" "$restore_home/.config/noaa-navionics/config.ini"
+chmod 0600 "$restore_home/.config/noaa-navionics/config.ini"
+if [[ "$recovery_restore_code" -ne 1 ]]; then
+  cat "$verify_output" >&2
+  echo "expected restore_pi_recovery_user_data.sh to reject oversized overwrite backup sources with exit 1" >&2
+  exit 1
+fi
+grep -q 'backup source is too large to back up safely' "$verify_output"
+! grep -q 'Restored 5 recovery user data file(s).' "$verify_output"
 
 HOME="$restore_home" scripts/restore_pi_recovery_user_data.sh "$recovery_restore_dir" --apply --overwrite >"$verify_output" 2>&1
 grep -q 'Backed up replaced files under:' "$verify_output"

@@ -714,12 +714,14 @@ def fsync_parent(path: Path) -> None:
         os.close(fd)
 
 
-def read_trusted_restore_file(path: Path, label: str, expected_stat: os.stat_result) -> bytes:
+def read_trusted_restore_file(path: Path, label: str, expected_stat: os.stat_result, max_bytes: int) -> bytes:
     inspected_stat = inspect_existing_restore_target(path, label)
     if inspected_stat is None:
         fail(f"{label} is missing before backup: {path}")
     if not restore_target_stat_matches(inspected_stat, expected_stat):
         fail(f"{label} changed before backup read: {path}")
+    if inspected_stat.st_size > max_bytes:
+        fail(f"{label} is too large to back up safely: {path} ({inspected_stat.st_size} bytes > {max_bytes})")
 
     try:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -736,6 +738,8 @@ def read_trusted_restore_file(path: Path, label: str, expected_stat: os.stat_res
         opened_mode = stat.S_IMODE(opened.st_mode)
         if opened_mode & 0o022:
             fail(f"{label} {path} has permissions {opened_mode:04o}, expected no group/other write bits")
+        if opened.st_size > max_bytes:
+            fail(f"opened {label} is too large to back up safely: {path} ({opened.st_size} bytes > {max_bytes})")
         chunks = []
         while True:
             chunk = os.read(fd, 1024 * 1024)
@@ -789,10 +793,10 @@ def validate_private_file_content(path: Path, expected_data: bytes, label: str) 
         os.close(fd)
 
 
-def backup_existing(path: Path, backup_root: Path, expected_stat: Optional[os.stat_result]) -> None:
+def backup_existing(path: Path, backup_root: Path, expected_stat: Optional[os.stat_result], max_existing_bytes: int) -> None:
     if expected_stat is None:
         return
-    source_data = read_trusted_restore_file(path, "backup source", expected_stat)
+    source_data = read_trusted_restore_file(path, "backup source", expected_stat, max_existing_bytes)
     backup_path = backup_root / path.resolve().relative_to("/")
     ensure_private_directory_tree(backup_path.parent, backup_root, apply=True)
     try:
@@ -860,7 +864,15 @@ def cleanup_private_restore_temp(path: Path) -> None:
         os.close(parent_fd)
 
 
-def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, overwrite: bool, apply: bool) -> str:
+def write_file_atomic(
+    path: Path,
+    data: bytes,
+    backup_root: Optional[Path],
+    *,
+    overwrite: bool,
+    apply: bool,
+    max_existing_bytes: int,
+) -> str:
     existing_stat = inspect_existing_restore_target(path, "restore")
     if existing_stat is not None and not overwrite:
         fail(f"restore target already exists; use --overwrite to replace it: {path}")
@@ -868,7 +880,7 @@ def write_file_atomic(path: Path, data: bytes, backup_root: Optional[Path], *, o
         return "would restore"
     ensure_private_directory(path.parent, apply=True)
     if backup_root is not None:
-        backup_existing(path, backup_root, existing_stat)
+        backup_existing(path, backup_root, existing_stat, max_existing_bytes)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     tmp_path = Path(tmp_name)
     try:
@@ -1079,18 +1091,28 @@ def main() -> None:
         backup_root = home / ".cache" / "noaa-navionics" / "recovery-restore-backups" / stamp
         ensure_private_directory_tree(backup_root, home / ".cache", apply=True)
 
-    planned: list[tuple[str, Path, bytes]] = [
-        ("settings", home / ".config" / "noaa-navionics" / "config.ini", config_bytes),
+    planned: list[tuple[str, Path, bytes, int]] = [
+        (
+            "settings",
+            home / ".config" / "noaa-navionics" / "config.ini",
+            config_bytes,
+            MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+        ),
     ]
     launcher = settings.get("noaa-navionics/launcher.env")
     if launcher is not None:
-        planned.append(("settings", home / ".config" / "noaa-navionics" / "launcher.env", launcher))
+        planned.append((
+            "settings",
+            home / ".config" / "noaa-navionics" / "launcher.env",
+            launcher,
+            MAX_SETTING_ARCHIVE_MEMBER_BYTES,
+        ))
 
     for name, data in sorted(opencpn.items()):
         relative = opencpn_restore_relative(name)
         if relative is None:
             continue
-        planned.append(("opencpn", home / ".opencpn" / relative, data))
+        planned.append(("opencpn", home / ".opencpn" / relative, data, MAX_OPENCPN_ARCHIVE_MEMBER_BYTES))
 
     for name, data in sorted(tracks.items()):
         if name in {"README.txt", "manifest.json"}:
@@ -1098,14 +1120,21 @@ def main() -> None:
         parts = PurePosixPath(name).parts
         if len(parts) != 2 or parts[0] != "tracks" or not parts[1].endswith(".gpx"):
             fail(f"tracks archive contains unexpected restore member: {name}")
-        planned.append(("tracks", track_dir / parts[1], data))
+        planned.append(("tracks", track_dir / parts[1], data, MAX_TRACK_ARCHIVE_MEMBER_BYTES))
 
     if not apply:
         print("Dry run only. Re-run with --apply to write files.")
 
     restored = 0
-    for category, target, data in planned:
-        action = write_file_atomic(target, data, backup_root, overwrite=overwrite, apply=apply)
+    for category, target, data, max_existing_bytes in planned:
+        action = write_file_atomic(
+            target,
+            data,
+            backup_root,
+            overwrite=overwrite,
+            apply=apply,
+            max_existing_bytes=max_existing_bytes,
+        )
         restored += 1
         print(f"{action} {category}: {target}")
 
