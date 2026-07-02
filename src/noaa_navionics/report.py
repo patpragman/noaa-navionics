@@ -1063,18 +1063,34 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
             if not isinstance(data, dict):
                 failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD check has no structured data"))
             else:
-                config_path_text = str(data.get("config_path", ""))
-                config_path_failure = _status_control_character_failure(config_path_text, "OpenCPN GPSD config path")
-                if config_path_failure:
-                    failures.append(CheckResult("OpenCPN GPSD", False, config_path_failure))
-                config_path = config_path_text.strip()
-                if not _status_absolute_path(config_path):
+                config_path = _opencpn_readiness_text(
+                    data,
+                    "config_path",
+                    "OpenCPN GPSD config path",
+                    "OpenCPN GPSD",
+                    failures,
+                )
+                if config_path is not None and not _status_absolute_path(config_path):
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD config path is not absolute"))
                 if data.get("config_exists") is not True:
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD config does not exist"))
-                expected_host = normalize_gpsd_host(str(config.get("gpsd_host", "")).strip())
+                configured_host = _opencpn_readiness_text(
+                    config,
+                    "gpsd_host",
+                    "config gpsd_host",
+                    "OpenCPN GPSD",
+                    failures,
+                )
+                expected_host = normalize_gpsd_host(configured_host or "")
                 expected_port = config.get("gpsd_port")
-                if str(data.get("expected_host", "")).strip() != expected_host:
+                reported_host = _opencpn_readiness_text(
+                    data,
+                    "expected_host",
+                    "OpenCPN GPSD expected_host",
+                    "OpenCPN GPSD",
+                    failures,
+                )
+                if reported_host is not None and reported_host != expected_host:
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD host does not match configured GPSD host"))
                 if data.get("expected_port") != expected_port:
                     failures.append(CheckResult("OpenCPN GPSD", False, "status report OpenCPN GPSD port does not match configured GPSD port"))
@@ -1088,7 +1104,7 @@ def _opencpn_readiness_validation_failures(report: dict[str, object]) -> list[Ch
                         connection
                         for connection in connections
                         if isinstance(connection, dict)
-                        and str(connection.get("host", "")).strip() == expected_host
+                        and _opencpn_connection_host(connection) == expected_host
                         and connection.get("port") == expected_port
                     ]
                     if not matching:
@@ -1116,6 +1132,16 @@ def _opencpn_readiness_text(
     control_failure = _status_control_character_failure(text, label)
     if control_failure:
         failures.append(CheckResult(check_name, False, control_failure))
+        return None
+    return text
+
+
+def _opencpn_connection_host(connection: dict[str, object]) -> Optional[str]:
+    host = connection.get("host")
+    if not isinstance(host, str):
+        return None
+    text = host.strip()
+    if _status_text_has_control_char(text):
         return None
     return text
 

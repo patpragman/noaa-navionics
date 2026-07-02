@@ -5280,6 +5280,9 @@ grep -q 'chart directory is not text' tests/test_downloader.py
 grep -q 'OpenCPN Charts parsed directories are not a text list' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN Charts did not prove configured chart directory' src/noaa_navionics/report.py
 grep -q 'status report OpenCPN GPSD check has no structured data' src/noaa_navionics/report.py
+grep -q 'def _opencpn_connection_host' src/noaa_navionics/report.py
+grep -q 'expected_host is not text' tests/test_downloader.py
+grep -q 'expected_host contains control characters' tests/test_downloader.py
 grep -q 'status report OpenCPN GPSD found unexpected enabled GPSD connections' src/noaa_navionics/report.py
 grep -q 'status report {expected_name} check has no structured fix data' src/noaa_navionics/report.py
 grep -q 'status report {expected_name} timestamp does not match gps_fix' src/noaa_navionics/report.py
