@@ -782,21 +782,80 @@ def _chart_readiness_validation_failures(
                 failures.append(CheckResult("Manifest", False, "status report Manifest path is not absolute"))
             if manifest_path is not None and manifest_path != str(manifest.get("path", "")).strip():
                 failures.append(CheckResult("Manifest", False, "status report Manifest path does not match manifest summary"))
-            for row_field, summary_field, detail in (
-                ("created_at", "created_at", "created_at does not match manifest summary"),
-                ("created_at_source", "created_at_source", "created_at_source does not match manifest summary"),
-                ("package", "package", "package label does not match manifest summary"),
-                ("package_filename", "package_filename", "package filename does not match manifest summary"),
-                ("package_url", "url", "package URL does not match manifest summary"),
-                ("download_path", "download_path", "download path does not match manifest summary"),
-                ("download_url", "download_url", "download URL does not match manifest summary"),
-                ("sha256", "sha256", "SHA-256 does not match manifest summary"),
-                ("extract_path", "extract_path", "extract path does not match manifest summary"),
+            manifest_row_text: dict[str, str] = {}
+            for row_field, summary_field, detail, row_label, summary_label in (
+                (
+                    "created_at",
+                    "created_at",
+                    "created_at does not match manifest summary",
+                    "Manifest created_at",
+                    "manifest summary created_at",
+                ),
+                (
+                    "created_at_source",
+                    "created_at_source",
+                    "created_at_source does not match manifest summary",
+                    "Manifest created_at_source",
+                    "manifest summary created_at_source",
+                ),
+                (
+                    "package",
+                    "package",
+                    "package label does not match manifest summary",
+                    "Manifest package",
+                    "manifest summary package",
+                ),
+                (
+                    "package_filename",
+                    "package_filename",
+                    "package filename does not match manifest summary",
+                    "Manifest package_filename",
+                    "manifest summary package_filename",
+                ),
+                (
+                    "package_url",
+                    "url",
+                    "package URL does not match manifest summary",
+                    "Manifest package_url",
+                    "manifest summary url",
+                ),
+                (
+                    "download_path",
+                    "download_path",
+                    "download path does not match manifest summary",
+                    "Manifest download path",
+                    "manifest summary download path",
+                ),
+                (
+                    "download_url",
+                    "download_url",
+                    "download URL does not match manifest summary",
+                    "Manifest download_url",
+                    "manifest summary download_url",
+                ),
+                (
+                    "sha256",
+                    "sha256",
+                    "SHA-256 does not match manifest summary",
+                    "Manifest sha256",
+                    "manifest summary sha256",
+                ),
+                (
+                    "extract_path",
+                    "extract_path",
+                    "extract path does not match manifest summary",
+                    "Manifest extract path",
+                    "manifest summary extract path",
+                ),
             ):
-                if str(data.get(row_field, "")).strip() != str(manifest.get(summary_field, "")).strip():
+                row_value = _manifest_readiness_text(data, row_field, row_label, failures)
+                summary_value = _manifest_readiness_text(manifest, summary_field, summary_label, failures)
+                if row_value is not None:
+                    manifest_row_text[row_field] = row_value
+                if row_value is not None and summary_value is not None and row_value != summary_value:
                     failures.append(CheckResult("Manifest", False, f"status report Manifest {detail}"))
-            created_at_source = str(data.get("created_at_source", "")).strip()
-            if created_at_source not in {"download", "previous-manifest"}:
+            created_at_source = manifest_row_text.get("created_at_source")
+            if created_at_source is not None and created_at_source not in {"download", "previous-manifest"}:
                 failures.append(CheckResult("Manifest", False, "status report Manifest created_at_source is not verified"))
             expected_package = str(config.get("chart_package", "")).strip().lower()
             expected_value = str(config.get("chart_value", "")).strip()
