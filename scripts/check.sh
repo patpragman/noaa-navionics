@@ -3210,7 +3210,9 @@ grep -q '"$python3_cmd" - "$lightdm_dir" "$lightdm_conf_dir" "$autologin_conf" "
 grep -q '"$python3_cmd" - "$autologin_user"' scripts/configure_desktop_autologin.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_desktop_autologin.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_desktop_autologin.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$source_identity" "$temp" "$target" "$mode"' scripts/configure_desktop_autologin.sh
 grep -q '"$python3_cmd" - "$tmp" "$autologin_user" "$autologin_session"' scripts/configure_desktop_autologin.sh
+grep -q 'tmp_identity="$("$python3_cmd" - "$tmp" "$autologin_user" "$autologin_session"' scripts/configure_desktop_autologin.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_desktop_autologin.sh
 grep -q 'generated LightDM autologin temp .* expected 0600' scripts/configure_desktop_autologin.sh
 grep -q 'os.fsync(handle.fileno())' scripts/configure_desktop_autologin.sh
@@ -3233,12 +3235,12 @@ user_validate = text.index('"$python3_cmd" - "$autologin_user"', python_resolve)
 path_validate = text.index('validate_lightdm_autologin_path', user_validate)
 sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2', path_validate)
 systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2', sudo_resolve)
-install = text.index('install_root_file_atomic "$tmp" "$autologin_conf" 0644', systemctl_resolve)
+install = text.index('install_root_file_atomic "$tmp" "$tmp_identity" "$autologin_conf" 0644', systemctl_resolve)
 target = text.index('run "$sudo_cmd" "$systemctl_cmd" set-default graphical.target', install)
 if not python_resolve < user_validate < path_validate < sudo_resolve < systemctl_resolve < install < target:
     raise SystemExit("desktop autologin setup must validate Python before helper checks and sudo/systemctl before root changes")
 PY
-grep -q 'install_root_file_atomic "$tmp" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
+grep -q 'install_root_file_atomic "$tmp" "$tmp_identity" "$autologin_conf" 0644' scripts/configure_desktop_autologin.sh
 grep -q 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh
 test "$(grep -c 'validate_lightdm_autologin_path' scripts/configure_desktop_autologin.sh)" -ge 5
 grep -q 'first_symlink_ancestor' scripts/configure_desktop_autologin.sh
@@ -3282,7 +3284,7 @@ grep -q 'cleanup_private_temp_file(tmp_path, label="GPSD config validation temp"
 grep -Fq 'suffix="${1#/dev/serial/by-id/}"' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" != */*' scripts/configure_gpsd.sh
 grep -Fq '"$suffix" =~ ^[A-Za-z0-9._:+@-]+$' scripts/configure_gpsd.sh
-grep -q 'install_root_file_atomic "$tmp" "$gpsd_conf" 0644' scripts/configure_gpsd.sh
+grep -q 'install_root_file_atomic "$tmp" "$tmp_identity" "$gpsd_conf" 0644' scripts/configure_gpsd.sh
 grep -q 'require_trusted_system_command()' scripts/configure_gpsd.sh
 grep -q 'path_in_trusted_system_dir()' scripts/configure_gpsd.sh
 grep -q 'systemctl_cmd="$(require_trusted_system_command systemctl "Systemctl command")"' scripts/configure_gpsd.sh
@@ -3296,6 +3298,7 @@ grep -q '"$python3_cmd" - "$repo_root" "$config" "$dry_run"' scripts/configure_g
 grep -q '"$python3_cmd" - "$gpsd_conf" "$dry_run"' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$path"' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$target" "$mode"' scripts/configure_gpsd.sh
+grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$source_identity" "$temp" "$target" "$mode"' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$python3_cmd" - "$source" "$backup"' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" daemon-reload' scripts/configure_gpsd.sh
 grep -q '"$sudo_cmd" "$systemctl_cmd" enable --now gpsd.socket gpsd.service' scripts/configure_gpsd.sh
@@ -3310,6 +3313,7 @@ grep -q 'cleanup_backup_file(backup)' scripts/configure_gpsd.sh
 grep -q 'root config backup changed before cleanup; leaving it in place' scripts/configure_gpsd.sh
 ! grep -q 'backup.unlink()' scripts/configure_gpsd.sh
 grep -q '"$python3_cmd" - "$tmp" "$device"' scripts/configure_gpsd.sh
+grep -q 'tmp_identity="$("$python3_cmd" - "$tmp" "$device"' scripts/configure_gpsd.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_gpsd.sh
 grep -q 'generated GPSD config temp .* expected 0600' scripts/configure_gpsd.sh
 grep -q 'os.fsync(handle.fileno())' scripts/configure_gpsd.sh
@@ -3330,7 +3334,7 @@ validate_gpsd = text.index('validate_gpsd_config_path', python_resolve)
 sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2', validate_gpsd)
 systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2', sudo_resolve)
 backup = text.index('backup_root_file_private "$gpsd_conf" "$backup"')
-install = text.index('install_root_file_atomic "$tmp" "$gpsd_conf" 0644')
+install = text.index('install_root_file_atomic "$tmp" "$tmp_identity" "$gpsd_conf" 0644')
 reload = text.index('"$sudo_cmd" "$systemctl_cmd" daemon-reload')
 if not python_resolve < prepare < validate_app < validate_gpsd < sudo_resolve < systemctl_resolve < backup < install < reload:
     raise SystemExit("GPSD setup must validate Python before app/GPSD config helpers and sudo/systemctl before root changes")
@@ -3341,6 +3345,8 @@ grep -q 'promote those temp files by a no-follow opened target-directory descrip
 grep -q 'promote those temp files by a no-follow opened target-directory descriptor' docs/sailboat-pi.md
 grep -q 'same validated inode and matches its source before syncing it' README.md
 grep -q 'same validated inode and matches its source before syncing it' docs/sailboat-pi.md
+grep -q 'Generated root config source temp identities are captured after writing and rechecked before root promotion or cleanup' README.md
+grep -q 'Generated root config source temp identities are captured after writing and rechecked before root promotion or cleanup' docs/sailboat-pi.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' README.md
 grep -q 'Failed root temporary config cleanup is also no-follow and same-file validated before unlinking' docs/sailboat-pi.md
 grep -q 'Failed installer source-revision and root text temporary cleanup is also no-follow and same-file validated before unlinking' README.md
@@ -3392,6 +3398,8 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'cleanup_root_temp_file' "$script"
   grep -q 'cleanup_private_local_temp_file' "$script"
   grep -q 'cleanup_generated_config_temp()' "$script"
+  grep -q 'tmp_identity=""' "$script"
+  grep -q 'cleanup_private_local_temp_file "${tmp:-}" "${tmp_identity:-}"' "$script"
   grep -q 'trap cleanup_generated_config_temp EXIT' "$script"
   ! grep -q 'trap '\''rm -f "$tmp"'\'' EXIT' "$script"
   grep -q '"$sudo_cmd" mktemp "${target_dir}/.${target_name}.XXXXXX"' "$script"
@@ -3400,8 +3408,10 @@ for script in scripts/configure_gpsd.sh scripts/configure_gps_time.sh scripts/co
   grep -q 'verify_root_temp_file "$target_tmp" "$mode"' "$script"
   ! grep -q 'sync_path "$target_tmp"' "$script"
   grep -q 'cleanup_root_temp_file "$target_tmp"' "$script"
-  grep -q 'promote_root_temp_file "$source" "$target_tmp" "$target" "$mode"' "$script"
+  grep -q 'promote_root_temp_file "$source" "$source_identity" "$target_tmp" "$target" "$mode"' "$script"
   grep -q 'os.replace(temp.name, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)' "$script"
+  grep -q 'root config source changed before promotion' "$script"
+  grep -q 'root config source .* expected 0600' "$script"
   grep -q 'promoted root config is not the validated temp file' "$script"
   grep -q 'verify_promoted_root_file "$source" "$target" "$mode"' "$script"
   grep -q 'sync_path "$target"' "$script"
@@ -3493,7 +3503,7 @@ generate = text.index('"$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run"', valid
 sudo_resolve = text.index('sudo_cmd="$(sudo_command)" || exit 2', generate)
 systemctl_resolve = text.index('systemctl_cmd="$(systemctl_command)" || exit 2', sudo_resolve)
 backup = text.index('backup_root_file_private "$chrony_conf" "$backup"', systemctl_resolve)
-install = text.index('install_root_file_atomic "$tmp" "$chrony_conf" 0644', backup)
+install = text.index('install_root_file_atomic "$tmp" "$tmp_identity" "$chrony_conf" 0644', backup)
 restart = text.index('"$sudo_cmd" "$systemctl_cmd" restart chrony', install)
 if not python_resolve < validate < generate < sudo_resolve < systemctl_resolve < backup < install < restart:
     raise SystemExit("GPS time setup must validate Python before chrony config helpers and sudo/systemctl before root changes")
@@ -3554,7 +3564,7 @@ grep -q 'with os.fdopen(fd, encoding="utf-8") as handle' scripts/configure_gps_t
 grep -q 'root or current user' scripts/configure_gps_time.sh
 grep -q 'unterminated NOAA Navionics GPS time block' scripts/configure_gps_time.sh
 grep -q 'END marker without BEGIN' scripts/configure_gps_time.sh
-grep -q 'install_root_file_atomic "$tmp" "$chrony_conf" 0644' scripts/configure_gps_time.sh
+grep -q 'install_root_file_atomic "$tmp" "$tmp_identity" "$chrony_conf" 0644' scripts/configure_gps_time.sh
 grep -q 'backup_root_file_private "$chrony_conf" "$backup"' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600' scripts/configure_gps_time.sh
 grep -q 'os.fchmod(dst_fd, 0o600)' scripts/configure_gps_time.sh
@@ -3562,6 +3572,7 @@ grep -q 'cleanup_backup_file(backup)' scripts/configure_gps_time.sh
 grep -q 'root config backup changed before cleanup; leaving it in place' scripts/configure_gps_time.sh
 ! grep -q 'backup.unlink()' scripts/configure_gps_time.sh
 grep -q 'write_generated_chrony_config(target, "".join(filtered))' scripts/configure_gps_time.sh
+grep -q 'tmp_identity="$("$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run"' scripts/configure_gps_time.sh
 grep -q 'os.O_WRONLY | os.O_TRUNC | nofollow' scripts/configure_gps_time.sh
 grep -q 'generated chrony config temp .* expected 0600' scripts/configure_gps_time.sh
 grep -q 'os.fsync(handle.fileno())' scripts/configure_gps_time.sh

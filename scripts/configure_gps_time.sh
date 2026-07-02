@@ -20,14 +20,16 @@ utc_timestamp() {
 
 cleanup_private_local_temp_file() {
   local path="$1"
+  local expected_identity="${2:-}"
   [[ -n "$path" ]] || return 0
-  "$python3_cmd" - "$path" <<'PY'
+  "$python3_cmd" - "$path" "$expected_identity" <<'PY'
 from pathlib import Path
 import os
 import stat
 import sys
 
 path = Path(sys.argv[1])
+expected_identity = sys.argv[2]
 nofollow = getattr(os, "O_NOFOLLOW", 0)
 
 try:
@@ -41,6 +43,11 @@ except OSError as exc:
 if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) != 0o600:
     print(f"generated config temp is not a trusted private file; leaving it in place: {path}", file=sys.stderr)
     raise SystemExit(0)
+if expected_identity:
+    current_identity = f"{before.st_uid}:{before.st_dev}:{before.st_ino}"
+    if current_identity != expected_identity:
+        print(f"generated config temp changed before cleanup; leaving it in place: {path}", file=sys.stderr)
+        raise SystemExit(0)
 
 try:
     dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow)
@@ -362,19 +369,21 @@ PY
 
 promote_root_temp_file() {
   local source="$1"
-  local temp="$2"
-  local target="$3"
-  local mode="$4"
-  "$sudo_cmd" "$python3_cmd" - "$source" "$temp" "$target" "$mode" <<'PY'
+  local source_identity="$2"
+  local temp="$3"
+  local target="$4"
+  local mode="$5"
+  "$sudo_cmd" "$python3_cmd" - "$source" "$source_identity" "$temp" "$target" "$mode" <<'PY'
 from pathlib import Path
 import os
 import stat
 import sys
 
 source = Path(sys.argv[1])
-temp = Path(sys.argv[2])
-target = Path(sys.argv[3])
-expected_mode = int(sys.argv[4], 8)
+source_identity = sys.argv[2]
+temp = Path(sys.argv[3])
+target = Path(sys.argv[4])
+expected_mode = int(sys.argv[5], 8)
 nofollow = getattr(os, "O_NOFOLLOW", 0)
 
 if temp.parent != target.parent:
@@ -399,6 +408,11 @@ try:
     source_stat = os.fstat(source_fd)
     if not stat.S_ISREG(source_stat.st_mode):
         raise SystemExit(f"root config source is not a regular file: {source}")
+    if source_identity and f"{source_stat.st_uid}:{source_stat.st_dev}:{source_stat.st_ino}" != source_identity:
+        raise SystemExit(f"root config source changed before promotion: {source}")
+    source_mode = stat.S_IMODE(source_stat.st_mode)
+    if source_mode != 0o600:
+        raise SystemExit(f"root config source {source} has permissions {source_mode:04o}, expected 0600")
     source_bytes = read_fd(source_fd)
 finally:
     os.close(source_fd)
@@ -591,8 +605,9 @@ PY
 
 install_root_file_atomic() {
   local source="$1"
-  local target="$2"
-  local mode="$3"
+  local source_identity="$2"
+  local target="$3"
+  local mode="$4"
   local target_dir
   local target_name
   local target_tmp
@@ -618,7 +633,7 @@ install_root_file_atomic() {
     cleanup_root_temp_file "$target_tmp"
     return 1
   fi
-  if ! promote_root_temp_file "$source" "$target_tmp" "$target" "$mode"; then
+  if ! promote_root_temp_file "$source" "$source_identity" "$target_tmp" "$target" "$mode"; then
     cleanup_root_temp_file "$target_tmp"
     return 1
   fi
@@ -765,12 +780,13 @@ python3_cmd="$(python3_command)" || exit 2
 validate_chrony_config_path
 
 tmp="$(mktemp)"
+tmp_identity=""
 cleanup_generated_config_temp() {
-  cleanup_private_local_temp_file "${tmp:-}" || true
+  cleanup_private_local_temp_file "${tmp:-}" "${tmp_identity:-}" || true
 }
 trap cleanup_generated_config_temp EXIT
 
-"$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run" <<'PY'
+tmp_identity="$("$python3_cmd" - "$chrony_conf" "$tmp" "$dry_run" <<'PY'
 from pathlib import Path
 import os
 import stat
@@ -840,6 +856,7 @@ def write_generated_chrony_config(path: Path, text: str) -> None:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
+        print(f"{opened.st_uid}:{opened.st_dev}:{opened.st_ino}")
     finally:
         if fd >= 0:
             os.close(fd)
@@ -872,6 +889,7 @@ if filtered and filtered[-1].strip():
 filtered.append(block)
 write_generated_chrony_config(target, "".join(filtered))
 PY
+)"
 
 if [[ "$dry_run" -eq 1 ]]; then
   echo "Would update $chrony_conf with NOAA Navionics GPS time block:"
@@ -898,7 +916,7 @@ if [[ -e "$chrony_conf" ]]; then
   backup_root_file_private "$chrony_conf" "$backup"
 fi
 
-install_root_file_atomic "$tmp" "$chrony_conf" 0644
+install_root_file_atomic "$tmp" "$tmp_identity" "$chrony_conf" 0644
 "$sudo_cmd" "$systemctl_cmd" enable --now chrony
 "$sudo_cmd" "$systemctl_cmd" restart chrony
 if [[ "$restart_gpsd" -eq 1 ]]; then
