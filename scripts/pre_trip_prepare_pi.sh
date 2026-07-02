@@ -10,6 +10,7 @@ Raspberry Pi:
   1. Refresh NOAA charts on the Pi and run a post-refresh status report.
   2. Export a local recovery bundle and verify the exported archives.
   3. Run the live no-deploy, no-reboot pre-departure check.
+  4. Dry-run the clean shutdown path without powering off the Pi.
 
 Options:
   --device PATH       Stable GPS device path expected on the Pi
@@ -30,6 +31,8 @@ Options:
   --skip-recovery     Skip recovery export and local export verification
   --skip-pre-departure
                      Skip the live strict pre-departure verification
+  --skip-shutdown-check
+                     Skip the clean-shutdown dry run
 
 Options for skipped steps are rejected so refresh, recovery, GPS-device, and
 pre-departure controls cannot be mistaken for checks that still ran.
@@ -72,6 +75,7 @@ allow_dirty_set=0
 skip_refresh=0
 skip_recovery=0
 skip_pre_departure=0
+skip_shutdown_check=0
 opencpn_restarts=""
 opencpn_restarts_set=0
 max_opencpn_restarts=20
@@ -2350,6 +2354,10 @@ while [[ $# -gt 0 ]]; do
       skip_pre_departure=1
       shift
       ;;
+    --skip-shutdown-check)
+      skip_shutdown_check=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -2371,7 +2379,7 @@ fi
 validate_output_dir_arg "$output_dir"
 output_dir="$(strip_trailing_slashes "$output_dir")"
 
-if [[ "$skip_refresh" -eq 1 && "$skip_recovery" -eq 1 && "$skip_pre_departure" -eq 1 ]]; then
+if [[ "$skip_refresh" -eq 1 && "$skip_recovery" -eq 1 && "$skip_pre_departure" -eq 1 && "$skip_shutdown_check" -eq 1 ]]; then
   echo "At least one pre-trip preparation step must run" >&2
   exit 2
 fi
@@ -2411,12 +2419,14 @@ recovery_helper="${repo_root}/scripts/export_pi_recovery_bundle.sh"
 verify_recovery_helper="${repo_root}/scripts/verify_pi_recovery_exports.sh"
 pre_departure_helper="${repo_root}/scripts/pre_departure_check_pi.sh"
 status_helper="${repo_root}/scripts/check_pi_status.sh"
+shutdown_helper="${repo_root}/scripts/shutdown_pi_safely.sh"
 python3_cmd="$(require_local_command python3)"
 require_helper "$refresh_helper"
 require_helper "$recovery_helper"
 require_helper "$verify_recovery_helper"
 require_helper "$pre_departure_helper"
 require_helper "$status_helper"
+require_helper "$shutdown_helper"
 
 if [[ "$skip_refresh" -eq 0 ]]; then
   refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)
@@ -2474,6 +2484,12 @@ if [[ "$skip_pre_departure" -eq 0 ]]; then
   fi
 else
   printf '==> Skipping live pre-departure check\n'
+fi
+
+if [[ "$skip_shutdown_check" -eq 0 ]]; then
+  run_step "Dry-running clean Pi shutdown path" "$shutdown_helper" "$target" --dry-run
+else
+  printf '==> Skipping clean shutdown dry run\n'
 fi
 
 printf '\nPre-trip Pi preparation completed for %s.\n' "$target"

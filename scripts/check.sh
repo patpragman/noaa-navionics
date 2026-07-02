@@ -798,6 +798,8 @@ grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/seria
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' README.md
 grep -q 'pre-trip wrapper validates each local helper script through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before each helper execution, executes each helper through the validated no-follow descriptor' docs/sailboat-pi.md
+grep -q 'dry-runs the clean shutdown path without powering off the Pi' README.md
+grep -q 'dry-runs the clean shutdown path without powering off the Pi' docs/sailboat-pi.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before creating, syncing, writing, parsing, and cleaning up the private recovery-output capture' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components' README.md
@@ -809,6 +811,7 @@ grep -q 'cleanup_private_recovery_output_capture "${recovery_output:-}" || true'
 grep -q 'Chart-refresh options require the refresh step' scripts/pre_trip_prepare_pi.sh
 grep -q 'Recovery export options require the recovery step' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pre-departure verification options require the pre-departure step' scripts/pre_trip_prepare_pi.sh
+grep -q -- '--skip-shutdown-check' scripts/pre_trip_prepare_pi.sh
 grep -q -- '--gps-seconds requires a status or pre-departure check' scripts/pre_trip_prepare_pi.sh
 grep -q 'save_pre_departure_status_snapshot "$recovery_dir" "$status_helper"' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre-departure-status.json' scripts/pre_trip_prepare_pi.sh
@@ -2398,6 +2401,7 @@ grep -q 'verify_pi_recovery_exports.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_pi_charts.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'pre_departure_check_pi.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'check_pi_status.sh' scripts/pre_trip_prepare_pi.sh
+grep -q 'shutdown_pi_safely.sh' scripts/pre_trip_prepare_pi.sh
 grep -q 'refresh_args=("$target" --retries "$retries" --retry-delay "$retry_delay" --status)' scripts/pre_trip_prepare_pi.sh
 grep -q 'device_set=0' scripts/pre_trip_prepare_pi.sh
 grep -q -- '--device requires the pre-departure verification step' scripts/pre_trip_prepare_pi.sh
@@ -2405,6 +2409,8 @@ grep -q 'refresh_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_
 grep -q 'status_args+=(--gps-seconds "$gps_seconds")' scripts/pre_trip_prepare_pi.sh
 grep -q 'status_args+=(--json)' scripts/pre_trip_prepare_pi.sh
 grep -q 'Pi recovery exports written to:' scripts/pre_trip_prepare_pi.sh
+grep -q 'run_step "Dry-running clean Pi shutdown path" "$shutdown_helper" "$target" --dry-run' scripts/pre_trip_prepare_pi.sh
+grep -q 'Skipping clean shutdown dry run' scripts/pre_trip_prepare_pi.sh
 grep -q 'At least one pre-trip preparation step must run' scripts/pre_trip_prepare_pi.sh
 grep -q 'prepare_private_output_dir "Recovery output directory" "$output_dir"' scripts/pre_trip_prepare_pi.sh
 grep -q 'Output directory must not contain control characters' scripts/pre_trip_prepare_pi.sh
@@ -9080,7 +9086,7 @@ if [[ -e "$pre_trip_bad_output" ]]; then
 fi
 
 set +e
-scripts/pre_trip_prepare_pi.sh pi@example.invalid --skip-refresh --skip-recovery --skip-pre-departure >"$verify_output" 2>&1
+scripts/pre_trip_prepare_pi.sh pi@example.invalid --skip-refresh --skip-recovery --skip-pre-departure --skip-shutdown-check >"$verify_output" 2>&1
 pre_trip_code=$?
 set -e
 if [[ "$pre_trip_code" -ne 2 ]]; then
@@ -9603,6 +9609,11 @@ for row in payload["service_checks"]:
 print(json.dumps(payload, sort_keys=True))
 PY
 EOF
+cat >"$pre_trip_repo/scripts/shutdown_pi_safely.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'shutdown|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+printf 'fake shutdown dry run\n'
+EOF
 chmod +x "$pre_trip_repo/scripts/"*.sh
 
 pre_trip_early_real_parent="$tmpdir/pre-trip-early-real-parent"
@@ -9728,6 +9739,7 @@ grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$p
 grep -Fxq "verify-recovery|$pre_trip_output_dir/noaa-navionics-pi-recovery-test" "$pre_trip_log"
 grep -Fxq "pre-departure|pi@example.invalid --device /dev/serial/by-id/mock-gps --gps-seconds 17 --allow-dirty --opencpn-restarts 2 --opencpn-restart-delay 3" "$pre_trip_log"
 grep -Fxq "status|pi@example.invalid --gps-seconds 17 --json" "$pre_trip_log"
+grep -Fxq "shutdown|pi@example.invalid --dry-run" "$pre_trip_log"
 grep -q 'Saved pre-departure status snapshot:' "$verify_output"
 grep -q 'Saved pre-departure status checksum:' "$verify_output"
 test "$(stat -c '%a' "$pre_trip_output_dir")" = 700
@@ -9982,6 +9994,10 @@ cat >"$pre_trip_mutated_repo/scripts/check_pi_status.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'status should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 EOF
+cat >"$pre_trip_mutated_repo/scripts/shutdown_pi_safely.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'shutdown should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
+EOF
 chmod +x "$pre_trip_mutated_repo/scripts/"*.sh
 set +e
 NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_mutated_log" \
@@ -10032,6 +10048,10 @@ cat >"$pre_trip_misdirected_repo/scripts/check_pi_status.sh" <<'EOF'
 printf 'status|%s\n' "$*" >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf '{"generated_at": "%s", "ok": true, "host": {"boot_id": "12345678-1234-4234-8234-123456789abc"}, "app": {"source_revision": "fixture123"}, "checks": [{"name": "GPS", "ok": true}], "service_checks": [{"name": "Track Log", "ok": true}]}\n' "$generated_at"
+EOF
+cat >"$pre_trip_misdirected_repo/scripts/shutdown_pi_safely.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'shutdown should not run\n' >>"$NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG"
 EOF
 chmod +x "$pre_trip_misdirected_repo/scripts/"*.sh
 set +e
@@ -11602,7 +11622,7 @@ pre_trip_parent_real="$tmpdir/pre-trip-helper-parent-real"
 pre_trip_parent_link="$tmpdir/pre-trip-helper-parent-link"
 mkdir -p "$pre_trip_parent_real/scripts"
 cp scripts/pre_trip_prepare_pi.sh "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"
-for helper in refresh_pi_charts.sh export_pi_recovery_bundle.sh verify_pi_recovery_exports.sh pre_departure_check_pi.sh check_pi_status.sh; do
+for helper in refresh_pi_charts.sh export_pi_recovery_bundle.sh verify_pi_recovery_exports.sh pre_departure_check_pi.sh check_pi_status.sh shutdown_pi_safely.sh; do
   write_noop_helper "$pre_trip_parent_real/scripts/$helper"
 done
 chmod +x "$pre_trip_parent_real/scripts/pre_trip_prepare_pi.sh"
