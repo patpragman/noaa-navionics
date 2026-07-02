@@ -1089,6 +1089,33 @@ def validate_snapshot_gps_row(
             fail(f"status snapshot JSON {expected_name} HDOP does not match gps_fix: {path}")
 
 
+def validate_snapshot_track_log_row(
+    service_rows: dict[str, dict[str, object]],
+    *,
+    track_log: dict[str, object],
+    path: Path,
+) -> None:
+    row = service_rows.get("Track Log")
+    if not isinstance(row, dict):
+        fail(f"status snapshot JSON missing Track Log service row: {path}")
+    data = row.get("data")
+    if not isinstance(data, dict):
+        fail(f"status snapshot JSON Track Log service row has no structured track_log data: {path}")
+    for field in (
+        "track_output",
+        "tracks_dir",
+        "latest_path",
+        "latest_time",
+        "latest_latitude",
+        "latest_longitude",
+        "age_seconds",
+        "latest_satellites",
+        "latest_hdop",
+    ):
+        if field in track_log and data.get(field) != track_log.get(field):
+            fail(f"status snapshot JSON Track Log {field} does not match track_log: {path}")
+
+
 def validate_snapshot_manifest_row(
     check_rows: dict[str, dict[str, object]],
     *,
@@ -1516,6 +1543,7 @@ def validate_successful_status_snapshot(
     validate_snapshot_chart_rows(check_rows, config=config, path=path)
     validate_snapshot_manifest_row(check_rows, config=config, manifest=payload.get("manifest"), path=path)
     validate_snapshot_gps_row(check_rows, gps_mode=gps_mode, gps_fix=gps_fix, path=path)
+    validate_snapshot_track_log_row(service_rows, track_log=track_log, path=path)
     if gps_mode == "gpsd":
         validate_snapshot_gpsd_rows(check_rows, config=config, path=path)
     non_pi_skips = sorted(
