@@ -6867,6 +6867,17 @@ grep -q 'Provisioning also installs an executable non-autostart `~/Desktop/noaa-
 grep -q 'The commissioning settings archive also includes and validates the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' README.md
 grep -q 'The commissioning settings archive also includes and validates the status GUI desktop launcher so a restored Pi keeps the helm readiness panel entry point' docs/sailboat-pi.md
 grep -q 'require_loaded_user_units' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all()' scripts/provision_sailboat_pi.sh
+grep -q 'Loaded user unit command mismatch for' scripts/provision_sailboat_pi.sh
+grep -q 'Check systemd support for the installed unit commands' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all noaa-navionics.service ExecStartPre "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all noaa-navionics.service ExecStart "chart refresh service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all noaa-navionics-track.service ExecStart "track logger service"' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all noaa-navionics-preflight.service Wants "boot readiness service" noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all noaa-navionics-preflight.service After "boot readiness service" noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
+grep -q 'require_loaded_user_unit_property_contains_all noaa-navionics-preflight.service ExecStart "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q -- '--gpsd-idle-timeout 300' scripts/provision_sailboat_pi.sh
+grep -q -- '--serial-idle-timeout 300' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectSystem full "chart refresh service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics-track.service ProtectSystem full "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_loaded_user_unit_property noaa-navionics.service ProtectKernelTunables yes "chart refresh service"' scripts/provision_sailboat_pi.sh
@@ -6920,6 +6931,60 @@ for unit, label in units.items():
         )
         if needle not in text:
             raise SystemExit(f"provisioning must verify loaded {unit} {property_name}")
+expected_contains = {
+    ("noaa-navionics.service", "ExecStartPre", "chart refresh service"): [
+        ".local/share/noaa-navionics/venv/bin/noaa-navionics",
+        "noaa-navionics wait-network",
+        "--host www.charts.noaa.gov",
+        "--port 443",
+        "--seconds 300",
+    ],
+    ("noaa-navionics.service", "ExecStart", "chart refresh service"): [
+        ".local/share/noaa-navionics/venv/bin/noaa-navionics",
+        "noaa-navionics sync-charts",
+        "--config",
+        "noaa-navionics/config.ini",
+        "--retries 5",
+        "--retry-delay 30",
+    ],
+    ("noaa-navionics-track.service", "ExecStart", "track logger service"): [
+        ".local/share/noaa-navionics/venv/bin/noaa-navionics",
+        "noaa-navionics log-track",
+        "--config",
+        "noaa-navionics/config.ini",
+        "--rotate-daily",
+        "--gpsd-idle-timeout 300",
+        "--serial-idle-timeout 300",
+    ],
+    ("noaa-navionics-preflight.service", "Wants", "boot readiness service"): [
+        "noaa-navionics-track.service",
+    ],
+    ("noaa-navionics-preflight.service", "After", "boot readiness service"): [
+        "noaa-navionics-track.service",
+    ],
+    ("noaa-navionics-preflight.service", "ExecStart", "boot readiness service"): [
+        ".local/share/noaa-navionics/venv/bin/noaa-navionics",
+        "noaa-navionics status-report",
+        "--config",
+        "noaa-navionics/config.ini",
+        "--gps-seconds-from-launcher-env",
+        "noaa-navionics/launcher.env",
+        "--output",
+        "noaa-navionics/status.json",
+    ],
+}
+for (unit, property_name, label), fragments in expected_contains.items():
+    line_prefix = (
+        f'require_loaded_user_unit_property_contains_all {unit} '
+        f'{property_name} "{label}"'
+    )
+    matching_lines = [line for line in text.splitlines() if line.lstrip().startswith(line_prefix)]
+    if not matching_lines:
+        raise SystemExit(f"provisioning must verify loaded {unit} {property_name} command fragments")
+    line = matching_lines[0]
+    for fragment in fragments:
+        if fragment not in line:
+            raise SystemExit(f"provisioning loaded {unit} {property_name} check missing {fragment!r}")
 PY
 grep -q 'The unattended startup services were installed but not enabled' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_enabled noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
@@ -6928,6 +6993,8 @@ grep -q 'require_user_unit_enabled noaa-navionics-preflight.service "boot readin
 grep -q 'require_user_unit_active noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_active noaa-navionics-track.service "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_result_success noaa-navionics-preflight.service "boot readiness service"' scripts/provision_sailboat_pi.sh
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' README.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' docs/sailboat-pi.md
 grep -q 'Provisioning did not leave .* enabled' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning did not leave .* active' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning did not leave .* with a successful last run' scripts/provision_sailboat_pi.sh
@@ -6963,8 +7030,8 @@ grep -q 'run "$sudo_cmd" "$loginctl_cmd" enable-linger "$USER"' scripts/provisio
 grep -q 'run "$systemctl_cmd" --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' docs/sailboat-pi.md
-grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' README.md
-grep -q 'confirms systemd loaded the installed user-unit fragments and hardening settings before enabling unattended startup' docs/sailboat-pi.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' README.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' docs/sailboat-pi.md
 grep -q 'resolves sudo, systemctl, loginctl, and Python through trusted root-owned command checks' README.md
 grep -q 'resolves sudo, systemctl, loginctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'run "$systemctl_cmd" --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh

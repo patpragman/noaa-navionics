@@ -1610,11 +1610,54 @@ EOF
   fi
 }
 
+require_loaded_user_unit_property_contains_all() {
+  local unit="$1"
+  local property="$2"
+  local label="$3"
+  shift 3
+  local systemctl_bin
+  local loaded
+  local expected
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '+ require_loaded_user_unit_property_contains_all %q %q %q' "$unit" "$property" "$label"
+    for expected in "$@"; do
+      printf ' %q' "$expected"
+    done
+    printf '\n'
+    return 0
+  fi
+  systemctl_bin="$(systemctl_command)" || exit 2
+  if ! loaded="$("$systemctl_bin" --user show "$unit" -p "$property" 2>/dev/null)"; then
+    cat >&2 <<EOF
+Could not inspect loaded user unit property: $unit $property
+The unattended startup services were installed but not enabled. Check the user systemd manager with: systemctl --user status $unit
+EOF
+    exit 2
+  fi
+  for expected in "$@"; do
+    if [[ "$loaded" != *"$expected"* ]]; then
+      cat >&2 <<EOF
+Loaded user unit command mismatch for $label.
+Expected ${property} to contain: ${expected}
+Loaded:   ${loaded:-<empty>}
+The unattended startup services were installed but not enabled. Check systemd support for the installed unit commands, then run: systemctl --user daemon-reload
+EOF
+      exit 2
+    fi
+  done
+}
+
 require_loaded_user_units() {
   require_loaded_user_unit_property noaa-navionics.service FragmentPath "$chart_service" "chart refresh service"
   require_loaded_user_unit_property noaa-navionics.timer FragmentPath "$chart_timer" "chart refresh timer"
   require_loaded_user_unit_property noaa-navionics-track.service FragmentPath "$track_service" "track logger service"
   require_loaded_user_unit_property noaa-navionics-preflight.service FragmentPath "$preflight_service" "boot readiness service"
+  require_loaded_user_unit_property_contains_all noaa-navionics.service ExecStartPre "chart refresh service" ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics wait-network" "--host www.charts.noaa.gov" "--port 443" "--seconds 300"
+  require_loaded_user_unit_property_contains_all noaa-navionics.service ExecStart "chart refresh service" ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics sync-charts" "--config" "noaa-navionics/config.ini" "--retries 5" "--retry-delay 30"
+  require_loaded_user_unit_property_contains_all noaa-navionics-track.service ExecStart "track logger service" ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics log-track" "--config" "noaa-navionics/config.ini" "--rotate-daily" "--gpsd-idle-timeout 300" "--serial-idle-timeout 300"
+  require_loaded_user_unit_property_contains_all noaa-navionics-preflight.service Wants "boot readiness service" noaa-navionics-track.service
+  require_loaded_user_unit_property_contains_all noaa-navionics-preflight.service After "boot readiness service" noaa-navionics-track.service
+  require_loaded_user_unit_property_contains_all noaa-navionics-preflight.service ExecStart "boot readiness service" ".local/share/noaa-navionics/venv/bin/noaa-navionics" "noaa-navionics status-report" "--config" "noaa-navionics/config.ini" "--gps-seconds-from-launcher-env" "noaa-navionics/launcher.env" "--output" "noaa-navionics/status.json"
   require_loaded_user_unit_property noaa-navionics.service Type oneshot "chart refresh service"
   require_loaded_user_unit_property noaa-navionics-track.service Type simple "track logger service"
   require_loaded_user_unit_property noaa-navionics-track.service StandardOutput null "track logger service"
