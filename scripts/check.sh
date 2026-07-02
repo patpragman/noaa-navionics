@@ -5395,6 +5395,12 @@ grep -q 'def _gps_readiness_summary_text' src/noaa_navionics/report.py
 grep -q 'gps_fix latitude is invalid' tests/test_downloader.py
 grep -q 'gps_fix HDOP is invalid' tests/test_downloader.py
 grep -q 'status report {expected_name} timestamp does not match gps_fix' src/noaa_navionics/report.py
+grep -q 'for field in ("speed_knots", "course_degrees", "fix_quality", "altitude_m")' src/noaa_navionics/report.py
+grep -q 'status report {expected_name} {field} does not match gps_fix' src/noaa_navionics/report.py
+grep -q 'speed_knots does not match gps_fix' tests/test_downloader.py
+grep -q 'course_degrees does not match gps_fix' tests/test_downloader.py
+grep -q 'fix_quality does not match gps_fix' tests/test_downloader.py
+grep -q 'altitude_m does not match gps_fix' tests/test_downloader.py
 grep -q 'status report GPS Device check has no structured data' src/noaa_navionics/report.py
 grep -q 'def _serial_gps_device_text' src/noaa_navionics/report.py
 grep -q 'resolved path is not text' tests/test_downloader.py
@@ -5565,8 +5571,8 @@ grep -q 'READY reports also require structured Chart Package, Charts, Chart Upda
 grep -q 'READY reports also require structured Chart Package, Charts, Chart Update Debris, and Manifest evidence' docs/sailboat-pi.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' README.md
 grep -q 'READY reports also require structured OpenCPN Charts evidence' docs/sailboat-pi.md
-grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range non-0,0 coordinates matching the top-level `gps_fix`' README.md
-grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range non-0,0 coordinates matching the top-level `gps_fix`' docs/sailboat-pi.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range non-0,0 coordinates matching the top-level `gps_fix`, timestamp, quality, speed, course, fix-quality, and altitude fields' README.md
+grep -q 'READY reports also require structured GPS or GPSD row evidence with finite in-range non-0,0 coordinates matching the top-level `gps_fix`, timestamp, quality, speed, course, fix-quality, and altitude fields' docs/sailboat-pi.md
 grep -q 'status report {expected_name} fix latitude is outside -90..90' src/noaa_navionics/report.py
 grep -q 'status report {expected_name} fix longitude is outside -180..180' src/noaa_navionics/report.py
 grep -q 'fix latitude is outside -90..90' tests/test_downloader.py

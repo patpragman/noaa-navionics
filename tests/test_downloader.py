@@ -628,8 +628,12 @@ def complete_status_gui_report(
                 "timestamp": generated_at,
                 "latitude": 61.2181,
                 "longitude": -149.9003,
+                "speed_knots": 4.2,
+                "course_degrees": 181.5,
+                "fix_quality": 3,
                 "satellites": 8,
                 "hdop": 0.9,
+                "altitude_m": 12.3,
             }
         elif row["name"] == "Pi Power":
             row["detail"] = "no under-voltage or throttling reported"
@@ -779,8 +783,12 @@ def complete_status_gui_report(
             "age_seconds": 0.0,
             "latitude": 61.2181,
             "longitude": -149.9003,
+            "speed_knots": 4.2,
+            "course_degrees": 181.5,
+            "fix_quality": 3,
             "satellites": 8,
             "hdop": 0.9,
+            "altitude_m": 12.3,
         },
         "checks": check_rows,
         "service_checks": [{"name": name, "ok": True, "detail": "ok"} for name in sorted(service_checks)],
@@ -15028,8 +15036,12 @@ class StatusReportTests(unittest.TestCase):
                 "timestamp": generated_at,
                 "latitude": 61.2181,
                 "longitude": -149.9003,
+                "speed_knots": 4.2,
+                "course_degrees": 181.5,
+                "fix_quality": 3,
                 "satellites": 8,
                 "hdop": 0.9,
+                "altitude_m": 12.3,
             }
             data.update(overrides)
             return data
@@ -15048,8 +15060,12 @@ class StatusReportTests(unittest.TestCase):
             ("gpsd", "GPSD", fix_data(latitude=61.5), "latitude does not match gps_fix"),
             ("gpsd", "GPSD", fix_data(longitude=-149.5), "longitude does not match gps_fix"),
             ("gpsd", "GPSD", fix_data(timestamp=(now - timedelta(seconds=1)).isoformat().replace("+00:00", "Z")), "timestamp does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(speed_knots=4.3), "speed_knots does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(course_degrees=182.0), "course_degrees does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(fix_quality=2), "fix_quality does not match gps_fix"),
             ("gpsd", "GPSD", fix_data(satellites=9), "satellites do not match gps_fix"),
             ("gpsd", "GPSD", fix_data(hdop=1.1), "HDOP does not match gps_fix"),
+            ("gpsd", "GPSD", fix_data(altitude_m=13.0), "altitude_m does not match gps_fix"),
             ("serial", "GPS", None, "GPS check has no structured fix data"),
             ("serial", "GPS", fix_data(latitude=61.5), "latitude does not match gps_fix"),
         ]

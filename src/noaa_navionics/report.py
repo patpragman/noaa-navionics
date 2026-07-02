@@ -1224,6 +1224,15 @@ def _gps_readiness_validation_failures(report: dict[str, object]) -> list[CheckR
                 failures.append(CheckResult(expected_name, False, f"status report {expected_name} gps_fix HDOP is invalid"))
             elif parsed_hdop is not None and summary_hdop is not None and abs(parsed_hdop - summary_hdop) > 1e-9:
                 failures.append(CheckResult(expected_name, False, f"status report {expected_name} HDOP does not match gps_fix"))
+        for field in ("speed_knots", "course_degrees", "fix_quality", "altitude_m"):
+            if field in gps_fix and data.get(field) != gps_fix.get(field):
+                failures.append(
+                    CheckResult(
+                        expected_name,
+                        False,
+                        f"status report {expected_name} {field} does not match gps_fix",
+                    )
+                )
     return failures
 
 
