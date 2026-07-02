@@ -1103,7 +1103,7 @@ def validate_snapshot_manifest_row(
     manifest_path = snapshot_absolute_path(data.get("path", ""), "Manifest path", path)
     if manifest_path != str(Path(chart_output) / "noaa-navionics-manifest.json"):
         fail(f"status snapshot JSON Manifest path does not match config chart_output: {path}")
-    if manifest_path != str(manifest.get("path", "")).strip():
+    if manifest_path != snapshot_absolute_path(manifest.get("path", ""), "manifest summary path", path):
         fail(f"status snapshot JSON Manifest path does not match manifest summary: {path}")
     for row_field, summary_field in (
         ("created_at", "created_at"),
@@ -1116,9 +1116,11 @@ def validate_snapshot_manifest_row(
         ("sha256", "sha256"),
         ("extract_path", "extract_path"),
     ):
-        if str(data.get(row_field, "")).strip() != str(manifest.get(summary_field, "")).strip():
+        row_value = snapshot_text(data.get(row_field, ""), f"Manifest {row_field}", path)
+        summary_value = snapshot_text(manifest.get(summary_field, ""), f"manifest summary {summary_field}", path)
+        if row_value != summary_value:
             fail(f"status snapshot JSON Manifest {row_field} does not match manifest summary: {path}")
-    created_at_source = str(data.get("created_at_source", "")).strip()
+    created_at_source = snapshot_text(data.get("created_at_source", ""), "Manifest created_at_source", path)
     if created_at_source not in {"download", "previous-manifest"}:
         fail(f"status snapshot JSON Manifest created_at_source is not verified: {path}")
     normalized_chart_output = os.path.normpath(chart_output)

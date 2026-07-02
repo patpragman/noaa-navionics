@@ -5046,6 +5046,9 @@ grep -q '"MOB desktop launcher path_symlink_component"' tests/test_downloader.py
 grep -q '"status GUI desktop launcher path_symlink_component"' tests/test_downloader.py
 grep -q '"gps_fix source"' tests/test_downloader.py
 grep -q '"track_log track_storage_symlink_component"' tests/test_downloader.py
+grep -q '"manifest summary path"' tests/test_downloader.py
+grep -q 'f"manifest summary {summary_field}"' tests/test_downloader.py
+grep -q '"Manifest created_at_source"' tests/test_downloader.py
 grep -q '"GPSD Config directory_symlink_component"' tests/test_downloader.py
 grep -q '"Chrony Config refclock_line"' tests/test_downloader.py
 grep -q 'def snapshot_absolute_path' scripts/pre_trip_prepare_pi.sh
