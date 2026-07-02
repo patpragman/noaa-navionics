@@ -4289,6 +4289,27 @@ class GuiTests(unittest.TestCase):
         self.assertTrue(any("status report track_log is not ok: no recent track point" in failure.detail for failure in failures))
         self.assertTrue(any(failure.name == "Track Log" for failure in failures))
 
+    def test_status_gui_deduplicates_failed_gps_fix_projection(self):
+        report = complete_status_gui_report(ok=False)
+        report["gps_fix"]["ok"] = False
+        report["gps_fix"]["detail"] = "no live GPS fix"
+        gps_row = next(row for row in report["checks"] if row["name"] == "GPSD")
+        gps_row["ok"] = False
+        gps_row["detail"] = "no live GPS fix"
+
+        rows = status_gui_module.status_rows(report)
+        failures = status_report_validation_failures(report)
+
+        self.assertEqual(status_gui_module.status_headline(report), "NOT READY")
+        self.assertEqual(status_gui_module.count_failures(rows), 2)
+        self.assertEqual(status_gui_module.format_panel_summary(report), "2 reported readiness check(s) need attention.")
+        self.assertEqual(
+            [row for row in rows if row.name in {"GPSD", "GPS Fix"} and not row.ok],
+            [status_gui_module.StatusRow("GPSD", False, "no live GPS fix")],
+        )
+        self.assertTrue(any("status report gps_fix is not ok: no live GPS fix" in failure.detail for failure in failures))
+        self.assertTrue(any(failure.name == "GPS Fix" for failure in failures))
+
     def test_status_gui_renders_truthy_non_boolean_ok_values_as_failures(self):
         report = complete_status_gui_report()
         report["ok"] = "yes"
@@ -5416,7 +5437,7 @@ class GuiTests(unittest.TestCase):
         status_gui_module.StatusApp._show_report(app, report)
 
         self.assertEqual(app.headline.value, "NOT READY")
-        self.assertEqual(app.summary.value, "3 reported readiness check(s) need attention.")
+        self.assertEqual(app.summary.value, "2 reported readiness check(s) need attention.")
         self.assertEqual(app.gps_summary.value, "GPSD FAIL | no fix")
         self.assertEqual(app.busy_calls, [False])
         self.assertEqual(app.refresh_scheduled, 1)
