@@ -16515,6 +16515,59 @@ class StatusReportTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn(expected_error, result.stderr)
 
+        command_row_cases = (
+            (
+                lambda report: next(
+                    row for row in report["checks"] if row["name"] == "OpenCPN"
+                ).__setitem__("data", None),
+                "OpenCPN readiness check has no structured command data",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["checks"] if row["name"] == "OpenCPN"
+                )["data"].__setitem__("command", "other"),
+                "OpenCPN command other is not opencpn",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["checks"] if row["name"] == "OpenCPN"
+                )["data"].__setitem__("path_symlink_component", "/usr-link"),
+                "OpenCPN command path contains a symlink",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["checks"] if row["name"] == "Desktop Shell"
+                )["data"].__setitem__("path", "/usr/bin/sh"),
+                "Desktop Shell command path is not /bin/sh",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["checks"] if row["name"] == "Desktop Shell"
+                )["data"].__setitem__("resolved_trusted_system_directory", False),
+                "Desktop Shell resolved command is not in a trusted system directory",
+            ),
+            (
+                lambda report: next(
+                    row for row in report["checks"] if row["name"] == "Sleep"
+                )["data"].__setitem__("directory_mode", "0777"),
+                "Sleep command directory is group/world writable",
+            ),
+        )
+        for mutate, expected_error in command_row_cases:
+            report = copy.deepcopy(valid_report)
+            mutate(report)
+            result = subprocess.run(
+                [sys.executable, "-c", validator],
+                input=json.dumps(report),
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            with self.subTest(expected_error=expected_error):
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(expected_error, result.stderr)
+
         required_row_cases = (
             (
                 lambda report: report.__setitem__(
@@ -16789,6 +16842,40 @@ class StatusReportTests(unittest.TestCase):
                 if script != "scripts/post_trip_collect_pi.sh":
                     self.assertIn('f"{row_name} configured path"', source)
                     self.assertIn('f"{row_name} checked path"', source)
+
+    def test_status_snapshot_validators_require_command_evidence(self):
+        expectations = {
+            "scripts/pre_trip_prepare_pi.sh": "pre-departure status snapshot JSON",
+            "scripts/verify_pi_recovery_exports.sh": "pre-departure status snapshot JSON",
+            "scripts/post_trip_collect_pi.sh": "status snapshot JSON",
+        }
+        for script, prefix in expectations.items():
+            with self.subTest(script=script):
+                source = Path(script).read_text(encoding="utf-8")
+                for expected in (
+                    "COMMAND_READINESS_CHECKS",
+                    "def validate_snapshot_command_rows",
+                    '"OpenCPN": "opencpn"',
+                    '"Display Power": "xset"',
+                    '"Desktop Shell": "sh"',
+                    '"Sleep": "sleep"',
+                    f"{prefix} {{row_name}} row has no structured command data",
+                    f"{prefix} {{row_name}} command path is not absolute",
+                    f"{prefix} {{row_name}} command directory is not absolute",
+                    f"{prefix} Desktop Shell command path is not /bin/sh",
+                    f"{prefix} {{row_name}} command path contains a symlink",
+                    f"{prefix} {{row_name}} command is not in a trusted system directory",
+                    f"{prefix} {{row_name}} command is not executable",
+                    f"{prefix} {{row_name}} command is group/world writable",
+                    f"{prefix} Desktop Shell resolved command path is not absolute",
+                    "resolved_trusted_system_directory",
+                    "path_directory_uid",
+                    "path_directory_mode",
+                    f"{prefix} Desktop Shell literal command directory is group/world writable",
+                    "validate_snapshot_command_rows(check_rows",
+                ):
+                    with self.subTest(expected=expected):
+                        self.assertIn(expected, source)
 
     def test_status_snapshot_validators_require_structured_gps_and_track_summaries(self):
         expectations = {
