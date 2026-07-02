@@ -14871,6 +14871,9 @@ class StatusReportTests(unittest.TestCase):
                 for label in labels:
                     with self.subTest(label=label):
                         self.assertIn(f'"{label}"', source)
+                if script != "scripts/post_trip_collect_pi.sh":
+                    self.assertIn('f"{row_name} configured path"', source)
+                    self.assertIn('f"{row_name} checked path"', source)
 
     def test_status_snapshot_validators_require_structured_gps_and_track_summaries(self):
         expectations = {

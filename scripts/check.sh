@@ -5034,8 +5034,10 @@ grep -q 'contains control characters' tests/test_downloader.py
 grep -q 'OpenCPN GPSD config path' scripts/pre_trip_prepare_pi.sh
 grep -q 'OpenCPN GPSD config path' scripts/verify_pi_recovery_exports.sh
 grep -q 'OpenCPN GPSD config path' scripts/post_trip_collect_pi.sh
-grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators apply the same control-character rejection to saved status artifacts before using path comparisons for chart, OpenCPN, GPS, manifest, and GPX track evidence' README.md
-grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators apply the same control-character rejection to saved status artifacts before using path comparisons for chart, OpenCPN, GPS, manifest, and GPX track evidence' docs/sailboat-pi.md
+grep -q 'f"{row_name} configured path"' tests/test_downloader.py
+grep -q 'f"{row_name} checked path"' tests/test_downloader.py
+grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators apply the same control-character rejection to saved status artifacts before using path comparisons for chart, disk storage, OpenCPN, GPS, manifest, and GPX track evidence' README.md
+grep -q 'Pre-trip, recovery-export, and post-trip snapshot validators apply the same control-character rejection to saved status artifacts before using path comparisons for chart, disk storage, OpenCPN, GPS, manifest, and GPX track evidence' docs/sailboat-pi.md
 grep -q 'status report config gps_mode is invalid' src/noaa_navionics/report.py
 grep -q 'status report config gpsd_host is not local' src/noaa_navionics/report.py
 grep -q 'status report manifest path .* does not match configured' src/noaa_navionics/report.py

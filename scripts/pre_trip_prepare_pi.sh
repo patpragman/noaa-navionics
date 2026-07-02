@@ -1518,8 +1518,8 @@ def validate_snapshot_manifest_row(
 
 
 def validate_snapshot_storage_rows(check_rows: dict[str, dict[str, object]], *, config: dict[str, object]) -> None:
-    chart_output = str(config.get("chart_output", "")).strip()
-    track_output = str(config.get("track_output", "")).strip()
+    chart_output = snapshot_absolute_path(config.get("chart_output", ""), "config chart_output")
+    track_output = snapshot_absolute_path(config.get("track_output", ""), "config track_output")
     expected_paths = {"Disk": chart_output}
     if track_output != chart_output:
         expected_paths["Track Disk"] = track_output
@@ -1531,14 +1531,10 @@ def validate_snapshot_storage_rows(check_rows: dict[str, dict[str, object]], *, 
         data = row.get("data")
         if not isinstance(data, dict):
             fail(f"pre-departure status snapshot JSON {row_name} row has no structured data")
-        configured_path = str(data.get("configured_path", "")).strip()
-        checked_path = str(data.get("checked_path", "")).strip()
+        configured_path = snapshot_absolute_path(data.get("configured_path", ""), f"{row_name} configured path")
+        checked_path = snapshot_absolute_path(data.get("checked_path", ""), f"{row_name} checked path")
         if configured_path != expected_path:
             fail(f"pre-departure status snapshot JSON {row_name} configured path does not match config")
-        if not Path(configured_path).is_absolute():
-            fail(f"pre-departure status snapshot JSON {row_name} configured path is not absolute")
-        if not Path(checked_path).is_absolute():
-            fail(f"pre-departure status snapshot JSON {row_name} checked path is not absolute")
         if data.get("exists") is not True:
             fail(f"pre-departure status snapshot JSON {row_name} checked path does not exist")
         if data.get("is_directory") is not True:
@@ -1876,12 +1872,12 @@ def validate_successful_status_snapshot(
             + str(track_log.get("detail", "<missing detail>"))
         )
     validate_snapshot_track_log(track_log, generated_at=generated_at)
-    track_output = str(track_log.get("track_output", "")).strip()
+    track_output = snapshot_text(track_log.get("track_output", ""), "track_log track_output")
     if not track_output:
         fail("pre-departure status snapshot JSON missing track_log track_output")
     if track_output != configured_track_output:
         fail("pre-departure status snapshot JSON track_log track_output does not match config track_output")
-    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    tracks_dir = snapshot_text(track_log.get("tracks_dir", ""), "track_log tracks_dir")
     expected_tracks_dir = str(Path(configured_track_output) / "tracks")
     if tracks_dir != expected_tracks_dir:
         fail("pre-departure status snapshot JSON track_log tracks_dir does not match config track_output")

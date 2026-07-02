@@ -1461,12 +1461,12 @@ def validate_successful_status_snapshot(
             + f": {path}"
         )
     validate_snapshot_track_log(track_log, generated_at=generated_at, path=path)
-    track_output = str(track_log.get("track_output", "")).strip()
+    track_output = snapshot_text(track_log.get("track_output", ""), "track_log track_output", path)
     if not track_output:
         fail(f"status snapshot JSON missing track_log track_output: {path}")
     if track_output != configured_track_output:
         fail(f"status snapshot JSON track_log track_output does not match config track_output: {path}")
-    tracks_dir = str(track_log.get("tracks_dir", "")).strip()
+    tracks_dir = snapshot_text(track_log.get("tracks_dir", ""), "track_log tracks_dir", path)
     expected_tracks_dir = str(Path(configured_track_output) / "tracks")
     if tracks_dir != expected_tracks_dir:
         fail(f"status snapshot JSON track_log tracks_dir does not match config track_output: {path}")
