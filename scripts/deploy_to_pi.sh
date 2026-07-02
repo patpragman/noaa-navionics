@@ -179,8 +179,10 @@ require_non_negative_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -188,6 +190,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_integer_at_most() {
@@ -538,16 +546,17 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      option_value="$(normalize_decimal_integer "${2:-}")"
       case "$1" in
         --gps-seconds)
-          require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
+          require_integer_at_most "$1" "$option_value" "$max_gps_seconds"
           ;;
         --sync-retries)
-          require_integer_at_most "$1" "${2:-}" "$max_sync_retries"
+          require_integer_at_most "$1" "$option_value" "$max_sync_retries"
           sync_retry_option_args+=("$1")
           ;;
       esac
-      provision_args+=("$1" "${2:-}")
+      provision_args+=("$1" "$option_value")
       shift 2
       ;;
     --sync-retry-delay|--opencpn-restarts|--opencpn-restart-delay)
@@ -557,19 +566,20 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      option_value="$(normalize_decimal_integer "${2:-}")"
       case "$1" in
         --sync-retry-delay)
-          require_integer_at_most "$1" "${2:-}" "$max_sync_retry_delay"
+          require_integer_at_most "$1" "$option_value" "$max_sync_retry_delay"
           sync_retry_option_args+=("$1")
           ;;
         --opencpn-restarts)
-          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
+          require_integer_at_most "$1" "$option_value" "$max_opencpn_restarts"
           ;;
         --opencpn-restart-delay)
-          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
+          require_integer_at_most "$1" "$option_value" "$max_opencpn_restart_delay"
           ;;
       esac
-      provision_args+=("$1" "${2:-}")
+      provision_args+=("$1" "$option_value")
       shift 2
       ;;
     --skip-services)

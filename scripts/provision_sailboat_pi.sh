@@ -174,8 +174,10 @@ require_non_negative_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -183,6 +185,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_integer_at_most() {
@@ -768,14 +776,19 @@ done
 
 require_positive_integer "--gps-seconds" "$gps_seconds"
 require_integer_at_most "--gps-seconds" "$gps_seconds" "$max_gps_seconds"
+gps_seconds="$(normalize_decimal_integer "$gps_seconds")"
 require_positive_integer "--sync-retries" "$sync_retries"
 require_integer_at_most "--sync-retries" "$sync_retries" "$max_sync_retries"
+sync_retries="$(normalize_decimal_integer "$sync_retries")"
 require_non_negative_integer "--opencpn-restarts" "$opencpn_restarts"
 require_integer_at_most "--opencpn-restarts" "$opencpn_restarts" "$max_opencpn_restarts"
+opencpn_restarts="$(normalize_decimal_integer "$opencpn_restarts")"
 require_non_negative_integer "--opencpn-restart-delay" "$opencpn_restart_delay"
 require_integer_at_most "--opencpn-restart-delay" "$opencpn_restart_delay" "$max_opencpn_restart_delay"
+opencpn_restart_delay="$(normalize_decimal_integer "$opencpn_restart_delay")"
 require_non_negative_integer "--sync-retry-delay" "$sync_retry_delay"
 require_integer_at_most "--sync-retry-delay" "$sync_retry_delay" "$max_sync_retry_delay"
+sync_retry_delay="$(normalize_decimal_integer "$sync_retry_delay")"
 
 if [[ "$dry_run" -eq 0 && "$(id -u)" -eq 0 ]]; then
   cat >&2 <<'EOF'

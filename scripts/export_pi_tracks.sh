@@ -55,8 +55,10 @@ require_non_negative_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -64,6 +66,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_integer_at_most() {
@@ -85,7 +93,7 @@ while [[ $# -gt 0 ]]; do
       fi
       require_non_negative_integer "$1" "${2:-}"
       require_integer_at_most "$1" "${2:-}" "$max_days"
-      days="${2:-}"
+      days="$(normalize_decimal_integer "${2:-}")"
       shift 2
       ;;
     -h|--help)

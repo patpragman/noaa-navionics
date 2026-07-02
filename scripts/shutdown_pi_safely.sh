@@ -42,6 +42,26 @@ timeout_set=0
 max_shutdown_timeout=600
 remote_system_path="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
+}
+
+integer_greater_than() {
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --confirm)
@@ -62,11 +82,11 @@ while [[ $# -gt 0 ]]; do
         echo "--timeout must be a positive integer" >&2
         exit 2
       fi
-      if (( ${#timeout_value} > ${#max_shutdown_timeout} )) || { (( ${#timeout_value} == ${#max_shutdown_timeout} )) && [[ "$timeout_value" > "$max_shutdown_timeout" ]]; }; then
+      if integer_greater_than "$timeout_value" "$max_shutdown_timeout"; then
         echo "--timeout must be between 1 and ${max_shutdown_timeout} seconds" >&2
         exit 2
       fi
-      shutdown_timeout="$timeout_value"
+      shutdown_timeout="$(normalize_decimal_integer "$timeout_value")"
       timeout_set=1
       shift 2
       ;;

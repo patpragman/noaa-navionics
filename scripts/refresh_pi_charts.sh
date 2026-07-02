@@ -64,8 +64,10 @@ require_non_negative_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -73,6 +75,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_integer_at_most() {
@@ -99,7 +107,7 @@ while [[ $# -gt 0 ]]; do
       retries_value="${2:-}"
       require_positive_integer "$1" "$retries_value"
       require_integer_at_most "$1" "$retries_value" "$max_retries"
-      retries="$retries_value"
+      retries="$(normalize_decimal_integer "$retries_value")"
       shift 2
       ;;
     --retry-delay)
@@ -110,7 +118,7 @@ while [[ $# -gt 0 ]]; do
       retry_delay_value="${2:-}"
       require_non_negative_integer "$1" "$retry_delay_value"
       require_integer_at_most "$1" "$retry_delay_value" "$max_retry_delay"
-      retry_delay="$retry_delay_value"
+      retry_delay="$(normalize_decimal_integer "$retry_delay_value")"
       shift 2
       ;;
     --status)
@@ -125,7 +133,7 @@ while [[ $# -gt 0 ]]; do
       gps_seconds_value="${2:-}"
       require_positive_integer "$1" "$gps_seconds_value"
       require_integer_at_most "$1" "$gps_seconds_value" "$max_gps_seconds"
-      gps_seconds="$gps_seconds_value"
+      gps_seconds="$(normalize_decimal_integer "$gps_seconds_value")"
       shift 2
       ;;
     -h|--help)
@@ -354,8 +362,10 @@ require_nonnegative_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -363,6 +373,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_integer_at_most() {
@@ -402,8 +418,10 @@ validate_refresh_controls() {
   require_boolean_control "NOAA_NAVIONICS_REFRESH_STATUS" "$status"
   require_positive_integer "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries"
   require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRIES" "$retries" "$max_retries"
+  retries="$(normalize_decimal_integer "$retries")"
   require_nonnegative_integer "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay"
   require_integer_at_most "NOAA_NAVIONICS_REFRESH_RETRY_DELAY" "$retry_delay" "$max_retry_delay"
+  retry_delay="$(normalize_decimal_integer "$retry_delay")"
   if [[ -n "$gps_seconds" ]]; then
     if [[ "$status" != "1" ]]; then
       echo "NOAA_NAVIONICS_REFRESH_GPS_SECONDS requires NOAA_NAVIONICS_REFRESH_STATUS=1" >&2
@@ -411,6 +429,7 @@ validate_refresh_controls() {
     fi
     require_positive_integer "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds"
     require_integer_at_most "NOAA_NAVIONICS_REFRESH_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"
+    gps_seconds="$(normalize_decimal_integer "$gps_seconds")"
   fi
 }
 

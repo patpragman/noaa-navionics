@@ -47,8 +47,10 @@ require_positive_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -56,6 +58,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_integer_at_most() {
@@ -78,7 +86,7 @@ while [[ $# -gt 0 ]]; do
       gps_seconds_value="${2:-}"
       require_positive_integer "$1" "$gps_seconds_value"
       require_integer_at_most "$1" "$gps_seconds_value" "$max_status_gps_seconds"
-      gps_seconds="$gps_seconds_value"
+      gps_seconds="$(normalize_decimal_integer "$gps_seconds_value")"
       shift 2
       ;;
     --json)
@@ -301,8 +309,10 @@ require_remote_positive_integer() {
 }
 
 integer_greater_than() {
-  local value="$1"
-  local maximum="$2"
+  local value
+  local maximum
+  value="$(normalize_decimal_integer "$1")"
+  maximum="$(normalize_decimal_integer "$2")"
   if (( ${#value} > ${#maximum} )); then
     return 0
   fi
@@ -310,6 +320,12 @@ integer_greater_than() {
     return 0
   fi
   return 1
+}
+
+normalize_decimal_integer() {
+  local value="$1"
+  value="${value#"${value%%[!0]*}"}"
+  printf '%s\n' "${value:-0}"
 }
 
 require_remote_integer_at_most() {

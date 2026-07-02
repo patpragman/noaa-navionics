@@ -264,6 +264,31 @@ grep -q 'normalize_decimal_integer()' scripts/start_chartplotter.sh
 grep -q 'value="$(normalize_decimal_integer "$1")"' scripts/start_chartplotter.sh
 grep -q 'warning_seconds="$(normalize_decimal_integer "$warning_seconds")"' scripts/start_chartplotter.sh
 grep -q 'opencpn_restarts="$(normalize_decimal_integer "$opencpn_restarts")"' scripts/start_chartplotter.sh
+grep -q 'normalize_decimal_integer()' scripts/deploy_to_pi.sh
+grep -q 'option_value="$(normalize_decimal_integer "${2:-}")"' scripts/deploy_to_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/dock_test_pi.sh
+grep -q 'timeout="$(normalize_decimal_integer "$timeout_value")"' scripts/dock_test_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/provision_sailboat_pi.sh
+grep -q 'sync_retry_delay="$(normalize_decimal_integer "$sync_retry_delay")"' scripts/provision_sailboat_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/pre_departure_check_pi.sh
+grep -q 'verify_args+=("$1" "$option_value")' scripts/pre_departure_check_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/pre_trip_prepare_pi.sh
+grep -q 'track_days="$(normalize_decimal_integer "${2:-}")"' scripts/pre_trip_prepare_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/post_trip_collect_pi.sh
+grep -q 'track_days="$(normalize_decimal_integer "${2:-}")"' scripts/post_trip_collect_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/refresh_pi_charts.sh
+grep -q 'retry_delay="$(normalize_decimal_integer "$retry_delay_value")"' scripts/refresh_pi_charts.sh
+grep -q 'retry_delay="$(normalize_decimal_integer "$retry_delay")"' scripts/refresh_pi_charts.sh
+grep -q 'normalize_decimal_integer()' scripts/check_pi_status.sh
+grep -q 'gps_seconds="$(normalize_decimal_integer "$gps_seconds_value")"' scripts/check_pi_status.sh
+grep -q 'normalize_decimal_integer()' scripts/export_pi_tracks.sh
+grep -q 'days="$(normalize_decimal_integer "${2:-}")"' scripts/export_pi_tracks.sh
+grep -q 'normalize_decimal_integer()' scripts/export_pi_recovery_bundle.sh
+grep -q 'track_days="$(normalize_decimal_integer "${2:-}")"' scripts/export_pi_recovery_bundle.sh
+grep -q 'normalize_decimal_integer()' scripts/verify_pi.sh
+grep -q 'opencpn_restart_delay="$(normalize_decimal_integer "${2:-}")"' scripts/verify_pi.sh
+grep -q 'normalize_decimal_integer()' scripts/shutdown_pi_safely.sh
+grep -q 'shutdown_timeout="$(normalize_decimal_integer "$timeout_value")"' scripts/shutdown_pi_safely.sh
 grep -q 'require_launcher_integer_at_most "NOAA_NAVIONICS_GPS_SECONDS" "$gps_seconds" "$max_gps_seconds"' scripts/start_chartplotter.sh
 grep -q 'require_launcher_integer_at_most "NOAA_NAVIONICS_OPENCPN_RESTARTS" "$opencpn_restarts" "$max_opencpn_restarts"' scripts/start_chartplotter.sh
 grep -q 'Invalid NOAA_NAVIONICS_READINESS_ATTEMPTS=.*expected positive integer' scripts/start_chartplotter.sh
@@ -917,7 +942,8 @@ grep -q 'bounds post-trip GPS waits to 1-600 seconds and track export lookback t
 grep -q 'max_track_days=3650' scripts/post_trip_collect_pi.sh
 grep -q 'max_gps_seconds=600' scripts/post_trip_collect_pi.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/post_trip_collect_pi.sh
-grep -q 'require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"' scripts/post_trip_collect_pi.sh
+grep -q 'track_days="$(normalize_decimal_integer "${2:-}")"' scripts/post_trip_collect_pi.sh
+grep -q 'gps_seconds="$(normalize_decimal_integer "${2:-}")"' scripts/post_trip_collect_pi.sh
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' README.md
 grep -q 'validates the trusted root-owned local `python3` command path before helper validation and status snapshot creation' docs/sailboat-pi.md
 grep -q 'rejects broad/system local output directories, control characters, parent-directory components, or symlinked local output path components, normalizes the local export root, tightens the local export directory and trip folder to user-owned private `0700`' README.md
@@ -1073,7 +1099,7 @@ grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
 grep -q 'max_gps_seconds=600' scripts/pre_departure_check_pi.sh
 grep -q 'max_opencpn_restarts=20' scripts/pre_departure_check_pi.sh
 grep -q 'max_opencpn_restart_delay=3600' scripts/pre_departure_check_pi.sh
-grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/pre_departure_check_pi.sh
+grep -q 'require_integer_at_most "$1" "$option_value" "$max_opencpn_restarts"' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restarts' scripts/deploy_to_pi.sh
@@ -1095,17 +1121,17 @@ grep -q 'max_opencpn_restarts=20' scripts/deploy_to_pi.sh
 grep -q 'max_opencpn_restart_delay=3600' scripts/deploy_to_pi.sh
 grep -q 'max_sync_retries=20' scripts/deploy_to_pi.sh
 grep -q 'max_sync_retry_delay=3600' scripts/deploy_to_pi.sh
-grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/deploy_to_pi.sh
+grep -q 'require_integer_at_most "$1" "$option_value" "$max_opencpn_restarts"' scripts/deploy_to_pi.sh
 grep -q 'Chart sync retry options require chart sync' scripts/provision_sailboat_pi.sh
 grep -q 'Chart sync retry options require chart sync' scripts/deploy_to_pi.sh
 grep -q 'max_opencpn_restarts=20' scripts/dock_test_pi.sh
 grep -q 'max_opencpn_restart_delay=3600' scripts/dock_test_pi.sh
 grep -q 'max_sync_retries=20' scripts/dock_test_pi.sh
 grep -q 'max_sync_retry_delay=3600' scripts/dock_test_pi.sh
-grep -q 'require_integer_at_most "$1" "${2:-}" "$max_sync_retries"' scripts/dock_test_pi.sh
+grep -q 'require_integer_at_most "$1" "$option_value" "$max_sync_retries"' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted}' scripts/verify_pi.sh
-grep -q 'verify_args+=("$1" "${2:-}")' scripts/dock_test_pi.sh
+grep -q 'verify_args+=("$1" "$option_value")' scripts/dock_test_pi.sh
 grep -q 'validate_remote_dir' scripts/deploy_to_pi.sh
 grep -q 'quote_remote_dir_for_shell' scripts/deploy_to_pi.sh
 grep -Fq 'printf '\''~/%s'\''' scripts/deploy_to_pi.sh
@@ -1622,6 +1648,7 @@ grep -q 'opened GPX track has permissions' scripts/export_pi_tracks.sh
 grep -q 'NOAA_NAVIONICS_EXPORT_DAYS' scripts/export_pi_tracks.sh
 grep -q 'max_days=3650' scripts/export_pi_tracks.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_days"' scripts/export_pi_tracks.sh
+grep -q 'days="$(normalize_decimal_integer "${2:-}")"' scripts/export_pi_tracks.sh
 grep -q 'bounds direct track export lookback to 0-3650 days before preparing local output or starting SSH work' README.md
 grep -q 'bounds direct track export lookback to 0-3650 days before preparing local output or starting SSH work' docs/sailboat-pi.md
 grep -q 'rejects individual GPX files larger than 100 MiB' README.md
@@ -1742,6 +1769,7 @@ grep -q 'export_pi_tracks.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'collect_pi_support_bundle.sh' scripts/export_pi_recovery_bundle.sh
 grep -q 'max_track_days=3650' scripts/export_pi_recovery_bundle.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/export_pi_recovery_bundle.sh
+grep -q 'track_days="$(normalize_decimal_integer "${2:-}")"' scripts/export_pi_recovery_bundle.sh
 grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' README.md
 grep -q 'bounds recovery track export lookback to 0-3650 days before preparing local output or starting helper work' docs/sailboat-pi.md
 grep -q "with the exporters' per-file size caps" README.md
@@ -5813,6 +5841,8 @@ grep -q 'max_opencpn_restarts=20' scripts/pre_trip_prepare_pi.sh
 grep -q 'max_opencpn_restart_delay=3600' scripts/pre_trip_prepare_pi.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/pre_trip_prepare_pi.sh
 grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/pre_trip_prepare_pi.sh
+grep -q 'track_days="$(normalize_decimal_integer "${2:-}")"' scripts/pre_trip_prepare_pi.sh
+grep -q 'opencpn_restarts="$(normalize_decimal_integer "${2:-}")"' scripts/pre_trip_prepare_pi.sh
 grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, refresh retry delays to 0-3600 seconds, track export lookback to 0-3650 days, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' README.md
 grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, refresh retry delays to 0-3600 seconds, track export lookback to 0-3650 days, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' docs/sailboat-pi.md
 grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, reject chart sync retry controls with `--skip-sync`, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' README.md
@@ -8550,14 +8580,14 @@ NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
   pi@example.invalid \
   --device /dev/serial/by-id/mock-gps \
   --output-dir "$pre_trip_output_dir/" \
-  --track-days 14 \
+  --track-days 014 \
   --gps-seconds 17 \
   --retries 6 \
-  --retry-delay 9 \
+  --retry-delay 09 \
   --force-refresh \
   --allow-dirty \
-  --opencpn-restarts 2 \
-  --opencpn-restart-delay 3 >"$verify_output" 2>&1
+  --opencpn-restarts 02 \
+  --opencpn-restart-delay 03 >"$verify_output" 2>&1
 grep -q 'Pre-trip Pi preparation completed for pi@example.invalid' "$verify_output"
 grep -Fxq "refresh|pi@example.invalid --retries 6 --retry-delay 9 --status --gps-seconds 17 --force" "$pre_trip_log"
 grep -Fxq "recovery|pi@example.invalid $pre_trip_output_dir --track-days 14" "$pre_trip_log"
@@ -10616,7 +10646,7 @@ NOAA_NAVIONICS_ALLOW_UNTRUSTED_LOCAL_SSH=1 \
   NOAA_NAVIONICS_FAKE_SSH_ARGS="$refresh_fake_ssh_args" \
   NOAA_NAVIONICS_FAKE_SSH_STDIN="$refresh_fake_ssh_stdin" \
   PATH="$refresh_fake_ssh_bin:$PATH" \
-  scripts/refresh_pi_charts.sh pi@example.invalid --force --retries 7 --retry-delay 11 --status --gps-seconds 13 >"$verify_output" 2>&1
+  scripts/refresh_pi_charts.sh pi@example.invalid --force --retries 7 --retry-delay 011 --status --gps-seconds 13 >"$verify_output" 2>&1
 grep -q 'Pi NOAA chart refresh completed for pi@example.invalid' "$verify_output"
 grep -q 'NOAA_NAVIONICS_REFRESH_FORCE=1' "$refresh_fake_ssh_args"
 grep -q 'NOAA_NAVIONICS_REFRESH_RETRIES=7' "$refresh_fake_ssh_args"
@@ -15401,10 +15431,10 @@ scripts/provision_sailboat_pi.sh \
   --skip-services \
   --config "$tmpdir/config.ini" \
   --gps-seconds 17 \
-  --opencpn-restarts 4 \
-  --opencpn-restart-delay 2 \
+  --opencpn-restarts 04 \
+  --opencpn-restart-delay 02 \
   --sync-retries 7 \
-  --sync-retry-delay 15 >"$provision_output"
+  --sync-retry-delay 015 >"$provision_output"
 grep -q 'NOAA_NAVIONICS_GPS_SECONDS=17' "$provision_output"
 grep -q 'NOAA_NAVIONICS_WARNING_SECONDS=8' "$provision_output"
 grep -q 'NOAA_NAVIONICS_READINESS_ATTEMPTS=3' "$provision_output"
