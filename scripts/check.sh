@@ -6923,8 +6923,43 @@ expected_properties = {
     "SystemCallArchitectures": "native",
     "UMask": "0077",
 }
+operational_properties = {
+    ("noaa-navionics.service", "chart refresh service"): {
+        "TimeoutStartUSec": "2h",
+        "Restart": "on-failure",
+        "RestartUSec": "30min",
+        "StartLimitIntervalUSec": "6h",
+        "StartLimitBurst": "3",
+    },
+    ("noaa-navionics.timer", "chart refresh timer"): {
+        "Persistent": "yes",
+        "RandomizedDelayUSec": "30min",
+    },
+    ("noaa-navionics-track.service", "track logger service"): {
+        "Restart": "on-failure",
+        "RestartUSec": "10s",
+        "TimeoutStopUSec": "30s",
+        "StartLimitIntervalUSec": "10min",
+        "StartLimitBurst": "60",
+    },
+    ("noaa-navionics-preflight.service", "boot readiness service"): {
+        "TimeoutStartUSec": "15min",
+        "Restart": "on-failure",
+        "RestartUSec": "30s",
+        "StartLimitIntervalUSec": "30min",
+        "StartLimitBurst": "60",
+    },
+}
 for unit, label in units.items():
     for property_name, expected_value in expected_properties.items():
+        needle = (
+            f'require_loaded_user_unit_property {unit} {property_name} '
+            f'{expected_value} "{label}"'
+        )
+        if needle not in text:
+            raise SystemExit(f"provisioning must verify loaded {unit} {property_name}")
+for (unit, label), properties in operational_properties.items():
+    for property_name, expected_value in properties.items():
         needle = (
             f'require_loaded_user_unit_property {unit} {property_name} '
             f'{expected_value} "{label}"'
@@ -6946,6 +6981,9 @@ expected_contains = {
         "noaa-navionics/config.ini",
         "--retries 5",
         "--retry-delay 30",
+    ],
+    ("noaa-navionics.timer", "TimersCalendar", "chart refresh timer"): [
+        "OnCalendar=weekly",
     ],
     ("noaa-navionics-track.service", "ExecStart", "track logger service"): [
         ".local/share/noaa-navionics/venv/bin/noaa-navionics",
@@ -6993,8 +7031,8 @@ grep -q 'require_user_unit_enabled noaa-navionics-preflight.service "boot readin
 grep -q 'require_user_unit_active noaa-navionics.timer "chart refresh timer"' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_active noaa-navionics-track.service "track logger service"' scripts/provision_sailboat_pi.sh
 grep -q 'require_user_unit_result_success noaa-navionics-preflight.service "boot readiness service"' scripts/provision_sailboat_pi.sh
-grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' README.md
-grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' docs/sailboat-pi.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, timer schedule, retry/start-limit policy, boot-readiness ordering, and hardening settings before enabling unattended startup' README.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, timer schedule, retry/start-limit policy, boot-readiness ordering, and hardening settings before enabling unattended startup' docs/sailboat-pi.md
 grep -q 'Provisioning did not leave .* enabled' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning did not leave .* active' scripts/provision_sailboat_pi.sh
 grep -q 'Provisioning did not leave .* with a successful last run' scripts/provision_sailboat_pi.sh
@@ -7030,8 +7068,8 @@ grep -q 'run "$sudo_cmd" "$loginctl_cmd" enable-linger "$USER"' scripts/provisio
 grep -q 'run "$systemctl_cmd" --user reset-failed noaa-navionics.service noaa-navionics-track.service noaa-navionics-preflight.service' scripts/provision_sailboat_pi.sh
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' README.md
 grep -q 'clears stale failed states for the chart refresh, track logger, and boot readiness services' docs/sailboat-pi.md
-grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' README.md
-grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, boot-readiness ordering, and hardening settings before enabling unattended startup' docs/sailboat-pi.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, timer schedule, retry/start-limit policy, boot-readiness ordering, and hardening settings before enabling unattended startup' README.md
+grep -q 'confirms systemd loaded the installed user-unit fragments, command lines, timer schedule, retry/start-limit policy, boot-readiness ordering, and hardening settings before enabling unattended startup' docs/sailboat-pi.md
 grep -q 'resolves sudo, systemctl, loginctl, and Python through trusted root-owned command checks' README.md
 grep -q 'resolves sudo, systemctl, loginctl, and Python through trusted root-owned command checks' docs/sailboat-pi.md
 grep -q 'run "$systemctl_cmd" --user enable --now noaa-navionics-track.service' scripts/provision_sailboat_pi.sh
