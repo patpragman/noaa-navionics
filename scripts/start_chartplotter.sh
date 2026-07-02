@@ -27,6 +27,7 @@ opencpn_shutdown_grace_seconds=10
 lock_acquired=0
 opencpn_bin=""
 opencpn_child_pid=""
+opencpn_detached_supervision=0
 python3_bin=""
 trusted_system_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 device_tree_model_path="/proc/device-tree/model"
@@ -1364,16 +1365,24 @@ keep_display_awake() {
   return 0
 }
 
-opencpn_running() {
+active_opencpn_pids() {
   local pid
   local pgrep_bin
   if pgrep_bin="$(process_lookup_command_path)" && revalidate_process_lookup_command "$pgrep_bin"; then
     while IFS= read -r pid; do
       if opencpn_process_active "$pid"; then
-        return 0
+        printf '%s\n' "$pid"
       fi
     done < <("$pgrep_bin" -u "$(id -u)" -x opencpn 2>/dev/null || true)
   fi
+}
+
+opencpn_running() {
+  local pid
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    return 0
+  done < <(active_opencpn_pids)
   return 1
 }
 
@@ -1947,17 +1956,55 @@ terminate_opencpn_child() {
   opencpn_child_pid=""
 }
 
+terminate_detached_opencpn_processes() {
+  local pid
+  local waited=0
+  local pids=()
+  if [[ "$opencpn_detached_supervision" -ne 1 ]]; then
+    return 0
+  fi
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    pids+=("$pid")
+  done < <(active_opencpn_pids)
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    opencpn_detached_supervision=0
+    return 0
+  fi
+  echo "Forwarding launcher shutdown to detached OpenCPN process(es): ${pids[*]}."
+  for pid in "${pids[@]}"; do
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+  while opencpn_running && [[ "$waited" -lt "$opencpn_shutdown_grace_seconds" ]]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if opencpn_running; then
+    echo "Detached OpenCPN process(es) did not exit after ${opencpn_shutdown_grace_seconds}s; sending KILL." >&2
+    while IFS= read -r pid; do
+      [[ -n "$pid" ]] || continue
+      kill -KILL "$pid" 2>/dev/null || true
+    done < <(active_opencpn_pids)
+  else
+    echo "Detached OpenCPN process(es) exited after TERM."
+  fi
+  opencpn_detached_supervision=0
+}
+
 wait_for_existing_opencpn_to_exit() {
+  opencpn_detached_supervision=1
   echo "OpenCPN is still running after launcher child exited; keeping launcher lock until OpenCPN exits."
   while opencpn_running; do
     sleep 1
   done
+  opencpn_detached_supervision=0
   echo "OpenCPN detached process exited; not restarting."
 }
 
 shutdown_launcher() {
   trap - INT TERM
   terminate_opencpn_child
+  terminate_detached_opencpn_processes
   exit 143
 }
 
@@ -2365,7 +2412,11 @@ run_opencpn_supervised() {
     opencpn_pid=$!
     opencpn_child_pid="$opencpn_pid"
     for _ in 1 2 3 4 5; do
-      if opencpn_running || ! kill -0 "$opencpn_pid" 2>/dev/null; then
+      if opencpn_running; then
+        opencpn_detached_supervision=1
+        break
+      fi
+      if ! kill -0 "$opencpn_pid" 2>/dev/null; then
         break
       fi
       sleep 1
@@ -2383,6 +2434,7 @@ run_opencpn_supervised() {
       wait_for_existing_opencpn_to_exit
       return 0
     fi
+    opencpn_detached_supervision=0
     if [[ "$opencpn_status" -eq 0 ]]; then
       echo "OpenCPN exited cleanly; not restarting."
       return 0
