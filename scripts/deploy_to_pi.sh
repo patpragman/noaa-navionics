@@ -7,8 +7,9 @@ Usage: scripts/deploy_to_pi.sh user@raspberrypi.local [remote-dir] [--provision 
 
 Copies this repo to the Raspberry Pi over SSH and runs the Pi installer there.
 With --provision, also runs the onboard commissioning sequence on the Pi.
-Provisioning options include --gps-seconds, --sync-retries, --sync-retry-delay,
---opencpn-restarts, and --opencpn-restart-delay.
+Provisioning options include --gps-seconds (1-600), --sync-retries (1-20),
+--sync-retry-delay (0-3600), --opencpn-restarts (0-20), and
+--opencpn-restart-delay (0-3600).
 Refuses a dirty local worktree unless --allow-dirty is passed.
 Nothing is installed or enabled on the local computer.
 EOF
@@ -36,6 +37,11 @@ device=""
 skip_gpsd=0
 skip_services=0
 skip_autologin=0
+max_gps_seconds=600
+max_sync_retries=20
+max_sync_retry_delay=3600
+max_opencpn_restarts=20
+max_opencpn_restart_delay=3600
 ssh_cmd=""
 git_cmd=""
 remote_python_cmd=""
@@ -143,6 +149,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -485,6 +513,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      case "$1" in
+        --gps-seconds)
+          require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
+          ;;
+        --sync-retries)
+          require_integer_at_most "$1" "${2:-}" "$max_sync_retries"
+          ;;
+      esac
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
@@ -495,6 +531,17 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      case "$1" in
+        --sync-retry-delay)
+          require_integer_at_most "$1" "${2:-}" "$max_sync_retry_delay"
+          ;;
+        --opencpn-restarts)
+          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
+          ;;
+        --opencpn-restart-delay)
+          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
+          ;;
+      esac
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;

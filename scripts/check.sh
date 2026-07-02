@@ -690,8 +690,8 @@ grep -q 'no-deploy, no-reboot pre-departure check' README.md
 grep -q 'no-deploy, no-reboot pre-departure check' docs/sailboat-pi.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
 grep -q 'scripts/pre_departure_check_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' docs/sailboat-pi.md
-grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds' README.md
-grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds' docs/sailboat-pi.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' README.md
+grep -q 'pre-departure wrapper validates the SSH target, rejects root and loopback/local-host targets, bounds one-off GPS wait overrides to 1-600 seconds, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' docs/sailboat-pi.md
 grep -q 'validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' README.md
 grep -q 'validates its local verification helper through a no-follow same-file descriptor as a current-user-owned executable with no group/other write bits before startup and immediately before execution, executes that helper through the validated no-follow descriptor' docs/sailboat-pi.md
 grep -q 'scripts/pre_trip_prepare_pi.sh pi@raspberrypi.local --device /dev/serial/by-id/YOUR_GPS_DEVICE' README.md
@@ -1014,6 +1014,9 @@ grep -q 'Use `--dry-run` to prove that path without powering off' docs/sailboat-
 grep -q -- '--gps-seconds' scripts/dock_test_pi.sh
 grep -q -- '--gps-seconds' scripts/pre_departure_check_pi.sh
 grep -q 'max_gps_seconds=600' scripts/pre_departure_check_pi.sh
+grep -q 'max_opencpn_restarts=20' scripts/pre_departure_check_pi.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/pre_departure_check_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restarts' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/provision_sailboat_pi.sh
 grep -q -- '--opencpn-restarts' scripts/deploy_to_pi.sh
@@ -1024,6 +1027,23 @@ grep -q -- '--opencpn-restarts' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/dock_test_pi.sh
 grep -q -- '--opencpn-restarts' scripts/pre_departure_check_pi.sh
 grep -q -- '--opencpn-restart-delay' scripts/pre_departure_check_pi.sh
+grep -q -- '--sync-retries (1-20)' scripts/deploy_to_pi.sh
+grep -q -- '--opencpn-restarts (0-20)' scripts/deploy_to_pi.sh
+grep -q -- 'OpenCPN nonzero-exit restart attempts after boot (0-20)' scripts/dock_test_pi.sh
+grep -q -- 'Expected OpenCPN nonzero-exit restart attempts after boot (0-20)' scripts/pre_departure_check_pi.sh
+grep -q -- 'Export GPX tracks modified in the last N days; 0 exports all (default: 30, max: 3650)' scripts/pre_trip_prepare_pi.sh
+grep -q -- 'OpenCPN nonzero-exit restart attempts after boot (0-20)' scripts/provision_sailboat_pi.sh
+grep -q 'max_gps_seconds=600' scripts/deploy_to_pi.sh
+grep -q 'max_opencpn_restarts=20' scripts/deploy_to_pi.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/deploy_to_pi.sh
+grep -q 'max_sync_retries=20' scripts/deploy_to_pi.sh
+grep -q 'max_sync_retry_delay=3600' scripts/deploy_to_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/deploy_to_pi.sh
+grep -q 'max_opencpn_restarts=20' scripts/dock_test_pi.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/dock_test_pi.sh
+grep -q 'max_sync_retries=20' scripts/dock_test_pi.sh
+grep -q 'max_sync_retry_delay=3600' scripts/dock_test_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_sync_retries"' scripts/dock_test_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTARTS=${opencpn_restarts_quoted}' scripts/verify_pi.sh
 grep -q 'NOAA_NAVIONICS_OPENCPN_RESTART_DELAY=${opencpn_restart_delay_quoted}' scripts/verify_pi.sh
 grep -q 'verify_args+=("$1" "${2:-}")' scripts/dock_test_pi.sh
@@ -5505,10 +5525,17 @@ grep -q 'require_integer_at_most "--sync-retries" "$sync_retries" "$max_sync_ret
 grep -q 'use `--gps-seconds N`, up to 600 seconds' README.md
 grep -q 'add `--gps-seconds N`, up to 600 seconds' docs/sailboat-pi.md
 grep -q 'max_gps_seconds=600' scripts/pre_trip_prepare_pi.sh
+grep -q 'max_track_days=3650' scripts/pre_trip_prepare_pi.sh
 grep -q 'max_retries=20' scripts/pre_trip_prepare_pi.sh
 grep -q 'max_retry_delay=3600' scripts/pre_trip_prepare_pi.sh
-grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, and refresh retry delays to 0-3600 seconds' README.md
-grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, and refresh retry delays to 0-3600 seconds' docs/sailboat-pi.md
+grep -q 'max_opencpn_restarts=20' scripts/pre_trip_prepare_pi.sh
+grep -q 'max_opencpn_restart_delay=3600' scripts/pre_trip_prepare_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_track_days"' scripts/pre_trip_prepare_pi.sh
+grep -q 'require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"' scripts/pre_trip_prepare_pi.sh
+grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, refresh retry delays to 0-3600 seconds, track export lookback to 0-3650 days, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' README.md
+grep -q 'bounds pre-trip GPS waits to 1-600 seconds, chart refresh retries to 1-20, refresh retry delays to 0-3600 seconds, track export lookback to 0-3650 days, OpenCPN restarts to 0-20, and OpenCPN restart delay to 0-3600 seconds' docs/sailboat-pi.md
+grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' README.md
+grep -q 'deploy and provisioning bound initial chart sync controls to 1-20 retries and 0-3600 seconds between retries, OpenCPN restart controls to 0-20 restarts and 0-3600 seconds between restarts' docs/sailboat-pi.md
 python3 - <<'PY'
 from pathlib import Path
 
@@ -6660,6 +6687,17 @@ if [[ "$deploy_code" -ne 2 ]]; then
 fi
 
 set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --sync-retries 21 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject oversized --sync-retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--sync-retries must be at most 20' "$deploy_output"
+
+set +e
 scripts/deploy_to_pi.sh pi@example.invalid --provision --opencpn-restart-delay soon >"$deploy_output" 2>&1
 deploy_code=$?
 set -e
@@ -6669,6 +6707,28 @@ if [[ "$deploy_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--opencpn-restart-delay must be a non-negative integer' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --opencpn-restarts 21 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject oversized --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be at most 20' "$deploy_output"
+
+set +e
+scripts/deploy_to_pi.sh pi@example.invalid --provision --opencpn-restart-delay 3601 >"$deploy_output" 2>&1
+deploy_code=$?
+set -e
+if [[ "$deploy_code" -ne 2 ]]; then
+  cat "$deploy_output" >&2
+  echo "expected deploy_to_pi.sh to reject oversized --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be at most 3600' "$deploy_output"
 
 deploy_fake_ssh_bin="$tmpdir/deploy-fake-ssh-bin"
 mkdir -p "$deploy_fake_ssh_bin"
@@ -7292,6 +7352,28 @@ fi
 grep -q -- '--opencpn-restart-delay must be at most 3600' "$verify_output"
 
 set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --opencpn-restarts 21 >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject oversized --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be at most 20' "$verify_output"
+
+set +e
+scripts/pre_departure_check_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --opencpn-restart-delay 3601 >"$verify_output" 2>&1
+pre_departure_code=$?
+set -e
+if [[ "$pre_departure_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_departure_check_pi.sh to reject oversized --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be at most 3600' "$verify_output"
+
+set +e
 scripts/verify_pi.sh --expected-gps-device >"$verify_output" 2>&1
 verify_code=$?
 set -e
@@ -7886,6 +7968,59 @@ if [[ "$pre_trip_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q 'Local python3 command is not in a trusted system directory' "$verify_output"
+
+pre_trip_bad_controls_output="$tmpdir/pre-trip-bad-controls-output"
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_bad_controls_output" \
+  --track-days 3651 >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized --track-days with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--track-days must be at most 3650' "$verify_output"
+test ! -e "$pre_trip_bad_controls_output"
+
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_bad_controls_output" \
+  --opencpn-restarts 21 >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be at most 20' "$verify_output"
+test ! -e "$pre_trip_bad_controls_output"
+
+set +e
+NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
+  "$pre_trip_repo/scripts/pre_trip_prepare_pi.sh" \
+  pi@example.invalid \
+  --device /dev/serial/by-id/mock-gps \
+  --output-dir "$pre_trip_bad_controls_output" \
+  --opencpn-restart-delay 3601 >"$verify_output" 2>&1
+pre_trip_code=$?
+set -e
+if [[ "$pre_trip_code" -ne 2 ]]; then
+  cat "$verify_output" >&2
+  echo "expected pre_trip_prepare_pi.sh to reject oversized --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be at most 3600' "$verify_output"
+test ! -e "$pre_trip_bad_controls_output"
+
 mkdir -p "$pre_trip_output_dir"
 chmod 0777 "$pre_trip_output_dir"
 NOAA_NAVIONICS_FAKE_PRE_TRIP_LOG="$pre_trip_log" \
@@ -14003,6 +14138,39 @@ if [[ "$dock_code" -ne 2 ]]; then
   exit 1
 fi
 grep -q -- '--opencpn-restarts must be a non-negative integer' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --opencpn-restarts 21 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject oversized --opencpn-restarts with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restarts must be at most 20' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --sync-retries 21 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject oversized --sync-retries with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--sync-retries must be at most 20' "$dock_output"
+
+set +e
+scripts/dock_test_pi.sh pi@example.invalid --skip-deploy --opencpn-restart-delay 3601 >"$dock_output" 2>&1
+dock_code=$?
+set -e
+if [[ "$dock_code" -ne 2 ]]; then
+  cat "$dock_output" >&2
+  echo "expected dock_test_pi.sh to reject oversized --opencpn-restart-delay with exit 2" >&2
+  exit 1
+fi
+grep -q -- '--opencpn-restart-delay must be at most 3600' "$dock_output"
 
 set +e
 scripts/dock_test_pi.sh pi@example.invalid --device /dev/serial/by-id/mock-gps --skip-autologin >"$dock_output" 2>&1

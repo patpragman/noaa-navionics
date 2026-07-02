@@ -10,9 +10,9 @@ Options:
   --allow-dirty       Allow verifying a deliberate dirty test deployment
   --gps-seconds N     Seconds to wait for a GPS fix during verification (1-600)
   --opencpn-restarts N
-                     Expected OpenCPN nonzero-exit restart attempts after boot
+                     Expected OpenCPN nonzero-exit restart attempts after boot (0-20)
   --opencpn-restart-delay N
-                     Expected seconds between OpenCPN restart attempts
+                     Expected seconds between OpenCPN restart attempts (0-3600)
 
 Runs a no-deploy, no-reboot pre-departure check over SSH against the
 already commissioned Raspberry Pi.
@@ -39,6 +39,8 @@ device=""
 verify_args=()
 python3_cmd=""
 max_gps_seconds=600
+max_opencpn_restarts=20
+max_opencpn_restart_delay=3600
 
 require_positive_integer() {
   local name="$1"
@@ -480,6 +482,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      case "$1" in
+        --opencpn-restarts)
+          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
+          ;;
+        --opencpn-restart-delay)
+          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
+          ;;
+      esac
       verify_args+=("$1" "${2:-}")
       shift 2
       ;;

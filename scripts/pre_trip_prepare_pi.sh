@@ -14,7 +14,7 @@ Raspberry Pi:
 Options:
   --device PATH       Stable GPS device path expected on the Pi
   --output-dir DIR    Local recovery export parent directory (default: pi-recovery-exports)
-  --track-days N      Export GPX tracks modified in the last N days; 0 exports all (default: 30)
+  --track-days N      Export GPX tracks modified in the last N days; 0 exports all (default: 30, max: 3650)
   --gps-seconds N     Override commissioned GPS wait for status/pre-departure
                       checks (1-600)
   --retries N         Chart download attempts on the Pi (default: 5, max: 20)
@@ -23,9 +23,9 @@ Options:
   --force-refresh     Force a NOAA chart redownload on the Pi
   --allow-dirty       Allow verifying a deliberate dirty test deployment
   --opencpn-restarts N
-                     Expected OpenCPN nonzero-exit restart attempts after boot
+                     Expected OpenCPN nonzero-exit restart attempts after boot (0-20)
   --opencpn-restart-delay N
-                     Expected seconds between OpenCPN restart attempts
+                     Expected seconds between OpenCPN restart attempts (0-3600)
   --skip-refresh      Skip the chart refresh and post-refresh status report
   --skip-recovery     Skip recovery export and local export verification
   --skip-pre-departure
@@ -51,6 +51,7 @@ shift
 device=""
 output_dir="pi-recovery-exports"
 track_days=30
+max_track_days=3650
 gps_seconds=""
 max_gps_seconds=600
 retries=5
@@ -63,7 +64,9 @@ skip_refresh=0
 skip_recovery=0
 skip_pre_departure=0
 opencpn_restarts=""
+max_opencpn_restarts=20
 opencpn_restart_delay=""
+max_opencpn_restart_delay=3600
 python3_cmd=""
 
 require_positive_integer() {
@@ -1808,6 +1811,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_track_days"
       track_days="${2:-}"
       shift 2
       ;;
@@ -1855,6 +1859,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
       opencpn_restarts="${2:-}"
       shift 2
       ;;
@@ -1864,6 +1869,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
       opencpn_restart_delay="${2:-}"
       shift 2
       ;;

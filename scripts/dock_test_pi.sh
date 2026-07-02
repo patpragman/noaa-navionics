@@ -12,14 +12,14 @@ Options:
   --skip-gps-time     Pass through provisioning without configuring chrony GPS time
   --no-reboot         Do not reboot; run only pre-reboot verification
   --timeout SECONDS   Time to wait for SSH after reboot (1-900; default: 180)
-  --gps-seconds N     Seconds to wait for a GPS fix during provisioning
-  --sync-retries N    Chart download attempts during provisioning
+  --gps-seconds N     Seconds to wait for a GPS fix during provisioning (1-600)
+  --sync-retries N    Chart download attempts during provisioning (1-20)
   --sync-retry-delay N
-                     Seconds between chart download retry attempts
+                     Seconds between chart download retry attempts (0-3600)
   --opencpn-restarts N
-                     OpenCPN nonzero-exit restart attempts after boot
+                     OpenCPN nonzero-exit restart attempts after boot (0-20)
   --opencpn-restart-delay N
-                     Seconds between OpenCPN restart attempts
+                     Seconds between OpenCPN restart attempts (0-3600)
 
 Runs a dock acceptance test over SSH:
 deploy/provision, verify, reboot, wait for the Pi, and verify again.
@@ -45,6 +45,11 @@ skip_deploy=0
 no_reboot=0
 timeout=180
 max_reboot_timeout=900
+max_gps_seconds=600
+max_sync_retries=20
+max_sync_retry_delay=3600
+max_opencpn_restarts=20
+max_opencpn_restart_delay=3600
 deploy_args=()
 provision_args=()
 verify_args=()
@@ -156,6 +161,28 @@ require_non_negative_integer() {
   local value="$2"
   if [[ ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$name must be a non-negative integer" >&2
+    exit 2
+  fi
+}
+
+integer_greater_than() {
+  local value="$1"
+  local maximum="$2"
+  if (( ${#value} > ${#maximum} )); then
+    return 0
+  fi
+  if (( ${#value} == ${#maximum} )) && [[ "$value" > "$maximum" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+require_integer_at_most() {
+  local name="$1"
+  local value="$2"
+  local maximum="$3"
+  if integer_greater_than "$value" "$maximum"; then
+    echo "$name must be at most ${maximum}" >&2
     exit 2
   fi
 }
@@ -312,6 +339,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_gps_seconds"
       provision_args+=("$1" "${2:-}")
       verify_args+=("$1" "${2:-}")
       shift 2
@@ -322,6 +350,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_positive_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_sync_retries"
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
@@ -331,6 +360,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      require_integer_at_most "$1" "${2:-}" "$max_sync_retry_delay"
       provision_args+=("$1" "${2:-}")
       shift 2
       ;;
@@ -340,6 +370,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       require_non_negative_integer "$1" "${2:-}"
+      case "$1" in
+        --opencpn-restarts)
+          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restarts"
+          ;;
+        --opencpn-restart-delay)
+          require_integer_at_most "$1" "${2:-}" "$max_opencpn_restart_delay"
+          ;;
+      esac
       provision_args+=("$1" "${2:-}")
       verify_args+=("$1" "${2:-}")
       shift 2

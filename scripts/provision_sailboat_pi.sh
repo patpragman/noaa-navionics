@@ -131,9 +131,9 @@ Options:
   --gps-seconds N     Seconds to wait for a GPS fix during final status report
                       (1-600)
   --opencpn-restarts N
-                     OpenCPN nonzero-exit restart attempts after boot
+                     OpenCPN nonzero-exit restart attempts after boot (0-20)
   --opencpn-restart-delay N
-                     Seconds between OpenCPN restart attempts
+                     Seconds between OpenCPN restart attempts (0-3600)
   --sync-retries N    Chart download attempts during initial commissioning
   --sync-retry-delay N
                      Seconds between chart download retry attempts
