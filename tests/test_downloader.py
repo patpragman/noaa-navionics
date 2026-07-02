@@ -15586,6 +15586,50 @@ class StatusReportTests(unittest.TestCase):
             self.assertFalse(check.ok)
             self.assertIn("permissions are 0755", check.detail)
 
+    def test_track_log_summary_rejects_replaced_tracks_directory_before_listing(self):
+        timestamp = datetime.now(timezone.utc)
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            tracks = root / "tracks"
+            track_path = tracks / "track-20260629.gpx"
+            with GPXTrackLogger(track_path) as logger:
+                logger.append(GPSFix(latitude=61.2181, longitude=-149.9003, timestamp=timestamp, satellites=8, hdop=1.2))
+            replacement = root / "replacement-tracks"
+            replacement.mkdir()
+            replacement.chmod(0o700)
+            replacement_track = replacement / "track-20260629.gpx"
+            with GPXTrackLogger(replacement_track) as logger:
+                logger.append(GPSFix(latitude=60.0, longitude=-150.0, timestamp=timestamp, satellites=8, hdop=1.2))
+            old_tracks = root / "old-tracks"
+            original_open = report_module.os.open
+            swapped = False
+
+            def swap_tracks_before_open(path, flags, mode=0o777, *, dir_fd=None):
+                nonlocal swapped
+                if dir_fd is None and Path(path) == tracks and not swapped:
+                    swapped = True
+                    tracks.rename(old_tracks)
+                    replacement.rename(tracks)
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                report_module.os.open = swap_tracks_before_open
+
+                summary = _track_log_summary(
+                    root,
+                    now=timestamp + timedelta(seconds=5),
+                    boot_epoch=timestamp.timestamp() - 10,
+                )
+            finally:
+                report_module.os.open = original_open
+
+            check = _track_log_readiness_check(summary)
+            self.assertFalse(summary["ok"])
+            self.assertFalse(check.ok)
+            self.assertIn("GPX tracks directory changed before it could be read", check.detail)
+
     def test_track_log_summary_rejects_symlinked_track_output(self):
         timestamp = datetime.now(timezone.utc)
         with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:

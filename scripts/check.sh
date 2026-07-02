@@ -5509,9 +5509,13 @@ grep -q 'test_service_readiness_checks_include_user_linger' tests/test_downloade
 grep -q 'test_disk_check_rejects_symlinked_storage_directory' tests/test_downloader.py
 grep -q 'test_disk_check_rejects_storage_under_symlinked_parent' tests/test_downloader.py
 grep -q 'def _track_log_summary' src/noaa_navionics/report.py
+grep -q 'def _open_trusted_tracks_dir' src/noaa_navionics/report.py
+grep -q 'os.listdir(tracks_fd)' src/noaa_navionics/report.py
+grep -q 'dir_fd=tracks_fd' src/noaa_navionics/report.py
 grep -q 'def _read_trusted_gpx_track_file' src/noaa_navionics/report.py
 grep -q 'expected_stat: Optional\[os.stat_result\] = None' src/noaa_navionics/report.py
 grep -q 'changed before it could be read' src/noaa_navionics/report.py
+grep -q 'GPX tracks directory changed before it could be read' src/noaa_navionics/report.py
 grep -q 'def _first_symlink_ancestor' src/noaa_navionics/report.py
 grep -q '"track_output_is_symlink"' src/noaa_navionics/report.py
 grep -q '"track_storage_symlink_component"' src/noaa_navionics/report.py
@@ -5544,10 +5548,11 @@ grep -q 'negative GPX HDOP' docs/sailboat-pi.md
 grep -q 'test_track_log_summary_rejects_missing_trackpoint_quality' tests/test_downloader.py
 grep -q 'test_read_trusted_gpx_track_file_rejects_writable_track_file_before_parsing' tests/test_downloader.py
 grep -q 'test_read_trusted_gpx_track_file_rejects_replaced_file_before_parsing' tests/test_downloader.py
+grep -q 'test_track_log_summary_rejects_replaced_tracks_directory_before_listing' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output' tests/test_downloader.py
 grep -q 'test_track_log_summary_rejects_symlinked_track_output_ancestor' tests/test_downloader.py
-grep -q 'Status reports and Pi verification read candidate GPX track files only after a no-follow descriptor confirms the opened file is still the inspected file' README.md
-grep -q 'Status reports and Pi verification read candidate GPX track files only after a no-follow descriptor confirms the opened file is still the inspected file' docs/sailboat-pi.md
+grep -q 'Status reports and Pi verification open the GPX tracks directory through a no-follow same-file descriptor' README.md
+grep -q 'Status reports and Pi verification open the GPX tracks directory through a no-follow same-file descriptor' docs/sailboat-pi.md
 grep -q 'wait_seconds=min(max(float(gps_seconds), 10.0), 60.0)' src/noaa_navionics/report.py
 grep -q 'latest_latitude' src/noaa_navionics/report.py
 grep -q 'Boot Readiness Settings' src/noaa_navionics/report.py

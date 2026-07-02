@@ -3158,145 +3158,163 @@ def _track_log_summary_once(
     if symlink_component is not None:
         summary["detail"] = f"{symlink_component} is a symlink, expected real GPX track storage"
         return summary
-    if not tracks_dir.exists():
-        summary["detail"] = f"{tracks_dir} does not exist"
-        return summary
-    if tracks_dir.is_symlink():
-        summary["detail"] = f"{tracks_dir} is a symlink, expected a private GPX tracks directory"
+    try:
+        tracks_fd, tracks_stat = _open_trusted_tracks_dir(tracks_dir, expected_owner=expected_owner)
+    except RuntimeError as exc:
+        summary["detail"] = str(exc)
         return summary
     try:
-        tracks_stat = tracks_dir.stat()
-    except OSError as exc:
-        summary["detail"] = f"could not inspect GPX tracks directory {tracks_dir}: {exc}"
+        tracks_mode = tracks_stat.st_mode & 0o777
+        summary["tracks_mode"] = f"{tracks_mode:04o}"
+        candidates = []
+        last_detail = ""
+        for name in os.listdir(tracks_fd):
+            if not name.startswith("track-") or not name.endswith(".gpx"):
+                continue
+            path = tracks_dir / name
+            try:
+                candidate_stat = os.stat(name, dir_fd=tracks_fd, follow_symlinks=False)
+            except OSError as exc:
+                last_detail = f"could not inspect {path}: {exc}"
+                continue
+            if stat.S_ISLNK(candidate_stat.st_mode):
+                last_detail = f"{path} is a symlink, expected a regular GPX track file"
+                continue
+            if not stat.S_ISREG(candidate_stat.st_mode):
+                last_detail = f"{path} is not a regular GPX track file"
+                continue
+            if candidate_stat.st_uid != expected_owner:
+                last_detail = f"{path} is owned by uid {candidate_stat.st_uid}, expected {expected_owner}"
+                continue
+            mode = candidate_stat.st_mode & 0o777
+            if mode & 0o077:
+                last_detail = f"{path} permissions are {mode:04o}, expected private 0600"
+                continue
+            candidates.append((candidate_stat.st_mtime, path, candidate_stat))
+        candidates.sort(reverse=True)
+        for _mtime, path, stat_result in candidates:
+            try:
+                read_stat, text = _read_trusted_gpx_track_file(
+                    path,
+                    expected_owner=expected_owner,
+                    expected_stat=stat_result,
+                    directory_fd=tracks_fd,
+                )
+            except Exception as exc:
+                last_detail = str(exc)
+                continue
+            stat_result = read_stat
+            if boot_time is not None and stat_result.st_mtime + 5 < boot_time:
+                last_detail = f"{path} is older than current boot"
+                continue
+            trackpoints = re.findall(r"<trkpt\b.*?</trkpt>", text, flags=re.DOTALL)
+            if not trackpoints:
+                last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
+                continue
+            newest_time = None
+            newest_position = None
+            newest_quality = None
+            for trackpoint in trackpoints:
+                element, element_error = _gpx_trackpoint_element(trackpoint)
+                if element is None:
+                    last_detail = f"{path} {element_error}"
+                    continue
+                position, position_error = _gpx_trackpoint_position(element)
+                if position is None:
+                    last_detail = f"{path} {position_error}"
+                    continue
+                quality, quality_error = _gpx_trackpoint_quality(element)
+                if quality is None:
+                    last_detail = f"{path} {quality_error}"
+                    continue
+                timestamp_text = _gpx_child_text(element, "time")
+                if timestamp_text is None:
+                    last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
+                    continue
+                track_time, timestamp_error = _parse_gpx_trackpoint_timestamp(timestamp_text)
+                if track_time is None:
+                    last_detail = f"{path} {timestamp_error}"
+                    continue
+                if newest_time is None or track_time > newest_time:
+                    newest_time = track_time
+                    newest_position = position
+                    newest_quality = quality
+            if newest_time is None or newest_position is None or newest_quality is None:
+                last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped quality position yet"
+                continue
+            track_epoch = newest_time.timestamp()
+            if boot_time is not None and track_epoch + 5 < boot_time:
+                last_detail = f"{path} newest GPX trackpoint is older than current boot"
+                continue
+            age = current.timestamp() - track_epoch
+            if age < 0.0:
+                last_detail = f"{path} newest GPX trackpoint timestamp is in the future by {-age:.0f}s"
+                continue
+            if age > max_age_seconds:
+                last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
+                continue
+            latitude, longitude = newest_position
+            quality_detail = _format_trackpoint_quality(newest_quality)
+            detail = f"{path} {latitude:.6f},{longitude:.6f}"
+            if quality_detail:
+                detail = f"{detail} {quality_detail}"
+            latest_fields: dict[str, object] = {
+                "ok": True,
+                "latest_path": str(path),
+                "latest_time": newest_time.isoformat().replace("+00:00", "Z"),
+                "latest_latitude": latitude,
+                "latest_longitude": longitude,
+                "age_seconds": age,
+                "latest_mode": f"{stat_result.st_mode & 0o777:04o}",
+                "detail": detail,
+            }
+            if newest_quality.get("satellites") is not None:
+                latest_fields["latest_satellites"] = newest_quality["satellites"]
+            if newest_quality.get("hdop") is not None:
+                latest_fields["latest_hdop"] = newest_quality["hdop"]
+            summary.update(latest_fields)
+            return summary
+        summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
         return summary
-    if not tracks_dir.is_dir():
-        summary["detail"] = f"{tracks_dir} is not a directory"
-        return summary
-    if tracks_stat.st_uid != expected_owner:
-        summary["detail"] = f"{tracks_dir} is owned by uid {tracks_stat.st_uid}, expected {expected_owner}"
-        return summary
-    tracks_mode = tracks_stat.st_mode & 0o777
-    summary["tracks_mode"] = f"{tracks_mode:04o}"
-    if tracks_mode & 0o077:
-        summary["detail"] = f"{tracks_dir} permissions are {tracks_mode:04o}, expected private 0700"
-        return summary
+    finally:
+        os.close(tracks_fd)
+
+
+def _open_trusted_tracks_dir(path: Path, *, expected_owner: int) -> tuple[int, os.stat_result]:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
-        resolved_tracks_dir = tracks_dir.resolve(strict=True)
+        before = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        raise RuntimeError(f"{path} does not exist") from None
     except OSError as exc:
-        summary["detail"] = f"could not resolve GPX tracks directory {tracks_dir}: {exc}"
-        return summary
-    candidates = []
-    last_detail = ""
-    for path in tracks_dir.glob("track-*.gpx"):
+        raise RuntimeError(f"could not inspect GPX tracks directory {path}: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise RuntimeError(f"{path} is a symlink, expected a private GPX tracks directory")
+    if not stat.S_ISDIR(before.st_mode):
+        raise RuntimeError(f"{path} is not a directory")
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError:
+        raise RuntimeError(f"GPX tracks directory disappeared before it could be read: {path}") from None
+    except OSError as exc:
         if path.is_symlink():
-            last_detail = f"{path} is a symlink, expected a regular GPX track file"
-            continue
-        if not path.is_file():
-            last_detail = f"{path} is not a regular GPX track file"
-            continue
-        try:
-            stat = path.stat()
-            path.resolve(strict=True).relative_to(resolved_tracks_dir)
-        except OSError as exc:
-            last_detail = f"could not inspect {path}: {exc}"
-            continue
-        except ValueError:
-            last_detail = f"{path} resolves outside GPX tracks directory"
-            continue
-        if stat.st_uid != expected_owner:
-            last_detail = f"{path} is owned by uid {stat.st_uid}, expected {expected_owner}"
-            continue
-        mode = stat.st_mode & 0o777
+            raise RuntimeError(f"{path} is a symlink, expected a private GPX tracks directory") from exc
+        raise RuntimeError(f"could not open GPX tracks directory {path}: {exc}") from exc
+    try:
+        opened = os.fstat(fd)
+        if not os.path.samestat(opened, before):
+            raise RuntimeError(f"GPX tracks directory changed before it could be read: {path}")
+        if not stat.S_ISDIR(opened.st_mode):
+            raise RuntimeError(f"{path} is not a directory")
+        if opened.st_uid != expected_owner:
+            raise RuntimeError(f"{path} is owned by uid {opened.st_uid}, expected {expected_owner}")
+        mode = opened.st_mode & 0o777
         if mode & 0o077:
-            last_detail = f"{path} permissions are {mode:04o}, expected private 0600"
-            continue
-        candidates.append((stat.st_mtime, path, stat))
-    candidates.sort(reverse=True)
-    for _mtime, path, stat_result in candidates:
-        try:
-            read_stat, text = _read_trusted_gpx_track_file(
-                path,
-                expected_owner=expected_owner,
-                expected_stat=stat_result,
-            )
-        except Exception as exc:
-            last_detail = str(exc)
-            continue
-        stat_result = read_stat
-        if boot_time is not None and stat_result.st_mtime + 5 < boot_time:
-            last_detail = f"{path} is older than current boot"
-            continue
-        trackpoints = re.findall(r"<trkpt\b.*?</trkpt>", text, flags=re.DOTALL)
-        if not trackpoints:
-            last_detail = f"{path} is current-boot but has no GPX trackpoint yet"
-            continue
-        newest_time = None
-        newest_position = None
-        newest_quality = None
-        for trackpoint in trackpoints:
-            element, element_error = _gpx_trackpoint_element(trackpoint)
-            if element is None:
-                last_detail = f"{path} {element_error}"
-                continue
-            position, position_error = _gpx_trackpoint_position(element)
-            if position is None:
-                last_detail = f"{path} {position_error}"
-                continue
-            quality, quality_error = _gpx_trackpoint_quality(element)
-            if quality is None:
-                last_detail = f"{path} {quality_error}"
-                continue
-            timestamp_text = _gpx_child_text(element, "time")
-            if timestamp_text is None:
-                last_detail = f"{path} has GPX trackpoints but no timestamped trackpoint yet"
-                continue
-            track_time, timestamp_error = _parse_gpx_trackpoint_timestamp(timestamp_text)
-            if track_time is None:
-                last_detail = f"{path} {timestamp_error}"
-                continue
-            if newest_time is None or track_time > newest_time:
-                newest_time = track_time
-                newest_position = position
-                newest_quality = quality
-        if newest_time is None or newest_position is None or newest_quality is None:
-            last_detail = last_detail or f"{path} has GPX trackpoints but no valid timestamped quality position yet"
-            continue
-        track_epoch = newest_time.timestamp()
-        if boot_time is not None and track_epoch + 5 < boot_time:
-            last_detail = f"{path} newest GPX trackpoint is older than current boot"
-            continue
-        age = current.timestamp() - track_epoch
-        if age < 0.0:
-            last_detail = f"{path} newest GPX trackpoint timestamp is in the future by {-age:.0f}s"
-            continue
-        if age > max_age_seconds:
-            last_detail = f"{path} newest GPX trackpoint is stale: {age:.0f}s old"
-            continue
-        latitude, longitude = newest_position
-        quality_detail = _format_trackpoint_quality(newest_quality)
-        detail = f"{path} {latitude:.6f},{longitude:.6f}"
-        if quality_detail:
-            detail = f"{detail} {quality_detail}"
-        latest_fields: dict[str, object] = {
-            "ok": True,
-            "latest_path": str(path),
-            "latest_time": newest_time.isoformat().replace("+00:00", "Z"),
-            "latest_latitude": latitude,
-            "latest_longitude": longitude,
-            "age_seconds": age,
-            "latest_mode": f"{stat_result.st_mode & 0o777:04o}",
-            "detail": detail,
-        }
-        if newest_quality.get("satellites") is not None:
-            latest_fields["latest_satellites"] = newest_quality["satellites"]
-        if newest_quality.get("hdop") is not None:
-            latest_fields["latest_hdop"] = newest_quality["hdop"]
-        summary.update(
-            latest_fields
-        )
-        return summary
-    summary["detail"] = last_detail or f"no current-boot GPX trackpoint found under {tracks_dir}"
-    return summary
+            raise RuntimeError(f"{path} permissions are {mode:04o}, expected private 0700")
+        return fd, opened
+    except Exception:
+        os.close(fd)
+        raise
 
 
 def _parse_gpx_trackpoint_timestamp(value: str) -> tuple[Optional[datetime], str]:
@@ -3314,12 +3332,16 @@ def _read_trusted_gpx_track_file(
     *,
     expected_owner: int,
     expected_stat: Optional[os.stat_result] = None,
+    directory_fd: Optional[int] = None,
 ) -> tuple[os.stat_result, str]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
-        fd = os.open(path, flags)
+        if directory_fd is None:
+            fd = os.open(path, flags)
+        else:
+            fd = os.open(path.name, flags, dir_fd=directory_fd)
     except OSError:
-        if path.is_symlink():
+        if directory_fd is None and path.is_symlink():
             raise RuntimeError(f"{path} is a symlink, expected a regular GPX track file")
         raise
     try:
