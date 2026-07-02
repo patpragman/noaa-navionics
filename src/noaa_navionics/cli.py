@@ -798,9 +798,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 if deadline is None and not args.sample:
                     _print_track_logger_gps_lost()
                     return 1
-            except _TrackGPSStreamLost:
+            except _TrackGPSStreamLost as exc:
                 if live_stream:
-                    _print_track_logger_gps_lost()
+                    _print_track_logger_gps_lost(str(exc))
                     return 1
                 raise
             except _TrackLoggerStop as exc:
@@ -1423,11 +1423,11 @@ def _print_anchor_watch_gps_lost() -> None:
     )
 
 
-def _print_track_logger_gps_lost() -> None:
-    print(
-        "\aTRACK LOGGER GPS LOST: Live GPS stream ended unexpectedly; restart the track logger to resume GPX logging.",
-        file=sys.stderr,
-    )
+def _print_track_logger_gps_lost(detail: str = "") -> None:
+    message = "\aTRACK LOGGER GPS LOST: Live GPS stream ended unexpectedly; restart the track logger to resume GPX logging."
+    if detail:
+        message = f"{message} Cause: {detail}"
+    print(message, file=sys.stderr)
 
 
 def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample: bool) -> int:
@@ -1442,7 +1442,7 @@ def _log_single_track(fixes, output: Path, *, deadline: Optional[float], sample:
                 break
             except OSError as exc:
                 if count > 0:
-                    raise _TrackGPSStreamLost() from exc
+                    raise _TrackGPSStreamLost(str(exc)) from exc
                 raise
             if logger is None:
                 logger = GPXTrackLogger(output)
@@ -1482,7 +1482,7 @@ def _log_rotating_tracks(
                 break
             except OSError as exc:
                 if count > 0:
-                    raise _TrackGPSStreamLost() from exc
+                    raise _TrackGPSStreamLost(str(exc)) from exc
                 raise
             day = _track_day(fix)
             if day != current_day:

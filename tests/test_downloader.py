@@ -2531,6 +2531,53 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("lat=\"61.21810000\"", expected_path.read_text(encoding="utf-8"))
             self.assertIn("\aTRACK LOGGER GPS LOST", stderr.getvalue())
             self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+            self.assertIn("Cause: no GPSD messages within 300s", stderr.getvalue())
+            self.assertNotIn("error:", stderr.getvalue())
+
+    def test_cli_log_track_single_file_timeout_after_fix_reports_cause(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_PARENT) as tmpdir:
+            root = Path(tmpdir)
+            app_config = root / "config.ini"
+            track_output = root / "single-track.gpx"
+            app_config.write_text(
+                "[gps]\n"
+                "mode = gpsd\n"
+                "device = /dev/serial/by-id/mock-gps\n"
+                "gpsd_host = 127.0.0.1\n"
+                "gpsd_port = 2947\n"
+                "\n"
+                "[tracking]\n"
+                f"output = {root / 'configured-tracks'}\n",
+                encoding="utf-8",
+            )
+            fix = GPSFix(
+                timestamp=datetime.now(timezone.utc),
+                latitude=61.2181,
+                longitude=-149.9003,
+                satellites=8,
+                hdop=1.2,
+            )
+            original = cli_module._read_fixes
+
+            def fixes():
+                yield fix
+                raise TimeoutError("serial idle for 300s")
+
+            try:
+                cli_module._read_fixes = lambda *args, **kwargs: fixes()
+                stdout = StringIO()
+                stderr = StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = cli_module.main(["log-track", "--config", str(app_config), "--file", str(track_output)])
+            finally:
+                cli_module._read_fixes = original
+
+            self.assertEqual(code, 1)
+            self.assertTrue(track_output.read_text(encoding="utf-8").endswith("</gpx>\n"))
+            self.assertIn("lat=\"61.21810000\"", track_output.read_text(encoding="utf-8"))
+            self.assertIn("\aTRACK LOGGER GPS LOST", stderr.getvalue())
+            self.assertIn("Live GPS stream ended unexpectedly", stderr.getvalue())
+            self.assertIn("Cause: serial idle for 300s", stderr.getvalue())
             self.assertNotIn("error:", stderr.getvalue())
 
     def test_cli_mark_position_writes_mob_waypoint_to_configured_track_output(self):
