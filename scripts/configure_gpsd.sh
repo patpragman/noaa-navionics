@@ -958,6 +958,15 @@ EOF
   exit 2
 fi
 
+if [[ "$check_device" -eq 1 && ( "$device" == /dev/gps || "$device" == /dev/serial0 || "$device" == /dev/serial1 ) && -L "$device" && ! -e "$device" ]]; then
+  target="$(readlink -- "$device" 2>/dev/null || true)"
+  cat >&2 <<EOF
+GPS stable alias is a broken symlink: $device -> ${target:-<unknown>}
+Plug in the receiver, fix the alias, or run: noaa-navionics list-gps-devices
+EOF
+  exit 2
+fi
+
 if [[ "$check_device" -eq 1 && ! -e "$device" ]]; then
   cat >&2 <<EOF
 GPS device does not exist: $device

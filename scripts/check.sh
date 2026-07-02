@@ -3705,6 +3705,7 @@ grep -q 'GPS device path is not a recognized stable path' scripts/configure_gpsd
 grep -q 'Do not configure GPSD as root' scripts/configure_gpsd.sh
 grep -q 'GPS device path is a directory' scripts/configure_gpsd.sh
 grep -q 'GPS udev device path is a broken symlink' scripts/configure_gpsd.sh
+grep -q 'GPS stable alias is a broken symlink' scripts/configure_gpsd.sh
 grep -q 'GPS udev device path is not a symlink' scripts/configure_gpsd.sh
 grep -q 'GPS device path is not a character device' scripts/configure_gpsd.sh
 grep -q 'validate_updated_app_config' scripts/configure_gpsd.sh
@@ -3893,13 +3894,17 @@ grep -q 'validate_existing_gps_config' scripts/provision_sailboat_pi.sh
 grep -q 'validate_gps_device_path_arg' scripts/provision_sailboat_pi.sh
 grep -q 'GPS device path is volatile' scripts/provision_sailboat_pi.sh
 grep -q 'GPS udev device path is a broken symlink' scripts/provision_sailboat_pi.sh
+grep -q 'GPS stable alias is a broken symlink' scripts/provision_sailboat_pi.sh
 grep -q 'validate_existing_system_service' scripts/provision_sailboat_pi.sh
 grep -q 'Existing config is required when --skip-gpsd is used with unattended startup' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is a symlink when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS udev device path is a broken symlink' scripts/provision_sailboat_pi.sh
+grep -q 'Existing GPS stable alias is a broken symlink' scripts/provision_sailboat_pi.sh
 grep -q 'could not open existing GPS config when --skip-gpsd is used' scripts/provision_sailboat_pi.sh
 grep -q 'Existing GPS config is not a regular file when opened' scripts/provision_sailboat_pi.sh
+grep -q 'broken-stable-alias GPS config' README.md
+grep -q 'broken-stable-alias GPS config' docs/sailboat-pi.md
 grep -q 'with os.fdopen(fd, encoding="utf-8") as handle' scripts/provision_sailboat_pi.sh
 grep -q 'parser.read_string(read_existing_gps_config(config_path), source=str(config_path))' scripts/provision_sailboat_pi.sh
 ! grep -q 'parser.read(config_path)' scripts/provision_sailboat_pi.sh
@@ -3991,6 +3996,8 @@ grep -q 'validate_user_install_path "$chart_service" "chart refresh user service
 grep -q 'validate_user_install_path "$autostart_entry" "chartplotter desktop autostart"' scripts/provision_sailboat_pi.sh
 grep -q -- '--no-device-check cannot be used while unattended startup is enabled' scripts/provision_sailboat_pi.sh
 grep -q 'pass both --skip-services and --skip-autologin for manual testing' scripts/provision_sailboat_pi.sh
+grep -q 'broken `/dev/serial/by-id/...` or `/dev/serial/by-path/...` symlinks plus broken `/dev/gps`, `/dev/serial0`, or `/dev/serial1` stable aliases before writing GPSD config' README.md
+grep -q 'broken `/dev/serial/by-id/...` or `/dev/serial/by-path/...` symlinks plus broken `/dev/gps`, `/dev/serial0`, or `/dev/serial1` stable aliases before writing GPSD config' docs/sailboat-pi.md
 grep -q 'refclock SHM 0 offset 0.5 delay 0.1 refid GPS' scripts/configure_gps_time.sh
 ! grep -q 'sudo "$systemctl_cmd" restart gpsd' scripts/configure_gps_time.sh
 grep -q 'Do not configure GPS time as root' scripts/configure_gps_time.sh

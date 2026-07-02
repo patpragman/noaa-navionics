@@ -500,6 +500,12 @@ if check_device and is_udev_path and path.is_symlink() and not path.exists():
     except OSError:
         target = path
     raise SystemExit(f"Existing GPS udev device path is a broken symlink: {path} -> {target}")
+if check_device and not is_udev_path and stable and path.is_symlink() and not path.exists():
+    try:
+        target = path.resolve(strict=False)
+    except OSError:
+        target = path
+    raise SystemExit(f"Existing GPS stable alias is a broken symlink: {path} -> {target}")
 if check_device and not path.exists():
     raise SystemExit(f"GPS device does not exist: {path}")
 if check_device and path.is_dir():
@@ -850,6 +856,15 @@ if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && ( "$dev
   cat >&2 <<EOF
 GPS udev device path is a broken symlink: $device -> ${target:-<unknown>}
 Plug in the receiver, remove the stale link, or run: noaa-navionics list-gps-devices
+EOF
+  exit 2
+fi
+
+if [[ "$skip_gpsd" -eq 0 && "$check_device" -eq 1 && "$dry_run" -eq 0 && ( "$device" == /dev/gps || "$device" == /dev/serial0 || "$device" == /dev/serial1 ) && -L "$device" && ! -e "$device" ]]; then
+  target="$(readlink -- "$device" 2>/dev/null || true)"
+  cat >&2 <<EOF
+GPS stable alias is a broken symlink: $device -> ${target:-<unknown>}
+Plug in the receiver, fix the alias, or run: noaa-navionics list-gps-devices
 EOF
   exit 2
 fi
