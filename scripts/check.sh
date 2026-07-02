@@ -4400,6 +4400,8 @@ grep -q 'test_cli_anchor_watch_rejects_timezone_less_fix' tests/test_downloader.
 grep -q 'test_cli_anchor_watch_averages_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_averages_anchor_samples_across_date_line' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_insufficient_anchor_samples' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_live_stream_timeout_during_anchor_samples_reports_shortfall' tests/test_downloader.py
+grep -q 'test_cli_anchor_watch_live_stream_timeout_before_anchor_samples_reports_no_fix' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_rejects_oversized_anchor_samples' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_validates_direct_parameters' tests/test_downloader.py
 grep -q 'test_cli_anchor_watch_live_stream_timeout_after_anchor_is_audible_alarm' tests/test_downloader.py
@@ -4538,6 +4540,8 @@ grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends une
 grep -q 'exits non-zero with an audible terminal bell if the GPS stream ends unexpectedly or goes idle' docs/sailboat-pi.md
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' README.md
 grep -q 'audible terminal bell when drift exceeds `\[anchor\].radius_meters` or the live GPS stream ends or goes idle after the anchor is established' docs/sailboat-pi.md
+grep -q 'a live GPS timeout before enough samples arrive reports the anchor-sample shortfall' README.md
+grep -q 'a live GPS timeout before enough samples arrive reports the anchor-sample shortfall' docs/sailboat-pi.md
 grep -q 'logger = GPXTrackLogger(output)' src/noaa_navionics/cli.py
 grep -q 'first_symlink_ancestor' src/noaa_navionics/gps.py
 grep -q 'expected real GPX track storage' src/noaa_navionics/gps.py

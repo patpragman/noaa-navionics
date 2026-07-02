@@ -1298,6 +1298,14 @@ def _run_anchor_watch(
                     file=sys.stderr,
                 )
                 return 1
+    except TimeoutError:
+        if live_stream and anchor_established:
+            _print_anchor_watch_gps_lost()
+            return 1
+        if anchor_set_from_fix and not anchor_established:
+            _print_anchor_sample_shortfall(len(anchor_sample_latitudes), anchor_samples)
+            return 1
+        raise
     except OSError:
         if live_stream and anchor_established:
             _print_anchor_watch_gps_lost()
@@ -1305,14 +1313,7 @@ def _run_anchor_watch(
         raise
 
     if anchor_set_from_fix and not anchor_established:
-        if anchor_sample_latitudes:
-            print(
-                f"Only {len(anchor_sample_latitudes)} usable GPS fix(es) were available; "
-                f"need {anchor_samples} anchor samples.",
-                file=sys.stderr,
-            )
-        else:
-            print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
+        _print_anchor_sample_shortfall(len(anchor_sample_latitudes), anchor_samples)
         return 1
     if anchor_set_from_fix and anchor_established:
         if checked == 0:
@@ -1333,6 +1334,17 @@ def _run_anchor_watch(
         return 0
     print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
     return 1
+
+
+def _print_anchor_sample_shortfall(anchor_sample_count: int, anchor_samples: int) -> None:
+    if anchor_sample_count:
+        print(
+            f"Only {anchor_sample_count} usable GPS fix(es) were available; "
+            f"need {anchor_samples} anchor samples.",
+            file=sys.stderr,
+        )
+    else:
+        print("No usable GPS fix was available for anchor watch.", file=sys.stderr)
 
 
 def _validated_anchor_watch_parameters(

@@ -2994,6 +2994,64 @@ class OpenCPNConfigTests(unittest.TestCase):
             self.assertIn("Anchor sample 2/3", stdout.getvalue())
             self.assertIn("need 3 anchor samples", stderr.getvalue())
 
+    def test_cli_anchor_watch_live_stream_timeout_during_anchor_samples_reports_shortfall(self):
+        now = datetime.now(timezone.utc) - timedelta(seconds=3)
+
+        def fixes():
+            yield GPSFix(timestamp=now, latitude=61.0, longitude=-149.0, satellites=9, hdop=0.9)
+            yield GPSFix(
+                timestamp=now + timedelta(seconds=1),
+                latitude=61.00002,
+                longitude=-149.00002,
+                satellites=9,
+                hdop=0.9,
+            )
+            raise TimeoutError("no GPSD messages within 300s")
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli_module._run_anchor_watch(
+                fixes(),
+                radius_meters=50.0,
+                anchor_latitude=None,
+                anchor_longitude=None,
+                anchor_samples=3,
+                interval_seconds=None,
+                live_stream=True,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Anchor sample 1/3", stdout.getvalue())
+        self.assertIn("Anchor sample 2/3", stdout.getvalue())
+        self.assertIn("Only 2 usable GPS fix(es) were available; need 3 anchor samples.", stderr.getvalue())
+        self.assertNotIn("ANCHOR WATCH GPS LOST", stderr.getvalue())
+
+    def test_cli_anchor_watch_live_stream_timeout_before_anchor_samples_reports_no_fix(self):
+        def fixes():
+            raise TimeoutError("no NMEA bytes within 300s")
+            yield
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli_module._run_anchor_watch(
+                fixes(),
+                radius_meters=50.0,
+                anchor_latitude=None,
+                anchor_longitude=None,
+                anchor_samples=3,
+                interval_seconds=None,
+                live_stream=True,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("No usable GPS fix was available for anchor watch.", stderr.getvalue())
+        self.assertNotIn("ANCHOR WATCH GPS LOST", stderr.getvalue())
+
     def test_cli_anchor_watch_rejects_oversized_anchor_samples(self):
         stderr = StringIO()
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
